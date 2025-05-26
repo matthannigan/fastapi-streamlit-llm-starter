@@ -19,7 +19,7 @@ A production-ready starter template for building AI-powered applications using F
 │   Streamlit     │───▶│     FastAPI      │───▶│   PydanticAI    │
 │   Frontend      │    │     Backend      │    │   + LLM APIs    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
+         │                       │                      │
          │              ┌─────────────────┐             │
          └─────────────▶│  Shared Models  │◀────────────┘
                         │   (Pydantic)    │
