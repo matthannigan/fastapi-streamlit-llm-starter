@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./backend:/app
+      - ./shared:/app/shared
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - SHOW_DEBUG_INFO=true
+    volumes:
+      - ./frontend:/app
+      - ./shared:/app/shared
+    command: streamlit run app/app.py --server.address 0.0.0.0 --server.port 8501 --server.runOnSave true
+
+  # Remove production services for development
+  nginx:
+    profiles:
+      - production 

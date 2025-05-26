@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    volumes: []  # No volume mounts in production
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  frontend:
+    environment:
+      - SHOW_DEBUG_INFO=false
+    volumes: []  # No volume mounts in production
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M 

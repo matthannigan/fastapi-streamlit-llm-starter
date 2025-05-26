@@ -2,31 +2,96 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-text-processor-backend
     ports:
       - "8000:8000"
     environment:
-      - BACKEND_HOST=0.0.0.0
-      - BACKEND_PORT=8000
-    env_file:
-      - .env
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AI_MODEL=${AI_MODEL:-gemini-2.0-flash-exp}
+      - AI_TEMPERATURE=${AI_TEMPERATURE:-0.7}
+      - DEBUG=${DEBUG:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ALLOWED_ORIGINS=["http://localhost:8501", "http://frontend:8501"]
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./backend:/app
       - ./shared:/app/shared
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - ai-processor-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-text-processor-frontend
     ports:
       - "8501:8501"
     environment:
-      - FRONTEND_PORT=8501
       - API_BASE_URL=http://backend:8000
-    env_file:
-      - .env
+      - SHOW_DEBUG_INFO=${SHOW_DEBUG_INFO:-false}
+      - MAX_TEXT_LENGTH=${MAX_TEXT_LENGTH:-10000}
     volumes:
       - ./frontend:/app
       - ./shared:/app/shared
+    networks:
+      - ai-processor-network
+    restart: unless-stopped
     depends_on:
       - backend
-    command: streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-text-processor-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-processor-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: ai-text-processor-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - ai-processor-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  redis_data:
+
+networks:
+  ai-processor-network:
+    driver: bridge 
