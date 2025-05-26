@@ -127,8 +127,9 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
+# Environment files
 .env
+.env.local
 .venv
 env/
 venv/
@@ -172,3 +173,21 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
