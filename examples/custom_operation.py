@@ -3,13 +3,25 @@
 Example of how to add custom text processing operations to the FastAPI-Streamlit-LLM Starter Template.
 
 This script demonstrates the step-by-step process of extending the application
-with new operations like translation and text classification.
+with new operations like translation and text classification using standardized
+patterns for imports, error handling, and sample data.
 """
 
+# Standard library imports
 import asyncio
-import httpx
-from typing import Dict, Any, List
+import logging
 from enum import Enum
+from typing import Dict, Any, List, Optional
+
+# Third-party imports
+import httpx
+
+# Local application imports
+from shared.sample_data import get_sample_text, get_medium_text
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # This example shows how to extend the existing ProcessingOperation enum
 # In practice, you would modify the actual files as shown below
@@ -370,16 +382,11 @@ async def test_custom_operations():
     
     print_step(5, "Testing Custom Operations")
     
-    # Sample text for testing
-    sample_text = """
-    Artificial intelligence is revolutionizing the healthcare industry. 
-    Companies like Google and Microsoft are developing AI systems that can 
-    diagnose diseases more accurately than human doctors. This technology 
-    could save millions of lives and reduce healthcare costs significantly.
-    """
+    # Use standardized sample text for testing
+    sample_text = get_sample_text("ai_technology")
     
     print("📖 Sample text for testing:")
-    print(f'"{sample_text.strip()}"')
+    print(f'"{sample_text}"')
     
     # Simulate API calls (in real implementation, these would be actual HTTP requests)
     test_cases = [

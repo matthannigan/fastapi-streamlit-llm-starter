@@ -143,6 +143,8 @@ For detailed Docker setup information, see [DOCKER_README.md](DOCKER_README.md).
 
 ## 📖 Usage
 
+> **📋 Code Standards:** All examples follow standardized patterns for imports, error handling, and sample data. See [`docs/CODE_STANDARDS.md`](docs/CODE_STANDARDS.md) for detailed guidelines.
+
 ### Available Operations
 
 1. **Summarize**: Generate concise summaries of long texts
@@ -154,17 +156,53 @@ For detailed Docker setup information, see [DOCKER_README.md](DOCKER_README.md).
 ### Example API Usage
 
 ```python
+#!/usr/bin/env python3
+"""Example API usage with standardized patterns."""
+
+# Standard library imports
+import asyncio
+import logging
+from typing import Optional, Dict, Any
+
+# Third-party imports
 import httpx
 
-# Process text
-response = httpx.post("http://localhost:8000/process", json={
-    "text": "Your text here...",
-    "operation": "summarize",
-    "options": {"max_length": 100}
-})
+# Local application imports
+from shared.sample_data import get_sample_text
 
-result = response.json()
-print(result["result"])
+# Configure logging
+logger = logging.getLogger(__name__)
+
+async def example_api_usage():
+    """Demonstrate API usage with proper error handling."""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Process text using standardized sample data
+            response = await client.post(
+                "http://localhost:8000/process", 
+                json={
+                    "text": get_sample_text("ai_technology"),
+                    "operation": "summarize",
+                    "options": {"max_length": 100}
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            print(f"Summary: {result['result']}")
+            
+    except httpx.TimeoutException:
+        logger.error("Request timeout")
+        print("Request timed out. Please try again.")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error: {e.response.status_code}")
+        print(f"API Error: {e.response.status_code}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        print(f"Error: {str(e)}")
+
+# Run the example
+if __name__ == "__main__":
+    asyncio.run(example_api_usage())
 ```
 
 ### Frontend Features

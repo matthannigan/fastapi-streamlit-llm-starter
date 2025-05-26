@@ -3,88 +3,150 @@
 Basic usage examples for the FastAPI-Streamlit-LLM Starter Template.
 
 This script demonstrates how to interact with the API programmatically
-and showcases all available text processing operations.
+and showcases all available text processing operations using standardized
+patterns for imports, error handling, and sample data.
 """
 
+# Standard library imports
 import asyncio
-import httpx
 import json
+import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-# Sample texts for different use cases
-SAMPLE_TEXTS = {
-    "climate_change": """
-    Climate change represents one of the most significant challenges facing humanity today. 
-    Rising global temperatures, caused primarily by increased greenhouse gas emissions, 
-    are leading to more frequent extreme weather events, rising sea levels, and 
-    disruptions to ecosystems worldwide. Scientists agree that immediate action is 
-    required to mitigate these effects and transition to sustainable energy sources.
-    The Paris Agreement, signed by nearly 200 countries, aims to limit global warming 
-    to well below 2 degrees Celsius above pre-industrial levels.
-    """,
-    
-    "technology": """
-    Artificial intelligence is revolutionizing industries across the globe. From healthcare 
-    diagnostics to autonomous vehicles, AI systems are becoming increasingly sophisticated 
-    and capable. Machine learning algorithms can now process vast amounts of data to 
-    identify patterns and make predictions with remarkable accuracy. However, this rapid 
-    advancement also raises important questions about ethics, privacy, and the future 
-    of human employment in an AI-driven world.
-    """,
-    
-    "business": """
-    The quarterly earnings report shows strong performance across all business units. 
-    Revenue increased by 15% compared to the same period last year, driven primarily 
-    by growth in our digital services division. Customer satisfaction scores have 
-    improved significantly, and we've successfully launched three new products. 
-    Looking ahead, we remain optimistic about market conditions and expect continued 
-    growth in the coming quarters.
-    """
-}
+# Third-party imports
+import httpx
+
+# Local application imports
+from shared.sample_data import (
+    STANDARD_SAMPLE_TEXTS,
+    get_sample_text,
+    get_medium_text,
+    get_business_text
+)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class APIClient:
-    """Simple API client for the FastAPI backend."""
+    """
+    Simple API client for the FastAPI backend with standardized error handling.
+    
+    This client provides methods for interacting with the text processing API
+    and follows consistent error handling patterns.
+    """
     
     def __init__(self, base_url: str = "http://localhost:8000"):
+        """
+        Initialize the API client.
+        
+        Args:
+            base_url: Base URL for the API endpoints
+        """
         self.base_url = base_url
         self.session = None
+        self.timeout = httpx.Timeout(30.0)
     
     async def __aenter__(self):
-        self.session = httpx.AsyncClient(timeout=30.0)
+        """Async context manager entry."""
+        self.session = httpx.AsyncClient(timeout=self.timeout)
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
         if self.session:
             await self.session.aclose()
     
-    async def health_check(self) -> Dict[str, Any]:
-        """Check API health status."""
-        response = await self.session.get(f"{self.base_url}/health")
-        response.raise_for_status()
-        return response.json()
-    
-    async def get_operations(self) -> Dict[str, Any]:
-        """Get available operations."""
-        response = await self.session.get(f"{self.base_url}/operations")
-        response.raise_for_status()
-        return response.json()
-    
-    async def process_text(self, text: str, operation: str, question: str = None, 
-                          options: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Process text with specified operation."""
-        payload = {
-            "text": text,
-            "operation": operation,
-            "options": options or {}
-        }
+    async def health_check(self) -> Optional[Dict[str, Any]]:
+        """
+        Check API health status with error handling.
         
-        if question:
-            payload["question"] = question
+        Returns:
+            Health status dictionary or None if error occurred
+        """
+        try:
+            response = await self.session.get(f"{self.base_url}/health")
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException:
+            logger.error("Health check timeout")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Health check HTTP error: {e.response.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"Health check error: {str(e)}")
+            return None
+    
+    async def get_operations(self) -> Optional[Dict[str, Any]]:
+        """
+        Get available operations with error handling.
         
-        response = await self.session.post(f"{self.base_url}/process", json=payload)
-        response.raise_for_status()
-        return response.json()
+        Returns:
+            Operations dictionary or None if error occurred
+        """
+        try:
+            response = await self.session.get(f"{self.base_url}/operations")
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException:
+            logger.error("Get operations timeout")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Get operations HTTP error: {e.response.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"Get operations error: {str(e)}")
+            return None
+    
+    async def process_text(
+        self, 
+        text: str, 
+        operation: str, 
+        question: Optional[str] = None, 
+        options: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Process text with specified operation and standardized error handling.
+        
+        Args:
+            text: Text to process
+            operation: Processing operation to perform
+            question: Optional question for Q&A operation
+            options: Optional operation-specific parameters
+            
+        Returns:
+            Processing result dictionary or None if error occurred
+        """
+        try:
+            payload = {
+                "text": text,
+                "operation": operation,
+                "options": options or {}
+            }
+            
+            if question:
+                payload["question"] = question
+            
+            response = await self.session.post(f"{self.base_url}/process", json=payload)
+            response.raise_for_status()
+            return response.json()
+            
+        except httpx.TimeoutException:
+            logger.error(f"Process text timeout for operation: {operation}")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Process text HTTP error: {e.response.status_code}")
+            try:
+                error_detail = e.response.json().get('detail', 'Unknown error')
+                logger.error(f"Error detail: {error_detail}")
+            except:
+                pass
+            return None
+        except Exception as e:
+            logger.error(f"Process text error: {str(e)}")
+            return None
 
 def print_header(title: str):
     """Print a formatted header."""
@@ -165,70 +227,70 @@ async def demonstrate_basic_operations():
             print(f"❌ Failed to get operations: {e}")
             return
         
-        # Use climate change text for demonstrations
-        sample_text = SAMPLE_TEXTS["climate_change"]
+        # Use standardized sample text for demonstrations
+        sample_text = get_sample_text("climate_change")
         print(f"\n📖 Sample Text (first 100 chars): {sample_text[:100]}...")
         
         # 3. Text Summarization
         print_section("3️⃣ Text Summarization")
-        try:
-            result = await client.process_text(
-                text=sample_text,
-                operation="summarize",
-                options={"max_length": 50}
-            )
+        result = await client.process_text(
+            text=sample_text,
+            operation="summarize",
+            options={"max_length": 50}
+        )
+        if result:
             print_result(result, "summarize")
-        except Exception as e:
-            print(f"❌ Summarization failed: {e}")
+        else:
+            print("❌ Summarization failed - check logs for details")
         
         # 4. Sentiment Analysis
         print_section("4️⃣ Sentiment Analysis")
-        try:
-            result = await client.process_text(
-                text=sample_text,
-                operation="sentiment"
-            )
+        result = await client.process_text(
+            text=sample_text,
+            operation="sentiment"
+        )
+        if result:
             print_result(result, "sentiment")
-        except Exception as e:
-            print(f"❌ Sentiment analysis failed: {e}")
+        else:
+            print("❌ Sentiment analysis failed - check logs for details")
         
         # 5. Key Points Extraction
         print_section("5️⃣ Key Points Extraction")
-        try:
-            result = await client.process_text(
-                text=sample_text,
-                operation="key_points",
-                options={"max_points": 4}
-            )
+        result = await client.process_text(
+            text=sample_text,
+            operation="key_points",
+            options={"max_points": 3}
+        )
+        if result:
             print_result(result, "key_points")
-        except Exception as e:
-            print(f"❌ Key points extraction failed: {e}")
+        else:
+            print("❌ Key points extraction failed - check logs for details")
         
         # 6. Question Generation
         print_section("6️⃣ Question Generation")
-        try:
-            result = await client.process_text(
-                text=sample_text,
-                operation="questions",
-                options={"num_questions": 3}
-            )
+        result = await client.process_text(
+            text=sample_text,
+            operation="questions",
+            options={"num_questions": 3}
+        )
+        if result:
             print_result(result, "questions")
-        except Exception as e:
-            print(f"❌ Question generation failed: {e}")
+        else:
+            print("❌ Question generation failed - check logs for details")
         
         # 7. Question & Answer
         print_section("7️⃣ Question & Answer")
-        try:
-            question = "What is the main cause of climate change mentioned in the text?"
-            print(f"❓ Question: {question}")
-            result = await client.process_text(
-                text=sample_text,
-                operation="qa",
-                question=question
-            )
+        question = "What is the main cause of climate change mentioned in the text?"
+        print(f"❓ Question: {question}")
+        result = await client.process_text(
+            text=sample_text,
+            operation="qa",
+            question=question
+        )
+        if result:
             print_result(result, "qa")
-        except Exception as e:
-            print(f"❌ Q&A failed: {e}")
+        else:
+            print("❌ Q&A failed - check logs for details")
 
 async def demonstrate_different_text_types():
     """Demonstrate processing different types of text."""
@@ -237,23 +299,23 @@ async def demonstrate_different_text_types():
     
     async with APIClient() as client:
         
-        for text_type, text_content in SAMPLE_TEXTS.items():
+        for text_type, text_content in STANDARD_SAMPLE_TEXTS.items():
             print_section(f"📄 Processing {text_type.replace('_', ' ').title()} Text")
             
             # Show first 100 characters
             print(f"Text preview: {text_content[:100]}...")
             
             # Analyze sentiment for each text type
-            try:
-                result = await client.process_text(
-                    text=text_content,
-                    operation="sentiment"
-                )
+            result = await client.process_text(
+                text=text_content,
+                operation="sentiment"
+            )
+            if result:
                 sentiment = result.get("sentiment", {})
                 print(f"📊 Sentiment: {sentiment.get('sentiment', 'Unknown')} "
                       f"({sentiment.get('confidence', 0):.1%} confidence)")
-            except Exception as e:
-                print(f"❌ Failed to analyze {text_type}: {e}")
+            else:
+                print(f"❌ Failed to analyze {text_type} - check logs for details")
 
 async def demonstrate_error_handling():
     """Demonstrate error handling scenarios."""
@@ -299,7 +361,7 @@ async def performance_benchmark():
     async with APIClient() as client:
         
         operations = ["summarize", "sentiment", "key_points"]
-        text = SAMPLE_TEXTS["technology"]
+        text = STANDARD_SAMPLE_TEXTS["ai_technology"]
         
         print(f"📊 Running benchmark with {len(operations)} operations...")
         print(f"📖 Text length: {len(text)} characters")
@@ -311,8 +373,8 @@ async def performance_benchmark():
             print(f"\n⏱️  Testing {operation}...")
             start_time = time.time()
             
-            try:
-                result = await client.process_text(text=text, operation=operation)
+            result = await client.process_text(text=text, operation=operation)
+            if result:
                 processing_time = result.get("processing_time", 0)
                 total_time += processing_time
                 results[operation] = {
@@ -320,12 +382,12 @@ async def performance_benchmark():
                     "processing_time": processing_time
                 }
                 print(f"   ✅ Completed in {processing_time:.2f}s")
-            except Exception as e:
+            else:
                 results[operation] = {
                     "success": False,
-                    "error": str(e)
+                    "error": "Processing failed"
                 }
-                print(f"   ❌ Failed: {e}")
+                print(f"   ❌ Failed - check logs for details")
         
         print(f"\n📊 Benchmark Results:")
         print(f"   Total processing time: {total_time:.2f}s")

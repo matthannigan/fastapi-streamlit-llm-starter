@@ -146,30 +146,60 @@ graph TB
 ### Basic API Usage
 
 ```python
+#!/usr/bin/env python3
+"""Basic API usage example with standardized patterns."""
+
+# Standard library imports
 import asyncio
+import logging
+from typing import Dict, Any, Optional
+
+# Third-party imports
 import httpx
 
+# Local application imports
+from shared.sample_data import get_sample_text
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 async def basic_example():
-    async with httpx.AsyncClient() as client:
-        # Health check
-        health = await client.get("http://localhost:8000/health")
-        print(f"API Status: {health.json()['status']}")
-        
-        # Process text
-        response = await client.post(
-            "http://localhost:8000/process",
-            json={
-                "text": "Artificial intelligence is transforming industries worldwide.",
-                "operation": "summarize",
-                "options": {"max_length": 50}
-            }
-        )
-        
-        result = response.json()
-        print(f"Summary: {result['result']}")
+    """Demonstrate basic API usage with error handling."""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Health check
+            response = await client.get("http://localhost:8000/health")
+            response.raise_for_status()
+            health = response.json()
+            print(f"API Status: {health['status']}")
+            
+            # Process text using standardized sample data
+            response = await client.post(
+                "http://localhost:8000/process",
+                json={
+                    "text": get_sample_text("ai_technology"),
+                    "operation": "summarize",
+                    "options": {"max_length": 50}
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            print(f"Summary: {result['result']}")
+            
+    except httpx.TimeoutException:
+        logger.error("Request timeout")
+        print("Request timed out. Please try again.")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error: {e.response.status_code}")
+        print(f"API Error: {e.response.status_code}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        print(f"Error: {str(e)}")
 
 # Run the example
-asyncio.run(basic_example())
+if __name__ == "__main__":
+    asyncio.run(basic_example())
 ```
 
 ### All Operations Example
@@ -178,12 +208,8 @@ asyncio.run(basic_example())
 async def demonstrate_all_operations():
     """Demonstrate all available text processing operations."""
     
-    sample_text = """
-    Climate change represents one of the most significant challenges facing 
-    humanity today. Rising global temperatures, caused primarily by increased 
-    greenhouse gas emissions, are leading to more frequent extreme weather 
-    events, rising sea levels, and disruptions to ecosystems worldwide.
-    """
+    # Use standardized sample data
+    sample_text = get_sample_text("climate_change")
     
     operations = [
         {
@@ -219,7 +245,7 @@ async def demonstrate_all_operations():
             print(f"\n🔄 {op['description']}")
             
             payload = {
-                "text": sample_text.strip(),
+                "text": sample_text,
                 "operation": op["operation"],
                 "options": op["options"]
             }
