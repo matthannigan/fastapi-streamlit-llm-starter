@@ -12,7 +12,7 @@ from shared.models import (
     ProcessingOperation,
     ErrorResponse
 )
-from frontend.app.config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 

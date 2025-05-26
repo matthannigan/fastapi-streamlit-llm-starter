@@ -1,13 +1,18 @@
 """Main Streamlit application."""
 
+import sys
+import os
+# Add the parent directory to Python path so we can import app modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import streamlit as st
 import asyncio
 import json
 from typing import Dict, Any, Optional
 
 from shared.models import TextProcessingRequest, ProcessingOperation
-from frontend.app.utils.api_client import api_client, run_async
-from frontend.app.config import settings
+from app.utils.api_client import api_client, run_async
+from app.config import settings
 
 # Configure Streamlit page
 st.set_page_config(

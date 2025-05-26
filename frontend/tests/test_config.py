@@ -1,8 +1,12 @@
 import pytest
 from unittest.mock import patch
 import os
+import sys
 
-from frontend.app.config import Settings, settings
+# Add the parent directory to Python path so we can import app modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.config import Settings, settings
 
 class TestSettings:
     """Test the Settings configuration class."""
