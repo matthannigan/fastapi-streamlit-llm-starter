@@ -105,7 +105,7 @@ class TextProcessor:
         """
         
         result = await self.agent.run(prompt)
-        return result.data.strip()
+        return result.output.strip()
     
     async def _classify_text(self, text: str, options: Dict[str, Any]) -> Dict[str, Any]:
         """Classify text into predefined categories."""
@@ -129,7 +129,7 @@ class TextProcessor:
         result = await self.agent.run(prompt)
         try:
             import json
-            return json.loads(result.data.strip())
+            return json.loads(result.output.strip())
         except:
             return {
                 "category": categories[0],
@@ -158,7 +158,7 @@ class TextProcessor:
         result = await self.agent.run(prompt)
         try:
             import json
-            return json.loads(result.data.strip())
+            return json.loads(result.output.strip())
         except:
             return []
     
@@ -183,7 +183,7 @@ class TextProcessor:
         result = await self.agent.run(prompt)
         try:
             import json
-            return json.loads(result.data.strip())
+            return json.loads(result.output.strip())
         except:
             return {
                 "reading_level": "Unknown",

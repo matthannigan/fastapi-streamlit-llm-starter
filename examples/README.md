@@ -103,7 +103,7 @@ async def _translate_text(self, text: str, options: Dict[str, Any]) -> str:
     """
     
     result = await self.agent.run(prompt)
-    return result.data.strip()
+    return result.output.strip()
 ```
 
 ## 🧪 Integration Testing
