@@ -217,21 +217,36 @@ if __name__ == "__main__":
 
 ### Local Development Setup
 
+**Use the provided scripts:**
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Automated setup
+./scripts/setup.sh
 
-# Install dependencies
-pip install -r backend/requirements.txt
-pip install -r frontend/requirements.txt
+# Run backend
+./scripts/run_backend.sh
+
+# Run frontend (new terminal)
+./scripts/run_frontend.sh
+```
+
+**Or setup manually:**
+```bash
+# Setup backend
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
 # Start backend
-cd backend
 uvicorn app.main:app --reload
 
-# Start frontend (new terminal)
+# Setup frontend (new terminal)
 cd frontend
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Start frontend
 streamlit run app/app.py
 ```
 
