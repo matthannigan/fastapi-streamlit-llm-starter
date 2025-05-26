@@ -7,14 +7,14 @@ echo "🚀 Starting FastAPI Backend..."
 cd backend
 
 # Check if virtual environment exists
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "📦 Creating virtual environment..."
-    python -m venv venv
+    python3 -m venv .venv
 fi
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 
 # Install dependencies
 echo "📥 Installing dependencies..."

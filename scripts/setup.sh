@@ -15,11 +15,11 @@ fi
 # Setup backend
 echo "🔧 Setting up backend..."
 cd backend
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "📦 Creating backend virtual environment..."
-    python -m venv venv
+    python3 -m venv .venv
 fi
-source venv/bin/activate
+source .venv/bin/activate
 echo "📥 Installing backend dependencies..."
 pip install -r requirements.txt
 deactivate
@@ -28,11 +28,11 @@ cd ..
 # Setup frontend
 echo "🎨 Setting up frontend..."
 cd frontend
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "📦 Creating frontend virtual environment..."
-    python -m venv venv
+    python3 -m venv .venv
 fi
-source venv/bin/activate
+source .venv/bin/activate
 echo "📥 Installing frontend dependencies..."
 pip install -r requirements.txt
 deactivate
