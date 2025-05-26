@@ -1,5 +1,10 @@
 """Text processing service with LLM integration."""
 
+import sys
+import os
+# Add the root directory to Python path so we can import shared modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+
 import asyncio
 import time
 from typing import Dict, Any, List

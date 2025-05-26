@@ -1,10 +1,15 @@
 """Tests for the main FastAPI application."""
 
 import pytest
+import sys
+import os
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from backend.app.main import app
+# Add the root directory to Python path so we can import app modules and shared modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from app.main import app
 from shared.models import ProcessingOperation
 
 class TestHealthEndpoint:

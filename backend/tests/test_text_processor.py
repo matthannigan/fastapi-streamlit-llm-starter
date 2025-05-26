@@ -1,8 +1,13 @@
 import pytest
+import sys
+import os
 from unittest.mock import AsyncMock, patch
 import json
 
-from backend.app.services.text_processor import TextProcessorService
+# Add the root directory to Python path so we can import app modules and shared modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from app.services.text_processor import TextProcessorService
 from shared.models import TextProcessingRequest, ProcessingOperation, SentimentResult
 
 class TestTextProcessorService:
