@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 import asyncio
 import json
+import re
 from typing import Dict, Any, Optional
 
 from shared.models import TextProcessingRequest, ProcessingOperation
@@ -164,6 +165,31 @@ def display_text_input() -> tuple[str, Optional[str]]:
         )
     
     return text_content, question
+
+def normalize_whitespace(text: str) -> str:
+    """Normalize whitespace in text by replacing multiple spaces with single spaces.
+    
+    This function is specifically for cleaning up example texts that may have
+    formatting issues with extra spaces, while preserving paragraph structure.
+    """
+    # First, remove leading/trailing whitespace from each line
+    lines = text.split('\n')
+    cleaned_lines = [line.strip() for line in lines]
+    
+    # Rejoin lines and handle paragraph breaks
+    normalized = '\n'.join(cleaned_lines)
+    
+    # Replace multiple spaces/tabs with single space
+    normalized = re.sub(r'[ \t]+', ' ', normalized)
+    
+    # Clean up multiple newlines while preserving paragraph breaks
+    normalized = re.sub(r'\n\s*\n', '\n\n', normalized)
+    
+    # Limit to maximum of 2 consecutive newlines (paragraph break)
+    normalized = re.sub(r'\n{3,}', '\n\n', normalized)
+    
+    # Remove any leading/trailing whitespace from the entire text
+    return normalized.strip()
 
 def display_results(response, operation: str):
     """Display processing results."""
@@ -325,7 +351,8 @@ def main():
                         if st.button(f"⭐ {description}", key=f"rec_{text_type}", use_container_width=True):
                             try:
                                 example_text = get_sample_text(text_type)
-                                st.session_state['text_input'] = example_text
+                                # Normalize whitespace for example texts only
+                                st.session_state['text_input'] = normalize_whitespace(example_text)
                                 st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
                                 st.rerun()
                             except Exception as e:
@@ -352,7 +379,8 @@ def main():
                     if st.button(description, key=f"example_{text_type}", use_container_width=True):
                         try:
                             example_text = get_sample_text(text_type)
-                            st.session_state['text_input'] = example_text
+                            # Normalize whitespace for example texts only
+                            st.session_state['text_input'] = normalize_whitespace(example_text)
                             st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
                             st.rerun()
                         except Exception as e:
@@ -365,8 +393,8 @@ def main():
                 for text_type, sample_text in get_all_sample_texts().items():
                     if current_text.strip() == sample_text.strip():
                         st.info(f"Currently loaded: {text_type.replace('_', ' ').title()}")
-                        with st.expander("Preview"):
-                            st.text(current_text[:200] + "..." if len(current_text) > 200 else current_text)
+                        st.caption("Preview:")
+                        st.text(current_text[:200] + "..." if len(current_text) > 200 else current_text)
                         break
     
     # Display results if available
