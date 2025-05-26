@@ -1,29 +1,24 @@
 """Frontend configuration settings."""
 
 import os
-from typing import Optional
+from pydantic_settings import BaseSettings
 
-
-class Settings:
+class Settings(BaseSettings):
     """Frontend application settings."""
     
     # API Configuration
-    backend_host: str = os.getenv("BACKEND_HOST", "localhost")
-    backend_port: int = int(os.getenv("BACKEND_PORT", "8000"))
-    frontend_port: int = int(os.getenv("FRONTEND_PORT", "8501"))
+    api_base_url: str = os.getenv("API_BASE_URL", "http://backend:8000")
     
-    # Development Settings
-    debug: bool = os.getenv("DEBUG", "true").lower() == "true"
+    # UI Configuration
+    page_title: str = "AI Text Processor"
+    page_icon: str = "🤖"
+    layout: str = "wide"
     
-    @property
-    def backend_url(self) -> str:
-        """Get the backend API URL."""
-        return f"http://{self.backend_host}:{self.backend_port}"
+    # Features
+    show_debug_info: bool = os.getenv("SHOW_DEBUG_INFO", "false").lower() == "true"
+    max_text_length: int = int(os.getenv("MAX_TEXT_LENGTH", "10000"))
     
-    @property
-    def api_base_url(self) -> str:
-        """Get the API base URL."""
-        return f"{self.backend_url}/api/v1"
-
+    class Config:
+        env_file = ".env"
 
 settings = Settings() 

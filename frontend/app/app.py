@@ -2,201 +2,317 @@
 
 import streamlit as st
 import asyncio
-from app.utils.api_client import api_client
-from app.config import settings
+import json
+from typing import Dict, Any, Optional
 
+from shared.models import TextProcessingRequest, ProcessingOperation
+from frontend.app.utils.api_client import api_client, run_async
+from frontend.app.config import settings
 
-def main():
-    """Main Streamlit application."""
+# Configure Streamlit page
+st.set_page_config(
+    page_title=settings.page_title,
+    page_icon=settings.page_icon,
+    layout=settings.layout,
+    initial_sidebar_state="expanded"
+)
+
+def display_header():
+    """Display the application header."""
+    st.title("🤖 AI Text Processor")
+    st.markdown(
+        "Process text using advanced AI models. Choose from summarization, "
+        "sentiment analysis, key point extraction, and more!"
+    )
+    st.divider()
+
+def check_api_health():
+    """Check API health and display status."""
+    with st.sidebar:
+        st.subheader("🔧 System Status")
+        
+        # Check API health
+        is_healthy = run_async(api_client.health_check())
+        
+        if is_healthy:
+            st.success("✅ API Connected")
+        else:
+            st.error("❌ API Unavailable")
+            st.warning("Please ensure the backend service is running.")
+            return False
+        
+        return True
+
+def get_operation_info() -> Optional[Dict[str, Any]]:
+    """Get operation information from API."""
+    operations = run_async(api_client.get_operations())
+    if operations:
+        return {op['id']: op for op in operations['operations']}
+    return None
+
+def create_sidebar():
+    """Create the sidebar with operation selection."""
+    with st.sidebar:
+        st.subheader("⚙️ Configuration")
+        
+        # Get available operations
+        operations_info = get_operation_info()
+        if not operations_info:
+            st.error("Failed to load operations")
+            return None, {}
+        
+        # Operation selection
+        operation_options = {
+            op_id: f"{info['name']} - {info['description']}"
+            for op_id, info in operations_info.items()
+        }
+        
+        selected_op = st.selectbox(
+            "Choose Operation",
+            options=list(operation_options.keys()),
+            format_func=lambda x: operation_options[x],
+            key="operation_select"
+        )
+        
+        # Operation-specific options
+        options = {}
+        op_info = operations_info[selected_op]
+        
+        if "max_length" in op_info.get("options", []):
+            options["max_length"] = st.slider(
+                "Summary Length (words)",
+                min_value=50,
+                max_value=500,
+                value=150,
+                step=25
+            )
+        
+        if "max_points" in op_info.get("options", []):
+            options["max_points"] = st.slider(
+                "Number of Key Points",
+                min_value=3,
+                max_value=10,
+                value=5
+            )
+        
+        if "num_questions" in op_info.get("options", []):
+            options["num_questions"] = st.slider(
+                "Number of Questions",
+                min_value=3,
+                max_value=10,
+                value=5
+            )
+        
+        return selected_op, options
+
+def display_text_input() -> tuple[str, Optional[str]]:
+    """Display text input area."""
+    st.subheader("📝 Input Text")
     
-    # Page configuration
-    st.set_page_config(
-        page_title="FastAPI Streamlit LLM Starter",
-        page_icon="🚀",
-        layout="wide",
-        initial_sidebar_state="expanded"
+    # Text input options
+    input_method = st.radio(
+        "Input Method",
+        ["Type/Paste Text", "Upload File"],
+        horizontal=True
     )
     
-    # Custom CSS for better styling
-    st.markdown("""
-    <style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 2rem;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .subtitle {
-        text-align: center;
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 3rem;
-    }
-    .status-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    .status-healthy {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-    }
-    .status-unhealthy {
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    text_content = ""
     
-    # Header
-    st.markdown('<h1 class="main-header">🚀 FastAPI Streamlit LLM Starter</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">A modern template for building AI-powered applications</p>', unsafe_allow_html=True)
+    if input_method == "Type/Paste Text":
+        text_content = st.text_area(
+            "Enter your text here:",
+            height=200,
+            max_chars=settings.max_text_length,
+            placeholder="Paste or type the text you want to process...",
+            value=st.session_state.get('text_input', '')
+        )
+    else:
+        uploaded_file = st.file_uploader(
+            "Upload a text file",
+            type=['txt', 'md'],
+            help="Upload a .txt or .md file"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                text_content = str(uploaded_file.read(), "utf-8")
+                st.success(f"File uploaded successfully! ({len(text_content)} characters)")
+                
+                # Show preview
+                with st.expander("Preview uploaded text"):
+                    st.text(text_content[:500] + "..." if len(text_content) > 500 else text_content)
+            except Exception as e:
+                st.error(f"Error reading file: {e}")
     
-    # Sidebar
-    with st.sidebar:
-        st.header("⚙️ Configuration")
-        
-        # Backend status check
-        with st.spinner("Checking backend status..."):
-            backend_healthy = asyncio.run(api_client.health_check())
-        
-        if backend_healthy:
-            st.markdown('<div class="status-box status-healthy">✅ Backend is healthy</div>', unsafe_allow_html=True)
-            
-            # Get model info
-            model_info = asyncio.run(api_client.get_models_info())
-            if model_info:
-                st.subheader("🤖 Model Information")
-                st.write(f"**Model:** {model_info.get('current_model', 'Unknown')}")
-                st.write(f"**Temperature:** {model_info.get('temperature', 'Unknown')}")
-                st.write(f"**Status:** {model_info.get('status', 'Unknown')}")
-        else:
-            st.markdown('<div class="status-box status-unhealthy">❌ Backend is not available</div>', unsafe_allow_html=True)
-            st.error("Please ensure the backend is running and accessible.")
-        
-        st.divider()
-        
-        # Settings
-        st.subheader("🔧 Settings")
-        st.write(f"**Backend URL:** {settings.backend_url}")
-        st.write(f"**Debug Mode:** {'On' if settings.debug else 'Off'}")
+    # Question input for Q&A
+    question = None
+    if st.session_state.get("operation_select") == "qa":
+        question = st.text_input(
+            "Enter your question about the text:",
+            placeholder="What is the main topic discussed in this text?"
+        )
     
-    # Main content
-    if backend_healthy:
-        # Text processing interface
-        st.header("📝 Text Processing")
+    return text_content, question
+
+def display_results(response, operation: str):
+    """Display processing results."""
+    st.subheader("📊 Results")
+    
+    # Processing info
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Operation", operation.replace("_", " ").title())
+    with col2:
+        if response.processing_time:
+            st.metric("Processing Time", f"{response.processing_time:.2f}s")
+    with col3:
+        word_count = response.metadata.get("word_count", "N/A")
+        st.metric("Word Count", word_count)
+    
+    st.divider()
+    
+    # Display results based on operation type
+    if operation == "summarize":
+        st.markdown("### 📋 Summary")
+        st.write(response.result)
+    
+    elif operation == "sentiment":
+        st.markdown("### 🎭 Sentiment Analysis")
+        sentiment = response.sentiment
         
-        col1, col2 = st.columns([1, 1])
+        # Color code sentiment
+        color = {
+            "positive": "green",
+            "negative": "red",
+            "neutral": "gray"
+        }.get(sentiment.sentiment, "gray")
         
+        col1, col2 = st.columns(2)
         with col1:
-            st.subheader("Input")
-            
-            # Custom prompt
-            custom_prompt = st.text_area(
-                "Custom Prompt (optional)",
-                value="Please analyze and improve this text:",
-                height=100,
-                help="Customize how you want the AI to process your text"
-            )
-            
-            # Text input
-            input_text = st.text_area(
-                "Text to Process",
-                height=300,
-                placeholder="Enter your text here...",
-                help="Enter the text you want to process with AI"
-            )
-            
-            # Process button
-            process_button = st.button("🚀 Process Text", type="primary", use_container_width=True)
+            st.markdown(f"**Sentiment:** :{color}[{sentiment.sentiment.title()}]")
+            st.progress(sentiment.confidence)
+            st.caption(f"Confidence: {sentiment.confidence:.2%}")
         
         with col2:
-            st.subheader("Output")
-            
-            if process_button and input_text.strip():
-                with st.spinner("Processing text with AI..."):
-                    result = asyncio.run(api_client.process_text(input_text, custom_prompt))
-                
-                if result:
-                    st.success("✅ Text processed successfully!")
-                    
-                    # Display results
-                    st.markdown("**Processed Text:**")
-                    st.markdown(f"```\n{result['processed_text']}\n```")
-                    
-                    # Additional info
-                    with st.expander("📊 Processing Details"):
-                        st.write(f"**Model Used:** {result['model_used']}")
-                        st.write(f"**Original Length:** {len(result['original_text'])} characters")
-                        st.write(f"**Processed Length:** {len(result['processed_text'])} characters")
-                else:
-                    st.error("❌ Failed to process text. Please try again.")
-            
-            elif process_button and not input_text.strip():
-                st.warning("⚠️ Please enter some text to process.")
-            
-            else:
-                st.info("👆 Enter text and click 'Process Text' to get started.")
-        
-        # Example section
-        st.divider()
-        st.header("💡 Examples")
-        
-        examples = [
-            {
-                "title": "Text Improvement",
-                "prompt": "Please improve the grammar, clarity, and style of this text:",
-                "text": "this is a example of text that need some improvement in grammar and style"
-            },
-            {
-                "title": "Summarization",
-                "prompt": "Please provide a concise summary of this text:",
-                "text": "Artificial intelligence (AI) is intelligence demonstrated by machines, in contrast to the natural intelligence displayed by humans and animals. Leading AI textbooks define the field as the study of 'intelligent agents': any device that perceives its environment and takes actions that maximize its chance of successfully achieving its goals."
-            },
-            {
-                "title": "Creative Writing",
-                "prompt": "Please expand this into a creative short story:",
-                "text": "The old lighthouse keeper noticed something strange in the fog that night."
-            }
-        ]
-        
-        cols = st.columns(len(examples))
-        for i, example in enumerate(examples):
-            with cols[i]:
-                st.subheader(example["title"])
-                st.write(f"**Prompt:** {example['prompt']}")
-                st.write(f"**Text:** {example['text'][:100]}...")
-                if st.button(f"Try {example['title']}", key=f"example_{i}"):
-                    st.session_state.example_prompt = example["prompt"]
-                    st.session_state.example_text = example["text"]
-                    st.rerun()
-        
-        # Handle example selection
-        if hasattr(st.session_state, 'example_prompt'):
-            st.info("Example loaded! Scroll up to see it in the input fields.")
-            # You would need to implement state management to actually populate the fields
+            st.markdown("**Explanation:**")
+            st.write(sentiment.explanation)
     
-    else:
-        st.error("🔌 Backend connection failed. Please check your configuration and ensure the backend is running.")
-        
-        st.subheader("🛠️ Troubleshooting")
-        st.markdown("""
-        1. **Check if the backend is running:**
-           ```bash
-           cd backend
-           uvicorn app.main:app --reload
-           ```
-        
-        2. **Verify the backend URL in your configuration**
-        
-        3. **Check the logs for any error messages**
-        """)
+    elif operation == "key_points":
+        st.markdown("### 🎯 Key Points")
+        for i, point in enumerate(response.key_points, 1):
+            st.markdown(f"{i}. {point}")
+    
+    elif operation == "questions":
+        st.markdown("### ❓ Generated Questions")
+        for i, question in enumerate(response.questions, 1):
+            st.markdown(f"{i}. {question}")
+    
+    elif operation == "qa":
+        st.markdown("### 💬 Answer")
+        st.write(response.result)
+    
+    # Debug information
+    if settings.show_debug_info:
+        with st.expander("🔍 Debug Information"):
+            st.json(response.dict())
 
+def main():
+    """Main application function."""
+    display_header()
+    
+    # Check API health
+    if not check_api_health():
+        st.stop()
+    
+    # Create sidebar
+    selected_operation, options = create_sidebar()
+    if not selected_operation:
+        st.stop()
+    
+    # Main content area
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # Text input
+        text_content, question = display_text_input()
+        
+        # Process button
+        if st.button("🚀 Process Text", type="primary", use_container_width=True):
+            if not text_content.strip():
+                st.error("Please enter some text to process.")
+                return
+            
+            if selected_operation == "qa" and not question:
+                st.error("Please enter a question for Q&A operation.")
+                return
+            
+            # Create request
+            request = TextProcessingRequest(
+                text=text_content,
+                operation=ProcessingOperation(selected_operation),
+                question=question,
+                options=options
+            )
+            
+            # Process text with progress indicator
+            with st.spinner("Processing your text..."):
+                response = run_async(api_client.process_text(request))
+            
+            if response and response.success:
+                # Store results in session state
+                st.session_state['last_response'] = response
+                st.session_state['last_operation'] = selected_operation
+                st.success("✅ Processing completed!")
+            else:
+                st.error("❌ Processing failed. Please try again.")
+    
+    with col2:
+        # Tips and information
+        st.subheader("💡 Tips")
+        st.markdown("""
+        **For best results:**
+        - Use clear, well-structured text
+        - Longer texts work better for summarization
+        - Be specific with your questions for Q&A
+        - Try different operations to explore your text
+        """)
+        
+        # Example texts
+        with st.expander("📚 Example Texts"):
+            if st.button("Load News Article Example"):
+                example_text = """
+                Artificial intelligence is rapidly transforming industries across the globe. 
+                From healthcare to finance, AI technologies are enabling unprecedented 
+                automation and decision-making capabilities. Machine learning algorithms 
+                can now process vast amounts of data in seconds, identifying patterns 
+                that would take humans hours or days to discover. However, this rapid 
+                advancement also raises important questions about job displacement, 
+                privacy, and the ethical implications of automated decision-making. 
+                As we move forward, it will be crucial to balance innovation with 
+                responsible development and deployment of AI systems.
+                """
+                st.session_state['text_input'] = example_text
+                st.rerun()
+    
+    # Display results if available
+    if 'last_response' in st.session_state and 'last_operation' in st.session_state:
+        st.divider()
+        display_results(st.session_state['last_response'], st.session_state['last_operation'])
+        
+        # Download results
+        if st.button("📥 Download Results"):
+            results_json = json.dumps(st.session_state['last_response'].dict(), indent=2)
+            st.download_button(
+                label="Download as JSON",
+                data=results_json,
+                file_name=f"ai_text_processing_results_{st.session_state['last_operation']}.json",
+                mime="application/json"
+            )
 
 if __name__ == "__main__":
+    # Load example text if set
+    if 'example_text' in st.session_state:
+        st.session_state['text_input'] = st.session_state['example_text']
+        del st.session_state['example_text']
+    
     main() 

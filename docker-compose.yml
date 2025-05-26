@@ -21,6 +21,7 @@ services:
       - "8501:8501"
     environment:
       - FRONTEND_PORT=8501
+      - API_BASE_URL=http://backend:8000
     env_file:
       - .env
     volumes:

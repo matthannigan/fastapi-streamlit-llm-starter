@@ -13,7 +13,7 @@ from shared.models import (
     TextProcessingResponse,
     SentimentResult
 )
-from backend.app.config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 

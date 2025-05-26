@@ -11,8 +11,8 @@ from shared.models import (
     ErrorResponse,
     HealthResponse
 )
-from backend.app.config import settings
-from backend.app.services.text_processor import text_processor
+from app.config import settings
+from app.services.text_processor import text_processor
 
 # Configure logging
 logging.basicConfig(
