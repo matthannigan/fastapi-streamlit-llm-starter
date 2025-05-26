@@ -11,7 +11,7 @@
 ### 2. Development Setup
 ```bash
 # Quick start
-git clone <your-repo>
+git clone <repository-url>
 cd fastapi-streamlit-llm-starter
 cp .env.example .env
 # Edit .env with your API keys

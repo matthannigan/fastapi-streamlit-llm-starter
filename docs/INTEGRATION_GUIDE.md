@@ -23,10 +23,8 @@ Get the entire system running in under 5 minutes:
 ```bash
 git clone <repository-url>
 cd fastapi-streamlit-llm-starter
-
-# Set up environment variables
-cp backend/env.example backend/.env
-# Edit backend/.env and add your GEMINI_API_KEY
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
 ### 2. Start Backend

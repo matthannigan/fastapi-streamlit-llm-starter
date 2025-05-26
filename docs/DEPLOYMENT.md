@@ -80,10 +80,6 @@ gcloud run deploy ai-processor-frontend \
   --set-env-vars API_BASE_URL=https://your-backend-url
 ```
 
-### Kubernetes
-
-See `k8s/` directory for Kubernetes manifests.
-
 ## Environment Variables
 
 | Variable | Required | Description |
