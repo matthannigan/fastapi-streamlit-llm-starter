@@ -3,7 +3,12 @@
 import os
 from typing import List
 from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
+from pathlib import Path
 
+# Load .env from project root
+project_root = Path(__file__).parent.parent.parent
+load_dotenv(project_root / ".env")
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""

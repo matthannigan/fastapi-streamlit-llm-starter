@@ -58,7 +58,7 @@ class APIClient:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.base_url}/process",
-                    json=request.dict()
+                    json=request.model_dump()
                 )
                 
                 if response.status_code == 200:

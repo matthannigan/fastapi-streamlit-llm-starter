@@ -1,7 +1,7 @@
 """Tests for the API client."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import sys
 import os
@@ -22,26 +22,29 @@ def api_client():
 class TestAPIClient:
     """Test the APIClient class."""
     
+    @pytest.mark.asyncio
     async def test_health_check_success(self, api_client):
         """Test successful health check."""
         with patch('httpx.AsyncClient') as mock_client:
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 200
             mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
             
             result = await api_client.health_check()
             assert result is True
     
+    @pytest.mark.asyncio
     async def test_health_check_failure(self, api_client):
         """Test failed health check."""
         with patch('httpx.AsyncClient') as mock_client:
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 500
             mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
             
             result = await api_client.health_check()
             assert result is False
     
+    @pytest.mark.asyncio
     async def test_health_check_exception(self, api_client):
         """Test health check with exception."""
         with patch('httpx.AsyncClient') as mock_client:
@@ -50,6 +53,7 @@ class TestAPIClient:
             result = await api_client.health_check()
             assert result is False
     
+    @pytest.mark.asyncio
     async def test_get_operations_success(self, api_client):
         """Test successful get operations."""
         mock_operations = {
@@ -64,7 +68,7 @@ class TestAPIClient:
         }
         
         with patch('httpx.AsyncClient') as mock_client:
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = mock_operations
             mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
@@ -72,22 +76,24 @@ class TestAPIClient:
             result = await api_client.get_operations()
             assert result == mock_operations
     
+    @pytest.mark.asyncio
     async def test_get_operations_failure(self, api_client):
         """Test failed get operations."""
         with patch('httpx.AsyncClient') as mock_client:
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 500
             mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
             
             result = await api_client.get_operations()
             assert result is None
     
+    @pytest.mark.asyncio
     async def test_process_text_success(self, api_client, sample_request, sample_response):
         """Test successful text processing."""
         with patch('httpx.AsyncClient') as mock_client:
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 200
-            mock_response.json.return_value = sample_response.dict()
+            mock_response.json.return_value = sample_response.model_dump()
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
             
             result = await api_client.process_text(sample_request)
@@ -95,10 +101,11 @@ class TestAPIClient:
             assert result.operation == ProcessingOperation.SUMMARIZE
             assert result.success is True
     
+    @pytest.mark.asyncio
     async def test_process_text_api_error(self, api_client, sample_request):
         """Test text processing with API error."""
         with patch('httpx.AsyncClient') as mock_client:
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 400
             mock_response.json.return_value = {"detail": "Bad request"}
             mock_client.return_value.__aenter__.return_value.post.return_value = mock_response
@@ -108,6 +115,7 @@ class TestAPIClient:
                 assert result is None
                 mock_error.assert_called_once()
     
+    @pytest.mark.asyncio
     async def test_process_text_timeout(self, api_client, sample_request):
         """Test text processing with timeout."""
         with patch('httpx.AsyncClient') as mock_client:
@@ -118,6 +126,7 @@ class TestAPIClient:
                 assert result is None
                 mock_error.assert_called_once()
     
+    @pytest.mark.asyncio
     async def test_process_text_general_exception(self, api_client, sample_request):
         """Test text processing with general exception."""
         with patch('httpx.AsyncClient') as mock_client:

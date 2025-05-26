@@ -2,8 +2,15 @@
 
 import sys
 import os
+from dotenv import load_dotenv
+from pathlib import Path
+
 # Add the root directory to Python path so we can import shared modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# Load .env from project root
+project_root = Path(__file__).parent.parent.parent
+load_dotenv(project_root / ".env")
 
 from pydantic_settings import BaseSettings
 
