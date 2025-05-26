@@ -11,7 +11,70 @@ The AI Text Processor API provides endpoints for processing text using various A
 
 ## Authentication
 
-Currently, no authentication is required. The API requires a valid `GEMINI_API_KEY` environment variable to be set for AI processing operations.
+The API uses **Bearer Token authentication** with API keys to protect sensitive endpoints.
+
+### API Key Setup
+
+1. Set your API key in environment variables:
+   ```bash
+   export API_KEY=your_secure_api_key_here
+   ```
+
+2. Include the API key in requests using the Authorization header:
+   ```bash
+   Authorization: Bearer your_api_key_here
+   ```
+
+### Protected Endpoints
+
+- `POST /process` - Requires authentication
+- `GET /auth/status` - Requires authentication
+
+### Public Endpoints
+
+- `GET /` - No authentication required
+- `GET /health` - No authentication required
+- `GET /operations` - Optional authentication
+
+### Authentication Examples
+
+**Using curl:**
+```bash
+curl -X POST "http://localhost:8000/process" \
+  -H "Authorization: Bearer your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello world", "operation": "summarize"}'
+```
+
+**Using Python requests:**
+```python
+import requests
+
+headers = {"Authorization": "Bearer your_api_key_here"}
+response = requests.post(
+    "http://localhost:8000/process",
+    headers=headers,
+    json={"text": "Hello world", "operation": "summarize"}
+)
+```
+
+### Authentication Errors
+
+**401 Unauthorized - Missing API Key:**
+```json
+{
+  "detail": "API key required. Please provide a valid API key in the Authorization header."
+}
+```
+
+**401 Unauthorized - Invalid API Key:**
+```json
+{
+  "detail": "Invalid API key"
+}
+```
+
+For detailed authentication setup and security best practices, see [AUTHENTICATION.md](AUTHENTICATION.md).
 
 ## Endpoints
 
@@ -42,6 +105,26 @@ Check if the API is running and AI models are available.
   "timestamp": "2024-01-01T12:00:00.123456",
   "version": "1.0.0",
   "ai_model_available": true
+}
+```
+
+### Authentication Status
+
+**GET** `/auth/status`
+
+Check authentication status. **Requires authentication.**
+
+**Headers:**
+```
+Authorization: Bearer your_api_key_here
+```
+
+**Response:**
+```json
+{
+  "authenticated": true,
+  "api_key_prefix": "sk-12345...",
+  "message": "Authentication successful"
 }
 ```
 

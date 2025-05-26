@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     host: str = os.getenv("BACKEND_HOST", "0.0.0.0")
     port: int = int(os.getenv("BACKEND_PORT", "8000"))
     
+    # Authentication Configuration
+    api_key: str = os.getenv("API_KEY", "")
+    additional_api_keys: str = os.getenv("ADDITIONAL_API_KEYS", "")
+    
     # CORS Configuration
     allowed_origins: List[str] = ["http://localhost:8501", "http://frontend:8501"]
     

@@ -2,7 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from shared.models import (
@@ -13,6 +13,7 @@ from shared.models import (
 )
 from app.config import settings
 from app.services.text_processor import text_processor
+from app.auth import verify_api_key, optional_verify_api_key
 
 # Configure logging
 logging.basicConfig(
@@ -73,8 +74,20 @@ async def health_check():
         ai_model_available=bool(settings.gemini_api_key)
     )
 
+@app.get("/auth/status")
+async def auth_status(api_key: str = Depends(verify_api_key)):
+    """Check authentication status."""
+    return {
+        "authenticated": True,
+        "api_key_prefix": api_key[:8] + "..." if len(api_key) > 8 else api_key,
+        "message": "Authentication successful"
+    }
+
 @app.post("/process", response_model=TextProcessingResponse)
-async def process_text(request: TextProcessingRequest):
+async def process_text(
+    request: TextProcessingRequest,
+    api_key: str = Depends(verify_api_key)
+):
     """Process text using AI models."""
     try:
         logger.info(f"Received request for operation: {request.operation}")
@@ -108,7 +121,7 @@ async def process_text(request: TextProcessingRequest):
         )
 
 @app.get("/operations")
-async def get_operations():
+async def get_operations(api_key: str = Depends(optional_verify_api_key)):
     """Get available processing operations."""
     return {
         "operations": [
