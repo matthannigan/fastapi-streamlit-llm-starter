@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-frontend test-coverage lint format clean docker-build docker-up docker-down
+.PHONY: help install test test-backend test-frontend test-coverage lint format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore
 
 # Default target
 help:
@@ -14,6 +14,12 @@ help:
 	@echo "  docker-build     Build Docker images"
 	@echo "  docker-up        Start services with Docker Compose"
 	@echo "  docker-down      Stop Docker services"
+	@echo "  dev              Start development environment"
+	@echo "  prod             Start production environment"
+	@echo "  logs             Show Docker Compose logs"
+	@echo "  redis-cli        Access Redis CLI"
+	@echo "  backup           Backup Redis data"
+	@echo "  restore          Restore Redis data"
 
 # Installation
 install:
@@ -118,4 +124,26 @@ health: ## Check health of all services
 	@curl -f http://localhost:8501/_stcore/health || echo "Frontend unhealthy"
 
 stop: ## Stop all services
-	docker-compose stop 
+	docker-compose stop
+
+# Additional commands
+dev:
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+prod:
+	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+logs:
+	docker-compose logs -f
+
+redis-cli:
+	docker-compose exec redis redis-cli
+
+backup:
+	docker-compose exec redis redis-cli BGSAVE
+	docker cp ai-text-processor-redis:/data/dump.rdb ./backups/redis-$(shell date +%Y%m%d-%H%M%S).rdb
+
+restore:
+	@if [ -z "$(BACKUP)" ]; then echo "Usage: make restore BACKUP=filename"; exit 1; fi
+	docker cp ./backups/$(BACKUP) ai-text-processor-redis:/data/dump.rdb
+	docker-compose restart redis 
