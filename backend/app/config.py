@@ -2,11 +2,13 @@
 
 import os
 from typing import List
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings."""
+    model_config = ConfigDict(env_file=".env")
     
     # AI Model Configuration
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
@@ -23,9 +25,6 @@ class Settings(BaseSettings):
     
     # CORS Settings
     allowed_origins: List[str] = ["http://localhost:8501"]
-    
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings() 

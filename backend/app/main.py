@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.services.text_processor import router as text_processor_router
+from shared.models import HealthResponse
 
 # Create FastAPI app
 app = FastAPI(
@@ -32,7 +33,14 @@ async def root():
     return {"message": "FastAPI Streamlit LLM Starter API", "version": "1.0.0"}
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "debug": settings.debug} 
+    # Check if AI model is available
+    ai_model_available = bool(settings.gemini_api_key)
+    
+    return HealthResponse(
+        status="healthy",
+        version="1.0.0",
+        ai_model_available=ai_model_available
+    ) 

@@ -12,6 +12,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - ./shared:/app/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -24,6 +25,7 @@ services:
       - .env
     volumes:
       - ./frontend:/app
+      - ./shared:/app/shared
     depends_on:
       - backend
     command: streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 
