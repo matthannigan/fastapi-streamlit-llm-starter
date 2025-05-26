@@ -151,7 +151,8 @@ def main():
     files_to_check = [
         "examples/basic_usage.py",
         "examples/custom_operation.py",
-        "shared/sample_data.py"
+        "shared/sample_data.py",
+        "frontend/app/app.py"
     ]
     
     results = {}

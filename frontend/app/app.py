@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Main Streamlit application."""
 
 import sys
@@ -11,6 +12,11 @@ import json
 from typing import Dict, Any, Optional
 
 from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.sample_data import (
+    STANDARD_SAMPLE_TEXTS,
+    get_sample_text,
+    get_all_sample_texts
+)
 from app.utils.api_client import api_client, run_async
 from app.config import settings
 
@@ -221,6 +227,17 @@ def display_results(response, operation: str):
         with st.expander("🔍 Debug Information"):
             st.json(response.dict())
 
+def get_recommended_examples(operation: str) -> list:
+    """Get recommended example texts for specific operations."""
+    recommendations = {
+        "summarize": ["ai_technology", "climate_change", "business_report"],
+        "sentiment": ["positive_review", "negative_review", "business_report"],
+        "key_points": ["business_report", "climate_change", "technical_documentation"],
+        "questions": ["educational_content", "climate_change", "ai_technology"],
+        "qa": ["technical_documentation", "educational_content", "ai_technology"]
+    }
+    return recommendations.get(operation, ["ai_technology", "climate_change"])
+
 def main():
     """Main application function."""
     display_header()
@@ -282,22 +299,75 @@ def main():
         - Try different operations to explore your text
         """)
         
-        # Example texts
+        # Example texts using standardized sample data
         with st.expander("📚 Example Texts"):
-            if st.button("Load News Article Example"):
-                example_text = """
-                Artificial intelligence is rapidly transforming industries across the globe. 
-                From healthcare to finance, AI technologies are enabling unprecedented 
-                automation and decision-making capabilities. Machine learning algorithms 
-                can now process vast amounts of data in seconds, identifying patterns 
-                that would take humans hours or days to discover. However, this rapid 
-                advancement also raises important questions about job displacement, 
-                privacy, and the ethical implications of automated decision-making. 
-                As we move forward, it will be crucial to balance innovation with 
-                responsible development and deployment of AI systems.
-                """
-                st.session_state['text_input'] = example_text
-                st.rerun()
+            # Show operation-specific recommendations
+            current_operation = st.session_state.get("operation_select")
+            if current_operation:
+                recommended = get_recommended_examples(current_operation)
+                st.markdown(f"**Recommended for {current_operation.replace('_', ' ').title()}:**")
+                
+                # Create example options with descriptions
+                example_options = {
+                    "ai_technology": "🤖 AI Technology - About artificial intelligence trends",
+                    "climate_change": "🌍 Climate Change - Environmental challenges and solutions", 
+                    "business_report": "📊 Business Report - Quarterly earnings and performance",
+                    "positive_review": "😊 Positive Review - Customer satisfaction example",
+                    "negative_review": "😞 Negative Review - Customer complaint example",
+                    "technical_documentation": "📖 Technical Docs - API documentation sample",
+                    "educational_content": "🎓 Educational - Science learning content"
+                }
+                
+                # Show recommended examples first
+                for text_type in recommended:
+                    if text_type in example_options:
+                        description = example_options[text_type]
+                        if st.button(f"⭐ {description}", key=f"rec_{text_type}", use_container_width=True):
+                            try:
+                                example_text = get_sample_text(text_type)
+                                st.session_state['text_input'] = example_text
+                                st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error loading example: {e}")
+                
+                st.markdown("**All Examples:**")
+            else:
+                st.markdown("**Choose from standardized examples:**")
+                example_options = {
+                    "ai_technology": "🤖 AI Technology - About artificial intelligence trends",
+                    "climate_change": "🌍 Climate Change - Environmental challenges and solutions", 
+                    "business_report": "📊 Business Report - Quarterly earnings and performance",
+                    "positive_review": "😊 Positive Review - Customer satisfaction example",
+                    "negative_review": "😞 Negative Review - Customer complaint example",
+                    "technical_documentation": "📖 Technical Docs - API documentation sample",
+                    "educational_content": "🎓 Educational - Science learning content"
+                }
+            
+            # Create buttons for all examples
+            cols = st.columns(2)
+            for i, (text_type, description) in enumerate(example_options.items()):
+                col = cols[i % 2]
+                with col:
+                    if st.button(description, key=f"example_{text_type}", use_container_width=True):
+                        try:
+                            example_text = get_sample_text(text_type)
+                            st.session_state['text_input'] = example_text
+                            st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error loading example: {e}")
+            
+            # Show preview of selected text type
+            if st.session_state.get('text_input'):
+                current_text = st.session_state['text_input']
+                # Try to identify which example is currently loaded
+                for text_type, sample_text in get_all_sample_texts().items():
+                    if current_text.strip() == sample_text.strip():
+                        st.info(f"Currently loaded: {text_type.replace('_', ' ').title()}")
+                        with st.expander("Preview"):
+                            st.text(current_text[:200] + "..." if len(current_text) > 200 else current_text)
+                        break
     
     # Display results if available
     if 'last_response' in st.session_state and 'last_operation' in st.session_state:
