@@ -38,9 +38,17 @@ The test suite covers both backend and frontend components with the following ty
 
 ### Quick Start
 
+The project now includes automatic virtual environment management for testing. You can run tests without manually managing Python environments.
+
 ```bash
-# Run all tests
+# Create virtual environment and install dependencies
+make install
+
+# Run all tests (includes Docker integration tests if available)
 make test
+
+# Run local tests only (no Docker required)
+make test-local
 
 # Run backend tests only
 make test-backend
@@ -52,53 +60,86 @@ make test-frontend
 make test-coverage
 ```
 
+### Virtual Environment Management
+
+The Makefile automatically handles Python executable detection and virtual environment management:
+
+- **Automatic Python Detection**: Uses `python3` or `python` based on availability
+- **Virtual Environment Creation**: Creates `.venv/` directory automatically
+- **Dependency Management**: Installs all required dependencies in the virtual environment
+- **Environment Awareness**: Detects if running in Docker, virtual environment, or system Python
+
+```bash
+# Create virtual environment (done automatically by make install)
+make venv
+
+# Install dependencies in virtual environment
+make install
+
+# Run tests without Docker dependency
+make test-local
+
+# Clean up virtual environment
+make clean-all
+```
+
 ### Detailed Commands
 
 #### Backend Tests
 
 ```bash
-cd backend
+# Using Makefile (recommended - handles virtual environment automatically)
+make test-backend
 
-# Run all backend tests
-python -m pytest tests/ -v
+# Or manually with virtual environment
+cd backend
+../.venv/bin/python -m pytest tests/ -v
 
 # Run specific test file
-python -m pytest tests/test_main.py -v
+../.venv/bin/python -m pytest tests/test_main.py -v
 
 # Run with coverage
-python -m pytest tests/ --cov=app --cov-report=html
+../.venv/bin/python -m pytest tests/ --cov=app --cov-report=html
 
 # Run specific test class
-python -m pytest tests/test_main.py::TestHealthEndpoint -v
+../.venv/bin/python -m pytest tests/test_main.py::TestHealthEndpoint -v
 
 # Run specific test method
-python -m pytest tests/test_main.py::TestHealthEndpoint::test_health_check -v
+../.venv/bin/python -m pytest tests/test_main.py::TestHealthEndpoint::test_health_check -v
 ```
 
 #### Frontend Tests
 
 ```bash
-cd frontend
+# Using Makefile (recommended - handles virtual environment automatically)
+make test-frontend
 
-# Run all frontend tests
-python -m pytest tests/ -v
+# Or manually with virtual environment
+cd frontend
+../.venv/bin/python -m pytest tests/ -v
 
 # Run with coverage
-python -m pytest tests/ --cov=app --cov-report=html
+../.venv/bin/python -m pytest tests/ --cov=app --cov-report=html
 ```
 
 #### Integration Tests
 
 ```bash
-# Using the test runner script
-python run_tests.py
+# Using Makefile (recommended - handles Docker availability detection)
+make test
 
-# Using Docker Compose
+# Using the test runner script with virtual environment
+.venv/bin/python run_tests.py
+
+# Manual Docker Compose testing
 docker-compose up -d
 # Wait for services to start
 curl http://localhost:8000/health
 curl http://localhost:8501/_stcore/health
 docker-compose down
+
+# Local testing without Docker
+make test-local
 ```
 
 ## Test Coverage
@@ -235,18 +276,17 @@ python -m flake8 app/
 ### Code Formatting
 
 ```bash
-# Format all code
+# Format all code (uses virtual environment automatically)
 make format
 
-# Backend formatting
+# Manual formatting with virtual environment
 cd backend
-python -m black app/ tests/
-python -m isort app/ tests/
+../.venv/bin/python -m black app/ tests/
+../.venv/bin/python -m isort app/ tests/
 
-# Frontend formatting
-cd frontend
-python -m black app/ tests/
-python -m isort app/ tests/
+cd ../frontend
+../.venv/bin/python -m black app/ tests/
+../.venv/bin/python -m isort app/ tests/
 ```
 
 ## Continuous Integration
@@ -265,18 +305,18 @@ The project uses GitHub Actions for CI/CD with the following workflow:
 ### Local CI Simulation
 
 ```bash
-# Run the same checks as CI
+# Run the same checks as CI (uses virtual environment automatically)
 make ci-test
 
-# Or manually:
+# Or manually with virtual environment:
 cd backend
-python -m pytest tests/ -v --cov=app --cov-report=xml
-python -m flake8 app/
-python -m mypy app/ --ignore-missing-imports
+../.venv/bin/python -m pytest tests/ -v --cov=app --cov-report=xml
+../.venv/bin/python -m flake8 app/
+../.venv/bin/python -m mypy app/ --ignore-missing-imports
 
 cd ../frontend
-python -m pytest tests/ -v --cov=app --cov-report=xml
-python -m flake8 app/
+../.venv/bin/python -m pytest tests/ -v --cov=app --cov-report=xml
+../.venv/bin/python -m flake8 app/
 ```
 
 ## Writing New Tests
@@ -339,22 +379,28 @@ class TestNewComponent:
 ### Running Tests in Debug Mode
 
 ```bash
-# Run with verbose output
-python -m pytest tests/ -v -s
+# Run with verbose output (using virtual environment)
+.venv/bin/python -m pytest tests/ -v -s
 
 # Run specific test with debugging
-python -m pytest tests/test_main.py::test_specific_function -v -s --pdb
+.venv/bin/python -m pytest tests/test_main.py::test_specific_function -v -s --pdb
 
 # Run with coverage and keep temporary files
-python -m pytest tests/ --cov=app --cov-report=html --keep-durations=10
+.venv/bin/python -m pytest tests/ --cov=app --cov-report=html --keep-durations=10
+
+# Or use Makefile commands with additional pytest options
+make test-backend PYTEST_ARGS="-v -s --pdb"
 ```
 
 ### Common Issues
 
-1. **Import Errors**: Ensure PYTHONPATH includes the project root
-2. **Async Test Issues**: Use `pytest-asyncio` and proper async fixtures
-3. **Mock Issues**: Ensure mocks are properly configured and reset between tests
-4. **Environment Variables**: Use `patch.dict` to mock environment variables
+1. **Python Command Not Found**: The Makefile automatically detects `python3` or `python` - no manual configuration needed
+2. **Virtual Environment Issues**: Run `make clean-all` and `make install` to recreate the virtual environment
+3. **Import Errors**: Ensure you're using the virtual environment Python (`.venv/bin/python`) or Makefile commands
+4. **Async Test Issues**: Use `pytest-asyncio` and proper async fixtures
+5. **Mock Issues**: Ensure mocks are properly configured and reset between tests
+6. **Environment Variables**: Use `patch.dict` to mock environment variables
+7. **Docker Not Available**: Use `make test-local` to run tests without Docker dependency
 
 ## Performance Testing
 
@@ -373,11 +419,11 @@ locust -f tests/load_tests.py --host=http://localhost:8000
 ### Benchmarking
 
 ```bash
-# Run tests with timing
-python -m pytest tests/ --durations=10
+# Run tests with timing (using virtual environment)
+.venv/bin/python -m pytest tests/ --durations=10
 
 # Profile specific tests
-python -m pytest tests/test_main.py --profile
+.venv/bin/python -m pytest tests/test_main.py --profile
 ```
 
 ## Contributing to Tests
@@ -407,8 +453,10 @@ Before submitting a pull request:
 
 1. **API Key Issues**: Ensure `GEMINI_API_KEY` is set for tests (can be dummy value)
 2. **Port Conflicts**: Ensure test ports are available
-3. **Docker Issues**: Ensure Docker is running for integration tests
-4. **Dependency Issues**: Run `make install` to update dependencies
+3. **Docker Issues**: Ensure Docker is running for integration tests, or use `make test-local` to skip Docker tests
+4. **Dependency Issues**: Run `make install` to update dependencies in the virtual environment
+5. **Python Version Issues**: The Makefile automatically detects the correct Python version
+6. **Virtual Environment Issues**: Run `make clean-all` followed by `make install` to reset the environment
 
 ### Getting Help
 

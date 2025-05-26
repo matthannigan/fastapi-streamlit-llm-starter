@@ -29,6 +29,10 @@ cp .env.example .env
 
 ### 2. Start Backend
 ```bash
+# Using Makefile (recommended)
+make install  # Creates virtual environment and installs dependencies
+
+# Or manually
 cd backend
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
@@ -36,6 +40,8 @@ python -m uvicorn app.main:app --reload
 
 ### 3. Start Frontend
 ```bash
+# If using Makefile, dependencies are already installed
+# Or manually
 cd frontend
 pip install -r requirements.txt
 streamlit run app/app.py
@@ -43,6 +49,11 @@ streamlit run app/app.py
 
 ### 4. Test the System
 ```bash
+# Using the enhanced Makefile (recommended)
+make install  # Setup virtual environment and dependencies
+make test-local  # Run tests without Docker
+
+# Or manually
 cd examples
 python basic_usage.py
 ```
@@ -116,13 +127,20 @@ graph TB
 
 2. **Install Dependencies:**
    ```bash
+   # Using Makefile (recommended - handles virtual environment automatically)
+   make install
+   
+   # Or manually with project-level virtual environment
+   python3 -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   
    # Backend
    cd backend
-   pip install -r requirements.txt
+   pip install -r requirements.txt -r requirements-dev.txt
    
    # Frontend
    cd ../frontend
-   pip install -r requirements.txt
+   pip install -r requirements.txt -r requirements-dev.txt
    
    # Examples (optional)
    pip install httpx asyncio
@@ -130,13 +148,16 @@ graph TB
 
 3. **Verify Installation:**
    ```bash
-   # Test backend
+   # Using Makefile (recommended)
+   make test-local  # Runs tests to verify everything works
+   
+   # Or manually test components
    cd backend
-   python -c "from app.main import app; print('Backend OK')"
+   ../.venv/bin/python -c "from app.main import app; print('Backend OK')"
    
    # Test frontend
    cd ../frontend
-   python -c "import streamlit; print('Frontend OK')"
+   ../.venv/bin/python -c "import streamlit; print('Frontend OK')"
    ```
 
 ## 💡 Usage Examples
@@ -546,21 +567,36 @@ See `examples/custom_operation.py` for complete implementation examples of:
 
 ### Running Tests
 
+The project now includes enhanced testing with automatic virtual environment management:
+
 ```bash
-# Run basic usage examples
+# Setup and run all tests (recommended)
+make install     # Create virtual environment and install dependencies
+make test        # Run all tests (includes Docker integration if available)
+make test-local  # Run tests without Docker dependency
+
+# Individual test suites
+make test-backend   # Backend tests only
+make test-frontend  # Frontend tests only
+make test-coverage  # Tests with coverage report
+
+# Code quality
+make lint        # Code quality checks
+make format      # Format code
+
+# Manual testing
 cd examples
-python basic_usage.py
+.venv/bin/python basic_usage.py  # Using virtual environment
 
 # Run comprehensive integration tests
-python integration_test.py
+.venv/bin/python integration_test.py
 
-# Run backend unit tests
-cd ../backend
-pytest
+# Manual unit tests with virtual environment
+cd backend
+../.venv/bin/python -m pytest
 
-# Run frontend tests
 cd ../frontend
-pytest
+../.venv/bin/python -m pytest
 ```
 
 ### Test Coverage

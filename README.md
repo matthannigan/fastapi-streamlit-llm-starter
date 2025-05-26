@@ -87,23 +87,27 @@ This project includes a comprehensive Docker setup for both development and prod
 # Show all available commands
 make help
 
+# Setup and testing
+make install          # Create venv and install dependencies
+make test            # Run all tests (with Docker if available)
+make test-local      # Run tests without Docker
+make lint            # Code quality checks
+make format          # Format code
+
 # Development environment (with hot reload)
 make dev
 
 # Production environment (with scaling and nginx)
 make prod
 
-# Check service status
-make status
+# Docker management
+make status          # Check service status
+make logs            # View logs
+make health          # Health check all services
 
-# View logs
-make logs
-
-# Health check all services
-make health
-
-# Clean up
-make clean
+# Cleanup
+make clean           # Clean generated files
+make clean-all       # Clean including virtual environment
 ```
 
 ### Development vs Production
@@ -217,6 +221,24 @@ if __name__ == "__main__":
 
 ### Local Development Setup
 
+**Recommended: Use the enhanced Makefile (with automatic virtual environment management):**
+```bash
+# Create virtual environment and install all dependencies
+make install
+
+# Run tests locally (no Docker required)
+make test-local
+
+# Run code quality checks
+make lint
+
+# Format code
+make format
+
+# Clean up when needed
+make clean-all
+```
+
 **Use the provided scripts:**
 ```bash
 # Automated setup
@@ -229,24 +251,26 @@ if __name__ == "__main__":
 ./scripts/run_frontend.sh
 ```
 
-**Or setup manually:**
+**Or setup manually with project-level virtual environment:**
 ```bash
-# Setup backend
-cd backend
-python -m venv .venv
+# Create project-level virtual environment
+python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
 
-# Start backend
+# Install backend dependencies
+cd backend
+pip install -r requirements.txt -r requirements-dev.txt
+
+# Install frontend dependencies
+cd ../frontend
+pip install -r requirements.txt -r requirements-dev.txt
+
+# Start backend (from project root)
+cd ../backend
 uvicorn app.main:app --reload
 
-# Setup frontend (new terminal)
+# Start frontend (new terminal, from project root)
 cd frontend
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Start frontend
 streamlit run app/app.py
 ```
 
@@ -303,14 +327,40 @@ if "target_language" in op_info.get("options", []):
 
 ### Testing
 
+The project includes comprehensive testing with automatic virtual environment management:
+
 ```bash
-# Run all tests
+# Install dependencies and setup virtual environment
+make install
+
+# Run all tests (includes Docker integration tests if available)
 make test
 
+# Run local tests only (no Docker required)
+make test-local
+
 # Run backend tests only
-docker-compose exec backend python -m pytest
+make test-backend
+
+# Run frontend tests only
+make test-frontend
 
 # Run with coverage
+make test-coverage
+
+# Run code quality checks
+make lint
+
+# Format code
+make format
+```
+
+**Manual testing with Docker:**
+```bash
+# Run backend tests in Docker
+docker-compose exec backend python -m pytest
+
+# Run with coverage in Docker
 docker-compose exec backend python -m pytest --cov=app
 ```
 
@@ -478,17 +528,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Getting Started
 - [README.md](../README.md) - Project overview and quick start
-- [CHECKLIST.md](CHECKLIST.md) - Complete setup checklist
+- [CHECKLIST.md](docs/CHECKLIST.md) - Complete setup checklist
+- [VIRTUAL_ENVIRONMENT_GUIDE.md](docs/VIRTUAL_ENVIRONMENT_GUIDE.md) - Virtual environment management
 
 ## Development
-- [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) - Complete integration guide
-- [TESTING.md](TESTING.md) - Testing guide
-- [CONFIGURATION.md](CONFIGURATION.md) - Configuration reference
+- [INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) - Complete integration guide
+- [TESTING.md](docs/TESTING.md) - Testing guide with virtual environment support
+- [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) - Code standards and patterns
 
 ## Deployment
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Deployment guide
-- [API.md](API.md) - API documentation
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deployment guide
+- [DOCKER.md](docs/DOCKER.md) - Docker setup and management
+- [API.md](docs/API.md) - API documentation
 
 ## Support
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues and solutions
-- [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute
+- [AUTHENTICATION.md](docs/AUTHENTICATION.md) - Authentication setup
+- [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [CONTRIBUTING.md](docs/CONTRIBUTING.md) - How to contribute
