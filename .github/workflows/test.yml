@@ -1,0 +1,91 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Run backend tests
+      env:
+        GEMINI_API_KEY: test-key
+      run: |
+        cd backend
+        python -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+
+    - name: Run frontend tests
+      run: |
+        cd frontend
+        python -m pytest tests/ -v --cov=app --cov-report=xml
+
+    - name: Run code quality checks
+      run: |
+        cd backend
+        python -m flake8 app/
+        python -m mypy app/ --ignore-missing-imports
+        cd ../frontend
+        python -m flake8 app/
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./backend/coverage.xml,./frontend/coverage.xml
+        fail_ci_if_error: true
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build and test with Docker Compose
+      run: |
+        docker-compose build
+        docker-compose up -d
+        sleep 30
+        
+        # Test backend health
+        curl -f http://localhost:8000/health || exit 1
+        
+        # Test frontend health (if accessible)
+        curl -f http://localhost:8501/_stcore/health || echo "Frontend health check skipped"
+        
+        docker-compose down 

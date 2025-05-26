@@ -1,37 +1,99 @@
-.PHONY: help build up down logs clean dev prod test
+.PHONY: help install test test-backend test-frontend test-coverage lint format clean docker-build docker-up docker-down
 
-help: ## Show this help message
-	@echo 'Usage: make [target]'
-	@echo ''
-	@echo 'Targets:'
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+# Default target
+help:
+	@echo "Available commands:"
+	@echo "  install          Install all dependencies"
+	@echo "  test             Run all tests"
+	@echo "  test-backend     Run backend tests only"
+	@echo "  test-frontend    Run frontend tests only"
+	@echo "  test-coverage    Run tests with coverage report"
+	@echo "  lint             Run code quality checks"
+	@echo "  format           Format code with black and isort"
+	@echo "  clean            Clean up generated files"
+	@echo "  docker-build     Build Docker images"
+	@echo "  docker-up        Start services with Docker Compose"
+	@echo "  docker-down      Stop Docker services"
 
-build: ## Build all Docker images
+# Installation
+install:
+	@echo "Installing backend dependencies..."
+	cd backend && pip install -r requirements.txt -r requirements-dev.txt
+	@echo "Installing frontend dependencies..."
+	cd frontend && pip install -r requirements.txt -r requirements-dev.txt
+
+# Testing
+test:
+	@echo "Running all tests..."
+	python run_tests.py
+
+test-backend:
+	@echo "Running backend tests..."
+	cd backend && python -m pytest tests/ -v
+
+test-frontend:
+	@echo "Running frontend tests..."
+	cd frontend && python -m pytest tests/ -v
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+
+# Code quality
+lint:
+	@echo "Running code quality checks..."
+	cd backend && python -m flake8 app/
+	cd backend && python -m mypy app/ --ignore-missing-imports
+	cd frontend && python -m flake8 app/
+
+format:
+	@echo "Formatting code..."
+	cd backend && python -m black app/ tests/
+	cd backend && python -m isort app/ tests/
+	cd frontend && python -m black app/ tests/
+	cd frontend && python -m isort app/ tests/
+
+# Cleanup
+clean:
+	@echo "Cleaning up..."
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "*.egg-info" -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name "htmlcov" -exec rm -rf {} +
+	find . -name ".coverage" -delete
+	find . -name "coverage.xml" -delete
+
+# Docker commands
+docker-build:
+	@echo "Building Docker images..."
 	docker-compose build
 
-up: ## Start all services
+docker-up:
+	@echo "Starting services..."
 	docker-compose up -d
 
-down: ## Stop all services
+docker-down:
+	@echo "Stopping services..."
 	docker-compose down
 
-logs: ## Show logs for all services
-	docker-compose logs -f
+# Development workflow
+dev-setup: install
+	@echo "Setting up development environment..."
+	cd backend && pre-commit install
+	@echo "Development environment ready!"
 
-clean: ## Clean up Docker resources
-	docker-compose down -v
-	docker system prune -f
+# Quick test for CI
+ci-test:
+	@echo "Running CI tests..."
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml
+	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
+	@echo "Running code quality checks..."
+	cd backend && python -m flake8 app/
+	cd frontend && python -m flake8 app/
 
-dev: ## Start development environment
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-
-prod: ## Start production environment
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
-
-test: ## Run tests
-	docker-compose exec backend python -m pytest tests/
-	docker-compose exec frontend python -m pytest tests/
-
+# Additional Docker commands for development
 restart: ## Restart all services
 	docker-compose restart
 
@@ -47,53 +109,13 @@ backend-logs: ## Show backend logs
 frontend-logs: ## Show frontend logs
 	docker-compose logs -f frontend
 
-redis-logs: ## Show Redis logs
-	docker-compose logs -f redis
-
-nginx-logs: ## Show Nginx logs
-	docker-compose logs -f nginx
-
 status: ## Show status of all services
 	docker-compose ps
 
 health: ## Check health of all services
 	@echo "Checking service health..."
-	@docker-compose exec backend curl -f http://localhost:8000/health || echo "Backend unhealthy"
-	@docker-compose exec frontend curl -f http://localhost:8501/_stcore/health || echo "Frontend unhealthy"
-	@docker-compose exec redis redis-cli ping || echo "Redis unhealthy"
-
-setup: ## Initial project setup
-	@echo "🚀 Setting up FastAPI Streamlit LLM Starter..."
-	@chmod +x scripts/*.sh 2>/dev/null || true
-	@./scripts/setup.sh 2>/dev/null || echo "Setup script not found, skipping..."
-
-install: ## Install dependencies locally
-	@echo "📦 Installing dependencies..."
-	@cd backend && pip install -r requirements.txt
-	@cd frontend && pip install -r requirements.txt
-
-format: ## Format code
-	@echo "🎨 Formatting code..."
-	@docker-compose exec backend black app/ || true
-	@docker-compose exec backend isort app/ || true
-
-lint: ## Lint code
-	@echo "🔍 Linting code..."
-	@docker-compose exec backend flake8 app/ || true
-	@docker-compose exec backend mypy app/ || true
+	@curl -f http://localhost:8000/health || echo "Backend unhealthy"
+	@curl -f http://localhost:8501/_stcore/health || echo "Frontend unhealthy"
 
 stop: ## Stop all services
-	docker-compose stop
-
-redis-cli: ## Open Redis CLI
-	docker-compose exec redis redis-cli
-
-backup: ## Backup Redis data
-	@echo "📦 Creating Redis backup..."
-	@docker-compose exec redis redis-cli BGSAVE
-	@docker cp ai-text-processor-redis:/data/dump.rdb ./backups/redis-$(shell date +%Y%m%d-%H%M%S).rdb
-
-restore: ## Restore Redis data (usage: make restore BACKUP=filename)
-	@echo "📦 Restoring Redis backup..."
-	@docker cp ./backups/$(BACKUP) ai-text-processor-redis:/data/dump.rdb
-	@docker-compose restart redis 
+	docker-compose stop 

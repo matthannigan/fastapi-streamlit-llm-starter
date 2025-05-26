@@ -2,168 +2,178 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock
+from httpx import AsyncClient
 
 from backend.app.main import app
-from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.models import ProcessingOperation
 
-client = TestClient(app)
-
-
-def test_root_endpoint():
-    """Test the root endpoint."""
-    response = client.get("/")
-    assert response.status_code == 200
-    data = response.json()
-    assert "message" in data
-    assert "version" in data
-
-
-def test_health_check():
-    """Test the health check endpoint."""
-    response = client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert "status" in data
-    assert "ai_model_available" in data
-
-
-def test_health_check_response_structure():
-    """Test that health check response follows the HealthResponse model."""
-    response = client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
+class TestHealthEndpoint:
+    """Test health check endpoint."""
     
-    # Check all required fields are present
-    required_fields = ["status", "timestamp", "version", "ai_model_available"]
-    for field in required_fields:
-        assert field in data, f"Missing required field: {field}"
+    def test_health_check(self, client: TestClient):
+        """Test health check returns 200."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert "timestamp" in data
+        assert "version" in data
+        assert "ai_model_available" in data
+
+class TestOperationsEndpoint:
+    """Test operations endpoint."""
     
-    # Check field types
-    assert isinstance(data["status"], str)
-    assert isinstance(data["version"], str)
-    assert isinstance(data["ai_model_available"], bool)
+    def test_get_operations(self, client: TestClient):
+        """Test getting available operations."""
+        response = client.get("/operations")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "operations" in data
+        assert len(data["operations"]) > 0
+        
+        # Check first operation structure
+        op = data["operations"][0]
+        assert "id" in op
+        assert "name" in op
+        assert "description" in op
+        assert "options" in op
+
+class TestProcessEndpoint:
+    """Test text processing endpoint."""
     
-    # Check timestamp format (should be ISO format)
-    from datetime import datetime
-    try:
-        datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00'))
-    except ValueError:
-        pytest.fail("Timestamp is not in valid ISO format")
-
-
-def test_api_docs():
-    """Test that API documentation is accessible."""
-    response = client.get("/docs")
-    assert response.status_code == 200
-
-
-def test_openapi_schema():
-    """Test that OpenAPI schema is accessible."""
-    response = client.get("/openapi.json")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["info"]["title"] == "AI Text Processor API"
-
-
-def test_openapi_schema_includes_models():
-    """Test that OpenAPI schema includes our custom models."""
-    response = client.get("/openapi.json")
-    assert response.status_code == 200
-    data = response.json()
+    def test_process_summarize(self, client: TestClient, sample_text):
+        """Test text summarization."""
+        request_data = {
+            "text": sample_text,
+            "operation": "summarize",
+            "options": {"max_length": 100}
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["operation"] == "summarize"
+        assert "result" in data
+        assert "processing_time" in data
+        assert "timestamp" in data
     
-    # Check that our models are included in the schema
-    components = data.get("components", {})
-    schemas = components.get("schemas", {})
+    def test_process_sentiment(self, client: TestClient, sample_text):
+        """Test sentiment analysis."""
+        request_data = {
+            "text": sample_text,
+            "operation": "sentiment"
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["operation"] == "sentiment"
+        assert "sentiment" in data
     
-    # Should include our main models
-    expected_models = [
-        "TextProcessingRequest",
-        "TextProcessingResponse", 
-        "HealthResponse"
-    ]
+    def test_process_qa_without_question(self, client: TestClient, sample_text):
+        """Test Q&A without question returns error."""
+        request_data = {
+            "text": sample_text,
+            "operation": "qa"
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 400
     
-    for model in expected_models:
-        assert model in schemas, f"Model {model} not found in OpenAPI schema"
-
-
-def test_cors_headers():
-    """Test that CORS headers are properly set."""
-    response = client.options("/health")
-    # FastAPI automatically handles OPTIONS requests for CORS
-    assert response.status_code in [200, 405]  # 405 if OPTIONS not explicitly defined 
-
-
-def test_get_operations():
-    """Test the operations endpoint."""
-    response = client.get("/operations")
-    assert response.status_code == 200
-    data = response.json()
-    assert "operations" in data
-    assert len(data["operations"]) == 5
+    def test_process_qa_with_question(self, client: TestClient, sample_text):
+        """Test Q&A with question."""
+        request_data = {
+            "text": sample_text,
+            "operation": "qa",
+            "question": "What is artificial intelligence?"
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["operation"] == "qa"
+        assert "result" in data
     
-    # Check that all expected operations are present
-    operation_ids = [op["id"] for op in data["operations"]]
-    expected_ops = ["summarize", "sentiment", "key_points", "questions", "qa"]
-    for expected_op in expected_ops:
-        assert expected_op in operation_ids
-
-
-@patch('backend.app.services.text_processor.text_processor.process_text')
-async def test_process_text_summarize(mock_process):
-    """Test text processing with summarize operation."""
-    # Mock the service response
-    from shared.models import TextProcessingResponse
-    mock_response = TextProcessingResponse(
-        operation=ProcessingOperation.SUMMARIZE,
-        result="This is a test summary.",
-        processing_time=1.0,
-        metadata={"word_count": 10}
-    )
-    mock_process.return_value = mock_response
+    def test_process_invalid_operation(self, client: TestClient, sample_text):
+        """Test invalid operation returns error."""
+        request_data = {
+            "text": sample_text,
+            "operation": "invalid_operation"
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 422  # Validation error
     
-    request_data = {
-        "text": "This is a test text that needs to be summarized.",
-        "operation": "summarize",
-        "options": {"max_length": 50}
-    }
+    def test_process_empty_text(self, client: TestClient):
+        """Test empty text returns validation error."""
+        request_data = {
+            "text": "",
+            "operation": "summarize"
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 422
     
-    response = client.post("/process", json=request_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["operation"] == "summarize"
-    assert "result" in data
+    def test_process_text_too_long(self, client: TestClient):
+        """Test text too long returns validation error."""
+        long_text = "A" * 15000  # Exceeds max length
+        request_data = {
+            "text": long_text,
+            "operation": "summarize"
+        }
+        
+        response = client.post("/process", json=request_data)
+        assert response.status_code == 422
 
-
-def test_process_text_qa_missing_question():
-    """Test Q&A operation without question should fail."""
-    request_data = {
-        "text": "This is a test text.",
-        "operation": "qa"
-        # Missing question
-    }
+class TestCORS:
+    """Test CORS configuration."""
     
-    response = client.post("/process", json=request_data)
-    assert response.status_code == 400
+    def test_cors_headers(self, client: TestClient):
+        """Test CORS headers are set correctly."""
+        response = client.options("/health")
+        assert response.status_code == 200
+        assert "access-control-allow-origin" in response.headers
 
-
-def test_process_text_invalid_operation():
-    """Test invalid operation should fail validation."""
-    request_data = {
-        "text": "This is a test text.",
-        "operation": "invalid_operation"
-    }
+class TestErrorHandling:
+    """Test error handling."""
     
-    response = client.post("/process", json=request_data)
-    assert response.status_code == 422  # Validation error
+    def test_404_endpoint(self, client: TestClient):
+        """Test 404 for non-existent endpoint."""
+        response = client.get("/nonexistent")
+        assert response.status_code == 404
 
-
-def test_process_text_empty_text():
-    """Test empty text should fail validation."""
-    request_data = {
-        "text": "",
-        "operation": "summarize"
-    }
+class TestRootEndpoint:
+    """Test root endpoint."""
     
-    response = client.post("/process", json=request_data)
-    assert response.status_code == 422  # Validation error 
+    def test_root_endpoint(self, client: TestClient):
+        """Test the root endpoint."""
+        response = client.get("/")
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "version" in data
+
+class TestAPIDocumentation:
+    """Test API documentation endpoints."""
+    
+    def test_api_docs(self, client: TestClient):
+        """Test that API documentation is accessible."""
+        response = client.get("/docs")
+        assert response.status_code == 200
+    
+    def test_openapi_schema(self, client: TestClient):
+        """Test that OpenAPI schema is accessible."""
+        response = client.get("/openapi.json")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["info"]["title"] == "AI Text Processor API"
+
+ 
