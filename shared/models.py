@@ -37,6 +37,7 @@ class TextProcessingRequest(BaseModel):
     operation: ProcessingOperation = Field(..., description="Type of processing to perform")
     question: Optional[str] = Field(None, description="Question for Q&A operation")
     options: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Operation-specific options")
+    user_metadata: Optional[Dict[str, Any]] = Field(default=None, description="User context metadata")
     
     @field_validator('text')
     @classmethod

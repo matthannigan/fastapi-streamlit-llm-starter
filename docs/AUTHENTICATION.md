@@ -273,3 +273,5 @@ Potential improvements for production systems:
 4. **Audit Logging**: Enhanced logging for compliance
 5. **Role-Based Access**: Different permission levels
 6. **OAuth2 Integration**: Support for OAuth2 flows 
+
+See implementation details and recommendations in [ADVANCED_AUTH_GUIDE.md](./ADVANCED_AUTH_GUIDE.md).
