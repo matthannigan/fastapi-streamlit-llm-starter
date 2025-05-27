@@ -106,35 +106,6 @@ async def _translate_text(self, text: str, options: Dict[str, Any]) -> str:
     return result.output.strip()
 ```
 
-## 🧪 Integration Testing
-
-### `integration_test.py`
-
-Comprehensive testing suite that validates the entire system functionality.
-
-**Test Categories:**
-- 🏥 Core functionality tests
-- 📝 Text processing operation tests
-- 🚨 Error handling tests
-- ⚡ Performance tests
-- 🔄 Concurrent request tests
-
-**Usage:**
-```bash
-python integration_test.py
-```
-
-**Test Results Example:**
-```
-📊 Test Results:
-   Total Tests: 9
-   ✅ Passed: 9
-   ❌ Failed: 0
-   📈 Success Rate: 100.0%
-   ⏱️  Total Duration: 15.23s
-   🕐 Average Test Time: 1.69s
-```
-
 ## 📋 Prerequisites
 
 Before running the examples, ensure you have:
@@ -273,25 +244,6 @@ await client.process_text(text="Valid text", operation="invalid_op")
 # Q&A requires a question
 await client.process_text(text="Valid text", operation="qa")  # Missing question
 ```
-
-## ⚡ Performance Considerations
-
-### Benchmarking Results
-Typical performance metrics from `integration_test.py`:
-
-| Operation | Avg Time | Success Rate |
-|-----------|----------|--------------|
-| Summarize | 2.1s     | 100%         |
-| Sentiment | 1.8s     | 100%         |
-| Key Points| 2.3s     | 100%         |
-| Questions | 2.0s     | 100%         |
-| Q&A       | 2.2s     | 100%         |
-
-### Optimization Tips
-- Use appropriate `max_length` for summaries
-- Batch similar operations when possible
-- Implement caching for frequently requested content
-- Monitor API rate limits
 
 ## 🔧 Troubleshooting
 

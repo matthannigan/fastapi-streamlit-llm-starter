@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-frontend test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore
+.PHONY: help install test test-backend test-frontend test-integration test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -30,6 +30,7 @@ help:
 	@echo "  test-local       Run tests without Docker dependency"
 	@echo "  test-backend     Run backend tests only"
 	@echo "  test-frontend    Run frontend tests only"
+	@echo "  test-integration Run comprehensive integration tests"
 	@echo "  test-coverage    Run tests with coverage report"
 	@echo "  lint             Run code quality checks"
 	@echo "  lint-backend     Run backend code quality checks only"
@@ -71,7 +72,7 @@ install: venv
 # Testing with proper Python command
 test:
 	@echo "Running all tests..."
-	$(PYTHON_CMD) run_tests.py
+	$(PYTHON_CMD) scripts/run_tests.py
 
 test-backend:
 	@echo "Running backend tests..."
@@ -80,6 +81,14 @@ test-backend:
 test-frontend:
 	@echo "Running frontend tests..."
 	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v
+
+test-integration:
+	@echo "Running comprehensive integration tests..."
+	@echo "⚠️  Make sure both backend and frontend services are running first!"
+	@echo "   Backend: http://localhost:8000"
+	@echo "   Frontend: http://localhost:8501"
+	@echo ""
+	$(PYTHON_CMD) scripts/test_integration.py
 
 test-coverage:
 	@echo "Running tests with coverage..."
