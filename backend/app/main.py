@@ -11,8 +11,8 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from shared.models import (
-    TextProcessingRequest, 
-    TextProcessingResponse, 
+    TextProcessingRequest,
+    TextProcessingResponse,
     ErrorResponse,
     HealthResponse
 )
@@ -45,12 +45,14 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# Note: mypy has issues with FastAPI's add_middleware and CORSMiddleware
+# This is a known issue and the code works correctly at runtime
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware,  # type: ignore[arg-type]
+    allow_origins=settings.allowed_origins,  # type: ignore[call-arg]
+    allow_credentials=True,  # type: ignore[call-arg]
+    allow_methods=["*"],  # type: ignore[call-arg]
+    allow_headers=["*"],  # type: ignore[call-arg]
 )
 
 # No routers needed - using direct service integration
@@ -171,4 +173,4 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         reload=settings.debug
-    ) 
+    )

@@ -133,4 +133,4 @@ def verify_api_key_string(api_key: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    return api_key_auth.verify_api_key(api_key) 
+    return api_key_auth.verify_api_key(api_key)

@@ -5,16 +5,14 @@ import os
 # Add the root directory to Python path so we can import shared modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-import asyncio
 import time
 from typing import Dict, Any, List
 import logging
 from pydantic_ai import Agent
-from pydantic_ai.models import KnownModelName
 
 from shared.models import (
-    ProcessingOperation, 
-    TextProcessingRequest, 
+    ProcessingOperation,
+    TextProcessingRequest,
     TextProcessingResponse,
     SentimentResult
 )
@@ -42,40 +40,34 @@ class TextProcessorService:
         try:
             logger.info(f"Processing text with operation: {request.operation}")
             
-            # Route to specific processing method
-            if request.operation == ProcessingOperation.SUMMARIZE:
-                result = await self._summarize_text(request.text, request.options)
-            elif request.operation == ProcessingOperation.SENTIMENT:
-                result = await self._analyze_sentiment(request.text)
-            elif request.operation == ProcessingOperation.KEY_POINTS:
-                result = await self._extract_key_points(request.text, request.options)
-            elif request.operation == ProcessingOperation.QUESTIONS:
-                result = await self._generate_questions(request.text, request.options)
-            elif request.operation == ProcessingOperation.QA:
-                result = await self._answer_question(request.text, request.question)
-            else:
+            # Validate operation first to provide better error messages
+            if request.operation not in [op.value for op in ProcessingOperation]:
                 raise ValueError(f"Unsupported operation: {request.operation}")
             
-            processing_time = time.time() - start_time
-            
             # Create response with timing metadata
+            processing_time = time.time() - start_time
             response = TextProcessingResponse(
                 operation=request.operation,
                 processing_time=processing_time,
                 metadata={"word_count": len(request.text.split())}
             )
             
-            # Set result based on operation type
-            if request.operation == ProcessingOperation.SENTIMENT:
-                response.sentiment = result
+            # Route to specific processing method and set appropriate response field
+            if request.operation == ProcessingOperation.SUMMARIZE:
+                response.result = await self._summarize_text(request.text, request.options)
+            elif request.operation == ProcessingOperation.SENTIMENT:
+                response.sentiment = await self._analyze_sentiment(request.text)
             elif request.operation == ProcessingOperation.KEY_POINTS:
-                response.key_points = result
+                response.key_points = await self._extract_key_points(request.text, request.options)
             elif request.operation == ProcessingOperation.QUESTIONS:
-                response.questions = result
+                response.questions = await self._generate_questions(request.text, request.options)
+            elif request.operation == ProcessingOperation.QA:
+                response.result = await self._answer_question(request.text, request.question)
             else:
-                response.result = result
+                # This should not happen due to the validation above, but keeping for safety
+                raise ValueError(f"Unsupported operation: {request.operation}")
                 
-            logger.info(f"Processing completed in {processing_time:.2f}s")
+            logger.info(f"Processing completed in {processing_time:.2f}s")  # noqa: E231
             return response
             
         except Exception as e:
@@ -92,7 +84,7 @@ class TextProcessorService:
         Text: {text}
         
         Summary:
-        """
+        """  # noqa: E231,E221
         
         result = await self.agent.run(prompt)
         return result.data.strip()
@@ -108,7 +100,7 @@ class TextProcessorService:
         Text: {text}
         
         Response (JSON only):
-        """
+        """  # noqa: E231,E221
         
         result = await self.agent.run(prompt)
         
@@ -137,7 +129,7 @@ class TextProcessorService:
         Text: {text}
         
         Key Points:
-        """
+        """  # noqa: E231,E221
         
         result = await self.agent.run(prompt)
         
@@ -164,7 +156,7 @@ class TextProcessorService:
         Text: {text}
         
         Questions:
-        """
+        """  # noqa: E231,E221
         
         result = await self.agent.run(prompt)
         
@@ -193,10 +185,10 @@ class TextProcessorService:
         Text: {text}
         
         Answer:
-        """
+        """  # noqa: E231,E221
         
         result = await self.agent.run(prompt)
         return result.data.strip()
 
 # Global service instance
-text_processor = TextProcessorService() 
+text_processor = TextProcessorService()
