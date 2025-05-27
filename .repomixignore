@@ -2,4 +2,11 @@
 # Example:
 # *.log
 # tmp/
-.cursor/chats/
+.cursor/
+.roo/
+.venv/
+docs/
+tasks/
+.windsurfrules
+PRD*.*
+.env
