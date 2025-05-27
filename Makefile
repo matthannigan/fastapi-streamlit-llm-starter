@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-frontend test-coverage lint format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore
+.PHONY: help install test test-backend test-frontend test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -32,6 +32,8 @@ help:
 	@echo "  test-frontend    Run frontend tests only"
 	@echo "  test-coverage    Run tests with coverage report"
 	@echo "  lint             Run code quality checks"
+	@echo "  lint-backend     Run backend code quality checks only"
+	@echo "  lint-frontend    Run frontend code quality checks only"
 	@echo "  format           Format code with black and isort"
 	@echo ""
 	@echo "Docker Commands:"
@@ -100,6 +102,15 @@ lint:
 	@echo "Running code quality checks..."
 	cd backend && $(PYTHON_CMD) -m flake8 app/
 	cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports
+	cd frontend && $(PYTHON_CMD) -m flake8 app/
+
+lint-backend:
+	@echo "Running backend code quality checks..."
+	cd backend && $(PYTHON_CMD) -m flake8 app/
+	cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports
+
+lint-frontend:
+	@echo "Running frontend code quality checks..."
 	cd frontend && $(PYTHON_CMD) -m flake8 app/
 
 format:
