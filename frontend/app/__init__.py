@@ -1,1 +1,1 @@
-"""Frontend application package.""" 
+"""Frontend application package."""

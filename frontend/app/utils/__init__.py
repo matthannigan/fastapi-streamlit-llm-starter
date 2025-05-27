@@ -1,1 +1,1 @@
-"""Frontend utilities package.""" 
+"""Frontend utilities package."""

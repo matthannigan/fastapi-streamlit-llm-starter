@@ -12,10 +12,8 @@ import httpx
 import streamlit as st
 
 from shared.models import (
-    TextProcessingRequest, 
-    TextProcessingResponse, 
-    ProcessingOperation,
-    ErrorResponse
+    TextProcessingRequest,
+    TextProcessingResponse
 )
 from app.config import settings
 
@@ -92,4 +90,4 @@ def run_async(coro):
     return loop.run_until_complete(coro)
 
 # Global client instance
-api_client = APIClient() 
+api_client = APIClient()
