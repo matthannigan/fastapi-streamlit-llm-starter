@@ -107,6 +107,7 @@ class TextProcessingResponse(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     processing_time: Optional[float] = None
     timestamp: datetime = Field(default_factory=datetime.now)
+    cache_hit: Optional[bool] = Field(None, description="Whether this response came from cache")
 
 class BatchProcessingItem(BaseModel):
     """Individual item in batch processing response."""

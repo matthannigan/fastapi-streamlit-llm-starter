@@ -3,6 +3,7 @@
 import pytest
 import sys
 import os
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
@@ -255,5 +256,128 @@ class TestAuthentication:
         data = response.json()
         assert "operations" in data
         assert len(data["operations"]) > 0
+
+
+class TestCacheEndpoints:
+    """Test cache-related endpoints."""
+    
+    def test_cache_status(self, client: TestClient):
+        """Test cache status endpoint."""
+        response = client.get("/cache/status")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "status" in data
+        # Should work even if Redis is unavailable
+        assert data["status"] in ["connected", "unavailable", "error"]
+    
+    def test_cache_invalidate(self, client: TestClient):
+        """Test cache invalidation endpoint."""
+        response = client.post("/cache/invalidate", params={"pattern": "test"})
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "message" in data
+        assert "test" in data["message"]
+    
+    def test_cache_invalidate_empty_pattern(self, client: TestClient):
+        """Test cache invalidation with empty pattern."""
+        response = client.post("/cache/invalidate")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "message" in data
+    
+    @patch('app.services.cache.ai_cache.get_cache_stats')
+    def test_cache_status_with_mock(self, mock_stats, client: TestClient):
+        """Test cache status with mocked cache stats."""
+        mock_stats.return_value = {
+            "status": "connected",
+            "keys": 42,
+            "memory_used": "2.5M",
+            "connected_clients": 3
+        }
+        
+        response = client.get("/cache/status")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["status"] == "connected"
+        assert data["keys"] == 42
+        assert data["memory_used"] == "2.5M"
+        assert data["connected_clients"] == 3
+    
+    @patch('app.services.cache.ai_cache.invalidate_pattern')
+    def test_cache_invalidate_with_mock(self, mock_invalidate, client: TestClient):
+        """Test cache invalidation with mocked cache."""
+        mock_invalidate.return_value = None
+        
+        response = client.post("/cache/invalidate", params={"pattern": "summarize"})
+        assert response.status_code == 200
+        
+        # Verify the cache invalidation was called with correct pattern
+        mock_invalidate.assert_called_once_with("summarize")
+
+
+class TestCacheIntegration:
+    """Test cache integration with processing endpoints."""
+    
+    @patch('app.services.text_processor.ai_cache.get_cached_response')
+    @patch('app.services.text_processor.ai_cache.cache_response')
+    def test_process_with_cache_miss(self, mock_cache_store, mock_cache_get, authenticated_client, sample_text):
+        """Test processing with cache miss."""
+        # Mock cache miss
+        mock_cache_get.return_value = None
+        
+        request_data = {
+            "text": sample_text,
+            "operation": "summarize",
+            "options": {"max_length": 100}
+        }
+        
+        response = authenticated_client.post("/process", json=request_data)
+        assert response.status_code == 200
+        
+        # Verify cache was checked and response was stored
+        mock_cache_get.assert_called_once()
+        mock_cache_store.assert_called_once()
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["operation"] == "summarize"
+    
+    @patch('app.services.text_processor.ai_cache.get_cached_response')
+    @patch('app.services.text_processor.ai_cache.cache_response')
+    def test_process_with_cache_hit(self, mock_cache_store, mock_cache_get, authenticated_client, sample_text):
+        """Test processing with cache hit."""
+        # Mock cache hit
+        cached_response = {
+            "operation": "summarize",
+            "result": "Cached summary from Redis",
+            "success": True,
+            "processing_time": 0.1,
+            "metadata": {"word_count": 25},
+            "cached_at": "2024-01-01T12:00:00",
+            "cache_hit": True
+        }
+        mock_cache_get.return_value = cached_response
+        
+        request_data = {
+            "text": sample_text,
+            "operation": "summarize"
+        }
+        
+        response = authenticated_client.post("/process", json=request_data)
+        assert response.status_code == 200
+        
+        # Verify cache was checked but not stored again
+        mock_cache_get.assert_called_once()
+        mock_cache_store.assert_not_called()
+        
+        data = response.json()
+        assert data["success"] is True
+        assert data["result"] == "Cached summary from Redis"
+        assert data["processing_time"] == 0.1
+        assert data.get("cache_hit") is True
 
  

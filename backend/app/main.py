@@ -19,6 +19,8 @@ from shared.models import (
 from app.config import settings
 from app.services.text_processor import text_processor
 from app.auth import verify_api_key, optional_verify_api_key
+from app.services.cache import ai_cache
+
 
 # Configure logging
 logging.basicConfig(
@@ -89,6 +91,18 @@ async def auth_status(api_key: str = Depends(verify_api_key)):
         "api_key_prefix": api_key[:8] + "..." if len(api_key) > 8 else api_key,
         "message": "Authentication successful"
     }
+
+@app.get("/cache/status")
+async def cache_status():
+    """Get cache status and statistics."""
+    stats = await ai_cache.get_cache_stats()
+    return stats
+
+@app.post("/cache/invalidate")
+async def invalidate_cache(pattern: str = ""):
+    """Invalidate cache entries matching pattern."""
+    await ai_cache.invalidate_pattern(pattern)
+    return {"message": f"Cache invalidated for pattern: {pattern}"}
 
 @app.post("/process", response_model=TextProcessingResponse)
 async def process_text(

@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Application Settings
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
+
+    # Redis Configuration
+    redis_url: str = os.getenv("REDIS_URL", "redis://redis:6379")
     
     model_config = {"env_file": ".env"}
 

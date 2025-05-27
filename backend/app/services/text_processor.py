@@ -17,6 +17,7 @@ from shared.models import (
     SentimentResult
 )
 from app.config import settings
+from app.services.cache import ai_cache
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,21 @@ class TextProcessorService:
         )
     
     async def process_text(self, request: TextProcessingRequest) -> TextProcessingResponse:
-        """Process text based on the requested operation."""
+        """Process text with caching support."""
+        # Check cache first
+        operation_value = request.operation.value if hasattr(request.operation, 'value') else request.operation
+        cached_response = await ai_cache.get_cached_response(
+            request.text, 
+            operation_value, 
+            request.options or {}, 
+            request.question
+        )
+        
+        if cached_response:
+            logger.info(f"Cache hit for operation: {request.operation}")
+            return TextProcessingResponse(**cached_response)
+        
+        # Process normally if no cache hit
         start_time = time.time()
         
         try:
@@ -66,6 +81,15 @@ class TextProcessorService:
             else:
                 # This should not happen due to the validation above, but keeping for safety
                 raise ValueError(f"Unsupported operation: {request.operation}")
+            
+            # Cache the successful response
+            await ai_cache.cache_response(
+                request.text,
+                operation_value,
+                request.options or {},
+                response.model_dump(),
+                request.question
+            )
                 
             logger.info(f"Processing completed in {processing_time:.2f}s")  # noqa: E231
             return response
