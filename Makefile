@@ -100,14 +100,18 @@ test-local: venv
 # Code quality with proper Python command
 lint:
 	@echo "Running code quality checks..."
-	cd backend && $(PYTHON_CMD) -m flake8 app/
-	cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports
-	cd frontend && $(PYTHON_CMD) -m flake8 app/
+	@exit_code=0; \
+	(cd backend && $(PYTHON_CMD) -m flake8 app/) || exit_code=$$?; \
+	(cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports) || exit_code=$$?; \
+	(cd frontend && $(PYTHON_CMD) -m flake8 app/) || exit_code=$$?; \
+	exit $$exit_code
 
 lint-backend:
 	@echo "Running backend code quality checks..."
-	cd backend && $(PYTHON_CMD) -m flake8 app/
-	cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports
+	@exit_code=0; \
+	(cd backend && $(PYTHON_CMD) -m flake8 app/) || exit_code=$$?; \
+	(cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports) || exit_code=$$?; \
+	exit $$exit_code
 
 lint-frontend:
 	@echo "Running frontend code quality checks..."
