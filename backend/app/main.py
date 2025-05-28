@@ -14,7 +14,9 @@ from shared.models import (
     TextProcessingRequest,
     TextProcessingResponse,
     ErrorResponse,
-    HealthResponse
+    HealthResponse,
+    BatchTextProcessingRequest,
+    BatchTextProcessingResponse
 )
 from app.config import settings
 from app.services.text_processor import text_processor
@@ -178,6 +180,51 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
                 "requires_question": True
             }
         ]
+    }
+
+@app.post("/batch_process", response_model=BatchTextProcessingResponse)
+async def batch_process_text(
+    request: BatchTextProcessingRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """Process multiple text requests in batch."""
+    try:
+        if not request.requests:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Batch request list cannot be empty."
+            )
+        
+        if len(request.requests) > settings.MAX_BATCH_REQUESTS_PER_CALL:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Batch size exceeds maximum limit of {settings.MAX_BATCH_REQUESTS_PER_CALL} requests."
+            )
+            
+        logger.info(f"Batch processing {len(request.requests)} requests for user (API key prefix): {api_key[:8]}..., batch_id: {request.batch_id or 'N/A'}")
+        
+        result = await text_processor.process_batch(request)
+        
+        logger.info(f"Batch (batch_id: {result.batch_id}) completed: {result.completed}/{result.total_requests} successful for user (API key prefix): {api_key[:8]}...")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Batch processing error for user (API key prefix) {api_key[:8]}..., batch_id {request.batch_id or 'N/A'}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process batch request due to an internal server error."
+        )
+
+@app.get("/batch_status/{batch_id}", response_model=dict)
+async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)):
+    """Get status of a batch processing job. Placeholder for synchronous implementation."""
+    logger.info(f"Batch status requested for batch_id: {batch_id} by user (API key prefix): {api_key[:8]}...")
+    return {
+        "batch_id": batch_id,
+        "status": "COMPLETED_SYNC",
+        "message": "Batch processing is synchronous. If your request to /batch_process completed, the results were returned then."
     }
 
 if __name__ == "__main__":

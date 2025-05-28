@@ -3,7 +3,8 @@
 import pytest
 import sys
 import os
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
+from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
@@ -11,7 +12,18 @@ from httpx import AsyncClient
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.main import app
-from shared.models import ProcessingOperation
+from app.config import settings
+from shared.models import (
+    ProcessingOperation,
+    BatchTextProcessingRequest,
+    BatchTextProcessingResponse,
+    TextProcessingRequest,
+    BatchProcessingItem,
+    ProcessingStatus
+)
+
+# Default headers for authenticated requests
+AUTH_HEADERS = {"Authorization": "Bearer test-api-key-12345"}
 
 class TestHealthEndpoint:
     """Test health check endpoint."""
@@ -380,4 +392,172 @@ class TestCacheIntegration:
         assert data["processing_time"] == 0.1
         assert data.get("cache_hit") is True
 
- 
+
+class TestBatchProcessEndpoint:
+    """Test the /batch_process endpoint."""
+
+    @patch('app.main.text_processor.process_batch', new_callable=AsyncMock)
+    def test_batch_process_success(self, mock_process_batch, authenticated_client: TestClient, sample_text):
+        """Test successful batch processing."""
+        request_payload_dict = {
+            "requests": [
+                {"text": sample_text, "operation": "summarize"},
+                {"text": "Another text", "operation": "sentiment"}
+            ],
+            "batch_id": "test_success_batch"
+        }
+        # Create the Pydantic model for validation if needed by the mock
+        # batch_request_obj = BatchTextProcessingRequest(**request_payload_dict)
+
+        mock_batch_response_dict = {
+            "batch_id": "test_success_batch",
+            "total_requests": 2,
+            "completed": 2,
+            "failed": 0,
+            "results": [
+                {
+                    "request_index": 0, "status": "completed",
+                    "response": {"operation": "summarize", "success": True, "result": "Summary."}
+                },
+                {
+                    "request_index": 1, "status": "completed",
+                    "response": {"operation": "sentiment", "success": True, "sentiment": {"sentiment": "neutral", "confidence": 0.7, "explanation": "Neutral."}}
+                }
+            ],
+            "total_processing_time": 1.23
+        }
+        mock_batch_response_obj = BatchTextProcessingResponse(**mock_batch_response_dict)
+        mock_process_batch.return_value = mock_batch_response_obj
+
+        response = authenticated_client.post("/batch_process", json=request_payload_dict)
+
+        assert response.status_code == status.HTTP_200_OK
+        # Comparing dicts directly, ensure datetimes are handled if they were part of the actual model
+        # For this example, assuming simple dict comparison works based on the model structure.
+        # If datetimes are involved, they need careful comparison (e.g., isoformat or specific object comparison).
+        api_response_json = response.json()
+        # Remove timestamp from comparison as it's generated on the fly
+        if 'timestamp' in api_response_json.get('results', [{}])[0].get('response', {}):
+             for res_item in api_response_json.get('results',[]):
+                 if res_item.get('response') and 'timestamp' in res_item['response']:
+                    del res_item['response']['timestamp']
+        if 'timestamp' in mock_batch_response_dict.get('results', [{}])[0].get('response', {}):
+            for res_item in mock_batch_response_dict.get('results',[]):
+                 if res_item.get('response') and 'timestamp' in res_item['response']:
+                    # This part of mock_batch_response_dict is not used for comparison if already a dict
+                    pass
+
+
+        # We compare the model_dump() of the mock_batch_response_obj with the response.json()
+        # This requires that the mock_batch_response_dict accurately reflects the structure of BatchTextProcessingResponse
+        # including converting enums to their string values if the model does that upon serialization.
+        expected_json = mock_batch_response_obj.model_dump(mode='json') # mode='json' handles enums etc.
+        
+        # Remove timestamps from results in expected_json for comparison
+        for item_result in expected_json.get("results", []):
+            if item_result.get("response") and "timestamp" in item_result["response"]:
+                del item_result["response"]["timestamp"]
+        if "timestamp" in expected_json: # Top-level timestamp
+            del expected_json["timestamp"]
+        if "timestamp" in api_response_json: # Top-level timestamp
+            del api_response_json["timestamp"]
+
+
+        assert api_response_json == expected_json
+        
+        # Check that the mock was called. For specific argument checking:
+        # mock_process_batch.assert_called_once_with(batch_request_obj)
+        # This requires constructing the exact Pydantic model instance that would be passed.
+        # For simplicity here, just check it was called. More specific checks can be added.
+        mock_process_batch.assert_called_once()
+        # Example of more specific argument checking:
+        called_arg = mock_process_batch.call_args[0][0]
+        assert isinstance(called_arg, BatchTextProcessingRequest)
+        assert called_arg.batch_id == "test_success_batch"
+        assert len(called_arg.requests) == 2
+
+    def test_batch_process_exceeds_limit(self, authenticated_client: TestClient, sample_text):
+        """Test batch processing with too many requests."""
+        original_limit = settings.MAX_BATCH_REQUESTS_PER_CALL
+        settings.MAX_BATCH_REQUESTS_PER_CALL = 2  # Temporarily lower limit for test
+        
+        payload = {
+            "requests": [
+                {"text": sample_text, "operation": "summarize"},
+                {"text": sample_text, "operation": "summarize"},
+                {"text": sample_text, "operation": "summarize"} # 3 requests, limit is 2
+            ]
+        }
+        response = authenticated_client.post("/batch_process", json=payload)
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "exceeds maximum limit" in response.json()["detail"]
+        
+        settings.MAX_BATCH_REQUESTS_PER_CALL = original_limit # Reset limit
+
+    def test_batch_process_empty_requests_list(self, authenticated_client: TestClient):
+        """Test batch processing with an empty requests list."""
+        payload = {"requests": []}
+        response = authenticated_client.post("/batch_process", json=payload)
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "cannot be empty" in response.json()["detail"]
+
+    def test_batch_process_no_auth(self, client: TestClient, sample_text):
+        """Test batch processing without authentication."""
+        payload = {
+            "requests": [{"text": sample_text, "operation": "summarize"}]
+        }
+        response = client.post("/batch_process", json=payload) # No headers
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_batch_process_invalid_auth(self, client: TestClient, sample_text):
+        """Test batch processing with invalid authentication."""
+        payload = {
+            "requests": [{"text": sample_text, "operation": "summarize"}]
+        }
+        headers = {"Authorization": "Bearer invalid-api-key"}
+        response = client.post("/batch_process", json=payload, headers=headers)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @patch('app.main.text_processor.process_batch', new_callable=AsyncMock)
+    def test_batch_process_service_exception(self, mock_process_batch, authenticated_client: TestClient, sample_text):
+        """Test batch processing when the service raises an exception."""
+        mock_process_batch.side_effect = Exception("Service layer error")
+        
+        payload = {
+            "requests": [{"text": sample_text, "operation": "summarize"}],
+            "batch_id": "test_service_exception"
+        }
+        response = authenticated_client.post("/batch_process", json=payload)
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert "internal server error" in response.json()["error"].lower()
+
+
+class TestBatchStatusEndpoint:
+    """Test the /batch_status/{batch_id} endpoint."""
+
+    def test_get_batch_status_success(self, authenticated_client: TestClient):
+        """Test getting batch status successfully."""
+        batch_id_test = "test_batch_123"
+        response = authenticated_client.get(f"/batch_status/{batch_id_test}")
+        
+        assert response.status_code == status.HTTP_200_OK
+        expected_json = {
+            "batch_id": batch_id_test,
+            "status": "COMPLETED_SYNC",
+            "message": "Batch processing is synchronous. If your request to /batch_process completed, the results were returned then."
+        }
+        assert response.json() == expected_json
+
+    def test_get_batch_status_no_auth(self, client: TestClient):
+        """Test getting batch status without authentication."""
+        response = client.get("/batch_status/some_id") # No headers
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_batch_status_invalid_auth(self, client: TestClient):
+        """Test getting batch status with invalid authentication."""
+        headers = {"Authorization": "Bearer invalid-api-key"}
+        response = client.get("/batch_status/some_id", headers=headers)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

@@ -1,14 +1,43 @@
 import pytest
+import pytest_asyncio
 import sys
 import os
-from unittest.mock import AsyncMock, patch
+import asyncio
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
 import json
 
 # Add the root directory to Python path so we can import app modules and shared modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.services.text_processor import TextProcessorService
-from shared.models import TextProcessingRequest, ProcessingOperation, SentimentResult
+from app.config import settings as app_settings # Renamed to avoid conflict
+from shared.models import (
+    TextProcessingRequest,
+    TextProcessingResponse,
+    BatchTextProcessingRequest,
+    BatchTextProcessingResponse,
+    BatchProcessingItem,
+    ProcessingStatus,
+    ProcessingOperation,
+    SentimentResult
+)
+
+
+@pytest_asyncio.fixture
+async def processor_service():
+    with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+        # Mock the Agent used by TextProcessorService to avoid actual AI calls
+        with patch('app.services.text_processor.Agent', new_callable=AsyncMock) as mock_agent_constructor:
+            # Ensure the agent instance within the service has a 'run' method if it's called
+            mock_agent_instance = AsyncMock()
+            mock_agent_instance.run = AsyncMock() # Mock the 'run' method specifically
+            mock_agent_constructor.return_value = mock_agent_instance
+            
+            service = TextProcessorService()
+            # Mock the process_text method for batch tests, as we are unit testing process_batch
+            service.process_text = AsyncMock()
+            return service
 
 class TestTextProcessorService:
     """Test the TextProcessorService class."""
@@ -398,4 +427,169 @@ class TestServiceInitialization:
         """Test successful initialization with API key."""
         with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
             service = TextProcessorService()
-            assert service.agent is not None 
+            assert service.agent is not None
+
+
+@pytest.mark.asyncio
+async def test_process_batch_success(processor_service: TextProcessorService):
+    """Test successful processing of a batch."""
+    mock_response1 = TextProcessingResponse(operation=ProcessingOperation.SUMMARIZE, result="Summary 1", success=True)
+    mock_response2 = TextProcessingResponse(operation=ProcessingOperation.SENTIMENT, sentiment=SentimentResult(sentiment="positive", confidence=0.9, explanation="Good"), success=True)
+
+    processor_service.process_text.side_effect = [mock_response1, mock_response2]
+
+    batch_request = BatchTextProcessingRequest(
+        requests=[
+            TextProcessingRequest(text="Text 1", operation=ProcessingOperation.SUMMARIZE),
+            TextProcessingRequest(text="Text 2", operation=ProcessingOperation.SENTIMENT),
+        ],
+        batch_id="test_batch_success"
+    )
+
+    response = await processor_service.process_batch(batch_request)
+
+    assert response.batch_id == "test_batch_success"
+    assert response.total_requests == 2
+    assert response.completed == 2
+    assert response.failed == 0
+    assert len(response.results) == 2
+    assert processor_service.process_text.call_count == 2
+
+    # Check first item
+    assert response.results[0].request_index == 0
+    assert response.results[0].status == ProcessingStatus.COMPLETED
+    assert response.results[0].response == mock_response1
+    assert response.results[0].error is None
+
+    # Check second item
+    assert response.results[1].request_index == 1
+    assert response.results[1].status == ProcessingStatus.COMPLETED
+    assert response.results[1].response == mock_response2
+    assert response.results[1].error is None
+
+
+@pytest.mark.asyncio
+async def test_process_batch_item_failure(processor_service: TextProcessorService):
+    """Test batch processing with one item failing."""
+    mock_response1 = TextProcessingResponse(operation=ProcessingOperation.SUMMARIZE, result="Summary 1", success=True)
+    ai_failure_exception = Exception("AI call failed")
+
+    processor_service.process_text.side_effect = [mock_response1, ai_failure_exception]
+
+    batch_request = BatchTextProcessingRequest(
+        requests=[
+            TextProcessingRequest(text="Text 1", operation=ProcessingOperation.SUMMARIZE),
+            TextProcessingRequest(text="Text 2 (will fail)", operation=ProcessingOperation.KEY_POINTS),
+        ],
+        batch_id="test_batch_item_failure"
+    )
+
+    response = await processor_service.process_batch(batch_request)
+
+    assert response.batch_id == "test_batch_item_failure"
+    assert response.total_requests == 2
+    assert response.completed == 1
+    assert response.failed == 1
+    assert len(response.results) == 2
+    assert processor_service.process_text.call_count == 2
+    
+    # Check successful item
+    assert response.results[0].request_index == 0
+    assert response.results[0].status == ProcessingStatus.COMPLETED
+    assert response.results[0].response == mock_response1
+    assert response.results[0].error is None
+
+    # Check failed item
+    assert response.results[1].request_index == 1
+    assert response.results[1].status == ProcessingStatus.FAILED
+    assert response.results[1].response is None
+    assert response.results[1].error == str(ai_failure_exception)
+
+
+@pytest.mark.asyncio
+@patch('app.services.text_processor.settings.BATCH_AI_CONCURRENCY_LIMIT', 1)
+async def test_process_batch_respects_concurrency_limit(processor_service: TextProcessorService):
+    """Test that process_batch respects the BATCH_AI_CONCURRENCY_LIMIT."""
+    
+    # Mock process_text to simulate work and allow checking call order if needed
+    async def slow_process_text(*args, **kwargs):
+        await asyncio.sleep(0.01) # Short delay to ensure semaphore logic can be tested
+        # Determine which mock response to return based on the request content or call order
+        # For simplicity, let's assume call order or use a more sophisticated side_effect if needed.
+        if "Text 1" in args[0].text:
+             return TextProcessingResponse(operation=ProcessingOperation.SUMMARIZE, result="Summary 1", success=True)
+        elif "Text 2" in args[0].text:
+             return TextProcessingResponse(operation=ProcessingOperation.SUMMARIZE, result="Summary 2", success=True)
+        return TextProcessingResponse(operation=ProcessingOperation.SUMMARIZE, result="Default Summary", success=True)
+
+    processor_service.process_text.side_effect = slow_process_text
+    
+    batch_request = BatchTextProcessingRequest(
+        requests=[
+            TextProcessingRequest(text="Text 1", operation=ProcessingOperation.SUMMARIZE),
+            TextProcessingRequest(text="Text 2", operation=ProcessingOperation.SUMMARIZE),
+        ]
+    )
+
+    with patch('asyncio.Semaphore') as mock_semaphore_constructor:
+        # Create a mock semaphore instance that can be awaited (aenter, aexit)
+        mock_semaphore_instance = MagicMock()
+        mock_semaphore_instance.__aenter__ = AsyncMock()
+        mock_semaphore_instance.__aexit__ = AsyncMock()
+        mock_semaphore_constructor.return_value = mock_semaphore_instance
+
+        response = await processor_service.process_batch(batch_request)
+
+        # Verify Semaphore was called with the overridden limit (1)
+        mock_semaphore_constructor.assert_called_once_with(1)
+        
+        # Ensure all items were processed
+        assert response.total_requests == 2
+        assert response.completed == 2
+        assert response.failed == 0
+        assert processor_service.process_text.call_count == 2
+        # Check that the semaphore was acquired and released for each task
+        assert mock_semaphore_instance.__aenter__.call_count == 2
+        assert mock_semaphore_instance.__aexit__.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_process_batch_empty_request_list(processor_service: TextProcessorService):
+    """Test processing an empty list of requests."""
+    batch_request = BatchTextProcessingRequest(requests=[], batch_id="empty_batch")
+    
+    # process_batch should handle this gracefully, possibly by returning early
+    # or as per its implementation for empty lists.
+    # Based on current service impl, it will create an empty task list and proceed.
+    
+    response = await processor_service.process_batch(batch_request)
+    
+    assert response.batch_id == "empty_batch"
+    assert response.total_requests == 0
+    assert response.completed == 0
+    assert response.failed == 0
+    assert len(response.results) == 0
+    processor_service.process_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_process_batch_generates_batch_id_if_none(processor_service: TextProcessorService):
+    """Test that a batch_id is generated if not provided."""
+    mock_response = TextProcessingResponse(operation=ProcessingOperation.SUMMARIZE, result="Summary", success=True)
+    processor_service.process_text.return_value = mock_response # All calls get this
+
+    batch_request = BatchTextProcessingRequest(
+        requests=[TextProcessingRequest(text="Text 1", operation=ProcessingOperation.SUMMARIZE)],
+        batch_id=None  # Explicitly None
+    )
+
+    # Patch time.time used for generating batch_id if None
+    with patch('time.time', return_value=1234567890.0):
+        response = await processor_service.process_batch(batch_request)
+
+    assert response.batch_id is not None
+    assert isinstance(response.batch_id, str)
+    assert response.batch_id == "batch_1234567890" # Check if it uses the mocked time
+    assert response.total_requests == 1
+    assert response.completed == 1
+    assert processor_service.process_text.call_count == 1

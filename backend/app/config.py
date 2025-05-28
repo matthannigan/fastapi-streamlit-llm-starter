@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     ai_model: str = os.getenv("AI_MODEL", "gemini-2.0-flash-exp")
     ai_temperature: float = float(os.getenv("AI_TEMPERATURE", "0.7"))
+    # Maximum number of requests allowed in a single batch call.
+    # Can be set via the MAX_BATCH_REQUESTS_PER_CALL environment variable.
+    MAX_BATCH_REQUESTS_PER_CALL: int = int(os.getenv("MAX_BATCH_REQUESTS_PER_CALL", "50"))
+    # Maximum concurrent AI calls during batch processing.
+    # Can be set via the BATCH_AI_CONCURRENCY_LIMIT environment variable.
+    BATCH_AI_CONCURRENCY_LIMIT: int = int(os.getenv("BATCH_AI_CONCURRENCY_LIMIT", "5"))
     
     # API Configuration
     host: str = os.getenv("BACKEND_HOST", "0.0.0.0")

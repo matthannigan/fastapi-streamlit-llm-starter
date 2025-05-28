@@ -6,6 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
 import time
+import asyncio
 from typing import Dict, Any, List
 import logging
 from pydantic_ai import Agent
@@ -14,7 +15,11 @@ from shared.models import (
     ProcessingOperation,
     TextProcessingRequest,
     TextProcessingResponse,
-    SentimentResult
+    SentimentResult,
+    BatchTextProcessingRequest,
+    BatchTextProcessingResponse,
+    BatchProcessingItem,
+    ProcessingStatus
 )
 from app.config import settings
 from app.services.cache import ai_cache
@@ -213,6 +218,60 @@ class TextProcessorService:
         
         result = await self.agent.run(prompt)
         return result.data.strip()
+
+    async def process_batch(self, batch_request: BatchTextProcessingRequest) -> BatchTextProcessingResponse:
+        """Process a batch of text processing requests concurrently."""
+        start_time = time.time()
+        total_requests = len(batch_request.requests)
+        batch_id = batch_request.batch_id or f"batch_{int(time.time())}"
+
+        logger.info(f"Processing batch of {total_requests} requests for batch_id: {batch_id}")
+
+        semaphore = asyncio.Semaphore(settings.BATCH_AI_CONCURRENCY_LIMIT)
+        tasks = []
+
+        async def _process_single_request_in_batch(index: int, item_request: TextProcessingRequest) -> BatchProcessingItem:
+            """Helper function to process a single request within the batch."""
+            async with semaphore:
+                try:
+                    # Ensure the operation is valid before processing
+                    if not hasattr(ProcessingOperation, item_request.operation.upper()):
+                        raise ValueError(f"Unsupported operation: {item_request.operation}")
+                    
+                    # Create a new TextProcessingRequest object to avoid modifying the original
+                    # and to ensure the operation enum is correctly used if a string was passed
+                    current_request = TextProcessingRequest(
+                        text=item_request.text,
+                        operation=ProcessingOperation[item_request.operation.upper()],
+                        options=item_request.options,
+                        question=item_request.question
+                    )
+                    response = await self.process_text(current_request)
+                    return BatchProcessingItem(request_index=index, status=ProcessingStatus.COMPLETED, response=response)
+                except Exception as e:
+                    logger.error(f"Batch item {index} (batch_id: {batch_id}) failed: {str(e)}")
+                    return BatchProcessingItem(request_index=index, status=ProcessingStatus.FAILED, error=str(e))
+
+        for i, request_item in enumerate(batch_request.requests):
+            task = _process_single_request_in_batch(i, request_item)
+            tasks.append(task)
+
+        results: List[BatchProcessingItem] = await asyncio.gather(*tasks, return_exceptions=False)
+
+        completed_count = sum(1 for r in results if r.status == ProcessingStatus.COMPLETED)
+        failed_count = total_requests - completed_count
+        total_time = time.time() - start_time
+
+        logger.info(f"Batch (batch_id: {batch_id}) completed. Successful: {completed_count}/{total_requests}. Time: {total_time:.2f}s")
+
+        return BatchTextProcessingResponse(
+            batch_id=batch_id,
+            total_requests=total_requests,
+            completed=completed_count,
+            failed=failed_count,
+            results=results,
+            total_processing_time=total_time
+        )
 
 # Global service instance
 text_processor = TextProcessorService()

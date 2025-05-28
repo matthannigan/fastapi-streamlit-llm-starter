@@ -75,7 +75,7 @@ class BatchTextProcessingRequest(BaseModel):
         }
     )
     
-    requests: List[TextProcessingRequest] = Field(..., min_length=1, max_length=10, description="List of processing requests")
+    requests: List[TextProcessingRequest] = Field(..., min_length=1, max_length=200, description="List of processing requests")
     batch_id: Optional[str] = Field(None, description="Optional batch identifier")
 
 class SentimentResult(BaseModel):
