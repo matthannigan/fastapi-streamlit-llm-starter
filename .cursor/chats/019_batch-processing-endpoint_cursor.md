@@ -1,3 +1,23 @@
+# Unit Test Error Troubleshooting
+_Exported on 5/28/2025 at 01:41:19 EDT from Cursor (0.50.7)_
+
+---
+
+**User**
+
+Please help with the errors in these unit tests
+
+---
+
+**Cursor**
+
+I can see the issues in your unit tests. Let me analyze the errors and fix them:
+
+Now I can see the validation constraints. Let me also check the main.py file to understand the API endpoint error handling:
+
+Now I understand the issues. Let me fix the unit tests by addressing the validation constraints and error handling expectations:
+
+```python
 import pytest
 import pytest_asyncio
 import sys
@@ -578,3 +598,158 @@ async def test_process_batch_generates_batch_id_if_none(processor_service: TextP
     assert response.total_requests == 1
     assert response.completed == 1
     assert processor_service.process_text.call_count == 1
+```
+
+Now I need to check the test_main.py file to fix the API endpoint tests:
+
+Now I can see the issue. The test expects an "error" field in the JSON response, but looking at the main.py file, the HTTPException returns a "detail" field. Let me fix the test:
+
+```python
+    def test_batch_process_empty_requests_list(self, authenticated_client: TestClient):
+        """Test batch processing with an empty requests list."""
+        payload = {"requests": []}
+        response = authenticated_client.post("/batch_process", json=payload)
+        
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY  # Pydantic validation error
+        # Check that the error is related to the empty list validation
+        error_detail = response.json()
+        assert "detail" in error_detail
+        # The error should mention the validation issue with the requests list
+        assert any("too_short" in str(error).lower() or "at least 1" in str(error).lower() 
+                  for error in error_detail["detail"])
+
+    def test_batch_process_no_auth(self, client: TestClient, sample_text):
+        """Test batch processing without authentication."""
+        payload = {
+            "requests": [{"text": sample_text, "operation": "summarize"}]
+        }
+        response = client.post("/batch_process", json=payload) # No headers
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_batch_process_invalid_auth(self, client: TestClient, sample_text):
+        """Test batch processing with invalid authentication."""
+        payload = {
+            "requests": [{"text": sample_text, "operation": "summarize"}]
+        }
+        headers = {"Authorization": "Bearer invalid-api-key"}
+        response = client.post("/batch_process", json=payload, headers=headers)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @patch('app.main.text_processor.process_batch', new_callable=AsyncMock)
+    def test_batch_process_service_exception(self, mock_process_batch, authenticated_client: TestClient, sample_text):
+        """Test batch processing when the service raises an exception."""
+        mock_process_batch.side_effect = Exception("Service layer error")
+        
+        payload = {
+            "requests": [{"text": sample_text, "operation": "summarize"}],
+            "batch_id": "test_service_exception"
+        }
+        response = authenticated_client.post("/batch_process", json=payload)
+        
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        # FastAPI HTTPException returns "detail" field, not "error"
+        assert "internal server error" in response.json()["detail"].lower()
+```
+
+Now let me also check if there are any missing fixtures that the tests need:
+
+Good! The fixtures are defined. Now let me run the tests to see if there are any remaining issues:
+
+Great! That test is now passing. Let me run the other failing tests:
+
+Good! Let me test the main.py tests:
+
+Excellent! Now let me run all the remaining tests to make sure they all pass:
+
+Perfect! Now let me run all the tests to make sure everything is working:
+
+Excellent! All the text processor tests are now passing. Let me also run the main.py tests to make sure they're all working:
+
+Perfect! All the tests are now passing. Let me run a final comprehensive test to make sure everything is working:
+
+Excellent! All 89 tests are now passing. Let me provide a summary of the fixes I made to resolve the unit test errors:
+
+## Summary of Fixes Applied
+
+I successfully fixed all the failing unit tests by addressing the following issues:
+
+### 1. **Text Length Validation Constraints**
+**Problem**: The `TextProcessingRequest` model requires text to be at least 10 characters long, but tests were using short strings like "Text 1".
+
+**Fix**: Updated all test cases to use longer, more realistic text strings:
+```python
+# Before
+TextProcessingRequest(text="Text 1", operation=ProcessingOperation.SUMMARIZE)
+
+# After  
+TextProcessingRequest(text="This is a longer text for testing summarization functionality", operation=ProcessingOperation.SUMMARIZE)
+```
+
+### 2. **Batch Request Validation**
+**Problem**: The `BatchTextProcessingRequest` model requires at least 1 item in the requests list, but a test was trying to create an empty list.
+
+**Fix**: Removed the test for empty batch requests since it's now prevented by Pydantic validation at the model level, which is the correct behavior.
+
+### 3. **HTTP Error Response Format**
+**Problem**: Tests expected an "error" field in error responses, but FastAPI's `HTTPException` returns a "detail" field.
+
+**Fix**: Updated test assertions to check for the correct field:
+```python
+# Before
+assert "internal server error" in response.json()["error"].lower()
+
+# After
+assert "internal server error" in response.json()["detail"].lower()
+```
+
+### 4. **Validation Error Status Codes**
+**Problem**: Test expected HTTP 400 for empty requests list, but Pydantic validation returns HTTP 422.
+
+**Fix**: Updated the test to expect the correct status code and validate the error structure:
+```python
+# Before
+assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+# After
+assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+```
+
+### 5. **Test Data Consistency**
+**Fix**: Ensured all test data meets the validation requirements:
+- Text fields have at least 10 characters
+- Batch requests contain at least 1 item
+- All required fields are provided
+
+## Results
+- ✅ **89 tests passing** (previously had 6 failures)
+- ✅ All text processor service tests working
+- ✅ All API endpoint tests working  
+- ✅ All validation and error handling tests working
+- ⚠️ Only minor warnings about async mock coroutines (not affecting functionality)
+
+The test suite now properly validates the Pydantic model constraints and correctly handles the expected API response formats, ensuring robust validation of the text processing functionality.
+
+```python
+# Before
+TextProcessingRequest(text="Text 1", operation=ProcessingOperation.SUMMARIZE)
+
+# After  
+TextProcessingRequest(text="This is a longer text for testing summarization functionality", operation=ProcessingOperation.SUMMARIZE)
+```
+
+```python
+# Before
+assert "internal server error" in response.json()["error"].lower()
+
+# After
+assert "internal server error" in response.json()["detail"].lower()
+```
+
+```python
+# Before
+assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+# After
+assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+```
+
