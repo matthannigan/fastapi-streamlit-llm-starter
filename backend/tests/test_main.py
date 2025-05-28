@@ -500,8 +500,13 @@ class TestBatchProcessEndpoint:
         payload = {"requests": []}
         response = authenticated_client.post("/batch_process", json=payload)
         
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "cannot be empty" in response.json()["detail"]
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY  # Pydantic validation error
+        # Check that the error is related to the empty list validation
+        error_detail = response.json()
+        assert "detail" in error_detail
+        # The error should mention the validation issue with the requests list
+        assert any("too_short" in str(error).lower() or "at least 1" in str(error).lower() 
+                  for error in error_detail["detail"])
 
     def test_batch_process_no_auth(self, client: TestClient, sample_text):
         """Test batch processing without authentication."""
@@ -532,7 +537,8 @@ class TestBatchProcessEndpoint:
         response = authenticated_client.post("/batch_process", json=payload)
         
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "internal server error" in response.json()["error"].lower()
+        # FastAPI HTTPException returns "detail" field, not "error"
+        assert "internal server error" in response.json()["detail"].lower()
 
 
 class TestBatchStatusEndpoint:
