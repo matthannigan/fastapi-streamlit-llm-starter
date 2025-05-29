@@ -22,6 +22,7 @@ from app.config import settings
 from app.services.text_processor import text_processor
 from app.auth import verify_api_key, optional_verify_api_key
 from app.services.cache import ai_cache
+from app.resilience_endpoints import resilience_router
 
 
 # Configure logging
@@ -59,6 +60,9 @@ app.add_middleware(
     allow_headers=["*"],  # type: ignore[call-arg]
 )
 
+# Include the resilience router
+app.include_router(resilience_router)
+
 # No routers needed - using direct service integration
 
 @app.exception_handler(Exception)
@@ -80,10 +84,24 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint."""
-    return HealthResponse(
-        ai_model_available=bool(settings.gemini_api_key)
-    )
+    """Enhanced health check endpoint with resilience status."""
+    try:
+        from app.services.resilience import ai_resilience
+        
+        ai_healthy = bool(settings.gemini_api_key)
+        resilience_healthy = ai_resilience.is_healthy()
+        
+        return HealthResponse(
+            status="healthy" if ai_healthy and resilience_healthy else "degraded",
+            ai_model_available=ai_healthy,
+            resilience_healthy=resilience_healthy
+        )
+    except Exception:
+        # Fallback if resilience service is not available
+        return HealthResponse(
+            ai_model_available=bool(settings.gemini_api_key),
+            resilience_healthy=None
+        )
 
 @app.get("/auth/status")
 async def auth_status(api_key: str = Depends(verify_api_key)):

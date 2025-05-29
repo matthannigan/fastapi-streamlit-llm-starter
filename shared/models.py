@@ -140,6 +140,7 @@ class HealthResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     version: str = "1.0.0"
     ai_model_available: bool = True
+    resilience_healthy: Optional[bool] = None
 
 class ModelConfiguration(BaseModel):
     """Model configuration settings."""

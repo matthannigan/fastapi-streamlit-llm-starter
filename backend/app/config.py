@@ -1,4 +1,4 @@
-"""Backend configuration settings."""
+"""Backend configuration settings with resilience support."""
 
 import os
 from typing import List
@@ -17,11 +17,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     ai_model: str = os.getenv("AI_MODEL", "gemini-2.0-flash-exp")
     ai_temperature: float = float(os.getenv("AI_TEMPERATURE", "0.7"))
-    # Maximum number of requests allowed in a single batch call.
-    # Can be set via the MAX_BATCH_REQUESTS_PER_CALL environment variable.
+    
+    # Batch Processing Configuration
     MAX_BATCH_REQUESTS_PER_CALL: int = int(os.getenv("MAX_BATCH_REQUESTS_PER_CALL", "50"))
-    # Maximum concurrent AI calls during batch processing.
-    # Can be set via the BATCH_AI_CONCURRENCY_LIMIT environment variable.
     BATCH_AI_CONCURRENCY_LIMIT: int = int(os.getenv("BATCH_AI_CONCURRENCY_LIMIT", "5"))
     
     # API Configuration
@@ -41,6 +39,39 @@ class Settings(BaseSettings):
 
     # Redis Configuration
     redis_url: str = os.getenv("REDIS_URL", "redis://redis:6379")
+    
+    # Resilience Configuration
+    # Enable/disable resilience features
+    resilience_enabled: bool = os.getenv("RESILIENCE_ENABLED", "true").lower() == "true"
+    circuit_breaker_enabled: bool = os.getenv("CIRCUIT_BREAKER_ENABLED", "true").lower() == "true"
+    retry_enabled: bool = os.getenv("RETRY_ENABLED", "true").lower() == "true"
+    
+    # Default resilience strategy for AI operations
+    default_resilience_strategy: str = os.getenv("DEFAULT_RESILIENCE_STRATEGY", "balanced")
+    
+    # Circuit Breaker Settings
+    circuit_breaker_failure_threshold: int = int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "5"))
+    circuit_breaker_recovery_timeout: int = int(os.getenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "60"))
+    
+    # Retry Settings
+    retry_max_attempts: int = int(os.getenv("RETRY_MAX_ATTEMPTS", "3"))
+    retry_max_delay: int = int(os.getenv("RETRY_MAX_DELAY", "30"))
+    retry_exponential_multiplier: float = float(os.getenv("RETRY_EXPONENTIAL_MULTIPLIER", "1.0"))
+    retry_exponential_min: float = float(os.getenv("RETRY_EXPONENTIAL_MIN", "2.0"))
+    retry_exponential_max: float = float(os.getenv("RETRY_EXPONENTIAL_MAX", "10.0"))
+    retry_jitter_enabled: bool = os.getenv("RETRY_JITTER_ENABLED", "true").lower() == "true"
+    retry_jitter_max: float = float(os.getenv("RETRY_JITTER_MAX", "2.0"))
+    
+    # Operation-specific resilience strategies
+    summarize_resilience_strategy: str = os.getenv("SUMMARIZE_RESILIENCE_STRATEGY", "balanced")
+    sentiment_resilience_strategy: str = os.getenv("SENTIMENT_RESILIENCE_STRATEGY", "aggressive")
+    key_points_resilience_strategy: str = os.getenv("KEY_POINTS_RESILIENCE_STRATEGY", "balanced")
+    questions_resilience_strategy: str = os.getenv("QUESTIONS_RESILIENCE_STRATEGY", "balanced")
+    qa_resilience_strategy: str = os.getenv("QA_RESILIENCE_STRATEGY", "conservative")
+    
+    # Monitoring and health check settings
+    resilience_metrics_enabled: bool = os.getenv("RESILIENCE_METRICS_ENABLED", "true").lower() == "true"
+    resilience_health_check_enabled: bool = os.getenv("RESILIENCE_HEALTH_CHECK_ENABLED", "true").lower() == "true"
     
     model_config = {"env_file": ".env"}
 
