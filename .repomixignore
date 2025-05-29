@@ -11,3 +11,7 @@ tasks/
 PRD*.*
 .env
 .*ignore
+.roomodes
+.taskmasterconfig
+repomix.config.json
+.flake8
