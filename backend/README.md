@@ -137,9 +137,25 @@ Run the test suite:
 pytest tests/ -v
 ```
 
-Manual API testing:
+Run specific test categories:
 ```bash
-python test_api.py
+# Unit tests (mocked AI services)
+pytest tests/test_main.py tests/test_text_processor.py -v
+
+# Manual integration tests (requires running server)
+pytest tests/test_manual_api.py tests/test_manual_auth.py -v
+
+# All tests with coverage
+pytest tests/ --cov=app --cov-report=html
+```
+
+Manual testing scripts:
+```bash
+# Test API endpoints (requires server running on localhost:8000)
+cd tests && python test_manual_api.py
+
+# Test authentication (requires server running on localhost:8000)
+cd tests && python test_manual_auth.py
 ```
 
 ## Architecture
@@ -156,10 +172,19 @@ backend/
 │       └── text_processor.py # AI text processing service
 ├── tests/
 │   ├── __init__.py
-│   └── test_main.py         # Application tests
+│   ├── conftest.py          # Test configuration and fixtures
+│   ├── test_main.py         # Main application tests
+│   ├── test_text_processor.py # Text processing service tests
+│   ├── test_models.py       # Data model tests
+│   ├── test_cache.py        # Caching functionality tests
+│   ├── test_resilience.py   # Error handling and resilience tests
+│   ├── test_manual_api.py   # Manual API integration tests
+│   └── test_manual_auth.py  # Manual authentication tests
+├── shared/                  # Shared models and utilities
 ├── requirements.txt         # Python dependencies
+├── requirements-dev.txt     # Development dependencies
 ├── Dockerfile              # Docker configuration
-├── test_api.py             # Manual testing script
+├── pytest.ini             # Pytest configuration
 └── README.md               # This file
 ```
 
