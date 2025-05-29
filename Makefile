@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-frontend test-integration test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore
+.PHONY: help install test test-backend test-frontend test-integration test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-frontend repomix-docs
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -53,6 +53,12 @@ help:
 	@echo "  restore          Restore Redis data"
 	@echo "  clean            Clean up generated files"
 	@echo "  clean-all        Clean up including virtual environment"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  repomix          Generate full repository documentation (excluding docs/)"
+	@echo "  repomix-backend  Generate backend-only documentation"
+	@echo "  repomix-frontend Generate frontend-only documentation"
+	@echo "  repomix-docs     Generate documentation for README and docs/"
 
 # Virtual environment setup
 venv:
@@ -224,4 +230,24 @@ restore:
 # Clean including venv
 clean-all: clean
 	@echo "Removing virtual environment..."
-	rm -rf $(VENV_DIR) 
+	rm -rf $(VENV_DIR)
+
+# Documentation generation with repomix
+repomix:
+	@echo "Generating full repository documentation..."
+	npx repomix --ignore "docs/**/*"
+	$(MAKE) repomix-backend
+	$(MAKE) repomix-frontend  
+	$(MAKE) repomix-docs
+
+repomix-backend:
+	@echo "Generating backend documentation..."
+	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --output repomix-output_backend.md
+
+repomix-frontend:
+	@echo "Generating frontend documentation..."
+	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output_frontend.md
+
+repomix-docs:
+	@echo "Generating documentation for READMEs and docs/ subdirectory..."
+	npx repomix --include "**/README.md,docs/**/*" --output repomix-output_docs.md 

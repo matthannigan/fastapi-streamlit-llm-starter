@@ -5,8 +5,9 @@
 .cursor/
 .roo/
 .venv/
-docs/
+taskplans/
 tasks/
 .windsurfrules
 PRD*.*
 .env
+.*ignore
