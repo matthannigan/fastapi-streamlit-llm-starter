@@ -136,7 +136,7 @@ async def get_circuit_breaker_details(
         breaker = ai_resilience.circuit_breakers[breaker_name]
         return {
             "name": breaker_name,
-            "state": breaker.current_state,
+            "state": breaker.state,
             "failure_count": breaker.failure_count,
             "failure_threshold": breaker.failure_threshold,
             "recovery_timeout": breaker.recovery_timeout,
@@ -178,7 +178,7 @@ async def reset_circuit_breaker(
         return {
             "message": f"Circuit breaker '{breaker_name}' has been reset",
             "name": breaker_name,
-            "new_state": breaker.current_state
+            "new_state": breaker.state
         }
     except HTTPException:
         raise

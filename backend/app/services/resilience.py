@@ -144,6 +144,22 @@ def classify_exception(exc: Exception) -> bool:
     return True
 
 
+def should_retry_on_exception(retry_state) -> bool:
+    """
+    Tenacity-compatible function to determine if an exception should trigger a retry.
+    
+    Args:
+        retry_state: Tenacity retry state object containing exception information
+        
+    Returns:
+        True if the exception should trigger a retry
+    """
+    if hasattr(retry_state, 'outcome') and retry_state.outcome.failed:
+        exception = retry_state.outcome.exception()
+        return classify_exception(exception)
+    return False
+
+
 @dataclass
 class ResilienceMetrics:
     """Metrics for monitoring resilience behavior."""
@@ -406,7 +422,7 @@ class AIServiceResilience:
                 retry_decorator = retry(
                     stop=stop_strategy,
                     wait=wait_strategy,
-                    retry=classify_exception,
+                    retry=should_retry_on_exception,
                     before_sleep=self.custom_before_sleep(operation_name),
                     reraise=True
                 )
@@ -421,7 +437,7 @@ class AIServiceResilience:
                     # Apply circuit breaker if enabled
                     if circuit_breaker:
                         # Check if circuit breaker is open
-                        if circuit_breaker.current_state == 'open':
+                        if circuit_breaker.state == 'open':
                             if fallback:
                                 logger.warning(f"Circuit breaker open for {operation_name}, using fallback")
                                 return await fallback(*args, **kwargs)
@@ -482,7 +498,7 @@ class AIServiceResilience:
         circuit_breaker_states = {}
         for name, cb in self.circuit_breakers.items():
             circuit_breaker_states[name] = {
-                "state": cb.current_state,
+                "state": cb.state,
                 "failure_count": cb.failure_count,
                 "last_failure_time": cb.last_failure_time,
                 "metrics": cb.metrics.to_dict() if hasattr(cb, 'metrics') else {}
@@ -496,7 +512,7 @@ class AIServiceResilience:
                 "total_circuit_breakers": len(self.circuit_breakers),
                 "open_circuit_breakers": len([
                     cb for cb in self.circuit_breakers.values() 
-                    if cb.current_state == 'open'
+                    if cb.state == 'open'
                 ])
             }
         }
@@ -515,7 +531,7 @@ class AIServiceResilience:
         """Check if the resilience service is healthy."""
         open_breakers = [
             name for name, cb in self.circuit_breakers.items()
-            if cb.current_state == 'open'
+            if cb.state == 'open'
         ]
         
         if open_breakers:
@@ -528,12 +544,12 @@ class AIServiceResilience:
         """Get detailed health status."""
         open_breakers = [
             name for name, cb in self.circuit_breakers.items()
-            if cb.current_state == 'open'
+            if cb.state == 'open'
         ]
         
         half_open_breakers = [
             name for name, cb in self.circuit_breakers.items()
-            if cb.current_state == 'half-open'
+            if cb.state == 'half-open'
         ]
         
         return {

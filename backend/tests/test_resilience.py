@@ -288,7 +288,7 @@ class TestAIServiceResilience:
         cb = resilience_service.circuit_breakers.get("test_circuit")
         if cb:
             # Depending on timing, circuit might be open
-            assert cb.current_state in ["open", "closed"]
+            assert cb.state in ["open", "closed"]
     
     @pytest.mark.asyncio
     async def test_resilience_decorator_with_fallback(self, resilience_service):
