@@ -8,9 +8,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy shared directory first for shared library installation
+COPY shared/ ./shared/
+
+# Copy frontend requirements and install Python dependencies
+COPY frontend/requirements.txt frontend/requirements.docker.txt ./
+RUN pip install --no-cache-dir -r requirements.docker.txt
 
 # Add shared models to Python path
 ENV PYTHONPATH="${PYTHONPATH}:/app"
@@ -23,8 +26,12 @@ RUN pip install --no-cache-dir \
     pytest \
     pytest-asyncio
 
-# Copy application code
-COPY . .
+# Copy frontend application code (excluding local shared directory)
+COPY frontend/app/ ./app/
+COPY frontend/tests/ ./tests/
+COPY frontend/*.py ./
+COPY frontend/*.ini ./
+COPY frontend/*.txt ./
 
 # Expose port
 EXPOSE 8501
@@ -39,8 +46,12 @@ CMD ["streamlit", "run", "app/app.py", "--server.address", "0.0.0.0", "--server.
 # Production stage
 FROM base AS production
 
-# Copy application code
-COPY . .
+# Copy frontend application code (excluding local shared directory)
+COPY frontend/app/ ./app/
+COPY frontend/tests/ ./tests/
+COPY frontend/*.py ./
+COPY frontend/*.ini ./
+COPY frontend/*.txt ./
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser

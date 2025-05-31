@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: ai-text-processor-backend
     ports:
       - "8000:8000"
@@ -31,8 +31,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: ai-text-processor-frontend
     ports:
       - "8501:8501"
