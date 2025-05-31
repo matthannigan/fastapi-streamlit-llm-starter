@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-frontend test-integration test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-frontend repomix-docs
+.PHONY: help install test test-backend test-backend-manual test-frontend test-integration test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-frontend repomix-docs
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -29,6 +29,7 @@ help:
 	@echo "  test             Run all tests (with Docker if available)"
 	@echo "  test-local       Run tests without Docker dependency"
 	@echo "  test-backend     Run backend tests only"
+	@echo "  test-backend-manual Run backend manual tests"
 	@echo "  test-frontend    Run frontend tests only"
 	@echo "  test-integration Run comprehensive integration tests"
 	@echo "  test-coverage    Run tests with coverage report"
@@ -81,8 +82,17 @@ test:
 	$(PYTHON_CMD) scripts/run_tests.py
 
 test-backend:
-	@echo "Running backend tests..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v
+	@echo "Running backend tests (excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+
+test-backend-manual:
+	@echo "Running backend manual tests..."
+	@echo "⚠️  These tests require:"
+	@echo "   - FastAPI server running on http://localhost:8000"
+	@echo "   - API_KEY=test-api-key-12345 environment variable set"
+	@echo "   - GEMINI_API_KEY environment variable set (for AI features)"
+	@echo ""
+	cd backend && $(PYTHON_CMD) -m pytest tests/test_manual_api.py tests/test_manual_auth.py -v
 
 test-frontend:
 	@echo "Running frontend tests..."
@@ -97,18 +107,18 @@ test-integration:
 	$(PYTHON_CMD) scripts/test_integration.py
 
 test-coverage:
-	@echo "Running tests with coverage..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+	@echo "Running tests with coverage (excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
 	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 # Local testing without Docker
 test-local: venv
-	@echo "Running local tests without Docker..."
+	@echo "Running local tests without Docker (excluding manual tests)..."
 	@echo "Installing dependencies..."
 	cd backend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
 	cd frontend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
 	@echo "Running backend tests..."
-	cd backend && $(VENV_PYTHON) -m pytest tests/ -v
+	cd backend && $(VENV_PYTHON) -m pytest tests/ -v --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
 	@echo "Running frontend tests..."
 	cd frontend && $(VENV_PYTHON) -m pytest tests/ -v
 
@@ -172,7 +182,7 @@ dev-setup: install
 # Quick test for CI
 ci-test:
 	@echo "Running CI tests..."
-	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
 	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/

@@ -32,8 +32,8 @@ def main():
     print("FastAPI-Streamlit-LLM Starter Template Test Runner")
     print("=" * 60)
     
-    # Get project root
-    project_root = Path(__file__).parent
+    # Get project root - scripts directory is in the project root
+    project_root = Path(__file__).parent.parent
     backend_dir = project_root / "backend"
     frontend_dir = project_root / "frontend"
     
@@ -60,8 +60,8 @@ def main():
         
         # Run pytest with coverage
         test_commands = [
-            (["python", "-m", "pytest", "tests/", "-v"], "Running backend unit tests"),
-            (["python", "-m", "pytest", "tests/", "--cov=app", "--cov-report=html"], "Running backend tests with coverage"),
+            (["python", "-m", "pytest", "tests/", "-v", "--ignore=tests/test_manual_api.py", "--ignore=tests/test_manual_auth.py"], "Running backend unit tests"),
+            (["python", "-m", "pytest", "tests/", "--cov=app", "--cov-report=html", "--ignore=tests/test_manual_api.py", "--ignore=tests/test_manual_auth.py"], "Running backend tests with coverage"),
             (["python", "-m", "flake8", "app/"], "Running code style checks"),
             (["python", "-m", "mypy", "app/"], "Running type checking")
         ]
