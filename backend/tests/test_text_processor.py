@@ -2,6 +2,7 @@ import pytest
 import pytest_asyncio
 import asyncio
 import time
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
 
@@ -23,9 +24,9 @@ from shared.models import (
 async def processor_service():
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
         # Mock the Agent used by TextProcessorService to avoid actual AI calls
-        with patch('app.services.text_processor.Agent', new_callable=AsyncMock) as mock_agent_constructor:
-            # Ensure the agent instance within the service has a 'run' method if it's called
-            mock_agent_instance = AsyncMock()
+        with patch('app.services.text_processor.Agent') as mock_agent_constructor:
+            # Create a proper mock agent instance
+            mock_agent_instance = MagicMock()
             mock_agent_instance.run = AsyncMock() # Mock the 'run' method specifically
             mock_agent_constructor.return_value = mock_agent_instance
             
@@ -47,9 +48,9 @@ class TestTextProcessorService:
     async def test_summarize_text(self, service, sample_text):
         """Test text summarization."""
         # Mock AI response
-        service.agent.run = AsyncMock(
-            return_value=AsyncMock(data="This is a test summary of artificial intelligence.")
-        )
+        mock_response = MagicMock()
+        mock_response.data = "This is a test summary of artificial intelligence."
+        service.agent.run = AsyncMock(return_value=mock_response)
         
         request = TextProcessingRequest(
             text=sample_text,
@@ -74,9 +75,9 @@ class TestTextProcessorService:
             "confidence": 0.8,
             "explanation": "The text is informational and neutral in tone."
         }
-        service.agent.run = AsyncMock(
-            return_value=AsyncMock(data=json.dumps(sentiment_json))
-        )
+        mock_response = MagicMock()
+        mock_response.data = json.dumps(sentiment_json)
+        service.agent.run = AsyncMock(return_value=mock_response)
         
         request = TextProcessingRequest(
             text=sample_text,
@@ -95,9 +96,9 @@ class TestTextProcessorService:
     async def test_sentiment_analysis_invalid_json(self, service, sample_text):
         """Test sentiment analysis with invalid JSON response."""
         # Mock AI response with invalid JSON
-        service.agent.run = AsyncMock(
-            return_value=AsyncMock(data="Not valid JSON")
-        )
+        mock_response = MagicMock()
+        mock_response.data = "Not valid JSON"
+        service.agent.run = AsyncMock(return_value=mock_response)
         
         request = TextProcessingRequest(
             text=sample_text,
@@ -114,13 +115,13 @@ class TestTextProcessorService:
     async def test_key_points_extraction(self, service, sample_text):
         """Test key points extraction."""
         # Mock AI response
-        service.agent.run = AsyncMock(
-            return_value=AsyncMock(data="""
+        mock_response = MagicMock()
+        mock_response.data = """
             - AI is intelligence demonstrated by machines
             - Contrasts with natural intelligence of humans and animals
             - Focuses on intelligent agents and goal achievement
-            """)
-        )
+            """
+        service.agent.run = AsyncMock(return_value=mock_response)
         
         request = TextProcessingRequest(
             text=sample_text,
@@ -139,13 +140,13 @@ class TestTextProcessorService:
     async def test_question_generation(self, service, sample_text):
         """Test question generation."""
         # Mock AI response
-        service.agent.run = AsyncMock(
-            return_value=AsyncMock(data="""
+        mock_response = MagicMock()
+        mock_response.data = """
             1. What is artificial intelligence?
             2. How does AI differ from natural intelligence?
             3. What are intelligent agents?
-            """)
-        )
+            """
+        service.agent.run = AsyncMock(return_value=mock_response)
         
         request = TextProcessingRequest(
             text=sample_text,
@@ -164,9 +165,9 @@ class TestTextProcessorService:
     async def test_qa_processing(self, service, sample_text):
         """Test Q&A processing."""
         # Mock AI response
-        service.agent.run = AsyncMock(
-            return_value=AsyncMock(data="Artificial intelligence is intelligence demonstrated by machines.")
-        )
+        mock_response = MagicMock()
+        mock_response.data = "Artificial intelligence is intelligence demonstrated by machines."
+        service.agent.run = AsyncMock(return_value=mock_response)
         
         request = TextProcessingRequest(
             text=sample_text,
@@ -231,13 +232,12 @@ class TestTextProcessorCaching:
     @pytest.mark.asyncio
     async def test_cache_miss_processes_normally(self, service, sample_text):
         """Test that cache miss results in normal processing."""
-        # Mock cache to return None (cache miss)
         with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None):
             with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
                 # Mock AI response
-                service.agent.run = AsyncMock(
-                    return_value=AsyncMock(data="This is a test summary.")
-                )
+                mock_response = MagicMock()
+                mock_response.data = "This is a test summary."
+                service.agent.run = AsyncMock(return_value=mock_response)
                 
                 request = TextProcessingRequest(
                     text=sample_text,
@@ -303,9 +303,9 @@ class TestTextProcessorCaching:
         """Test caching with Q&A operation that includes question parameter."""
         with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None):
             with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                service.agent.run = AsyncMock(
-                    return_value=AsyncMock(data="AI is intelligence demonstrated by machines.")
-                )
+                mock_response = MagicMock()
+                mock_response.data = "AI is intelligence demonstrated by machines."
+                service.agent.run = AsyncMock(return_value=mock_response)
                 
                 request = TextProcessingRequest(
                     text=sample_text,
@@ -329,9 +329,9 @@ class TestTextProcessorCaching:
         """Test caching works with string operation (not enum)."""
         with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None):
             with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                service.agent.run = AsyncMock(
-                    return_value=AsyncMock(data="Test summary")
-                )
+                mock_response = MagicMock()
+                mock_response.data = "Test summary"
+                service.agent.run = AsyncMock(return_value=mock_response)
                 
                 # Create request with string operation (simulating test scenario)
                 request = TextProcessingRequest(
@@ -359,9 +359,9 @@ class TestTextProcessorCaching:
                 # Make cache_response succeed (the cache service handles errors internally)
                 mock_cache_store.return_value = None
                 
-                service.agent.run = AsyncMock(
-                    return_value=AsyncMock(data="Test summary")
-                )
+                mock_response = MagicMock()
+                mock_response.data = "Test summary"
+                service.agent.run = AsyncMock(return_value=mock_response)
                 
                 request = TextProcessingRequest(
                     text=sample_text,
@@ -378,9 +378,9 @@ class TestTextProcessorCaching:
         """Test that different options create different cache entries."""
         with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None) as mock_cache_get:
             with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                service.agent.run = AsyncMock(
-                    return_value=AsyncMock(data="Test summary")
-                )
+                mock_response = MagicMock()
+                mock_response.data = "Test summary"
+                service.agent.run = AsyncMock(return_value=mock_response)
                 
                 # First request with specific options
                 request1 = TextProcessingRequest(
