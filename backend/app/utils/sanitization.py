@@ -1,4 +1,5 @@
 import re
+from typing import Any, Dict
 
 def sanitize_input(text: str) -> str:
     """
@@ -11,7 +12,7 @@ def sanitize_input(text: str) -> str:
     # Remove characters that could be used to manipulate prompts or inject commands
     # This is a basic example; a more robust solution might involve more sophisticated pattern matching
     # or a library specifically designed for prompt sanitization.
-    text = re.sub(r'[<>{}\[\];|`'"]', '', text)
+    text = re.sub(r'[<>{}\[\];|`\'"]', '', text)
 
     # Optional: Escape special characters if they are needed for legitimate input
     # text = text.replace("\", "\\")
@@ -25,14 +26,14 @@ def sanitize_input(text: str) -> str:
 
     return text
 
-def sanitize_options(options: dict) -> dict:
+def sanitize_options(options: Dict[str, Any]) -> Dict[str, Any]:
     """
     Sanitizes options dictionary.
     """
     if not isinstance(options, dict):
         return {}
 
-    sanitized_options = {}
+    sanitized_options: Dict[str, Any] = {}
     for key, value in options.items():
         if isinstance(value, str):
             sanitized_options[key] = sanitize_input(value)

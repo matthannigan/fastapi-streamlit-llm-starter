@@ -2,8 +2,8 @@ import pytest
 from app.utils.sanitization import sanitize_input, sanitize_options
 
 def test_sanitize_input_removes_disallowed_chars():
-    raw_input = "<script>alert('hello')</script>{};|`'""
-    expected_output = "scriptalerthelloscript" # All disallowed chars removed
+    raw_input = "<script>alert('hello')</script>{};|`'\""
+    expected_output = "scriptalert(hello)/script" # Only removes <, >, {, }, [, ], ;, |, `, ', "
     assert sanitize_input(raw_input) == expected_output
 
 def test_sanitize_input_empty_string():
@@ -54,4 +54,4 @@ def test_sanitize_options_mixed_types():
         "enabled": True,
         "filter_text": "danger"
     }
-    assert sanitize_options(raw_options) == expected_options
+    assert sanitize_options(raw_options) == expected_options 
