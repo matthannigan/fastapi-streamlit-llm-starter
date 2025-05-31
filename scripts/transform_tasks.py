@@ -93,7 +93,11 @@ def main():
     )
     parser.add_argument(
         "--output", 
+<<<<<<< Updated upstream
         default="tasks.md",
+=======
+        default="tasks/tasks.md",
+>>>>>>> Stashed changes
         help="Output markdown file path (default: tasks.md)"
     )
     
