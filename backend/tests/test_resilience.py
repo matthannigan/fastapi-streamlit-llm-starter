@@ -7,11 +7,6 @@ import pytest
 import asyncio
 import time
 from unittest.mock import AsyncMock, Mock, patch
-import sys
-import os
-
-# Add the root directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.services.resilience import (
     AIServiceResilience,

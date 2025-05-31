@@ -1,10 +1,5 @@
 """Text processing service with resilience integration."""
 
-import sys
-import os
-# Add the root directory to Python path so we can import shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-
 import time
 import asyncio
 from typing import Dict, Any, List

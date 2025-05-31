@@ -8,11 +8,7 @@ import os
 import pytest
 import requests
 import json
-import sys
 from typing import Optional, Tuple, Union
-
-# Add the root directory to Python path so we can import app modules and shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Configuration
 BASE_URL = "http://localhost:8000"

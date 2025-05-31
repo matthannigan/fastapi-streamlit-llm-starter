@@ -1,14 +1,9 @@
 import pytest
 import pytest_asyncio
-import sys
-import os
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
-
-# Add the root directory to Python path so we can import app modules and shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.services.text_processor import TextProcessorService
 from app.config import settings as app_settings # Renamed to avoid conflict

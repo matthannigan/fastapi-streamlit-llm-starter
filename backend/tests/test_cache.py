@@ -1,14 +1,9 @@
 """Tests for AI response cache functionality."""
 
 import pytest
-import sys
-import os
 from unittest.mock import AsyncMock, patch, MagicMock
 import json
 from datetime import datetime
-
-# Add the root directory to Python path so we can import app modules and shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.services.cache import AIResponseCache, ai_cache
 
