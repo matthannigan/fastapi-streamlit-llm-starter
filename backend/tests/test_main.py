@@ -1,15 +1,10 @@
 """Tests for the main FastAPI application."""
 
 import pytest
-import sys
-import os
 from unittest.mock import patch, AsyncMock
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-
-# Add the root directory to Python path so we can import app modules and shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.main import app
 from app.config import settings

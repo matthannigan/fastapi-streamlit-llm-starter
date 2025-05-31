@@ -1,13 +1,8 @@
 import pytest
 import asyncio
-import sys
-import os
 from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
-
-# Add the root directory to Python path so we can import app modules and shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.main import app
 from shared.models import TextProcessingRequest, ProcessingOperation

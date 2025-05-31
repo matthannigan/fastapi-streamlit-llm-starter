@@ -1,0 +1,298 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Restructure `shared/` content into `shared/shared/` subdirectory",
+      "description": "Successfully restructured the `shared/` directory by moving its Python module files (`models.py`, `sample_data.py`, `examples.py`, `__init__.py`) into a new `project_root/shared/shared/` subdirectory. This restructuring establishes the correct layout for the `shared` module to be packaged as a distributable Python package, with all its content properly nested as required for subsequent tasks.",
+      "status": "done",
+      "dependencies": [],
+      "priority": "high",
+      "details": "The following steps were completed to restructure the `shared/` directory:\n1.  Created the new `project_root/shared/shared/` subdirectory.\n2.  Moved all existing Python files from `project_root/shared/` to `project_root/shared/shared/`:\n    - `models.py` (7.9KB, 201 lines)\n    - `sample_data.py` (14KB, 397 lines)\n    - `examples.py` (12KB, 352 lines)\n    - `__init__.py` (33B, 1 lines)\n3.  Cleaned up the old `__pycache__` directory from `project_root/shared/`.\n\nThe final directory structure is:\n```\nproject_root/shared/\n  shared/  # New subdirectory for package code\n    models.py      # Moved from original shared/\n    sample_data.py # Moved from original shared/\n    examples.py    # Moved from original shared/\n    __init__.py    # Moved from original shared/\n```\nThis change ensures the `shared` module's code is located within `shared/shared/`, as intended for packaging.",
+      "testStrategy": "The new directory structure was verified to ensure `project_root/shared/shared/` correctly contains the moved Python files (`models.py`, `sample_data.py`, `examples.py`, `__init__.py`). Manual inspection confirmed the correct file locations and the cleanup of the old `__pycache__` directory.",
+      "subtasks": [
+        {
+          "id": "1.1",
+          "title": "Create new shared/shared/ subdirectory",
+          "status": "done"
+        },
+        {
+          "id": "1.2",
+          "title": "Move Python files from shared/ to shared/shared/",
+          "details": "Moved models.py (7.9KB, 201 lines), sample_data.py (14KB, 397 lines), examples.py (12KB, 352 lines), __init__.py (33B, 1 lines)",
+          "status": "done"
+        },
+        {
+          "id": "1.3",
+          "title": "Clean up old __pycache__ directory from shared/",
+          "status": "done"
+        },
+        {
+          "id": "1.4",
+          "title": "Verify new structure and file locations",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Create `pyproject.toml` for the `shared` module distribution package",
+      "description": "The `pyproject.toml` for the `shared` module distribution package has been created and configured in `project_root/shared/pyproject.toml`. This includes definitions for the build system, project metadata (distribution name `my_project_shared_lib`), and setuptools package discovery for the `shared` importable package. A `README.md` has also been created, and the package build process has been validated. See subtasks for detailed completion notes.",
+      "status": "done",
+      "dependencies": [
+        1
+      ],
+      "priority": "high",
+      "details": "The implementation of `pyproject.toml` and `README.md` for the `shared` module is complete.\nKey outcomes:\n- **`project_root/shared/pyproject.toml`**: Fully configured with build system (setuptools, wheel), project metadata (name: `my_project_shared_lib`, version: `0.1.0`, Python >=3.8), dependencies (`pydantic>=2.0`), dev dependencies (`pytest`), and package discovery targeting `project_root/shared/shared/`.\n- **`project_root/shared/README.md`**: Comprehensive documentation covering overview, features, installation (editable mode), usage, and development setup.\n- **Validation**: Successful build of wheel (`my_project_shared_lib-0.1.0-py3-none-any.whl`) and sdist (`my_project_shared_lib-0.1.0.tar.gz`) artifacts in `project_root/shared/dist/`, confirming package structure, dependency handling, and import functionality.\nRefer to completed subtasks for specific details of each implemented component.",
+      "testStrategy": "Initial validation and build tests have been successfully completed. The `pyproject.toml` syntax was correct, and the package built successfully into wheel and sdist formats (`my_project_shared_lib-0.1.0-py3-none-any.whl`, `my_project_shared_lib-0.1.0.tar.gz`) in `project_root/shared/dist/`. Package structure, dependency handling, and import discovery were confirmed as per the requirements.",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Create `project_root/shared/pyproject.toml` with core configurations",
+          "description": "Successfully created `project_root/shared/pyproject.toml`. Key configurations include: build system (setuptools>=61.0, wheel), project metadata (name: 'my_project_shared_lib', version: '0.1.0', description, Python '>=3.8'), dependencies ('pydantic>=2.0'), dev dependencies ('pytest'), and package discovery for the 'shared' package in `project_root/shared/shared/`.",
+          "status": "done"
+        },
+        {
+          "id": 2,
+          "title": "Create `project_root/shared/README.md` with comprehensive documentation",
+          "description": "Successfully created `project_root/shared/README.md`. The README includes a package overview, features, installation instructions (including editable mode), usage examples, and development setup guidelines.",
+          "status": "done"
+        },
+        {
+          "id": 3,
+          "title": "Validate shared package build and integrity",
+          "description": "Successfully validated the `shared` package configuration. This involved: building the wheel (`my_project_shared_lib-0.1.0-py3-none-any.whl`) and source distribution (`my_project_shared_lib-0.1.0.tar.gz`) in `project_root/shared/dist/`, confirming proper package structure, verifying dependency handling, and ensuring correct package discovery for imports like `from shared.models import ...`.",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Add/Ensure `__init__.py` files in `shared/shared/` and its subdirectories",
+      "description": "Ensure that `project_root/shared/shared/__init__.py` exists. Also, ensure all subdirectories within `project_root/shared/shared/` that are intended to be Python modules (e.g., `models`, `utils`) contain an `__init__.py` file.",
+      "details": "Create empty `__init__.py` files if they do not exist:\n- `project_root/shared/shared/__init__.py` (makes `shared/shared` a package named `shared`)\n- `project_root/shared/shared/models/__init__.py`\n- `project_root/shared/shared/utils/__init__.py`\n- Any other subdirectory within `project_root/shared/shared/` that should be an importable module.",
+      "testStrategy": "Manual inspection of the `project_root/shared/shared/` directory structure to confirm presence of `__init__.py` files. After installing the package (Tasks 4/5), basic import tests like `python -c \"import shared; import shared.models; import shared.utils\"` should pass.",
+      "priority": "high",
+      "dependencies": [
+        1
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 4,
+      "title": "Update Backend Requirements for Editable `shared` Module Installation",
+      "description": "Modify the backend's requirements file (e.g., `backend/requirements.txt` or `backend/pyproject.toml` if used) to install the `shared` module distribution package in editable mode. This allows changes in `shared/` to be immediately available to the backend.",
+      "details": "If `backend/requirements.txt` is used, add or ensure the following line (adjust path if `backend` and `shared` are not siblings at `project_root`):\n```\n-e ../shared\n```\nIf backend uses `pyproject.toml` for its dependencies, add `my_project_shared_lib = {path = \"../shared\", editable = true}` under `[project.dependencies]` or `[tool.poetry.dependencies]` / `[tool.pdm.dev-dependencies]` etc., depending on the tool used by the backend project.",
+      "testStrategy": "Activate the backend's virtual environment. Run `pip install -r backend/requirements.txt` (or equivalent install command). Verify `my-project-shared-lib` (pip normalizes names) appears in `pip list` and points to the local `project_root/shared` directory. Attempt `python -c \"import shared.models\"` from the backend's environment; it should succeed if `shared.models` exists.",
+      "priority": "high",
+      "dependencies": [
+        2,
+        3
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 5,
+      "title": "Update Frontend Requirements for Editable `shared` Module Installation",
+      "description": "Modify the frontend's requirements file (e.g., `frontend/requirements.txt`) to install the `shared` module distribution package in editable mode, similar to the backend setup.",
+      "details": "If `frontend/requirements.txt` is used, add or ensure the following line (adjust path if `frontend` and `shared` are not siblings at `project_root`):\n```\n-e ../shared\n```\nIf frontend uses `pyproject.toml` for its dependencies, apply similar changes as described for the backend in Task 4, adjusting for the frontend's specific dependency management tool.",
+      "testStrategy": "Activate the frontend's virtual environment. Run `pip install -r frontend/requirements.txt` (or equivalent). Verify `my-project-shared-lib` appears in `pip list` and points to `project_root/shared`. Attempt `python -c \"import shared.models\"` from the frontend's environment.",
+      "priority": "high",
+      "dependencies": [
+        2,
+        3
+      ],
+      "status": "done",
+      "subtasks": []
+    },
+    {
+      "id": 6,
+      "title": "Refactor `backend/app/config.py` for Standard Imports",
+      "description": "Refactoring of backend files to remove `sys.path` manipulation and standardize imports has been successfully completed. This included `backend/app/main.py`, `backend/app/services/text_processor.py`, and multiple files in `backend/tests/`. Verification confirmed that `backend/app/config.py` did not have `sys.path` issues or problematic `shared` package imports, and an enhancement to import shared configuration models was deemed unnecessary. Standard imports now work correctly due to the editable install of the `shared` package (Task 4).",
+      "status": "done",
+      "dependencies": [
+        4
+      ],
+      "priority": "medium",
+      "details": "All refactoring and verification steps have been completed successfully:\n\n1.  **`backend/app/config.py` Verification**:\n    *   Confirmed: `backend/app/config.py` does NOT contain `sys.path` manipulation.\n    *   Confirmed: `backend/app/config.py` does NOT import from the `shared` package and does not require such imports.\n    *   The existing `Settings` class (using Pydantic `BaseSettings`) is appropriate.\n    *   Shared models (e.g., `ModelConfiguration`) are for API handling, not direct application configuration within `config.py`, so no enhancement was needed.\n\n2.  **`backend/app/main.py` Refactoring**:\n    *   Removed `sys.path.insert()` (lines 3-5).\n    *   Imports standardized.\n\n3.  **`backend/app/services/text_processor.py` Refactoring**:\n    *   Removed `sys.path.insert()` (lines 3-5).\n    *   Imports standardized.\n\n4.  **`backend/tests/` Files Refactoring**:\n    *   `sys.path` manipulation removed and imports standardized in the following files:\n        *   `backend/tests/conftest.py` (lines 3-9)\n        *   `backend/tests/test_main.py` (lines 4-11)\n        *   `backend/tests/test_text_processor.py` (lines 3-10)\n        *   `backend/tests/test_cache.py` (lines 4-10)\n        *   `backend/tests/test_manual_api.py` (lines 13-16)\n        *   `backend/tests/test_manual_auth.py` (lines 11-14)\n        *   `backend/tests/test_resilience.py` (lines 10-13)\n\n5.  **Overall Outcome**:\n    *   All `sys.path` manipulations have been removed from the backend.\n    *   Standard Python imports now work correctly, facilitated by the editable install of the `shared` package (completed in Task 4).\n    *   IDE autocompletion and type checking are expected to function properly.",
+      "testStrategy": "Verification confirmed the success of the refactoring:\n1.  **Application Startup**: The backend application starts and loads successfully without `ImportError` (e.g., `from app.main import app`).\n2.  **Configuration Loading**: `backend/app/config.py` loads correctly, and its settings are accessible (e.g., `from app.config import settings`).\n3.  **Shared Module Imports**: Imports from the `shared` package work as expected (e.g., `from shared.models import TextProcessingRequest`).\n4.  **Test Suite**: All unit tests, including those in `backend/tests/` (e.g., 16/16 tests in `test_models.py` passed), execute successfully with correct module imports (e.g., `import tests.conftest`).\n5.  **IDE Integration**: Standardized imports and the editable `shared` package install are expected to provide correct import resolution, autocompletion, and type checking in IDEs.",
+      "subtasks": [
+        {
+          "id": "subtask_6_1",
+          "title": "Verify `config.py`: No `sys.path` issues, no problematic shared imports",
+          "status": "completed"
+        },
+        {
+          "id": "subtask_6_2",
+          "title": "Refactor `main.py`: Remove `sys.path` hack, standardize imports",
+          "status": "completed"
+        },
+        {
+          "id": "subtask_6_3",
+          "title": "Refactor `text_processor.py`: Remove `sys.path` hack, standardize imports",
+          "status": "completed"
+        },
+        {
+          "id": "subtask_6_4",
+          "title": "Refactor `backend/tests/`: Remove `sys.path` hacks, standardize imports",
+          "status": "completed"
+        },
+        {
+          "id": "subtask_6_5",
+          "title": "Enhance `config.py`: Investigate/Import shared config models",
+          "status": "completed"
+        },
+        {
+          "id": "subtask_6_6",
+          "title": "Verify config.py has no sys.path issues",
+          "description": "Confirm that backend/app/config.py does not contain sys.path manipulation code and does not have problematic shared imports",
+          "details": "",
+          "status": "completed",
+          "dependencies": [],
+          "parentTaskId": 6
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Refactor `backend/app/services/text_processor.py` for Standard Imports",
+      "description": "Remove `sys.path` manipulation code from `backend/app/services/text_processor.py`. Update import statements to use standard Python imports for the `shared` package, after reviewing potential completions by Task 6.",
+      "status": "done",
+      "dependencies": [
+        4
+      ],
+      "priority": "medium",
+      "details": "This task involves ensuring `backend/app/services/text_processor.py` uses standard Python imports for the `shared` package and contains no `sys.path` manipulations. A preliminary review of Task 6's impact is required before proceeding with refactoring.",
+      "testStrategy": "Execute backend functionality that utilizes `TextProcessorService`. Verify no `ImportError`. Ensure IDEs correctly resolve imports. Run unit tests for `text_processor.py`.",
+      "subtasks": [
+        {
+          "id": "7_sub1",
+          "title": "Review Task 6 Impact on text_processor.py",
+          "description": "Investigate if Task 6 has already completed any refactoring (e.g., `sys.path` removal, standard import updates) in `backend/app/services/text_processor.py`.",
+          "status": "done"
+        },
+        {
+          "id": "7_sub2",
+          "title": "Conditionally Remove sys.path Manipulation",
+          "description": "Based on the review of Task 6, remove any `sys.path.insert(...)` calls from `backend/app/services/text_processor.py` if they are still present.",
+          "status": "done"
+        },
+        {
+          "id": "7_sub3",
+          "title": "Conditionally Update Import Statements",
+          "description": "Based on the review of Task 6, update imports from the `shared` module in `backend/app/services/text_processor.py` to use standard Python imports (e.g., `from shared.text_processing_utils import process_text`, `from shared.models import TextData`) if they still need updating.",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Refactor Backend Test Suite for Standard Imports",
+      "description": "Remove `sys.path` manipulation from `backend/tests/conftest.py` and all other backend test files. Update all imports of `shared` module code to use standard Python imports, relying on the editable installation, after reviewing potential completions by Task 6.",
+      "status": "done",
+      "dependencies": [
+        4
+      ],
+      "priority": "medium",
+      "details": "This task involves ensuring all backend test files (in `backend/tests/`, including `conftest.py`) use standard Python imports for the `shared` package and contain no `sys.path` manipulations. A preliminary review of Task 6's impact is required. Test runner configurations should also be verified.",
+      "testStrategy": "Run the entire backend test suite (e.g., `pytest backend/tests`). All tests should pass. Verify that individual test files can be run directly without `ImportError` related to the `shared` module. IDEs should correctly resolve imports in test files.",
+      "subtasks": [
+        {
+          "id": "8_sub1",
+          "title": "Review Task 6 Impact on Backend Tests",
+          "description": "Investigate if Task 6 has already completed any refactoring (e.g., `sys.path` removal, standard import updates) in `backend/tests/` files, including `conftest.py`.",
+          "status": "done"
+        },
+        {
+          "id": "8_sub2",
+          "title": "Conditionally Remove sys.path Manipulation in Backend Tests",
+          "description": "Based on the review of Task 6, remove all instances of `sys.path` manipulation from files in `backend/tests/` if still present.",
+          "status": "done"
+        },
+        {
+          "id": "8_sub3",
+          "title": "Conditionally Update Imports in Backend Tests",
+          "description": "Based on the review of Task 6, ensure all imports from the `shared` package in `backend/tests/` are direct (e.g., `from shared.models import User`) if they still need updating.",
+          "status": "done"
+        },
+        {
+          "id": "8_sub4",
+          "title": "Verify Backend Test Runner Configurations",
+          "description": "Verify test runner configurations (e.g., `pytest.ini`, `tox.ini`) do not rely on or set conflicting `PYTHONPATH` manipulations for `shared` module access. This check should be performed considering any findings from the Task 6 review.",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Refactor Frontend Files (`config.py`, `api_client.py`) for Standard Imports",
+      "description": "Remove `sys.path` manipulation from `frontend/app/config.py` and `frontend/app/utils/api_client.py`. Update import statements in these files to use standard Python imports for the `shared` package, after reviewing potential completions by Task 6.",
+      "status": "done",
+      "dependencies": [
+        5
+      ],
+      "priority": "medium",
+      "details": "This task involves ensuring `frontend/app/config.py` and `frontend/app/utils/api_client.py` use standard Python imports for the `shared` package and contain no `sys.path` manipulations. A preliminary review of Task 6's impact is required before proceeding with refactoring.",
+      "testStrategy": "Start the frontend application. Test functionalities that depend on `frontend/app/config.py` and `frontend/app/utils/api_client.py`. Verify no `ImportError`. Ensure IDEs correctly resolve imports in these files. Run any relevant unit or integration tests.",
+      "subtasks": [
+        {
+          "id": "9_sub1",
+          "title": "Review Task 6 Impact on Frontend Config/API Client",
+          "description": "Investigate if Task 6 has already completed any refactoring (e.g., `sys.path` removal, standard import updates) in `frontend/app/config.py` and `frontend/app/utils/api_client.py`.",
+          "status": "done"
+        },
+        {
+          "id": "9_sub2",
+          "title": "Conditionally Remove sys.path Manipulation (Frontend Config/API Client)",
+          "description": "Based on the review of Task 6, remove any `sys.path.insert(...)` calls from `frontend/app/config.py` and `frontend/app/utils/api_client.py` if they are still present.",
+          "status": "done"
+        },
+        {
+          "id": "9_sub3",
+          "title": "Conditionally Update Imports (Frontend Config/API Client)",
+          "description": "Based on the review of Task 6, update imports from the `shared` module in `frontend/app/config.py` (e.g., `from shared.config_schemas import FrontendConfig`) and `frontend/app/utils/api_client.py` (e.g., `from shared.api_models import ApiResponse, RequestPayload`) to use standard Python imports if they still need updating.",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Refactor Frontend Test Suite for Standard Imports",
+      "description": "Remove `sys.path` manipulation from `frontend/tests/conftest.py` (if it exists) and all other frontend test files. Update all imports of `shared` module code to use standard Python imports, after reviewing potential completions by Task 6.",
+      "status": "done",
+      "dependencies": [
+        5
+      ],
+      "priority": "medium",
+      "details": "This task involves ensuring all frontend test files (in `frontend/tests/`, including `conftest.py` if present) use standard Python imports for the `shared` package and contain no `sys.path` manipulations. A preliminary review of Task 6's impact is required. Test runner configurations should also be checked.",
+      "testStrategy": "Run the entire frontend test suite. All tests should pass. Verify that individual test files can be run directly without `ImportError` for the `shared` module. IDEs should correctly resolve imports in frontend test files.",
+      "subtasks": [
+        {
+          "id": "10_sub1",
+          "title": "Review Task 6 Impact on Frontend Tests",
+          "description": "Investigate if Task 6 has already completed any refactoring (e.g., `sys.path` removal, standard import updates) in `frontend/tests/` files, including `conftest.py` if present.",
+          "status": "done"
+        },
+        {
+          "id": "10_sub2",
+          "title": "Conditionally Remove sys.path Manipulation in Frontend Tests",
+          "description": "Based on the review of Task 6, remove all instances of `sys.path` manipulation from files in `frontend/tests/` if still present.",
+          "status": "done"
+        },
+        {
+          "id": "10_sub3",
+          "title": "Conditionally Update Imports in Frontend Tests",
+          "description": "Based on the review of Task 6, ensure all imports from the `shared` package in `frontend/tests/` are direct (e.g., `from shared.utils import format_data`) if they still need updating.",
+          "status": "done"
+        },
+        {
+          "id": "10_sub4",
+          "title": "Check Frontend Test Runner Configurations",
+          "description": "Check test runner configurations for any `PYTHONPATH` settings that might interfere with standard imports of the `shared` module. This check should be performed considering any findings from the Task 6 review.",
+          "status": "done"
+        }
+      ]
+    }
+  ]
+}

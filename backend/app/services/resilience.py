@@ -207,9 +207,20 @@ class ResilienceMetrics:
 class EnhancedCircuitBreaker(CircuitBreaker):
     """Enhanced circuit breaker with metrics and monitoring."""
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, failure_threshold=5, recovery_timeout=60, expected_exception=None, name=None):
+        # Store the parameters as instance attributes for compatibility
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.last_failure_time = None
         self.metrics = ResilienceMetrics()
-        super().__init__(*args, **kwargs)
+        
+        # Initialize the base CircuitBreaker
+        super().__init__(
+            failure_threshold=failure_threshold,
+            recovery_timeout=recovery_timeout,
+            expected_exception=expected_exception,
+            name=name
+        )
     
     def call(self, func, *args, **kwargs):
         """Override call to track metrics."""
@@ -223,24 +234,25 @@ class EnhancedCircuitBreaker(CircuitBreaker):
         except Exception as e:
             self.metrics.failed_calls += 1
             self.metrics.last_failure = datetime.now()
+            self.last_failure_time = datetime.now()
             raise
     
     def _update_state(self, state):
         """Override state updates to track circuit breaker events."""
-        old_state = self._state
+        old_state = getattr(self, '_state', None)
         super()._update_state(state)
         
         # Track state transitions
-        if old_state != self._state:
-            if self._state == 'open':
+        if old_state != getattr(self, '_state', None):
+            if getattr(self, '_state', None) == 'open':
                 self.metrics.circuit_breaker_opens += 1
-                logger.warning(f"Circuit breaker opened for {self._name}")
-            elif self._state == 'half-open':
+                logger.warning(f"Circuit breaker opened")
+            elif getattr(self, '_state', None) == 'half-open':
                 self.metrics.circuit_breaker_half_opens += 1
-                logger.info(f"Circuit breaker half-opened for {self._name}")
-            elif self._state == 'closed':
+                logger.info(f"Circuit breaker half-opened")
+            elif getattr(self, '_state', None) == 'closed':
                 self.metrics.circuit_breaker_closes += 1
-                logger.info(f"Circuit breaker closed for {self._name}")
+                logger.info(f"Circuit breaker closed")
 
 
 class AIServiceResilience:
@@ -336,7 +348,7 @@ class AIServiceResilience:
             self.circuit_breakers[name] = EnhancedCircuitBreaker(
                 failure_threshold=config.failure_threshold,
                 recovery_timeout=config.recovery_timeout,
-                expected_exception=classify_exception,
+                expected_exception=None,
                 name=name
             )
             logger.info(f"Created circuit breaker for operation: {name}")

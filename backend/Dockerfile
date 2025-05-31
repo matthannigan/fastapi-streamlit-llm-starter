@@ -9,9 +9,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy shared directory first for shared library installation
+COPY shared/ ./shared/
+
+# Copy backend requirements and install Python dependencies
+COPY backend/requirements.txt backend/requirements.docker.txt ./
+RUN pip install --no-cache-dir -r requirements.docker.txt
 
 # Add shared models to Python path
 ENV PYTHONPATH="${PYTHONPATH}:/app"
@@ -28,8 +31,12 @@ RUN pip install --no-cache-dir \
     pytest \
     pytest-asyncio
 
-# Copy application code
-COPY . .
+# Copy backend application code (excluding local shared directory)
+COPY backend/app/ ./app/
+COPY backend/tests/ ./tests/
+COPY backend/*.py ./
+COPY backend/*.ini ./
+COPY backend/*.txt ./
 
 # Expose port
 EXPOSE 8000
@@ -44,8 +51,12 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 # Production stage
 FROM base AS production
 
-# Copy application code
-COPY . .
+# Copy backend application code (excluding local shared directory)
+COPY backend/app/ ./app/
+COPY backend/tests/ ./tests/
+COPY backend/*.py ./
+COPY backend/*.ini ./
+COPY backend/*.txt ./
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser

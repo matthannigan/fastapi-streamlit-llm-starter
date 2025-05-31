@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Manual integration tests for the FastAPI application.
+"""Manual integration tests for API endpoints.
 
-These tests are designed to run against a live server instance
-and can be used for manual testing and validation.
+These tests require actual AI API keys and make real API calls.
+They are designed for manual testing and validation of the complete API flow.
 """
 
 import asyncio
@@ -10,11 +10,7 @@ import httpx
 import json
 import os
 import pytest
-import sys
 from typing import Dict, Any
-
-# Add the root directory to Python path so we can import app modules and shared modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Configuration
 BASE_URL = "http://localhost:8000"

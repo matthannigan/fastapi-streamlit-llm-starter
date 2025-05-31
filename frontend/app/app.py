@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """Main Streamlit application."""
 
-import sys
-import os
-# Add the parent directory to Python path so we can import app modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import streamlit as st
 import json
 import re

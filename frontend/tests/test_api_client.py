@@ -3,11 +3,6 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 import httpx
-import sys
-import os
-
-# Add the parent directory to Python path so we can import app modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.utils.api_client import APIClient, run_async
 from shared.models import ProcessingOperation

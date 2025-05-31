@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my_project_shared_lib" # Distribution name for pip
+version = "0.1.0"
+description = "Shared Python code for the project, including models and utilities."
+readme = "README.md" # Create a basic README.md in project_root/shared/
+requires-python = ">=3.8"
+# Add any direct dependencies of the shared code itself
+dependencies = [
+  "pydantic>=2.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+# This configuration tells setuptools to look for packages
+# in the current directory (i.e., 'project_root/shared/').
+# It will find the 'shared' subdirectory (structured in Task 1)
+# as a top-level package. This allows imports like 'from shared.models import ...'
+[tool.setuptools.packages.find]
+where = ["."] # Search for package directories within project_root/shared/
+include = ["shared*"] # This will find the 'project_root/shared/shared/' directory as the 'shared' package.
+exclude = []
+namespaces = false 
