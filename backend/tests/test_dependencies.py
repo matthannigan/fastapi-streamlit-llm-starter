@@ -4,10 +4,33 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import os
 
-from app.dependencies import get_cache_service, get_text_processor_service, get_settings
+from app.dependencies import get_cache_service, get_text_processor_service, get_settings, get_text_processor
 from app.services.cache import AIResponseCache
 from app.services.text_processor import TextProcessorService
 from app.config import Settings
+
+
+def create_mock_settings(**overrides):
+    """Create a properly mocked Settings object with all required attributes."""
+    mock_settings = MagicMock(spec=Settings)
+    
+    # Set default values for all required attributes
+    mock_settings.gemini_api_key = "test_gemini_key"
+    mock_settings.ai_model = "gemini-2.0-flash-exp"
+    mock_settings.redis_url = "redis://test:6379"
+    
+    # Resilience strategy attributes
+    mock_settings.summarize_resilience_strategy = "balanced"
+    mock_settings.sentiment_resilience_strategy = "aggressive"
+    mock_settings.key_points_resilience_strategy = "balanced"
+    mock_settings.questions_resilience_strategy = "balanced"
+    mock_settings.qa_resilience_strategy = "conservative"
+    
+    # Apply any overrides
+    for key, value in overrides.items():
+        setattr(mock_settings, key, value)
+    
+    return mock_settings
 
 
 class TestDependencyInjection:
@@ -128,7 +151,8 @@ class TestDependencyInjection:
         
     def test_get_text_processor_service_uses_injected_cache(self):
         """Test that get_text_processor_service uses the injected cache service."""
-        # Create a mock cache service
+        # Create mock dependencies
+        mock_settings = create_mock_settings()
         mock_cache = MagicMock(spec=AIResponseCache)
         
         # Mock the environment variable for text processor
@@ -137,11 +161,12 @@ class TestDependencyInjection:
             with patch('app.services.text_processor.Agent') as mock_agent:
                 mock_agent.return_value = MagicMock()
                 
-                # Get text processor service with mock cache
-                text_processor = get_text_processor_service(mock_cache)
+                # Get text processor service with mock dependencies
+                text_processor = get_text_processor_service(mock_settings, mock_cache)
                 
                 # Verify it's the right type and uses the injected cache
                 assert isinstance(text_processor, TextProcessorService)
+                assert text_processor.settings is mock_settings
                 assert text_processor.cache_service is mock_cache
                 
     @pytest.mark.asyncio        
@@ -165,8 +190,8 @@ class TestDependencyInjection:
                     # Get cache service using settings
                     cache_service = await get_cache_service(settings)
                     
-                    # Get text processor using cache service
-                    text_processor = get_text_processor_service(cache_service)
+                    # Get text processor using both settings and cache service
+                    text_processor = get_text_processor_service(settings, cache_service)
                     
                     # Verify the chain is properly connected
                     assert cache_service is mock_cache_instance
@@ -199,4 +224,145 @@ class TestDependencyInjection:
                 redis_url="redis://custom-redis:9999",
                 default_ttl=3600
             )
-            assert cache_service is mock_cache_instance 
+            assert cache_service is mock_cache_instance
+    
+    @pytest.mark.asyncio
+    async def test_get_text_processor_creates_configured_instance(self):
+        """Test that get_text_processor creates a properly configured TextProcessorService instance."""
+        # Create mock dependencies
+        mock_settings = create_mock_settings()
+        mock_cache = MagicMock(spec=AIResponseCache)
+        
+        # Mock environment variable for text processor
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+            # Mock the Agent constructor to avoid actual AI initialization
+            with patch('app.services.text_processor.Agent') as mock_agent:
+                mock_agent.return_value = MagicMock()
+                
+                # Call the async dependency provider
+                text_processor = await get_text_processor(mock_settings, mock_cache)
+                
+                # Verify it's the right type and uses the injected dependencies
+                assert isinstance(text_processor, TextProcessorService)
+                assert text_processor.settings is mock_settings
+                assert text_processor.cache_service is mock_cache
+
+    @pytest.mark.asyncio
+    async def test_get_text_processor_with_dependency_injection(self):
+        """Test that get_text_processor works with actual dependency injection chain."""
+        # Mock environment variable
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+            # Mock Agent constructor
+            with patch('app.services.text_processor.Agent') as mock_agent:
+                mock_agent.return_value = MagicMock()
+                
+                # Mock AIResponseCache to avoid actual Redis connection
+                with patch('app.dependencies.AIResponseCache') as mock_cache_class:
+                    mock_cache_instance = MagicMock(spec=AIResponseCache)
+                    mock_cache_instance.connect = AsyncMock()
+                    mock_cache_class.return_value = mock_cache_instance
+                    
+                    # Get settings (using real dependency)
+                    settings = get_settings()
+                    
+                    # Get cache service using real dependency
+                    cache_service = await get_cache_service(settings)
+                    
+                    # Get text processor using new async dependency
+                    text_processor = await get_text_processor(settings, cache_service)
+                    
+                    # Verify the chain is properly connected
+                    assert cache_service is mock_cache_instance
+                    assert isinstance(text_processor, TextProcessorService)
+                    assert text_processor.settings is settings
+                    assert text_processor.cache_service is cache_service
+
+    @pytest.mark.asyncio
+    async def test_get_text_processor_uses_injected_dependencies_correctly(self):
+        """Test that get_text_processor correctly uses both settings and cache dependencies."""
+        # Create specific mock objects with identifiable properties
+        mock_settings = create_mock_settings(
+            redis_url="redis://test-from-settings:6379",
+            gemini_api_key="test-gemini-key"
+        )
+        
+        mock_cache = MagicMock(spec=AIResponseCache)
+        mock_cache.redis_url = "redis://test-from-cache:6379"
+        
+        # Mock environment variable
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+            # Mock Agent constructor
+            with patch('app.services.text_processor.Agent') as mock_agent:
+                mock_agent.return_value = MagicMock()
+                
+                # Call the dependency provider
+                text_processor = await get_text_processor(mock_settings, mock_cache)
+                
+                # Verify both dependencies are correctly injected
+                assert text_processor.settings is mock_settings
+                assert text_processor.cache_service is mock_cache
+                
+                # Verify the correct instances are used (not mixed up)
+                assert text_processor.settings.redis_url == "redis://test-from-settings:6379"
+                assert text_processor.cache_service.redis_url == "redis://test-from-cache:6379"
+
+    @pytest.mark.asyncio
+    async def test_get_text_processor_async_behavior(self):
+        """Test that get_text_processor is properly async and can be awaited."""
+        # Create mock dependencies
+        mock_settings = create_mock_settings()
+        mock_cache = MagicMock(spec=AIResponseCache)
+        
+        # Mock environment variable
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+            # Mock Agent constructor
+            with patch('app.services.text_processor.Agent') as mock_agent:
+                mock_agent.return_value = MagicMock()
+                
+                # Verify this is an async function by calling it with await
+                import asyncio
+                
+                # This should not raise any errors if it's properly async
+                result = await get_text_processor(mock_settings, mock_cache)
+                
+                # Verify we get a valid result
+                assert isinstance(result, TextProcessorService)
+                
+                # Verify that calling without await would return a coroutine
+                coro = get_text_processor(mock_settings, mock_cache)
+                assert asyncio.iscoroutine(coro)
+                
+                # Clean up the coroutine
+                await coro
+
+    @pytest.mark.asyncio
+    async def test_get_text_processor_comparison_with_sync_version(self):
+        """Test that async get_text_processor produces equivalent results to sync version."""
+        # Create mock dependencies
+        mock_settings = create_mock_settings()
+        mock_cache = MagicMock(spec=AIResponseCache)
+        
+        # Mock environment variable
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+            # Mock Agent constructor to ensure consistent behavior
+            with patch('app.services.text_processor.Agent') as mock_agent:
+                mock_agent_instance = MagicMock()
+                mock_agent.return_value = mock_agent_instance
+                
+                # Get instances from both dependency providers
+                async_text_processor = await get_text_processor(mock_settings, mock_cache)
+                sync_text_processor = get_text_processor_service(mock_settings, mock_cache)
+                
+                # Both should be TextProcessorService instances
+                assert isinstance(async_text_processor, TextProcessorService)
+                assert isinstance(sync_text_processor, TextProcessorService)
+                
+                # Both should use the same dependencies
+                assert async_text_processor.settings is mock_settings
+                assert sync_text_processor.settings is mock_settings
+                assert async_text_processor.cache_service is mock_cache
+                assert sync_text_processor.cache_service is mock_cache
+                
+                # Both should have the same underlying agent (same mock instance)
+                assert async_text_processor.agent is mock_agent_instance
+                assert sync_text_processor.agent is mock_agent_instance 

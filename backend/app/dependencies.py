@@ -67,6 +67,24 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
     return cache
 
 
+async def get_text_processor(settings: Settings = Depends(get_settings), cache: AIResponseCache = Depends(get_cache_service)) -> TextProcessorService:
+    """
+    Asynchronous dependency provider for text processor service.
+    
+    Creates and returns a configured TextProcessorService instance that uses
+    the injected settings and cache service. This is the async version of the
+    text processor dependency provider.
+    
+    Args:
+        settings: Injected application settings dependency
+        cache: Injected cache service dependency
+        
+    Returns:
+        TextProcessorService: Configured text processor service instance
+    """
+    return TextProcessorService(settings=settings, cache=cache)
+
+
 def get_text_processor_service(
     settings: Settings = Depends(get_settings),
     cache_service: AIResponseCache = Depends(get_cache_service)

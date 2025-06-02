@@ -18,7 +18,7 @@ from shared.models import (
 from app.config import settings
 from app.services.text_processor import TextProcessorService
 from app.auth import verify_api_key, optional_verify_api_key
-from app.dependencies import get_cache_service, get_text_processor_service
+from app.dependencies import get_settings, get_cache_service, get_text_processor
 from app.services.cache import AIResponseCache
 from app.resilience_endpoints import resilience_router
 
@@ -126,7 +126,7 @@ async def invalidate_cache(pattern: str = "", cache_service: AIResponseCache = D
 async def process_text(
     request: TextProcessingRequest,
     api_key: str = Depends(verify_api_key),
-    text_processor: TextProcessorService = Depends(get_text_processor_service)
+    text_processor: TextProcessorService = Depends(get_text_processor)
 ):
     """Process text using AI models."""
     # Generate unique request ID for tracing
@@ -212,7 +212,7 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
 async def batch_process_text(
     request: BatchTextProcessingRequest,
     api_key: str = Depends(verify_api_key),
-    text_processor: TextProcessorService = Depends(get_text_processor_service)
+    text_processor: TextProcessorService = Depends(get_text_processor)
 ):
     """Process multiple text requests in batch."""
     # Generate unique request ID for tracing
