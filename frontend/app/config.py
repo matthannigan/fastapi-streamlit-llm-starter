@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     
     # Features
     show_debug_info: bool = os.getenv("SHOW_DEBUG_INFO", "false").lower() == "true"
-    max_text_length: int = int(os.getenv("MAX_TEXT_LENGTH", "10000"))
+    max_text_length: int = int(os.getenv("INPUT_MAX_LENGTH", "10000"))
     
     class Config:
         env_file = ".env"
