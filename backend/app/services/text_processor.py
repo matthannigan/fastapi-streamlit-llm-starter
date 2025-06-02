@@ -3,7 +3,7 @@
 import time
 import asyncio
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
 from pydantic_ai import Agent
 
@@ -18,7 +18,7 @@ from shared.models import (
     ProcessingStatus
 )
 from app.config import settings
-from app.services.cache import ai_cache
+from app.services.cache import AIResponseCache, ai_cache
 from app.utils.sanitization import sanitize_options, PromptSanitizer # Enhanced import
 from app.services.prompt_builder import create_safe_prompt
 from app.services.resilience import (
@@ -38,8 +38,13 @@ logger = logging.getLogger(__name__)
 class TextProcessorService:
     """Service for processing text using AI models with resilience patterns."""
     
-    def __init__(self):
-        """Initialize the text processor with AI agent and resilience."""
+    def __init__(self, cache_service: Optional[AIResponseCache] = None):
+        """
+        Initialize the text processor with AI agent and resilience.
+        
+        Args:
+            cache_service: Optional cache service instance. If None, uses global ai_cache.
+        """
         if not settings.gemini_api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
             
@@ -47,6 +52,9 @@ class TextProcessorService:
             model=settings.ai_model,
             system_prompt="You are a helpful AI assistant specialized in text analysis.",
         )
+        
+        # Use provided cache service or fall back to global instance
+        self.cache_service = cache_service or ai_cache
         
         # Initialize the advanced sanitizer
         self.sanitizer = PromptSanitizer()
@@ -77,7 +85,7 @@ class TextProcessorService:
         
         # Try to get cached response first
         operation_value = operation.value if hasattr(operation, 'value') else operation
-        cached_response = await ai_cache.get_cached_response(text, operation_value, {}, question)
+        cached_response = await self.cache_service.get_cached_response(text, operation_value, {}, question)
         
         if cached_response:
             logger.info(f"Using cached fallback for {operation}")
@@ -111,7 +119,7 @@ class TextProcessorService:
         
         # Check cache first
         operation_value = request.operation.value if hasattr(request.operation, 'value') else request.operation
-        cached_response = await ai_cache.get_cached_response(
+        cached_response = await self.cache_service.get_cached_response(
             request.text, 
             operation_value, 
             request.options or {}, 
@@ -188,7 +196,7 @@ class TextProcessorService:
                 logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: FALLBACK_USED")
             
             # Cache the successful response (even fallback responses)
-            await ai_cache.cache_response(
+            await self.cache_service.cache_response(
                 request.text,
                 operation_value,
                 request.options or {},

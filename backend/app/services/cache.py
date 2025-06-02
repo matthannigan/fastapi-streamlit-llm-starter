@@ -13,14 +13,20 @@ except ImportError:
     REDIS_AVAILABLE = False
     aioredis = None
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
 
 class AIResponseCache:
-    def __init__(self):
+    def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600):
+        """
+        Initialize AIResponseCache with injectable configuration.
+        
+        Args:
+            redis_url: Redis connection URL
+            default_ttl: Default time-to-live for cache entries in seconds
+        """
         self.redis = None
-        self.default_ttl = 3600  # 1 hour
+        self.redis_url = redis_url
+        self.default_ttl = default_ttl
         self.operation_ttls = {
             "summarize": 7200,    # 2 hours - summaries are stable
             "sentiment": 86400,   # 24 hours - sentiment rarely changes
@@ -37,16 +43,15 @@ class AIResponseCache:
             
         if not self.redis:
             try:
-                redis_url = getattr(settings, 'redis_url', 'redis://redis:6379')
                 self.redis = await aioredis.from_url(
-                    redis_url,
+                    self.redis_url,
                     decode_responses=True,
                     socket_connect_timeout=5,
                     socket_timeout=5
                 )
                 # Test connection
                 await self.redis.ping()
-                logger.info(f"Connected to Redis at {redis_url}")
+                logger.info(f"Connected to Redis at {self.redis_url}")
                 return True
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e} - caching disabled")
@@ -137,5 +142,5 @@ class AIResponseCache:
             logger.warning(f"Cache stats error: {e}")
             return {"status": "error", "error": str(e)}
 
-# Global cache instance
+# Global cache instance - this will be replaced by dependency injection
 ai_cache = AIResponseCache()

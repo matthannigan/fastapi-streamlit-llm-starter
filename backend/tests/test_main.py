@@ -1,7 +1,7 @@
 """Tests for the main FastAPI application."""
 
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
@@ -295,35 +295,57 @@ class TestCacheEndpoints:
         data = response.json()
         assert "message" in data
     
-    @patch('app.services.cache.ai_cache.get_cache_stats')
-    def test_cache_status_with_mock(self, mock_stats, client: TestClient):
+    def test_cache_status_with_mock(self, client: TestClient):
         """Test cache status with mocked cache stats."""
-        mock_stats.return_value = {
+        from app.dependencies import get_cache_service
+        from app.main import app
+        
+        # Create a mock cache service
+        mock_cache_service = MagicMock()
+        mock_cache_service.get_cache_stats = AsyncMock(return_value={
             "status": "connected",
             "keys": 42,
             "memory_used": "2.5M",
             "connected_clients": 3
-        }
+        })
         
-        response = client.get("/cache/status")
-        assert response.status_code == 200
+        # Override the dependency
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
         
-        data = response.json()
-        assert data["status"] == "connected"
-        assert data["keys"] == 42
-        assert data["memory_used"] == "2.5M"
-        assert data["connected_clients"] == 3
+        try:
+            response = client.get("/cache/status")
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["status"] == "connected"
+            assert data["keys"] == 42
+            assert data["memory_used"] == "2.5M"
+            assert data["connected_clients"] == 3
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    @patch('app.services.cache.ai_cache.invalidate_pattern')
-    def test_cache_invalidate_with_mock(self, mock_invalidate, client: TestClient):
+    def test_cache_invalidate_with_mock(self, client: TestClient):
         """Test cache invalidation with mocked cache."""
-        mock_invalidate.return_value = None
+        from app.dependencies import get_cache_service
+        from app.main import app
         
-        response = client.post("/cache/invalidate", params={"pattern": "summarize"})
-        assert response.status_code == 200
+        # Create a mock cache service
+        mock_cache_service = MagicMock()
+        mock_cache_service.invalidate_pattern = AsyncMock(return_value=None)
         
-        # Verify the cache invalidation was called with correct pattern
-        mock_invalidate.assert_called_once_with("summarize")
+        # Override the dependency
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
+        
+        try:
+            response = client.post("/cache/invalidate", params={"pattern": "summarize"})
+            assert response.status_code == 200
+            
+            # Verify the cache invalidation was called with correct pattern
+            mock_cache_service.invalidate_pattern.assert_called_once_with("summarize")
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
 
 class TestCacheIntegration:

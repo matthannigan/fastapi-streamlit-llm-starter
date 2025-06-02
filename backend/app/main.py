@@ -18,7 +18,8 @@ from shared.models import (
 from app.config import settings
 from app.services.text_processor import text_processor
 from app.auth import verify_api_key, optional_verify_api_key
-from app.services.cache import ai_cache
+from app.dependencies import get_cache_service
+from app.services.cache import AIResponseCache
 from app.resilience_endpoints import resilience_router
 
 
@@ -110,15 +111,15 @@ async def auth_status(api_key: str = Depends(verify_api_key)):
     }
 
 @app.get("/cache/status")
-async def cache_status():
+async def cache_status(cache_service: AIResponseCache = Depends(get_cache_service)):
     """Get cache status and statistics."""
-    stats = await ai_cache.get_cache_stats()
+    stats = await cache_service.get_cache_stats()
     return stats
 
 @app.post("/cache/invalidate")
-async def invalidate_cache(pattern: str = ""):
+async def invalidate_cache(pattern: str = "", cache_service: AIResponseCache = Depends(get_cache_service)):
     """Invalidate cache entries matching pattern."""
-    await ai_cache.invalidate_pattern(pattern)
+    await cache_service.invalidate_pattern(pattern)
     return {"message": f"Cache invalidated for pattern: {pattern}"}
 
 @app.post("/process", response_model=TextProcessingResponse)

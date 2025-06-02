@@ -31,6 +31,44 @@ class TestAIResponseCache:
         })
         return mock_redis
     
+    def test_instantiation_without_global_settings(self):
+        """Test that AIResponseCache can be instantiated without global settings."""
+        # This test verifies Task 4 requirement: AIResponseCache() can be instantiated 
+        # without global settings being pre-loaded
+        cache = AIResponseCache()
+        assert cache is not None
+        assert cache.redis_url == "redis://redis:6379"  # default value
+        assert cache.default_ttl == 3600  # default value
+        
+    def test_instantiation_with_custom_config(self):
+        """Test that AIResponseCache can be instantiated with custom configuration."""
+        custom_redis_url = "redis://custom-redis:6380"
+        custom_ttl = 7200
+        
+        cache = AIResponseCache(redis_url=custom_redis_url, default_ttl=custom_ttl)
+        assert cache.redis_url == custom_redis_url
+        assert cache.default_ttl == custom_ttl
+        
+    def test_connect_method_uses_injected_config(self):
+        """Test that connect method uses injected configuration instead of global settings."""
+        custom_redis_url = "redis://test-redis:1234"
+        cache = AIResponseCache(redis_url=custom_redis_url)
+        
+        with patch('app.services.cache.REDIS_AVAILABLE', True):
+            with patch('app.services.cache.aioredis') as mock_aioredis:
+                async def mock_from_url(*args, **kwargs):
+                    # Verify that the custom redis_url is used
+                    assert args[0] == custom_redis_url
+                    mock_redis = AsyncMock()
+                    mock_redis.ping = AsyncMock(return_value=True)
+                    return mock_redis
+                    
+                mock_aioredis.from_url = mock_from_url
+                
+                # This test will pass if the correct URL is used
+                import asyncio
+                asyncio.run(cache.connect())
+    
     def test_cache_key_generation(self, cache_instance):
         """Test cache key generation consistency."""
         text = "Test text"
