@@ -1,6 +1,8 @@
 """Main FastAPI application."""
 
 import logging
+import uuid
+import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -125,6 +127,11 @@ async def process_text(
     api_key: str = Depends(verify_api_key)
 ):
     """Process text using AI models."""
+    # Generate unique request ID for tracing
+    request_id = str(uuid.uuid4())
+    
+    logger.info(f"REQUEST_START - ID: {request_id}, Operation: {request.operation}, API Key: {api_key[:8]}...")
+    
     try:
         logger.info(f"Received request for operation: {request.operation}")
         
@@ -138,19 +145,23 @@ async def process_text(
         # Process the text
         result = await text_processor.process_text(request)
         
+        logger.info(f"REQUEST_END - ID: {request_id}, Status: SUCCESS, Operation: {request.operation}")
         logger.info("Request processed successfully")
         return result
         
     except HTTPException:
+        logger.info(f"REQUEST_END - ID: {request_id}, Status: HTTP_ERROR, Operation: {request.operation}")
         raise
     except ValueError as e:
         logger.warning(f"Validation error: {str(e)}")
+        logger.info(f"REQUEST_END - ID: {request_id}, Status: VALIDATION_ERROR, Operation: {request.operation}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
         logger.error(f"Processing error: {str(e)}")
+        logger.info(f"REQUEST_END - ID: {request_id}, Status: INTERNAL_ERROR, Operation: {request.operation}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process text"
@@ -201,6 +212,12 @@ async def batch_process_text(
     api_key: str = Depends(verify_api_key)
 ):
     """Process multiple text requests in batch."""
+    # Generate unique request ID for tracing
+    request_id = str(uuid.uuid4())
+    batch_id = request.batch_id or f"batch_{int(time.time())}"
+    
+    logger.info(f"BATCH_REQUEST_START - ID: {request_id}, Batch ID: {batch_id}, Count: {len(request.requests)}, API Key: {api_key[:8]}...")
+    
     try:
         if not request.requests:
             raise HTTPException(
@@ -218,13 +235,16 @@ async def batch_process_text(
         
         result = await text_processor.process_batch(request)
         
+        logger.info(f"BATCH_REQUEST_END - ID: {request_id}, Batch ID: {result.batch_id}, Status: SUCCESS, Completed: {result.completed}/{result.total_requests}")
         logger.info(f"Batch (batch_id: {result.batch_id}) completed: {result.completed}/{result.total_requests} successful for user (API key prefix): {api_key[:8]}...")
         return result
         
     except HTTPException:
+        logger.info(f"BATCH_REQUEST_END - ID: {request_id}, Batch ID: {batch_id}, Status: HTTP_ERROR")
         raise
     except Exception as e:
         logger.error(f"Batch processing error for user (API key prefix) {api_key[:8]}..., batch_id {request.batch_id or 'N/A'}: {str(e)}", exc_info=True)
+        logger.info(f"BATCH_REQUEST_END - ID: {request_id}, Batch ID: {batch_id}, Status: INTERNAL_ERROR")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process batch request due to an internal server error."

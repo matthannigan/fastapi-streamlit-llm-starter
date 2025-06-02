@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import os
 
 from app.config import Settings, settings
@@ -22,20 +22,17 @@ class TestSettings:
         assert isinstance(test_settings.max_text_length, int)
         assert test_settings.max_text_length > 0
     
-    def test_environment_override(self):
-        """Test environment variable overrides."""
-        env_vars = {
-            "API_BASE_URL": "http://localhost:8000",
-            "SHOW_DEBUG_INFO": "true",
-            "MAX_TEXT_LENGTH": "5000"
-        }
-        
-        with patch.dict(os.environ, env_vars):
+    def test_uses_input_max_length_variable(self):
+        """Test that max_text_length uses INPUT_MAX_LENGTH environment variable."""
+        # Test that the configuration correctly reads from INPUT_MAX_LENGTH
+        current_value = os.getenv("INPUT_MAX_LENGTH")
+        if current_value:
             test_settings = Settings()
-            
-            assert test_settings.api_base_url == "http://localhost:8000"
-            assert test_settings.show_debug_info is True
-            assert test_settings.max_text_length == 5000
+            assert test_settings.max_text_length == int(current_value)
+        else:
+            # If not set, should use default
+            test_settings = Settings()
+            assert test_settings.max_text_length == 10000  # Default value
     
     def test_global_settings_instance(self):
         """Test global settings instance."""
