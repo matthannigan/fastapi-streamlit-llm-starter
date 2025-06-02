@@ -88,12 +88,12 @@ def main():
     parser = argparse.ArgumentParser(description="Transform tasks.json to tasks.md")
     parser.add_argument(
         "--input", 
-        default="tasks/tasks.json",
+        default=".taskmaster/tasks/tasks.json",
         help="Input JSON file path (default: tasks/tasks.json)"
     )
     parser.add_argument(
         "--output", 
-        default="tasks/tasks.md",
+        default=".taskmaster/docs/tasks.md",
         help="Output markdown file path (default: tasks.md)"
     )
     
