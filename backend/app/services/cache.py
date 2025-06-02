@@ -141,6 +141,3 @@ class AIResponseCache:
         except Exception as e:
             logger.warning(f"Cache stats error: {e}")
             return {"status": "error", "error": str(e)}
-
-# Global cache instance - this will be replaced by dependency injection
-ai_cache = AIResponseCache()

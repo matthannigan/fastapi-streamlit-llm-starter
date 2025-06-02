@@ -17,8 +17,8 @@ from shared.models import (
     BatchProcessingItem,
     ProcessingStatus
 )
-from app.config import settings
-from app.services.cache import AIResponseCache, ai_cache
+from app.config import Settings
+from app.services.cache import AIResponseCache
 from app.utils.sanitization import sanitize_options, PromptSanitizer # Enhanced import
 from app.services.prompt_builder import create_safe_prompt
 from app.services.resilience import (
@@ -38,23 +38,27 @@ logger = logging.getLogger(__name__)
 class TextProcessorService:
     """Service for processing text using AI models with resilience patterns."""
     
-    def __init__(self, cache_service: Optional[AIResponseCache] = None):
+    def __init__(self, settings: Settings, cache: AIResponseCache):
         """
         Initialize the text processor with AI agent and resilience.
         
         Args:
-            cache_service: Optional cache service instance. If None, uses global ai_cache.
+            settings: Application settings instance for configuration.
+            cache: Cache service instance for storing AI responses.
         """
         if not settings.gemini_api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
             
+        self.settings = settings
+        self.cache = cache
+        
         self.agent = Agent(
             model=settings.ai_model,
             system_prompt="You are a helpful AI assistant specialized in text analysis.",
         )
         
-        # Use provided cache service or fall back to global instance
-        self.cache_service = cache_service or ai_cache
+        # Use provided cache service
+        self.cache_service = cache
         
         # Initialize the advanced sanitizer
         self.sanitizer = PromptSanitizer()
@@ -65,11 +69,11 @@ class TextProcessorService:
     def _configure_resilience_strategies(self):
         """Configure resilience strategies based on settings."""
         self.resilience_strategies = {
-            ProcessingOperation.SUMMARIZE: settings.summarize_resilience_strategy,
-            ProcessingOperation.SENTIMENT: settings.sentiment_resilience_strategy,
-            ProcessingOperation.KEY_POINTS: settings.key_points_resilience_strategy,
-            ProcessingOperation.QUESTIONS: settings.questions_resilience_strategy,
-            ProcessingOperation.QA: settings.qa_resilience_strategy,
+            ProcessingOperation.SUMMARIZE: self.settings.summarize_resilience_strategy,
+            ProcessingOperation.SENTIMENT: self.settings.sentiment_resilience_strategy,
+            ProcessingOperation.KEY_POINTS: self.settings.key_points_resilience_strategy,
+            ProcessingOperation.QUESTIONS: self.settings.questions_resilience_strategy,
+            ProcessingOperation.QA: self.settings.qa_resilience_strategy,
         }
         
         logger.info(f"Configured resilience strategies: {self.resilience_strategies}")
@@ -417,7 +421,7 @@ class TextProcessorService:
         logger.info(f"BATCH_PROCESSING_START - ID: {batch_processing_id}, Batch ID: {batch_id}, Total Requests: {total_requests}")
         logger.info(f"Processing batch of {total_requests} requests for batch_id: {batch_id}")
 
-        semaphore = asyncio.Semaphore(settings.BATCH_AI_CONCURRENCY_LIMIT)
+        semaphore = asyncio.Semaphore(self.settings.BATCH_AI_CONCURRENCY_LIMIT)
         tasks = []
 
         async def _process_single_request_in_batch(index: int, item_request: TextProcessingRequest) -> BatchProcessingItem:
@@ -480,7 +484,3 @@ class TextProcessorService:
     def get_resilience_metrics(self) -> Dict[str, Any]:
         """Get resilience metrics for this service."""
         return ai_resilience.get_all_metrics()
-
-
-# Global service instance
-text_processor = TextProcessorService()

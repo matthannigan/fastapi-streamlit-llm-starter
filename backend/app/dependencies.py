@@ -67,18 +67,22 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
     return cache
 
 
-def get_text_processor_service(cache_service: AIResponseCache = Depends(get_cache_service)) -> TextProcessorService:
+def get_text_processor_service(
+    settings: Settings = Depends(get_settings),
+    cache_service: AIResponseCache = Depends(get_cache_service)
+) -> TextProcessorService:
     """
     Dependency provider for text processor service.
     
     Creates and returns a configured TextProcessorService instance that uses
-    the injected cache service. Note: Does not use lru_cache since AIResponseCache
-    objects are not hashable.
+    the injected settings and cache service. Note: Does not use lru_cache since 
+    AIResponseCache objects are not hashable.
     
     Args:
+        settings: Injected application settings dependency
         cache_service: Injected cache service dependency
         
     Returns:
         TextProcessorService: Configured text processor service instance
     """
-    return TextProcessorService(cache_service=cache_service) 
+    return TextProcessorService(settings=settings, cache=cache_service) 

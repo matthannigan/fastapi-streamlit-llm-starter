@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any
 
 from app.services.text_processor import TextProcessorService
+from app.services.cache import AIResponseCache
 from app.config import settings as app_settings # Renamed to avoid conflict
 from shared.models import (
     TextProcessingRequest,
@@ -35,22 +36,37 @@ def mock_ai_agent():
     with patch('app.services.text_processor.Agent') as mock_agent:
         yield mock_agent
 
+@pytest.fixture
+def mock_cache_service():
+    """Mock cache service for testing."""
+    mock_cache = AsyncMock(spec=AIResponseCache)
+    mock_cache.get_cached_response = AsyncMock(return_value=None)
+    mock_cache.cache_response = AsyncMock()
+    return mock_cache
+
 # Minimal settings mock if TextProcessorService depends on it at init
 @pytest.fixture(scope="module", autouse=True)
 def mock_settings():
-    with patch('app.services.text_processor.settings') as mock_settings_obj:
-        mock_settings_obj.gemini_api_key = "test_api_key"
-        mock_settings_obj.ai_model = "gemini-2.0-flash-exp"  # Use valid model name
-        mock_settings_obj.summarize_resilience_strategy = "BALANCED"
-        mock_settings_obj.sentiment_resilience_strategy = "AGGRESSIVE"
-        mock_settings_obj.key_points_resilience_strategy = "BALANCED"
-        mock_settings_obj.questions_resilience_strategy = "BALANCED"
-        mock_settings_obj.qa_resilience_strategy = "CONSERVATIVE"
-        mock_settings_obj.BATCH_AI_CONCURRENCY_LIMIT = 5
-        yield mock_settings_obj
+    """Mock the Settings configuration class for tests."""
+    mock_settings_obj = MagicMock()
+    mock_settings_obj.gemini_api_key = "test_api_key"
+    mock_settings_obj.ai_model = "gemini-2.0-flash-exp"
+    mock_settings_obj.ai_temperature = 0.7
+    mock_settings_obj.redis_url = "redis://localhost:6379"
+    mock_settings_obj.resilience_enabled = True
+    mock_settings_obj.circuit_breaker_enabled = True
+    mock_settings_obj.retry_enabled = True
+    mock_settings_obj.default_resilience_strategy = "balanced"
+    mock_settings_obj.summarize_resilience_strategy = "balanced"
+    mock_settings_obj.sentiment_resilience_strategy = "aggressive"
+    mock_settings_obj.key_points_resilience_strategy = "balanced"
+    mock_settings_obj.questions_resilience_strategy = "balanced"
+    mock_settings_obj.qa_resilience_strategy = "conservative"
+    mock_settings_obj.BATCH_AI_CONCURRENCY_LIMIT = 5
+    yield mock_settings_obj
 
 @pytest_asyncio.fixture
-async def processor_service():
+async def processor_service(mock_cache_service, mock_settings):
     with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
         # Mock the Agent used by TextProcessorService to avoid actual AI calls
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
@@ -59,7 +75,7 @@ async def processor_service():
             mock_agent_instance.run = AsyncMock() # Mock the 'run' method specifically
             mock_agent_constructor.return_value = mock_agent_instance
             
-            service = TextProcessorService()
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
             # Mock the process_text method for batch tests, as we are unit testing process_batch
             service.process_text = AsyncMock()
             return service
@@ -68,10 +84,10 @@ class TestTextProcessorService:
     """Test the TextProcessorService class."""
     
     @pytest.fixture
-    def service(self, mock_ai_agent):
+    def service(self, mock_ai_agent, mock_cache_service, mock_settings):
         """Create a TextProcessorService instance."""
         with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            return TextProcessorService()
+            return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
     
     @pytest.mark.asyncio
     async def test_summarize_text(self, service, sample_text):
@@ -253,40 +269,44 @@ class TestTextProcessorCaching:
     """Test caching integration in TextProcessorService."""
     
     @pytest.fixture
-    def service(self, mock_ai_agent):
+    def service(self, mock_ai_agent, mock_cache_service, mock_settings):
         """Create a TextProcessorService instance."""
         with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            return TextProcessorService()
+            return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
     
     @pytest.mark.asyncio
     async def test_cache_miss_processes_normally(self, service, sample_text):
         """Test that cache miss results in normal processing."""
-        with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None):
-            with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                # Mock AI response
-                mock_response = MagicMock()
-                mock_response.data = "This is a test summary."
-                service.agent.run = AsyncMock(return_value=mock_response)
-                
-                request = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.SUMMARIZE,
-                    options={"max_length": 100}
-                )
-                
-                response = await service.process_text(request)
-                
-                # Verify normal processing occurred
-                assert response.success is True
-                assert response.result is not None
-                
-                # Verify response was cached
-                mock_cache_store.assert_called_once()
-                cache_args = mock_cache_store.call_args[0]
-                # Use strip() to handle whitespace differences
-                assert cache_args[0].strip() == sample_text.strip()  # text
-                assert cache_args[1] == "summarize"  # operation
-                assert cache_args[2] == {"max_length": 100}  # options
+        # Configure mock cache to return None (cache miss)
+        service.cache_service.get_cached_response.return_value = None
+        
+        # Mock AI response
+        mock_response = MagicMock()
+        mock_response.data = "This is a test summary."
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.SUMMARIZE,
+            options={"max_length": 100}
+        )
+        
+        response = await service.process_text(request)
+        
+        # Verify normal processing occurred
+        assert response.success is True
+        assert response.result is not None
+        
+        # Verify cache was checked
+        service.cache_service.get_cached_response.assert_called_once()
+        
+        # Verify response was cached
+        service.cache_service.cache_response.assert_called_once()
+        cache_args = service.cache_service.cache_response.call_args[0]
+        # Use strip() to handle whitespace differences
+        assert cache_args[0].strip() == sample_text.strip()  # text
+        assert cache_args[1] == "summarize"  # operation
+        assert cache_args[2] == {"max_length": 100}  # options
     
     @pytest.mark.asyncio
     async def test_cache_hit_returns_cached_response(self, service, sample_text):
@@ -302,181 +322,178 @@ class TestTextProcessorCaching:
         }
         
         # Mock cache to return cached response
-        with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=cached_response):
-            with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                # Create a proper mock for the agent
-                mock_agent = AsyncMock()
-                service.agent = mock_agent
-                
-                request = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.SUMMARIZE,
-                    options={"max_length": 100}
-                )
-                
-                response = await service.process_text(request)
-                
-                # Verify cached response was returned
-                assert response.success is True
-                assert response.result == "Cached summary result"
-                assert response.processing_time == 0.5
-                
-                # Verify AI agent was not called
-                mock_agent.run.assert_not_called()
-                
-                # Verify response was not cached again
-                mock_cache_store.assert_not_called()
+        service.cache_service.get_cached_response.return_value = cached_response
+        
+        # Create a proper mock for the agent
+        mock_agent = AsyncMock()
+        service.agent = mock_agent
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.SUMMARIZE,
+            options={"max_length": 100}
+        )
+        
+        response = await service.process_text(request)
+        
+        # Verify cached response was returned
+        assert response.success is True
+        assert response.result == "Cached summary result"
+        assert response.processing_time == 0.5
+        
+        # Verify AI agent was not called
+        mock_agent.run.assert_not_called()
+        
+        # Verify response was not cached again
+        service.cache_service.cache_response.assert_not_called()
     
     @pytest.mark.asyncio
     async def test_cache_with_qa_operation(self, service, sample_text):
         """Test caching with Q&A operation that includes question parameter."""
-        with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None):
-            with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                mock_response = MagicMock()
-                mock_response.data = "AI is intelligence demonstrated by machines."
-                service.agent.run = AsyncMock(return_value=mock_response)
-                
-                request = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.QA,
-                    question="What is AI?"
-                )
-                
-                response = await service.process_text(request)
-                
-                # Verify response was cached with question parameter
-                mock_cache_store.assert_called_once()
-                cache_args = mock_cache_store.call_args[0]
-                # Use strip() to handle whitespace differences
-                assert cache_args[0].strip() == sample_text.strip()  # text
-                assert cache_args[1] == "qa"  # operation
-                assert cache_args[2] == {}  # options (empty for QA)
-                assert cache_args[4] == "What is AI?"  # question
+        # Configure cache miss
+        service.cache_service.get_cached_response.return_value = None
+        
+        mock_response = MagicMock()
+        mock_response.data = "AI is intelligence demonstrated by machines."
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.QA,
+            question="What is AI?"
+        )
+        
+        response = await service.process_text(request)
+        
+        # Verify response was cached with question parameter
+        service.cache_service.cache_response.assert_called_once()
+        cache_args = service.cache_service.cache_response.call_args[0]
+        # Use strip() to handle whitespace differences
+        assert cache_args[0].strip() == sample_text.strip()  # text
+        assert cache_args[1] == "qa"  # operation
+        assert cache_args[2] == {}  # options (empty for QA)
+        assert cache_args[4] == "What is AI?"  # question
     
     @pytest.mark.asyncio
     async def test_cache_with_string_operation(self, service, sample_text):
         """Test caching works with string operation (not enum)."""
-        with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None):
-            with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                mock_response = MagicMock()
-                mock_response.data = "Test summary"
-                service.agent.run = AsyncMock(return_value=mock_response)
-                
-                # Create request with string operation (simulating test scenario)
-                request = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.SUMMARIZE
-                )
-                # Manually set operation as string to test the fix
-                request.operation = "summarize"
-                
-                response = await service.process_text(request)
-                
-                # Verify it works without AttributeError
-                assert response.success is True
-                mock_cache_store.assert_called_once()
+        # Configure cache miss
+        service.cache_service.get_cached_response.return_value = None
+        
+        mock_response = MagicMock()
+        mock_response.data = "Test summary"
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        # Create request with string operation (simulating test scenario)
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.SUMMARIZE
+        )
+        # Manually set operation as string to test the fix
+        request.operation = "summarize"
+        
+        response = await service.process_text(request)
+        
+        # Verify it works without AttributeError
+        assert response.success is True
+        service.cache_service.cache_response.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_cache_error_handling(self, service, sample_text):
         """Test that cache errors don't break normal processing."""
-        # Mock cache methods to not raise exceptions during the actual cache calls
-        # but simulate the error handling path
-        with patch('app.services.text_processor.ai_cache.get_cached_response') as mock_cache_get:
-            with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                # Make get_cached_response return None (cache miss) without error
-                mock_cache_get.return_value = None
-                # Make cache_response succeed (the cache service handles errors internally)
-                mock_cache_store.return_value = None
-                
-                mock_response = MagicMock()
-                mock_response.data = "Test summary"
-                service.agent.run = AsyncMock(return_value=mock_response)
-                
-                request = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.SUMMARIZE
-                )
-                
-                # Should not raise exception and should process normally
-                response = await service.process_text(request)
-                assert response.success is True
-                assert response.result is not None
+        # Configure cache to return None (cache miss)
+        service.cache_service.get_cached_response.return_value = None
+        
+        mock_response = MagicMock()
+        mock_response.data = "Test summary"
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.SUMMARIZE
+        )
+        
+        # Should not raise exception and should process normally
+        response = await service.process_text(request)
+        assert response.success is True
+        assert response.result is not None
     
     @pytest.mark.asyncio
     async def test_cache_with_different_options(self, service, sample_text):
         """Test that different options create different cache entries."""
-        with patch('app.services.text_processor.ai_cache.get_cached_response', return_value=None) as mock_cache_get:
-            with patch('app.services.text_processor.ai_cache.cache_response') as mock_cache_store:
-                mock_response = MagicMock()
-                mock_response.data = "Test summary"
-                service.agent.run = AsyncMock(return_value=mock_response)
-                
-                # First request with specific options
-                request1 = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.SUMMARIZE,
-                    options={"max_length": 100}
-                )
-                await service.process_text(request1)
-                
-                # Second request with different options
-                request2 = TextProcessingRequest(
-                    text=sample_text,
-                    operation=ProcessingOperation.SUMMARIZE,
-                    options={"max_length": 200}
-                )
-                await service.process_text(request2)
-                
-                # Verify cache was checked twice with different parameters
-                assert mock_cache_get.call_count == 2
-                assert mock_cache_store.call_count == 2
-                
-                # Verify different options were used
-                call1_options = mock_cache_get.call_args_list[0][0][2]
-                call2_options = mock_cache_get.call_args_list[1][0][2]
-                assert call1_options != call2_options
+        # Configure cache miss for both requests
+        service.cache_service.get_cached_response.return_value = None
+        
+        mock_response = MagicMock()
+        mock_response.data = "Test summary"
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        # First request with specific options
+        request1 = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.SUMMARIZE,
+            options={"max_length": 100}
+        )
+        await service.process_text(request1)
+        
+        # Second request with different options
+        request2 = TextProcessingRequest(
+            text=sample_text,
+            operation=ProcessingOperation.SUMMARIZE,
+            options={"max_length": 200}
+        )
+        await service.process_text(request2)
+        
+        # Verify cache was checked twice with different parameters
+        assert service.cache_service.get_cached_response.call_count == 2
+        assert service.cache_service.cache_response.call_count == 2
+        
+        # Verify different options were used
+        call1_options = service.cache_service.get_cached_response.call_args_list[0][0][2]
+        call2_options = service.cache_service.get_cached_response.call_args_list[1][0][2]
+        assert call1_options != call2_options
 
 
 class TestServiceInitialization:
     """Test service initialization."""
     
-    def test_initialization_without_api_key(self):
+    def test_initialization_without_api_key(self, mock_cache_service, mock_settings):
         """Test initialization fails without API key."""
-        with patch('app.services.text_processor.settings') as mock_settings:
-            mock_settings.gemini_api_key = ""
-            with pytest.raises(ValueError, match="GEMINI_API_KEY"):
-                TextProcessorService()
+        # Create a mock settings with empty API key
+        mock_settings.gemini_api_key = ""
+        with pytest.raises(ValueError, match="GEMINI_API_KEY"):
+            TextProcessorService(settings=mock_settings, cache=mock_cache_service)
     
-    def test_initialization_with_api_key(self, mock_ai_agent):
+    def test_initialization_with_api_key(self, mock_ai_agent, mock_cache_service, mock_settings):
         """Test successful initialization with API key."""
+        # Ensure the mock settings has a valid API key
+        mock_settings.gemini_api_key = "test-api-key"
         with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            service = TextProcessorService()
-            assert service.agent is not None
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            assert service.settings is not None
+            assert service.cache is not None
+            assert service.cache_service is not None
 
 
 class TestTextProcessorSanitization:
-    """Test sanitization integration in TextProcessorService."""
+    """Test prompt sanitization in TextProcessorService."""
     
     @pytest.fixture
-    def text_processor_service(self):
+    def text_processor_service(self, mock_cache_service, mock_settings):
         # Reset mocks for each test if necessary, or ensure Agent is stateless
         # For pydantic-ai Agent, it's typically instantiated with config.
         # If it were truly stateful across calls in an undesired way, we'd re-init or mock reset.
-        with patch('app.services.text_processor.Agent') as MockAgent:
-            mock_agent_instance = MockAgent.return_value
-            mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
-
-            # Patch cache
-            with patch('app.services.text_processor.ai_cache') as mock_cache:
-                mock_cache.get_cached_response = AsyncMock(return_value=None)
-                mock_cache.cache_response = AsyncMock()
-
-                # Patch resilience decorators if they interfere with direct testing of underlying methods
-                # For now, we assume they pass through or we test the _with_resilience methods
-                # which in turn call the core logic.
-
-                service = TextProcessorService()
-                service.agent = mock_agent_instance # Ensure our mock is used
+        
+        # Mock the Agent to avoid actual AI API calls
+        with patch('app.services.text_processor.Agent') as mock_agent_constructor:
+            mock_agent_instance = MagicMock()
+            mock_agent_instance.run = AsyncMock()
+            mock_agent_constructor.return_value = mock_agent_instance
+            
+            # Mock os.environ to provide GEMINI_API_KEY
+            with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+                service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+                service.agent = mock_agent_instance  # Ensure the agent is mocked
                 return service
 
     @pytest.mark.asyncio
@@ -613,20 +630,22 @@ class TestTextProcessorSanitization:
 
 class TestPRDAttackScenarios:
     """
-    Specific tests for attack scenarios that could realistically be encountered
-    based on common prompt injection patterns and security vulnerabilities.
+    Test the AI system's resistance to sophisticated prompt injection and security attacks
+    as outlined in the PRD security requirements.
     """
     
     @pytest.fixture
-    def text_processor_service(self):
-        """Create a TextProcessorService instance for attack scenario testing."""
-        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
-            with patch('app.services.text_processor.Agent') as mock_agent_constructor:
-                mock_agent_instance = MagicMock()
-                mock_agent_instance.run = AsyncMock()
-                mock_agent_constructor.return_value = mock_agent_instance
-                
-                service = TextProcessorService()
+    def text_processor_service(self, mock_cache_service, mock_settings):
+        # Mock the Agent to avoid actual AI API calls
+        with patch('app.services.text_processor.Agent') as mock_agent_constructor:
+            mock_agent_instance = MagicMock()
+            mock_agent_instance.run = AsyncMock()
+            mock_agent_constructor.return_value = mock_agent_instance
+            
+            # Mock os.environ to provide GEMINI_API_KEY
+            with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+                service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+                service.agent = mock_agent_instance  # Ensure the agent is mocked
                 return service
     
     @pytest.mark.asyncio
@@ -897,20 +916,22 @@ class TestPRDAttackScenarios:
 
 class TestSecurityTestConsolidation:
     """
-    Tests to ensure proper consolidation and coverage of all security components.
-    This class validates that all security layers work together effectively.
+    Comprehensive security testing that validates all security components work together
+    to provide defense-in-depth against various attack vectors.
     """
     
     @pytest.fixture
-    def text_processor_service(self):
-        """Create a TextProcessorService instance for consolidation testing."""
-        with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
-            with patch('app.services.text_processor.Agent') as mock_agent_constructor:
-                mock_agent_instance = MagicMock()
-                mock_agent_instance.run = AsyncMock()
-                mock_agent_constructor.return_value = mock_agent_instance
-                
-                service = TextProcessorService()
+    def text_processor_service(self, mock_cache_service, mock_settings):
+        """Create a TextProcessorService instance for comprehensive security testing."""
+        with patch('app.services.text_processor.Agent') as mock_agent_constructor:
+            mock_agent_instance = MagicMock()
+            mock_agent_instance.run = AsyncMock()
+            mock_agent_constructor.return_value = mock_agent_instance
+            
+            # Mock os.environ to provide GEMINI_API_KEY
+            with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
+                service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+                service.agent = mock_agent_instance  # Ensure the agent is mocked
                 return service
     
     @pytest.mark.asyncio

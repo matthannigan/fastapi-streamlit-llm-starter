@@ -184,7 +184,9 @@ def mock_ai_agent():
                         return AsyncMock(data=f"This is a summary about {' and '.join(key_words[:2])}.")
                 return AsyncMock(data="This is a test summary response from the mocked AI.")
     
-    # Mock the agent instance directly on the text_processor service
-    with patch('app.services.text_processor.text_processor.agent') as mock_agent:
-        mock_agent.run = AsyncMock(side_effect=smart_run)
-        yield mock_agent 
+    # Mock the Agent class constructor to return a mock agent with the smart_run method
+    with patch('app.services.text_processor.Agent') as mock_agent_class:
+        mock_agent_instance = AsyncMock()
+        mock_agent_instance.run = AsyncMock(side_effect=smart_run)
+        mock_agent_class.return_value = mock_agent_instance
+        yield mock_agent_instance 
