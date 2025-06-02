@@ -3,9 +3,13 @@
 import time
 import asyncio
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, TYPE_CHECKING
 import logging
 from pydantic_ai import Agent
+
+# Only import for type checking to avoid circular dependencies
+if TYPE_CHECKING:
+    from app.services.cache import AIResponseCache
 
 from shared.models import (
     ProcessingOperation,
@@ -18,7 +22,6 @@ from shared.models import (
     ProcessingStatus
 )
 from app.config import Settings
-from app.services.cache import AIResponseCache
 from app.utils.sanitization import sanitize_options, PromptSanitizer # Enhanced import
 from app.services.prompt_builder import create_safe_prompt
 from app.services.resilience import (
@@ -38,7 +41,7 @@ logger = logging.getLogger(__name__)
 class TextProcessorService:
     """Service for processing text using AI models with resilience patterns."""
     
-    def __init__(self, settings: Settings, cache: AIResponseCache):
+    def __init__(self, settings: Settings, cache: "AIResponseCache"):
         """
         Initialize the text processor with AI agent and resilience.
         
