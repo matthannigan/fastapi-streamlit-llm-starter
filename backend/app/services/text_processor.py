@@ -46,14 +46,14 @@ class TextProcessorService:
             settings: Application settings instance for configuration.
             cache: Cache service instance for storing AI responses.
         """
-        if not settings.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
-            
         self.settings = settings
         self.cache = cache
         
+        if not self.settings.gemini_api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is required")
+        
         self.agent = Agent(
-            model=settings.ai_model,
+            model=self.settings.ai_model,
             system_prompt="You are a helpful AI assistant specialized in text analysis.",
         )
         
