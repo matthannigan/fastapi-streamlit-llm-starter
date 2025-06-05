@@ -96,7 +96,37 @@ def mock_ai_response():
 @pytest.fixture
 def mock_processor():
     """Mock TextProcessorService for testing."""
-    return AsyncMock(spec=TextProcessorService)
+    mock = AsyncMock(spec=TextProcessorService)
+    
+    # Configure default return values for process_text method
+    async def mock_process_text(request):
+        from shared.models import TextProcessingResponse, SentimentResult
+        
+        response = TextProcessingResponse(
+            operation=request.operation,
+            processing_time=0.1,
+            metadata={"word_count": len(request.text.split())}
+        )
+        
+        if request.operation == "summarize":
+            response.result = "Mock summary of the text"
+        elif request.operation == "sentiment":
+            response.sentiment = SentimentResult(
+                sentiment="positive",
+                confidence=0.85,
+                explanation="Mock sentiment analysis"
+            )
+        elif request.operation == "qa":
+            response.result = "Mock answer to the question"
+        elif request.operation == "key_points":
+            response.key_points = ["Mock key point 1", "Mock key point 2"]
+        elif request.operation == "questions":
+            response.questions = ["Mock question 1?", "Mock question 2?"]
+        
+        return response
+    
+    mock.process_text = AsyncMock(side_effect=mock_process_text)
+    return mock
 
 @pytest.fixture(autouse=True)
 def mock_ai_agent():

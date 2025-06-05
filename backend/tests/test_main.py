@@ -8,13 +8,17 @@ from httpx import AsyncClient
 
 from app.main import app
 from app.config import settings
+from app.dependencies import get_text_processor
+from app.services.text_processor import TextProcessorService
 from shared.models import (
     ProcessingOperation,
     BatchTextProcessingRequest,
     BatchTextProcessingResponse,
     TextProcessingRequest,
     BatchProcessingItem,
-    ProcessingStatus
+    ProcessingStatus,
+    TextProcessingResponse,
+    SentimentResult
 )
 
 # Default headers for authenticated requests
@@ -56,95 +60,176 @@ class TestOperationsEndpoint:
 class TestProcessEndpoint:
     """Test text processing endpoint."""
     
-    def test_process_summarize(self, authenticated_client, sample_text):
-        """Test text summarization with authentication."""
-        request_data = {
-            "text": sample_text,
-            "operation": "summarize",
-            "options": {"max_length": 100}
-        }
+    def test_process_summarize(self, authenticated_client, sample_text, mock_processor):
+        """Test text summarization with authentication using DI override."""
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "summarize"
-        assert "result" in data
-        assert "processing_time" in data
-        assert "timestamp" in data
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "summarize",
+                "options": {"max_length": 100}
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "summarize"
+            assert "result" in data
+            assert "processing_time" in data
+            assert "timestamp" in data
+            
+            # Verify the mock was called
+            mock_processor.process_text.assert_called_once()
+            call_args = mock_processor.process_text.call_args[0][0]
+            assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
+            assert call_args.operation == ProcessingOperation.SUMMARIZE
+            assert call_args.options == {"max_length": 100}
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_sentiment(self, authenticated_client, sample_text):
-        """Test sentiment analysis with authentication."""
-        request_data = {
-            "text": sample_text,
-            "operation": "sentiment"
-        }
+    def test_process_sentiment(self, authenticated_client, sample_text, mock_processor):
+        """Test sentiment analysis with authentication using DI override."""
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "sentiment"
-        assert "sentiment" in data
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "sentiment"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "sentiment"
+            assert "sentiment" in data
+            
+            # Verify the mock was called
+            mock_processor.process_text.assert_called_once()
+            call_args = mock_processor.process_text.call_args[0][0]
+            assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
+            assert call_args.operation == ProcessingOperation.SENTIMENT
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_qa_without_question(self, authenticated_client, sample_text):
+    def test_process_qa_without_question(self, authenticated_client, sample_text, mock_processor):
         """Test Q&A without question returns error."""
-        request_data = {
-            "text": sample_text,
-            "operation": "qa"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 400
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "qa"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 400
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_qa_with_question(self, authenticated_client, sample_text):
-        """Test Q&A with question and authentication."""
-        request_data = {
-            "text": sample_text,
-            "operation": "qa",
-            "question": "What is artificial intelligence?"
-        }
+    def test_process_qa_with_question(self, authenticated_client, sample_text, mock_processor):
+        """Test Q&A with question and authentication using DI override."""
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "qa"
-        assert "result" in data
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "qa",
+                "question": "What is artificial intelligence?"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "qa"
+            assert "result" in data
+            
+            # Verify the mock was called
+            mock_processor.process_text.assert_called_once()
+            call_args = mock_processor.process_text.call_args[0][0]
+            assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
+            assert call_args.operation == ProcessingOperation.QA
+            assert call_args.question == "What is artificial intelligence?"
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_invalid_operation(self, authenticated_client, sample_text):
+    def test_process_invalid_operation(self, authenticated_client, sample_text, mock_processor):
         """Test invalid operation returns error."""
-        request_data = {
-            "text": sample_text,
-            "operation": "invalid_operation"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 422  # Validation error
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "invalid_operation"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 422  # Validation error
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_empty_text(self, authenticated_client):
+    def test_process_empty_text(self, authenticated_client, mock_processor):
         """Test empty text returns validation error."""
-        request_data = {
-            "text": "",
-            "operation": "summarize"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 422
+        try:
+            request_data = {
+                "text": "",
+                "operation": "summarize"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 422
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_text_too_long(self, authenticated_client):
+    def test_process_text_too_long(self, authenticated_client, mock_processor):
         """Test text too long returns validation error."""
-        long_text = "A" * 15000  # Exceeds max length
-        request_data = {
-            "text": long_text,
-            "operation": "summarize"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 422
+        try:
+            long_text = "A" * 15000  # Exceeds max length
+            request_data = {
+                "text": long_text,
+                "operation": "summarize"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 422
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
 class TestCORS:
     """Test CORS configuration."""
