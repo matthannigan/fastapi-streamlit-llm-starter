@@ -437,7 +437,7 @@ class TestBatchProcessEndpoint:
 
     def test_batch_process_success(self, authenticated_client: TestClient, sample_text):
         """Test successful batch processing."""
-        from app.dependencies import get_text_processor_service
+        from app.dependencies import get_text_processor
         from app.main import app
         
         request_payload_dict = {
@@ -472,7 +472,7 @@ class TestBatchProcessEndpoint:
         mock_text_processor.process_batch = AsyncMock(return_value=mock_batch_response_obj)
         
         # Override the dependency
-        app.dependency_overrides[get_text_processor_service] = lambda: mock_text_processor
+        app.dependency_overrides[get_text_processor] = lambda: mock_text_processor
         
         try:
             response = authenticated_client.post("/batch_process", json=request_payload_dict)
@@ -563,7 +563,7 @@ class TestBatchProcessEndpoint:
 
     def test_batch_process_service_exception(self, authenticated_client: TestClient, sample_text):
         """Test batch processing when the service raises an exception."""
-        from app.dependencies import get_text_processor_service
+        from app.dependencies import get_text_processor
         from app.main import app
         
         # Create a mock text processor service that raises an exception
@@ -571,7 +571,7 @@ class TestBatchProcessEndpoint:
         mock_text_processor.process_batch = AsyncMock(side_effect=Exception("Service layer error"))
         
         # Override the dependency
-        app.dependency_overrides[get_text_processor_service] = lambda: mock_text_processor
+        app.dependency_overrides[get_text_processor] = lambda: mock_text_processor
         
         try:
             payload = {
