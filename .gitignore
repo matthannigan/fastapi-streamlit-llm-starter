@@ -216,3 +216,7 @@ node_modules/
 # Task files
 .taskmaster/
 .cursor/mcp.json
+
+# Added by Task Master AI
+tasks.json
+tasks/ 
