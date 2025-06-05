@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services.text_processor import TextProcessorService
+from app.services.cache import AIResponseCache
 from shared.models import TextProcessingRequest, ProcessingOperation
 
 # Test API key for authentication
@@ -127,6 +128,18 @@ def mock_processor():
     
     mock.process_text = AsyncMock(side_effect=mock_process_text)
     return mock
+
+@pytest.fixture
+def mock_cache_service():
+    """Mock AIResponseCache for testing."""
+    mock_cache = AsyncMock(spec=AIResponseCache)
+    # if connect is async and called by provider, mock it as async
+    mock_cache.connect = AsyncMock() 
+    mock_cache.get_cached_response = AsyncMock(return_value=None)
+    mock_cache.cache_response = AsyncMock()
+    mock_cache.invalidate_pattern = AsyncMock()
+    mock_cache.get_cache_stats = AsyncMock(return_value={"status": "connected", "keys": 0})
+    return mock_cache
 
 @pytest.fixture(autouse=True)
 def mock_ai_agent():
