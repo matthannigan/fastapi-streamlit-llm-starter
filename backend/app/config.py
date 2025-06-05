@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Redis Configuration
     redis_url: str = Field(default="redis://redis:6379", description="Redis connection URL")
     
+    # Cache Key Generator Configuration
+    cache_text_hash_threshold: int = Field(
+        default=1000, gt=0, description="Character count threshold for cache key text hashing"
+    )
+    
     # Resilience Configuration
     # Enable/disable resilience features
     resilience_enabled: bool = Field(default=True, description="Enable resilience features")

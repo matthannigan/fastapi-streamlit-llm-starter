@@ -55,7 +55,8 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
     """
     cache = AIResponseCache(
         redis_url=settings.redis_url,
-        default_ttl=3600  # 1 hour default, could be made configurable
+        default_ttl=3600,  # 1 hour default, could be made configurable
+        text_hash_threshold=settings.cache_text_hash_threshold
     )
     
     try:

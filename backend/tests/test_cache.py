@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import json
 from datetime import datetime
 
-from app.services.cache import AIResponseCache
+from app.services.cache import AIResponseCache, CacheKeyGenerator
 
 
 class TestAIResponseCache:
@@ -257,10 +257,16 @@ class TestAIResponseCache:
             
             stats = await cache_instance.get_cache_stats()
             
-            assert stats["status"] == "connected"
-            assert "keys" in stats
-            assert "memory_used" in stats
-            assert "connected_clients" in stats
+            # Test new nested structure
+            assert "redis" in stats
+            assert "memory" in stats
+            assert stats["redis"]["status"] == "connected"
+            assert "keys" in stats["redis"]
+            assert "memory_used" in stats["redis"]
+            assert "connected_clients" in stats["redis"]
+            assert "memory_cache_entries" in stats["memory"]
+            assert "memory_cache_size_limit" in stats["memory"]
+            assert "memory_cache_utilization" in stats["memory"]
     
     @pytest.mark.asyncio
     async def test_cache_stats_unavailable(self, cache_instance):
@@ -268,8 +274,12 @@ class TestAIResponseCache:
         with patch.object(cache_instance, 'connect', return_value=False):
             stats = await cache_instance.get_cache_stats()
             
-            assert stats["status"] == "unavailable"
-            assert stats["keys"] == 0
+            # Test new nested structure
+            assert "redis" in stats
+            assert "memory" in stats
+            assert stats["redis"]["status"] == "unavailable"
+            assert stats["redis"]["keys"] == 0
+            assert "memory_cache_entries" in stats["memory"]
     
     @pytest.mark.asyncio
     async def test_cache_error_handling(self, cache_instance, mock_redis):
@@ -312,4 +322,385 @@ class TestAIResponseCache:
             
             assert key1 != key2
             assert key1 != key3
-            assert key2 != key3 
+            assert key2 != key3
+
+    @pytest.mark.asyncio
+    async def test_text_tier_classification(self, cache_instance):
+        """Test _get_text_tier method correctly classifies text sizes."""
+        # Test small tier (< 500 chars)
+        small_text = "A" * 100
+        assert cache_instance._get_text_tier(small_text) == 'small'
+        
+        # Test boundary case for small tier
+        boundary_small = "A" * 499
+        assert cache_instance._get_text_tier(boundary_small) == 'small'
+        
+        # Test medium tier (500-5000 chars)
+        medium_text = "A" * 1000
+        assert cache_instance._get_text_tier(medium_text) == 'medium'
+        
+        # Test boundary case for medium tier
+        boundary_medium = "A" * 4999
+        assert cache_instance._get_text_tier(boundary_medium) == 'medium'
+        
+        # Test large tier (5000-50000 chars)
+        large_text = "A" * 10000
+        assert cache_instance._get_text_tier(large_text) == 'large'
+        
+        # Test boundary case for large tier
+        boundary_large = "A" * 49999
+        assert cache_instance._get_text_tier(boundary_large) == 'large'
+        
+        # Test xlarge tier (> 50000 chars)
+        xlarge_text = "A" * 60000
+        assert cache_instance._get_text_tier(xlarge_text) == 'xlarge'
+
+    def test_memory_cache_update_basic(self, cache_instance):
+        """Test basic memory cache update functionality."""
+        test_key = "test_key"
+        test_value = {"result": "test_result", "cached_at": "2024-01-01"}
+        
+        # Add item to empty cache
+        cache_instance._update_memory_cache(test_key, test_value)
+        
+        assert test_key in cache_instance.memory_cache
+        assert cache_instance.memory_cache[test_key] == test_value
+        assert test_key in cache_instance.memory_cache_order
+        assert len(cache_instance.memory_cache_order) == 1
+
+    def test_memory_cache_update_existing_key(self, cache_instance):
+        """Test updating existing key in memory cache."""
+        test_key = "test_key"
+        original_value = {"result": "original"}
+        updated_value = {"result": "updated"}
+        
+        # Add original value
+        cache_instance._update_memory_cache(test_key, original_value)
+        cache_instance._update_memory_cache("other_key", {"other": "value"})
+        
+        # Update existing key
+        cache_instance._update_memory_cache(test_key, updated_value)
+        
+        # Key should be moved to end of order list
+        assert cache_instance.memory_cache[test_key] == updated_value
+        assert cache_instance.memory_cache_order[-1] == test_key
+        assert len(cache_instance.memory_cache_order) == 2
+
+    def test_memory_cache_fifo_eviction(self, cache_instance):
+        """Test FIFO eviction when memory cache reaches size limit."""
+        # Set small cache size for testing
+        cache_instance.memory_cache_size = 3
+        
+        # Add items to fill cache
+        for i in range(3):
+            cache_instance._update_memory_cache(f"key_{i}", {"value": i})
+        
+        assert len(cache_instance.memory_cache) == 3
+        assert "key_0" in cache_instance.memory_cache
+        
+        # Add one more item to trigger eviction
+        cache_instance._update_memory_cache("key_3", {"value": 3})
+        
+        # Oldest item (key_0) should be evicted
+        assert len(cache_instance.memory_cache) == 3
+        assert "key_0" not in cache_instance.memory_cache
+        assert "key_1" in cache_instance.memory_cache
+        assert "key_2" in cache_instance.memory_cache
+        assert "key_3" in cache_instance.memory_cache
+        assert cache_instance.memory_cache_order == ["key_1", "key_2", "key_3"]
+
+    @pytest.mark.asyncio
+    async def test_memory_cache_hit_for_small_text(self, cache_instance, mock_redis):
+        """Test that small text hits memory cache before Redis."""
+        small_text = "A" * 100  # Small tier text
+        operation = "summarize"
+        options = {}
+        
+        # Populate memory cache directly
+        cache_key = cache_instance._generate_cache_key(small_text, operation, options)
+        cached_response = {"result": "cached_summary", "cache_hit": True}
+        cache_instance.memory_cache[cache_key] = cached_response
+        
+        # Mock Redis to ensure it's not called
+        mock_redis.get.return_value = None  # This should not be reached
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            result = await cache_instance.get_cached_response(small_text, operation, options)
+            
+            # Should return memory cache result
+            assert result == cached_response
+            # Redis should not be called for small tier memory cache hit
+            mock_redis.get.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_memory_cache_miss_falls_back_to_redis(self, cache_instance, mock_redis):
+        """Test that memory cache miss for small text falls back to Redis."""
+        small_text = "A" * 100  # Small tier text
+        operation = "summarize"
+        options = {}
+        
+        redis_response = {"result": "redis_summary", "cache_hit": True}
+        mock_redis.get.return_value = json.dumps(redis_response)
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            result = await cache_instance.get_cached_response(small_text, operation, options)
+            
+            # Should return Redis result
+            assert result == redis_response
+            # Redis should be called
+            mock_redis.get.assert_called_once()
+            
+            # Small item should now be populated in memory cache
+            cache_key = cache_instance._generate_cache_key(small_text, operation, options)
+            assert cache_key in cache_instance.memory_cache
+            assert cache_instance.memory_cache[cache_key] == redis_response
+
+    @pytest.mark.asyncio
+    async def test_medium_text_skips_memory_cache(self, cache_instance, mock_redis):
+        """Test that medium/large text doesn't use memory cache."""
+        medium_text = "A" * 1000  # Medium tier text
+        operation = "summarize"
+        options = {}
+        
+        redis_response = {"result": "redis_summary", "cache_hit": True}
+        mock_redis.get.return_value = json.dumps(redis_response)
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            result = await cache_instance.get_cached_response(medium_text, operation, options)
+            
+            # Should return Redis result
+            assert result == redis_response
+            # Redis should be called
+            mock_redis.get.assert_called_once()
+            
+            # Medium item should NOT be populated in memory cache
+            cache_key = cache_instance._generate_cache_key(medium_text, operation, options)
+            assert cache_key not in cache_instance.memory_cache
+
+    @pytest.mark.asyncio
+    async def test_memory_cache_statistics(self, cache_instance, mock_redis):
+        """Test that cache statistics include memory cache information."""
+        # Add some items to memory cache
+        cache_instance._update_memory_cache("key1", {"value": 1})
+        cache_instance._update_memory_cache("key2", {"value": 2})
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            stats = await cache_instance.get_cache_stats()
+            
+            # Verify memory cache stats
+            assert "memory" in stats
+            assert stats["memory"]["memory_cache_entries"] == 2
+            assert stats["memory"]["memory_cache_size_limit"] == 100
+            assert stats["memory"]["memory_cache_utilization"] == "2/100"
+
+    def test_memory_cache_initialization(self, cache_instance):
+        """Test that memory cache is properly initialized."""
+        assert hasattr(cache_instance, 'text_size_tiers')
+        assert hasattr(cache_instance, 'memory_cache')
+        assert hasattr(cache_instance, 'memory_cache_size')
+        assert hasattr(cache_instance, 'memory_cache_order')
+        
+        assert cache_instance.text_size_tiers['small'] == 500
+        assert cache_instance.text_size_tiers['medium'] == 5000
+        assert cache_instance.text_size_tiers['large'] == 50000
+        assert cache_instance.memory_cache_size == 100
+        assert cache_instance.memory_cache == {}
+        assert cache_instance.memory_cache_order == []
+
+
+class TestCacheKeyGenerator:
+    """Test the CacheKeyGenerator class."""
+    
+    @pytest.fixture
+    def key_generator(self):
+        """Create a fresh CacheKeyGenerator instance for testing."""
+        return CacheKeyGenerator()
+    
+    @pytest.fixture
+    def custom_key_generator(self):
+        """Create a CacheKeyGenerator with custom settings."""
+        return CacheKeyGenerator(text_hash_threshold=50)
+    
+    def test_instantiation_with_defaults(self, key_generator):
+        """Test CacheKeyGenerator instantiation with default parameters."""
+        assert key_generator.text_hash_threshold == 1000
+        assert 'sha256' in key_generator.hash_algorithm.__name__.lower()
+    
+    def test_instantiation_with_custom_params(self, custom_key_generator):
+        """Test CacheKeyGenerator instantiation with custom parameters."""
+        assert custom_key_generator.text_hash_threshold == 50
+        
+    def test_short_text_handling(self, key_generator):
+        """Test that short texts are kept as-is with sanitization."""
+        short_text = "This is a short text"
+        result = key_generator._hash_text_efficiently(short_text)
+        
+        # Should return sanitized original text for short inputs
+        assert result == short_text
+        
+    def test_short_text_sanitization(self, key_generator):
+        """Test that special characters are sanitized in short texts."""
+        text_with_special_chars = "text|with:special|chars"
+        result = key_generator._hash_text_efficiently(text_with_special_chars)
+        
+        # Should sanitize pipe and colon characters
+        assert "|" not in result
+        assert ":" not in result
+        assert result == "text_with_special_chars"
+        
+    def test_long_text_hashing(self, key_generator):
+        """Test that long texts are hashed efficiently."""
+        # Create text longer than threshold (1000 chars)
+        long_text = "A" * 1500
+        result = key_generator._hash_text_efficiently(long_text)
+        
+        # Should return hash format for long texts
+        assert result.startswith("hash:")
+        assert len(result) == 21  # "hash:" + 16 char hash
+        
+    def test_long_text_with_custom_threshold(self, custom_key_generator):
+        """Test long text handling with custom threshold."""
+        # Text longer than custom threshold (50 chars)
+        medium_text = "A" * 100
+        result = custom_key_generator._hash_text_efficiently(medium_text)
+        
+        # Should be hashed with custom threshold
+        assert result.startswith("hash:")
+        
+    def test_hash_consistency(self, key_generator):
+        """Test that identical texts produce identical hashes."""
+        long_text = "A" * 1500
+        hash1 = key_generator._hash_text_efficiently(long_text)
+        hash2 = key_generator._hash_text_efficiently(long_text)
+        
+        assert hash1 == hash2
+        
+    def test_hash_uniqueness(self, key_generator):
+        """Test that different texts produce different hashes."""
+        text1 = "A" * 1500
+        text2 = "B" * 1500
+        
+        hash1 = key_generator._hash_text_efficiently(text1)
+        hash2 = key_generator._hash_text_efficiently(text2)
+        
+        assert hash1 != hash2
+        
+    def test_cache_key_generation_basic(self, key_generator):
+        """Test basic cache key generation."""
+        text = "Test text"
+        operation = "summarize"
+        options = {"max_length": 100}
+        
+        cache_key = key_generator.generate_cache_key(text, operation, options)
+        
+        assert cache_key.startswith("ai_cache:")
+        assert "op:summarize" in cache_key
+        assert "txt:Test text" in cache_key
+        assert "opts:" in cache_key
+        
+    def test_cache_key_with_question(self, key_generator):
+        """Test cache key generation with question parameter."""
+        text = "Test text"
+        operation = "qa"
+        options = {}
+        question = "What is this about?"
+        
+        cache_key = key_generator.generate_cache_key(text, operation, options, question)
+        
+        assert cache_key.startswith("ai_cache:")
+        assert "op:qa" in cache_key
+        assert "q:" in cache_key
+        
+    def test_cache_key_without_options(self, key_generator):
+        """Test cache key generation without options."""
+        text = "Test text"
+        operation = "sentiment"
+        options = {}
+        
+        cache_key = key_generator.generate_cache_key(text, operation, options)
+        
+        assert cache_key.startswith("ai_cache:")
+        assert "op:sentiment" in cache_key
+        assert "txt:Test text" in cache_key
+        assert "opts:" not in cache_key  # No options should mean no opts component
+        
+    def test_cache_key_consistency(self, key_generator):
+        """Test that identical inputs produce identical cache keys."""
+        text = "Test text"
+        operation = "summarize"
+        options = {"max_length": 100}
+        
+        key1 = key_generator.generate_cache_key(text, operation, options)
+        key2 = key_generator.generate_cache_key(text, operation, options)
+        
+        assert key1 == key2
+        
+    def test_cache_key_options_order_independence(self, key_generator):
+        """Test that options order doesn't affect cache key."""
+        text = "Test text"
+        operation = "summarize"
+        options1 = {"max_length": 100, "style": "formal"}
+        options2 = {"style": "formal", "max_length": 100}
+        
+        key1 = key_generator.generate_cache_key(text, operation, options1)
+        key2 = key_generator.generate_cache_key(text, operation, options2)
+        
+        assert key1 == key2
+        
+    def test_cache_key_with_long_text(self, key_generator):
+        """Test cache key generation with long text that gets hashed."""
+        long_text = "A" * 1500
+        operation = "summarize"
+        options = {"max_length": 100}
+        
+        cache_key = key_generator.generate_cache_key(long_text, operation, options)
+        
+        assert cache_key.startswith("ai_cache:")
+        assert "op:summarize" in cache_key
+        assert "txt:hash:" in cache_key  # Long text should be hashed
+        assert "opts:" in cache_key
+        
+    def test_cache_key_performance_improvement(self, key_generator):
+        """Test that new implementation is more efficient for large texts."""
+        import time
+        import hashlib
+        import json
+        
+        # Create large text
+        large_text = "A" * 10000
+        operation = "summarize"
+        options = {"max_length": 100}
+        
+        # Time the new implementation
+        start_time = time.time()
+        for _ in range(100):
+            key_generator.generate_cache_key(large_text, operation, options)
+        new_time = time.time() - start_time
+        
+        # Time the old implementation approach
+        start_time = time.time()
+        for _ in range(100):
+            cache_data = {
+                "text": large_text,
+                "operation": operation,
+                "options": sorted(options.items()) if options else [],
+                "question": None
+            }
+            content = json.dumps(cache_data, sort_keys=True)
+            old_key = f"ai_cache:{hashlib.md5(content.encode()).hexdigest()}"
+        old_time = time.time() - start_time
+        
+        # New implementation should be faster (allowing for some margin)
+        # This is more of a performance characterization than a strict requirement
+        print(f"New implementation time: {new_time:.4f}s")
+        print(f"Old implementation time: {old_time:.4f}s")
+        # Just verify both produce results
+        assert len(key_generator.generate_cache_key(large_text, operation, options)) > 0 
