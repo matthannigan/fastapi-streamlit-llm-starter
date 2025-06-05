@@ -54,10 +54,11 @@ class APIKeyAuth:
     
     def __init__(self, auth_config: AuthConfig = None):
         self.config = auth_config or AuthConfig()
-        self.api_keys = self._load_api_keys()
         
         # Extension point: metadata can be added for advanced auth
         self._key_metadata: Dict[str, Dict[str, Any]] = {}
+        
+        self.api_keys = self._load_api_keys()
     
     def _load_api_keys(self) -> set:
         """Load API keys from environment variables."""

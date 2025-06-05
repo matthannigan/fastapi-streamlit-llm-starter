@@ -7,13 +7,17 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from app.auth import verify_api_key, optional_verify_api_key
 from app.services.resilience import ai_resilience
-from app.services.text_processor import text_processor
+from app.services.text_processor import TextProcessorService
+from app.dependencies import get_text_processor
 
 # Create a router for resilience endpoints
 resilience_router = APIRouter(prefix="/resilience", tags=["resilience"])
 
 @resilience_router.get("/health")
-async def get_resilience_health(api_key: str = Depends(optional_verify_api_key)):
+async def get_resilience_health(
+    api_key: str = Depends(optional_verify_api_key),
+    text_processor: TextProcessorService = Depends(get_text_processor)
+):
     """
     Get the health status of the resilience service.
     
@@ -189,7 +193,10 @@ async def reset_circuit_breaker(
         )
 
 @resilience_router.get("/config")
-async def get_resilience_config(api_key: str = Depends(verify_api_key)):
+async def get_resilience_config(
+    api_key: str = Depends(verify_api_key),
+    text_processor: TextProcessorService = Depends(get_text_processor)
+):
     """
     Get current resilience configuration.
     

@@ -1,10 +1,12 @@
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, Mock
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.text_processor import TextProcessorService
+from app.services.cache import AIResponseCache
 from shared.models import TextProcessingRequest, ProcessingOperation
 
 # Test API key for authentication
@@ -91,6 +93,53 @@ def sample_request(sample_text):
 def mock_ai_response():
     """Mock AI response for testing."""
     return AsyncMock(return_value=AsyncMock(data="This is a test summary."))
+
+@pytest.fixture
+def mock_processor():
+    """Mock TextProcessorService for testing."""
+    mock = AsyncMock(spec=TextProcessorService)
+    
+    # Configure default return values for process_text method
+    async def mock_process_text(request):
+        from shared.models import TextProcessingResponse, SentimentResult
+        
+        response = TextProcessingResponse(
+            operation=request.operation,
+            processing_time=0.1,
+            metadata={"word_count": len(request.text.split())}
+        )
+        
+        if request.operation == "summarize":
+            response.result = "Mock summary of the text"
+        elif request.operation == "sentiment":
+            response.sentiment = SentimentResult(
+                sentiment="positive",
+                confidence=0.85,
+                explanation="Mock sentiment analysis"
+            )
+        elif request.operation == "qa":
+            response.result = "Mock answer to the question"
+        elif request.operation == "key_points":
+            response.key_points = ["Mock key point 1", "Mock key point 2"]
+        elif request.operation == "questions":
+            response.questions = ["Mock question 1?", "Mock question 2?"]
+        
+        return response
+    
+    mock.process_text = AsyncMock(side_effect=mock_process_text)
+    return mock
+
+@pytest.fixture
+def mock_cache_service():
+    """Mock AIResponseCache for testing."""
+    mock_cache = AsyncMock(spec=AIResponseCache)
+    # if connect is async and called by provider, mock it as async
+    mock_cache.connect = AsyncMock() 
+    mock_cache.get_cached_response = AsyncMock(return_value=None)
+    mock_cache.cache_response = AsyncMock()
+    mock_cache.invalidate_pattern = AsyncMock()
+    mock_cache.get_cache_stats = AsyncMock(return_value={"status": "connected", "keys": 0})
+    return mock_cache
 
 @pytest.fixture(autouse=True)
 def mock_ai_agent():
@@ -184,7 +233,9 @@ def mock_ai_agent():
                         return AsyncMock(data=f"This is a summary about {' and '.join(key_words[:2])}.")
                 return AsyncMock(data="This is a test summary response from the mocked AI.")
     
-    # Mock the agent instance directly on the text_processor service
-    with patch('app.services.text_processor.text_processor.agent') as mock_agent:
-        mock_agent.run = AsyncMock(side_effect=smart_run)
-        yield mock_agent 
+    # Mock the Agent class constructor to return a mock agent with the smart_run method
+    with patch('app.services.text_processor.Agent') as mock_agent_class:
+        mock_agent_instance = AsyncMock()
+        mock_agent_instance.run = AsyncMock(side_effect=smart_run)
+        mock_agent_class.return_value = mock_agent_instance
+        yield mock_agent_instance 

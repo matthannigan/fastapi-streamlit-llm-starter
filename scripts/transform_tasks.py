@@ -53,11 +53,12 @@ def transform_tasks_to_markdown(input_file="tasks/tasks.json", output_file="task
         for task in tasks:
             # Extract required fields
             task_id = task.get('id', 'Unknown')
+            title = task.get('title', '')
             description = task.get('description', 'No description available')
             details = task.get('details', 'No details available')
             
             # Format the task block
-            task_block = f"### Task {task_id}\n"
+            task_block = f"### Task {task_id}: {title}\n"
             task_block += f"**{description}**\n\n"
             task_block += f"{details}\n"
             

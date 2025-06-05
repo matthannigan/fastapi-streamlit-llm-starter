@@ -1,20 +1,24 @@
 """Tests for the main FastAPI application."""
 
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.main import app
 from app.config import settings
+from app.dependencies import get_text_processor
+from app.services.text_processor import TextProcessorService
 from shared.models import (
     ProcessingOperation,
     BatchTextProcessingRequest,
     BatchTextProcessingResponse,
     TextProcessingRequest,
     BatchProcessingItem,
-    ProcessingStatus
+    ProcessingStatus,
+    TextProcessingResponse,
+    SentimentResult
 )
 
 # Default headers for authenticated requests
@@ -56,95 +60,176 @@ class TestOperationsEndpoint:
 class TestProcessEndpoint:
     """Test text processing endpoint."""
     
-    def test_process_summarize(self, authenticated_client, sample_text):
-        """Test text summarization with authentication."""
-        request_data = {
-            "text": sample_text,
-            "operation": "summarize",
-            "options": {"max_length": 100}
-        }
+    def test_process_summarize(self, authenticated_client, sample_text, mock_processor):
+        """Test text summarization with authentication using DI override."""
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "summarize"
-        assert "result" in data
-        assert "processing_time" in data
-        assert "timestamp" in data
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "summarize",
+                "options": {"max_length": 100}
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "summarize"
+            assert "result" in data
+            assert "processing_time" in data
+            assert "timestamp" in data
+            
+            # Verify the mock was called
+            mock_processor.process_text.assert_called_once()
+            call_args = mock_processor.process_text.call_args[0][0]
+            assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
+            assert call_args.operation == ProcessingOperation.SUMMARIZE
+            assert call_args.options == {"max_length": 100}
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_sentiment(self, authenticated_client, sample_text):
-        """Test sentiment analysis with authentication."""
-        request_data = {
-            "text": sample_text,
-            "operation": "sentiment"
-        }
+    def test_process_sentiment(self, authenticated_client, sample_text, mock_processor):
+        """Test sentiment analysis with authentication using DI override."""
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "sentiment"
-        assert "sentiment" in data
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "sentiment"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "sentiment"
+            assert "sentiment" in data
+            
+            # Verify the mock was called
+            mock_processor.process_text.assert_called_once()
+            call_args = mock_processor.process_text.call_args[0][0]
+            assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
+            assert call_args.operation == ProcessingOperation.SENTIMENT
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_qa_without_question(self, authenticated_client, sample_text):
+    def test_process_qa_without_question(self, authenticated_client, sample_text, mock_processor):
         """Test Q&A without question returns error."""
-        request_data = {
-            "text": sample_text,
-            "operation": "qa"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 400
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "qa"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 400
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_qa_with_question(self, authenticated_client, sample_text):
-        """Test Q&A with question and authentication."""
-        request_data = {
-            "text": sample_text,
-            "operation": "qa",
-            "question": "What is artificial intelligence?"
-        }
+    def test_process_qa_with_question(self, authenticated_client, sample_text, mock_processor):
+        """Test Q&A with question and authentication using DI override."""
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "qa"
-        assert "result" in data
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "qa",
+                "question": "What is artificial intelligence?"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "qa"
+            assert "result" in data
+            
+            # Verify the mock was called
+            mock_processor.process_text.assert_called_once()
+            call_args = mock_processor.process_text.call_args[0][0]
+            assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
+            assert call_args.operation == ProcessingOperation.QA
+            assert call_args.question == "What is artificial intelligence?"
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_invalid_operation(self, authenticated_client, sample_text):
+    def test_process_invalid_operation(self, authenticated_client, sample_text, mock_processor):
         """Test invalid operation returns error."""
-        request_data = {
-            "text": sample_text,
-            "operation": "invalid_operation"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 422  # Validation error
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "invalid_operation"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 422  # Validation error
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_empty_text(self, authenticated_client):
+    def test_process_empty_text(self, authenticated_client, mock_processor):
         """Test empty text returns validation error."""
-        request_data = {
-            "text": "",
-            "operation": "summarize"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 422
+        try:
+            request_data = {
+                "text": "",
+                "operation": "summarize"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 422
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    def test_process_text_too_long(self, authenticated_client):
+    def test_process_text_too_long(self, authenticated_client, mock_processor):
         """Test text too long returns validation error."""
-        long_text = "A" * 15000  # Exceeds max length
-        request_data = {
-            "text": long_text,
-            "operation": "summarize"
-        }
+        # Override the dependency with our mock
+        app.dependency_overrides[get_text_processor] = lambda: mock_processor
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 422
+        try:
+            long_text = "A" * 15000  # Exceeds max length
+            request_data = {
+                "text": long_text,
+                "operation": "summarize"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 422
+            
+            # Mock should not be called for invalid requests
+            mock_processor.process_text.assert_not_called()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
 class TestCORS:
     """Test CORS configuration."""
@@ -295,68 +380,101 @@ class TestCacheEndpoints:
         data = response.json()
         assert "message" in data
     
-    @patch('app.services.cache.ai_cache.get_cache_stats')
-    def test_cache_status_with_mock(self, mock_stats, client: TestClient):
+    def test_cache_status_with_mock(self, client: TestClient):
         """Test cache status with mocked cache stats."""
-        mock_stats.return_value = {
+        from app.dependencies import get_cache_service
+        from app.main import app
+        
+        # Create a mock cache service
+        mock_cache_service = MagicMock()
+        mock_cache_service.get_cache_stats = AsyncMock(return_value={
             "status": "connected",
             "keys": 42,
             "memory_used": "2.5M",
             "connected_clients": 3
-        }
+        })
         
-        response = client.get("/cache/status")
-        assert response.status_code == 200
+        # Override the dependency
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
         
-        data = response.json()
-        assert data["status"] == "connected"
-        assert data["keys"] == 42
-        assert data["memory_used"] == "2.5M"
-        assert data["connected_clients"] == 3
+        try:
+            response = client.get("/cache/status")
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["status"] == "connected"
+            assert data["keys"] == 42
+            assert data["memory_used"] == "2.5M"
+            assert data["connected_clients"] == 3
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    @patch('app.services.cache.ai_cache.invalidate_pattern')
-    def test_cache_invalidate_with_mock(self, mock_invalidate, client: TestClient):
+    def test_cache_invalidate_with_mock(self, client: TestClient):
         """Test cache invalidation with mocked cache."""
-        mock_invalidate.return_value = None
+        from app.dependencies import get_cache_service
+        from app.main import app
         
-        response = client.post("/cache/invalidate", params={"pattern": "summarize"})
-        assert response.status_code == 200
+        # Create a mock cache service
+        mock_cache_service = MagicMock()
+        mock_cache_service.invalidate_pattern = AsyncMock(return_value=None)
         
-        # Verify the cache invalidation was called with correct pattern
-        mock_invalidate.assert_called_once_with("summarize")
+        # Override the dependency
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
+        
+        try:
+            response = client.post("/cache/invalidate", params={"pattern": "summarize"})
+            assert response.status_code == 200
+            
+            # Verify the cache invalidation was called with correct pattern
+            mock_cache_service.invalidate_pattern.assert_called_once_with("summarize")
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
 
 class TestCacheIntegration:
     """Test cache integration with processing endpoints."""
     
-    @patch('app.services.text_processor.ai_cache.get_cached_response')
-    @patch('app.services.text_processor.ai_cache.cache_response')
-    def test_process_with_cache_miss(self, mock_cache_store, mock_cache_get, authenticated_client, sample_text):
+    def test_process_with_cache_miss(self, authenticated_client, sample_text):
         """Test processing with cache miss."""
-        # Mock cache miss
-        mock_cache_get.return_value = None
+        from app.dependencies import get_cache_service
+        from app.main import app
         
-        request_data = {
-            "text": sample_text,
-            "operation": "summarize",
-            "options": {"max_length": 100}
-        }
+        # Create a mock cache service
+        mock_cache_service = MagicMock()
+        mock_cache_service.get_cached_response = AsyncMock(return_value=None)  # Cache miss
+        mock_cache_service.cache_response = AsyncMock(return_value=None)
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
+        # Override the dependency
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
         
-        # Verify cache was checked and response was stored
-        mock_cache_get.assert_called_once()
-        mock_cache_store.assert_called_once()
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["operation"] == "summarize"
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "summarize",
+                "options": {"max_length": 100}
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            # Verify cache was checked and response was stored
+            mock_cache_service.get_cached_response.assert_called_once()
+            mock_cache_service.cache_response.assert_called_once()
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["operation"] == "summarize"
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
     
-    @patch('app.services.text_processor.ai_cache.get_cached_response')
-    @patch('app.services.text_processor.ai_cache.cache_response')
-    def test_process_with_cache_hit(self, mock_cache_store, mock_cache_get, authenticated_client, sample_text):
+    def test_process_with_cache_hit(self, authenticated_client, sample_text):
         """Test processing with cache hit."""
+        from app.dependencies import get_cache_service
+        from app.main import app
+        
         # Mock cache hit
         cached_response = {
             "operation": "summarize",
@@ -367,33 +485,46 @@ class TestCacheIntegration:
             "cached_at": "2024-01-01T12:00:00",
             "cache_hit": True
         }
-        mock_cache_get.return_value = cached_response
         
-        request_data = {
-            "text": sample_text,
-            "operation": "summarize"
-        }
+        # Create a mock cache service
+        mock_cache_service = MagicMock()
+        mock_cache_service.get_cached_response = AsyncMock(return_value=cached_response)
+        mock_cache_service.cache_response = AsyncMock(return_value=None)
         
-        response = authenticated_client.post("/process", json=request_data)
-        assert response.status_code == 200
+        # Override the dependency
+        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
         
-        # Verify cache was checked but not stored again
-        mock_cache_get.assert_called_once()
-        mock_cache_store.assert_not_called()
-        
-        data = response.json()
-        assert data["success"] is True
-        assert data["result"] == "Cached summary from Redis"
-        assert data["processing_time"] == 0.1
-        assert data.get("cache_hit") is True
+        try:
+            request_data = {
+                "text": sample_text,
+                "operation": "summarize"
+            }
+            
+            response = authenticated_client.post("/process", json=request_data)
+            assert response.status_code == 200
+            
+            # Verify cache was checked but not stored again
+            mock_cache_service.get_cached_response.assert_called_once()
+            mock_cache_service.cache_response.assert_not_called()
+            
+            data = response.json()
+            assert data["success"] is True
+            assert data["result"] == "Cached summary from Redis"
+            assert data["processing_time"] == 0.1
+            assert data.get("cache_hit") is True
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
 
 class TestBatchProcessEndpoint:
     """Test the /batch_process endpoint."""
 
-    @patch('app.main.text_processor.process_batch', new_callable=AsyncMock)
-    def test_batch_process_success(self, mock_process_batch, authenticated_client: TestClient, sample_text):
+    def test_batch_process_success(self, authenticated_client: TestClient, sample_text):
         """Test successful batch processing."""
+        from app.dependencies import get_text_processor
+        from app.main import app
+        
         request_payload_dict = {
             "requests": [
                 {"text": sample_text, "operation": "summarize"},
@@ -401,8 +532,6 @@ class TestBatchProcessEndpoint:
             ],
             "batch_id": "test_success_batch"
         }
-        # Create the Pydantic model for validation if needed by the mock
-        # batch_request_obj = BatchTextProcessingRequest(**request_payload_dict)
 
         mock_batch_response_dict = {
             "batch_id": "test_success_batch",
@@ -422,54 +551,51 @@ class TestBatchProcessEndpoint:
             "total_processing_time": 1.23
         }
         mock_batch_response_obj = BatchTextProcessingResponse(**mock_batch_response_dict)
-        mock_process_batch.return_value = mock_batch_response_obj
-
-        response = authenticated_client.post("/batch_process", json=request_payload_dict)
-
-        assert response.status_code == status.HTTP_200_OK
-        # Comparing dicts directly, ensure datetimes are handled if they were part of the actual model
-        # For this example, assuming simple dict comparison works based on the model structure.
-        # If datetimes are involved, they need careful comparison (e.g., isoformat or specific object comparison).
-        api_response_json = response.json()
-        # Remove timestamp from comparison as it's generated on the fly
-        if 'timestamp' in api_response_json.get('results', [{}])[0].get('response', {}):
-             for res_item in api_response_json.get('results',[]):
-                 if res_item.get('response') and 'timestamp' in res_item['response']:
-                    del res_item['response']['timestamp']
-        if 'timestamp' in mock_batch_response_dict.get('results', [{}])[0].get('response', {}):
-            for res_item in mock_batch_response_dict.get('results',[]):
-                 if res_item.get('response') and 'timestamp' in res_item['response']:
-                    # This part of mock_batch_response_dict is not used for comparison if already a dict
-                    pass
-
-
-        # We compare the model_dump() of the mock_batch_response_obj with the response.json()
-        # This requires that the mock_batch_response_dict accurately reflects the structure of BatchTextProcessingResponse
-        # including converting enums to their string values if the model does that upon serialization.
-        expected_json = mock_batch_response_obj.model_dump(mode='json') # mode='json' handles enums etc.
         
-        # Remove timestamps from results in expected_json for comparison
-        for item_result in expected_json.get("results", []):
-            if item_result.get("response") and "timestamp" in item_result["response"]:
-                del item_result["response"]["timestamp"]
-        if "timestamp" in expected_json: # Top-level timestamp
-            del expected_json["timestamp"]
-        if "timestamp" in api_response_json: # Top-level timestamp
-            del api_response_json["timestamp"]
-
-
-        assert api_response_json == expected_json
+        # Create a mock text processor service
+        mock_text_processor = MagicMock()
+        mock_text_processor.process_batch = AsyncMock(return_value=mock_batch_response_obj)
         
-        # Check that the mock was called. For specific argument checking:
-        # mock_process_batch.assert_called_once_with(batch_request_obj)
-        # This requires constructing the exact Pydantic model instance that would be passed.
-        # For simplicity here, just check it was called. More specific checks can be added.
-        mock_process_batch.assert_called_once()
-        # Example of more specific argument checking:
-        called_arg = mock_process_batch.call_args[0][0]
-        assert isinstance(called_arg, BatchTextProcessingRequest)
-        assert called_arg.batch_id == "test_success_batch"
-        assert len(called_arg.requests) == 2
+        # Override the dependency
+        app.dependency_overrides[get_text_processor] = lambda: mock_text_processor
+        
+        try:
+            response = authenticated_client.post("/batch_process", json=request_payload_dict)
+
+            assert response.status_code == status.HTTP_200_OK
+            
+            # Get the response JSON
+            api_response_json = response.json()
+            
+            # Remove timestamp from comparison as it's generated on the fly
+            if 'timestamp' in api_response_json.get('results', [{}])[0].get('response', {}):
+                 for res_item in api_response_json.get('results',[]):
+                     if res_item.get('response') and 'timestamp' in res_item['response']:
+                        del res_item['response']['timestamp']
+
+            # We compare the model_dump() of the mock_batch_response_obj with the response.json()
+            expected_json = mock_batch_response_obj.model_dump(mode='json')
+            
+            # Remove timestamps from results in expected_json for comparison
+            for item_result in expected_json.get("results", []):
+                if item_result.get("response") and "timestamp" in item_result["response"]:
+                    del item_result["response"]["timestamp"]
+            if "timestamp" in expected_json: # Top-level timestamp
+                del expected_json["timestamp"]
+            if "timestamp" in api_response_json: # Top-level timestamp
+                del api_response_json["timestamp"]
+
+            assert api_response_json == expected_json
+            
+            # Verify the mock was called
+            mock_text_processor.process_batch.assert_called_once()
+            called_arg = mock_text_processor.process_batch.call_args[0][0]
+            assert isinstance(called_arg, BatchTextProcessingRequest)
+            assert called_arg.batch_id == "test_success_batch"
+            assert len(called_arg.requests) == 2
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
     def test_batch_process_exceeds_limit(self, authenticated_client: TestClient, sample_text):
         """Test batch processing with too many requests."""
@@ -520,20 +646,31 @@ class TestBatchProcessEndpoint:
         response = client.post("/batch_process", json=payload, headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    @patch('app.main.text_processor.process_batch', new_callable=AsyncMock)
-    def test_batch_process_service_exception(self, mock_process_batch, authenticated_client: TestClient, sample_text):
+    def test_batch_process_service_exception(self, authenticated_client: TestClient, sample_text):
         """Test batch processing when the service raises an exception."""
-        mock_process_batch.side_effect = Exception("Service layer error")
+        from app.dependencies import get_text_processor
+        from app.main import app
         
-        payload = {
-            "requests": [{"text": sample_text, "operation": "summarize"}],
-            "batch_id": "test_service_exception"
-        }
-        response = authenticated_client.post("/batch_process", json=payload)
+        # Create a mock text processor service that raises an exception
+        mock_text_processor = MagicMock()
+        mock_text_processor.process_batch = AsyncMock(side_effect=Exception("Service layer error"))
         
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        # FastAPI HTTPException returns "detail" field, not "error"
-        assert "internal server error" in response.json()["detail"].lower()
+        # Override the dependency
+        app.dependency_overrides[get_text_processor] = lambda: mock_text_processor
+        
+        try:
+            payload = {
+                "requests": [{"text": sample_text, "operation": "summarize"}],
+                "batch_id": "test_service_exception"
+            }
+            response = authenticated_client.post("/batch_process", json=payload)
+            
+            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+            # FastAPI HTTPException returns "detail" field, not "error"
+            assert "internal server error" in response.json()["detail"].lower()
+        finally:
+            # Clean up the override
+            app.dependency_overrides.clear()
 
 
 class TestBatchStatusEndpoint:
