@@ -6,7 +6,7 @@ import zlib
 import pickle
 import time
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 # Optional Redis import for graceful degradation
 try:
@@ -539,11 +539,15 @@ class AIResponseCache:
                     "status": "connected",
                     "keys": len(keys),
                     "memory_used": info.get("used_memory_human", "unknown"),
+                    "memory_used_bytes": info.get("used_memory", 0),
                     "connected_clients": info.get("connected_clients", 0)
                 }
             except Exception as e:
                 logger.warning(f"Cache stats error: {e}")
                 redis_stats = {"status": "error", "error": str(e)}
+        
+        # Record current memory usage for monitoring
+        self.record_memory_usage(redis_stats)
         
         # Add memory cache statistics
         memory_stats = {
@@ -592,6 +596,28 @@ class AIResponseCache:
         recent_times = [m.duration for m in self.performance_monitor.cache_operation_times[-10:]]
         return sum(recent_times) / len(recent_times) if recent_times else 0.0
     
+    def record_memory_usage(self, redis_stats: Dict[str, Any] = None):
+        """Record current memory usage of cache components."""
+        try:
+            self.performance_monitor.record_memory_usage(
+                memory_cache=self.memory_cache,
+                redis_stats=redis_stats,
+                additional_data={
+                    "memory_cache_size_limit": self.memory_cache_size,
+                    "memory_cache_order_count": len(self.memory_cache_order)
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record memory usage: {e}")
+
+    def get_memory_usage_stats(self) -> Dict[str, Any]:
+        """Get detailed memory usage statistics."""
+        return self.performance_monitor.get_memory_usage_stats()
+
+    def get_memory_warnings(self) -> List[Dict[str, Any]]:
+        """Get active memory-related warnings."""
+        return self.performance_monitor.get_memory_warnings()
+
     def reset_performance_stats(self):
         """Reset all performance statistics and measurements."""
         self.performance_monitor.reset_stats()

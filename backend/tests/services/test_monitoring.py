@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 from app.services.monitoring import (
     CachePerformanceMonitor, 
     PerformanceMetric, 
-    CompressionMetric
+    CompressionMetric, 
+    MemoryUsageMetric
 )
 
 
@@ -85,6 +86,34 @@ class TestCompressionMetric:
         assert metric.compression_ratio == 0  # Should remain 0
 
 
+class TestMemoryUsageMetric:
+    """Test the MemoryUsageMetric data class."""
+    
+    def test_memory_usage_metric_creation(self):
+        """Test creating MemoryUsageMetric with all required fields."""
+        metric = MemoryUsageMetric(
+            total_cache_size_bytes=1024 * 1024,  # 1MB
+            cache_entry_count=100,
+            avg_entry_size_bytes=10240.0,
+            memory_cache_size_bytes=512 * 1024,  # 512KB
+            memory_cache_entry_count=50,
+            process_memory_mb=256.5,
+            timestamp=time.time(),
+            cache_utilization_percent=2.0,
+            warning_threshold_reached=False
+        )
+        
+        assert metric.total_cache_size_bytes == 1024 * 1024
+        assert metric.cache_entry_count == 100
+        assert metric.avg_entry_size_bytes == 10240.0
+        assert metric.memory_cache_size_bytes == 512 * 1024
+        assert metric.memory_cache_entry_count == 50
+        assert metric.process_memory_mb == 256.5
+        assert metric.cache_utilization_percent == 2.0
+        assert metric.warning_threshold_reached is False
+        assert metric.additional_data == {}
+
+
 class TestCachePerformanceMonitor:
     """Test the CachePerformanceMonitor class."""
     
@@ -101,11 +130,20 @@ class TestCachePerformanceMonitor:
         assert default_monitor.cache_hits == 0
         assert default_monitor.cache_misses == 0
         assert default_monitor.total_operations == 0
+        assert default_monitor.memory_warning_threshold_bytes == 50 * 1024 * 1024
+        assert default_monitor.memory_critical_threshold_bytes == 100 * 1024 * 1024
         
         # Test custom initialization
-        custom_monitor = CachePerformanceMonitor(retention_hours=2, max_measurements=500)
+        custom_monitor = CachePerformanceMonitor(
+            retention_hours=2, 
+            max_measurements=500,
+            memory_warning_threshold_bytes=25 * 1024 * 1024,
+            memory_critical_threshold_bytes=50 * 1024 * 1024
+        )
         assert custom_monitor.retention_hours == 2
         assert custom_monitor.max_measurements == 500
+        assert custom_monitor.memory_warning_threshold_bytes == 25 * 1024 * 1024
+        assert custom_monitor.memory_critical_threshold_bytes == 50 * 1024 * 1024
     
     def test_record_key_generation_time(self):
         """Test recording key generation performance."""
@@ -290,6 +328,7 @@ class TestCachePerformanceMonitor:
         assert "key_generation" not in stats
         assert "cache_operations" not in stats
         assert "compression" not in stats
+        assert "memory_usage" not in stats
     
     def test_get_performance_stats_with_data(self):
         """Test performance stats with various measurements."""
@@ -306,6 +345,10 @@ class TestCachePerformanceMonitor:
         # Add compression measurements
         self.monitor.record_compression_ratio(1000, 600, 0.01, "summarize")
         self.monitor.record_compression_ratio(2000, 1000, 0.02, "sentiment")
+        
+        # Add memory usage measurements
+        memory_cache = {"key1": {"data": "value1"}}
+        self.monitor.record_memory_usage(memory_cache)
         
         stats = self.monitor.get_performance_stats()
         
@@ -348,6 +391,13 @@ class TestCachePerformanceMonitor:
         assert compression["total_bytes_processed"] == 3000
         assert compression["total_bytes_saved"] == 1400  # (1000-600) + (2000-1000)
         assert compression["overall_savings_percent"] == (1400 / 3000) * 100
+        
+        # Check memory usage stats
+        assert "memory_usage" in stats
+        memory_usage = stats["memory_usage"]
+        assert "current" in memory_usage
+        assert "thresholds" in memory_usage
+        assert "trends" in memory_usage
     
     def test_calculate_hit_rate(self):
         """Test cache hit rate calculation."""
@@ -403,10 +453,13 @@ class TestCachePerformanceMonitor:
         self.monitor.record_key_generation_time(0.05, 1000, "summarize")
         self.monitor.record_cache_operation_time("get", 0.02, True, 500)
         self.monitor.record_compression_ratio(1000, 600, 0.01, "summarize")
+        memory_cache = {"key1": {"data": "value1"}}
+        self.monitor.record_memory_usage(memory_cache)
         
         assert len(self.monitor.key_generation_times) > 0
         assert len(self.monitor.cache_operation_times) > 0
         assert len(self.monitor.compression_ratios) > 0
+        assert len(self.monitor.memory_usage_measurements) > 0
         assert self.monitor.cache_hits > 0
         assert self.monitor.total_operations > 0
         
@@ -416,6 +469,7 @@ class TestCachePerformanceMonitor:
         assert len(self.monitor.key_generation_times) == 0
         assert len(self.monitor.cache_operation_times) == 0
         assert len(self.monitor.compression_ratios) == 0
+        assert len(self.monitor.memory_usage_measurements) == 0
         assert self.monitor.cache_hits == 0
         assert self.monitor.cache_misses == 0
         assert self.monitor.total_operations == 0
@@ -426,12 +480,15 @@ class TestCachePerformanceMonitor:
         self.monitor.record_key_generation_time(0.05, 1000, "summarize", {"model": "gpt-4"})
         self.monitor.record_cache_operation_time("get", 0.02, True, 500, {"tier": "small"})
         self.monitor.record_compression_ratio(1000, 600, 0.01, "summarize")
+        memory_cache = {"key1": {"data": "value1"}}
+        self.monitor.record_memory_usage(memory_cache)
         
         exported = self.monitor.export_metrics()
         
         assert "key_generation_times" in exported
         assert "cache_operation_times" in exported
         assert "compression_ratios" in exported
+        assert "memory_usage_measurements" in exported
         assert "cache_hits" in exported
         assert "cache_misses" in exported
         assert "total_operations" in exported
@@ -441,6 +498,7 @@ class TestCachePerformanceMonitor:
         assert len(exported["key_generation_times"]) == 1
         assert len(exported["cache_operation_times"]) == 1
         assert len(exported["compression_ratios"]) == 1
+        assert len(exported["memory_usage_measurements"]) == 1
         
         # Check that dataclass is converted to dict
         key_gen_data = exported["key_generation_times"][0]
@@ -451,7 +509,7 @@ class TestCachePerformanceMonitor:
         assert key_gen_data["additional_data"] == {"model": "gpt-4"}
     
     def test_integration_workflow(self):
-        """Test a complete workflow with multiple operations."""
+        """Test a complete workflow with multiple operations including memory tracking."""
         # Simulate a typical cache workflow
         
         # 1. Key generation for various operations
@@ -468,6 +526,12 @@ class TestCachePerformanceMonitor:
         self.monitor.record_compression_ratio(2000, 1200, 0.02, "summarize")
         self.monitor.record_compression_ratio(5000, 2000, 0.05, "key_points")
         
+        # 4. Memory usage tracking
+        memory_cache1 = {"key1": {"data": "value1"}}
+        memory_cache2 = {"key1": {"data": "value1"}, "key2": {"data": "value2"}}
+        self.monitor.record_memory_usage(memory_cache1)
+        self.monitor.record_memory_usage(memory_cache2)
+        
         # Get comprehensive stats
         stats = self.monitor.get_performance_stats()
         
@@ -475,13 +539,26 @@ class TestCachePerformanceMonitor:
         assert stats["cache_hit_rate"] == 33.33333333333333  # 1 hit out of 3 operations
         assert stats["key_generation"]["slow_operations"] == 1
         assert stats["compression"]["overall_savings_percent"] > 40  # Good compression
+        assert "memory_usage" in stats
+        
+        # Check memory usage stats
+        memory_stats = stats["memory_usage"]
+        assert memory_stats["current"]["memory_cache_entry_count"] == 2  # Latest measurement
+        assert memory_stats["trends"]["total_measurements"] == 2
         
         # Check slow operations
         slow_ops = self.monitor.get_recent_slow_operations()
-        assert len(slow_ops["key_generation"]) >= 1  # At least the 0.15s operation
+        assert len(slow_ops["key_generation"]) >= 1  # At least the 0.30s operation
+        
+        # Check memory warnings
+        warnings = self.monitor.get_memory_warnings()
+        # Should be no warnings for small test data
+        critical_warnings = [w for w in warnings if w["severity"] == "critical"]
+        assert len(critical_warnings) == 0
         
         # Export for analysis
         exported = self.monitor.export_metrics()
         assert len(exported["key_generation_times"]) == 3
         assert len(exported["cache_operation_times"]) == 3
-        assert len(exported["compression_ratios"]) == 2 
+        assert len(exported["compression_ratios"]) == 2
+        assert len(exported["memory_usage_measurements"]) == 2 

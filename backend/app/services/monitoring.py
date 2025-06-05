@@ -1,5 +1,6 @@
 import time
 import logging
+import sys
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -37,6 +38,25 @@ class CompressionMetric:
             self.compression_ratio = self.compressed_size / self.original_size
 
 
+@dataclass
+class MemoryUsageMetric:
+    """Data class for storing memory usage measurements."""
+    total_cache_size_bytes: int
+    cache_entry_count: int
+    avg_entry_size_bytes: float
+    memory_cache_size_bytes: int
+    memory_cache_entry_count: int
+    process_memory_mb: float
+    timestamp: float
+    cache_utilization_percent: float
+    warning_threshold_reached: bool = False
+    additional_data: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.additional_data is None:
+            self.additional_data = {}
+
+
 class CachePerformanceMonitor:
     """
     Monitors and tracks cache performance metrics for optimization and debugging.
@@ -45,24 +65,32 @@ class CachePerformanceMonitor:
     - Key generation performance
     - Cache operation timing (get/set operations)
     - Compression ratios and efficiency
+    - Memory usage of cache items
     - Recent measurements with automatic cleanup
     """
     
-    def __init__(self, retention_hours: int = 1, max_measurements: int = 1000):
+    def __init__(self, retention_hours: int = 1, max_measurements: int = 1000,
+                 memory_warning_threshold_bytes: int = 50 * 1024 * 1024,  # 50MB
+                 memory_critical_threshold_bytes: int = 100 * 1024 * 1024):  # 100MB
         """
         Initialize the cache performance monitor.
         
         Args:
             retention_hours: How long to keep measurements (default: 1 hour)
             max_measurements: Maximum number of measurements to store per metric type
+            memory_warning_threshold_bytes: Memory usage threshold for warnings (default: 50MB)
+            memory_critical_threshold_bytes: Memory usage threshold for critical alerts (default: 100MB)
         """
         self.retention_hours = retention_hours
         self.max_measurements = max_measurements
+        self.memory_warning_threshold_bytes = memory_warning_threshold_bytes
+        self.memory_critical_threshold_bytes = memory_critical_threshold_bytes
         
         # Storage for different types of measurements
         self.key_generation_times: List[PerformanceMetric] = []
         self.cache_operation_times: List[PerformanceMetric] = []
         self.compression_ratios: List[CompressionMetric] = []
+        self.memory_usage_measurements: List[MemoryUsageMetric] = []
         
         # Track overall cache statistics
         self.cache_hits = 0
@@ -199,9 +227,273 @@ class CachePerformanceMonitor:
             f"({savings_percent:.1f}% savings, {compression_time:.3f}s, {operation_type})"
         )
     
+    def record_memory_usage(
+        self,
+        memory_cache: Dict[str, Any],
+        redis_stats: Dict[str, Any] = None,
+        additional_data: Dict[str, Any] = None
+    ):
+        """
+        Record current memory usage of cache components.
+        
+        Args:
+            memory_cache: The in-memory cache dictionary to measure
+            redis_stats: Optional Redis statistics for total cache size
+            additional_data: Additional metadata to store
+        """
+        # Calculate memory cache size
+        memory_cache_size_bytes = self._calculate_dict_size(memory_cache)
+        memory_cache_entry_count = len(memory_cache)
+        
+        # Calculate average entry size if we have entries
+        avg_entry_size_bytes = 0.0
+        if memory_cache_entry_count > 0:
+            avg_entry_size_bytes = memory_cache_size_bytes / memory_cache_entry_count
+        
+        # Get total cache size from Redis stats if available
+        total_cache_size_bytes = memory_cache_size_bytes
+        cache_entry_count = memory_cache_entry_count
+        
+        if redis_stats and "memory_used_bytes" in redis_stats:
+            total_cache_size_bytes += redis_stats["memory_used_bytes"]
+            if "keys" in redis_stats:
+                cache_entry_count += redis_stats["keys"]
+        
+        # Get current process memory usage
+        process_memory_mb = self._get_process_memory_mb()
+        
+        # Calculate cache utilization percentage (relative to warning threshold)
+        cache_utilization_percent = (total_cache_size_bytes / self.memory_warning_threshold_bytes) * 100
+        
+        # Check if warning threshold is reached
+        warning_threshold_reached = total_cache_size_bytes >= self.memory_warning_threshold_bytes
+        
+        metric = MemoryUsageMetric(
+            total_cache_size_bytes=total_cache_size_bytes,
+            cache_entry_count=cache_entry_count,
+            avg_entry_size_bytes=avg_entry_size_bytes,
+            memory_cache_size_bytes=memory_cache_size_bytes,
+            memory_cache_entry_count=memory_cache_entry_count,
+            process_memory_mb=process_memory_mb,
+            timestamp=time.time(),
+            cache_utilization_percent=cache_utilization_percent,
+            warning_threshold_reached=warning_threshold_reached,
+            additional_data=additional_data or {}
+        )
+        
+        self.memory_usage_measurements.append(metric)
+        self._cleanup_old_measurements(self.memory_usage_measurements)
+        
+        # Log warnings based on memory usage
+        if total_cache_size_bytes >= self.memory_critical_threshold_bytes:
+            logger.error(
+                f"Critical cache memory usage: {total_cache_size_bytes / 1024 / 1024:.1f}MB "
+                f"(>{self.memory_critical_threshold_bytes / 1024 / 1024:.1f}MB threshold)"
+            )
+        elif warning_threshold_reached:
+            logger.warning(
+                f"High cache memory usage: {total_cache_size_bytes / 1024 / 1024:.1f}MB "
+                f"(>{self.memory_warning_threshold_bytes / 1024 / 1024:.1f}MB threshold)"
+            )
+        
+        logger.debug(
+            f"Cache memory usage: {total_cache_size_bytes / 1024 / 1024:.1f}MB "
+            f"({cache_entry_count} entries, {cache_utilization_percent:.1f}% of threshold)"
+        )
+        
+        return metric
+
+    def _calculate_dict_size(self, obj: Any) -> int:
+        """
+        Calculate the approximate memory size of a Python object in bytes.
+        
+        Args:
+            obj: Object to measure
+            
+        Returns:
+            Estimated size in bytes
+        """
+        try:
+            # Use sys.getsizeof for basic size calculation
+            size = sys.getsizeof(obj)
+            
+            # For dictionaries, add size of keys and values
+            if isinstance(obj, dict):
+                for key, value in obj.items():
+                    size += sys.getsizeof(key)
+                    # Recursively calculate nested dict/list sizes
+                    if isinstance(value, (dict, list)):
+                        size += self._calculate_dict_size(value)
+                    else:
+                        size += sys.getsizeof(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    if isinstance(item, (dict, list)):
+                        size += self._calculate_dict_size(item)
+                    else:
+                        size += sys.getsizeof(item)
+                        
+            return size
+        except Exception as e:
+            logger.warning(f"Error calculating object size: {e}")
+            return 0
+
+    def _get_process_memory_mb(self) -> float:
+        """
+        Get current process memory usage in MB.
+        
+        Returns:
+            Memory usage in MB, or 0.0 if cannot be determined
+        """
+        try:
+            # Try to use psutil if available
+            try:
+                import psutil
+                process = psutil.Process()
+                return process.memory_info().rss / 1024 / 1024  # Convert bytes to MB
+            except ImportError:
+                pass
+            
+            # Fallback to reading /proc/self/status on Linux
+            try:
+                with open('/proc/self/status', 'r') as f:
+                    for line in f:
+                        if line.startswith('VmRSS:'):
+                            # Extract memory in KB and convert to MB
+                            kb = int(line.split()[1])
+                            return kb / 1024
+            except (IOError, ValueError, IndexError):
+                pass
+            
+            # If all methods fail, return 0
+            return 0.0
+            
+        except Exception as e:
+            logger.debug(f"Could not determine process memory usage: {e}")
+            return 0.0
+
+    def get_memory_usage_stats(self) -> Dict[str, Any]:
+        """
+        Get memory usage statistics and warnings.
+        
+        Returns:
+            Dictionary containing memory usage metrics and alerts
+        """
+        if not self.memory_usage_measurements:
+            return {
+                "no_measurements": True,
+                "warning_threshold_mb": self.memory_warning_threshold_bytes / 1024 / 1024,
+                "critical_threshold_mb": self.memory_critical_threshold_bytes / 1024 / 1024
+            }
+        
+        # Get latest measurement
+        latest = self.memory_usage_measurements[-1]
+        
+        # Calculate trends from recent measurements (last 10)
+        recent_measurements = self.memory_usage_measurements[-10:]
+        total_sizes = [m.total_cache_size_bytes for m in recent_measurements]
+        memory_cache_sizes = [m.memory_cache_size_bytes for m in recent_measurements]
+        entry_counts = [m.cache_entry_count for m in recent_measurements]
+        
+        stats = {
+            "current": {
+                "total_cache_size_mb": latest.total_cache_size_bytes / 1024 / 1024,
+                "memory_cache_size_mb": latest.memory_cache_size_bytes / 1024 / 1024,
+                "cache_entry_count": latest.cache_entry_count,
+                "memory_cache_entry_count": latest.memory_cache_entry_count,
+                "avg_entry_size_bytes": latest.avg_entry_size_bytes,
+                "process_memory_mb": latest.process_memory_mb,
+                "cache_utilization_percent": latest.cache_utilization_percent,
+                "warning_threshold_reached": latest.warning_threshold_reached
+            },
+            "thresholds": {
+                "warning_threshold_mb": self.memory_warning_threshold_bytes / 1024 / 1024,
+                "critical_threshold_mb": self.memory_critical_threshold_bytes / 1024 / 1024,
+                "warning_threshold_reached": latest.warning_threshold_reached,
+                "critical_threshold_reached": latest.total_cache_size_bytes >= self.memory_critical_threshold_bytes
+            },
+            "trends": {
+                "total_measurements": len(self.memory_usage_measurements),
+                "avg_total_cache_size_mb": mean(total_sizes) / 1024 / 1024,
+                "max_total_cache_size_mb": max(total_sizes) / 1024 / 1024,
+                "avg_memory_cache_size_mb": mean(memory_cache_sizes) / 1024 / 1024,
+                "avg_entry_count": mean(entry_counts),
+                "max_entry_count": max(entry_counts)
+            }
+        }
+        
+        # Add growth analysis if we have enough measurements
+        if len(recent_measurements) >= 2:
+            size_change = total_sizes[-1] - total_sizes[0]
+            time_span = recent_measurements[-1].timestamp - recent_measurements[0].timestamp
+            if time_span > 0:
+                growth_rate_mb_per_hour = (size_change / time_span) * 3600 / 1024 / 1024
+                stats["trends"]["growth_rate_mb_per_hour"] = growth_rate_mb_per_hour
+        
+        return stats
+
+    def get_memory_warnings(self) -> List[Dict[str, Any]]:
+        """
+        Get active memory-related warnings and recommendations.
+        
+        Returns:
+            List of warning dictionaries with severity and recommendations
+        """
+        warnings = []
+        
+        if not self.memory_usage_measurements:
+            return warnings
+        
+        latest = self.memory_usage_measurements[-1]
+        
+        # Critical memory usage
+        if latest.total_cache_size_bytes >= self.memory_critical_threshold_bytes:
+            warnings.append({
+                "severity": "critical",
+                "message": f"Cache memory usage is {latest.total_cache_size_bytes / 1024 / 1024:.1f}MB, "
+                          f"exceeding critical threshold of {self.memory_critical_threshold_bytes / 1024 / 1024:.1f}MB",
+                "recommendations": [
+                    "Consider reducing cache TTL values",
+                    "Implement more aggressive cache eviction",
+                    "Review and optimize large cached responses",
+                    "Consider increasing memory limits or scaling horizontally"
+                ]
+            })
+        
+        # Warning memory usage
+        elif latest.warning_threshold_reached:
+            warnings.append({
+                "severity": "warning",
+                "message": f"Cache memory usage is {latest.total_cache_size_bytes / 1024 / 1024:.1f}MB, "
+                          f"exceeding warning threshold of {self.memory_warning_threshold_bytes / 1024 / 1024:.1f}MB",
+                "recommendations": [
+                    "Monitor cache growth closely",
+                    "Review cache key patterns for optimization",
+                    "Consider reducing memory cache size limit"
+                ]
+            })
+        
+        # High memory cache utilization
+        if latest.memory_cache_entry_count > 0:
+            # Assume a max memory cache size based on common patterns (this could be injected)
+            estimated_max_entries = 100  # This should ideally be passed from the cache instance
+            utilization = (latest.memory_cache_entry_count / estimated_max_entries) * 100
+            
+            if utilization > 90:
+                warnings.append({
+                    "severity": "info",
+                    "message": f"Memory cache is {utilization:.1f}% full ({latest.memory_cache_entry_count}/{estimated_max_entries} entries)",
+                    "recommendations": [
+                        "Memory cache eviction is working properly",
+                        "Consider increasing memory cache size if hit rates are good"
+                    ]
+                })
+        
+        return warnings
+        
     def _cleanup_old_measurements(self, measurements: List):
         """
-        Remove old measurements based on retention policy.
+        Clean up old measurements based on retention policy and size limits.
         
         Args:
             measurements: List of measurements to clean up
@@ -209,22 +501,18 @@ class CachePerformanceMonitor:
         if not measurements:
             return
         
-        # Calculate cutoff time
-        cutoff_time = time.time() - (self.retention_hours * 3600)
+        current_time = time.time()
+        cutoff_time = current_time - (self.retention_hours * 3600)
         
-        # Remove old measurements
-        original_count = len(measurements)
+        # Remove measurements older than retention period
         measurements[:] = [m for m in measurements if m.timestamp > cutoff_time]
         
-        # Also enforce max measurements limit
+        # Limit total number of measurements
         if len(measurements) > self.max_measurements:
             # Keep the most recent measurements
             measurements[:] = measurements[-self.max_measurements:]
-        
-        if len(measurements) < original_count:
-            logger.debug(
-                f"Cleaned up {original_count - len(measurements)} old measurements"
-            )
+            
+        logger.debug(f"Cleaned up measurements, {len(measurements)} remaining")
     
     def get_performance_stats(self) -> Dict[str, Any]:
         """
@@ -237,6 +525,7 @@ class CachePerformanceMonitor:
         self._cleanup_old_measurements(self.key_generation_times)
         self._cleanup_old_measurements(self.cache_operation_times)
         self._cleanup_old_measurements(self.compression_ratios)
+        self._cleanup_old_measurements(self.memory_usage_measurements)
         
         stats = {
             "timestamp": datetime.now().isoformat(),
@@ -316,6 +605,11 @@ class CachePerformanceMonitor:
                 "overall_savings_percent": overall_savings_percent
             }
         
+        # Memory usage statistics
+        if self.memory_usage_measurements:
+            memory_stats = self.get_memory_usage_stats()
+            stats["memory_usage"] = memory_stats
+        
         return stats
     
     def _calculate_hit_rate(self) -> float:
@@ -393,6 +687,7 @@ class CachePerformanceMonitor:
         self.key_generation_times.clear()
         self.cache_operation_times.clear()
         self.compression_ratios.clear()
+        self.memory_usage_measurements.clear()
         self.cache_hits = 0
         self.cache_misses = 0
         self.total_operations = 0
@@ -409,6 +704,7 @@ class CachePerformanceMonitor:
             "key_generation_times": [asdict(m) for m in self.key_generation_times],
             "cache_operation_times": [asdict(m) for m in self.cache_operation_times],
             "compression_ratios": [asdict(m) for m in self.compression_ratios],
+            "memory_usage_measurements": [asdict(m) for m in self.memory_usage_measurements],
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
             "total_operations": self.total_operations,

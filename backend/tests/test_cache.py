@@ -779,6 +779,186 @@ class TestAIResponseCache:
             # Verify that no compression ratio was recorded for small data
             assert len(cache_instance.performance_monitor.compression_ratios) == initial_compression_ops
 
+    @pytest.mark.asyncio
+    async def test_cache_response_compression_tracking_for_small_data(self, cache_instance, mock_redis):
+        """Test that compression metrics are NOT recorded for small data."""
+        small_response = {"result": "small", "success": True}
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.cache_response(
+                "test text", "summarize", {}, small_response, None
+            )
+            
+            # Should NOT record compression metrics for small data
+            assert len(cache_instance.performance_monitor.compression_ratios) == 0
+
+    def test_memory_usage_recording(self, cache_instance):
+        """Test that memory usage is recorded correctly."""
+        # Add some items to memory cache
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance._update_memory_cache("key2", {"data": "value2"})
+        
+        # Record memory usage
+        redis_stats = {"memory_used_bytes": 1024 * 1024, "keys": 10}
+        cache_instance.record_memory_usage(redis_stats)
+        
+        # Verify memory usage was recorded
+        assert len(cache_instance.performance_monitor.memory_usage_measurements) == 1
+        
+        metric = cache_instance.performance_monitor.memory_usage_measurements[0]
+        assert metric.memory_cache_entry_count == 2
+        assert metric.cache_entry_count == 12  # 2 memory + 10 redis
+        assert metric.total_cache_size_bytes > 0
+
+    def test_memory_usage_recording_failure(self, cache_instance):
+        """Test graceful handling of memory usage recording failure."""
+        # Mock the performance monitor to raise an exception
+        with patch.object(cache_instance.performance_monitor, 'record_memory_usage', side_effect=Exception("Test error")):
+            with patch('backend.app.services.cache.logger') as mock_logger:
+                # Should not raise an exception
+                cache_instance.record_memory_usage()
+                
+                # Should log a warning
+                mock_logger.warning.assert_called_once()
+                warning_call = mock_logger.warning.call_args[0][0]
+                assert "Failed to record memory usage" in warning_call
+
+    def test_get_memory_usage_stats(self, cache_instance):
+        """Test getting memory usage statistics."""
+        # Add some data and record memory usage
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance.record_memory_usage()
+        
+        stats = cache_instance.get_memory_usage_stats()
+        
+        # Should return memory usage stats from monitor
+        assert "current" in stats or "no_measurements" in stats
+
+    def test_get_memory_warnings(self, cache_instance):
+        """Test getting memory warnings."""
+        # Add some data and record memory usage
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance.record_memory_usage()
+        
+        warnings = cache_instance.get_memory_warnings()
+        
+        # Should return a list (empty for small test data)
+        assert isinstance(warnings, list)
+
+    @pytest.mark.asyncio
+    async def test_cache_stats_includes_memory_tracking(self, cache_instance, mock_redis):
+        """Test that get_cache_stats triggers memory usage recording and includes memory stats."""
+        # Add some items to memory cache
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance._update_memory_cache("key2", {"data": "value2"})
+        
+        # Mock successful Redis connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            # Mock Redis info to include memory_used_bytes
+            mock_redis.info.return_value = {
+                "used_memory": 2048 * 1024,  # 2MB in bytes
+                "used_memory_human": "2.0M",
+                "connected_clients": 1
+            }
+            
+            stats = await cache_instance.get_cache_stats()
+            
+            # Verify memory usage was recorded during stats collection
+            assert len(cache_instance.performance_monitor.memory_usage_measurements) == 1
+            
+            # Verify stats include performance data with memory usage
+            assert "performance" in stats
+            performance_stats = stats["performance"]
+            
+            # If memory usage was recorded, it should be in performance stats
+            if cache_instance.performance_monitor.memory_usage_measurements:
+                assert "memory_usage" in performance_stats
+
+    @pytest.mark.asyncio
+    async def test_cache_stats_memory_recording_redis_unavailable(self, cache_instance):
+        """Test memory usage recording when Redis is unavailable."""
+        # Add some items to memory cache
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        
+        # Mock Redis connection failure
+        with patch.object(cache_instance, 'connect', return_value=False):
+            stats = await cache_instance.get_cache_stats()
+            
+            # Memory usage should still be recorded even without Redis
+            assert len(cache_instance.performance_monitor.memory_usage_measurements) == 1
+            
+            # Stats should still include memory cache info
+            assert "memory" in stats
+            assert stats["memory"]["memory_cache_entries"] == 1
+
+    def test_memory_usage_with_large_cache(self, cache_instance):
+        """Test memory usage tracking with larger cache data."""
+        # Create larger cache entries
+        large_data = {"data": "x" * 1000, "metadata": {"key": "value"}}
+        
+        for i in range(10):
+            cache_instance._update_memory_cache(f"key{i}", large_data)
+        
+        redis_stats = {"memory_used_bytes": 5 * 1024 * 1024, "keys": 50}  # 5MB
+        cache_instance.record_memory_usage(redis_stats)
+        
+        assert len(cache_instance.performance_monitor.memory_usage_measurements) == 1
+        
+        metric = cache_instance.performance_monitor.memory_usage_measurements[0]
+        assert metric.memory_cache_entry_count == 10
+        assert metric.cache_entry_count == 60  # 10 memory + 50 redis
+        assert metric.total_cache_size_bytes > 5 * 1024 * 1024  # Should include both memory and Redis
+        assert metric.memory_cache_size_bytes > 0
+
+    def test_memory_threshold_configuration(self, cache_instance):
+        """Test that memory thresholds are properly configured in the performance monitor."""
+        # Check default thresholds
+        monitor = cache_instance.performance_monitor
+        assert monitor.memory_warning_threshold_bytes == 50 * 1024 * 1024  # 50MB
+        assert monitor.memory_critical_threshold_bytes == 100 * 1024 * 1024  # 100MB
+
+    def test_memory_usage_integration_with_performance_stats(self, cache_instance):
+        """Test memory usage integration with overall performance stats."""
+        # Add cache operations and memory usage
+        cache_instance.performance_monitor.record_cache_operation_time("get", 0.02, True, 500)
+        cache_instance.performance_monitor.record_key_generation_time(0.01, 1000, "summarize")
+        
+        # Add memory usage
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance.record_memory_usage()
+        
+        # Get combined performance stats
+        stats = cache_instance.get_performance_summary()
+        
+        # Should include basic performance metrics
+        assert "hit_ratio" in stats
+        assert "total_operations" in stats
+        
+        # Get full performance stats
+        full_stats = cache_instance.performance_monitor.get_performance_stats()
+        
+        # Should include memory usage in full stats
+        assert "memory_usage" in full_stats
+
+    def test_memory_usage_cleanup_on_reset(self, cache_instance):
+        """Test that memory usage measurements are cleared when stats are reset."""
+        # Add memory usage data
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance.record_memory_usage()
+        
+        assert len(cache_instance.performance_monitor.memory_usage_measurements) == 1
+        
+        # Reset performance stats
+        cache_instance.reset_performance_stats()
+        
+        # Memory usage measurements should be cleared
+        assert len(cache_instance.performance_monitor.memory_usage_measurements) == 0
+
 
 class TestCacheKeyGenerator:
     """Test the CacheKeyGenerator class."""

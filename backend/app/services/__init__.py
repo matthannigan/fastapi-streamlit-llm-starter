@@ -1,9 +1,10 @@
 """Backend services package."""
 
-from .monitoring import CachePerformanceMonitor, PerformanceMetric, CompressionMetric
+from .monitoring import CachePerformanceMonitor, PerformanceMetric, CompressionMetric, MemoryUsageMetric
 
 __all__ = [
     "CachePerformanceMonitor",
     "PerformanceMetric", 
-    "CompressionMetric"
+    "CompressionMetric",
+    "MemoryUsageMetric"
 ]
