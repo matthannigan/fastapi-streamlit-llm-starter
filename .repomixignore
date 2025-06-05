@@ -15,3 +15,4 @@ PRD*.*
 .taskmasterconfig
 repomix.config.json
 .flake8
+dev/
