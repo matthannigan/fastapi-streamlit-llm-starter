@@ -21,6 +21,7 @@ from app.auth import verify_api_key, optional_verify_api_key
 from app.dependencies import get_settings, get_cache_service, get_text_processor
 from app.services.cache import AIResponseCache
 from app.resilience_endpoints import resilience_router
+from app.routers.monitoring import monitoring_router
 
 
 # Configure logging
@@ -60,6 +61,9 @@ app.add_middleware(
 
 # Include the resilience router
 app.include_router(resilience_router)
+
+# Include the monitoring router
+app.include_router(monitoring_router)
 
 # No routers needed - using direct service integration
 
