@@ -1,3 +1,99 @@
+# Update tests for AIResponseCache
+_Exported on 6/5/2025 at 00:13:35 EDT from Cursor (1.0.0)_
+
+---
+
+**User**
+
+Execute Task 20: Update Tests for `AIResponseCache` with DI Overrides
+
+---
+
+**Cursor**
+
+I'll help you execute Task 20: Update Tests for `AIResponseCache` with DI Overrides. Let me start by checking the current task status and understanding the codebase structure.
+
+Let me check the status of the dependencies first:
+
+Great! All dependencies are completed (tasks 5, 16, and 19 are all marked as "done"). Now let me search for existing tests that might be mocking `AIResponseCache` globally or using it directly.
+
+Now let me also check for any mocking patterns in the test files:
+
+Let me look for global mocking patterns or dependency overrides that might already exist:
+
+Great! I can see there are already some tests using `dependency_overrides` for `get_cache_service`. Let me examine the current test files to understand the current mocking patterns and what needs to be updated. Let me start by looking at the main test file:
+
+Perfect! I can see that some tests are already using the dependency override pattern with `app.dependency_overrides[get_cache_service] = lambda: mock_cache_service`. Now let me check the test files that are still using the old global mocking patterns. Let me look at `test_dependencies.py` since it seems to have many old patterns:
+
+I can see several tests in `test_dependencies.py` are using the old pattern with `patch('app.dependencies.AIResponseCache')`. Let me also check the `test_text_processor.py` file:
+
+Now let me check the conftest.py file to see the current `mock_cache_service` fixture:
+
+Perfect! Now I can see the current situation. The `mock_cache_service` fixture is already available in `conftest.py`. Now I need to identify the tests that are still using global mocking patterns and update them to use dependency overrides. Let me start by updating the tests in `test_dependencies.py` that use the old `@patch` patterns.
+
+Let me first set the task to "in-progress":
+
+Now let me start updating the tests. Let me first examine the `test_dependencies.py` file more closely to understand the tests that need updating:
+
+I can see that the tests in `test_dependencies.py` are testing the actual dependency provider functions themselves, so they SHOULD be using `patch` to mock `AIResponseCache` since they're unit testing the dependency providers. The current implementation is actually correct for these tests because they're testing the behavior of `get_cache_service` function itself.
+
+However, let me check if there are any integration tests that should be using dependency overrides instead. Let me look for tests that are testing endpoints or services that would benefit from using dependency overrides.
+
+Let me check which tests are actually using AIResponseCache in an integration context that should be updated:
+
+Good! The main integration tests in `test_main.py` are already using dependency overrides. Let me check if there are any tests that are still mocking `AIResponseCache` globally that should be using dependency overrides instead. Let me search for tests that mock `AIResponseCache` directly in integration contexts:
+
+Let me examine the `test_dependency_injection.py` file since it seems most likely to contain integration tests that should use dependency overrides:
+
+I can see that `test_dependency_injection.py` is testing the constructor behavior of `TextProcessorService` and not doing integration testing. These tests are appropriately using direct mocking since they're unit tests.
+
+Let me check if there are any specific endpoint tests that should be updated. Let me look for integration tests that might be testing endpoints with cache functionality but not using dependency overrides:
+
+Let me check for any tests that import TestClient and use it:
+
+Let me check the `test_process_endpoint_auth.py` file to see if it has any cache-related mocking that should be updated:
+
+I can see that `test_process_endpoint_auth.py` is focused on authentication testing and doesn't use cache-related functionality that would need dependency override updates.
+
+Let me check the `security/test_context_isolation.py` file:
+
+I can see that the security tests in `test_context_isolation.py` don't explicitly mock `AIResponseCache` either. They're testing the actual endpoint behavior.
+
+Now let me check if there are any tests that might be missing dependency overrides. Let me look more carefully at the patterns. The main issue seems to be that there might be some integration tests that are using the real cache service when they should be using a mock. 
+
+Let me log my initial assessment and check if there are any tests that should be using dependency overrides but aren't:
+
+I need to use the task ID directly since this isn't a subtask. Let me update the task instead:
+
+Great! The AI has provided a good task breakdown with subtasks. Now let me proceed with subtask 2: identifying other endpoint tests that might need updates. Let me look for any test files that might be testing endpoints but not using dependency overrides for cache.
+
+Let me check some of the test files I haven't examined yet, particularly `test_auth.py` and `test_manual_api.py` since they might test endpoints:
+
+Let me check for any tests in the subdirectories:
+
+Let me check the utils directory:
+
+Let me check the security directory:
+
+Now let me run the test suite to see if there are any tests that might be failing due to cache-related issues or using real cache instances:
+
+Great! The test results show that most tests are passing, and the failures are mostly related to:
+
+1. **Manual API tests** - These are trying to connect to a real server that's not running (expected failures)
+2. **Context isolation tests** - Some have issues with `AsyncClient` usage and `TextProcessorService` initialization
+3. **One test in text_processor.py** - Has an issue with async mock handling
+
+The important thing is that **all the cache-related tests are passing**, which means the dependency injection is working correctly. Let me examine the failing context isolation tests to see if they need dependency override updates:
+
+I can see the issues in the context isolation tests:
+
+1. **Line 195**: `service1 = TextProcessorService()` - This is calling the constructor without required arguments (settings and cache)
+2. **Line 366**: Same issue with `service = TextProcessorService()`
+3. **Line 119**: `AsyncClient(app=app, base_url="http://test")` - The `app` parameter syntax is incorrect for the newer httpx version
+
+These tests need to be fixed to use proper dependency injection. Let me fix these issues:
+
+```python
 """
 Comprehensive test suite for context isolation and request boundary logging.
 
@@ -13,12 +109,11 @@ import os
 import logging
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
-from httpx import AsyncClient, ASGITransport
+from httpx import AsyncClient
 from app.main import app
 from app.services.text_processor import TextProcessorService
 from app.services.cache import AIResponseCache
 from app.config import Settings
-from app.dependencies import get_cache_service
 
 # Set test environment
 os.environ["PYTEST_CURRENT_TEST"] = "true"
@@ -26,15 +121,6 @@ os.environ["API_KEY"] = "test-api-key-12345"
 
 class TestContextIsolation:
     """Test suite for verifying context isolation between requests."""
-
-    @pytest.fixture(autouse=True)
-    def setup_cache_mocking(self, mock_cache_service):
-        """Automatically set up cache mocking for all tests in this class."""
-        # Override the cache service dependency for all tests
-        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
-        yield
-        # Clean up after each test
-        app.dependency_overrides.clear()
 
     @pytest.fixture
     def client(self):
@@ -68,14 +154,6 @@ class TestContextIsolation:
     def mock_cache(self):
         """Create mock cache for TextProcessorService."""
         return AsyncMock(spec=AIResponseCache)
-
-    @pytest.fixture
-    def mock_cache_service(self):
-        """Create mock cache service for dependency injection."""
-        mock_cache = MagicMock()
-        mock_cache.get_cached_response = AsyncMock(return_value=None)  # Default to cache miss
-        mock_cache.cache_response = AsyncMock(return_value=None)
-        return mock_cache
 
     def test_sequential_requests_no_context_leakage(self, client, headers):
         """Test that sequential requests don't leak context between them."""
@@ -154,7 +232,7 @@ class TestContextIsolation:
     async def test_concurrent_requests_isolation(self, headers):
         """Test that concurrent requests don't interfere with each other."""
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(app=app, base_url="http://test") as client:
             # Create 5 different requests with unique content
             requests = [
                 {
@@ -191,14 +269,9 @@ class TestContextIsolation:
                 # Should contain reference to its own content
                 assert f"unique_content_{i+1}" in result_lower or f"topic {i+1}" in result_lower or f"request number {i+1}" in result_lower
 
-    def test_cache_isolation_by_content(self, client, headers, mock_cache_service):
+    def test_cache_isolation_by_content(self, client, headers):
         """Test that cache isolation works correctly based on content."""
-        
-        # Configure mock cache to always return None (cache miss) for simplicity
-        # This ensures we test that the cache service is being called correctly
-        mock_cache_service.get_cached_response = AsyncMock(return_value=None)
-        mock_cache_service.cache_response = AsyncMock(return_value=None)
-        
+
         # First request
         request_data = {
             "text": "This is a test text for cache isolation testing.",
@@ -216,11 +289,8 @@ class TestContextIsolation:
         result1 = response1.json()
         result2 = response2.json()
 
-        # Both requests should succeed and have similar structure
-        assert "result" in result1
-        assert "result" in result2
-        assert result1["success"] is True
-        assert result2["success"] is True
+        # Results should be identical (cache hit)
+        assert result1["result"] == result2["result"]
 
         # Now make a request with different content
         different_request = {
@@ -233,13 +303,8 @@ class TestContextIsolation:
         assert response3.status_code == 200
         result3 = response3.json()
 
-        # Third result should also succeed
-        assert "result" in result3
-        assert result3["success"] is True
-        
-        # Verify cache interactions - the mock cache service should have been called
-        assert mock_cache_service.get_cached_response.call_count >= 2  # At least 2 cache lookups
-        assert mock_cache_service.cache_response.call_count >= 2  # At least 2 cache store operations
+        # Third result should be different from the first two
+        assert result3["result"] != result1["result"]
 
     def test_service_level_isolation(self, mock_settings, mock_cache):
         """Test that the TextProcessorService maintains isolation."""
@@ -348,7 +413,7 @@ class TestContextIsolation:
     async def test_batch_processing_isolation(self, headers):
         """Test that batch processing maintains isolation between items."""
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(app=app, base_url="http://test") as client:
             # Create a batch request with different content types
             batch_request = {
                 "requests": [
@@ -438,139 +503,101 @@ class TestContextIsolation:
             assert not hasattr(agent, 'history')
             assert not hasattr(agent, 'context')
 
+// ... existing code ...
+```
 
-class TestRequestBoundaryLogging:
-    """Test suite for verifying request boundary logging functionality."""
+Now I need to fix the AsyncClient usage issue. Let me check the current httpx version and fix the async client usage:
 
-    @pytest.fixture(autouse=True)
-    def setup_cache_mocking(self, mock_cache_service):
-        """Automatically set up cache mocking for all tests in this class."""
-        # Override the cache service dependency for all tests
-        app.dependency_overrides[get_cache_service] = lambda: mock_cache_service
-        yield
-        # Clean up after each test
-        app.dependency_overrides.clear()
+```python
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_isolation(self, headers):
+        """Test that concurrent requests don't interfere with each other."""
 
-    @pytest.fixture
-    def client(self):
-        """Create a test client."""
-        return TestClient(app)
+        async with AsyncClient(app=app, base_url="http://test") as client:
 
-    @pytest.fixture
-    def headers(self):
-        """Standard headers for authenticated requests."""
-        return {"Authorization": "Bearer test-api-key-12345"}
+->
 
-    @pytest.fixture
-    def mock_cache_service(self):
-        """Create mock cache service for dependency injection."""
-        mock_cache = MagicMock()
-        mock_cache.get_cached_response = AsyncMock(return_value=None)  # Default to cache miss
-        mock_cache.cache_response = AsyncMock(return_value=None)
-        return mock_cache
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_isolation(self, headers):
+        """Test that concurrent requests don't interfere with each other."""
 
-    def test_request_boundary_logging_format(self, client, headers, caplog):
-        """Test that request boundary logging follows the correct format."""
+        async with AsyncClient(app=app, base_url="http://test") as client:
+```
 
-        request_data = {
-            "text": "Test text for logging verification",
-            "operation": "summarize",
-            "options": {"max_length": 20}
-        }
+Let me check the exact syntax for the newer httpx version:
 
-        with caplog.at_level("INFO"):
-            response = client.post("/process", json=request_data, headers=headers)
-            assert response.status_code == 200
+```python
+        async with AsyncClient(app=app, base_url="http://test") as client:
 
-        # Check for REQUEST_START and REQUEST_END logs
-        log_messages = [record.message for record in caplog.records if record.levelname == "INFO"]
-        
-        start_logs = [msg for msg in log_messages if "REQUEST_START" in msg]
-        end_logs = [msg for msg in log_messages if "REQUEST_END" in msg]
-        
-        assert len(start_logs) >= 1, "Should have at least one REQUEST_START log"
-        assert len(end_logs) >= 1, "Should have at least one REQUEST_END log"
-        
-        # Verify log format contains required fields
-        start_log = start_logs[0]
-        assert "ID:" in start_log
-        assert "Operation:" in start_log
-        assert "API Key:" in start_log
-        assert "test-api..." in start_log  # Anonymized API key (corrected expected format)
-        
-        end_log = end_logs[0]
-        assert "ID:" in end_log
-        assert "Status:" in end_log
-        assert "Operation:" in end_log
+->
 
-    def test_processing_boundary_logging(self, client, headers, caplog):
-        """Test that processing boundary logging works correctly."""
+        from httpx import ASGITransport
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+```
 
-        request_data = {
-            "text": "Test text for processing logging",
-            "operation": "summarize",
-            "options": {"max_length": 20}
-        }
+Let me read the specific lines to see the exact format:
 
-        with caplog.at_level("INFO"):
-            response = client.post("/process", json=request_data, headers=headers)
-            assert response.status_code == 200
+Now let me fix both AsyncClient usages:
 
-        # Check for PROCESSING_START and PROCESSING_END logs
-        log_messages = [record.message for record in caplog.records if record.levelname == "INFO"]
-        
-        processing_start_logs = [msg for msg in log_messages if "PROCESSING_START" in msg]
-        processing_end_logs = [msg for msg in log_messages if "PROCESSING_END" in msg]
-        
-        assert len(processing_start_logs) >= 1, "Should have at least one PROCESSING_START log"
-        assert len(processing_end_logs) >= 1, "Should have at least one PROCESSING_END log"
-        
-        # Verify processing log format
-        start_log = processing_start_logs[0]
-        assert "ID:" in start_log
-        assert "Text Length:" in start_log
-        assert "Operation:" in start_log
-        
-        end_log = processing_end_logs[0]
-        assert "ID:" in end_log
-        assert "Status:" in end_log
-        assert "Duration:" in end_log
+```python
+from httpx import AsyncClient
 
-    def test_unique_request_ids(self, client, headers, caplog):
-        """Test that each request gets a unique ID."""
+->
 
-        request_data = {
-            "text": "Test text for unique ID verification",
-            "operation": "summarize",
-            "options": {"max_length": 20}
-        }
+from httpx import AsyncClient, ASGITransport
+```
 
-        # Make multiple requests
-        request_ids = []
+```python
+        async with AsyncClient(app=app, base_url="http://test") as client:
 
-        for _ in range(3):
-            with caplog.at_level("INFO"):
-                caplog.clear()
-                response = client.post("/process", json=request_data, headers=headers)
-                assert response.status_code == 200
+->
 
-                # Extract request ID from logs
-                log_messages = [record.message for record in caplog.records if record.levelname == "INFO"]
-                start_logs = [msg for msg in log_messages if "REQUEST_START" in msg]
-                
-                if start_logs:
-                    # Extract ID from log message
-                    log_msg = start_logs[0]
-                    id_start = log_msg.find("ID: ") + 4
-                    id_end = log_msg.find(",", id_start)
-                    request_id = log_msg[id_start:id_end]
-                    request_ids.append(request_id)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+```
 
-        # Verify all IDs are unique
-        assert len(request_ids) == 3
-        assert len(set(request_ids)) == 3, "All request IDs should be unique"
-        
-        # Verify IDs are valid UUIDs (basic format check)
-        for req_id in request_ids:
-            assert len(req_id) == 36, f"Request ID {req_id} should be 36 characters long"
-            assert req_id.count("-") == 4, f"Request ID {req_id} should have 4 hyphens" 
+Let me fix them one by one:
+
+```python
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_isolation(self, headers):
+        """Test that concurrent requests don't interfere with each other."""
+
+        async with AsyncClient(app=app, base_url="http://test") as client:
+
+->
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_isolation(self, headers):
+        """Test that concurrent requests don't interfere with each other."""
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+```
+
+```python
+    @pytest.mark.asyncio
+    async def test_batch_processing_isolation(self, headers):
+        """Test that batch processing maintains isolation between items."""
+
+        async with AsyncClient(app=app, base_url="http://test") as client:
+
+->
+
+    @pytest.mark.asyncio
+    async def test_batch_processing_isolation(self, headers):
+        """Test that batch processing maintains isolation between items."""
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+```
+
+Now let me run the tests again to see if the context isolation tests are fixed:
+
+I'll analyze Task 20 and execute it to update tests that previously mocked `AIResponseCache` globally to use `app.dependency_overrides` with `mock_cache_service`.
+
+Let me check the dependencies to ensure they're completed:
+
+Good! Dependencies 5, 16, and 19 are all completed. Now let me proceed with Task 20. First, let me identify other endpoint tests that might be using real cache instances:
+
+Now let me check the conftest.py file to see the mock_cache_service fixture:
+
+Perfect! I can see that the `mock_cache_service` fixture is already properly defined in `conftest.py` (lines 118-126). Now let me check the current test files to see which ones are using dependency injection properly and which ones might need updates:
+
