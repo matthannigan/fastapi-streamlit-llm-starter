@@ -1,10 +1,11 @@
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, Mock
 from httpx import AsyncClient
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.text_processor import TextProcessorService
 from shared.models import TextProcessingRequest, ProcessingOperation
 
 # Test API key for authentication
@@ -91,6 +92,11 @@ def sample_request(sample_text):
 def mock_ai_response():
     """Mock AI response for testing."""
     return AsyncMock(return_value=AsyncMock(data="This is a test summary."))
+
+@pytest.fixture
+def mock_processor():
+    """Mock TextProcessorService for testing."""
+    return AsyncMock(spec=TextProcessorService)
 
 @pytest.fixture(autouse=True)
 def mock_ai_agent():
