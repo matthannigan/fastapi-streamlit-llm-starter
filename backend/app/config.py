@@ -49,6 +49,14 @@ class Settings(BaseSettings):
         default=1000, gt=0, description="Character count threshold for cache key text hashing"
     )
     
+    # Cache Compression Configuration  
+    cache_compression_threshold: int = Field(
+        default=1000, gt=0, description="Size threshold in bytes for compressing cache data"
+    )
+    cache_compression_level: int = Field(
+        default=6, ge=1, le=9, description="Compression level (1-9, where 9 is highest compression)"
+    )
+    
     # Resilience Configuration
     # Enable/disable resilience features
     resilience_enabled: bool = Field(default=True, description="Enable resilience features")

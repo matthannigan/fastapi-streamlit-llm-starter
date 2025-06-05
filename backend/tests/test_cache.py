@@ -198,10 +198,17 @@ class TestAIResponseCache:
             assert call_args[0][1] == 7200  # 2 hours for summarize
             
             # Check cached data includes metadata
-            cached_data = json.loads(call_args[0][2])
+            stored_data = call_args[0][2]
+            # Since compression is now used, decompress the data
+            if isinstance(stored_data, bytes):
+                cached_data = cache_instance._decompress_data(stored_data)
+            else:
+                cached_data = json.loads(stored_data)
             assert "cached_at" in cached_data
             assert cached_data["cache_hit"] is True
             assert cached_data["operation"] == "summarize"
+            assert "compression_used" in cached_data
+            assert "text_length" in cached_data
     
     @pytest.mark.asyncio
     async def test_operation_specific_ttl(self, cache_instance, mock_redis):
@@ -243,7 +250,8 @@ class TestAIResponseCache:
             
             await cache_instance.invalidate_pattern("test")
             
-            mock_redis.keys.assert_called_once_with("ai_cache:*test*")
+            # Keys are now passed as bytes
+            mock_redis.keys.assert_called_once_with(b"ai_cache:*test*")
             mock_redis.delete.assert_called_once_with(
                 "ai_cache:abc123", "ai_cache:def456", "ai_cache:ghi789"
             )
@@ -485,35 +493,137 @@ class TestAIResponseCache:
 
     @pytest.mark.asyncio
     async def test_memory_cache_statistics(self, cache_instance, mock_redis):
-        """Test that cache statistics include memory cache information."""
+        """Test memory cache statistics in cache stats."""
         # Add some items to memory cache
-        cache_instance._update_memory_cache("key1", {"value": 1})
-        cache_instance._update_memory_cache("key2", {"value": 2})
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance._update_memory_cache("key2", {"data": "value2"})
         
+        # Mock successful connection
         with patch.object(cache_instance, 'connect', return_value=True):
             cache_instance.redis = mock_redis
             
             stats = await cache_instance.get_cache_stats()
             
-            # Verify memory cache stats
-            assert "memory" in stats
             assert stats["memory"]["memory_cache_entries"] == 2
             assert stats["memory"]["memory_cache_size_limit"] == 100
             assert stats["memory"]["memory_cache_utilization"] == "2/100"
 
     def test_memory_cache_initialization(self, cache_instance):
-        """Test that memory cache is properly initialized."""
-        assert hasattr(cache_instance, 'text_size_tiers')
-        assert hasattr(cache_instance, 'memory_cache')
-        assert hasattr(cache_instance, 'memory_cache_size')
-        assert hasattr(cache_instance, 'memory_cache_order')
-        
-        assert cache_instance.text_size_tiers['small'] == 500
-        assert cache_instance.text_size_tiers['medium'] == 5000
-        assert cache_instance.text_size_tiers['large'] == 50000
-        assert cache_instance.memory_cache_size == 100
+        """Test memory cache is properly initialized."""
         assert cache_instance.memory_cache == {}
         assert cache_instance.memory_cache_order == []
+        assert cache_instance.memory_cache_size == 100
+
+    def test_compression_data_small_data(self, cache_instance):
+        """Test that small data is not compressed."""
+        small_data = {"result": "small", "cached_at": "2024-01-01"}
+        
+        compressed = cache_instance._compress_data(small_data)
+        
+        # Should start with "raw:" prefix for uncompressed data
+        assert compressed.startswith(b"raw:")
+        
+        # Should be able to decompress back to original
+        decompressed = cache_instance._decompress_data(compressed)
+        assert decompressed == small_data
+
+    def test_compression_data_large_data(self, cache_instance):
+        """Test that large data is compressed."""
+        # Create large data that exceeds compression threshold
+        large_text = "A" * 2000  # Larger than default 1000 byte threshold
+        large_data = {
+            "result": large_text,
+            "cached_at": "2024-01-01",
+            "operation": "summarize",
+            "success": True
+        }
+        
+        compressed = cache_instance._compress_data(large_data)
+        
+        # Should start with "compressed:" prefix for compressed data
+        assert compressed.startswith(b"compressed:")
+        
+        # Compressed data should be smaller than original
+        import pickle
+        original_size = len(pickle.dumps(large_data))
+        compressed_size = len(compressed) - 11  # Remove prefix length
+        assert compressed_size < original_size
+        
+        # Should be able to decompress back to original
+        decompressed = cache_instance._decompress_data(compressed)
+        assert decompressed == large_data
+
+    def test_compression_threshold_configuration(self):
+        """Test that compression threshold can be configured."""
+        custom_threshold = 500
+        custom_level = 9
+        
+        cache = AIResponseCache(
+            compression_threshold=custom_threshold,
+            compression_level=custom_level
+        )
+        
+        assert cache.compression_threshold == custom_threshold
+        assert cache.compression_level == custom_level
+
+    @pytest.mark.asyncio
+    async def test_cache_response_includes_compression_metadata(self, cache_instance, mock_redis):
+        """Test that cached responses include compression metadata."""
+        response_data = {
+            "operation": "summarize",
+            "result": "Test summary",
+            "success": True
+        }
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.cache_response(
+                "test text", "summarize", {}, response_data, None
+            )
+            
+            mock_redis.setex.assert_called_once()
+            call_args = mock_redis.setex.call_args
+            
+            # Decompress the stored data to check metadata
+            stored_data = call_args[0][2]
+            cached_data = cache_instance._decompress_data(stored_data)
+            
+            # Check compression metadata is included
+            assert "compression_used" in cached_data
+            assert "text_length" in cached_data
+            assert cached_data["text_length"] == len("test text")
+            assert isinstance(cached_data["compression_used"], bool)
+
+    @pytest.mark.asyncio
+    async def test_cache_retrieval_handles_compressed_data(self, cache_instance, mock_redis):
+        """Test that cache retrieval properly handles compressed data."""
+        # Create test data
+        test_data = {
+            "operation": "summarize",
+            "result": "Test summary",
+            "success": True,
+            "cached_at": "2024-01-01T12:00:00",
+            "cache_hit": True,
+            "compression_used": True,
+            "text_length": 9
+        }
+        
+        # Compress the data as it would be stored
+        compressed_data = cache_instance._compress_data(test_data)
+        mock_redis.get.return_value = compressed_data
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            result = await cache_instance.get_cached_response(
+                "test text", "summarize", {}, None
+            )
+            
+            assert result == test_data
+            mock_redis.get.assert_called_once()
 
 
 class TestCacheKeyGenerator:

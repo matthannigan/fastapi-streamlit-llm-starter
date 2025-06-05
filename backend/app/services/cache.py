@@ -2,6 +2,8 @@ import hashlib
 import json
 import asyncio
 import logging
+import zlib
+import pickle
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
@@ -106,7 +108,8 @@ class CacheKeyGenerator:
 
 class AIResponseCache:
     def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600, 
-                 text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256):
+                 text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256,
+                 compression_threshold: int = 1000, compression_level: int = 6):
         """
         Initialize AIResponseCache with injectable configuration.
         
@@ -115,10 +118,14 @@ class AIResponseCache:
             default_ttl: Default time-to-live for cache entries in seconds
             text_hash_threshold: Character count threshold for text hashing
             hash_algorithm: Hash algorithm to use for large texts
+            compression_threshold: Size threshold in bytes for compressing cache data
+            compression_level: Compression level (1-9, where 9 is highest compression)
         """
         self.redis = None
         self.redis_url = redis_url
         self.default_ttl = default_ttl
+        self.compression_threshold = compression_threshold
+        self.compression_level = compression_level
         self.operation_ttls = {
             "summarize": 7200,    # 2 hours - summaries are stable
             "sentiment": 86400,   # 24 hours - sentiment rarely changes
@@ -189,6 +196,44 @@ class AIResponseCache:
         self.memory_cache_order.append(key)
         logger.debug(f"Added to memory cache: {key}")
     
+    def _compress_data(self, data: Dict[str, Any]) -> bytes:
+        """
+        Compress cache data for large responses using pickle and zlib.
+        
+        Args:
+            data: Cache data to compress
+            
+        Returns:
+            Compressed bytes with appropriate prefix
+        """
+        # Use pickle for Python objects, then compress
+        pickled_data = pickle.dumps(data)
+        
+        if len(pickled_data) > self.compression_threshold:
+            compressed = zlib.compress(pickled_data, self.compression_level)
+            logger.debug(f"Compressed cache data: {len(pickled_data)} -> {len(compressed)} bytes")
+            return b"compressed:" + compressed
+        
+        return b"raw:" + pickled_data
+    
+    def _decompress_data(self, data: bytes) -> Dict[str, Any]:
+        """
+        Decompress cache data using zlib and pickle.
+        
+        Args:
+            data: Compressed bytes to decompress
+            
+        Returns:
+            Decompressed cache data dictionary
+        """
+        if data.startswith(b"compressed:"):
+            compressed_data = data[11:]  # Remove "compressed:" prefix
+            pickled_data = zlib.decompress(compressed_data)
+        else:
+            pickled_data = data[4:]  # Remove "raw:" prefix
+        
+        return pickle.loads(pickled_data)
+    
     async def connect(self):
         """Initialize Redis connection with graceful degradation."""
         if not REDIS_AVAILABLE:
@@ -199,7 +244,7 @@ class AIResponseCache:
             try:
                 self.redis = await aioredis.from_url(
                     self.redis_url,
-                    decode_responses=True,
+                    decode_responses=False,  # Handle binary data for compression
                     socket_connect_timeout=5,
                     socket_timeout=5
                 )
@@ -245,7 +290,16 @@ class AIResponseCache:
         try:
             cached_data = await self.redis.get(cache_key)
             if cached_data:
-                result = json.loads(cached_data)
+                # Handle both compressed binary data and legacy JSON format
+                if isinstance(cached_data, bytes) and (cached_data.startswith(b"compressed:") or cached_data.startswith(b"raw:")):
+                    # New compressed format
+                    result = self._decompress_data(cached_data)
+                elif isinstance(cached_data, bytes):
+                    # Legacy binary JSON format
+                    result = json.loads(cached_data.decode('utf-8'))
+                else:
+                    # Legacy string JSON format (for tests/mock Redis)
+                    result = json.loads(cached_data)
                 
                 # Populate memory cache for small items on Redis hit
                 if tier == 'small':
@@ -260,7 +314,7 @@ class AIResponseCache:
         return None
     
     async def cache_response(self, text: str, operation: str, options: Dict[str, Any], response: Dict[str, Any], question: str = None):
-        """Cache AI response with appropriate TTL."""
+        """Cache AI response with compression for large data and appropriate TTL."""
         if not await self.connect():
             return
             
@@ -268,19 +322,26 @@ class AIResponseCache:
         ttl = self.operation_ttls.get(operation, self.default_ttl)
         
         try:
-            # Add cache metadata
+            # Check if compression will be used
+            response_size = len(str(response))
+            will_compress = response_size > self.compression_threshold
+            
+            # Add cache metadata including compression information
             cached_response = {
                 **response,
                 "cached_at": datetime.now().isoformat(),
-                "cache_hit": True
+                "cache_hit": True,
+                "text_length": len(text),
+                "compression_used": will_compress
             }
             
-            await self.redis.setex(
-                cache_key,
-                ttl,
-                json.dumps(cached_response, default=str)
-            )
-            logger.debug(f"Cached response for operation {operation} with TTL {ttl}s")
+            # Compress data if beneficial
+            cache_data = self._compress_data(cached_response)
+            
+            await self.redis.setex(cache_key, ttl, cache_data)
+            
+            logger.debug(f"Cached response for {operation} (size: {len(cache_data)} bytes, compression: {will_compress})")
+            
         except Exception as e:
             logger.warning(f"Cache storage error: {e}")
     
@@ -290,7 +351,7 @@ class AIResponseCache:
             return
             
         try:
-            keys = await self.redis.keys(f"ai_cache:*{pattern}*")
+            keys = await self.redis.keys(f"ai_cache:*{pattern}*".encode('utf-8'))
             if keys:
                 await self.redis.delete(*keys)
                 logger.info(f"Invalidated {len(keys)} cache entries matching {pattern}")
@@ -303,7 +364,7 @@ class AIResponseCache:
         
         if await self.connect():
             try:
-                keys = await self.redis.keys("ai_cache:*")
+                keys = await self.redis.keys(b"ai_cache:*")
                 info = await self.redis.info()
                 redis_stats = {
                     "status": "connected",
