@@ -959,6 +959,231 @@ class TestAIResponseCache:
         # Memory usage measurements should be cleared
         assert len(cache_instance.performance_monitor.memory_usage_measurements) == 0
 
+    @pytest.mark.asyncio
+    async def test_invalidate_pattern_tracking_success(self, cache_instance, mock_redis):
+        """Test invalidation tracking with successful operation."""
+        mock_redis.keys.return_value = [
+            "ai_cache:test_key1",
+            "ai_cache:test_key2",
+            "ai_cache:test_key3"
+        ]
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.invalidate_pattern("test", "unit_test_context")
+        
+        # Check that invalidation was tracked
+        assert cache_instance.performance_monitor.total_invalidations == 1
+        assert cache_instance.performance_monitor.total_keys_invalidated == 3
+        assert len(cache_instance.performance_monitor.invalidation_events) == 1
+        
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == "test"
+        assert event.keys_invalidated == 3
+        assert event.invalidation_type == "manual"
+        assert event.operation_context == "unit_test_context"
+        assert event.additional_data["status"] == "success"
+
+    @pytest.mark.asyncio
+    async def test_invalidate_pattern_tracking_no_keys_found(self, cache_instance, mock_redis):
+        """Test invalidation tracking when no keys are found."""
+        mock_redis.keys.return_value = []
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.invalidate_pattern("nonexistent", "unit_test")
+        
+        # Should still track the invalidation attempt
+        assert cache_instance.performance_monitor.total_invalidations == 1
+        assert cache_instance.performance_monitor.total_keys_invalidated == 0
+        
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == "nonexistent"
+        assert event.keys_invalidated == 0
+        assert event.additional_data["status"] == "success"
+
+    @pytest.mark.asyncio
+    async def test_invalidate_pattern_tracking_redis_connection_failed(self, cache_instance):
+        """Test invalidation tracking when Redis connection fails."""
+        with patch.object(cache_instance, 'connect', return_value=False):
+            await cache_instance.invalidate_pattern("test", "connection_test")
+        
+        # Should track the failed attempt
+        assert cache_instance.performance_monitor.total_invalidations == 1
+        assert cache_instance.performance_monitor.total_keys_invalidated == 0
+        
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == "test"
+        assert event.keys_invalidated == 0
+        assert event.additional_data["status"] == "failed"
+        assert event.additional_data["reason"] == "redis_connection_failed"
+
+    @pytest.mark.asyncio
+    async def test_invalidate_pattern_tracking_redis_error(self, cache_instance, mock_redis):
+        """Test invalidation tracking when Redis operation fails."""
+        mock_redis.keys.side_effect = Exception("Redis error")
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.invalidate_pattern("test", "error_test")
+        
+        # Should track the failed operation
+        assert cache_instance.performance_monitor.total_invalidations == 1
+        assert cache_instance.performance_monitor.total_keys_invalidated == 0
+        
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == "test"
+        assert event.keys_invalidated == 0
+        assert event.additional_data["status"] == "failed"
+        assert event.additional_data["reason"] == "redis_error"
+        assert "Redis error" in event.additional_data["error"]
+
+    @pytest.mark.asyncio
+    async def test_invalidate_all(self, cache_instance, mock_redis):
+        """Test invalidate_all convenience method."""
+        mock_redis.keys.return_value = ["ai_cache:key1", "ai_cache:key2"]
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.invalidate_all("clear_all_test")
+        
+        # Should call invalidate_pattern with empty string
+        mock_redis.keys.assert_called_once_with(b"ai_cache:*")
+        
+        # Should track invalidation
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == ""
+        assert event.operation_context == "clear_all_test"
+
+    @pytest.mark.asyncio
+    async def test_invalidate_by_operation(self, cache_instance, mock_redis):
+        """Test invalidate_by_operation convenience method."""
+        mock_redis.keys.return_value = ["ai_cache:op:summarize|key1"]
+        
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.invalidate_by_operation("summarize", "operation_specific_test")
+        
+        # Should call invalidate_pattern with operation pattern
+        mock_redis.keys.assert_called_once_with(b"ai_cache:*op:summarize*")
+        
+        # Should track invalidation
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == "op:summarize"
+        assert event.operation_context == "operation_specific_test"
+
+    @pytest.mark.asyncio
+    async def test_invalidate_memory_cache(self, cache_instance):
+        """Test memory cache invalidation tracking."""
+        # Add some items to memory cache
+        cache_instance._update_memory_cache("key1", {"data": "value1"})
+        cache_instance._update_memory_cache("key2", {"data": "value2"})
+        cache_instance._update_memory_cache("key3", {"data": "value3"})
+        
+        assert len(cache_instance.memory_cache) == 3
+        
+        # Invalidate memory cache
+        await cache_instance.invalidate_memory_cache("memory_test")
+        
+        # Memory cache should be cleared
+        assert len(cache_instance.memory_cache) == 0
+        assert len(cache_instance.memory_cache_order) == 0
+        
+        # Should track invalidation
+        assert cache_instance.performance_monitor.total_invalidations == 1
+        assert cache_instance.performance_monitor.total_keys_invalidated == 3
+        
+        event = cache_instance.performance_monitor.invalidation_events[0]
+        assert event.pattern == "memory_cache"
+        assert event.keys_invalidated == 3
+        assert event.invalidation_type == "memory"
+        assert event.operation_context == "memory_test"
+        assert event.additional_data["status"] == "success"
+        assert event.additional_data["invalidation_target"] == "memory_cache_only"
+
+    def test_get_invalidation_frequency_stats(self, cache_instance):
+        """Test getting invalidation frequency statistics from cache."""
+        # Add some invalidation events through the monitor
+        cache_instance.performance_monitor.record_invalidation_event("pattern1", 5, 0.02, "manual")
+        cache_instance.performance_monitor.record_invalidation_event("pattern2", 3, 0.01, "automatic")
+        
+        stats = cache_instance.get_invalidation_frequency_stats()
+        
+        assert stats["total_invalidations"] == 2
+        assert stats["total_keys_invalidated"] == 8
+        assert "rates" in stats
+        assert "patterns" in stats
+        assert "efficiency" in stats
+
+    def test_get_invalidation_recommendations(self, cache_instance):
+        """Test getting invalidation recommendations from cache."""
+        # Add some invalidation events to trigger recommendations
+        for i in range(10):
+            cache_instance.performance_monitor.record_invalidation_event(
+                f"pattern_{i}", 
+                0,  # No keys found - will trigger low efficiency recommendation
+                0.01, 
+                "manual"
+            )
+        
+        recommendations = cache_instance.get_invalidation_recommendations()
+        
+        assert isinstance(recommendations, list)
+        # Should have at least one recommendation for low efficiency
+        low_efficiency_rec = next((r for r in recommendations if "efficiency" in r["issue"].lower()), None)
+        assert low_efficiency_rec is not None
+
+    def test_invalidation_integration_with_performance_stats(self, cache_instance):
+        """Test that invalidation data integrates with overall performance stats."""
+        # Record some cache operations and invalidations
+        cache_instance.performance_monitor.record_cache_operation_time("get", 0.02, True, 500)
+        cache_instance.performance_monitor.record_invalidation_event("test_pattern", 5, 0.03, "manual")
+        
+        # Get performance summary
+        summary = cache_instance.get_performance_summary()
+        assert "hit_ratio" in summary
+        assert "total_operations" in summary
+        
+        # Get full performance stats
+        full_stats = cache_instance.performance_monitor.get_performance_stats()
+        assert "invalidation" in full_stats
+        assert full_stats["invalidation"]["total_invalidations"] == 1
+        assert full_stats["invalidation"]["total_keys_invalidated"] == 5
+
+    def test_invalidation_events_cleanup(self, cache_instance):
+        """Test that invalidation events are properly cleaned up."""
+        import time
+        current_time = time.time()
+        
+        # Add an old invalidation event manually
+        old_event = cache_instance.performance_monitor.invalidation_events
+        from app.services.monitoring import InvalidationMetric
+        old_event.append(InvalidationMetric(
+            pattern="old_pattern",
+            keys_invalidated=1,
+            duration=0.01,
+            timestamp=current_time - 7200,  # 2 hours ago
+            invalidation_type="manual",
+            operation_context="old_test"
+        ))
+        
+        # Add a recent event
+        cache_instance.performance_monitor.record_invalidation_event("recent_pattern", 1, 0.01, "manual")
+        
+        # Trigger cleanup (happens automatically during get_performance_stats)
+        cache_instance.performance_monitor.get_performance_stats()
+        
+        # Should only have recent events (assuming 1 hour retention)
+        remaining_events = [e for e in cache_instance.performance_monitor.invalidation_events 
+                          if e.timestamp > current_time - 3600]
+        assert len(remaining_events) == 1
+        assert remaining_events[0].pattern == "recent_pattern"
+
 
 class TestCacheKeyGenerator:
     """Test the CacheKeyGenerator class."""

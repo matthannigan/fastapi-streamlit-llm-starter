@@ -7,7 +7,8 @@ from app.services.monitoring import (
     CachePerformanceMonitor, 
     PerformanceMetric, 
     CompressionMetric, 
-    MemoryUsageMetric
+    MemoryUsageMetric,
+    InvalidationMetric
 )
 
 
@@ -473,41 +474,277 @@ class TestCachePerformanceMonitor:
         assert self.monitor.cache_hits == 0
         assert self.monitor.cache_misses == 0
         assert self.monitor.total_operations == 0
-    
-    def test_export_metrics(self):
-        """Test exporting all metrics data."""
-        # Add some data
-        self.monitor.record_key_generation_time(0.05, 1000, "summarize", {"model": "gpt-4"})
-        self.monitor.record_cache_operation_time("get", 0.02, True, 500, {"tier": "small"})
-        self.monitor.record_compression_ratio(1000, 600, 0.01, "summarize")
-        memory_cache = {"key1": {"data": "value1"}}
-        self.monitor.record_memory_usage(memory_cache)
+
+    def test_record_invalidation_event(self):
+        """Test recording cache invalidation events."""
+        self.monitor.record_invalidation_event(
+            pattern="test_pattern",
+            keys_invalidated=5,
+            duration=0.025,
+            invalidation_type="manual",
+            operation_context="test_context",
+            additional_data={"user": "test_user"}
+        )
         
-        exported = self.monitor.export_metrics()
+        assert len(self.monitor.invalidation_events) == 1
+        assert self.monitor.total_invalidations == 1
+        assert self.monitor.total_keys_invalidated == 5
         
-        assert "key_generation_times" in exported
-        assert "cache_operation_times" in exported
-        assert "compression_ratios" in exported
-        assert "memory_usage_measurements" in exported
-        assert "cache_hits" in exported
-        assert "cache_misses" in exported
-        assert "total_operations" in exported
-        assert "export_timestamp" in exported
+        event = self.monitor.invalidation_events[0]
+        assert event.pattern == "test_pattern"
+        assert event.keys_invalidated == 5
+        assert event.duration == 0.025
+        assert event.invalidation_type == "manual"
+        assert event.operation_context == "test_context"
+        assert event.additional_data == {"user": "test_user"}
+
+    @patch('backend.app.services.monitoring.logger')
+    def test_record_invalidation_event_high_frequency_warning(self, mock_logger):
+        """Test warning logging for high invalidation frequency."""
+        # Set low thresholds for testing
+        self.monitor.invalidation_rate_warning_per_hour = 2
+        self.monitor.invalidation_rate_critical_per_hour = 4
         
-        # Check that data is properly serialized
-        assert len(exported["key_generation_times"]) == 1
-        assert len(exported["cache_operation_times"]) == 1
-        assert len(exported["compression_ratios"]) == 1
-        assert len(exported["memory_usage_measurements"]) == 1
+        # Record invalidations to trigger warning
+        for i in range(3):
+            self.monitor.record_invalidation_event(
+                pattern=f"pattern_{i}",
+                keys_invalidated=1,
+                duration=0.01
+            )
         
-        # Check that dataclass is converted to dict
-        key_gen_data = exported["key_generation_times"][0]
-        assert isinstance(key_gen_data, dict)
-        assert key_gen_data["duration"] == 0.05
-        assert key_gen_data["text_length"] == 1000
-        assert key_gen_data["operation_type"] == "summarize"
-        assert key_gen_data["additional_data"] == {"model": "gpt-4"}
-    
+        # Should trigger warning
+        mock_logger.warning.assert_called()
+        warning_call = mock_logger.warning.call_args[0][0]
+        assert "High invalidation rate" in warning_call
+
+    @patch('backend.app.services.monitoring.logger')
+    def test_record_invalidation_event_critical_frequency(self, mock_logger):
+        """Test critical logging for very high invalidation frequency."""
+        # Set low thresholds for testing
+        self.monitor.invalidation_rate_warning_per_hour = 2
+        self.monitor.invalidation_rate_critical_per_hour = 4
+        
+        # Record invalidations to trigger critical
+        for i in range(5):
+            self.monitor.record_invalidation_event(
+                pattern=f"pattern_{i}",
+                keys_invalidated=1,
+                duration=0.01
+            )
+        
+        # Should trigger critical
+        mock_logger.error.assert_called()
+        error_call = mock_logger.error.call_args[0][0]
+        assert "Critical invalidation rate" in error_call
+
+    def test_get_invalidations_in_last_hour(self):
+        """Test counting invalidations in the last hour."""
+        import time
+        current_time = time.time()
+        
+        # Add some old invalidations (more than 1 hour ago)
+        old_event = InvalidationMetric(
+            pattern="old_pattern",
+            keys_invalidated=1,
+            duration=0.01,
+            timestamp=current_time - 3700  # More than 1 hour ago
+        )
+        self.monitor.invalidation_events.append(old_event)
+        
+        # Add some recent invalidations
+        for i in range(3):
+            self.monitor.record_invalidation_event(
+                pattern=f"recent_pattern_{i}",
+                keys_invalidated=1,
+                duration=0.01
+            )
+        
+        recent_count = self.monitor._get_invalidations_in_last_hour()
+        assert recent_count == 3  # Only the recent ones
+
+    def test_get_invalidation_frequency_stats_empty(self):
+        """Test invalidation frequency stats with no invalidations."""
+        stats = self.monitor.get_invalidation_frequency_stats()
+        
+        assert stats["no_invalidations"] is True
+        assert stats["total_invalidations"] == 0
+        assert stats["total_keys_invalidated"] == 0
+        assert "warning_threshold_per_hour" in stats
+        assert "critical_threshold_per_hour" in stats
+
+    def test_get_invalidation_frequency_stats_with_data(self):
+        """Test invalidation frequency stats with sample data."""
+        # Add various invalidation events
+        patterns = ["pattern_a", "pattern_b", "pattern_a", "pattern_c", "pattern_a"]
+        types = ["manual", "automatic", "manual", "ttl_expired", "manual"]
+        
+        for i, (pattern, inv_type) in enumerate(zip(patterns, types)):
+            self.monitor.record_invalidation_event(
+                pattern=pattern,
+                keys_invalidated=i + 1,
+                duration=0.01 * (i + 1),
+                invalidation_type=inv_type,
+                operation_context=f"context_{i}"
+            )
+        
+        stats = self.monitor.get_invalidation_frequency_stats()
+        
+        # Check basic stats
+        assert stats["total_invalidations"] == 5
+        assert stats["total_keys_invalidated"] == 15  # 1+2+3+4+5
+        
+        # Check rates
+        assert stats["rates"]["last_hour"] == 5
+        assert stats["rates"]["last_24_hours"] == 5
+        
+        # Check patterns
+        assert stats["patterns"]["most_common_patterns"]["pattern_a"] == 3
+        assert stats["patterns"]["most_common_patterns"]["pattern_b"] == 1
+        assert stats["patterns"]["most_common_patterns"]["pattern_c"] == 1
+        
+        # Check types
+        assert stats["patterns"]["invalidation_types"]["manual"] == 3
+        assert stats["patterns"]["invalidation_types"]["automatic"] == 1
+        assert stats["patterns"]["invalidation_types"]["ttl_expired"] == 1
+        
+        # Check efficiency
+        assert stats["efficiency"]["avg_keys_per_invalidation"] == 3.0
+        assert stats["efficiency"]["avg_duration"] > 0
+        assert stats["efficiency"]["max_duration"] == 0.05
+
+    def test_get_invalidation_recommendations_empty(self):
+        """Test invalidation recommendations with no data."""
+        recommendations = self.monitor.get_invalidation_recommendations()
+        assert recommendations == []
+
+    def test_get_invalidation_recommendations_high_frequency(self):
+        """Test invalidation recommendations for high frequency."""
+        # Set low threshold for testing
+        self.monitor.invalidation_rate_warning_per_hour = 2
+        
+        # Add enough invalidations to trigger warning
+        for i in range(3):
+            self.monitor.record_invalidation_event(
+                pattern=f"pattern_{i}",
+                keys_invalidated=1,
+                duration=0.01
+            )
+        
+        recommendations = self.monitor.get_invalidation_recommendations()
+        
+        # Should have high frequency recommendation
+        high_freq_rec = next((r for r in recommendations if r["issue"] == "High invalidation frequency"), None)
+        assert high_freq_rec is not None
+        assert high_freq_rec["severity"] == "warning"
+        assert "times per hour" in high_freq_rec["message"]
+        assert len(high_freq_rec["suggestions"]) > 0
+
+    def test_get_invalidation_recommendations_dominant_pattern(self):
+        """Test invalidation recommendations for dominant pattern."""
+        # Add many invalidations with same pattern
+        for i in range(10):
+            self.monitor.record_invalidation_event(
+                pattern="dominant_pattern",
+                keys_invalidated=1,
+                duration=0.01
+            )
+        
+        # Add one with different pattern
+        self.monitor.record_invalidation_event(
+            pattern="other_pattern",
+            keys_invalidated=1,
+            duration=0.01
+        )
+        
+        recommendations = self.monitor.get_invalidation_recommendations()
+        
+        # Should have dominant pattern recommendation
+        dominant_rec = next((r for r in recommendations if r["issue"] == "Dominant invalidation pattern"), None)
+        assert dominant_rec is not None
+        assert dominant_rec["severity"] == "info"
+        assert "dominant_pattern" in dominant_rec["message"]
+
+    def test_get_invalidation_recommendations_low_efficiency(self):
+        """Test invalidation recommendations for low efficiency."""
+        # Add invalidations with low key counts
+        for i in range(5):
+            self.monitor.record_invalidation_event(
+                pattern=f"pattern_{i}",
+                keys_invalidated=0,  # No keys found
+                duration=0.01
+            )
+        
+        recommendations = self.monitor.get_invalidation_recommendations()
+        
+        # Should have low efficiency recommendation
+        low_eff_rec = next((r for r in recommendations if r["issue"] == "Low invalidation efficiency"), None)
+        assert low_eff_rec is not None
+        assert low_eff_rec["severity"] == "info"
+        assert "0.0 keys invalidated" in low_eff_rec["message"]
+
+    def test_get_invalidation_recommendations_high_impact(self):
+        """Test invalidation recommendations for high impact."""
+        # Add invalidations with high key counts
+        for i in range(3):
+            self.monitor.record_invalidation_event(
+                pattern=f"pattern_{i}",
+                keys_invalidated=150,  # High impact
+                duration=0.01
+            )
+        
+        recommendations = self.monitor.get_invalidation_recommendations()
+        
+        # Should have high impact recommendation
+        high_impact_rec = next((r for r in recommendations if r["issue"] == "High invalidation impact"), None)
+        assert high_impact_rec is not None
+        assert high_impact_rec["severity"] == "warning"
+        assert "150 keys invalidated" in high_impact_rec["message"]
+
+    def test_performance_stats_includes_invalidation(self):
+        """Test that performance stats include invalidation data."""
+        # Add some invalidation events
+        self.monitor.record_invalidation_event("test_pattern", 5, 0.02, "manual")
+        
+        stats = self.monitor.get_performance_stats()
+        
+        # Should include invalidation stats
+        assert "invalidation" in stats
+        assert stats["invalidation"]["total_invalidations"] == 1
+        assert stats["invalidation"]["total_keys_invalidated"] == 5
+
+    def test_export_metrics_includes_invalidation(self):
+        """Test that exported metrics include invalidation events."""
+        # Add some invalidation events
+        self.monitor.record_invalidation_event("test_pattern", 5, 0.02, "manual")
+        
+        metrics = self.monitor.export_metrics()
+        
+        # Should include invalidation events
+        assert "invalidation_events" in metrics
+        assert "total_invalidations" in metrics
+        assert "total_keys_invalidated" in metrics
+        assert len(metrics["invalidation_events"]) == 1
+        assert metrics["total_invalidations"] == 1
+        assert metrics["total_keys_invalidated"] == 5
+
+    def test_reset_stats_includes_invalidation(self):
+        """Test that reset clears invalidation data."""
+        # Add some invalidation events
+        self.monitor.record_invalidation_event("test_pattern", 5, 0.02, "manual")
+        
+        assert len(self.monitor.invalidation_events) == 1
+        assert self.monitor.total_invalidations == 1
+        assert self.monitor.total_keys_invalidated == 5
+        
+        # Reset stats
+        self.monitor.reset_stats()
+        
+        # Should be cleared
+        assert len(self.monitor.invalidation_events) == 0
+        assert self.monitor.total_invalidations == 0
+        assert self.monitor.total_keys_invalidated == 0
+
     def test_integration_workflow(self):
         """Test a complete workflow with multiple operations including memory tracking."""
         # Simulate a typical cache workflow
@@ -561,4 +798,7 @@ class TestCachePerformanceMonitor:
         assert len(exported["key_generation_times"]) == 3
         assert len(exported["cache_operation_times"]) == 3
         assert len(exported["compression_ratios"]) == 2
-        assert len(exported["memory_usage_measurements"]) == 2 
+        assert len(exported["memory_usage_measurements"]) == 2
+        assert len(exported["invalidation_events"]) == 1
+        assert exported["total_invalidations"] == 1
+        assert exported["total_keys_invalidated"] == 5 

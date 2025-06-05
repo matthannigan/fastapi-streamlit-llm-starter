@@ -117,10 +117,26 @@ async def cache_status(cache_service: AIResponseCache = Depends(get_cache_servic
     return stats
 
 @app.post("/cache/invalidate")
-async def invalidate_cache(pattern: str = "", cache_service: AIResponseCache = Depends(get_cache_service)):
+async def invalidate_cache(
+    pattern: str = "", 
+    operation_context: str = "api_endpoint",
+    cache_service: AIResponseCache = Depends(get_cache_service)
+):
     """Invalidate cache entries matching pattern."""
-    await cache_service.invalidate_pattern(pattern)
+    await cache_service.invalidate_pattern(pattern, operation_context=operation_context)
     return {"message": f"Cache invalidated for pattern: {pattern}"}
+
+@app.get("/cache/invalidation-stats")
+async def get_invalidation_stats(cache_service: AIResponseCache = Depends(get_cache_service)):
+    """Get cache invalidation frequency statistics."""
+    stats = cache_service.get_invalidation_frequency_stats()
+    return stats
+
+@app.get("/cache/invalidation-recommendations")
+async def get_invalidation_recommendations(cache_service: AIResponseCache = Depends(get_cache_service)):
+    """Get recommendations based on cache invalidation patterns."""
+    recommendations = cache_service.get_invalidation_recommendations()
+    return {"recommendations": recommendations}
 
 @app.post("/process", response_model=TextProcessingResponse)
 async def process_text(

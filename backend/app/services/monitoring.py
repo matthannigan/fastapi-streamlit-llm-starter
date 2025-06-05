@@ -57,6 +57,22 @@ class MemoryUsageMetric:
             self.additional_data = {}
 
 
+@dataclass
+class InvalidationMetric:
+    """Data class for storing cache invalidation measurements."""
+    pattern: str
+    keys_invalidated: int
+    duration: float
+    timestamp: float
+    invalidation_type: str = ""  # 'manual', 'automatic', 'ttl_expired', etc.
+    operation_context: str = ""  # Context that triggered invalidation
+    additional_data: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.additional_data is None:
+            self.additional_data = {}
+
+
 class CachePerformanceMonitor:
     """
     Monitors and tracks cache performance metrics for optimization and debugging.
@@ -91,15 +107,22 @@ class CachePerformanceMonitor:
         self.cache_operation_times: List[PerformanceMetric] = []
         self.compression_ratios: List[CompressionMetric] = []
         self.memory_usage_measurements: List[MemoryUsageMetric] = []
+        self.invalidation_events: List[InvalidationMetric] = []
         
         # Track overall cache statistics
         self.cache_hits = 0
         self.cache_misses = 0
         self.total_operations = 0
+        self.total_invalidations = 0
+        self.total_keys_invalidated = 0
         
         # Performance thresholds for alerting
         self.key_generation_threshold = 0.1  # 100ms
         self.cache_operation_threshold = 0.05  # 50ms
+        
+        # Invalidation frequency thresholds
+        self.invalidation_rate_warning_per_hour = 50  # Warning if > 50 invalidations per hour
+        self.invalidation_rate_critical_per_hour = 100  # Critical if > 100 invalidations per hour
         
     def record_key_generation_time(
         self, 
@@ -302,6 +325,210 @@ class CachePerformanceMonitor:
         )
         
         return metric
+
+    def record_invalidation_event(
+        self,
+        pattern: str,
+        keys_invalidated: int,
+        duration: float,
+        invalidation_type: str = "manual",
+        operation_context: str = "",
+        additional_data: Dict[str, Any] = None
+    ):
+        """
+        Record cache invalidation event for frequency analysis.
+        
+        Args:
+            pattern: Pattern used for invalidation
+            keys_invalidated: Number of keys that were invalidated
+            duration: Time taken for the invalidation operation
+            invalidation_type: Type of invalidation ('manual', 'automatic', 'ttl_expired', etc.)
+            operation_context: Context that triggered the invalidation
+            additional_data: Additional metadata to store
+        """
+        metric = InvalidationMetric(
+            pattern=pattern,
+            keys_invalidated=keys_invalidated,
+            duration=duration,
+            timestamp=time.time(),
+            invalidation_type=invalidation_type,
+            operation_context=operation_context,
+            additional_data=additional_data or {}
+        )
+        
+        self.invalidation_events.append(metric)
+        self._cleanup_old_measurements(self.invalidation_events)
+        
+        # Update overall invalidation statistics
+        self.total_invalidations += 1
+        self.total_keys_invalidated += keys_invalidated
+        
+        # Check for high invalidation frequency
+        current_hour_invalidations = self._get_invalidations_in_last_hour()
+        
+        if current_hour_invalidations >= self.invalidation_rate_critical_per_hour:
+            logger.error(
+                f"Critical invalidation rate: {current_hour_invalidations} invalidations in last hour "
+                f"(>{self.invalidation_rate_critical_per_hour} threshold)"
+            )
+        elif current_hour_invalidations >= self.invalidation_rate_warning_per_hour:
+            logger.warning(
+                f"High invalidation rate: {current_hour_invalidations} invalidations in last hour "
+                f"(>{self.invalidation_rate_warning_per_hour} threshold)"
+            )
+        
+        logger.debug(
+            f"Cache invalidation: pattern='{pattern}', keys={keys_invalidated}, "
+            f"time={duration:.3f}s, type={invalidation_type}, context={operation_context}"
+        )
+
+    def _get_invalidations_in_last_hour(self) -> int:
+        """Get the number of invalidations in the last hour."""
+        current_time = time.time()
+        cutoff_time = current_time - 3600  # 1 hour ago
+        
+        return len([
+            event for event in self.invalidation_events 
+            if event.timestamp > cutoff_time
+        ])
+
+    def get_invalidation_frequency_stats(self) -> Dict[str, Any]:
+        """
+        Get invalidation frequency statistics and analysis.
+        
+        Returns:
+            Dictionary containing invalidation frequency metrics and alerts
+        """
+        if not self.invalidation_events:
+            return {
+                "no_invalidations": True,
+                "total_invalidations": 0,
+                "total_keys_invalidated": 0,
+                "warning_threshold_per_hour": self.invalidation_rate_warning_per_hour,
+                "critical_threshold_per_hour": self.invalidation_rate_critical_per_hour
+            }
+        
+        current_time = time.time()
+        recent_events = self.invalidation_events[-50:]  # Last 50 events for analysis
+        
+        # Time-based analysis
+        last_hour_events = [e for e in self.invalidation_events if e.timestamp > current_time - 3600]
+        last_24h_events = [e for e in self.invalidation_events if e.timestamp > current_time - 86400]
+        
+        # Pattern analysis
+        pattern_counts = {}
+        type_counts = {}
+        for event in recent_events:
+            pattern_counts[event.pattern] = pattern_counts.get(event.pattern, 0) + 1
+            type_counts[event.invalidation_type] = type_counts.get(event.invalidation_type, 0) + 1
+        
+        # Calculate rates
+        hourly_rate = len(last_hour_events)
+        daily_rate = len(last_24h_events)
+        
+        # Determine alert level
+        alert_level = "normal"
+        if hourly_rate >= self.invalidation_rate_critical_per_hour:
+            alert_level = "critical"
+        elif hourly_rate >= self.invalidation_rate_warning_per_hour:
+            alert_level = "warning"
+        
+        return {
+            "total_invalidations": self.total_invalidations,
+            "total_keys_invalidated": self.total_keys_invalidated,
+            "rates": {
+                "last_hour": hourly_rate,
+                "last_24_hours": daily_rate,
+                "average_per_hour": len(self.invalidation_events) / (self.retention_hours if self.retention_hours > 0 else 1)
+            },
+            "thresholds": {
+                "warning_per_hour": self.invalidation_rate_warning_per_hour,
+                "critical_per_hour": self.invalidation_rate_critical_per_hour,
+                "current_alert_level": alert_level
+            },
+            "patterns": {
+                "most_common_patterns": dict(sorted(pattern_counts.items(), key=lambda x: x[1], reverse=True)[:10]),
+                "invalidation_types": type_counts
+            },
+            "efficiency": {
+                "avg_keys_per_invalidation": self.total_keys_invalidated / self.total_invalidations if self.total_invalidations > 0 else 0,
+                "avg_duration": mean([e.duration for e in recent_events]) if recent_events else 0,
+                "max_duration": max([e.duration for e in recent_events]) if recent_events else 0
+            }
+        }
+
+    def get_invalidation_recommendations(self) -> List[Dict[str, Any]]:
+        """
+        Get recommendations based on invalidation patterns.
+        
+        Returns:
+            List of recommendation dictionaries with severity and suggestions
+        """
+        recommendations = []
+        
+        if not self.invalidation_events:
+            return recommendations
+        
+        stats = self.get_invalidation_frequency_stats()
+        
+        # High frequency warning
+        if stats["rates"]["last_hour"] >= self.invalidation_rate_warning_per_hour:
+            recommendations.append({
+                "severity": "warning" if stats["thresholds"]["current_alert_level"] == "warning" else "critical",
+                "issue": "High invalidation frequency",
+                "message": f"Cache is being invalidated {stats['rates']['last_hour']} times per hour",
+                "suggestions": [
+                    "Review invalidation triggers to reduce unnecessary clearing",
+                    "Consider using more specific patterns for selective invalidation",
+                    "Check if TTL values are set too low",
+                    "Analyze if cache warming strategy needs improvement"
+                ]
+            })
+        
+        # Pattern analysis
+        patterns = stats["patterns"]["most_common_patterns"]
+        if len(patterns) > 0:
+            most_common_pattern = list(patterns.keys())[0]
+            most_common_count = patterns[most_common_pattern]
+            
+            if most_common_count > len(self.invalidation_events) * 0.5:  # More than 50% of invalidations
+                recommendations.append({
+                    "severity": "info",
+                    "issue": "Dominant invalidation pattern",
+                    "message": f"Pattern '{most_common_pattern}' accounts for {most_common_count} of recent invalidations",
+                    "suggestions": [
+                        f"Consider optimizing operations that trigger '{most_common_pattern}' invalidations",
+                        "Evaluate if this pattern could be made more specific",
+                        "Check if related data could be cached with different strategies"
+                    ]
+                })
+        
+        # Efficiency analysis
+        avg_keys = stats["efficiency"]["avg_keys_per_invalidation"]
+        if avg_keys < 1.0:
+            recommendations.append({
+                "severity": "info",
+                "issue": "Low invalidation efficiency",
+                "message": f"Average of {avg_keys:.1f} keys invalidated per operation",
+                "suggestions": [
+                    "Many invalidation operations are not finding keys to clear",
+                    "Consider using more targeted patterns",
+                    "Review if cache keys are structured optimally for invalidation"
+                ]
+            })
+        elif avg_keys > 100.0:
+            recommendations.append({
+                "severity": "warning",
+                "issue": "High invalidation impact",
+                "message": f"Average of {avg_keys:.0f} keys invalidated per operation",
+                "suggestions": [
+                    "Invalidation operations are clearing large numbers of entries",
+                    "Consider using more selective patterns to preserve valid cache entries",
+                    "Evaluate if smaller, more frequent invalidations would be better"
+                ]
+            })
+        
+        return recommendations
 
     def _calculate_dict_size(self, obj: Any) -> int:
         """
@@ -526,6 +753,7 @@ class CachePerformanceMonitor:
         self._cleanup_old_measurements(self.cache_operation_times)
         self._cleanup_old_measurements(self.compression_ratios)
         self._cleanup_old_measurements(self.memory_usage_measurements)
+        self._cleanup_old_measurements(self.invalidation_events)
         
         stats = {
             "timestamp": datetime.now().isoformat(),
@@ -610,6 +838,11 @@ class CachePerformanceMonitor:
             memory_stats = self.get_memory_usage_stats()
             stats["memory_usage"] = memory_stats
         
+        # Invalidation statistics
+        if self.invalidation_events:
+            invalidation_stats = self.get_invalidation_frequency_stats()
+            stats["invalidation"] = invalidation_stats
+        
         return stats
     
     def _calculate_hit_rate(self) -> float:
@@ -688,9 +921,12 @@ class CachePerformanceMonitor:
         self.cache_operation_times.clear()
         self.compression_ratios.clear()
         self.memory_usage_measurements.clear()
+        self.invalidation_events.clear()
         self.cache_hits = 0
         self.cache_misses = 0
         self.total_operations = 0
+        self.total_invalidations = 0
+        self.total_keys_invalidated = 0
         logger.info("Cache performance statistics reset")
     
     def export_metrics(self) -> Dict[str, Any]:
@@ -705,8 +941,11 @@ class CachePerformanceMonitor:
             "cache_operation_times": [asdict(m) for m in self.cache_operation_times],
             "compression_ratios": [asdict(m) for m in self.compression_ratios],
             "memory_usage_measurements": [asdict(m) for m in self.memory_usage_measurements],
+            "invalidation_events": [asdict(m) for m in self.invalidation_events],
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
             "total_operations": self.total_operations,
+            "total_invalidations": self.total_invalidations,
+            "total_keys_invalidated": self.total_keys_invalidated,
             "export_timestamp": datetime.now().isoformat()
         } 

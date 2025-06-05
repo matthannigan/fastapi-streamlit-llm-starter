@@ -514,17 +514,65 @@ class AIResponseCache:
             )
             logger.warning(f"Cache storage error: {e}")
     
-    async def invalidate_pattern(self, pattern: str):
+    async def invalidate_pattern(self, pattern: str, operation_context: str = ""):
         """Invalidate cache entries matching pattern."""
+        start_time = time.time()
+        
         if not await self.connect():
+            # Record failed invalidation attempt
+            duration = time.time() - start_time
+            self.performance_monitor.record_invalidation_event(
+                pattern=pattern,
+                keys_invalidated=0,
+                duration=duration,
+                invalidation_type="manual",
+                operation_context=operation_context,
+                additional_data={
+                    "status": "failed",
+                    "reason": "redis_connection_failed"
+                }
+            )
             return
             
         try:
             keys = await self.redis.keys(f"ai_cache:*{pattern}*".encode('utf-8'))
+            keys_count = len(keys) if keys else 0
+            
             if keys:
                 await self.redis.delete(*keys)
-                logger.info(f"Invalidated {len(keys)} cache entries matching {pattern}")
+                logger.info(f"Invalidated {keys_count} cache entries matching {pattern}")
+            else:
+                logger.debug(f"No cache entries found for pattern {pattern}")
+            
+            # Record successful invalidation
+            duration = time.time() - start_time
+            self.performance_monitor.record_invalidation_event(
+                pattern=pattern,
+                keys_invalidated=keys_count,
+                duration=duration,
+                invalidation_type="manual",
+                operation_context=operation_context,
+                additional_data={
+                    "status": "success",
+                    "search_pattern": f"ai_cache:*{pattern}*"
+                }
+            )
+            
         except Exception as e:
+            # Record failed invalidation
+            duration = time.time() - start_time
+            self.performance_monitor.record_invalidation_event(
+                pattern=pattern,
+                keys_invalidated=0,
+                duration=duration,
+                invalidation_type="manual",
+                operation_context=operation_context,
+                additional_data={
+                    "status": "failed",
+                    "reason": "redis_error",
+                    "error": str(e)
+                }
+            )
             logger.warning(f"Cache invalidation error: {e}")
     
     async def get_cache_stats(self) -> Dict[str, Any]:
@@ -622,3 +670,48 @@ class AIResponseCache:
         """Reset all performance statistics and measurements."""
         self.performance_monitor.reset_stats()
         logger.info("Cache performance statistics have been reset")
+
+    def get_invalidation_frequency_stats(self) -> Dict[str, Any]:
+        """Get invalidation frequency statistics and analysis."""
+        return self.performance_monitor.get_invalidation_frequency_stats()
+
+    def get_invalidation_recommendations(self) -> List[Dict[str, Any]]:
+        """Get recommendations based on invalidation patterns."""
+        return self.performance_monitor.get_invalidation_recommendations()
+
+    async def invalidate_all(self, operation_context: str = "manual_clear_all"):
+        """Invalidate all cache entries."""
+        await self.invalidate_pattern("", operation_context=operation_context)
+
+    async def invalidate_by_operation(self, operation: str, operation_context: str = ""):
+        """Invalidate cache entries for a specific operation type."""
+        if not operation_context:
+            operation_context = f"operation_specific_{operation}"
+        await self.invalidate_pattern(f"op:{operation}", operation_context=operation_context)
+
+    async def invalidate_memory_cache(self, operation_context: str = "memory_cache_clear"):
+        """Clear the in-memory cache and record the invalidation."""
+        start_time = time.time()
+        
+        # Count entries before clearing
+        entries_cleared = len(self.memory_cache)
+        
+        # Clear memory cache
+        self.memory_cache.clear()
+        self.memory_cache_order.clear()
+        
+        # Record the invalidation event
+        duration = time.time() - start_time
+        self.performance_monitor.record_invalidation_event(
+            pattern="memory_cache",
+            keys_invalidated=entries_cleared,
+            duration=duration,
+            invalidation_type="memory",
+            operation_context=operation_context,
+            additional_data={
+                "status": "success",
+                "invalidation_target": "memory_cache_only"
+            }
+        )
+        
+        logger.info(f"Cleared {entries_cleared} entries from memory cache")
