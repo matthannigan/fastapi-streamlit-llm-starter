@@ -1397,12 +1397,13 @@ class TestResilienceEdgeCasesAndErrorPaths:
     
     @pytest.mark.asyncio
     async def test_strategy_enum_instead_of_string(self):
-        """Test using ResilienceStrategy enum directly instead of string (covers line 401)."""
+        """Test using ResilienceStrategy enum directly (which is also a string due to str inheritance)."""
         resilience_service = AIServiceResilience()
         
-        # Pass the enum directly (not as string) to hit the else branch
+        # Pass the enum directly - note that ResilienceStrategy inherits from str,
+        # so isinstance(strategy, str) will still be True, but this tests
+        # the enum usage pattern which is valid and commonly used
         strategy = ResilienceStrategy.AGGRESSIVE
-        assert not isinstance(strategy, str)  # Ensure it's an enum, not string
         
         @resilience_service.with_resilience("enum_strategy_test", strategy)
         async def test_function():
