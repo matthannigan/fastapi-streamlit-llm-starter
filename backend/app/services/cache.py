@@ -4,6 +4,7 @@ import asyncio
 import logging
 import zlib
 import pickle
+import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
@@ -15,22 +16,27 @@ except ImportError:
     REDIS_AVAILABLE = False
     aioredis = None
 
+from .monitoring import CachePerformanceMonitor
+
 logger = logging.getLogger(__name__)
 
 
 class CacheKeyGenerator:
     """Optimized cache key generator for handling large texts efficiently."""
     
-    def __init__(self, text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256):
+    def __init__(self, text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256, 
+                 performance_monitor: Optional[CachePerformanceMonitor] = None):
         """
         Initialize CacheKeyGenerator with configurable parameters.
         
         Args:
             text_hash_threshold: Character count threshold above which text is hashed
             hash_algorithm: Hash algorithm to use (default: SHA256)
+            performance_monitor: Optional performance monitor for tracking key generation timing
         """
         self.text_hash_threshold = text_hash_threshold
         self.hash_algorithm = hash_algorithm
+        self.performance_monitor = performance_monitor
     
     def _hash_text_efficiently(self, text: str) -> str:
         """
@@ -78,6 +84,8 @@ class CacheKeyGenerator:
         Returns:
             Optimized cache key string
         """
+        start_time = time.time()
+        
         # Hash text efficiently
         text_identifier = self._hash_text_efficiently(text)
         
@@ -104,12 +112,27 @@ class CacheKeyGenerator:
         # Combine components efficiently using pipe separator
         cache_key = "ai_cache:" + "|".join(cache_components)
         
+        # Record key generation performance if monitor is available
+        if self.performance_monitor:
+            duration = time.time() - start_time
+            self.performance_monitor.record_key_generation_time(
+                duration=duration,
+                text_length=len(text),
+                operation_type=operation,
+                additional_data={
+                    "text_tier": "large" if len(text) > self.text_hash_threshold else "small",
+                    "has_options": bool(options),
+                    "has_question": bool(question)
+                }
+            )
+        
         return cache_key
 
 class AIResponseCache:
     def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600, 
                  text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256,
-                 compression_threshold: int = 1000, compression_level: int = 6):
+                 compression_threshold: int = 1000, compression_level: int = 6,
+                 performance_monitor: Optional[CachePerformanceMonitor] = None):
         """
         Initialize AIResponseCache with injectable configuration.
         
@@ -120,6 +143,7 @@ class AIResponseCache:
             hash_algorithm: Hash algorithm to use for large texts
             compression_threshold: Size threshold in bytes for compressing cache data
             compression_level: Compression level (1-9, where 9 is highest compression)
+            performance_monitor: Optional performance monitor for tracking cache metrics
         """
         self.redis = None
         self.redis_url = redis_url
@@ -134,10 +158,14 @@ class AIResponseCache:
             "qa": 1800           # 30 minutes - context-dependent
         }
         
-        # Initialize optimized cache key generator
+        # Initialize performance monitor (create default if not provided)
+        self.performance_monitor = performance_monitor or CachePerformanceMonitor()
+        
+        # Initialize optimized cache key generator with performance monitoring
         self.key_generator = CacheKeyGenerator(
             text_hash_threshold=text_hash_threshold,
-            hash_algorithm=hash_algorithm
+            hash_algorithm=hash_algorithm,
+            performance_monitor=self.performance_monitor
         )
         
         # Tiered caching configuration
@@ -265,6 +293,7 @@ class AIResponseCache:
     async def get_cached_response(self, text: str, operation: str, options: Dict[str, Any], question: str = None) -> Optional[Dict[str, Any]]:
         """
         Multi-tier cache retrieval with memory cache optimization for small texts.
+        Includes comprehensive performance monitoring for cache hit ratio tracking.
         
         Args:
             text: Input text content
@@ -275,20 +304,54 @@ class AIResponseCache:
         Returns:
             Cached response if found, None otherwise
         """
+        start_time = time.time()
         tier = self._get_text_tier(text)
         cache_key = self._generate_cache_key(text, operation, options, question)
         
         # Check memory cache first for small items
         if tier == 'small' and cache_key in self.memory_cache:
+            duration = time.time() - start_time
             logger.debug(f"Memory cache hit for {operation} (tier: {tier})")
+            
+            # Record cache hit for memory cache
+            self.performance_monitor.record_cache_operation_time(
+                operation="get",
+                duration=duration,
+                cache_hit=True,
+                text_length=len(text),
+                additional_data={
+                    "cache_tier": "memory",
+                    "text_tier": tier,
+                    "operation_type": operation
+                }
+            )
+            
             return self.memory_cache[cache_key]
         
         # Check Redis cache
         if not await self.connect():
+            duration = time.time() - start_time
+            
+            # Record cache miss due to Redis unavailability
+            self.performance_monitor.record_cache_operation_time(
+                operation="get",
+                duration=duration,
+                cache_hit=False,
+                text_length=len(text),
+                additional_data={
+                    "cache_tier": "redis_unavailable",
+                    "text_tier": tier,
+                    "operation_type": operation,
+                    "reason": "redis_connection_failed"
+                }
+            )
+            
             return None
             
         try:
             cached_data = await self.redis.get(cache_key)
+            duration = time.time() - start_time
+            
             if cached_data:
                 # Handle both compressed binary data and legacy JSON format
                 if isinstance(cached_data, bytes) and (cached_data.startswith(b"compressed:") or cached_data.startswith(b"raw:")):
@@ -306,10 +369,55 @@ class AIResponseCache:
                     self._update_memory_cache(cache_key, result)
                 
                 logger.debug(f"Redis cache hit for {operation} (tier: {tier})")
+                
+                # Record cache hit for Redis
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=duration,
+                    cache_hit=True,
+                    text_length=len(text),
+                    additional_data={
+                        "cache_tier": "redis",
+                        "text_tier": tier,
+                        "operation_type": operation,
+                        "populated_memory_cache": tier == 'small'
+                    }
+                )
+                
                 return result
+            else:
+                # Record cache miss for Redis
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=duration,
+                    cache_hit=False,
+                    text_length=len(text),
+                    additional_data={
+                        "cache_tier": "redis",
+                        "text_tier": tier,
+                        "operation_type": operation,
+                        "reason": "key_not_found"
+                    }
+                )
                 
         except Exception as e:
+            duration = time.time() - start_time
             logger.warning(f"Cache retrieval error: {e}")
+            
+            # Record cache miss due to error
+            self.performance_monitor.record_cache_operation_time(
+                operation="get",
+                duration=duration,
+                cache_hit=False,
+                text_length=len(text),
+                additional_data={
+                    "cache_tier": "redis",
+                    "text_tier": tier,
+                    "operation_type": operation,
+                    "reason": "redis_error",
+                    "error": str(e)
+                }
+            )
         
         return None
     
@@ -359,7 +467,7 @@ class AIResponseCache:
             logger.warning(f"Cache invalidation error: {e}")
     
     async def get_cache_stats(self) -> Dict[str, Any]:
-        """Get cache statistics including memory cache info."""
+        """Get cache statistics including memory cache info and performance metrics."""
         redis_stats = {"status": "unavailable", "keys": 0}
         
         if await self.connect():
@@ -383,7 +491,47 @@ class AIResponseCache:
             "memory_cache_utilization": f"{len(self.memory_cache)}/{self.memory_cache_size}"
         }
         
+        # Add performance statistics
+        performance_stats = self.performance_monitor.get_performance_stats()
+        
         return {
             "redis": redis_stats,
-            "memory": memory_stats
+            "memory": memory_stats,
+            "performance": performance_stats
         }
+    
+    def get_cache_hit_ratio(self) -> float:
+        """Get the current cache hit ratio as a percentage."""
+        return self.performance_monitor._calculate_hit_rate()
+    
+    def get_performance_summary(self) -> Dict[str, Any]:
+        """Get a summary of cache performance metrics."""
+        return {
+            "hit_ratio": self.get_cache_hit_ratio(),
+            "total_operations": self.performance_monitor.total_operations,
+            "cache_hits": self.performance_monitor.cache_hits,
+            "cache_misses": self.performance_monitor.cache_misses,
+            "recent_avg_key_generation_time": self._get_recent_avg_key_generation_time(),
+            "recent_avg_cache_operation_time": self._get_recent_avg_cache_operation_time()
+        }
+    
+    def _get_recent_avg_key_generation_time(self) -> float:
+        """Get average key generation time from recent measurements."""
+        if not self.performance_monitor.key_generation_times:
+            return 0.0
+        
+        recent_times = [m.duration for m in self.performance_monitor.key_generation_times[-10:]]
+        return sum(recent_times) / len(recent_times) if recent_times else 0.0
+    
+    def _get_recent_avg_cache_operation_time(self) -> float:
+        """Get average cache operation time from recent measurements."""
+        if not self.performance_monitor.cache_operation_times:
+            return 0.0
+        
+        recent_times = [m.duration for m in self.performance_monitor.cache_operation_times[-10:]]
+        return sum(recent_times) / len(recent_times) if recent_times else 0.0
+    
+    def reset_performance_stats(self):
+        """Reset all performance statistics and measurements."""
+        self.performance_monitor.reset_stats()
+        logger.info("Cache performance statistics have been reset")
