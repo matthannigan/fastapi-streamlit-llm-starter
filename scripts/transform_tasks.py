@@ -7,11 +7,63 @@ Format:
 **{description}**
 
 {details}
+
+#### Subtasks (if any)
 """
 
 import json
 import os
 from pathlib import Path
+
+
+def format_item(item, heading_level="##", item_type="Task"):
+    """
+    Format a task or subtask into markdown.
+    
+    Args:
+        item (dict): Task or subtask data
+        heading_level (str): Markdown heading level ("##" for tasks, "###" for subtasks)
+        item_type (str): Type label ("Task" or "Subtask")
+        
+    Returns:
+        str: Formatted item markdown
+    """
+    item_id = item.get('id', 'Unknown')
+    title = item.get('title', 'No title available')
+    description = item.get('description', 'No description available')
+    details = item.get('details', '')
+    
+    # Start with the heading
+    item_block = f"{heading_level} {item_type} {item_id}: {title}\n\n"
+    
+    # Handle priority/status/dependencies (main tasks only)
+    if item_type == "Task":
+        priority = item.get('priority', 'unknown')
+        status = item.get('status', 'unknown')
+        dependencies = item.get('dependencies', [])
+        if priority:
+            item_block += f"**Priority:** {priority}     "
+        if status:
+            item_block += f"**Status:** {status}     "
+        if dependencies:
+            dep_list = ', '.join(map(str, dependencies))
+            item_block += f"**Dependencies:** {dep_list}\n\n"
+        else:
+            item_block += f"**Dependencies:** none\n\n"
+
+    # Add description
+    item_block += f"**Description:** {description}\n\n"
+    
+    # Add details
+    if details:
+        item_block += f"**Details:** {details}\n\n"
+    
+    # Add test strategy (main tasks only)
+    test_strategy = item.get('testStrategy')
+    if test_strategy:
+        item_block += f"**Test Strategy:** {test_strategy}\n\n"
+    
+    return item_block
 
 
 def transform_tasks_to_markdown(input_file="tasks/tasks.json", output_file="tasks/tasks.md"):
@@ -48,19 +100,20 @@ def transform_tasks_to_markdown(input_file="tasks/tasks.json", output_file="task
             return False
         
         # Generate markdown content
-        markdown_content = []
+        markdown_content = ["# Tasks\n"]
+        total_subtasks = 0
         
         for task in tasks:
-            # Extract required fields
-            task_id = task.get('id', 'Unknown')
-            title = task.get('title', '')
-            description = task.get('description', 'No description available')
-            details = task.get('details', 'No details available')
+            # Format the main task using the unified function
+            task_block = format_item(task, heading_level="##", item_type="Task")
             
-            # Format the task block
-            task_block = f"### Task {task_id}: {title}\n"
-            task_block += f"**{description}**\n\n"
-            task_block += f"{details}\n"
+            # Add subtasks if they exist
+            subtasks = task.get('subtasks', [])
+            if subtasks:
+                task_block += f"**Subtasks ({len(subtasks)}):**\n\n"
+                for subtask in subtasks:
+                    task_block += format_item(subtask, heading_level="###", item_type="Subtask")
+                    total_subtasks += 1
             
             markdown_content.append(task_block)
         
@@ -71,7 +124,7 @@ def transform_tasks_to_markdown(input_file="tasks/tasks.json", output_file="task
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(full_content)
         
-        print(f"Successfully transformed {len(tasks)} tasks from '{input_path}' to '{output_path}'")
+        print(f"Successfully transformed {len(tasks)} tasks and {total_subtasks} subtasks from '{input_path}' to '{output_path}'")
         return True
         
     except json.JSONDecodeError as e:
