@@ -121,6 +121,7 @@ class TestResilienceMetrics:
 class TestEnhancedCircuitBreaker:
     """Test enhanced circuit breaker functionality."""
     
+    @pytest.mark.circuit_breaker
     def test_circuit_breaker_initialization(self):
         """Test circuit breaker initializes with metrics."""
         cb = EnhancedCircuitBreaker(failure_threshold=3, recovery_timeout=30)
@@ -130,6 +131,7 @@ class TestEnhancedCircuitBreaker:
         assert cb.failure_threshold == 3
         assert cb.recovery_timeout == 30
     
+    @pytest.mark.circuit_breaker
     def test_circuit_breaker_tracks_calls(self):
         """Test that circuit breaker tracks successful and failed calls."""
         cb = EnhancedCircuitBreaker(failure_threshold=3, recovery_timeout=30)
@@ -403,6 +405,7 @@ class TestResilienceConfiguration:
 
 
 @pytest.mark.asyncio
+@pytest.mark.slow  # Performance test with multiple concurrent operations
 async def test_resilience_performance():
     """Test that resilience doesn't significantly impact performance."""
     call_count = 0
@@ -443,6 +446,8 @@ class TestCircuitBreakerAdvanced:
     """Advanced tests for circuit breaker functionality."""
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test involves actual sleep timing
+    @pytest.mark.circuit_breaker
     async def test_circuit_breaker_state_transitions(self):
         """Test full circuit breaker state transition cycle."""
         resilience_service = AIServiceResilience()
@@ -471,7 +476,7 @@ class TestCircuitBreakerAdvanced:
         assert cb.state == "open"
         
         # Wait for recovery timeout
-        await asyncio.sleep(1.1)
+        await asyncio.sleep(1.1)  # This makes it slow
         
         # Next call should be half-open
         with pytest.raises(TransientAIError):
@@ -481,6 +486,8 @@ class TestCircuitBreakerAdvanced:
         assert cb.state == "open"
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test involves actual sleep timing
+    @pytest.mark.circuit_breaker
     async def test_circuit_breaker_recovery_with_success(self):
         """Test circuit breaker recovery when calls succeed."""
         resilience_service = AIServiceResilience()
@@ -507,7 +514,7 @@ class TestCircuitBreakerAdvanced:
             pass  # Expected failure
         
         # Wait for recovery timeout
-        await asyncio.sleep(1.1)
+        await asyncio.sleep(1.1)  # This makes it slow
         
         # This should succeed and close the circuit
         result = await conditional_function()
@@ -613,6 +620,8 @@ class TestRetryStrategies:
     """Test different retry strategy configurations."""
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test measures timing and may involve retries
+    @pytest.mark.retry
     async def test_aggressive_strategy_behavior(self):
         """Test aggressive strategy with fast retries and low tolerance."""
         resilience_service = AIServiceResilience()
@@ -636,6 +645,8 @@ class TestRetryStrategies:
         assert end_time - start_time < 10
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test involves multiple retries
+    @pytest.mark.retry
     async def test_conservative_strategy_behavior(self):
         """Test conservative strategy with more retries and higher tolerance."""
         resilience_service = AIServiceResilience()
@@ -659,6 +670,8 @@ class TestRetryStrategies:
         assert metrics.retry_attempts > 0
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test involves maximum retries
+    @pytest.mark.retry
     async def test_critical_strategy_maximum_retries(self):
         """Test critical strategy uses maximum retry attempts."""
         resilience_service = AIServiceResilience()
@@ -1129,6 +1142,8 @@ class TestRetryLogic:
     """Test specific retry logic and configurations."""
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test involves actual timing measurements
+    @pytest.mark.retry
     async def test_retry_with_jitter_disabled(self):
         """Test retry configuration with jitter disabled."""
         resilience_service = AIServiceResilience()
@@ -1169,6 +1184,8 @@ class TestRetryLogic:
         assert call_times[2] - call_times[1] >= 1.0  # At least 1 second wait
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # This test involves timing and delays
+    @pytest.mark.retry
     async def test_max_delay_respected(self):
         """Test that maximum delay is respected in retry logic."""
         resilience_service = AIServiceResilience()
@@ -1234,6 +1251,7 @@ class TestRealWorldScenarios:
     """Test realistic usage scenarios."""
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # Complex scenario with multiple operations and retries
     async def test_ai_service_simulation(self):
         """Simulate realistic AI service calls with various failures."""
         resilience_service = AIServiceResilience()
@@ -1288,6 +1306,7 @@ class TestRealWorldScenarios:
         assert sentiment_metrics.successful_calls == 1
     
     @pytest.mark.asyncio
+    @pytest.mark.slow  # Complex scenario with circuit breaker timing
     async def test_degraded_service_handling(self):
         """Test handling of degraded service scenarios."""
         resilience_service = AIServiceResilience()

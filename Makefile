@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-backend-manual test-frontend test-integration test-coverage lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-frontend repomix-docs
+.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-frontend repomix-docs ci-test ci-test-all
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -24,19 +24,26 @@ help:
 	@echo "Available commands:"
 	@echo ""
 	@echo "Setup and Testing:"
-	@echo "  venv             Create virtual environment"
-	@echo "  install          Install all dependencies (creates venv automatically)"
-	@echo "  test             Run all tests (with Docker if available)"
-	@echo "  test-local       Run tests without Docker dependency"
-	@echo "  test-backend     Run backend tests only"
-	@echo "  test-backend-manual Run backend manual tests"
-	@echo "  test-frontend    Run frontend tests only"
-	@echo "  test-integration Run comprehensive integration tests"
-	@echo "  test-coverage    Run tests with coverage report"
-	@echo "  lint             Run code quality checks"
-	@echo "  lint-backend     Run backend code quality checks only"
-	@echo "  lint-frontend    Run frontend code quality checks only"
-	@echo "  format           Format code with black and isort"
+	@echo "  venv                 Create virtual environment"
+	@echo "  install              Install all dependencies (creates venv automatically)"
+	@echo "  test                 Run all tests (with Docker if available)"
+	@echo "  test-local           Run tests without Docker dependency"
+	@echo "  test-backend         Run backend tests only (fast tests by default)"
+	@echo "  test-backend-slow    Run slow backend tests only"
+	@echo "  test-backend-all     Run all backend tests (including slow ones)"
+	@echo "  test-backend-manual  Run backend manual tests"
+	@echo "  test-frontend        Run frontend tests only"
+	@echo "  test-integration     Run comprehensive integration tests"
+	@echo "  test-coverage        Run tests with coverage report"
+	@echo "  test-coverage-all    Run tests with coverage (including slow tests)"
+	@echo "  test-retry           Run retry-specific tests only"
+	@echo "  test-circuit         Run circuit breaker tests only"
+	@echo "  ci-test              Run CI tests (fast tests only)"
+	@echo "  ci-test-all          Run comprehensive CI tests (including slow tests)"
+	@echo "  lint                 Run code quality checks"
+	@echo "  lint-backend         Run backend code quality checks only"
+	@echo "  lint-frontend        Run frontend code quality checks only"
+	@echo "  format               Format code with black and isort"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  docker-build     Build Docker images"
@@ -82,8 +89,16 @@ test:
 	$(PYTHON_CMD) scripts/run_tests.py
 
 test-backend:
-	@echo "Running backend tests (excluding manual tests)..."
+	@echo "Running backend tests (fast tests only, excluding manual tests)..."
 	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+
+test-backend-slow:
+	@echo "Running slow backend tests only..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow" --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+
+test-backend-all:
+	@echo "Running all backend tests (including slow ones, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --run-slow --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
 
 test-backend-manual:
 	@echo "Running backend manual tests..."
@@ -107,9 +122,22 @@ test-integration:
 	$(PYTHON_CMD) scripts/test_integration.py
 
 test-coverage:
-	@echo "Running tests with coverage (excluding manual tests)..."
+	@echo "Running tests with coverage (fast tests only, excluding manual tests)..."
 	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
 	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+
+test-coverage-all:
+	@echo "Running tests with coverage (including slow tests, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term --run-slow --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+
+test-retry:
+	@echo "Running retry-specific tests only..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "retry" --run-slow
+
+test-circuit:
+	@echo "Running circuit breaker tests only..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "circuit_breaker" --run-slow
 
 # Local testing without Docker
 test-local: venv
@@ -179,10 +207,19 @@ dev-setup: install
 	cd backend && pre-commit install
 	@echo "Development environment ready!"
 
-# Quick test for CI
+# Quick test for CI (fast tests only)
 ci-test:
-	@echo "Running CI tests..."
+	@echo "Running CI tests (fast tests only)..."
 	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
+	@echo "Running code quality checks..."
+	cd backend && python -m flake8 app/
+	cd frontend && python -m flake8 app/
+
+# Full CI test including slow tests (use for nightly builds or comprehensive testing)
+ci-test-all:
+	@echo "Running comprehensive CI tests (including slow tests)..."
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml --run-slow --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
 	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/

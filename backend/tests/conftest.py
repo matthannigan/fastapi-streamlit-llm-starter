@@ -239,3 +239,35 @@ def mock_ai_agent():
         mock_agent_instance.run = AsyncMock(side_effect=smart_run)
         mock_agent_class.return_value = mock_agent_instance
         yield mock_agent_instance 
+
+def pytest_addoption(parser):
+    """Add custom command line options."""
+    parser.addoption(
+        "--run-slow", 
+        action="store_true", 
+        default=False, 
+        help="run slow tests"
+    )
+
+def pytest_configure(config):
+    """Configure pytest based on command line options."""
+    config.addinivalue_line("markers", "slow: mark test as slow to run")
+    
+    # If --run-slow is specified, don't filter out slow tests
+    if config.getoption("--run-slow"):
+        # Remove the default marker expression that excludes slow tests
+        markexpr = config.getoption("-m", default="")
+        if markexpr == "not slow":
+            config.option.markexpr = ""
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection based on command line options."""
+    if config.getoption("--run-slow"):
+        # If --run-slow is specified, run all tests
+        return
+    
+    # Default behavior: skip slow tests unless explicitly requested
+    skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(skip_slow) 
