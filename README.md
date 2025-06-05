@@ -327,7 +327,7 @@ if "target_language" in op_info.get("options", []):
 
 ### Testing
 
-The project includes comprehensive testing with automatic virtual environment management:
+The project includes comprehensive testing with **parallel execution by default** for fast feedback:
 
 ```bash
 # Install dependencies and setup virtual environment
@@ -355,14 +355,43 @@ make lint
 make format
 ```
 
+**Advanced Testing with Parallel Execution:**
+```bash
+# Backend parallel testing (default behavior)
+cd backend
+scripts/test.sh                                    # All tests in parallel
+scripts/test.sh -c                                # With coverage report
+scripts/test.sh -w 4                              # Use 4 workers specifically
+scripts/test.sh tests/test_specific.py            # Specific test file
+scripts/test.sh -m debug tests/test_failing.py    # Debug mode (sequential)
+
+# Test execution modes
+scripts/test.sh -m parallel                       # Fast parallel execution (default)
+scripts/test.sh -m sequential                     # Sequential for debugging
+scripts/test.sh -m debug                          # Detailed debugging output
+
+# Coverage and reporting
+scripts/test.sh -c -v                             # Coverage with verbose output
+scripts/test.sh -w 8 -c                          # Maximum parallelization with coverage
+```
+
 **Manual testing with Docker:**
 ```bash
-# Run backend tests in Docker
+# Run backend tests in Docker (parallel by default)
 docker-compose exec backend python -m pytest
 
 # Run with coverage in Docker
 docker-compose exec backend python -m pytest --cov=app
+
+# Debug mode in Docker
+docker-compose exec backend python -m pytest -s -vv -n 0
 ```
+
+**Testing Best Practices:**
+- ✅ All tests run in parallel by default for faster feedback
+- ✅ Environment isolation ensures reliable parallel execution
+- ✅ Use debug mode (`-m debug`) for troubleshooting failing tests
+- ✅ Coverage reports available in `htmlcov/index.html`
 
 ## 🚀 Deployment
 

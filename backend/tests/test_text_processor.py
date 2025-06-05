@@ -66,28 +66,31 @@ def mock_settings():
     yield mock_settings_obj
 
 @pytest_asyncio.fixture
-async def processor_service(mock_cache_service, mock_settings):
-    with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
-        # Mock the Agent used by TextProcessorService to avoid actual AI calls
-        with patch('app.services.text_processor.Agent') as mock_agent_constructor:
-            # Create a proper mock agent instance
-            mock_agent_instance = MagicMock()
-            mock_agent_instance.run = AsyncMock() # Mock the 'run' method specifically
-            mock_agent_constructor.return_value = mock_agent_instance
-            
-            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
-            # Mock the process_text method for batch tests, as we are unit testing process_batch
-            service.process_text = AsyncMock()
-            return service
+async def processor_service(mock_cache_service, mock_settings, monkeypatch):
+    # Set up environment variable using monkeypatch for better parallel test isolation
+    monkeypatch.setenv('GEMINI_API_KEY', 'test_api_key')
+    
+    # Mock the Agent used by TextProcessorService to avoid actual AI calls
+    with patch('app.services.text_processor.Agent') as mock_agent_constructor:
+        # Create a proper mock agent instance
+        mock_agent_instance = MagicMock()
+        mock_agent_instance.run = AsyncMock() # Mock the 'run' method specifically
+        mock_agent_constructor.return_value = mock_agent_instance
+        
+        service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+        # Mock the process_text method for batch tests, as we are unit testing process_batch
+        service.process_text = AsyncMock()
+        return service
 
 class TestTextProcessorService:
     """Test the TextProcessorService class."""
     
     @pytest.fixture
-    def service(self, mock_ai_agent, mock_cache_service, mock_settings):
+    def service(self, mock_ai_agent, mock_cache_service, mock_settings, monkeypatch):
         """Create a TextProcessorService instance."""
-        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+        # Set up environment variable using monkeypatch for better parallel test isolation
+        monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+        return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
     
     @pytest.mark.asyncio
     async def test_summarize_text(self, service, sample_text):
@@ -269,10 +272,11 @@ class TestTextProcessorCaching:
     """Test caching integration in TextProcessorService."""
     
     @pytest.fixture
-    def service(self, mock_ai_agent, mock_cache_service, mock_settings):
+    def service(self, mock_ai_agent, mock_cache_service, mock_settings, monkeypatch):
         """Create a TextProcessorService instance."""
-        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+        # Set up environment variable using monkeypatch for better parallel test isolation
+        monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+        return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
     
     @pytest.mark.asyncio
     async def test_cache_miss_processes_normally(self, service, sample_text):
@@ -464,25 +468,25 @@ class TestServiceInitialization:
         with pytest.raises(ValueError, match="GEMINI_API_KEY"):
             TextProcessorService(settings=mock_settings, cache=mock_cache_service)
     
-    def test_initialization_with_api_key(self, mock_ai_agent, mock_cache_service, mock_settings):
+    def test_initialization_with_api_key(self, mock_ai_agent, mock_cache_service, mock_settings, monkeypatch):
         """Test successful initialization with API key."""
         # Ensure the mock settings has a valid API key
         mock_settings.gemini_api_key = "test-api-key"
-        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
-            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
-            assert service.settings is not None
-            assert service.cache is not None
-            assert service.cache_service is not None
+        # Set up environment variable using monkeypatch for better parallel test isolation
+        monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+        service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+        assert service.settings is not None
+        assert service.cache is not None
+        assert service.cache_service is not None
 
 
 class TestTextProcessorSanitization:
     """Test prompt sanitization in TextProcessorService."""
     
     @pytest.fixture
-    def text_processor_service(self, mock_cache_service, mock_settings):
-        # Reset mocks for each test if necessary, or ensure Agent is stateless
-        # For pydantic-ai Agent, it's typically instantiated with config.
-        # If it were truly stateful across calls in an undesired way, we'd re-init or mock reset.
+    def text_processor_service(self, mock_cache_service, mock_settings, monkeypatch):
+        # Set up environment variable using monkeypatch for better parallel test isolation
+        monkeypatch.setenv('GEMINI_API_KEY', 'test_api_key')
         
         # Mock the Agent to avoid actual AI API calls
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
@@ -490,11 +494,9 @@ class TestTextProcessorSanitization:
             mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
             mock_agent_constructor.return_value = mock_agent_instance
             
-            # Mock os.environ to provide GEMINI_API_KEY
-            with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
-                service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
-                service.agent = mock_agent_instance  # Ensure the agent is mocked
-                return service
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            service.agent = mock_agent_instance  # Ensure the agent is mocked
+            return service
 
     @pytest.mark.asyncio
     async def test_process_text_calls_sanitize_input(self, text_processor_service: TextProcessorService):
@@ -635,18 +637,19 @@ class TestPRDAttackScenarios:
     """
     
     @pytest.fixture
-    def text_processor_service(self, mock_cache_service, mock_settings):
+    def text_processor_service(self, mock_cache_service, mock_settings, monkeypatch):
+        # Set up environment variable using monkeypatch for better parallel test isolation
+        monkeypatch.setenv('GEMINI_API_KEY', 'test_api_key')
+        
         # Mock the Agent to avoid actual AI API calls
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
             mock_agent_instance = MagicMock()
             mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
             mock_agent_constructor.return_value = mock_agent_instance
             
-            # Mock os.environ to provide GEMINI_API_KEY
-            with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
-                service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
-                service.agent = mock_agent_instance  # Ensure the agent is mocked
-                return service
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            service.agent = mock_agent_instance  # Ensure the agent is mocked
+            return service
     
     @pytest.mark.asyncio
     async def test_multi_vector_prompt_injection_attack(self, text_processor_service):
@@ -921,18 +924,19 @@ class TestSecurityTestConsolidation:
     """
     
     @pytest.fixture
-    def text_processor_service(self, mock_cache_service, mock_settings):
+    def text_processor_service(self, mock_cache_service, mock_settings, monkeypatch):
         """Create a TextProcessorService instance for comprehensive security testing."""
+        # Set up environment variable using monkeypatch for better parallel test isolation
+        monkeypatch.setenv('GEMINI_API_KEY', 'test_api_key')
+        
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
             mock_agent_instance = MagicMock()
             mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
             mock_agent_constructor.return_value = mock_agent_instance
             
-            # Mock os.environ to provide GEMINI_API_KEY
-            with patch.dict(os.environ, {'GEMINI_API_KEY': 'test_api_key'}):
-                service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
-                service.agent = mock_agent_instance  # Ensure the agent is mocked
-                return service
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            service.agent = mock_agent_instance  # Ensure the agent is mocked
+            return service
     
     @pytest.mark.asyncio
     async def test_security_component_integration(self, text_processor_service):
