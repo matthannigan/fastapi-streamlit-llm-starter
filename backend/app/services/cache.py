@@ -423,7 +423,23 @@ class AIResponseCache:
     
     async def cache_response(self, text: str, operation: str, options: Dict[str, Any], response: Dict[str, Any], question: str = None):
         """Cache AI response with compression for large data and appropriate TTL."""
+        # Start timing the cache response generation
+        start_time = time.time()
+        
         if not await self.connect():
+            # Record failed cache operation timing
+            duration = time.time() - start_time
+            self.performance_monitor.record_cache_operation_time(
+                operation="set",
+                duration=duration,
+                cache_hit=False,  # Not applicable for set operations, but tracking as failure
+                text_length=len(text),
+                additional_data={
+                    "operation_type": operation,
+                    "reason": "redis_connection_failed",
+                    "status": "failed"
+                }
+            )
             return
             
         cache_key = self._generate_cache_key(text, operation, options, question)
@@ -443,14 +459,59 @@ class AIResponseCache:
                 "compression_used": will_compress
             }
             
-            # Compress data if beneficial
+            # Time compression separately if it will be used
+            compression_start = time.time()
             cache_data = self._compress_data(cached_response)
+            compression_time = time.time() - compression_start
+            
+            # Record compression metrics if compression was actually used
+            if will_compress:
+                original_size = len(str(cached_response))
+                compressed_size = len(cache_data)
+                self.performance_monitor.record_compression_ratio(
+                    original_size=original_size,
+                    compressed_size=compressed_size,
+                    compression_time=compression_time,
+                    operation_type=operation
+                )
             
             await self.redis.setex(cache_key, ttl, cache_data)
             
-            logger.debug(f"Cached response for {operation} (size: {len(cache_data)} bytes, compression: {will_compress})")
+            # Record successful cache response generation timing
+            duration = time.time() - start_time
+            self.performance_monitor.record_cache_operation_time(
+                operation="set",
+                duration=duration,
+                cache_hit=True,  # Successful set operation
+                text_length=len(text),
+                additional_data={
+                    "operation_type": operation,
+                    "response_size": response_size,
+                    "cache_data_size": len(cache_data),
+                    "compression_used": will_compress,
+                    "compression_time": compression_time,
+                    "ttl": ttl,
+                    "status": "success"
+                }
+            )
+            
+            logger.debug(f"Cached response for {operation} (size: {len(cache_data)} bytes, compression: {will_compress}, time: {duration:.3f}s)")
             
         except Exception as e:
+            # Record failed cache response generation timing
+            duration = time.time() - start_time
+            self.performance_monitor.record_cache_operation_time(
+                operation="set",
+                duration=duration,
+                cache_hit=False,  # Failed operation
+                text_length=len(text),
+                additional_data={
+                    "operation_type": operation,
+                    "reason": "redis_error",
+                    "error": str(e),
+                    "status": "failed"
+                }
+            )
             logger.warning(f"Cache storage error: {e}")
     
     async def invalidate_pattern(self, pattern: str):

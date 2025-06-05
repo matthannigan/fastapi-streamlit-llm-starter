@@ -625,6 +625,160 @@ class TestAIResponseCache:
             assert result == test_data
             mock_redis.get.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_cache_response_timing_tracking(self, cache_instance, mock_redis):
+        """Test that cache_response records performance timing metrics."""
+        response_data = {
+            "operation": "summarize",
+            "result": "Test summary",
+            "success": True
+        }
+        
+        # Ensure performance monitor is available
+        assert cache_instance.performance_monitor is not None
+        
+        # Get initial counts
+        initial_cache_ops = len(cache_instance.performance_monitor.cache_operation_times)
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.cache_response(
+                "test text", "summarize", {}, response_data, None
+            )
+            
+            # Verify that a cache operation time was recorded
+            assert len(cache_instance.performance_monitor.cache_operation_times) == initial_cache_ops + 1
+            
+            # Check the recorded metric
+            recorded_metric = cache_instance.performance_monitor.cache_operation_times[-1]
+            assert recorded_metric.operation_type == "set"
+            assert recorded_metric.text_length == len("test text")
+            assert recorded_metric.duration > 0
+            assert recorded_metric.additional_data["operation_type"] == "summarize"
+            assert recorded_metric.additional_data["status"] == "success"
+            assert "compression_used" in recorded_metric.additional_data
+            assert "compression_time" in recorded_metric.additional_data
+
+    @pytest.mark.asyncio
+    async def test_cache_response_timing_on_failure(self, cache_instance, mock_redis):
+        """Test that cache_response records timing even when Redis operations fail."""
+        response_data = {
+            "operation": "summarize", 
+            "result": "Test summary",
+            "success": True
+        }
+        
+        # Get initial counts
+        initial_cache_ops = len(cache_instance.performance_monitor.cache_operation_times)
+        
+        # Mock Redis setex to raise an exception
+        mock_redis.setex.side_effect = Exception("Redis error")
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.cache_response(
+                "test text", "summarize", {}, response_data, None
+            )
+            
+            # Verify that a cache operation time was recorded even on failure
+            assert len(cache_instance.performance_monitor.cache_operation_times) == initial_cache_ops + 1
+            
+            # Check the recorded metric shows failure
+            recorded_metric = cache_instance.performance_monitor.cache_operation_times[-1]
+            assert recorded_metric.operation_type == "set"
+            assert recorded_metric.duration > 0
+            assert recorded_metric.additional_data["status"] == "failed"
+            assert recorded_metric.additional_data["reason"] == "redis_error"
+
+    @pytest.mark.asyncio
+    async def test_cache_response_timing_on_connection_failure(self, cache_instance):
+        """Test that cache_response records timing when Redis connection fails."""
+        response_data = {
+            "operation": "summarize",
+            "result": "Test summary", 
+            "success": True
+        }
+        
+        # Get initial counts
+        initial_cache_ops = len(cache_instance.performance_monitor.cache_operation_times)
+        
+        # Mock connection failure
+        with patch.object(cache_instance, 'connect', return_value=False):
+            
+            await cache_instance.cache_response(
+                "test text", "summarize", {}, response_data, None
+            )
+            
+            # Verify that a cache operation time was recorded for connection failure
+            assert len(cache_instance.performance_monitor.cache_operation_times) == initial_cache_ops + 1
+            
+            # Check the recorded metric shows connection failure
+            recorded_metric = cache_instance.performance_monitor.cache_operation_times[-1]
+            assert recorded_metric.operation_type == "set"
+            assert recorded_metric.duration > 0
+            assert recorded_metric.additional_data["reason"] == "redis_connection_failed"
+            assert recorded_metric.additional_data["status"] == "failed"
+
+    @pytest.mark.asyncio
+    async def test_cache_response_compression_tracking(self, cache_instance, mock_redis):
+        """Test that cache_response records compression metrics when compression is used."""
+        # Create large response that will trigger compression
+        large_response = {
+            "operation": "summarize",
+            "result": "A" * 2000,  # Large result to trigger compression
+            "success": True
+        }
+        
+        # Get initial counts 
+        initial_compression_ops = len(cache_instance.performance_monitor.compression_ratios)
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.cache_response(
+                "test text", "summarize", {}, large_response, None
+            )
+            
+            # Verify that a compression ratio was recorded
+            assert len(cache_instance.performance_monitor.compression_ratios) == initial_compression_ops + 1
+            
+            # Check the recorded compression metric
+            recorded_compression = cache_instance.performance_monitor.compression_ratios[-1]
+            assert recorded_compression.operation_type == "summarize"
+            assert recorded_compression.compression_time > 0
+            assert recorded_compression.original_size > 0
+            assert recorded_compression.compressed_size > 0
+            assert recorded_compression.compression_ratio <= 1.0  # Should be compressed
+
+    @pytest.mark.asyncio
+    async def test_cache_response_no_compression_tracking_for_small_data(self, cache_instance, mock_redis):
+        """Test that cache_response doesn't record compression metrics for small data."""
+        # Create small response that won't trigger compression
+        small_response = {
+            "operation": "sentiment",
+            "result": "positive",
+            "success": True
+        }
+        
+        # Get initial counts
+        initial_compression_ops = len(cache_instance.performance_monitor.compression_ratios)
+        
+        # Mock successful connection
+        with patch.object(cache_instance, 'connect', return_value=True):
+            cache_instance.redis = mock_redis
+            
+            await cache_instance.cache_response(
+                "test text", "sentiment", {}, small_response, None
+            )
+            
+            # Verify that no compression ratio was recorded for small data
+            assert len(cache_instance.performance_monitor.compression_ratios) == initial_compression_ops
+
 
 class TestCacheKeyGenerator:
     """Test the CacheKeyGenerator class."""
