@@ -487,7 +487,7 @@ class TestTextProcessorSanitization:
         # Mock the Agent to avoid actual AI API calls
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
             mock_agent_instance = MagicMock()
-            mock_agent_instance.run = AsyncMock()
+            mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
             mock_agent_constructor.return_value = mock_agent_instance
             
             # Mock os.environ to provide GEMINI_API_KEY
@@ -639,7 +639,7 @@ class TestPRDAttackScenarios:
         # Mock the Agent to avoid actual AI API calls
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
             mock_agent_instance = MagicMock()
-            mock_agent_instance.run = AsyncMock()
+            mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
             mock_agent_constructor.return_value = mock_agent_instance
             
             # Mock os.environ to provide GEMINI_API_KEY
@@ -925,7 +925,7 @@ class TestSecurityTestConsolidation:
         """Create a TextProcessorService instance for comprehensive security testing."""
         with patch('app.services.text_processor.Agent') as mock_agent_constructor:
             mock_agent_instance = MagicMock()
-            mock_agent_instance.run = AsyncMock()
+            mock_agent_instance.run = AsyncMock(return_value=MagicMock(data="Mocked AI Response"))
             mock_agent_constructor.return_value = mock_agent_instance
             
             # Mock os.environ to provide GEMINI_API_KEY
