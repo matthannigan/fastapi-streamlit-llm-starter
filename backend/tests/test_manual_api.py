@@ -16,6 +16,7 @@ from typing import Dict, Any
 BASE_URL = "http://localhost:8000"
 TEST_API_KEY = "test-api-key-12345"
 
+@pytest.mark.manual
 class TestManualAPI:
     """Manual integration tests for the FastAPI application."""
     
