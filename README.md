@@ -78,7 +78,7 @@ This project includes a comprehensive Docker setup for both development and prod
 
 - **Backend**: FastAPI application with AI text processing
 - **Frontend**: Streamlit web interface
-- **Redis**: Caching and session storage
+- **Redis**: Caching and session storage (see [`docs/CACHE.md`](docs/CACHE.md) for details)
 - **Nginx**: Reverse proxy and load balancer (production only)
 
 ### Quick Commands

@@ -383,7 +383,15 @@ class CachePerformanceMonitor:
         )
 
     def _get_invalidations_in_last_hour(self) -> int:
-        """Get the number of invalidations in the last hour."""
+        """
+        Get the number of invalidations in the last hour.
+        
+        Counts invalidation events that occurred within the past 3600 seconds
+        from the current time. Used for frequency analysis and alerting.
+        
+        Returns:
+            int: Number of invalidation events in the last hour.
+        """
         current_time = time.time()
         cutoff_time = current_time - 3600  # 1 hour ago
         
@@ -396,8 +404,22 @@ class CachePerformanceMonitor:
         """
         Get invalidation frequency statistics and analysis.
         
+        Provides comprehensive analysis of cache invalidation patterns including
+        frequency rates, pattern analysis, and efficiency metrics. Used for
+        optimizing invalidation strategies and identifying potential issues.
+        
         Returns:
-            Dictionary containing invalidation frequency metrics and alerts
+            Dict[str, Any]: Invalidation statistics containing:
+                - rates: Invalidation frequency (hourly, daily, average)
+                - thresholds: Warning/critical thresholds and current alert level
+                - patterns: Most common invalidation patterns and types
+                - efficiency: Average keys per invalidation, timing statistics
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> stats = monitor.get_invalidation_frequency_stats()
+            >>> print(f"Hourly rate: {stats['rates']['last_hour']}")
+            >>> print(f"Alert level: {stats['thresholds']['current_alert_level']}")
         """
         if not self.invalidation_events:
             return {
@@ -459,10 +481,24 @@ class CachePerformanceMonitor:
 
     def get_invalidation_recommendations(self) -> List[Dict[str, Any]]:
         """
-        Get recommendations based on invalidation patterns.
+        Get recommendations based on invalidation patterns and performance data.
+        
+        Analyzes invalidation frequency, patterns, and efficiency to provide
+        actionable recommendations for optimizing cache invalidation strategies.
         
         Returns:
-            List of recommendation dictionaries with severity and suggestions
+            List[Dict[str, Any]]: List of recommendations, each containing:
+                - severity: Recommendation level ('info', 'warning', 'critical')
+                - issue: Brief description of the identified issue
+                - message: Detailed explanation of the problem
+                - suggestions: List of specific actions to address the issue
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> recommendations = monitor.get_invalidation_recommendations()
+            >>> for rec in recommendations:
+            ...     if rec['severity'] == 'critical':
+            ...         print(f"CRITICAL: {rec['message']}")
         """
         recommendations = []
         
@@ -601,10 +637,22 @@ class CachePerformanceMonitor:
 
     def get_memory_usage_stats(self) -> Dict[str, Any]:
         """
-        Get memory usage statistics and warnings.
+        Get comprehensive memory usage statistics and trend analysis.
+        
+        Provides detailed memory usage information including current consumption,
+        historical trends, and threshold analysis for cache components.
         
         Returns:
-            Dictionary containing memory usage metrics and alerts
+            Dict[str, Any]: Memory usage statistics containing:
+                - current: Current memory consumption metrics
+                - thresholds: Warning/critical thresholds and status
+                - trends: Historical usage patterns and growth analysis
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> stats = monitor.get_memory_usage_stats()
+            >>> print(f"Current usage: {stats['current']['total_cache_size_mb']:.1f}MB")
+            >>> print(f"Warning reached: {stats['thresholds']['warning_threshold_reached']}")
         """
         if not self.memory_usage_measurements:
             return {
@@ -663,8 +711,22 @@ class CachePerformanceMonitor:
         """
         Get active memory-related warnings and recommendations.
         
+        Analyzes current memory usage against configured thresholds and
+        provides warnings with specific recommendations for addressing
+        memory-related issues.
+        
         Returns:
-            List of warning dictionaries with severity and recommendations
+            List[Dict[str, Any]]: List of active warnings, each containing:
+                - severity: Warning level ('info', 'warning', 'critical')
+                - message: Human-readable description of the issue
+                - recommendations: List of suggested actions to resolve the issue
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> warnings = monitor.get_memory_warnings()
+            >>> for warning in warnings:
+            ...     print(f"{warning['severity'].upper()}: {warning['message']}")
+            WARNING: Cache memory usage exceeding threshold
         """
         warnings = []
         
@@ -722,8 +784,18 @@ class CachePerformanceMonitor:
         """
         Clean up old measurements based on retention policy and size limits.
         
+        Removes measurements that exceed the configured retention period or
+        maximum count limits. This prevents unbounded memory growth while
+        maintaining recent performance data.
+        
         Args:
-            measurements: List of measurements to clean up
+            measurements (List): List of measurement objects to clean up.
+                               Modified in-place to remove old entries.
+                               
+        Note:
+            - Measurements older than retention_hours are removed
+            - If count exceeds max_measurements, oldest entries are removed
+            - List is modified in-place for efficiency
         """
         if not measurements:
             return
@@ -743,10 +815,27 @@ class CachePerformanceMonitor:
     
     def get_performance_stats(self) -> Dict[str, Any]:
         """
-        Get comprehensive cache performance statistics.
+        Get comprehensive cache performance statistics across all monitored areas.
+        
+        Provides a complete performance overview including hit rates, timing
+        statistics, compression efficiency, memory usage, and invalidation patterns.
+        Automatically cleans up old measurements before generating statistics.
         
         Returns:
-            Dictionary containing performance metrics and statistics
+            Dict[str, Any]: Comprehensive performance statistics containing:
+                - timestamp: When statistics were generated
+                - cache_hit_rate: Overall cache hit percentage
+                - key_generation: Key generation timing and efficiency metrics
+                - cache_operations: Cache operation performance by type
+                - compression: Compression ratios and efficiency statistics
+                - memory_usage: Memory consumption and trend analysis
+                - invalidation: Invalidation frequency and pattern analysis
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> stats = monitor.get_performance_stats()
+            >>> print(f"Hit rate: {stats['cache_hit_rate']:.1f}%")
+            >>> print(f"Avg key gen time: {stats['key_generation']['avg_duration']:.3f}s")
         """
         # Clean up old measurements first
         self._cleanup_old_measurements(self.key_generation_times)
@@ -846,7 +935,16 @@ class CachePerformanceMonitor:
         return stats
     
     def _calculate_hit_rate(self) -> float:
-        """Calculate cache hit rate as a percentage."""
+        """
+        Calculate cache hit rate as a percentage.
+        
+        Computes the percentage of cache operations that resulted in successful
+        hits versus total operations. Used for performance analysis and monitoring.
+        
+        Returns:
+            float: Hit rate as a percentage (0.0 to 100.0).
+                  Returns 0.0 if no operations have been recorded.
+        """
         if self.total_operations == 0:
             return 0.0
         return (self.cache_hits / self.total_operations) * 100
@@ -855,11 +953,28 @@ class CachePerformanceMonitor:
         """
         Get recent operations that were significantly slower than average.
         
+        Identifies operations that took significantly longer than the average
+        time for their category. Useful for performance troubleshooting and
+        identifying potential bottlenecks.
+        
         Args:
-            threshold_multiplier: How many times the average to consider "slow"
-            
+            threshold_multiplier (float, optional): Multiplier for average duration
+                                                   to determine "slow" threshold.
+                                                   Defaults to 2.0 (2x average).
+                                                   
         Returns:
-            Dictionary with slow operations by category
+            Dict[str, List[Dict[str, Any]]]: Slow operations by category:
+                - key_generation: Slow key generation operations
+                - cache_operations: Slow cache get/set operations  
+                - compression: Slow compression operations
+                Each entry includes timing, context, and performance details.
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> slow_ops = monitor.get_recent_slow_operations(threshold_multiplier=3.0)
+            >>> for category, operations in slow_ops.items():
+            ...     if operations:
+            ...         print(f"{category}: {len(operations)} slow operations")
         """
         slow_ops = {
             "key_generation": [],
@@ -916,7 +1031,28 @@ class CachePerformanceMonitor:
         return slow_ops
     
     def reset_stats(self):
-        """Reset all performance statistics and measurements."""
+        """
+        Reset all performance statistics and measurements.
+        
+        Clears all accumulated performance data including timing measurements,
+        hit/miss counts, compression statistics, memory usage history, and
+        invalidation events. Useful for starting fresh analysis periods.
+        
+        Returns:
+            None: This method resets statistics as a side effect.
+            
+        Warning:
+            This action cannot be undone. All historical performance data
+            will be permanently lost. Consider exporting metrics before
+            resetting if historical data is needed for analysis.
+            
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> # Export current data if needed
+            >>> data = monitor.export_metrics()
+            >>> monitor.reset_stats()
+            >>> print("All performance statistics have been reset")
+        """
         self.key_generation_times.clear()
         self.cache_operation_times.clear()
         self.compression_ratios.clear()
@@ -931,10 +1067,31 @@ class CachePerformanceMonitor:
     
     def export_metrics(self) -> Dict[str, Any]:
         """
-        Export all raw metrics data for external analysis.
+        Export all raw metrics data for external analysis and archival.
+        
+        Provides complete access to all collected performance measurements
+        in a structured format suitable for external analysis tools, data
+        warehouses, or long-term storage.
         
         Returns:
-            Dictionary containing all raw performance measurements
+            Dict[str, Any]: Complete raw metrics data containing:
+                - key_generation_times: All key generation timing measurements
+                - cache_operation_times: All cache operation timing measurements
+                - compression_ratios: All compression performance measurements
+                - memory_usage_measurements: All memory usage snapshots
+                - invalidation_events: All cache invalidation events
+                - cache_hits/cache_misses: Aggregate hit/miss counts
+                - total_operations: Total number of operations recorded
+                - export_timestamp: When the export was generated
+                
+        Example:
+            >>> monitor = CachePerformanceMonitor()
+            >>> metrics = monitor.export_metrics()
+            >>> print(f"Exported {len(metrics['cache_operation_times'])} cache operations")
+            >>> # Save to file for analysis
+            >>> import json
+            >>> with open('cache_metrics.json', 'w') as f:
+            ...     json.dump(metrics, f, indent=2)
         """
         return {
             "key_generation_times": [asdict(m) for m in self.key_generation_times],
