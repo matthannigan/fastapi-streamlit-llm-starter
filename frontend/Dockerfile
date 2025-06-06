@@ -15,7 +15,7 @@ COPY shared/ ./shared/
 COPY frontend/requirements.txt frontend/requirements.docker.txt ./
 RUN pip install --no-cache-dir -r requirements.docker.txt
 
-# Add shared models to Python path
+# Add shared models to Python path - app package is already available from /app
 ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Development stage
@@ -40,8 +40,11 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health
 
-# Run the application with hot reload
-CMD ["streamlit", "run", "app/app.py", "--server.address", "0.0.0.0", "--server.port", "8501", "--server.runOnSave", "true"]
+# Set environment for development
+ENV STREAMLIT_ENV=development
+
+# Run the application with hot reload using launcher script
+CMD ["python", "run_app.py"]
 
 # Production stage
 FROM base AS production
@@ -65,7 +68,7 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health
 
-# Run the application
-CMD ["streamlit", "run", "app/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+# Run the application using launcher script
+CMD ["python", "run_app.py"]
 
 # Default to production 
