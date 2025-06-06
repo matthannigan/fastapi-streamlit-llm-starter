@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services.text_processor import TextProcessorService
 from app.services.cache import AIResponseCache
+from app.services.monitoring import CachePerformanceMonitor
 from shared.models import TextProcessingRequest, ProcessingOperation
 
 # Test API key for authentication
@@ -140,6 +141,104 @@ def mock_cache_service():
     mock_cache.invalidate_pattern = AsyncMock()
     mock_cache.get_cache_stats = AsyncMock(return_value={"status": "connected", "keys": 0})
     return mock_cache
+
+@pytest.fixture
+def mock_performance_monitor():
+    """Mock CachePerformanceMonitor for testing."""
+    mock_monitor = Mock(spec=CachePerformanceMonitor)
+    
+    # Mock basic initialization properties
+    mock_monitor.retention_hours = 1
+    mock_monitor.max_measurements = 1000
+    mock_monitor.memory_warning_threshold_bytes = 50 * 1024 * 1024
+    mock_monitor.memory_critical_threshold_bytes = 100 * 1024 * 1024
+    
+    # Mock measurement lists
+    mock_monitor.key_generation_times = []
+    mock_monitor.cache_operation_times = []
+    mock_monitor.compression_ratios = []
+    mock_monitor.memory_usage_measurements = []
+    mock_monitor.invalidation_events = []
+    
+    # Mock counter properties
+    mock_monitor.cache_hits = 0
+    mock_monitor.cache_misses = 0
+    mock_monitor.total_operations = 0
+    mock_monitor.total_invalidations = 0
+    mock_monitor.total_keys_invalidated = 0
+    
+    # Mock method return values
+    mock_monitor.get_performance_stats.return_value = {
+        "timestamp": "2024-01-15T10:30:00.123456",
+        "retention_hours": 1,
+        "cache_hit_rate": 85.5,
+        "total_cache_operations": 150,
+        "cache_hits": 128,
+        "cache_misses": 22,
+        "key_generation": {
+            "total_operations": 75,
+            "avg_duration": 0.002,
+            "median_duration": 0.0015,
+            "max_duration": 0.012,
+            "min_duration": 0.0008,
+            "avg_text_length": 1250,
+            "max_text_length": 5000,
+            "slow_operations": 2
+        }
+    }
+    
+    mock_monitor.get_memory_usage_stats.return_value = {
+        "current": {
+            "total_cache_size_mb": 25.5,
+            "memory_cache_size_mb": 5.2,
+            "cache_entry_count": 100,
+            "memory_cache_entry_count": 20,
+            "avg_entry_size_bytes": 2048,
+            "process_memory_mb": 150.0,
+            "cache_utilization_percent": 51.0,
+            "warning_threshold_reached": True
+        }
+    }
+    
+    mock_monitor.get_invalidation_frequency_stats.return_value = {
+        "total_invalidations": 10,
+        "total_keys_invalidated": 50,
+        "rates": {
+            "last_hour": 5,
+            "last_24_hours": 10
+        }
+    }
+    
+    return mock_monitor
+
+@pytest.fixture
+def cache_performance_monitor():
+    """Real CachePerformanceMonitor instance for testing."""
+    return CachePerformanceMonitor(
+        retention_hours=1,
+        max_measurements=100,  # Smaller for testing
+        memory_warning_threshold_bytes=10 * 1024 * 1024,  # 10MB for testing
+        memory_critical_threshold_bytes=20 * 1024 * 1024   # 20MB for testing
+    )
+
+@pytest.fixture
+def app_with_mock_performance_monitor(mock_performance_monitor):
+    """FastAPI app with mock performance monitor dependency override."""
+    from app.routers.monitoring import get_performance_monitor
+    
+    # Override the dependency
+    app.dependency_overrides[get_performance_monitor] = lambda: mock_performance_monitor
+    
+    # Yield the app for testing
+    yield app
+    
+    # Clean up dependency overrides after test
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+def client_with_mock_monitor(app_with_mock_performance_monitor):
+    """Test client with mocked performance monitor."""
+    return TestClient(app_with_mock_performance_monitor)
 
 @pytest.fixture(autouse=True)
 def mock_ai_agent():
