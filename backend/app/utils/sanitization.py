@@ -1,7 +1,7 @@
 import re
 import html
 import os
-from typing import Any, Dict, List, Pattern
+from typing import Any, Dict, List, Optional, Pattern
 
 # Read max length from environment variable with appropriate fallbacks
 _DEFAULT_MAX_LENGTH = int(os.getenv('INPUT_MAX_LENGTH', '2048'))
@@ -86,7 +86,7 @@ class PromptSanitizer:
             re.compile(pattern, re.IGNORECASE) for pattern in self.forbidden_patterns
         ]
     
-    def sanitize_input(self, user_input: str, max_length: int | None = None) -> str:
+    def sanitize_input(self, user_input: str, max_length: Optional[int] = None) -> str:
         """
         Sanitize user input by detecting and removing prompt injection patterns.
         
@@ -137,7 +137,7 @@ class PromptSanitizer:
 # Global sanitizer instance for backward compatibility
 _global_sanitizer = PromptSanitizer()
 
-def sanitize_input(text: str, max_length: int | None = None) -> str:
+def sanitize_input(text: str, max_length: Optional[int] = None) -> str:
     """
     Legacy-compatible sanitize function that provides basic character filtering.
     
@@ -171,7 +171,7 @@ def sanitize_input(text: str, max_length: int | None = None) -> str:
     
     return cleaned_text
 
-def sanitize_input_advanced(text: str, max_length: int | None = None) -> str:
+def sanitize_input_advanced(text: str, max_length: Optional[int] = None) -> str:
     """
     Advanced sanitize function using the full PromptSanitizer capabilities.
     
