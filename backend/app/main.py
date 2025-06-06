@@ -21,6 +21,7 @@ from app.auth import verify_api_key, optional_verify_api_key
 from app.dependencies import get_settings, get_cache_service, get_text_processor
 from app.services.cache import AIResponseCache
 from app.resilience_endpoints import resilience_router
+from app.routers.monitoring import monitoring_router
 
 
 # Configure logging
@@ -60,6 +61,9 @@ app.add_middleware(
 
 # Include the resilience router
 app.include_router(resilience_router)
+
+# Include the monitoring router
+app.include_router(monitoring_router)
 
 # No routers needed - using direct service integration
 
@@ -117,10 +121,26 @@ async def cache_status(cache_service: AIResponseCache = Depends(get_cache_servic
     return stats
 
 @app.post("/cache/invalidate")
-async def invalidate_cache(pattern: str = "", cache_service: AIResponseCache = Depends(get_cache_service)):
+async def invalidate_cache(
+    pattern: str = "", 
+    operation_context: str = "api_endpoint",
+    cache_service: AIResponseCache = Depends(get_cache_service)
+):
     """Invalidate cache entries matching pattern."""
-    await cache_service.invalidate_pattern(pattern)
+    await cache_service.invalidate_pattern(pattern, operation_context=operation_context)
     return {"message": f"Cache invalidated for pattern: {pattern}"}
+
+@app.get("/cache/invalidation-stats")
+async def get_invalidation_stats(cache_service: AIResponseCache = Depends(get_cache_service)):
+    """Get cache invalidation frequency statistics."""
+    stats = cache_service.get_invalidation_frequency_stats()
+    return stats
+
+@app.get("/cache/invalidation-recommendations")
+async def get_invalidation_recommendations(cache_service: AIResponseCache = Depends(get_cache_service)):
+    """Get recommendations based on cache invalidation patterns."""
+    recommendations = cache_service.get_invalidation_recommendations()
+    return {"recommendations": recommendations}
 
 @app.post("/process", response_model=TextProcessingResponse)
 async def process_text(

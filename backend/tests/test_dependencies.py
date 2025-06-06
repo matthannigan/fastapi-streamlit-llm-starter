@@ -19,6 +19,14 @@ def create_mock_settings(**overrides):
     mock_settings.ai_model = "gemini-2.0-flash-exp"
     mock_settings.redis_url = "redis://test:6379"
     
+    # Cache configuration attributes
+    mock_settings.cache_text_hash_threshold = 1000
+    mock_settings.cache_compression_threshold = 1000
+    mock_settings.cache_compression_level = 6
+    mock_settings.cache_default_ttl = 3600
+    mock_settings.cache_text_size_tiers = {'small': 500, 'medium': 5000, 'large': 50000}
+    mock_settings.cache_memory_cache_size = 100
+    
     # Resilience strategy attributes
     mock_settings.summarize_resilience_strategy = "balanced"
     mock_settings.sentiment_resilience_strategy = "aggressive"
@@ -42,6 +50,12 @@ class TestDependencyInjection:
         # Create a mock settings object
         mock_settings = MagicMock(spec=Settings)
         mock_settings.redis_url = "redis://test-host:6379"
+        mock_settings.cache_text_hash_threshold = 1000
+        mock_settings.cache_compression_threshold = 1000
+        mock_settings.cache_compression_level = 6
+        mock_settings.cache_default_ttl = 3600
+        mock_settings.cache_text_size_tiers = {'small': 500, 'medium': 5000, 'large': 50000}
+        mock_settings.cache_memory_cache_size = 100
         
         # Mock the AIResponseCache class and its connect method
         with patch('app.dependencies.AIResponseCache') as mock_cache_class:
@@ -55,7 +69,12 @@ class TestDependencyInjection:
             # Verify AIResponseCache was called with correct parameters
             mock_cache_class.assert_called_once_with(
                 redis_url="redis://test-host:6379",
-                default_ttl=3600
+                default_ttl=3600,
+                text_hash_threshold=1000,
+                compression_threshold=1000,
+                compression_level=6,
+                text_size_tiers={'small': 500, 'medium': 5000, 'large': 50000},
+                memory_cache_size=100
             )
             
             # Verify connect was called
@@ -70,6 +89,12 @@ class TestDependencyInjection:
         # Create a mock settings object
         mock_settings = MagicMock(spec=Settings)
         mock_settings.redis_url = "redis://unavailable-host:6379"
+        mock_settings.cache_text_hash_threshold = 1000
+        mock_settings.cache_compression_threshold = 1000
+        mock_settings.cache_compression_level = 6
+        mock_settings.cache_default_ttl = 3600
+        mock_settings.cache_text_size_tiers = {'small': 500, 'medium': 5000, 'large': 50000}
+        mock_settings.cache_memory_cache_size = 100
         
         # Mock the AIResponseCache class and make connect() return False (Redis unavailable)
         with patch('app.dependencies.AIResponseCache') as mock_cache_class:
@@ -83,7 +108,12 @@ class TestDependencyInjection:
             # Verify AIResponseCache was called with correct parameters
             mock_cache_class.assert_called_once_with(
                 redis_url="redis://unavailable-host:6379",
-                default_ttl=3600
+                default_ttl=3600,
+                text_hash_threshold=1000,
+                compression_threshold=1000,
+                compression_level=6,
+                text_size_tiers={'small': 500, 'medium': 5000, 'large': 50000},
+                memory_cache_size=100
             )
             
             # Verify connect was called (and returned False)
@@ -98,6 +128,12 @@ class TestDependencyInjection:
         # Create a mock settings object
         mock_settings = MagicMock(spec=Settings)
         mock_settings.redis_url = "redis://bad-config:6379"
+        mock_settings.cache_text_hash_threshold = 1000
+        mock_settings.cache_compression_threshold = 1000
+        mock_settings.cache_compression_level = 6
+        mock_settings.cache_default_ttl = 3600
+        mock_settings.cache_text_size_tiers = {'small': 500, 'medium': 5000, 'large': 50000}
+        mock_settings.cache_memory_cache_size = 100
         
         # Mock the AIResponseCache class and make connect() raise an exception
         with patch('app.dependencies.AIResponseCache') as mock_cache_class:
@@ -127,6 +163,12 @@ class TestDependencyInjection:
         # Create settings with an unavailable Redis URL
         mock_settings = MagicMock(spec=Settings)
         mock_settings.redis_url = "redis://nonexistent-host:6379"
+        mock_settings.cache_text_hash_threshold = 1000
+        mock_settings.cache_compression_threshold = 1000
+        mock_settings.cache_compression_level = 6
+        mock_settings.cache_default_ttl = 3600
+        mock_settings.cache_text_size_tiers = {'small': 500, 'medium': 5000, 'large': 50000}
+        mock_settings.cache_memory_cache_size = 100
         
         # Don't mock anything - use real AIResponseCache
         cache_service = await get_cache_service(mock_settings)
@@ -146,8 +188,8 @@ class TestDependencyInjection:
         
         # Cache stats should indicate unavailable
         stats = await cache_service.get_cache_stats()
-        assert stats["status"] == "unavailable"
-        assert stats["keys"] == 0
+        assert stats["redis"]["status"] == "unavailable"
+        assert stats["redis"]["keys"] == 0
         
     def test_get_text_processor_service_uses_injected_cache(self):
         """Test that get_text_processor_service uses the injected cache service."""
@@ -201,7 +243,12 @@ class TestDependencyInjection:
                     # Verify cache was created with settings redis_url
                     mock_cache_class.assert_called_once_with(
                         redis_url=settings.redis_url,
-                        default_ttl=3600
+                        default_ttl=settings.cache_default_ttl,
+                        text_hash_threshold=settings.cache_text_hash_threshold,
+                        compression_threshold=settings.cache_compression_threshold,
+                        compression_level=settings.cache_compression_level,
+                        text_size_tiers=settings.cache_text_size_tiers,
+                        memory_cache_size=settings.cache_memory_cache_size
                     )
                 
     @pytest.mark.asyncio
@@ -210,6 +257,12 @@ class TestDependencyInjection:
         # Create settings with custom redis URL
         mock_settings = MagicMock(spec=Settings)
         mock_settings.redis_url = "redis://custom-redis:9999"
+        mock_settings.cache_text_hash_threshold = 1000
+        mock_settings.cache_compression_threshold = 1000
+        mock_settings.cache_compression_level = 6
+        mock_settings.cache_default_ttl = 3600
+        mock_settings.cache_text_size_tiers = {'small': 500, 'medium': 5000, 'large': 50000}
+        mock_settings.cache_memory_cache_size = 100
         
         # Mock AIResponseCache
         with patch('app.dependencies.AIResponseCache') as mock_cache_class:
@@ -222,7 +275,12 @@ class TestDependencyInjection:
             # Verify cache was created with custom redis URL
             mock_cache_class.assert_called_once_with(
                 redis_url="redis://custom-redis:9999",
-                default_ttl=3600
+                default_ttl=3600,
+                text_hash_threshold=1000,
+                compression_threshold=1000,
+                compression_level=6,
+                text_size_tiers={'small': 500, 'medium': 5000, 'large': 50000},
+                memory_cache_size=100
             )
             assert cache_service is mock_cache_instance
     

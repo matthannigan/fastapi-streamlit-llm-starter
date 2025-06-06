@@ -44,6 +44,40 @@ class Settings(BaseSettings):
     # Redis Configuration
     redis_url: str = Field(default="redis://redis:6379", description="Redis connection URL")
     
+    # Cache Key Generator Configuration
+    cache_text_hash_threshold: int = Field(
+        default=1000, gt=0, description="Character count threshold for cache key text hashing"
+    )
+    
+    # Cache Compression Configuration  
+    cache_compression_threshold: int = Field(
+        default=1000, gt=0, description="Size threshold in bytes for compressing cache data"
+    )
+    cache_compression_level: int = Field(
+        default=6, ge=1, le=9, description="Compression level (1-9, where 9 is highest compression)"
+    )
+    
+    # Cache Text Size Tiers Configuration
+    # Controls how different text sizes are cached with varying strategies for optimal performance
+    cache_text_size_tiers: dict = Field(
+        default={
+            'small': 500,      # < 500 chars - cache with full text and use memory cache for fast access
+            'medium': 5000,    # 500-5000 chars - cache with text hash for moderate performance
+            'large': 50000,    # 5000-50000 chars - cache with content hash + metadata for large texts
+        },
+        description="Text size tiers for caching strategy optimization. Defines character thresholds for small, medium, and large text categories."
+    )
+    
+    # Memory Cache Configuration
+    cache_memory_cache_size: int = Field(
+        default=100, gt=0, description="Maximum number of items to store in the in-memory cache for small texts. Higher values improve hit rates but use more memory."
+    )
+    
+    # Cache TTL (Time To Live) Configuration  
+    cache_default_ttl: int = Field(
+        default=3600, gt=0, description="Default cache TTL in seconds (1 hour). Controls how long cached responses remain valid before expiration."
+    )
+    
     # Resilience Configuration
     # Enable/disable resilience features
     resilience_enabled: bool = Field(default=True, description="Enable resilience features")

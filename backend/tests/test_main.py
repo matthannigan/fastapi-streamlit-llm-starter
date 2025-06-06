@@ -359,9 +359,11 @@ class TestCacheEndpoints:
         assert response.status_code == 200
         
         data = response.json()
-        assert "status" in data
+        assert "redis" in data
+        assert "memory" in data
+        assert "performance" in data
         # Should work even if Redis is unavailable
-        assert data["status"] in ["connected", "unavailable", "error"]
+        assert data["redis"]["status"] in ["connected", "unavailable", "error"]
     
     def test_cache_invalidate(self, client: TestClient):
         """Test cache invalidation endpoint."""
@@ -427,7 +429,7 @@ class TestCacheEndpoints:
             assert response.status_code == 200
             
             # Verify the cache invalidation was called with correct pattern
-            mock_cache_service.invalidate_pattern.assert_called_once_with("summarize")
+            mock_cache_service.invalidate_pattern.assert_called_once_with("summarize", operation_context="api_endpoint")
         finally:
             # Clean up the override
             app.dependency_overrides.clear()

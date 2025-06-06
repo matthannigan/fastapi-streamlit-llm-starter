@@ -166,10 +166,12 @@ backend/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application
-│   ├── config.py            # Configuration settings
+│   ├── config.py            # Configuration settings with caching options
 │   └── services/
 │       ├── __init__.py
-│       └── text_processor.py # AI text processing service
+│       ├── text_processor.py # AI text processing service
+│       ├── cache.py         # Multi-tiered caching system
+│       └── monitoring.py    # Cache performance monitoring
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py          # Test configuration and fixtures
@@ -190,11 +192,13 @@ backend/
 
 ### Service Architecture
 
-The application follows a service-oriented architecture:
+The application follows a service-oriented architecture with integrated caching:
 
 - **FastAPI Application** (`main.py`): Handles HTTP requests, validation, and responses
-- **Text Processor Service** (`text_processor.py`): Manages AI model interactions
-- **Configuration** (`config.py`): Centralized settings management
+- **Text Processor Service** (`text_processor.py`): Manages AI model interactions with caching integration
+- **Cache Service** (`cache.py`): Multi-tiered caching system with intelligent key generation
+- **Performance Monitor** (`monitoring.py`): Comprehensive cache performance tracking and metrics
+- **Configuration** (`config.py`): Centralized settings management including cache configuration
 - **Shared Models** (`../shared/models.py`): Pydantic models for data validation
 
 ### Error Handling
@@ -220,6 +224,17 @@ The application includes comprehensive error handling:
 - `BACKEND_PORT`: Server port (default: 8000)
 - `DEBUG`: Enable debug mode (default: false)
 - `LOG_LEVEL`: Logging level (default: INFO)
+
+### Cache Settings
+
+- `REDIS_URL`: Redis connection URL (default: redis://redis:6379)
+- `CACHE_TEXT_HASH_THRESHOLD`: Character threshold for text hashing (default: 1000)
+- `CACHE_MEMORY_CACHE_SIZE`: Maximum items in memory cache (default: 100)
+- `CACHE_COMPRESSION_THRESHOLD`: Size threshold for compression in bytes (default: 1000)
+- `CACHE_COMPRESSION_LEVEL`: Compression level 1-9 (default: 6)
+- `CACHE_DEFAULT_TTL`: Default cache TTL in seconds (default: 3600)
+
+> **📖 Detailed Cache Documentation**: For comprehensive information about the multi-tiered caching system, architecture, monitoring, troubleshooting, and performance optimization, see [`docs/CACHE.md`](../docs/CACHE.md).
 
 ### CORS Settings
 
