@@ -132,6 +132,7 @@ class AIResponseCache:
     def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600, 
                  text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256,
                  compression_threshold: int = 1000, compression_level: int = 6,
+                 text_size_tiers: dict = None, memory_cache_size: int = 100,
                  performance_monitor: Optional[CachePerformanceMonitor] = None):
         """
         Initialize AIResponseCache with injectable configuration.
@@ -143,6 +144,8 @@ class AIResponseCache:
             hash_algorithm: Hash algorithm to use for large texts
             compression_threshold: Size threshold in bytes for compressing cache data
             compression_level: Compression level (1-9, where 9 is highest compression)
+            text_size_tiers: Text size tiers for caching strategy optimization (None for defaults)
+            memory_cache_size: Maximum number of items in the in-memory cache
             performance_monitor: Optional performance monitor for tracking cache metrics
         """
         self.redis = None
@@ -168,8 +171,8 @@ class AIResponseCache:
             performance_monitor=self.performance_monitor
         )
         
-        # Tiered caching configuration
-        self.text_size_tiers = {
+        # Tiered caching configuration - use provided or default values
+        self.text_size_tiers = text_size_tiers or {
             'small': 500,      # < 500 chars - cache with full text and use memory cache
             'medium': 5000,    # 500-5000 chars - cache with text hash
             'large': 50000,    # 5000-50000 chars - cache with content hash + metadata
@@ -177,7 +180,7 @@ class AIResponseCache:
         
         # In-memory cache for frequently accessed small items
         self.memory_cache = {}  # Cache storage: {key: value}
-        self.memory_cache_size = 100  # Maximum number of items in memory cache
+        self.memory_cache_size = memory_cache_size  # Maximum number of items in memory cache
         self.memory_cache_order = []  # Track access order for FIFO eviction
     
     def _get_text_tier(self, text: str) -> str:
