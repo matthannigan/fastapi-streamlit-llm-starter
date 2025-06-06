@@ -619,14 +619,22 @@ class AIResponseCache:
     
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get a summary of cache performance metrics."""
-        return {
+        summary = {
             "hit_ratio": self.get_cache_hit_ratio(),
             "total_operations": self.performance_monitor.total_operations,
             "cache_hits": self.performance_monitor.cache_hits,
             "cache_misses": self.performance_monitor.cache_misses,
             "recent_avg_key_generation_time": self._get_recent_avg_key_generation_time(),
-            "recent_avg_cache_operation_time": self._get_recent_avg_cache_operation_time()
+            "recent_avg_cache_operation_time": self._get_recent_avg_cache_operation_time(),
+            "total_invalidations": self.performance_monitor.total_invalidations,
+            "total_keys_invalidated": self.performance_monitor.total_keys_invalidated
         }
+            
+        # Include memory usage stats if any measurements have been recorded
+        if self.performance_monitor.memory_usage_measurements:
+            summary["memory_usage"] = self.get_memory_usage_stats()
+            
+        return summary
     
     def _get_recent_avg_key_generation_time(self) -> float:
         """Get average key generation time from recent measurements."""

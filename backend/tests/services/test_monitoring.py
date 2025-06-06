@@ -498,7 +498,7 @@ class TestCachePerformanceMonitor:
         assert event.operation_context == "test_context"
         assert event.additional_data == {"user": "test_user"}
 
-    @patch('backend.app.services.monitoring.logger')
+    @patch('app.services.monitoring.logger')
     def test_record_invalidation_event_high_frequency_warning(self, mock_logger):
         """Test warning logging for high invalidation frequency."""
         # Set low thresholds for testing
@@ -518,7 +518,7 @@ class TestCachePerformanceMonitor:
         warning_call = mock_logger.warning.call_args[0][0]
         assert "High invalidation rate" in warning_call
 
-    @patch('backend.app.services.monitoring.logger')
+    @patch('app.services.monitoring.logger')
     def test_record_invalidation_event_critical_frequency(self, mock_logger):
         """Test critical logging for very high invalidation frequency."""
         # Set low thresholds for testing
@@ -768,6 +768,9 @@ class TestCachePerformanceMonitor:
         memory_cache2 = {"key1": {"data": "value1"}, "key2": {"data": "value2"}}
         self.monitor.record_memory_usage(memory_cache1)
         self.monitor.record_memory_usage(memory_cache2)
+        
+        # 5. Invalidation event
+        self.monitor.record_invalidation_event("test_pattern", 5, 0.02, "manual")
         
         # Get comprehensive stats
         stats = self.monitor.get_performance_stats()

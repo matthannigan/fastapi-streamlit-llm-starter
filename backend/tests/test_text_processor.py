@@ -90,7 +90,13 @@ class TestTextProcessorService:
         """Create a TextProcessorService instance."""
         # Set up environment variable using monkeypatch for better parallel test isolation
         monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
-        return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+        
+        # Create service with patched Agent constructor
+        with patch('app.services.text_processor.Agent', return_value=mock_ai_agent):
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            # Ensure the agent is properly mocked after creation
+            service.agent = mock_ai_agent
+            return service
     
     @pytest.mark.asyncio
     async def test_summarize_text(self, service, sample_text):
@@ -276,7 +282,13 @@ class TestTextProcessorCaching:
         """Create a TextProcessorService instance."""
         # Set up environment variable using monkeypatch for better parallel test isolation
         monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
-        return TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+        
+        # Create service with patched Agent constructor
+        with patch('app.services.text_processor.Agent', return_value=mock_ai_agent):
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            # Ensure the agent is properly mocked after creation
+            service.agent = mock_ai_agent
+            return service
     
     @pytest.mark.asyncio
     async def test_cache_miss_processes_normally(self, service, sample_text):

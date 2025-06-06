@@ -79,7 +79,7 @@ class CachePerformanceResponse(BaseModel):
     invalidation: Optional[Dict[str, Any]] = Field(None, description="Cache invalidation statistics")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "timestamp": "2024-01-15T10:30:00.123456",
                 "retention_hours": 1,
