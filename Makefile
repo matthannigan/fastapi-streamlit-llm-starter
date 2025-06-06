@@ -90,15 +90,15 @@ test:
 
 test-backend:
 	@echo "Running backend tests (fast tests only, excluding manual tests)..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v
 
 test-backend-slow:
 	@echo "Running slow backend tests only..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow" --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow"
 
 test-backend-all:
 	@echo "Running all backend tests (including slow ones, excluding manual tests)..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --run-slow --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "not manual"
 
 test-backend-manual:
 	@echo "Running backend manual tests..."
@@ -107,7 +107,7 @@ test-backend-manual:
 	@echo "   - API_KEY=test-api-key-12345 environment variable set"
 	@echo "   - GEMINI_API_KEY environment variable set (for AI features)"
 	@echo ""
-	cd backend && $(PYTHON_CMD) -m pytest tests/test_manual_api.py tests/test_manual_auth.py -v
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "manual"
 
 test-frontend:
 	@echo "Running frontend tests..."
@@ -123,12 +123,12 @@ test-integration:
 
 test-coverage:
 	@echo "Running tests with coverage (fast tests only, excluding manual tests)..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 test-coverage-all:
 	@echo "Running tests with coverage (including slow tests, excluding manual tests)..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term --run-slow --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term -m "not manual"
 	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 test-retry:
@@ -146,7 +146,7 @@ test-local: venv
 	cd backend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
 	cd frontend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
 	@echo "Running backend tests..."
-	cd backend && $(VENV_PYTHON) -m pytest tests/ -v --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && $(VENV_PYTHON) -m pytest tests/ -v
 	@echo "Running frontend tests..."
 	cd frontend && $(VENV_PYTHON) -m pytest tests/ -v
 
@@ -210,7 +210,7 @@ dev-setup: install
 # Quick test for CI (fast tests only)
 ci-test:
 	@echo "Running CI tests (fast tests only)..."
-	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml
 	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/
@@ -219,7 +219,7 @@ ci-test:
 # Full CI test including slow tests (use for nightly builds or comprehensive testing)
 ci-test-all:
 	@echo "Running comprehensive CI tests (including slow tests)..."
-	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml --run-slow --ignore=tests/test_manual_api.py --ignore=tests/test_manual_auth.py
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml -m "not manual"
 	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/
