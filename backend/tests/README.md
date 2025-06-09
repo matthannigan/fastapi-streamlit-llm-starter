@@ -120,7 +120,7 @@ uvicorn app.main:app --reload --port 8000
 
 # 3. Run manual tests in another terminal
 cd backend
-pytest test_manual_api.py test_manual_auth.py -v -s -m "manual"
+pytest test_manual_api.py test_manual_auth.py -v -s -m "manual" --run-manual
 ```
 
 ## Running Tests
@@ -138,16 +138,19 @@ pytest -v  # Runs fast tests in parallel, excluding slow and manual tests
 
 ```bash
 # Run all tests including slow ones (excluding manual)
-pytest -v -m "not manual"
+pytest -v -m "not manual" --run-slow
 
 # Run all tests including manual ones (requires live server)
-pytest -v -m "not slow" --run-manual  # if configured
+pytest -v -m "not slow" --run-manual
 
-# Run only slow tests
-pytest -v -m "slow"
+# Run only slow tests (requires --run-slow flag)
+pytest -v -m "slow" --run-slow
 
-# Run only manual tests
-pytest -v -m "manual"
+# Run only manual tests (requires --run-manual flag)
+pytest -v -m "manual" --run-manual
+
+# Run both slow and manual tests together
+pytest -v -m "slow or manual" --run-slow --run-manual
 
 # Run tests sequentially (for debugging)
 pytest -v -n 0
@@ -186,12 +189,17 @@ pytest unit/services/ --cov=app.services --cov-report=html -v
 
 The test suite uses several pytest markers to categorize tests:
 
-- `slow` - Marks tests that take longer to run (excluded by default)
-- `manual` - Marks tests requiring manual server setup (excluded by default)  
+- `slow` - Marks tests that take longer to run (excluded by default, requires `--run-slow`)
+- `manual` - Marks tests requiring manual server setup (excluded by default, requires `--run-manual`)  
 - `integration` - Marks integration tests
 - `retry` - Marks tests that specifically test retry logic
 - `circuit_breaker` - Marks tests for circuit breaker functionality
 - `no_parallel` - Marks tests that must run sequentially
+
+### Special Test Flags
+
+- `--run-slow` - Enables slow tests that involve actual timing, retries, and performance testing
+- `--run-manual` - Enables manual tests that require a live server and real API keys
 
 ## Adding New Tests
 
@@ -213,7 +221,7 @@ Place integration tests in the `integration/` directory:
 
 ### Manual Tests
 
-Add manual tests to the root test directory with `@pytest.mark.manual` decorator.
+Add manual tests to the root test directory with `@pytest.mark.manual` decorator. These tests require the `--run-manual` flag to run.
 
 ## Common Issues and Solutions
 
@@ -247,7 +255,15 @@ Tests use the configuration from `pytest.ini` in the backend directory. Key sett
 - Async test support via `pytest-asyncio`
 - Coverage reporting
 - Custom markers for different test types
-- Automatic exclusion of slow and manual tests
+- Automatic exclusion of slow and manual tests (unless `--run-slow` or `--run-manual` flags are used)
+
+### Test Exclusion Logic
+
+By default, the test configuration excludes:
+- **Slow tests**: Filtered by pytest.ini marker expression AND skipped by conftest.py unless `--run-slow` is provided
+- **Manual tests**: Filtered by pytest.ini marker expression AND skipped by conftest.py unless `--run-manual` is provided
+
+This dual protection ensures that special test categories only run when explicitly requested.
 
 ## Debugging Tests
 

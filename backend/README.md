@@ -139,23 +139,39 @@ pytest tests/ -v
 
 Run specific test categories:
 ```bash
-# Unit tests (mocked AI services)
-pytest tests/test_main.py tests/test_text_processor.py -v
+# Fast unit tests (mocked AI services - default)
+pytest tests/ -v
 
-# Manual integration tests (requires running server)
-pytest tests/test_manual_api.py tests/test_manual_auth.py -v
+# Unit tests only
+pytest unit/ -v
+
+# Integration tests
+pytest integration/ -v
+
+# Slow tests (requires --run-slow flag)
+pytest tests/ -v -m "slow" --run-slow
+
+# Manual integration tests (requires running server and --run-manual flag)
+pytest tests/ -v -m "manual" --run-manual
+
+# All tests including slow ones (excluding manual)
+pytest tests/ -v -m "not manual" --run-slow
 
 # All tests with coverage
 pytest tests/ --cov=app --cov-report=html
 ```
 
-Manual testing scripts:
+Manual testing requirements:
 ```bash
-# Test API endpoints (requires server running on localhost:8000)
-cd tests && python test_manual_api.py
+# Set up environment for manual tests
+export GEMINI_API_KEY="your-actual-gemini-api-key"
+export API_KEY="test-api-key-12345"
 
-# Test authentication (requires server running on localhost:8000)
-cd tests && python test_manual_auth.py
+# Start the server
+uvicorn app.main:app --reload --port 8000
+
+# Run manual tests (in another terminal)
+pytest tests/ -v -m "manual" --run-manual
 ```
 
 ## Architecture
