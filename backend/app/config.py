@@ -301,6 +301,26 @@ class Settings(BaseSettings):
     def _apply_custom_overrides(self, base_config, custom_config: dict):
         """Apply custom configuration overrides to base preset config."""
         from app.services.resilience import ResilienceStrategy
+        from app.validation_schemas import config_validator
+        
+        # Validate custom configuration
+        validation_result = config_validator.validate_custom_config(custom_config)
+        if not validation_result.is_valid:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Invalid custom configuration: {validation_result.errors}")
+            # Log warnings but continue
+            for warning in validation_result.warnings:
+                logger.warning(f"Custom configuration warning: {warning}")
+            # Return base config without applying invalid overrides
+            return base_config
+        
+        # Log any warnings
+        if validation_result.warnings:
+            import logging
+            logger = logging.getLogger(__name__)
+            for warning in validation_result.warnings:
+                logger.warning(f"Custom configuration warning: {warning}")
         
         # Create a copy of the base config
         config = base_config
@@ -315,6 +335,34 @@ class Settings(BaseSettings):
         if "recovery_timeout" in custom_config:
             config.circuit_breaker_config.recovery_timeout = custom_config["recovery_timeout"]
         
+        # Apply exponential backoff overrides
+        if "exponential_multiplier" in custom_config:
+            config.retry_config.exponential_multiplier = custom_config["exponential_multiplier"]
+            
+        if "exponential_min" in custom_config:
+            config.retry_config.exponential_min = custom_config["exponential_min"]
+            
+        if "exponential_max" in custom_config:
+            config.retry_config.exponential_max = custom_config["exponential_max"]
+        
+        if "jitter_enabled" in custom_config:
+            config.retry_config.jitter = custom_config["jitter_enabled"]
+            
+        if "jitter_max" in custom_config:
+            config.retry_config.jitter_max = custom_config["jitter_max"]
+            
+        if "max_delay_seconds" in custom_config:
+            config.retry_config.max_delay_seconds = custom_config["max_delay_seconds"]
+        
+        # Apply strategy overrides
+        if "default_strategy" in custom_config:
+            try:
+                config.strategy = ResilienceStrategy(custom_config["default_strategy"])
+            except ValueError:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Invalid default strategy '{custom_config['default_strategy']}', keeping original")
+        
         # Apply operation-specific strategy overrides
         if "operation_overrides" in custom_config:
             for operation, strategy_str in custom_config["operation_overrides"].items():
@@ -328,6 +376,32 @@ class Settings(BaseSettings):
                     logger.warning(f"Invalid strategy '{strategy_str}' for operation '{operation}'")
         
         return config
+
+    def validate_custom_config(self, json_string: Optional[str] = None) -> dict:
+        """
+        Validate custom resilience configuration.
+        
+        Args:
+            json_string: JSON string to validate (if None, uses current resilience_custom_config)
+            
+        Returns:
+            Dictionary with validation results
+        """
+        from app.validation_schemas import config_validator
+        
+        config_to_validate = json_string or self.resilience_custom_config
+        if not config_to_validate:
+            return {"is_valid": True, "errors": [], "warnings": ["No custom configuration to validate"]}
+        
+        try:
+            validation_result = config_validator.validate_json_string(config_to_validate)
+            return validation_result.to_dict()
+        except Exception as e:
+            return {
+                "is_valid": False,
+                "errors": [f"Validation error: {str(e)}"],
+                "warnings": []
+            }
 
     def get_operation_strategy(self, operation: str) -> str:
         """

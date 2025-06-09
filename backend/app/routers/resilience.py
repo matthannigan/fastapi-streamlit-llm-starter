@@ -1,0 +1,404 @@
+"""
+REST API endpoints for resilience configuration management.
+
+Provides endpoints for:
+- Listing and retrieving presets
+- Validating custom configurations  
+- Getting current resilience configuration
+- Managing preset recommendations
+"""
+
+import json
+import logging
+from typing import Dict, List, Any, Optional
+
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel, Field
+
+from app.config import Settings, settings
+from app.resilience_presets import preset_manager, PresetManager
+from app.validation_schemas import config_validator, ValidationResult
+from app.services.resilience import ai_resilience
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/resilience", tags=["resilience"])
+
+
+# Pydantic models for API responses
+class PresetSummary(BaseModel):
+    """Summary information about a resilience preset."""
+    name: str
+    description: str
+    retry_attempts: int
+    circuit_breaker_threshold: int
+    recovery_timeout: int
+    default_strategy: str
+    environment_contexts: List[str]
+
+
+class PresetDetails(BaseModel):
+    """Detailed information about a resilience preset."""
+    name: str
+    description: str
+    configuration: Dict[str, Any]
+    environment_contexts: List[str]
+
+
+class ValidationResponse(BaseModel):
+    """Response model for configuration validation."""
+    is_valid: bool
+    errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class CurrentConfigResponse(BaseModel):
+    """Current resilience configuration response."""
+    preset_name: str
+    is_legacy_config: bool
+    configuration: Dict[str, Any]
+    operation_strategies: Dict[str, str]
+    custom_overrides: Optional[Dict[str, Any]] = None
+
+
+class RecommendationResponse(BaseModel):
+    """Preset recommendation response."""
+    environment: str
+    recommended_preset: str
+    reason: str
+    available_presets: List[str]
+
+
+class CustomConfigRequest(BaseModel):
+    """Request model for custom configuration validation."""
+    configuration: Dict[str, Any]
+
+
+class ResilienceMetricsResponse(BaseModel):
+    """Resilience service metrics response."""
+    operations: Dict[str, Dict[str, Any]]
+    circuit_breakers: Dict[str, Dict[str, Any]]
+    summary: Dict[str, Any]
+
+
+# Dependency for getting preset manager
+def get_preset_manager() -> PresetManager:
+    """Get the global preset manager instance."""
+    return preset_manager
+
+
+def get_settings() -> Settings:
+    """Get the global settings instance."""
+    return settings
+
+
+@router.get("/presets", response_model=List[PresetSummary])
+async def list_presets(
+    preset_mgr: PresetManager = Depends(get_preset_manager)
+) -> List[PresetSummary]:
+    """
+    List all available resilience presets.
+    
+    Returns:
+        List of preset summaries with basic information
+    """
+    try:
+        preset_summaries = []
+        for preset_name in preset_mgr.list_presets():
+            preset = preset_mgr.get_preset(preset_name)
+            preset_summaries.append(PresetSummary(
+                name=preset.name,
+                description=preset.description,
+                retry_attempts=preset.retry_attempts,
+                circuit_breaker_threshold=preset.circuit_breaker_threshold,
+                recovery_timeout=preset.recovery_timeout,
+                default_strategy=preset.default_strategy.value,
+                environment_contexts=preset.environment_contexts
+            ))
+        
+        return preset_summaries
+        
+    except Exception as e:
+        logger.error(f"Error listing presets: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list presets: {str(e)}")
+
+
+@router.get("/presets/{preset_name}", response_model=PresetDetails)
+async def get_preset_details(
+    preset_name: str,
+    preset_mgr: PresetManager = Depends(get_preset_manager)
+) -> PresetDetails:
+    """
+    Get detailed information about a specific preset.
+    
+    Args:
+        preset_name: Name of the preset to retrieve
+        
+    Returns:
+        Detailed preset information
+    """
+    try:
+        details = preset_mgr.get_preset_details(preset_name)
+        return PresetDetails(**details)
+        
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting preset details for '{preset_name}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get preset details: {str(e)}")
+
+
+@router.post("/validate", response_model=ValidationResponse)
+async def validate_custom_config(
+    request: CustomConfigRequest
+) -> ValidationResponse:
+    """
+    Validate a custom resilience configuration.
+    
+    Args:
+        request: Custom configuration to validate
+        
+    Returns:
+        Validation results with errors and warnings
+    """
+    try:
+        validation_result = config_validator.validate_custom_config(request.configuration)
+        return ValidationResponse(
+            is_valid=validation_result.is_valid,
+            errors=validation_result.errors,
+            warnings=validation_result.warnings
+        )
+        
+    except Exception as e:
+        logger.error(f"Error validating custom configuration: {e}")
+        return ValidationResponse(
+            is_valid=False,
+            errors=[f"Validation error: {str(e)}"],
+            warnings=[]
+        )
+
+
+@router.post("/validate-json", response_model=ValidationResponse)
+async def validate_json_config(
+    json_config: str = Query(..., description="JSON string of custom configuration")
+) -> ValidationResponse:
+    """
+    Validate a JSON string configuration.
+    
+    Args:
+        json_config: JSON string to validate
+        
+    Returns:
+        Validation results with errors and warnings
+    """
+    try:
+        validation_result = config_validator.validate_json_string(json_config)
+        return ValidationResponse(
+            is_valid=validation_result.is_valid,
+            errors=validation_result.errors,
+            warnings=validation_result.warnings
+        )
+        
+    except Exception as e:
+        logger.error(f"Error validating JSON configuration: {e}")
+        return ValidationResponse(
+            is_valid=False,
+            errors=[f"Validation error: {str(e)}"],
+            warnings=[]
+        )
+
+
+@router.get("/config", response_model=CurrentConfigResponse)
+async def get_current_config(
+    app_settings: Settings = Depends(get_settings)
+) -> CurrentConfigResponse:
+    """
+    Get the current resilience configuration.
+    
+    Returns:
+        Current configuration with preset info and operation strategies
+    """
+    try:
+        # Get current resilience configuration
+        resilience_config = app_settings.get_resilience_config()
+        is_legacy = app_settings._has_legacy_resilience_config()
+        
+        # Get operation-specific strategies
+        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        operation_strategies = {
+            op: app_settings.get_operation_strategy(op) for op in operations
+        }
+        
+        # Parse custom overrides if present
+        custom_overrides = None
+        if app_settings.resilience_custom_config:
+            try:
+                custom_overrides = json.loads(app_settings.resilience_custom_config)
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON in resilience_custom_config")
+        
+        # Convert resilience config to dictionary
+        config_dict = {
+            "strategy": resilience_config.strategy.value,
+            "retry_config": {
+                "max_attempts": resilience_config.retry_config.max_attempts,
+                "max_delay_seconds": resilience_config.retry_config.max_delay_seconds,
+                "exponential_multiplier": resilience_config.retry_config.exponential_multiplier,
+                "exponential_min": resilience_config.retry_config.exponential_min,
+                "exponential_max": resilience_config.retry_config.exponential_max,
+                "jitter": resilience_config.retry_config.jitter,
+                "jitter_max": resilience_config.retry_config.jitter_max,
+            },
+            "circuit_breaker_config": {
+                "failure_threshold": resilience_config.circuit_breaker_config.failure_threshold,
+                "recovery_timeout": resilience_config.circuit_breaker_config.recovery_timeout,
+                "half_open_max_calls": resilience_config.circuit_breaker_config.half_open_max_calls,
+            },
+            "enable_circuit_breaker": resilience_config.enable_circuit_breaker,
+            "enable_retry": resilience_config.enable_retry,
+        }
+        
+        return CurrentConfigResponse(
+            preset_name=app_settings.resilience_preset,
+            is_legacy_config=is_legacy,
+            configuration=config_dict,
+            operation_strategies=operation_strategies,
+            custom_overrides=custom_overrides
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting current configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get current configuration: {str(e)}")
+
+
+@router.get("/recommend/{environment}", response_model=RecommendationResponse)
+async def recommend_preset(
+    environment: str,
+    preset_mgr: PresetManager = Depends(get_preset_manager)
+) -> RecommendationResponse:
+    """
+    Get preset recommendation for a specific environment.
+    
+    Args:
+        environment: Environment name (dev, test, staging, prod, etc.)
+        
+    Returns:
+        Recommended preset with reasoning
+    """
+    try:
+        recommended = preset_mgr.recommend_preset(environment)
+        available = preset_mgr.list_presets()
+        
+        # Generate reasoning based on environment
+        env_lower = environment.lower()
+        if env_lower in ["development", "dev", "testing", "test"]:
+            reason = "Development environments benefit from fast-fail strategies for quick feedback"
+        elif env_lower in ["staging", "stage", "production", "prod"]:
+            reason = "Production environments require high reliability and comprehensive error handling"
+        else:
+            reason = "Using balanced approach for unrecognized environment"
+        
+        return RecommendationResponse(
+            environment=environment,
+            recommended_preset=recommended,
+            reason=reason,
+            available_presets=available
+        )
+        
+    except Exception as e:
+        logger.error(f"Error recommending preset for environment '{environment}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to recommend preset: {str(e)}")
+
+
+@router.get("/metrics", response_model=ResilienceMetricsResponse)
+async def get_resilience_metrics() -> ResilienceMetricsResponse:
+    """
+    Get current resilience service metrics.
+    
+    Returns:
+        Comprehensive metrics about resilience operations and circuit breakers
+    """
+    try:
+        metrics = ai_resilience.get_all_metrics()
+        return ResilienceMetricsResponse(**metrics)
+        
+    except Exception as e:
+        logger.error(f"Error getting resilience metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
+
+
+@router.post("/metrics/reset")
+async def reset_resilience_metrics(
+    operation_name: Optional[str] = Query(None, description="Operation name to reset (if None, resets all)")
+):
+    """
+    Reset resilience metrics for a specific operation or all operations.
+    
+    Args:
+        operation_name: Optional operation name to reset (if None, resets all)
+        
+    Returns:
+        Success message
+    """
+    try:
+        ai_resilience.reset_metrics(operation_name)
+        
+        if operation_name:
+            message = f"Reset metrics for operation: {operation_name}"
+        else:
+            message = "Reset all resilience metrics"
+            
+        logger.info(message)
+        return {"message": message}
+        
+    except Exception as e:
+        logger.error(f"Error resetting metrics: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset metrics: {str(e)}")
+
+
+@router.get("/health")
+async def get_resilience_health():
+    """
+    Get resilience service health status.
+    
+    Returns:
+        Health status with circuit breaker information
+    """
+    try:
+        health_status = ai_resilience.get_health_status()
+        is_healthy = ai_resilience.is_healthy()
+        
+        return {
+            "healthy": is_healthy,
+            "status": "healthy" if is_healthy else "degraded",
+            "details": health_status
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting health status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get health status: {str(e)}")
+
+
+@router.get("/presets-summary", response_model=Dict[str, PresetDetails])
+async def get_all_presets_summary(
+    preset_mgr: PresetManager = Depends(get_preset_manager)
+) -> Dict[str, PresetDetails]:
+    """
+    Get summary of all presets with detailed information.
+    
+    Returns:
+        Dictionary mapping preset names to their detailed information
+    """
+    try:
+        summary = preset_mgr.get_all_presets_summary()
+        
+        # Convert to PresetDetails format
+        result = {}
+        for preset_name, details in summary.items():
+            result[preset_name] = PresetDetails(**details)
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error getting presets summary: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get presets summary: {str(e)}")

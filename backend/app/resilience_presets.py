@@ -170,6 +170,32 @@ class PresetManager:
         Returns:
             True if valid, False otherwise
         """
+        try:
+            from app.validation_schemas import config_validator
+            
+            # Convert preset to dict for validation
+            preset_dict = preset.to_dict()
+            
+            # Use JSON schema validation if available
+            validation_result = config_validator.validate_preset(preset_dict)
+            
+            if not validation_result.is_valid:
+                for error in validation_result.errors:
+                    logger.error(f"Preset validation error: {error}")
+                return False
+            
+            # Log any warnings
+            for warning in validation_result.warnings:
+                logger.warning(f"Preset validation warning: {warning}")
+            
+            return True
+            
+        except ImportError:
+            # Fallback to basic validation if validation_schemas not available
+            return self._basic_validate_preset(preset)
+    
+    def _basic_validate_preset(self, preset: ResiliencePreset) -> bool:
+        """Basic preset validation without JSON schema."""
         # Validate retry attempts
         if preset.retry_attempts < 1 or preset.retry_attempts > 10:
             logger.error(f"Invalid retry_attempts: {preset.retry_attempts} (must be 1-10)")
