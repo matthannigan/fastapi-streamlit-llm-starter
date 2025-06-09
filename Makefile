@@ -29,9 +29,9 @@ help:
 	@echo "  test                 Run all tests (with Docker if available)"
 	@echo "  test-local           Run tests without Docker dependency"
 	@echo "  test-backend         Run backend tests only (fast tests by default)"
-	@echo "  test-backend-slow    Run slow backend tests only"
+	@echo "  test-backend-slow    Run slow backend tests only (requires --run-slow)"
 	@echo "  test-backend-all     Run all backend tests (including slow ones)"
-	@echo "  test-backend-manual  Run backend manual tests"
+	@echo "  test-backend-manual  Run backend manual tests (requires --run-manual)"
 	@echo "  test-frontend        Run frontend tests only"
 	@echo "  test-integration     Run comprehensive integration tests"
 	@echo "  test-coverage        Run tests with coverage report"
@@ -98,11 +98,11 @@ test-backend:
 
 test-backend-slow:
 	@echo "Running slow backend tests only..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow"
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow" --run-slow
 
 test-backend-all:
 	@echo "Running all backend tests (including slow ones, excluding manual tests)..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "not manual"
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "not manual" --run-slow
 
 test-backend-manual:
 	@echo "Running backend manual tests..."
@@ -111,7 +111,7 @@ test-backend-manual:
 	@echo "   - API_KEY=test-api-key-12345 environment variable set"
 	@echo "   - GEMINI_API_KEY environment variable set (for AI features)"
 	@echo ""
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "manual"
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "manual" --run-manual
 
 test-frontend:
 	@echo "Running frontend tests..."
@@ -132,7 +132,7 @@ test-coverage:
 
 test-coverage-all:
 	@echo "Running tests with coverage (including slow tests, excluding manual tests)..."
-	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term -m "not manual"
+	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term -m "not manual" --run-slow
 	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 test-retry:
@@ -223,7 +223,7 @@ ci-test:
 # Full CI test including slow tests (use for nightly builds or comprehensive testing)
 ci-test-all:
 	@echo "Running comprehensive CI tests (including slow tests)..."
-	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml -m "not manual"
+	cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml -m "not manual" --run-slow
 	cd frontend && python -m pytest tests/ -v --cov=app --cov-report=xml
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/

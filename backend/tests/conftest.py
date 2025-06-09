@@ -347,26 +347,60 @@ def pytest_addoption(parser):
         default=False, 
         help="run slow tests"
     )
+    parser.addoption(
+        "--run-manual", 
+        action="store_true", 
+        default=False, 
+        help="run manual tests"
+    )
 
 def pytest_configure(config):
     """Configure pytest based on command line options."""
     config.addinivalue_line("markers", "slow: mark test as slow to run")
+    config.addinivalue_line("markers", "manual: mark test as manual to run")
     
-    # If --run-slow is specified, don't filter out slow tests
-    if config.getoption("--run-slow"):
-        # Remove the default marker expression that excludes slow tests
-        markexpr = config.getoption("-m", default="")
-        if markexpr == "not slow":
-            config.option.markexpr = ""
+    run_slow = config.getoption("--run-slow")
+    run_manual = config.getoption("--run-manual")
+    
+    # Modify the default marker expression if special flags are provided
+    if run_slow or run_manual:
+        # Get the current marker expression (from pytest.ini: "not slow and not manual")
+        current_markexpr = getattr(config.option, 'markexpr', None)
+        if current_markexpr:
+            new_markexpr = current_markexpr
+            
+            # Remove "not slow" part if --run-slow is specified
+            if run_slow:
+                new_markexpr = new_markexpr.replace("not slow and ", "").replace(" and not slow", "").replace("not slow", "")
+            
+            # Remove "not manual" part if --run-manual is specified  
+            if run_manual:
+                new_markexpr = new_markexpr.replace("not manual and ", "").replace(" and not manual", "").replace("not manual", "")
+            
+            # Clean up any remaining "and" artifacts
+            new_markexpr = new_markexpr.strip().replace("  ", " ")
+            if new_markexpr.startswith("and "):
+                new_markexpr = new_markexpr[4:]
+            if new_markexpr.endswith(" and"):
+                new_markexpr = new_markexpr[:-4]
+            
+            # Set the cleaned marker expression
+            config.option.markexpr = new_markexpr if new_markexpr.strip() else None
 
 def pytest_collection_modifyitems(config, items):
     """Modify test collection based on command line options."""
-    if config.getoption("--run-slow"):
-        # If --run-slow is specified, run all tests
-        return
+    run_slow = config.getoption("--run-slow")
+    run_manual = config.getoption("--run-manual")
     
-    # Default behavior: skip slow tests unless explicitly requested
+    # Skip markers for tests that need special flags
     skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
+    skip_manual = pytest.mark.skip(reason="need --run-manual option to run")
+    
     for item in items:
-        if "slow" in item.keywords:
-            item.add_marker(skip_slow) 
+        # Skip slow tests unless --run-slow is specified
+        if "slow" in item.keywords and not run_slow:
+            item.add_marker(skip_slow)
+        
+        # Skip manual tests unless --run-manual is specified
+        if "manual" in item.keywords and not run_manual:
+            item.add_marker(skip_manual) 
