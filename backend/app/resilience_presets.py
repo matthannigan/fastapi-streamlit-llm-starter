@@ -11,8 +11,19 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 import json
 import logging
+import os
+import re
+from typing import NamedTuple
 
 logger = logging.getLogger(__name__)
+
+
+class EnvironmentRecommendation(NamedTuple):
+    """Environment-based preset recommendation with confidence and reasoning."""
+    preset_name: str
+    confidence: float  # 0.0 to 1.0
+    reasoning: str
+    environment_detected: str
 
 
 class StrategyType(str, Enum):
@@ -219,33 +230,203 @@ class PresetManager:
         
         return True
     
-    def recommend_preset(self, environment: str) -> str:
+    def recommend_preset(self, environment: Optional[str] = None) -> str:
         """
         Recommend appropriate preset for given environment.
         
         Args:
             environment: Environment name (dev, test, staging, prod, etc.)
+            If None, will auto-detect from environment variables
             
         Returns:
             Recommended preset name
         """
-        env_lower = environment.lower()
+        recommendation = self.recommend_preset_with_details(environment)
+        return recommendation.preset_name
+    
+    def recommend_preset_with_details(self, environment: Optional[str] = None) -> EnvironmentRecommendation:
+        """
+        Get detailed environment-aware preset recommendation.
         
-        # Environment-to-preset mapping
-        recommendations = {
-            "development": "development",
-            "dev": "development",
-            "testing": "development", 
-            "test": "development",
-            "staging": "production",
-            "stage": "production",
-            "production": "production",
-            "prod": "production"
+        Args:
+            environment: Environment name or None for auto-detection
+            
+        Returns:
+            EnvironmentRecommendation with preset, confidence, and reasoning
+        """
+        if environment is None:
+            return self._auto_detect_environment()
+        
+        env_lower = environment.lower().strip()
+        
+        # High-confidence exact matches
+        exact_matches = {
+            "development": ("development", 0.95, "Exact match for development environment"),
+            "dev": ("development", 0.90, "Standard abbreviation for development"),
+            "testing": ("development", 0.85, "Testing typically uses development-like settings"),
+            "test": ("development", 0.85, "Test environment should fail fast"),
+            "staging": ("production", 0.90, "Staging should mirror production settings"),
+            "stage": ("production", 0.85, "Stage environment abbreviation"),
+            "production": ("production", 0.95, "Exact match for production environment"),
+            "prod": ("production", 0.90, "Standard abbreviation for production"),
+            "live": ("production", 0.85, "Live environment implies production"),
         }
         
-        recommended = recommendations.get(env_lower, "simple")
-        logger.info(f"Recommended preset '{recommended}' for environment '{environment}'")
-        return recommended
+        if env_lower in exact_matches:
+            preset, confidence, reasoning = exact_matches[env_lower]
+            return EnvironmentRecommendation(
+                preset_name=preset,
+                confidence=confidence,
+                reasoning=reasoning,
+                environment_detected=environment
+            )
+        
+        # Pattern-based matching for complex environment names
+        preset, confidence, reasoning = self._pattern_match_environment(env_lower)
+        
+        return EnvironmentRecommendation(
+            preset_name=preset,
+            confidence=confidence,
+            reasoning=reasoning,
+            environment_detected=environment
+        )
+    
+    def _auto_detect_environment(self) -> EnvironmentRecommendation:
+        """
+        Auto-detect environment from environment variables and system context.
+        
+        Returns:
+            EnvironmentRecommendation based on detected environment
+        """
+        # Check common environment variables
+        env_vars_to_check = [
+            'ENVIRONMENT',
+            'ENV',
+            'DEPLOYMENT_ENV',
+            'NODE_ENV',
+            'RAILS_ENV',
+            'DJANGO_SETTINGS_MODULE',
+            'FLASK_ENV',
+            'APP_ENV'
+        ]
+        
+        detected_env = None
+        for var in env_vars_to_check:
+            value = os.getenv(var)
+            if value:
+                detected_env = value
+                break
+        
+        if detected_env:
+            logger.info(f"Auto-detected environment from {var}={detected_env}")
+            recommendation = self.recommend_preset_with_details(detected_env)
+            # Modify to indicate auto-detection
+            return EnvironmentRecommendation(
+                preset_name=recommendation.preset_name,
+                confidence=recommendation.confidence,
+                reasoning=recommendation.reasoning,
+                environment_detected=f"{detected_env} (auto-detected)"
+            )
+        
+        # Check for development indicators
+        host = os.getenv('HOST', '') or ''
+        dev_indicators = [
+            os.getenv('DEBUG') == 'true',
+            os.getenv('DEBUG') == '1',
+            os.path.exists('.env'),
+            os.path.exists('docker-compose.dev.yml'),
+            os.path.exists('.git'),  # Local development
+            'localhost' in host,
+            '127.0.0.1' in host
+        ]
+        
+        if any(dev_indicators):
+            return EnvironmentRecommendation(
+                preset_name="development",
+                confidence=0.75,
+                reasoning="Development indicators detected (DEBUG=true, .env file, localhost, etc.)",
+                environment_detected="development (auto-detected)"
+            )
+        
+        # Check for production indicators
+        database_url = os.getenv('DATABASE_URL', '') or ''
+        prod_indicators = [
+            os.getenv('PROD') == 'true',
+            os.getenv('PRODUCTION') == 'true',
+            os.getenv('DEBUG') == 'false',
+            os.getenv('DEBUG') == '0',
+            'prod' in host.lower(),
+            'production' in database_url.lower()
+        ]
+        
+        if any(prod_indicators):
+            return EnvironmentRecommendation(
+                preset_name="production",
+                confidence=0.70,
+                reasoning="Production indicators detected (PROD=true, DEBUG=false, production URLs, etc.)",
+                environment_detected="production (auto-detected)"
+            )
+        
+        # Default fallback
+        return EnvironmentRecommendation(
+            preset_name="simple",
+            confidence=0.50,
+            reasoning="No clear environment indicators found, using simple preset as safe default",
+            environment_detected="unknown (auto-detected)"
+        )
+    
+    def _pattern_match_environment(self, env_str: str) -> tuple[str, float, str]:
+        """
+        Use pattern matching to classify environment strings.
+        
+        Args:
+            env_str: Environment string to classify
+            
+        Returns:
+            Tuple of (preset_name, confidence, reasoning)
+        """
+        # Staging patterns (check first to avoid conflicts with other patterns)
+        staging_patterns = [
+            r'.*stag.*',
+            r'.*pre-?prod.*',
+            r'.*preprod.*',
+            r'.*uat.*',
+            r'.*integration.*'
+        ]
+        
+        for pattern in staging_patterns:
+            if re.match(pattern, env_str, re.IGNORECASE):
+                return ("production", 0.70, f"Environment name '{env_str}' matches staging pattern, using production preset")
+        
+        # Development patterns
+        dev_patterns = [
+            r'.*dev.*',
+            r'.*local.*',
+            r'.*test.*',
+            r'.*sandbox.*',
+            r'.*demo.*'
+        ]
+        
+        for pattern in dev_patterns:
+            if re.match(pattern, env_str, re.IGNORECASE):
+                return ("development", 0.75, f"Environment name '{env_str}' matches development pattern")
+        
+        # Production patterns
+        prod_patterns = [
+            r'.*prod.*',
+            r'.*live.*',
+            r'.*release.*',
+            r'.*stable.*',
+            r'.*main.*',
+            r'.*master.*'
+        ]
+        
+        for pattern in prod_patterns:
+            if re.match(pattern, env_str, re.IGNORECASE):
+                return ("production", 0.75, f"Environment name '{env_str}' matches production pattern")
+        
+        # Unknown pattern
+        return ("simple", 0.40, f"Unknown environment pattern '{env_str}', defaulting to simple preset")
     
     def get_all_presets_summary(self) -> Dict[str, Dict[str, Any]]:
         """Get summary of all available presets."""

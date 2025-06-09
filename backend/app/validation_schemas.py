@@ -20,6 +20,102 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Configuration templates for common use cases
+CONFIGURATION_TEMPLATES = {
+    "fast_development": {
+        "name": "Fast Development",
+        "description": "Optimized for development speed with minimal retries",
+        "config": {
+            "retry_attempts": 1,
+            "circuit_breaker_threshold": 2,
+            "recovery_timeout": 15,
+            "default_strategy": "aggressive",
+            "operation_overrides": {
+                "sentiment": "aggressive"
+            }
+        }
+    },
+    "robust_production": {
+        "name": "Robust Production",
+        "description": "High reliability configuration for production workloads",
+        "config": {
+            "retry_attempts": 6,
+            "circuit_breaker_threshold": 12,
+            "recovery_timeout": 180,
+            "default_strategy": "conservative",
+            "operation_overrides": {
+                "qa": "critical",
+                "summarize": "conservative"
+            }
+        }
+    },
+    "low_latency": {
+        "name": "Low Latency",
+        "description": "Minimal latency configuration with fast failures",
+        "config": {
+            "retry_attempts": 1,
+            "circuit_breaker_threshold": 2,
+            "recovery_timeout": 10,
+            "default_strategy": "aggressive",
+            "max_delay_seconds": 5,
+            "exponential_multiplier": 0.5,
+            "exponential_min": 0.5,
+            "exponential_max": 2.0
+        }
+    },
+    "high_throughput": {
+        "name": "High Throughput",
+        "description": "Optimized for high throughput with moderate reliability",
+        "config": {
+            "retry_attempts": 3,
+            "circuit_breaker_threshold": 8,
+            "recovery_timeout": 45,
+            "default_strategy": "balanced",
+            "operation_overrides": {
+                "sentiment": "aggressive",
+                "key_points": "balanced"
+            }
+        }
+    },
+    "maximum_reliability": {
+        "name": "Maximum Reliability",
+        "description": "Maximum reliability configuration for critical operations",
+        "config": {
+            "retry_attempts": 8,
+            "circuit_breaker_threshold": 15,
+            "recovery_timeout": 300,
+            "default_strategy": "critical",
+            "operation_overrides": {
+                "qa": "critical",
+                "summarize": "critical",
+                "sentiment": "conservative",
+                "key_points": "conservative",
+                "questions": "conservative"
+            },
+            "exponential_multiplier": 2.0,
+            "exponential_min": 3.0,
+            "exponential_max": 60.0,
+            "jitter_enabled": True,
+            "jitter_max": 5.0
+        }
+    }
+}
+
+# Security configuration
+SECURITY_CONFIG = {
+    "max_config_size": 4096,  # 4KB limit
+    "max_string_length": 200,
+    "max_array_items": 20,
+    "max_object_properties": 50,
+    "forbidden_patterns": [
+        r"<script",
+        r"javascript:",
+        r"data:",
+        r"vbscript:",
+        r"on\w+\s*=",  # Event handlers
+    ]
+}
+
 # JSON Schema for resilience custom configuration
 RESILIENCE_CONFIG_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -221,6 +317,191 @@ class ResilienceConfigValidator:
             logger.info("JSON Schema validation enabled")
         else:
             logger.warning("jsonschema package not available - validation will be basic")
+    
+    def get_configuration_templates(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get available configuration templates.
+        
+        Returns:
+            Dictionary of template configurations
+        """
+        return CONFIGURATION_TEMPLATES.copy()
+    
+    def get_template(self, template_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific configuration template.
+        
+        Args:
+            template_name: Name of the template to retrieve
+            
+        Returns:
+            Template configuration or None if not found
+        """
+        return CONFIGURATION_TEMPLATES.get(template_name)
+    
+    def validate_with_security_checks(self, config_data: Any) -> ValidationResult:
+        """
+        Validate configuration with enhanced security checks.
+        
+        Args:
+            config_data: Configuration data to validate
+            
+        Returns:
+            ValidationResult with security and schema validation
+        """
+        # First perform security validation
+        security_result = self._validate_security(config_data)
+        if not security_result.is_valid:
+            return security_result
+        
+        # Then perform regular validation
+        if isinstance(config_data, dict):
+            return self.validate_custom_config(config_data)
+        else:
+            return ValidationResult(
+                is_valid=False,
+                errors=["Configuration must be a JSON object"],
+                suggestions=["Ensure your configuration is a valid JSON object with key-value pairs"]
+            )
+    
+    def _validate_security(self, config_data: Any) -> ValidationResult:
+        """
+        Perform security validation on configuration data.
+        
+        Args:
+            config_data: Configuration data to validate
+            
+        Returns:
+            ValidationResult with security validation results
+        """
+        import re
+        
+        errors = []
+        warnings = []
+        suggestions = []
+        
+        try:
+            # Convert to JSON string to check size
+            json_str = json.dumps(config_data)
+            
+            # Check size limits
+            if len(json_str) > SECURITY_CONFIG["max_config_size"]:
+                errors.append(f"Configuration too large: {len(json_str)} bytes (max: {SECURITY_CONFIG['max_config_size']} bytes)")
+                suggestions.append("Reduce configuration size by removing unnecessary fields or simplifying values")
+            
+            # Check for forbidden patterns in JSON string
+            for pattern in SECURITY_CONFIG["forbidden_patterns"]:
+                if re.search(pattern, json_str, re.IGNORECASE):
+                    errors.append(f"Configuration contains forbidden pattern: {pattern}")
+                    suggestions.append("Remove any HTML, JavaScript, or potentially dangerous content from configuration")
+            
+            # Recursive validation of structure
+            self._validate_security_recursive(config_data, "", errors, warnings, suggestions)
+            
+        except Exception as e:
+            errors.append(f"Security validation error: {str(e)}")
+        
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, suggestions=suggestions)
+    
+    def _validate_security_recursive(self, obj: Any, path: str, errors: List[str], warnings: List[str], suggestions: List[str]):
+        """Recursively validate object structure for security issues."""
+        if isinstance(obj, dict):
+            if len(obj) > SECURITY_CONFIG["max_object_properties"]:
+                errors.append(f"Too many properties in object at '{path}': {len(obj)} (max: {SECURITY_CONFIG['max_object_properties']})")
+                suggestions.append(f"Reduce the number of properties in the object at '{path}'")
+            
+            for key, value in obj.items():
+                new_path = f"{path}.{key}" if path else key
+                self._validate_security_recursive(value, new_path, errors, warnings, suggestions)
+        
+        elif isinstance(obj, list):
+            if len(obj) > SECURITY_CONFIG["max_array_items"]:
+                errors.append(f"Too many items in array at '{path}': {len(obj)} (max: {SECURITY_CONFIG['max_array_items']})")
+                suggestions.append(f"Reduce the number of items in the array at '{path}'")
+            
+            for i, item in enumerate(obj):
+                new_path = f"{path}[{i}]"
+                self._validate_security_recursive(item, new_path, errors, warnings, suggestions)
+        
+        elif isinstance(obj, str):
+            if len(obj) > SECURITY_CONFIG["max_string_length"]:
+                errors.append(f"String too long at '{path}': {len(obj)} characters (max: {SECURITY_CONFIG['max_string_length']})")
+                suggestions.append(f"Shorten the text at '{path}' to {SECURITY_CONFIG['max_string_length']} characters or less")
+    
+    def validate_template_based_config(self, template_name: str, overrides: Dict[str, Any] = None) -> ValidationResult:
+        """
+        Validate configuration based on a template with optional overrides.
+        
+        Args:
+            template_name: Name of the template to use as base
+            overrides: Optional overrides to apply to the template
+            
+        Returns:
+            ValidationResult for the merged configuration
+        """
+        template = self.get_template(template_name)
+        if not template:
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Unknown template: {template_name}"],
+                suggestions=[f"Available templates: {', '.join(CONFIGURATION_TEMPLATES.keys())}"]
+            )
+        
+        # Start with template config
+        config = template["config"].copy()
+        
+        # Apply overrides if provided
+        if overrides:
+            config.update(overrides)
+        
+        # Validate the merged configuration
+        return self.validate_with_security_checks(config)
+    
+    def suggest_template_for_config(self, config_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Suggest the most appropriate template for a given configuration.
+        
+        Args:
+            config_data: Configuration to analyze
+            
+        Returns:
+            Name of the most appropriate template or None
+        """
+        retry_attempts = config_data.get("retry_attempts", 3)
+        circuit_threshold = config_data.get("circuit_breaker_threshold", 5)
+        strategy = config_data.get("default_strategy", "balanced")
+        
+        # Score each template based on similarity
+        scores = {}
+        
+        for template_name, template_info in CONFIGURATION_TEMPLATES.items():
+            template_config = template_info["config"]
+            score = 0
+            
+            # Score based on retry attempts
+            template_retries = template_config.get("retry_attempts", 3)
+            if abs(retry_attempts - template_retries) <= 1:
+                score += 3
+            elif abs(retry_attempts - template_retries) <= 2:
+                score += 1
+            
+            # Score based on circuit breaker threshold
+            template_threshold = template_config.get("circuit_breaker_threshold", 5)
+            if abs(circuit_threshold - template_threshold) <= 2:
+                score += 2
+            elif abs(circuit_threshold - template_threshold) <= 5:
+                score += 1
+            
+            # Score based on strategy
+            template_strategy = template_config.get("default_strategy", "balanced")
+            if strategy == template_strategy:
+                score += 3
+            
+            scores[template_name] = score
+        
+        # Return template with highest score (minimum threshold of 4)
+        best_template = max(scores.items(), key=lambda x: x[1])
+        return best_template[0] if best_template[1] >= 4 else None
     
     def validate_custom_config(self, config_data: Dict[str, Any]) -> ValidationResult:
         """

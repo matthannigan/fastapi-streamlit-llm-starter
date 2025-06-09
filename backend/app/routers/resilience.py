@@ -70,9 +70,47 @@ class RecommendationResponse(BaseModel):
     available_presets: List[str]
 
 
+class DetailedRecommendationResponse(BaseModel):
+    """Enhanced preset recommendation response with confidence and reasoning."""
+    environment_detected: str
+    recommended_preset: str
+    confidence: float
+    reasoning: str
+    available_presets: List[str]
+    auto_detected: bool
+
+
+class AutoDetectResponse(BaseModel):
+    """Auto-detection response for environment-aware recommendations."""
+    environment_detected: str
+    recommended_preset: str
+    confidence: float
+    reasoning: str
+    detection_method: str
+
+
 class CustomConfigRequest(BaseModel):
     """Request model for custom configuration validation."""
     configuration: Dict[str, Any]
+
+
+class TemplateBasedConfigRequest(BaseModel):
+    """Request model for template-based configuration."""
+    template_name: str
+    overrides: Optional[Dict[str, Any]] = None
+
+
+class TemplateListResponse(BaseModel):
+    """Response model for configuration templates."""
+    templates: Dict[str, Dict[str, Any]]
+
+
+class TemplateSuggestionResponse(BaseModel):
+    """Response model for template suggestions."""
+    suggested_template: Optional[str]
+    confidence: float
+    reasoning: str
+    available_templates: List[str]
 
 
 class ResilienceMetricsResponse(BaseModel):
@@ -181,6 +219,38 @@ async def validate_custom_config(
         )
 
 
+@router.post("/validate-secure", response_model=ValidationResponse)
+async def validate_custom_config_with_security(
+    request: CustomConfigRequest
+) -> ValidationResponse:
+    """
+    Validate a custom resilience configuration with enhanced security checks.
+    
+    Args:
+        request: Custom configuration to validate
+        
+    Returns:
+        Validation results with security, schema validation, errors and warnings
+    """
+    try:
+        validation_result = config_validator.validate_with_security_checks(request.configuration)
+        return ValidationResponse(
+            is_valid=validation_result.is_valid,
+            errors=validation_result.errors,
+            warnings=validation_result.warnings,
+            suggestions=validation_result.suggestions
+        )
+        
+    except Exception as e:
+        logger.error(f"Error validating custom configuration with security: {e}")
+        return ValidationResponse(
+            is_valid=False,
+            errors=[f"Validation error: {str(e)}"],
+            warnings=[],
+            suggestions=[]
+        )
+
+
 @router.post("/validate-json", response_model=ValidationResponse)
 async def validate_json_config(
     json_config: str = Query(..., description="JSON string of custom configuration")
@@ -276,25 +346,95 @@ async def get_current_config(
         raise HTTPException(status_code=500, detail=f"Failed to get current configuration: {str(e)}")
 
 
-@router.get("/recommend/{environment}", response_model=RecommendationResponse)
+@router.get("/recommend/{environment}", response_model=DetailedRecommendationResponse)
 async def recommend_preset(
     environment: str,
     preset_mgr: PresetManager = Depends(get_preset_manager)
-) -> RecommendationResponse:
+) -> DetailedRecommendationResponse:
     """
-    Get preset recommendation for a specific environment.
+    Get detailed preset recommendation for a specific environment.
     
     Args:
         environment: Environment name (dev, test, staging, prod, etc.)
         
     Returns:
-        Recommended preset with reasoning
+        Detailed recommendation with confidence and reasoning
+    """
+    try:
+        recommendation = preset_mgr.recommend_preset_with_details(environment)
+        available = preset_mgr.list_presets()
+        
+        return DetailedRecommendationResponse(
+            environment_detected=recommendation.environment_detected,
+            recommended_preset=recommendation.preset_name,
+            confidence=recommendation.confidence,
+            reasoning=recommendation.reasoning,
+            available_presets=available,
+            auto_detected=False
+        )
+        
+    except Exception as e:
+        logger.error(f"Error recommending preset for environment '{environment}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to recommend preset: {str(e)}")
+
+
+@router.get("/recommend-auto", response_model=AutoDetectResponse)
+async def auto_recommend_preset(
+    preset_mgr: PresetManager = Depends(get_preset_manager)
+) -> AutoDetectResponse:
+    """
+    Auto-detect environment and recommend appropriate preset.
+    
+    Analyzes environment variables and system context to recommend
+    the most suitable resilience preset.
+    
+    Returns:
+        Auto-detected environment and recommended preset with confidence
+    """
+    try:
+        recommendation = preset_mgr.recommend_preset_with_details(None)  # None triggers auto-detection
+        
+        # Determine detection method based on environment detected
+        if "(auto-detected)" in recommendation.environment_detected:
+            detection_method = "environment_variables_and_context"
+        else:
+            detection_method = "environment_variable"
+        
+        return AutoDetectResponse(
+            environment_detected=recommendation.environment_detected,
+            recommended_preset=recommendation.preset_name,
+            confidence=recommendation.confidence,
+            reasoning=recommendation.reasoning,
+            detection_method=detection_method
+        )
+        
+    except Exception as e:
+        logger.error(f"Error auto-detecting environment for preset recommendation: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to auto-detect and recommend preset: {str(e)}")
+
+
+@router.get("/recommend", response_model=RecommendationResponse)
+async def recommend_preset_legacy(
+    environment: str = Query(..., description="Environment name to get recommendation for"),
+    preset_mgr: PresetManager = Depends(get_preset_manager)
+) -> RecommendationResponse:
+    """
+    Legacy endpoint: Get preset recommendation for a specific environment.
+    
+    This endpoint maintains backward compatibility with the original
+    recommendation format.
+    
+    Args:
+        environment: Environment name (dev, test, staging, prod, etc.)
+        
+    Returns:
+        Recommended preset with basic reasoning
     """
     try:
         recommended = preset_mgr.recommend_preset(environment)
         available = preset_mgr.list_presets()
         
-        # Generate reasoning based on environment
+        # Generate simple reasoning based on environment
         env_lower = environment.lower()
         if env_lower in ["development", "dev", "testing", "test"]:
             reason = "Development environments benefit from fast-fail strategies for quick feedback"
@@ -407,3 +547,130 @@ async def get_all_presets_summary(
     except Exception as e:
         logger.error(f"Error getting presets summary: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get presets summary: {str(e)}")
+
+
+@router.get("/templates", response_model=TemplateListResponse)
+async def get_configuration_templates() -> TemplateListResponse:
+    """
+    Get all available configuration templates.
+    
+    Returns:
+        Dictionary of available configuration templates with descriptions
+    """
+    try:
+        templates = config_validator.get_configuration_templates()
+        return TemplateListResponse(templates=templates)
+        
+    except Exception as e:
+        logger.error(f"Error getting configuration templates: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get configuration templates: {str(e)}")
+
+
+@router.get("/templates/{template_name}")
+async def get_configuration_template(template_name: str):
+    """
+    Get a specific configuration template.
+    
+    Args:
+        template_name: Name of the template to retrieve
+        
+    Returns:
+        Template configuration with metadata
+    """
+    try:
+        template = config_validator.get_template(template_name)
+        if not template:
+            raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
+        
+        return template
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting template '{template_name}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get template: {str(e)}")
+
+
+@router.post("/validate-template", response_model=ValidationResponse)
+async def validate_template_based_config(
+    request: TemplateBasedConfigRequest
+) -> ValidationResponse:
+    """
+    Validate configuration based on a template with optional overrides.
+    
+    Args:
+        request: Template name and optional configuration overrides
+        
+    Returns:
+        Validation results for the template-based configuration
+    """
+    try:
+        validation_result = config_validator.validate_template_based_config(
+            request.template_name, 
+            request.overrides
+        )
+        return ValidationResponse(
+            is_valid=validation_result.is_valid,
+            errors=validation_result.errors,
+            warnings=validation_result.warnings,
+            suggestions=validation_result.suggestions
+        )
+        
+    except Exception as e:
+        logger.error(f"Error validating template-based configuration: {e}")
+        return ValidationResponse(
+            is_valid=False,
+            errors=[f"Validation error: {str(e)}"],
+            warnings=[],
+            suggestions=[]
+        )
+
+
+@router.post("/suggest-template", response_model=TemplateSuggestionResponse)
+async def suggest_template_for_config(
+    request: CustomConfigRequest
+) -> TemplateSuggestionResponse:
+    """
+    Suggest the most appropriate template for a given configuration.
+    
+    Args:
+        request: Configuration to analyze for template suggestion
+        
+    Returns:
+        Template suggestion with confidence and reasoning
+    """
+    try:
+        suggested_template = config_validator.suggest_template_for_config(request.configuration)
+        available_templates = list(config_validator.get_configuration_templates().keys())
+        
+        if suggested_template:
+            # Calculate confidence based on how well the config matches
+            template_info = config_validator.get_template(suggested_template)
+            template_config = template_info["config"]
+            
+            # Simple confidence calculation based on matching fields
+            matches = 0
+            total_fields = 0
+            
+            for key in ["retry_attempts", "circuit_breaker_threshold", "default_strategy"]:
+                if key in request.configuration and key in template_config:
+                    total_fields += 1
+                    if request.configuration[key] == template_config[key]:
+                        matches += 1
+            
+            confidence = matches / total_fields if total_fields > 0 else 0.5
+            reasoning = f"Configuration closely matches '{suggested_template}' template with {matches}/{total_fields} key parameters matching"
+        else:
+            confidence = 0.0
+            reasoning = "No template closely matches the provided configuration. Consider using a standard preset instead."
+        
+        return TemplateSuggestionResponse(
+            suggested_template=suggested_template,
+            confidence=confidence,
+            reasoning=reasoning,
+            available_templates=available_templates
+        )
+        
+    except Exception as e:
+        logger.error(f"Error suggesting template for configuration: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to suggest template: {str(e)}")
