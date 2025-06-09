@@ -50,6 +50,7 @@ class ValidationResponse(BaseModel):
     is_valid: bool
     errors: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
+    suggestions: List[str] = Field(default_factory=list)
 
 
 class CurrentConfigResponse(BaseModel):
@@ -166,7 +167,8 @@ async def validate_custom_config(
         return ValidationResponse(
             is_valid=validation_result.is_valid,
             errors=validation_result.errors,
-            warnings=validation_result.warnings
+            warnings=validation_result.warnings,
+            suggestions=validation_result.suggestions
         )
         
     except Exception as e:
@@ -174,7 +176,8 @@ async def validate_custom_config(
         return ValidationResponse(
             is_valid=False,
             errors=[f"Validation error: {str(e)}"],
-            warnings=[]
+            warnings=[],
+            suggestions=[]
         )
 
 
@@ -196,7 +199,8 @@ async def validate_json_config(
         return ValidationResponse(
             is_valid=validation_result.is_valid,
             errors=validation_result.errors,
-            warnings=validation_result.warnings
+            warnings=validation_result.warnings,
+            suggestions=validation_result.suggestions
         )
         
     except Exception as e:
@@ -204,7 +208,8 @@ async def validate_json_config(
         return ValidationResponse(
             is_valid=False,
             errors=[f"Validation error: {str(e)}"],
-            warnings=[]
+            warnings=[],
+            suggestions=[]
         )
 
 

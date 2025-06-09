@@ -643,6 +643,19 @@ class AIServiceResilience:
             "total_circuit_breakers": len(self.circuit_breakers),
             "operations_monitored": list(self.metrics.keys())
         }
+    
+    def with_operation_resilience(self, operation_name: str, fallback: Optional[Callable] = None):
+        """
+        Decorator for operation-specific resilience using current settings.
+        
+        Args:
+            operation_name: Name of the operation for metrics and circuit breaker
+            fallback: Optional fallback function to call when circuit is open
+            
+        Returns:
+            Decorator function
+        """
+        return self.with_resilience(operation_name, fallback=fallback)
 
 
 # Global resilience instance

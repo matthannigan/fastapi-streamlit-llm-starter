@@ -186,12 +186,13 @@ PRESET_SCHEMA = {
 
 
 class ValidationResult:
-    """Result of configuration validation."""
+    """Result of configuration validation with errors, warnings, and suggestions."""
     
-    def __init__(self, is_valid: bool, errors: List[str] = None, warnings: List[str] = None):
+    def __init__(self, is_valid: bool, errors: List[str] = None, warnings: List[str] = None, suggestions: List[str] = None):
         self.is_valid = is_valid
         self.errors = errors or []
         self.warnings = warnings or []
+        self.suggestions = suggestions or []
     
     def __bool__(self) -> bool:
         return self.is_valid
@@ -201,7 +202,8 @@ class ValidationResult:
         return {
             "is_valid": self.is_valid,
             "errors": self.errors,
-            "warnings": self.warnings
+            "warnings": self.warnings,
+            "suggestions": self.suggestions
         }
 
 
@@ -235,6 +237,7 @@ class ResilienceConfigValidator:
         
         errors = []
         warnings = []
+        suggestions = []
         
         try:
             # JSON Schema validation
@@ -246,17 +249,21 @@ class ResilienceConfigValidator:
                 else:
                     error_msg = error.message
                 errors.append(error_msg)
+                
+                # Add suggestions for common errors
+                suggestions.extend(self._generate_error_suggestions(error, error_path))
             
             # Additional logical validations
-            logical_errors, logical_warnings = self._validate_config_logic(config_data)
+            logical_errors, logical_warnings, logical_suggestions = self._validate_config_logic(config_data)
             errors.extend(logical_errors)
             warnings.extend(logical_warnings)
+            suggestions.extend(logical_suggestions)
             
         except Exception as e:
             logger.error(f"Error during configuration validation: {e}")
             errors.append(f"Validation error: {str(e)}")
         
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, suggestions=suggestions)
     
     def validate_preset(self, preset_data: Dict[str, Any]) -> ValidationResult:
         """
@@ -273,6 +280,7 @@ class ResilienceConfigValidator:
         
         errors = []
         warnings = []
+        suggestions = []
         
         try:
             # JSON Schema validation
@@ -284,17 +292,21 @@ class ResilienceConfigValidator:
                 else:
                     error_msg = error.message
                 errors.append(error_msg)
+                
+                # Add suggestions for common errors
+                suggestions.extend(self._generate_error_suggestions(error, error_path))
             
             # Additional logical validations
-            logical_errors, logical_warnings = self._validate_preset_logic(preset_data)
+            logical_errors, logical_warnings, logical_suggestions = self._validate_preset_logic(preset_data)
             errors.extend(logical_errors)
             warnings.extend(logical_warnings)
+            suggestions.extend(logical_suggestions)
             
         except Exception as e:
             logger.error(f"Error during preset validation: {e}")
             errors.append(f"Validation error: {str(e)}")
         
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, suggestions=suggestions)
     
     def validate_json_string(self, json_string: str) -> ValidationResult:
         """
@@ -315,16 +327,18 @@ class ResilienceConfigValidator:
                 errors=[f"Invalid JSON: {str(e)}"]
             )
     
-    def _validate_config_logic(self, config_data: Dict[str, Any]) -> tuple[List[str], List[str]]:
+    def _validate_config_logic(self, config_data: Dict[str, Any]) -> tuple[List[str], List[str], List[str]]:
         """Validate configuration logical constraints."""
         errors = []
         warnings = []
+        suggestions = []
         
         # Check exponential backoff bounds
         exp_min = config_data.get("exponential_min")
         exp_max = config_data.get("exponential_max")
         if exp_min is not None and exp_max is not None and exp_min >= exp_max:
             errors.append("exponential_min must be less than exponential_max")
+            suggestions.append(f"Try setting exponential_min to {exp_max / 2:.1f} and exponential_max to {exp_max * 2:.1f}")
         
         # Check retry attempts vs max delay
         retry_attempts = config_data.get("retry_attempts")
@@ -337,6 +351,7 @@ class ResilienceConfigValidator:
                     f"max_delay_seconds ({max_delay}s) might be too short for "
                     f"{retry_attempts} retry attempts (estimated minimum: {estimated_min_delay}s)"
                 )
+                suggestions.append(f"Consider increasing max_delay_seconds to at least {estimated_min_delay}s")
         
         # Validate operation overrides
         operation_overrides = config_data.get("operation_overrides", {})
@@ -344,13 +359,25 @@ class ResilienceConfigValidator:
         for operation in operation_overrides.keys():
             if operation not in valid_operations:
                 errors.append(f"Invalid operation '{operation}' in operation_overrides")
+                suggestions.append(f"Valid operations are: {', '.join(sorted(valid_operations))}")
         
-        return errors, warnings
+        # Check for potentially problematic configurations
+        circuit_threshold = config_data.get("circuit_breaker_threshold")
+        if circuit_threshold is not None and circuit_threshold < 3:
+            warnings.append("Very low circuit breaker threshold may cause frequent circuit opening")
+            suggestions.append("Consider using threshold >= 3 for better stability")
+        
+        if retry_attempts is not None and retry_attempts > 7:
+            warnings.append("High retry attempts may increase latency significantly")
+            suggestions.append("Consider using a preset like 'production' for balanced retry behavior")
+        
+        return errors, warnings, suggestions
     
-    def _validate_preset_logic(self, preset_data: Dict[str, Any]) -> tuple[List[str], List[str]]:
+    def _validate_preset_logic(self, preset_data: Dict[str, Any]) -> tuple[List[str], List[str], List[str]]:
         """Validate preset logical constraints."""
         errors = []
         warnings = []
+        suggestions = []
         
         # Check if retry attempts make sense with circuit breaker threshold
         retry_attempts = preset_data.get("retry_attempts", 0)
@@ -362,6 +389,7 @@ class ResilienceConfigValidator:
                 f"circuit_breaker_threshold ({cb_threshold}). This may cause "
                 f"the circuit breaker to open before retries are exhausted."
             )
+            suggestions.append(f"Consider setting circuit_breaker_threshold to at least {retry_attempts + 2}")
         
         # Check environment contexts make sense
         env_contexts = preset_data.get("environment_contexts", [])
@@ -369,34 +397,90 @@ class ResilienceConfigValidator:
             warnings.append(
                 "Using 'aggressive' strategy for production environment may impact reliability"
             )
+            suggestions.append("Consider using 'balanced' or 'conservative' strategy for production")
         
-        return errors, warnings
+        # Check for development environments with conservative strategy
+        if ("development" in env_contexts and 
+            preset_data.get("default_strategy") == "conservative" and
+            retry_attempts > 3):
+            warnings.append("Conservative strategy with high retry attempts may slow development feedback")
+            suggestions.append("Consider using 'development' preset or 'aggressive' strategy for faster feedback")
+        
+        return errors, warnings, suggestions
+    
+    def _generate_error_suggestions(self, error, error_path: str) -> List[str]:
+        """Generate actionable suggestions based on validation errors."""
+        suggestions = []
+        
+        error_msg = error.message.lower()
+        
+        # Type validation errors
+        if "is not of type" in error_msg:
+            if "integer" in error_msg:
+                suggestions.append(f"Field '{error_path}' must be a whole number (integer)")
+            elif "number" in error_msg:
+                suggestions.append(f"Field '{error_path}' must be a number")
+            elif "string" in error_msg:
+                suggestions.append(f"Field '{error_path}' must be text (string)")
+            elif "boolean" in error_msg:
+                suggestions.append(f"Field '{error_path}' must be true or false")
+        
+        # Range validation errors
+        elif "is less than the minimum" in error_msg or "is greater than the maximum" in error_msg:
+            if "retry_attempts" in error_path:
+                suggestions.append("retry_attempts must be between 1 and 10. Try values like 2 (fast), 3 (balanced), or 5 (robust)")
+            elif "circuit_breaker_threshold" in error_path:
+                suggestions.append("circuit_breaker_threshold must be between 1 and 20. Try values like 3 (sensitive), 5 (balanced), or 10 (tolerant)")
+            elif "recovery_timeout" in error_path:
+                suggestions.append("recovery_timeout must be between 10 and 300 seconds. Try 30s (fast recovery), 60s (balanced), or 120s (stable)")
+        
+        # Enum validation errors
+        elif "is not one of" in error_msg:
+            if "strategy" in error_path:
+                suggestions.append("Strategy must be one of: 'aggressive' (fast, less reliable), 'balanced' (moderate), 'conservative' (slow, reliable), 'critical' (maximum reliability)")
+            elif "operation" in error_path:
+                suggestions.append("Valid operations are: summarize, sentiment, key_points, questions, qa")
+        
+        # Missing required field errors
+        elif "is a required property" in error_msg:
+            suggestions.append(f"Add the missing required field '{error_path}' to your configuration")
+        
+        # Additional properties errors
+        elif "additional properties are not allowed" in error_msg:
+            suggestions.append("Remove any unknown configuration fields. Check the documentation for valid field names")
+        
+        return suggestions
     
     def _basic_custom_config_validation(self, config_data: Dict[str, Any]) -> ValidationResult:
         """Basic validation when jsonschema is not available."""
         errors = []
+        suggestions = []
         
         # Check types and ranges for key fields
         if "retry_attempts" in config_data:
             val = config_data["retry_attempts"]
             if not isinstance(val, int) or val < 1 or val > 10:
                 errors.append("retry_attempts must be an integer between 1 and 10")
+                suggestions.append("Try values like 2 (fast), 3 (balanced), or 5 (robust)")
         
         if "circuit_breaker_threshold" in config_data:
             val = config_data["circuit_breaker_threshold"]
             if not isinstance(val, int) or val < 1 or val > 20:
                 errors.append("circuit_breaker_threshold must be an integer between 1 and 20")
+                suggestions.append("Try values like 3 (sensitive), 5 (balanced), or 10 (tolerant)")
         
         if "recovery_timeout" in config_data:
             val = config_data["recovery_timeout"]
             if not isinstance(val, int) or val < 10 or val > 300:
                 errors.append("recovery_timeout must be an integer between 10 and 300")
+                suggestions.append("Try 30s (fast recovery), 60s (balanced), or 120s (stable)")
         
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, suggestions=suggestions)
     
     def _basic_preset_validation(self, preset_data: Dict[str, Any]) -> ValidationResult:
         """Basic validation when jsonschema is not available."""
         errors = []
+        suggestions = []
         required_fields = ["name", "description", "retry_attempts", "circuit_breaker_threshold", 
                           "recovery_timeout", "default_strategy", "operation_overrides", "environment_contexts"]
         
@@ -404,7 +488,10 @@ class ResilienceConfigValidator:
             if field not in preset_data:
                 errors.append(f"Missing required field: {field}")
         
-        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+        if errors:
+            suggestions.append("Preset requires all fields: name, description, retry_attempts, circuit_breaker_threshold, recovery_timeout, default_strategy, operation_overrides, environment_contexts")
+        
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors, suggestions=suggestions)
 
 
 # Global validator instance

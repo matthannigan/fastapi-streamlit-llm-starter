@@ -429,7 +429,17 @@ class Settings(BaseSettings):
             from app.resilience_presets import preset_manager
             preset = preset_manager.get_preset(self.resilience_preset)
             
-            # Check for operation-specific override
+            # Check for custom configuration overrides first
+            if self.resilience_custom_config:
+                try:
+                    custom_config = json.loads(self.resilience_custom_config)
+                    operation_overrides = custom_config.get("operation_overrides", {})
+                    if operation in operation_overrides:
+                        return operation_overrides[operation]
+                except json.JSONDecodeError:
+                    pass  # Fall through to preset logic
+            
+            # Check for operation-specific override in preset
             if operation in preset.operation_overrides:
                 return preset.operation_overrides[operation].value
             else:
