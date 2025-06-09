@@ -1,7 +1,8 @@
 """Backend configuration settings with resilience support."""
 
 import os
-from typing import List
+import json
+from typing import List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
@@ -78,7 +79,18 @@ class Settings(BaseSettings):
         default=3600, gt=0, description="Default cache TTL in seconds (1 hour). Controls how long cached responses remain valid before expiration."
     )
     
-    # Resilience Configuration
+    # Resilience Configuration - Preset System
+    resilience_preset: str = Field(
+        default="simple",
+        description="Resilience configuration preset (simple, development, production)"
+    )
+    
+    resilience_custom_config: Optional[str] = Field(
+        default=None,
+        description="Custom resilience configuration as JSON string (overrides preset)"
+    )
+    
+    # Legacy Resilience Configuration (for backward compatibility)
     # Enable/disable resilience features
     resilience_enabled: bool = Field(default=True, description="Enable resilience features")
     circuit_breaker_enabled: bool = Field(default=True, description="Enable circuit breaker")
@@ -170,6 +182,187 @@ class Settings(BaseSettings):
         if not v:
             raise ValueError("At least one allowed origin must be specified")
         return v
+
+    @field_validator('resilience_preset')
+    @classmethod
+    def validate_resilience_preset(cls, v: str) -> str:
+        """Validate resilience preset name."""
+        allowed_presets = {"simple", "development", "production"}
+        if v not in allowed_presets:
+            raise ValueError(f"Invalid resilience_preset '{v}'. Allowed values: {', '.join(allowed_presets)}")
+        return v
+
+    def _has_legacy_resilience_config(self) -> bool:
+        """Check if legacy resilience configuration variables are present."""
+        legacy_env_vars = [
+            "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+            "RETRY_MAX_ATTEMPTS",
+            "DEFAULT_RESILIENCE_STRATEGY",
+            "SUMMARIZE_RESILIENCE_STRATEGY",
+            "SENTIMENT_RESILIENCE_STRATEGY",
+            "KEY_POINTS_RESILIENCE_STRATEGY",
+            "QUESTIONS_RESILIENCE_STRATEGY",
+            "QA_RESILIENCE_STRATEGY"
+        ]
+        
+        # Check if any legacy environment variables are set
+        for var in legacy_env_vars:
+            if os.getenv(var) is not None:
+                return True
+        
+        # Also check if any of the current field values differ from defaults
+        # (indicating they were set via environment variables)
+        if (self.circuit_breaker_failure_threshold != 5 or
+            self.retry_max_attempts != 3 or
+            self.default_resilience_strategy != "balanced"):
+            return True
+            
+        return False
+
+    def get_resilience_config(self):
+        """
+        Get resilience configuration from preset or legacy settings.
+        
+        Returns appropriate resilience configuration based on:
+        1. Legacy environment variables (if present) - for backward compatibility
+        2. Custom configuration JSON (if provided)
+        3. Preset configuration (default)
+        """
+        # Import here to avoid circular imports
+        from app.resilience_presets import preset_manager
+        from app.services.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        
+        # Check if using legacy configuration
+        if self._has_legacy_resilience_config():
+            return self._load_legacy_resilience_config()
+        
+        # Load preset configuration
+        try:
+            preset = preset_manager.get_preset(self.resilience_preset)
+            resilience_config = preset.to_resilience_config()
+            
+            # Apply custom overrides if provided
+            if self.resilience_custom_config:
+                try:
+                    custom_config = json.loads(self.resilience_custom_config)
+                    resilience_config = self._apply_custom_overrides(resilience_config, custom_config)
+                except json.JSONDecodeError as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Invalid JSON in resilience_custom_config: {e}")
+                    # Fall back to preset without custom config
+            
+            return resilience_config
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error loading resilience preset '{self.resilience_preset}': {e}")
+            # Fall back to simple preset
+            fallback_preset = preset_manager.get_preset("simple")
+            return fallback_preset.to_resilience_config()
+
+    def _load_legacy_resilience_config(self):
+        """Load resilience configuration from legacy environment variables."""
+        from app.services.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        
+        # Map legacy strategy strings to enum values
+        strategy_mapping = {
+            "aggressive": ResilienceStrategy.AGGRESSIVE,
+            "balanced": ResilienceStrategy.BALANCED,
+            "conservative": ResilienceStrategy.CONSERVATIVE,
+            "critical": ResilienceStrategy.CRITICAL
+        }
+        
+        default_strategy = strategy_mapping.get(
+            self.default_resilience_strategy, 
+            ResilienceStrategy.BALANCED
+        )
+        
+        return ResilienceConfig(
+            strategy=default_strategy,
+            retry_config=RetryConfig(
+                max_attempts=self.retry_max_attempts,
+                max_delay_seconds=self.retry_max_delay,
+                exponential_multiplier=self.retry_exponential_multiplier,
+                exponential_min=self.retry_exponential_min,
+                exponential_max=self.retry_exponential_max,
+                jitter=self.retry_jitter_enabled,
+                jitter_max=self.retry_jitter_max
+            ),
+            circuit_breaker_config=CircuitBreakerConfig(
+                failure_threshold=self.circuit_breaker_failure_threshold,
+                recovery_timeout=self.circuit_breaker_recovery_timeout
+            ),
+            enable_circuit_breaker=self.circuit_breaker_enabled,
+            enable_retry=self.retry_enabled
+        )
+
+    def _apply_custom_overrides(self, base_config, custom_config: dict):
+        """Apply custom configuration overrides to base preset config."""
+        from app.services.resilience import ResilienceStrategy
+        
+        # Create a copy of the base config
+        config = base_config
+        
+        # Apply retry configuration overrides
+        if "retry_attempts" in custom_config:
+            config.retry_config.max_attempts = custom_config["retry_attempts"]
+            
+        if "circuit_breaker_threshold" in custom_config:
+            config.circuit_breaker_config.failure_threshold = custom_config["circuit_breaker_threshold"]
+            
+        if "recovery_timeout" in custom_config:
+            config.circuit_breaker_config.recovery_timeout = custom_config["recovery_timeout"]
+        
+        # Apply operation-specific strategy overrides
+        if "operation_overrides" in custom_config:
+            for operation, strategy_str in custom_config["operation_overrides"].items():
+                try:
+                    strategy = ResilienceStrategy(strategy_str)
+                    # Note: Operation-specific strategies would be handled by AIServiceResilience
+                    # For now, we just validate the strategy is valid
+                except ValueError:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Invalid strategy '{strategy_str}' for operation '{operation}'")
+        
+        return config
+
+    def get_operation_strategy(self, operation: str) -> str:
+        """
+        Get resilience strategy for a specific operation.
+        
+        Args:
+            operation: Operation name (summarize, sentiment, key_points, questions, qa)
+            
+        Returns:
+            Strategy name as string
+        """
+        # If using legacy configuration, return operation-specific strategy
+        if self._has_legacy_resilience_config():
+            operation_strategies = {
+                "summarize": self.summarize_resilience_strategy,
+                "sentiment": self.sentiment_resilience_strategy,
+                "key_points": self.key_points_resilience_strategy,
+                "questions": self.questions_resilience_strategy,
+                "qa": self.qa_resilience_strategy
+            }
+            return operation_strategies.get(operation, self.default_resilience_strategy)
+        
+        # For preset configuration, get operation override or default
+        try:
+            from app.resilience_presets import preset_manager
+            preset = preset_manager.get_preset(self.resilience_preset)
+            
+            # Check for operation-specific override
+            if operation in preset.operation_overrides:
+                return preset.operation_overrides[operation].value
+            else:
+                return preset.default_strategy.value
+                
+        except Exception:
+            return "balanced"  # Safe fallback
 
 
 # Global settings instance for dependency injection
