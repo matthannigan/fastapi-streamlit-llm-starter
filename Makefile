@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-frontend repomix-docs ci-test ci-test-all
+.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -284,16 +284,26 @@ repomix:
 	@echo "Generating full repository documentation..."
 	npx repomix --ignore "docs/**/*"
 	$(MAKE) repomix-backend
+	$(MAKE) repomix-backend-tests
 	$(MAKE) repomix-frontend  
+	$(MAKE) repomix-frontend-tests
 	$(MAKE) repomix-docs
 
 repomix-backend:
 	@echo "Generating backend documentation..."
-	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --output repomix-output_backend.md
+	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/tests/**/*" --output repomix-output_backend.md
+
+repomix-backend-tests:
+	@echo "Generating backend documentation..."
+	npx repomix --include "backend/tests/**/*" --output repomix-output_backend-tests.md
 
 repomix-frontend:
 	@echo "Generating frontend documentation..."
-	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output_frontend.md
+	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --ignore "frontend/tests/**/*"  --output repomix-output_frontend.md
+
+repomix-frontend-tests:
+	@echo "Generating frontend documentation..."
+	npx repomix --include "frontend/tests/**/*"  --output repomix-output_frontend-tests.md
 
 repomix-docs:
 	@echo "Generating documentation for READMEs and docs/ subdirectory..."
