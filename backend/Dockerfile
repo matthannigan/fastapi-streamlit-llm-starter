@@ -51,6 +51,10 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 # Production stage
 FROM base AS production
 
+# Copy lock files
+COPY backend/requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
+
 # Copy backend application code (excluding local shared directory)
 COPY backend/app/ ./app/
 COPY backend/tests/ ./tests/

@@ -49,6 +49,10 @@ CMD ["python", "run_app.py"]
 # Production stage
 FROM base AS production
 
+# Copy lock files
+COPY frontend/requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
+
 # Copy frontend application code (excluding local shared directory)
 COPY frontend/app/ ./app/
 COPY frontend/tests/ ./tests/

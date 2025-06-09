@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all
+.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all lock-deps update-deps
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -44,6 +44,8 @@ help:
 	@echo "  lint-backend         Run backend code quality checks only"
 	@echo "  lint-frontend        Run frontend code quality checks only"
 	@echo "  format               Format code with black and isort"
+	@echo "  lock-deps            Generate lock files from requirements"
+	@echo "  update-deps          Update dependencies and regenerate lock files"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  docker-build     Build Docker images"
@@ -63,10 +65,12 @@ help:
 	@echo "  clean-all        Clean up including virtual environment"
 	@echo ""
 	@echo "Documentation:"
-	@echo "  repomix          Generate full repository documentation (excluding docs/)"
-	@echo "  repomix-backend  Generate backend-only documentation"
-	@echo "  repomix-frontend Generate frontend-only documentation"
-	@echo "  repomix-docs     Generate documentation for README and docs/"
+	@echo "  repomix                Generate full repository documentation (excluding docs/)"
+	@echo "  repomix-backend        Generate backend-only documentation (excluding tests)"
+	@echo "  repomix-backend-tests  Generate backend-only tests documentation"
+	@echo "  repomix-frontend       Generate frontend-only documentation (excluding tests)"
+	@echo "  repomix-frontend-tests Generate frontend-only tests documentation"
+	@echo "  repomix-docs           Generate documentation for README and docs/"
 
 # Virtual environment setup
 venv:
@@ -76,13 +80,13 @@ venv:
 	@echo "Virtual environment created at $(VENV_DIR)"
 	@echo "To activate: source $(VENV_DIR)/bin/activate"
 
-# Installation with venv support
+# Installation with venv support & lock files
 install: venv
 	@echo "Installing backend dependencies..."
-	cd backend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
+	cd backend && $(VENV_PIP) install -r requirements.lock -r requirements-dev.lock
 	@echo "Installing frontend dependencies..."
-	cd frontend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
-
+	cd frontend && $(VENV_PIP) install -r requirements.lock -r requirements-dev.lock
+	
 # Testing with proper Python command
 test:
 	@echo "Running all tests..."
@@ -307,4 +311,20 @@ repomix-frontend-tests:
 
 repomix-docs:
 	@echo "Generating documentation for READMEs and docs/ subdirectory..."
-	npx repomix --include "**/README.md,docs/**/*" --output repomix-output_docs.md 
+	npx repomix --include "**/README.md,docs/**/*" --output repomix-output_docs.md
+
+ ## Generate lock files from requirements
+lock-deps:
+	@echo "Generating lock files..."
+	cd backend && pip-compile requirements.txt --output-file requirements.lock
+	cd backend && pip-compile requirements-dev.txt --output-file requirements-dev.lock
+	cd frontend && pip-compile requirements.txt --output-file requirements.lock
+	cd frontend && pip-compile requirements-dev.txt --output-file requirements-dev.lock
+
+ ## Update dependencies and regenerate lock files
+update-deps:
+	@echo "Updating dependencies..."
+	cd backend && pip-compile --upgrade requirements.txt --output-file requirements.lock
+	cd backend && pip-compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
+	cd frontend && pip-compile --upgrade requirements.txt --output-file requirements.lock
+	cd frontend && pip-compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
