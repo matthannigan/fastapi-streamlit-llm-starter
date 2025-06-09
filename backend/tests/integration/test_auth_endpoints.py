@@ -1,4 +1,4 @@
-"""Integration tests for the /process endpoint API key validation."""
+"""Integration tests for API endpoint authentication."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,8 +9,8 @@ from app.main import app
 from app.auth import api_key_auth
 
 
-class TestProcessEndpointAuth:
-    """Integration tests for /process endpoint authentication."""
+class TestAuthEndpoints:
+    """Integration tests for API endpoint authentication."""
 
     @pytest.fixture
     def client(self):
