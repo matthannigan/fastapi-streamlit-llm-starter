@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Optional, Dict, Any, List, Union
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
 from datetime import datetime
 import re
 
@@ -109,6 +109,11 @@ class TextProcessingResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     cache_hit: Optional[bool] = Field(None, description="Whether this response came from cache")
 
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat()
+
 class BatchProcessingItem(BaseModel):
     """Individual item in batch processing response."""
     request_index: int = Field(..., description="Index of the request in the batch")
@@ -126,6 +131,11 @@ class BatchTextProcessingResponse(BaseModel):
     total_processing_time: Optional[float] = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat()
+
 class ErrorResponse(BaseModel):
     """Error response model."""
     success: bool = False
@@ -134,6 +144,11 @@ class ErrorResponse(BaseModel):
     details: Optional[Dict[str, Any]] = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat()
+
 class HealthResponse(BaseModel):
     """Health check response model."""
     status: str = "healthy"
@@ -141,6 +156,11 @@ class HealthResponse(BaseModel):
     version: str = "1.0.0"
     ai_model_available: bool = True
     resilience_healthy: Optional[bool] = None
+
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, dt: datetime, _info):
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat()
 
 class ModelConfiguration(BaseModel):
     """Model configuration settings."""
@@ -168,6 +188,11 @@ class UsageStatistics(BaseModel):
     average_processing_time: Optional[float] = Field(None, description="Average processing time in seconds")
     operations_count: Dict[str, int] = Field(default_factory=dict, description="Count by operation type")
     last_request_time: Optional[datetime] = Field(None, description="Timestamp of last request")
+
+    @field_serializer('last_request_time')
+    def serialize_last_request_time(self, dt: Optional[datetime], _info):
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat() if dt else None
 
 class APIKeyValidation(BaseModel):
     """API key validation model."""
