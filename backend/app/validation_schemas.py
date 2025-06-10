@@ -7,7 +7,10 @@ for custom resilience configuration overrides.
 
 import json
 import logging
+import time
+import threading
 from typing import Any, Dict, List, Optional
+from collections import defaultdict, deque
 
 try:
     import jsonschema
@@ -107,13 +110,48 @@ SECURITY_CONFIG = {
     "max_string_length": 200,
     "max_array_items": 20,
     "max_object_properties": 50,
+    "max_nesting_depth": 10,  # Maximum object/array nesting depth
     "forbidden_patterns": [
         r"<script",
         r"javascript:",
         r"data:",
         r"vbscript:",
         r"on\w+\s*=",  # Event handlers
-    ]
+        r"\.\.\/",  # Path traversal
+        r"\\x[0-9a-fA-F]{2}",  # Hex encoded characters
+        r"\\u[0-9a-fA-F]{4}",  # Unicode encoded characters
+        r"<%.*%>",  # Template tags
+        r"\$\{.*\}",  # Variable interpolation
+        r"eval\s*\(",  # Eval functions
+        r"exec\s*\(",  # Exec functions
+        r"import\s+",  # Import statements
+        r"require\s*\(",  # Require statements
+        r"__.*__",  # Python dunder methods
+    ],
+    "allowed_field_whitelist": {
+        # Configuration field whitelist with allowed value types and ranges
+        "retry_attempts": {"type": "int", "min": 1, "max": 10},
+        "circuit_breaker_threshold": {"type": "int", "min": 1, "max": 20},
+        "recovery_timeout": {"type": "int", "min": 10, "max": 300},
+        "default_strategy": {"type": "string", "enum": ["aggressive", "balanced", "conservative", "critical"]},
+        "operation_overrides": {"type": "object", "max_properties": 10},
+        "exponential_multiplier": {"type": "float", "min": 0.1, "max": 5.0},
+        "exponential_min": {"type": "float", "min": 0.5, "max": 10.0},
+        "exponential_max": {"type": "float", "min": 5.0, "max": 120.0},
+        "jitter_enabled": {"type": "bool"},
+        "jitter_max": {"type": "float", "min": 0.1, "max": 10.0},
+        "max_delay_seconds": {"type": "int", "min": 5, "max": 600},
+    },
+    "rate_limiting": {
+        "max_validations_per_minute": 60,  # Rate limit for validation requests
+        "max_validations_per_hour": 1000,
+        "validation_cooldown_seconds": 1,  # Minimum time between validations
+    },
+    "content_filtering": {
+        "max_unicode_codepoint": 0x1F4FF,  # Block high Unicode ranges
+        "forbidden_unicode_categories": ["Cc", "Cf", "Co", "Cs"],  # Control chars, format chars, etc.
+        "max_repeated_chars": 10,  # Maximum consecutive identical characters
+    }
 }
 
 # JSON Schema for resilience custom configuration
@@ -281,6 +319,76 @@ PRESET_SCHEMA = {
 }
 
 
+class ValidationRateLimiter:
+    """Rate limiter for validation requests to prevent abuse."""
+    
+    def __init__(self):
+        self._requests = defaultdict(deque)  # IP/user -> request timestamps
+        self._last_validation = {}  # IP/user -> last validation timestamp
+        self._lock = threading.RLock()
+    
+    def check_rate_limit(self, identifier: str) -> tuple[bool, str]:
+        """
+        Check if request is within rate limits.
+        
+        Args:
+            identifier: Client identifier (IP address, user ID, etc.)
+            
+        Returns:
+            Tuple of (allowed, error_message)
+        """
+        with self._lock:
+            current_time = time.time()
+            rate_config = SECURITY_CONFIG["rate_limiting"]
+            
+            # Check cooldown period
+            last_validation = self._last_validation.get(identifier, 0)
+            cooldown = rate_config["validation_cooldown_seconds"]
+            if current_time - last_validation < cooldown:
+                return False, f"Rate limit: wait {cooldown - (current_time - last_validation):.1f}s before next validation"
+            
+            # Clean old requests (older than 1 hour)
+            request_times = self._requests[identifier]
+            cutoff_time = current_time - 3600  # 1 hour
+            while request_times and request_times[0] < cutoff_time:
+                request_times.popleft()
+            
+            # Check per-minute limit
+            minute_cutoff = current_time - 60
+            minute_requests = sum(1 for t in request_times if t > minute_cutoff)
+            if minute_requests >= rate_config["max_validations_per_minute"]:
+                return False, f"Rate limit exceeded: {minute_requests}/{rate_config['max_validations_per_minute']} validations per minute"
+            
+            # Check per-hour limit
+            if len(request_times) >= rate_config["max_validations_per_hour"]:
+                return False, f"Rate limit exceeded: {len(request_times)}/{rate_config['max_validations_per_hour']} validations per hour"
+            
+            # Record this request
+            request_times.append(current_time)
+            self._last_validation[identifier] = current_time
+            
+            return True, ""
+    
+    def get_rate_limit_status(self, identifier: str) -> Dict[str, Any]:
+        """Get current rate limit status for an identifier."""
+        with self._lock:
+            current_time = time.time()
+            request_times = self._requests[identifier]
+            
+            # Count recent requests
+            minute_cutoff = current_time - 60
+            minute_requests = sum(1 for t in request_times if t > minute_cutoff)
+            
+            return {
+                "requests_last_minute": minute_requests,
+                "requests_last_hour": len(request_times),
+                "max_per_minute": SECURITY_CONFIG["rate_limiting"]["max_validations_per_minute"],
+                "max_per_hour": SECURITY_CONFIG["rate_limiting"]["max_validations_per_hour"],
+                "cooldown_remaining": max(0, SECURITY_CONFIG["rate_limiting"]["validation_cooldown_seconds"] - 
+                                        (current_time - self._last_validation.get(identifier, 0)))
+            }
+
+
 class ValidationResult:
     """Result of configuration validation with errors, warnings, and suggestions."""
     
@@ -310,6 +418,7 @@ class ResilienceConfigValidator:
         """Initialize the validator."""
         self.config_validator = None
         self.preset_validator = None
+        self.rate_limiter = ValidationRateLimiter()
         
         if JSONSCHEMA_AVAILABLE:
             self.config_validator = Draft7Validator(RESILIENCE_CONFIG_SCHEMA)
@@ -339,16 +448,46 @@ class ResilienceConfigValidator:
         """
         return CONFIGURATION_TEMPLATES.get(template_name)
     
-    def validate_with_security_checks(self, config_data: Any) -> ValidationResult:
+    def check_rate_limit(self, identifier: str) -> ValidationResult:
+        """
+        Check rate limit for validation request.
+        
+        Args:
+            identifier: Client identifier (IP, user ID, etc.)
+            
+        Returns:
+            ValidationResult indicating if request is allowed
+        """
+        allowed, error_msg = self.rate_limiter.check_rate_limit(identifier)
+        if not allowed:
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Rate limit exceeded: {error_msg}"],
+                suggestions=["Wait before making another validation request", "Consider batching multiple validations"]
+            )
+        return ValidationResult(is_valid=True)
+    
+    def get_rate_limit_info(self, identifier: str) -> Dict[str, Any]:
+        """Get rate limit information for identifier."""
+        return self.rate_limiter.get_rate_limit_status(identifier)
+    
+    def validate_with_security_checks(self, config_data: Any, client_identifier: Optional[str] = None) -> ValidationResult:
         """
         Validate configuration with enhanced security checks.
         
         Args:
             config_data: Configuration data to validate
+            client_identifier: Optional client identifier for rate limiting
             
         Returns:
             ValidationResult with security and schema validation
         """
+        # Check rate limits if identifier provided
+        if client_identifier:
+            rate_limit_result = self.check_rate_limit(client_identifier)
+            if not rate_limit_result.is_valid:
+                return rate_limit_result
+        
         # First perform security validation
         security_result = self._validate_security(config_data)
         if not security_result.is_valid:
@@ -366,7 +505,7 @@ class ResilienceConfigValidator:
     
     def _validate_security(self, config_data: Any) -> ValidationResult:
         """
-        Perform security validation on configuration data.
+        Perform comprehensive security validation on configuration data.
         
         Args:
             config_data: Configuration data to validate
@@ -375,6 +514,7 @@ class ResilienceConfigValidator:
             ValidationResult with security validation results
         """
         import re
+        import unicodedata
         
         errors = []
         warnings = []
@@ -392,27 +532,54 @@ class ResilienceConfigValidator:
             # Check for forbidden patterns in JSON string
             for pattern in SECURITY_CONFIG["forbidden_patterns"]:
                 if re.search(pattern, json_str, re.IGNORECASE):
-                    errors.append(f"Configuration contains forbidden pattern: {pattern}")
-                    suggestions.append("Remove any HTML, JavaScript, or potentially dangerous content from configuration")
+                    errors.append(f"Configuration contains forbidden pattern matching: {pattern}")
+                    suggestions.append("Remove any HTML, JavaScript, template syntax, or potentially dangerous content from configuration")
+            
+            # Content filtering validation
+            content_errors, content_warnings = self._validate_content_filtering(json_str)
+            errors.extend(content_errors)
+            warnings.extend(content_warnings)
+            
+            # Field whitelist validation
+            whitelist_errors, whitelist_suggestions = self._validate_field_whitelist(config_data)
+            errors.extend(whitelist_errors)
+            suggestions.extend(whitelist_suggestions)
             
             # Recursive validation of structure
-            self._validate_security_recursive(config_data, "", errors, warnings, suggestions)
+            self._validate_security_recursive(config_data, "", errors, warnings, suggestions, depth=0)
             
         except Exception as e:
             errors.append(f"Security validation error: {str(e)}")
+            suggestions.append("Ensure configuration contains only valid JSON with allowed field types")
         
         return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings, suggestions=suggestions)
     
-    def _validate_security_recursive(self, obj: Any, path: str, errors: List[str], warnings: List[str], suggestions: List[str]):
+    def _validate_security_recursive(self, obj: Any, path: str, errors: List[str], warnings: List[str], suggestions: List[str], depth: int = 0):
         """Recursively validate object structure for security issues."""
+        # Check nesting depth
+        if depth > SECURITY_CONFIG["max_nesting_depth"]:
+            errors.append(f"Nesting too deep at '{path}': depth {depth} (max: {SECURITY_CONFIG['max_nesting_depth']})")
+            suggestions.append(f"Reduce nesting depth by flattening the structure at '{path}'")
+            return  # Stop recursing to prevent stack overflow
+        
         if isinstance(obj, dict):
             if len(obj) > SECURITY_CONFIG["max_object_properties"]:
                 errors.append(f"Too many properties in object at '{path}': {len(obj)} (max: {SECURITY_CONFIG['max_object_properties']})")
                 suggestions.append(f"Reduce the number of properties in the object at '{path}'")
             
             for key, value in obj.items():
+                # Validate key names
+                if not isinstance(key, str):
+                    errors.append(f"Non-string key at '{path}': {type(key).__name__}")
+                    suggestions.append("All object keys must be strings")
+                    continue
+                
+                if len(key) > SECURITY_CONFIG["max_string_length"]:
+                    errors.append(f"Key name too long at '{path}': '{key}' ({len(key)} characters)")
+                    suggestions.append(f"Key names must be {SECURITY_CONFIG['max_string_length']} characters or less")
+                
                 new_path = f"{path}.{key}" if path else key
-                self._validate_security_recursive(value, new_path, errors, warnings, suggestions)
+                self._validate_security_recursive(value, new_path, errors, warnings, suggestions, depth + 1)
         
         elif isinstance(obj, list):
             if len(obj) > SECURITY_CONFIG["max_array_items"]:
@@ -421,12 +588,126 @@ class ResilienceConfigValidator:
             
             for i, item in enumerate(obj):
                 new_path = f"{path}[{i}]"
-                self._validate_security_recursive(item, new_path, errors, warnings, suggestions)
+                self._validate_security_recursive(item, new_path, errors, warnings, suggestions, depth + 1)
         
         elif isinstance(obj, str):
             if len(obj) > SECURITY_CONFIG["max_string_length"]:
                 errors.append(f"String too long at '{path}': {len(obj)} characters (max: {SECURITY_CONFIG['max_string_length']})")
                 suggestions.append(f"Shorten the text at '{path}' to {SECURITY_CONFIG['max_string_length']} characters or less")
+            
+            # Check for repeated characters
+            self._check_repeated_chars(obj, path, warnings, suggestions)
+        
+        elif isinstance(obj, (int, float)):
+            # Check for extremely large numbers that might cause issues
+            if isinstance(obj, int) and abs(obj) > 2**53:
+                warnings.append(f"Very large integer at '{path}': {obj}")
+                suggestions.append("Consider using smaller integer values to avoid precision issues")
+            elif isinstance(obj, float) and (abs(obj) > 1e100 or (obj != 0 and abs(obj) < 1e-100)):
+                warnings.append(f"Extreme float value at '{path}': {obj}")
+                suggestions.append("Consider using more reasonable floating-point values")
+    
+    def _validate_content_filtering(self, content: str) -> tuple[List[str], List[str]]:
+        """
+        Validate content for forbidden Unicode characters and patterns.
+        
+        Args:
+            content: String content to validate
+            
+        Returns:
+            Tuple of (errors, warnings)
+        """
+        import unicodedata
+        import re
+        
+        errors = []
+        warnings = []
+        
+        # Check Unicode codepoints
+        for char in content:
+            codepoint = ord(char)
+            if codepoint > SECURITY_CONFIG["content_filtering"]["max_unicode_codepoint"]:
+                errors.append(f"High Unicode codepoint detected: U+{codepoint:04X} ('{char}')")
+                continue
+            
+            # Check Unicode categories
+            category = unicodedata.category(char)
+            if category in SECURITY_CONFIG["content_filtering"]["forbidden_unicode_categories"]:
+                errors.append(f"Forbidden Unicode character category '{category}': U+{codepoint:04X}")
+        
+        return errors, warnings
+    
+    def _validate_field_whitelist(self, config_data: Dict[str, Any]) -> tuple[List[str], List[str]]:
+        """
+        Validate configuration fields against whitelist.
+        
+        Args:
+            config_data: Configuration dictionary to validate
+            
+        Returns:
+            Tuple of (errors, suggestions)
+        """
+        errors = []
+        suggestions = []
+        whitelist = SECURITY_CONFIG["allowed_field_whitelist"]
+        
+        for field_name, field_value in config_data.items():
+            if field_name not in whitelist:
+                errors.append(f"Field '{field_name}' not in allowed whitelist")
+                suggestions.append(f"Allowed fields: {', '.join(sorted(whitelist.keys()))}")
+                continue
+            
+            field_spec = whitelist[field_name]
+            
+            # Type validation
+            expected_type = field_spec["type"]
+            if expected_type == "int" and not isinstance(field_value, int):
+                errors.append(f"Field '{field_name}' must be an integer, got {type(field_value).__name__}")
+            elif expected_type == "float" and not isinstance(field_value, (int, float)):
+                errors.append(f"Field '{field_name}' must be a number, got {type(field_value).__name__}")
+            elif expected_type == "string" and not isinstance(field_value, str):
+                errors.append(f"Field '{field_name}' must be a string, got {type(field_value).__name__}")
+            elif expected_type == "bool" and not isinstance(field_value, bool):
+                errors.append(f"Field '{field_name}' must be a boolean, got {type(field_value).__name__}")
+            elif expected_type == "object" and not isinstance(field_value, dict):
+                errors.append(f"Field '{field_name}' must be an object, got {type(field_value).__name__}")
+            
+            # Range validation for numeric types
+            if expected_type in ["int", "float"] and isinstance(field_value, (int, float)):
+                if "min" in field_spec and field_value < field_spec["min"]:
+                    errors.append(f"Field '{field_name}' value {field_value} below minimum {field_spec['min']}")
+                if "max" in field_spec and field_value > field_spec["max"]:
+                    errors.append(f"Field '{field_name}' value {field_value} above maximum {field_spec['max']}")
+            
+            # Enum validation
+            if "enum" in field_spec and field_value not in field_spec["enum"]:
+                errors.append(f"Field '{field_name}' value '{field_value}' not in allowed values: {field_spec['enum']}")
+            
+            # Object property count validation
+            if expected_type == "object" and isinstance(field_value, dict):
+                max_props = field_spec.get("max_properties", 50)
+                if len(field_value) > max_props:
+                    errors.append(f"Field '{field_name}' has too many properties: {len(field_value)} (max: {max_props})")
+        
+        return errors, suggestions
+    
+    def _check_repeated_chars(self, text: str, path: str, warnings: List[str], suggestions: List[str]):
+        """Check for excessive repeated characters in text."""
+        max_repeated = SECURITY_CONFIG["content_filtering"]["max_repeated_chars"]
+        
+        i = 0
+        while i < len(text):
+            char = text[i]
+            count = 1
+            while i + count < len(text) and text[i + count] == char:
+                count += 1
+            
+            if count > max_repeated:
+                warnings.append(f"Excessive repeated characters at '{path}': '{char}' repeated {count} times")
+                suggestions.append(f"Limit repeated characters to {max_repeated} or fewer")
+                break
+            
+            i += count
     
     def validate_template_based_config(self, template_name: str, overrides: Dict[str, Any] = None) -> ValidationResult:
         """

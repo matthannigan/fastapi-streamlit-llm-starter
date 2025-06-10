@@ -219,7 +219,7 @@ class Settings(BaseSettings):
             
         return False
 
-    def get_resilience_config(self):
+    def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
         """
         Get resilience configuration from preset or legacy settings.
         
@@ -227,40 +227,122 @@ class Settings(BaseSettings):
         1. Legacy environment variables (if present) - for backward compatibility
         2. Custom configuration JSON (if provided)
         3. Preset configuration (default)
+        
+        Args:
+            session_id: Optional session identifier for monitoring
+            user_context: Optional user context for monitoring
         """
         # Import here to avoid circular imports
         from app.resilience_presets import preset_manager
         from app.services.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        from app.config_monitoring import config_metrics_collector
         
-        # Check if using legacy configuration
-        if self._has_legacy_resilience_config():
-            return self._load_legacy_resilience_config()
+        # Determine configuration type for monitoring
+        config_type = "legacy" if self._has_legacy_resilience_config() else "preset"
+        if self.resilience_custom_config:
+            config_type = "custom"
         
-        # Load preset configuration
-        try:
-            preset = preset_manager.get_preset(self.resilience_preset)
-            resilience_config = preset.to_resilience_config()
+        # Track configuration loading with monitoring
+        with config_metrics_collector.track_config_operation(
+            operation="load_config", 
+            preset_name=self.resilience_preset,
+            session_id=session_id,
+            user_context=user_context
+        ):
+            # Check if using legacy configuration
+            if self._has_legacy_resilience_config():
+                config_metrics_collector.record_preset_usage(
+                    preset_name="legacy",
+                    operation="load_legacy_config",
+                    session_id=session_id,
+                    user_context=user_context,
+                    metadata={"config_type": "legacy"}
+                )
+                return self._load_legacy_resilience_config()
             
-            # Apply custom overrides if provided
-            if self.resilience_custom_config:
+            # Load preset configuration
+            try:
+                preset = preset_manager.get_preset(self.resilience_preset)
+                resilience_config = preset.to_resilience_config()
+                
+                # Record preset usage
+                config_metrics_collector.record_preset_usage(
+                    preset_name=self.resilience_preset,
+                    operation="load_preset",
+                    session_id=session_id,
+                    user_context=user_context,
+                    metadata={"config_type": config_type}
+                )
+                
+                # Apply custom overrides if provided
+                if self.resilience_custom_config:
+                    try:
+                        custom_config = json.loads(self.resilience_custom_config)
+                        resilience_config = self._apply_custom_overrides(resilience_config, custom_config)
+                        
+                        # Record custom configuration usage
+                        config_metrics_collector.record_preset_usage(
+                            preset_name=self.resilience_preset,
+                            operation="apply_custom_config",
+                            session_id=session_id,
+                            user_context=user_context,
+                            metadata={
+                                "config_type": "custom",
+                                "custom_keys": list(custom_config.keys())
+                            }
+                        )
+                        
+                    except json.JSONDecodeError as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Invalid JSON in resilience_custom_config: {e}")
+                        
+                        # Record configuration error
+                        config_metrics_collector.record_config_error(
+                            preset_name=self.resilience_preset,
+                            operation="parse_custom_config",
+                            error_message=f"JSON decode error: {str(e)}",
+                            session_id=session_id,
+                            user_context=user_context
+                        )
+                        # Fall back to preset without custom config
+                
+                return resilience_config
+                
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error loading resilience preset '{self.resilience_preset}': {e}")
+                
+                # Record configuration error
+                config_metrics_collector.record_config_error(
+                    preset_name=self.resilience_preset,
+                    operation="load_preset",
+                    error_message=str(e),
+                    session_id=session_id,
+                    user_context=user_context
+                )
+                
+                # Fall back to simple preset
                 try:
-                    custom_config = json.loads(self.resilience_custom_config)
-                    resilience_config = self._apply_custom_overrides(resilience_config, custom_config)
-                except json.JSONDecodeError as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Invalid JSON in resilience_custom_config: {e}")
-                    # Fall back to preset without custom config
-            
-            return resilience_config
-            
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error loading resilience preset '{self.resilience_preset}': {e}")
-            # Fall back to simple preset
-            fallback_preset = preset_manager.get_preset("simple")
-            return fallback_preset.to_resilience_config()
+                    fallback_preset = preset_manager.get_preset("simple")
+                    config_metrics_collector.record_preset_usage(
+                        preset_name="simple",
+                        operation="fallback_preset",
+                        session_id=session_id,
+                        user_context=user_context,
+                        metadata={"original_preset": self.resilience_preset, "config_type": "fallback"}
+                    )
+                    return fallback_preset.to_resilience_config()
+                except Exception as fallback_error:
+                    config_metrics_collector.record_config_error(
+                        preset_name="simple",
+                        operation="fallback_preset",
+                        error_message=str(fallback_error),
+                        session_id=session_id,
+                        user_context=user_context
+                    )
+                    raise
 
     def _load_legacy_resilience_config(self):
         """Load resilience configuration from legacy environment variables."""
