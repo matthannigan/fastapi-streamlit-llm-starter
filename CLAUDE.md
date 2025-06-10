@@ -196,10 +196,39 @@ The application implements comprehensive resilience patterns:
 ### Configuration
 Settings are managed through `app/config.py` with Pydantic validation:
 - AI model configuration (Gemini API)
-- Resilience strategy settings
+- **Resilience configuration presets** (simple, development, production)
+- Custom resilience configuration via JSON
 - Batch processing limits
 - Redis connection settings
 - CORS and authentication settings
+
+#### Resilience Configuration
+The application uses a **simplified resilience configuration system** that reduces 47+ environment variables to a single preset:
+
+```bash
+# Choose one preset based on environment
+RESILIENCE_PRESET=simple      # General use, testing
+RESILIENCE_PRESET=development # Local dev, fast feedback  
+RESILIENCE_PRESET=production  # Production workloads
+
+# Advanced: Custom configuration
+RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
+```
+
+**Available presets:**
+- `simple`: 3 retries, 5 failure threshold, 60s recovery, balanced strategy
+- `development`: 2 retries, 3 failure threshold, 30s recovery, aggressive strategy
+- `production`: 5 retries, 10 failure threshold, 120s recovery, conservative strategy
+
+**Environment-aware recommendations:**
+- Development indicators (DEBUG=true, localhost) → `development` preset
+- Production indicators (PROD=true, production URLs) → `production` preset
+- Unknown environments → `simple` preset
+
+**Migration from legacy configuration:**
+- Legacy 47+ environment variables still supported for backward compatibility
+- Migration tools available: `scripts/migrate_resilience_config.py --analyze`
+- API endpoints: `GET /resilience/config`, `POST /resilience/validate`
 
 ### Error Handling
 - Global exception handler in main.py

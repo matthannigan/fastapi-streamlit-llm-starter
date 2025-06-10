@@ -3,6 +3,7 @@ services:
     environment:
       - DEBUG=false
       - LOG_LEVEL=INFO
+      - RESILIENCE_PRESET=${RESILIENCE_PRESET:-production}
     volumes: []  # No volume mounts in production
     deploy:
       replicas: 3

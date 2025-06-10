@@ -43,12 +43,20 @@ cp .env.example .env
 
 ### 2. Configure Environment
 
-Edit `.env` file with your API keys:
+Edit `.env` file with your API keys and resilience settings:
 
 ```env
+# AI Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 AI_MODEL=gemini-2.0-flash-exp
 AI_TEMPERATURE=0.7
+
+# Resilience Configuration (Choose one approach)
+# Option 1: Use preset (recommended)
+RESILIENCE_PRESET=simple  # Options: simple, development, production
+
+# Option 2: Custom configuration (advanced users)
+# RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
 ```
 
 ### 3. Start the Application
@@ -433,10 +441,72 @@ docker-compose up -d --scale frontend=2
 
 ## ⚙️ Configuration
 
+### Resilience Configuration Presets
+
+The application includes a **simplified resilience configuration system** that reduces 47+ environment variables to a single preset selection:
+
+#### Quick Setup (Recommended)
+```env
+# Choose one preset based on your environment
+RESILIENCE_PRESET=simple      # Balanced for most use cases
+RESILIENCE_PRESET=development # Fast-fail for development
+RESILIENCE_PRESET=production  # High reliability for production
+```
+
+#### Available Presets
+
+| Preset | Use Case | Retry Attempts | Circuit Breaker | Recovery Time | Strategy |
+|--------|----------|---------------|-----------------|---------------|-----------|
+| **simple** | General use, testing | 3 | 5 failures | 60s | Balanced |
+| **development** | Local dev, fast feedback | 2 | 3 failures | 30s | Aggressive |
+| **production** | Production workloads | 5 | 10 failures | 120s | Conservative |
+
+#### Advanced Custom Configuration
+For fine-tuned control, use JSON configuration:
+```env
+RESILIENCE_CUSTOM_CONFIG='{
+  "retry_attempts": 4,
+  "circuit_breaker_threshold": 8,
+  "recovery_timeout": 90,
+  "default_strategy": "balanced",
+  "operation_overrides": {
+    "qa": "critical",
+    "sentiment": "aggressive"
+  }
+}'
+```
+
+#### Environment-Aware Recommendations
+The system automatically detects your environment and suggests appropriate presets:
+- Development indicators (DEBUG=true, localhost) → `development` preset
+- Production indicators (PROD=true, production URLs) → `production` preset
+- Unknown environments → `simple` preset (safe default)
+
+#### Migration from Legacy Configuration
+If you have existing resilience configuration (47+ environment variables), the system will:
+1. **Automatically detect** legacy configuration
+2. **Continue using** existing settings for backward compatibility
+3. **Suggest migration** to presets via API: `GET /resilience/config`
+
+**Migration example:**
+```bash
+# Check current configuration and get migration suggestions
+curl http://localhost:8000/resilience/config
+
+# Validate a custom configuration
+curl -X POST http://localhost:8000/resilience/validate \
+  -H "Content-Type: application/json" \
+  -d '{"configuration": {"retry_attempts": 3, "circuit_breaker_threshold": 5}}'
+```
+
+For complete configuration details, see [Resilience Configuration](docs/RESILIENCE_CONFIG.md).
+
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `RESILIENCE_PRESET` | Resilience configuration preset | `simple` |
+| `RESILIENCE_CUSTOM_CONFIG` | Custom JSON configuration (optional) | None |
 | `GEMINI_API_KEY` | Google Gemini API key | Required |
 | `AI_MODEL` | AI model to use | `gemini-2.0-flash-exp` |
 | `AI_TEMPERATURE` | Model temperature | `0.7` |
@@ -564,6 +634,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) - Complete integration guide
 - [TESTING.md](docs/TESTING.md) - Testing guide with virtual environment support
 - [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) - Code standards and patterns
+- [RESILIENCE_CONFIG.md](docs/RESILIENCE_CONFIG.md) - Resilience configuration guide and migration
 
 ## Deployment
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deployment guide

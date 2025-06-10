@@ -47,7 +47,18 @@ class TestSettings:
                     if k not in env_vars_to_clear}
         
         with patch.dict(os.environ, clean_env, clear=True):
-            settings = Settings()
+            # Create a custom Settings class that doesn't read from .env file
+            from pydantic_settings import SettingsConfigDict
+            
+            class CleanSettings(Settings):
+                model_config = SettingsConfigDict(
+                    env_file=None,  # Don't read from .env file
+                    env_file_encoding='utf-8',
+                    case_sensitive=False,
+                    extra='ignore'
+                )
+            
+            settings = CleanSettings()
             
             # Test some key default values
             assert settings.ai_temperature == 0.7

@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all lock-deps update-deps
+.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all lock-deps update-deps list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -47,6 +47,15 @@ help:
 	@echo "  lock-deps            Generate lock files from requirements"
 	@echo "  update-deps          Update dependencies and regenerate lock files"
 	@echo ""
+	@echo "Resilience Configuration:"
+	@echo "  list-presets         List available resilience configuration presets"
+	@echo "  show-preset          Show details of a specific preset (PRESET=name)"
+	@echo "  validate-config      Validate current resilience configuration"
+	@echo "  validate-preset      Validate a specific preset configuration (PRESET=name)"
+	@echo "  recommend-preset     Get preset recommendation for environment (ENV=name)"
+	@echo "  migrate-config       Migrate legacy resilience configuration to presets"
+	@echo "  test-presets         Run all preset-related tests"
+	@echo ""
 	@echo "Docker Commands:"
 	@echo "  docker-build     Build Docker images"
 	@echo "  docker-up        Start services with Docker Compose"
@@ -82,6 +91,8 @@ venv:
 
 # Installation with venv support & lock files
 install: venv
+	@echo "Activating virtual environment..."
+	source $(VENV_DIR)/bin/activate
 	@echo "Installing backend dependencies..."
 	cd backend && $(VENV_PIP) install -r requirements.lock -r requirements-dev.lock
 	@echo "Installing frontend dependencies..."
@@ -219,6 +230,8 @@ ci-test:
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/
 	cd frontend && python -m flake8 app/
+	@echo "Validating resilience configuration..."
+	python scripts/validate_resilience_config.py --validate-current --quiet
 
 # Full CI test including slow tests (use for nightly builds or comprehensive testing)
 ci-test-all:
@@ -228,6 +241,12 @@ ci-test-all:
 	@echo "Running code quality checks..."
 	cd backend && python -m flake8 app/
 	cd frontend && python -m flake8 app/
+	@echo "Running preset-related tests..."
+	$(MAKE) test-presets
+	@echo "Validating all presets..."
+	python scripts/validate_resilience_config.py --validate-preset simple --quiet
+	python scripts/validate_resilience_config.py --validate-preset development --quiet
+	python scripts/validate_resilience_config.py --validate-preset production --quiet
 
 # Additional Docker commands for development
 restart: ## Restart all services
@@ -248,10 +267,12 @@ frontend-logs: ## Show frontend logs
 status: ## Show status of all services
 	docker-compose ps
 
-health: ## Check health of all services
+health: ## Check health of all services including resilience configuration
 	@echo "Checking service health..."
 	@curl -f http://localhost:8000/health || echo "Backend unhealthy"
 	@curl -f http://localhost:8501/_stcore/health || echo "Frontend unhealthy"
+	@echo "Validating resilience configuration..."
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --validate-current --quiet || echo "Resilience configuration issues detected"
 
 stop: ## Stop all services
 	docker-compose stop
@@ -328,3 +349,35 @@ update-deps:
 	cd backend && pip-compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
 	cd frontend && pip-compile --upgrade requirements.txt --output-file requirements.lock
 	cd frontend && pip-compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
+
+# Resilience preset management commands
+list-presets:
+	@echo "Available resilience configuration presets:"
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --list-presets
+
+show-preset:
+	@if [ -z "$(PRESET)" ]; then echo "Usage: make show-preset PRESET=<preset_name>"; echo "Available presets: simple, development, production"; exit 1; fi
+	@echo "Showing details for preset: $(PRESET)"
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --show-preset $(PRESET)
+
+validate-config:
+	@echo "Validating current resilience configuration..."
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --validate-current
+
+validate-preset:
+	@if [ -z "$(PRESET)" ]; then echo "Usage: make validate-preset PRESET=<preset_name>"; echo "Available presets: simple, development, production"; exit 1; fi
+	@echo "Validating preset: $(PRESET)"
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --validate-preset $(PRESET)
+
+recommend-preset:
+	@if [ -z "$(ENV)" ]; then echo "Usage: make recommend-preset ENV=<environment>"; echo "Example environments: development, staging, production"; exit 1; fi
+	@echo "Getting preset recommendation for environment: $(ENV)"
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --recommend-preset $(ENV)
+
+migrate-config:
+	@echo "Analyzing legacy configuration and providing migration recommendations..."
+	@$(PYTHON_CMD) scripts/migrate_resilience_config.py
+
+test-presets:
+	@echo "Running preset-related tests..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/unit/test_resilience_presets.py tests/integration/test_preset_resilience_integration.py -v

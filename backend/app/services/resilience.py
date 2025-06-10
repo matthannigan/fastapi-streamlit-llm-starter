@@ -263,84 +263,133 @@ class AIServiceResilience:
     for AI service calls with configurable strategies.
     """
     
-    def __init__(self):
-        """Initialize the resilience service with default configurations."""
+    def __init__(self, settings=None):
+        """Initialize the resilience service with configurations from Settings."""
         self.metrics: Dict[str, ResilienceMetrics] = {}
         self.circuit_breakers: Dict[str, EnhancedCircuitBreaker] = {}
         self.configs: Dict[str, ResilienceConfig] = {}
         
-        # Load default configurations
-        self._load_default_configs()
+        # Store settings for configuration access
+        if settings is None:
+            from app.config import settings as default_settings
+            self.settings = default_settings
+        else:
+            self.settings = settings
         
-        logger.info("AI Service Resilience initialized")
+        # Load configurations
+        self._load_configurations()
+        
+        logger.info("AI Service Resilience initialized with preset system")
     
-    def _load_default_configs(self):
-        """Load default resilience configurations for different strategies."""
+    def _load_configurations(self):
+        """Load resilience configurations from Settings (preset or legacy)."""
+        # Get resilience configuration from Settings (handles preset or legacy)
+        base_config = self.settings.get_resilience_config()
         
-        # Aggressive strategy: Fast retries, low tolerance
-        self.configs[ResilienceStrategy.AGGRESSIVE] = ResilienceConfig(
-            strategy=ResilienceStrategy.AGGRESSIVE,
-            retry_config=RetryConfig(
-                max_attempts=2,
-                max_delay_seconds=10,
-                exponential_multiplier=0.5,
-                exponential_min=1.0,
-                exponential_max=5.0
-            ),
-            circuit_breaker_config=CircuitBreakerConfig(
-                failure_threshold=3,
-                recovery_timeout=30
-            )
-        )
+        # Store the base configuration for default strategy
+        self.configs[base_config.strategy] = base_config
         
-        # Balanced strategy: Default settings
-        self.configs[ResilienceStrategy.BALANCED] = ResilienceConfig(
-            strategy=ResilienceStrategy.BALANCED,
-            retry_config=RetryConfig(
-                max_attempts=3,
-                max_delay_seconds=30,
-                exponential_multiplier=1.0,
-                exponential_min=2.0,
-                exponential_max=10.0
-            ),
-            circuit_breaker_config=CircuitBreakerConfig(
-                failure_threshold=5,
-                recovery_timeout=60
-            )
-        )
+        # Load operation-specific configurations
+        self._load_operation_configs()
         
-        # Conservative strategy: Slower retries, high tolerance
-        self.configs[ResilienceStrategy.CONSERVATIVE] = ResilienceConfig(
-            strategy=ResilienceStrategy.CONSERVATIVE,
-            retry_config=RetryConfig(
-                max_attempts=5,
-                max_delay_seconds=120,
-                exponential_multiplier=2.0,
-                exponential_min=4.0,
-                exponential_max=30.0
-            ),
-            circuit_breaker_config=CircuitBreakerConfig(
-                failure_threshold=8,
-                recovery_timeout=120
-            )
-        )
+        # Load fallback configurations for all strategies
+        self._load_fallback_configs()
+    
+    def _load_operation_configs(self):
+        """Load operation-specific resilience configurations."""
+        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
         
-        # Critical strategy: Maximum retries
-        self.configs[ResilienceStrategy.CRITICAL] = ResilienceConfig(
-            strategy=ResilienceStrategy.CRITICAL,
-            retry_config=RetryConfig(
-                max_attempts=7,
-                max_delay_seconds=300,
-                exponential_multiplier=1.5,
-                exponential_min=3.0,
-                exponential_max=60.0,
-                jitter_max=5.0
-            ),
-            circuit_breaker_config=CircuitBreakerConfig(
-                failure_threshold=10,
-                recovery_timeout=300
+        for operation in operations:
+            strategy_name = self.settings.get_operation_strategy(operation)
+            
+            # Convert string strategy to enum
+            try:
+                strategy = ResilienceStrategy(strategy_name)
+            except ValueError:
+                logger.warning(f"Invalid strategy '{strategy_name}' for operation '{operation}', using balanced")
+                strategy = ResilienceStrategy.BALANCED
+            
+            # If we don't have a config for this strategy, create one based on base config
+            if strategy not in self.configs:
+                base_config = self.settings.get_resilience_config()
+                
+                # Create a strategy-specific config based on the base config
+                self.configs[strategy] = ResilienceConfig(
+                    strategy=strategy,
+                    retry_config=base_config.retry_config,
+                    circuit_breaker_config=base_config.circuit_breaker_config,
+                    enable_circuit_breaker=base_config.enable_circuit_breaker,
+                    enable_retry=base_config.enable_retry
+                )
+    
+    def _load_fallback_configs(self):
+        """Load fallback configurations for strategies not provided by preset/settings."""
+        
+        # Ensure all strategies have configurations
+        if ResilienceStrategy.AGGRESSIVE not in self.configs:
+            self.configs[ResilienceStrategy.AGGRESSIVE] = ResilienceConfig(
+                strategy=ResilienceStrategy.AGGRESSIVE,
+                retry_config=RetryConfig(
+                    max_attempts=2,
+                    max_delay_seconds=10,
+                    exponential_multiplier=0.5,
+                    exponential_min=1.0,
+                    exponential_max=5.0
+                ),
+                circuit_breaker_config=CircuitBreakerConfig(
+                    failure_threshold=3,
+                    recovery_timeout=30
+                )
             )
-        )
+        
+        if ResilienceStrategy.BALANCED not in self.configs:
+            self.configs[ResilienceStrategy.BALANCED] = ResilienceConfig(
+                strategy=ResilienceStrategy.BALANCED,
+                retry_config=RetryConfig(
+                    max_attempts=3,
+                    max_delay_seconds=30,
+                    exponential_multiplier=1.0,
+                    exponential_min=2.0,
+                    exponential_max=10.0
+                ),
+                circuit_breaker_config=CircuitBreakerConfig(
+                    failure_threshold=5,
+                    recovery_timeout=60
+                )
+            )
+        
+        if ResilienceStrategy.CONSERVATIVE not in self.configs:
+            self.configs[ResilienceStrategy.CONSERVATIVE] = ResilienceConfig(
+                strategy=ResilienceStrategy.CONSERVATIVE,
+                retry_config=RetryConfig(
+                    max_attempts=5,
+                    max_delay_seconds=120,
+                    exponential_multiplier=2.0,
+                    exponential_min=4.0,
+                    exponential_max=30.0
+                ),
+                circuit_breaker_config=CircuitBreakerConfig(
+                    failure_threshold=8,
+                    recovery_timeout=120
+                )
+            )
+        
+        if ResilienceStrategy.CRITICAL not in self.configs:
+            self.configs[ResilienceStrategy.CRITICAL] = ResilienceConfig(
+                strategy=ResilienceStrategy.CRITICAL,
+                retry_config=RetryConfig(
+                    max_attempts=7,
+                    max_delay_seconds=300,
+                    exponential_multiplier=1.5,
+                    exponential_min=3.0,
+                    exponential_max=60.0,
+                    jitter_max=5.0
+                ),
+                circuit_breaker_config=CircuitBreakerConfig(
+                    failure_threshold=10,
+                    recovery_timeout=300
+                )
+            )
     
     def get_or_create_circuit_breaker(self, name: str, config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
         """Get or create a circuit breaker for the given operation."""
@@ -361,6 +410,25 @@ class AIServiceResilience:
             self.metrics[operation_name] = ResilienceMetrics()
         return self.metrics[operation_name]
     
+    def get_operation_config(self, operation_name: str) -> ResilienceConfig:
+        """Get resilience configuration for a specific operation."""
+        # Get operation-specific strategy
+        strategy_name = self.settings.get_operation_strategy(operation_name)
+        
+        try:
+            strategy = ResilienceStrategy(strategy_name)
+        except ValueError:
+            logger.warning(f"Invalid strategy '{strategy_name}' for operation '{operation_name}', using balanced")
+            strategy = ResilienceStrategy.BALANCED
+        
+        # Return the configuration for this strategy
+        if strategy in self.configs:
+            return self.configs[strategy]
+        
+        # Fallback to balanced strategy
+        logger.warning(f"No configuration found for strategy '{strategy}', using balanced")
+        return self.configs.get(ResilienceStrategy.BALANCED, self.configs[list(self.configs.keys())[0]])
+    
     def custom_before_sleep(self, operation_name: str):
         """Custom before_sleep callback that tracks retry metrics."""
         def callback(retry_state):
@@ -377,7 +445,7 @@ class AIServiceResilience:
     def with_resilience(
         self,
         operation_name: str,
-        strategy: Union[ResilienceStrategy, str] = ResilienceStrategy.BALANCED,
+        strategy: Union[ResilienceStrategy, str, None] = None,
         custom_config: Optional[ResilienceConfig] = None,
         fallback: Optional[Callable] = None
     ):
@@ -386,7 +454,7 @@ class AIServiceResilience:
         
         Args:
             operation_name: Name of the operation for monitoring
-            strategy: Resilience strategy to use
+            strategy: Resilience strategy to use (if None, uses operation-specific config)
             custom_config: Custom configuration (overrides strategy)
             fallback: Function to call when circuit breaker is open
         """
@@ -394,12 +462,16 @@ class AIServiceResilience:
             # Get configuration
             if custom_config:
                 config = custom_config
-            else:
+            elif strategy is not None:
+                # Use explicitly provided strategy
                 if isinstance(strategy, str):
                     strategy_enum = ResilienceStrategy(strategy)
                 else:
                     strategy_enum = strategy
                 config = self.configs[strategy_enum]
+            else:
+                # Use operation-specific configuration
+                config = self.get_operation_config(operation_name)
             
             # Get or create circuit breaker
             circuit_breaker = None
@@ -571,14 +643,42 @@ class AIServiceResilience:
             "total_circuit_breakers": len(self.circuit_breakers),
             "operations_monitored": list(self.metrics.keys())
         }
+    
+    def with_operation_resilience(self, operation_name: str, fallback: Optional[Callable] = None):
+        """
+        Decorator for operation-specific resilience using current settings.
+        
+        Args:
+            operation_name: Name of the operation for metrics and circuit breaker
+            fallback: Optional fallback function to call when circuit is open
+            
+        Returns:
+            Decorator function
+        """
+        return self.with_resilience(operation_name, fallback=fallback)
 
 
 # Global resilience instance
 ai_resilience = AIServiceResilience()
 
-# Convenience decorators for common strategies
+# Convenience decorators for operation-specific resilience
+def with_operation_resilience(operation_name: str, fallback: Optional[Callable] = None):
+    """
+    Decorator for operation-specific resilience (uses preset configuration).
+    
+    This is the recommended decorator for most use cases as it automatically
+    applies the appropriate resilience configuration based on the current preset
+    and operation-specific overrides.
+    """
+    return ai_resilience.with_resilience(
+        operation_name, 
+        strategy=None,  # Use operation-specific config
+        fallback=fallback
+    )
+
+# Convenience decorators for common strategies (explicit strategy override)
 def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Decorator for aggressive resilience strategy."""
+    """Decorator for aggressive resilience strategy (overrides preset)."""
     return ai_resilience.with_resilience(
         operation_name, 
         ResilienceStrategy.AGGRESSIVE, 
@@ -586,7 +686,7 @@ def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable]
     )
 
 def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Decorator for balanced resilience strategy."""
+    """Decorator for balanced resilience strategy (overrides preset)."""
     return ai_resilience.with_resilience(
         operation_name, 
         ResilienceStrategy.BALANCED, 
@@ -594,7 +694,7 @@ def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] =
     )
 
 def with_conservative_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Decorator for conservative resilience strategy."""
+    """Decorator for conservative resilience strategy (overrides preset)."""
     return ai_resilience.with_resilience(
         operation_name, 
         ResilienceStrategy.CONSERVATIVE, 
@@ -602,7 +702,7 @@ def with_conservative_resilience(operation_name: str, fallback: Optional[Callabl
     )
 
 def with_critical_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Decorator for critical resilience strategy."""
+    """Decorator for critical resilience strategy (overrides preset)."""
     return ai_resilience.with_resilience(
         operation_name, 
         ResilienceStrategy.CRITICAL, 
