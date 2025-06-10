@@ -971,45 +971,94 @@ class ResilienceConfigValidator:
         return errors, warnings, suggestions
     
     def _generate_error_suggestions(self, error, error_path: str) -> List[str]:
-        """Generate actionable suggestions based on validation errors."""
+        """
+        Generate helpful suggestions based on validation errors.
+        
+        Args:
+            error: JSON Schema validation error
+            error_path: Path to the field that caused the error
+            
+        Returns:
+            List of suggestion strings
+        """
         suggestions = []
         
-        error_msg = error.message.lower()
-        
-        # Type validation errors
-        if "is not of type" in error_msg:
-            if "integer" in error_msg:
-                suggestions.append(f"Field '{error_path}' must be a whole number (integer)")
-            elif "number" in error_msg:
-                suggestions.append(f"Field '{error_path}' must be a number")
-            elif "string" in error_msg:
-                suggestions.append(f"Field '{error_path}' must be text (string)")
-            elif "boolean" in error_msg:
-                suggestions.append(f"Field '{error_path}' must be true or false")
-        
-        # Range validation errors
-        elif "is less than the minimum" in error_msg or "is greater than the maximum" in error_msg:
+        try:
+            error_message = error.message.lower()
+            schema_context = error.schema
+            
+            # Suggestions for common field errors
             if "retry_attempts" in error_path:
-                suggestions.append("retry_attempts must be between 1 and 10. Try values like 2 (fast), 3 (balanced), or 5 (robust)")
+                if "minimum" in error_message or "maximum" in error_message:
+                    suggestions.append("💡 Try: retry_attempts: 3 (recommended for most use cases)")
+                    suggestions.append("🔧 Valid range: 1 (fast failure) to 10 (maximum persistence)")
+                elif "type" in error_message:
+                    suggestions.append("💡 retry_attempts must be a whole number, like: retry_attempts: 5")
+            
             elif "circuit_breaker_threshold" in error_path:
-                suggestions.append("circuit_breaker_threshold must be between 1 and 20. Try values like 3 (sensitive), 5 (balanced), or 10 (tolerant)")
+                if "minimum" in error_message or "maximum" in error_message:
+                    suggestions.append("💡 Try: circuit_breaker_threshold: 5 (good balance)")
+                    suggestions.append("🔧 Valid range: 1 (very sensitive) to 20 (very tolerant)")
+                elif "type" in error_message:
+                    suggestions.append("💡 circuit_breaker_threshold must be a whole number, like: circuit_breaker_threshold: 8")
+            
             elif "recovery_timeout" in error_path:
-                suggestions.append("recovery_timeout must be between 10 and 300 seconds. Try 30s (fast recovery), 60s (balanced), or 120s (stable)")
-        
-        # Enum validation errors
-        elif "is not one of" in error_msg:
-            if "strategy" in error_path:
-                suggestions.append("Strategy must be one of: 'aggressive' (fast, less reliable), 'balanced' (moderate), 'conservative' (slow, reliable), 'critical' (maximum reliability)")
-            elif "operation" in error_path:
-                suggestions.append("Valid operations are: summarize, sentiment, key_points, questions, qa")
-        
-        # Missing required field errors
-        elif "is a required property" in error_msg:
-            suggestions.append(f"Add the missing required field '{error_path}' to your configuration")
-        
-        # Additional properties errors
-        elif "additional properties are not allowed" in error_msg:
-            suggestions.append("Remove any unknown configuration fields. Check the documentation for valid field names")
+                if "minimum" in error_message or "maximum" in error_message:
+                    suggestions.append("💡 Try: recovery_timeout: 60 (1 minute is often good)")
+                    suggestions.append("🔧 Valid range: 10 seconds (quick) to 300 seconds (conservative)")
+                elif "type" in error_message:
+                    suggestions.append("💡 recovery_timeout must be a whole number in seconds, like: recovery_timeout: 120")
+            
+            elif "default_strategy" in error_path or "strategy" in error_path:
+                if "enum" in error_message:
+                    suggestions.append("💡 Valid strategies: 'aggressive' (fast), 'balanced' (recommended), 'conservative' (reliable), 'critical' (maximum)")
+                    suggestions.append("🔧 Try: default_strategy: 'balanced' for most use cases")
+            
+            elif "operation_overrides" in error_path:
+                if "additionalproperties" in error_message.replace(" ", ""):
+                    suggestions.append("💡 Valid operations: summarize, sentiment, key_points, questions, qa")
+                    suggestions.append("🔧 Example: operation_overrides: {\"qa\": \"critical\", \"sentiment\": \"aggressive\"}")
+                elif "enum" in error_message:
+                    suggestions.append("💡 Each operation strategy must be: 'aggressive', 'balanced', 'conservative', or 'critical'")
+            
+            elif "exponential" in error_path:
+                suggestions.append("💡 Exponential backoff settings control retry timing")
+                suggestions.append("🔧 Default values usually work well - consider using a preset instead")
+            
+            elif "jitter" in error_path:
+                suggestions.append("💡 Jitter adds randomness to prevent thundering herd problems")
+                suggestions.append("🔧 Boolean values: true or false, numeric values in reasonable ranges")
+            
+            # General suggestions based on error type
+            if "type" in error_message:
+                if "string" in error_message:
+                    suggestions.append("📝 This field expects text in quotes, like: \"balanced\"")
+                elif "integer" in error_message or "number" in error_message:
+                    suggestions.append("📝 This field expects a number without quotes, like: 5")
+                elif "boolean" in error_message:
+                    suggestions.append("📝 This field expects true or false (without quotes)")
+            
+            elif "required" in error_message:
+                required_fields = schema_context.get("required", [])
+                if required_fields:
+                    suggestions.append(f"📋 Required fields: {', '.join(required_fields)}")
+                suggestions.append("💡 Check that all necessary fields are included in your configuration")
+            
+            elif "additional properties" in error_message.lower():
+                allowed_props = list(schema_context.get("properties", {}).keys())
+                if allowed_props:
+                    suggestions.append(f"📋 Allowed fields: {', '.join(allowed_props)}")
+                suggestions.append("🔧 Remove any fields not in the allowed list")
+            
+            # Contextual suggestions
+            if not suggestions:
+                suggestions.append("💡 Consider using a preset configuration instead of custom settings")
+                suggestions.append("📖 Check the documentation for examples and valid values")
+            
+        except Exception as e:
+            # Fallback for any errors in suggestion generation
+            suggestions.append("💡 Please check the field format and try again")
+            logger.debug(f"Error generating suggestions: {e}")
         
         return suggestions
     
