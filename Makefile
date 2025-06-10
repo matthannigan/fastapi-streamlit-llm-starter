@@ -10,13 +10,13 @@ VENV_PIP := $(VENV_DIR)/bin/pip
 IN_VENV := $(shell $(PYTHON) -c "import sys; print('1' if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else '0')" 2>/dev/null || echo "0")
 IN_DOCKER := $(shell [ -f /.dockerenv ] && echo "1" || echo "0")
 
-# Use venv python if available and not in Docker, otherwise use system python
+# Use appropriate python command based on context
 ifeq ($(IN_DOCKER),1)
     PYTHON_CMD := python
-else ifeq ($(wildcard $(VENV_PYTHON)),$(VENV_PYTHON))
-    PYTHON_CMD := $(VENV_PYTHON)
+else ifeq ($(IN_VENV),1)
+    PYTHON_CMD := python
 else
-    PYTHON_CMD := $(PYTHON)
+    PYTHON_CMD := $(VENV_PYTHON)
 endif
 
 # Default target
@@ -24,8 +24,9 @@ help:
 	@echo "Available commands:"
 	@echo ""
 	@echo "Setup and Testing:"
-	@echo "  venv                 Create virtual environment"
-	@echo "  install              Install all dependencies (creates venv automatically)"
+	@echo "  venv                 Create backend virtual environment"
+	@echo "  install              Install backend dependencies (creates venv automatically)"
+	@echo "  install-frontend     Install frontend dependencies in Docker"
 	@echo "  test                 Run all tests (with Docker if available)"
 	@echo "  test-local           Run tests without Docker dependency"
 	@echo "  test-backend         Run backend tests only (fast tests by default)"
@@ -71,7 +72,8 @@ help:
 	@echo "  backup           Backup Redis data"
 	@echo "  restore          Restore Redis data"
 	@echo "  clean            Clean up generated files"
-	@echo "  clean-all        Clean up including virtual environment"
+	@echo "  clean-all        Clean up including virtual environments"
+	@echo "  clean-venv       Clean up virtual environments only"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  repomix                Generate full repository documentation (excluding docs/)"
@@ -81,22 +83,22 @@ help:
 	@echo "  repomix-frontend-tests Generate frontend-only tests documentation"
 	@echo "  repomix-docs           Generate documentation for README and docs/"
 
-# Virtual environment setup
+# Virtual environment setup (backend only)
 venv:
-	@echo "Creating virtual environment..."
+	@echo "Creating backend virtual environment..."
 	$(PYTHON) -m venv $(VENV_DIR)
 	$(VENV_PIP) install --upgrade pip
-	@echo "Virtual environment created at $(VENV_DIR)"
+	@echo "Backend virtual environment created at $(VENV_DIR)"
 	@echo "To activate: source $(VENV_DIR)/bin/activate"
 
-# Installation with venv support & lock files
+# Installation with backend venv and frontend Docker
 install: venv
-	@echo "Activating virtual environment..."
-	source $(VENV_DIR)/bin/activate
 	@echo "Installing backend dependencies..."
-	cd backend && $(VENV_PIP) install -r requirements.lock -r requirements-dev.lock
-	@echo "Installing frontend dependencies..."
-	cd frontend && $(VENV_PIP) install -r requirements.lock -r requirements-dev.lock
+	cd backend && source ../$(VENV_DIR)/bin/activate && pip install -r requirements.lock -r requirements-dev.lock
+
+install-frontend:
+	@echo "Frontend runs via Docker - no local installation needed"
+	@echo "Use 'make dev-frontend' or 'make run-frontend' to start frontend"
 	
 # Testing with proper Python command
 test:
@@ -125,8 +127,8 @@ test-backend-manual:
 	cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "manual" --run-manual
 
 test-frontend:
-	@echo "Running frontend tests..."
-	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v
+	@echo "Running frontend tests via Docker..."
+	docker-compose run frontend pytest tests/ -v
 
 test-integration:
 	@echo "Running comprehensive integration tests..."
@@ -139,12 +141,12 @@ test-integration:
 test-coverage:
 	@echo "Running tests with coverage (fast tests only, excluding manual tests)..."
 	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
-	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+	docker-compose run frontend pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 test-coverage-all:
 	@echo "Running tests with coverage (including slow tests, excluding manual tests)..."
 	cd backend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term -m "not manual" --run-slow
-	cd frontend && $(PYTHON_CMD) -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+	docker-compose run frontend pytest tests/ -v --cov=app --cov-report=html --cov-report=term
 
 test-retry:
 	@echo "Running retry-specific tests only..."
@@ -156,14 +158,12 @@ test-circuit:
 
 # Local testing without Docker
 test-local: venv
-	@echo "Running local tests without Docker (excluding manual tests)..."
-	@echo "Installing dependencies..."
+	@echo "Running backend tests locally (frontend requires Docker)..."
+	@echo "Installing backend dependencies..."
 	cd backend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
-	cd frontend && $(VENV_PIP) install -r requirements.txt -r requirements-dev.txt
 	@echo "Running backend tests..."
 	cd backend && $(VENV_PYTHON) -m pytest tests/ -v
-	@echo "Running frontend tests..."
-	cd frontend && $(VENV_PYTHON) -m pytest tests/ -v
+	@echo "Note: Frontend tests require Docker - use 'make test-frontend' instead"
 
 # Code quality with proper Python command
 lint:
@@ -171,7 +171,7 @@ lint:
 	@exit_code=0; \
 	(cd backend && $(PYTHON_CMD) -m flake8 app/) || exit_code=$$?; \
 	(cd backend && $(PYTHON_CMD) -m mypy app/ --ignore-missing-imports) || exit_code=$$?; \
-	(cd frontend && $(PYTHON_CMD) -m flake8 app/) || exit_code=$$?; \
+	(docker-compose run frontend flake8 app/) || exit_code=$$?; \
 	exit $$exit_code
 
 lint-backend:
@@ -182,15 +182,15 @@ lint-backend:
 	exit $$exit_code
 
 lint-frontend:
-	@echo "Running frontend code quality checks..."
-	cd frontend && $(PYTHON_CMD) -m flake8 app/
+	@echo "Running frontend code quality checks via Docker..."
+	docker-compose run frontend flake8 app/
 
 format:
 	@echo "Formatting code..."
 	cd backend && $(PYTHON_CMD) -m black app/ tests/
 	cd backend && $(PYTHON_CMD) -m isort app/ tests/
-	cd frontend && $(PYTHON_CMD) -m black app/ tests/
-	cd frontend && $(PYTHON_CMD) -m isort app/ tests/
+	docker-compose run frontend black app/ tests/
+	docker-compose run frontend isort app/ tests/
 
 # Cleanup
 clean:
@@ -202,6 +202,15 @@ clean:
 	find . -type d -name "htmlcov" -exec rm -rf {} +
 	find . -name ".coverage" -delete
 	find . -name "coverage.xml" -delete
+
+# Clean venv only
+clean-venv:
+	@echo "Removing virtual environments..."
+	rm -rf $(VENV_DIR)
+
+# Clean everything (including venv)
+clean-all: clean clean-venv
+	@echo "Complete cleanup finished."
 
 # Docker commands
 docker-build:
@@ -299,11 +308,6 @@ restore:
 	docker cp ./backups/$(BACKUP) ai-text-processor-redis:/data/dump.rdb
 	docker-compose restart redis
 
-# Clean including venv
-clean-all: clean
-	@echo "Removing virtual environment..."
-	rm -rf $(VENV_DIR)
-
 # Documentation generation with repomix
 repomix:
 	@echo "Generating full repository documentation..."
@@ -334,21 +338,19 @@ repomix-docs:
 	@echo "Generating documentation for READMEs and docs/ subdirectory..."
 	npx repomix --include "**/README.md,docs/**/*" --output repomix-output_docs.md
 
- ## Generate lock files from requirements
-lock-deps:
-	@echo "Generating lock files..."
-	cd backend && pip-compile requirements.txt --output-file requirements.lock
-	cd backend && pip-compile requirements-dev.txt --output-file requirements-dev.lock
-	cd frontend && pip-compile requirements.txt --output-file requirements.lock
-	cd frontend && pip-compile requirements-dev.txt --output-file requirements-dev.lock
+ ## Generate lock files from requirements (backend only - frontend uses Docker)
+lock-deps: venv
+	@echo "Generating backend lock files..."
+	cd backend && $(PYTHON_CMD) -m piptools compile requirements.txt --output-file requirements.lock
+	cd backend && $(PYTHON_CMD) -m piptools compile requirements-dev.txt --output-file requirements-dev.lock
+	@echo "Note: Frontend dependencies are managed via Docker"
 
- ## Update dependencies and regenerate lock files
-update-deps:
-	@echo "Updating dependencies..."
-	cd backend && pip-compile --upgrade requirements.txt --output-file requirements.lock
-	cd backend && pip-compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
-	cd frontend && pip-compile --upgrade requirements.txt --output-file requirements.lock
-	cd frontend && pip-compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
+ ## Update dependencies and regenerate lock files (backend only - frontend uses Docker)
+update-deps: venv
+	@echo "Updating backend dependencies..."
+	cd backend && $(PYTHON_CMD) -m piptools compile --upgrade requirements.txt --output-file requirements.lock
+	cd backend && $(PYTHON_CMD) -m piptools compile --upgrade requirements-dev.txt --output-file requirements-dev.lock
+	@echo "Note: Frontend dependencies are managed via Docker"
 
 # Resilience preset management commands
 list-presets:

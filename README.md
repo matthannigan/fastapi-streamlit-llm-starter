@@ -645,3 +645,51 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [AUTHENTICATION.md](docs/AUTHENTICATION.md) - Authentication setup
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [CONTRIBUTING.md](docs/CONTRIBUTING.md) - How to contribute
+
+## Development Setup (Updated)
+
+This project uses a **hybrid approach** to resolve dependency conflicts:
+
+- **Backend**: Uses a local virtual environment for fast development
+- **Frontend**: Runs exclusively in Docker to avoid packaging version conflicts
+
+### Quick Start
+
+1. **Install backend dependencies:**
+   ```bash
+   make install
+   ```
+   This creates a `.venv` virtual environment and installs all backend dependencies.
+
+2. **Run backend locally:**
+   ```bash
+   # Activate the virtual environment
+   source .venv/bin/activate
+   
+   # Start the FastAPI server
+   cd backend && uvicorn app.main:app --reload
+   ```
+
+3. **Run frontend via Docker:**
+   ```bash
+   # Start frontend and dependencies
+   docker-compose up frontend
+   ```
+
+### Testing
+
+- **Backend tests:** `make test-backend` (uses local virtual environment)
+- **Frontend tests:** `make test-frontend` (uses Docker)
+- **All tests:** `make test` (backend local, frontend Docker)
+
+### Development Workflow
+
+- **Backend development:** Use your local virtual environment with your favorite IDE
+- **Frontend development:** Edit files locally, run via Docker for testing
+- **Full stack testing:** Use Docker Compose for integration testing
+
+This approach provides:
+- ✅ Fast backend development with local virtual environment
+- ✅ No dependency conflicts (frontend isolated in Docker)
+- ✅ Consistent frontend environment across all machines
+- ✅ Easy deployment (both services already containerized)
