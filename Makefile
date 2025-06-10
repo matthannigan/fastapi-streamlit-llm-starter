@@ -95,6 +95,7 @@ venv:
 install: venv
 	@echo "Installing backend dependencies..."
 	cd backend && source ../$(VENV_DIR)/bin/activate && pip install -r requirements.lock -r requirements-dev.lock
+	@echo "To activate to venv use: source $(VENV_DIR)/bin/activate"
 
 install-frontend:
 	@echo "Frontend runs via Docker - no local installation needed"
