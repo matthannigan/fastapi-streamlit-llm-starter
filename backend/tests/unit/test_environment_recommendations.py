@@ -156,7 +156,8 @@ class TestEnvironmentRecommendations:
             assert "development indicators detected" in recommendation.reasoning.lower()
     
     @patch('os.getenv')
-    def test_auto_detection_production_indicators(self, mock_getenv):
+    @patch('os.path.exists')
+    def test_auto_detection_production_indicators(self, mock_exists, mock_getenv):
         """Test auto-detection using production indicators."""
         manager = PresetManager()
         
@@ -167,6 +168,9 @@ class TestEnvironmentRecommendations:
             'DATABASE_URL': 'postgres://production-db:5432/app',
             'NODE_ENV': None
         }.get(var, default)
+        
+        # Mock file existence to avoid dev indicators
+        mock_exists.return_value = False
         
         recommendation = manager.recommend_preset_with_details(None)
         

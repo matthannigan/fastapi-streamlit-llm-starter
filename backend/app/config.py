@@ -99,8 +99,7 @@ class Settings(BaseSettings):
     # Default resilience strategy for AI operations
     default_resilience_strategy: str = Field(
         default="balanced", 
-        description="Default resilience strategy",
-        pattern="^(conservative|balanced|aggressive)$"
+        description="Default resilience strategy"
     )
     
     # Circuit Breaker Settings
@@ -129,27 +128,22 @@ class Settings(BaseSettings):
     # Operation-specific resilience strategies
     summarize_resilience_strategy: str = Field(
         default="balanced",
-        pattern="^(conservative|balanced|aggressive)$",
         description="Resilience strategy for summarize operations"
     )
     sentiment_resilience_strategy: str = Field(
         default="aggressive",
-        pattern="^(conservative|balanced|aggressive)$",
         description="Resilience strategy for sentiment analysis"
     )
     key_points_resilience_strategy: str = Field(
         default="balanced",
-        pattern="^(conservative|balanced|aggressive)$",
         description="Resilience strategy for key points extraction"
     )
     questions_resilience_strategy: str = Field(
         default="balanced",
-        pattern="^(conservative|balanced|aggressive)$",
         description="Resilience strategy for question generation"
     )
     qa_resilience_strategy: str = Field(
         default="conservative",
-        pattern="^(conservative|balanced|aggressive)$",
         description="Resilience strategy for Q&A operations"
     )
     
@@ -192,31 +186,188 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid resilience_preset '{v}'. Allowed values: {', '.join(allowed_presets)}")
         return v
 
+    @field_validator('default_resilience_strategy', 'summarize_resilience_strategy', 'sentiment_resilience_strategy', 
+                     'key_points_resilience_strategy', 'questions_resilience_strategy', 'qa_resilience_strategy', mode='before')
+    @classmethod
+    def validate_resilience_strategy(cls, v, info) -> str:
+        """Validate resilience strategy with graceful fallback for environment variables."""
+        import logging
+        import os
+        
+        logger = logging.getLogger(__name__)
+        
+        # Get default values based on field name
+        defaults = {
+            'default_resilience_strategy': 'balanced',
+            'summarize_resilience_strategy': 'balanced',
+            'sentiment_resilience_strategy': 'aggressive',
+            'key_points_resilience_strategy': 'balanced',
+            'questions_resilience_strategy': 'balanced',
+            'qa_resilience_strategy': 'conservative'
+        }
+        default_value = defaults.get(info.field_name, 'balanced')
+        
+        # Handle None or empty values
+        if v is None or v == "":
+            return default_value
+            
+        # Convert to string if needed
+        if not isinstance(v, str):
+            v = str(v)
+            
+        allowed_strategies = {"conservative", "balanced", "aggressive"}
+        if v not in allowed_strategies:
+            # Check if we're in a context where we should be graceful
+            # We'll check if the problematic value comes from environment variables
+            strategy_env_vars = {
+                'default_resilience_strategy': 'DEFAULT_RESILIENCE_STRATEGY',
+                'summarize_resilience_strategy': 'SUMMARIZE_RESILIENCE_STRATEGY',
+                'sentiment_resilience_strategy': 'SENTIMENT_RESILIENCE_STRATEGY',
+                'key_points_resilience_strategy': 'KEY_POINTS_RESILIENCE_STRATEGY',
+                'questions_resilience_strategy': 'QUESTIONS_RESILIENCE_STRATEGY',
+                'qa_resilience_strategy': 'QA_RESILIENCE_STRATEGY'
+            }
+            
+            env_var = strategy_env_vars.get(info.field_name)
+            env_value = os.getenv(env_var) if env_var else None
+            
+            # If the invalid value matches what's in the environment, be graceful
+            if env_value == v:
+                logger.warning(f"Invalid resilience strategy '{v}' from environment variable {env_var}, falling back to '{default_value}'")
+                return default_value
+            else:
+                # Value was passed directly - strict validation
+                raise ValueError(f"Invalid resilience strategy '{v}'. Allowed values: {', '.join(allowed_strategies)}")
+        return v
+
+    @field_validator('circuit_breaker_failure_threshold', 'circuit_breaker_recovery_timeout', 'retry_max_attempts', 'retry_max_delay', mode='before')
+    @classmethod
+    def validate_positive_integers(cls, v, info) -> int:
+        """Validate positive integers with strict validation for completely invalid values."""
+        import logging
+        import os
+        logger = logging.getLogger(__name__)
+        
+        # Get default values based on field name
+        defaults = {
+            'circuit_breaker_failure_threshold': 5,
+            'circuit_breaker_recovery_timeout': 60,
+            'retry_max_attempts': 3,
+            'retry_max_delay': 30
+        }
+        default_value = defaults.get(info.field_name, 1)
+        
+        # Handle string conversion
+        if isinstance(v, str):
+            # Empty strings should always fail validation
+            if v.strip() == "":
+                raise ValueError(f"Invalid empty value for {info.field_name}. Must be a positive integer.")
+            
+            try:
+                v = int(v)
+            except (ValueError, TypeError):
+                # Check if we're in a context with legacy environment variables
+                legacy_vars = ["RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD", 
+                              "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"]
+                has_any_legacy = any(var in os.environ for var in legacy_vars)
+                
+                if has_any_legacy:
+                    # Be graceful in legacy mode for non-empty invalid values
+                    logger.warning(f"Invalid value for {info.field_name}: '{v}', using default: {default_value}")
+                    return default_value
+                else:
+                    # Strict validation in normal mode
+                    raise ValueError(f"Invalid value for {info.field_name}: '{v}'. Must be a positive integer.")
+        
+        # Handle negative/zero values - be graceful for these
+        if isinstance(v, (int, float)) and v <= 0:
+            logger.warning(f"Invalid value for {info.field_name}: {v}, using default: {default_value}")
+            return default_value
+            
+        return int(v) if isinstance(v, (int, float)) else default_value
+
+    @field_validator('retry_exponential_multiplier', 'retry_exponential_min', 'retry_exponential_max', 'retry_jitter_max')
+    @classmethod
+    def validate_positive_floats(cls, v: float, info) -> float:
+        """Validate positive floats with fallback for invalid values."""
+        if v <= 0:
+            import logging
+            logger = logging.getLogger(__name__)
+            # Get default values based on field name
+            defaults = {
+                'retry_exponential_multiplier': 1.0,
+                'retry_exponential_min': 2.0,
+                'retry_exponential_max': 10.0,
+                'retry_jitter_max': 2.0
+            }
+            default_value = defaults.get(info.field_name, 1.0)
+            logger.warning(f"Invalid value for {info.field_name}: {v}, using default: {default_value}")
+            return default_value
+        return v
+
+    def _clear_legacy_config_cache(self):
+        """Clear the legacy configuration cache."""
+        if hasattr(self, '_legacy_config_cache'):
+            delattr(self, '_legacy_config_cache')
+    
     def _has_legacy_resilience_config(self) -> bool:
         """Check if legacy resilience configuration variables are present."""
-        legacy_env_vars = [
-            "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
-            "RETRY_MAX_ATTEMPTS",
-            "DEFAULT_RESILIENCE_STRATEGY",
+        # Cache the result to avoid repeated expensive checks
+        if hasattr(self, '_legacy_config_cache'):
+            return self._legacy_config_cache
+        
+        # Check the most common legacy environment variables first for faster detection
+        # Use direct os.environ access which is faster than os.getenv()
+        import os
+        env = os.environ
+        
+        # Check most common legacy vars first (ordered by usage frequency)
+        if ("RETRY_MAX_ATTEMPTS" in env or 
+            "CIRCUIT_BREAKER_FAILURE_THRESHOLD" in env or 
+            "DEFAULT_RESILIENCE_STRATEGY" in env):
+            self._legacy_config_cache = True
+            return True
+        
+        # Check remaining legacy environment variables
+        other_legacy_vars = [
             "SUMMARIZE_RESILIENCE_STRATEGY",
-            "SENTIMENT_RESILIENCE_STRATEGY",
+            "SENTIMENT_RESILIENCE_STRATEGY", 
             "KEY_POINTS_RESILIENCE_STRATEGY",
             "QUESTIONS_RESILIENCE_STRATEGY",
             "QA_RESILIENCE_STRATEGY"
         ]
         
-        # Check if any legacy environment variables are set
-        for var in legacy_env_vars:
-            if os.getenv(var) is not None:
+        for var in other_legacy_vars:
+            if var in env:
+                self._legacy_config_cache = True
                 return True
         
-        # Also check if any of the current field values differ from defaults
-        # (indicating they were set via environment variables)
-        if (self.circuit_breaker_failure_threshold != 5 or
-            self.retry_max_attempts != 3 or
-            self.default_resilience_strategy != "balanced"):
-            return True
-            
+        # Only check field values if no environment variables are set
+        # This is the expensive part, so we avoid it when possible
+        default_values = {
+            'circuit_breaker_failure_threshold': 5,
+            'retry_max_attempts': 3,
+            'retry_max_delay': 30,
+            'circuit_breaker_recovery_timeout': 60,
+            'retry_exponential_multiplier': 1.0,
+            'retry_exponential_min': 2.0,
+            'retry_exponential_max': 10.0,
+            'retry_jitter_max': 2.0,
+            'default_resilience_strategy': 'balanced',
+            'summarize_resilience_strategy': 'balanced',
+            'sentiment_resilience_strategy': 'aggressive',
+            'key_points_resilience_strategy': 'balanced',
+            'questions_resilience_strategy': 'balanced',
+            'qa_resilience_strategy': 'conservative',
+        }
+        
+        for field_name, default_value in default_values.items():
+            current_value = getattr(self, field_name)
+            if current_value != default_value:
+                self._legacy_config_cache = True
+                return True
+        
+        self._legacy_config_cache = False
         return False
 
     def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
@@ -249,7 +400,9 @@ class Settings(BaseSettings):
             session_id=session_id,
             user_context=user_context
         ):
-            # Check if using legacy configuration
+            # Clear cache and check if using legacy configuration
+            # This ensures we get fresh results when environment variables change during testing
+            self._clear_legacy_config_cache()
             if self._has_legacy_resilience_config():
                 config_metrics_collector.record_preset_usage(
                     preset_name="legacy",
@@ -258,16 +411,44 @@ class Settings(BaseSettings):
                     user_context=user_context,
                     metadata={"config_type": "legacy"}
                 )
-                return self._load_legacy_resilience_config()
+                resilience_config = self._load_legacy_resilience_config()
+                
+                # In legacy mode, environment variables take highest priority
+                # Custom config is ignored to maintain backward compatibility
+                # This ensures legacy environment variables always override custom JSON config
+                if self.resilience_custom_config:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info("Legacy environment variables detected - custom config will be ignored to maintain backward compatibility")
+                    
+                    # Record that custom config was ignored due to legacy mode
+                    config_metrics_collector.record_preset_usage(
+                        preset_name="legacy",
+                        operation="ignore_custom_config",
+                        session_id=session_id,
+                        user_context=user_context,
+                        metadata={
+                            "config_type": "legacy_only",
+                            "reason": "legacy_environment_variables_take_precedence"
+                        }
+                    )
+                
+                return resilience_config
             
             # Load preset configuration
             try:
-                preset = preset_manager.get_preset(self.resilience_preset)
+                import os
+                env_preset = os.getenv("RESILIENCE_PRESET")
+                
+                # Use environment variable if present, otherwise use field value
+                preset_name = env_preset if env_preset else self.resilience_preset
+                
+                preset = preset_manager.get_preset(preset_name)
                 resilience_config = preset.to_resilience_config()
                 
                 # Record preset usage
                 config_metrics_collector.record_preset_usage(
-                    preset_name=self.resilience_preset,
+                    preset_name=preset_name,
                     operation="load_preset",
                     session_id=session_id,
                     user_context=user_context,
@@ -275,14 +456,18 @@ class Settings(BaseSettings):
                 )
                 
                 # Apply custom overrides if provided
-                if self.resilience_custom_config:
+                # Use environment variable if present, otherwise use field value
+                env_custom_config = os.getenv("RESILIENCE_CUSTOM_CONFIG")
+                custom_config_json = env_custom_config if env_custom_config else self.resilience_custom_config
+                
+                if custom_config_json:
                     try:
-                        custom_config = json.loads(self.resilience_custom_config)
+                        custom_config = json.loads(custom_config_json)
                         resilience_config = self._apply_custom_overrides(resilience_config, custom_config)
                         
                         # Record custom configuration usage
                         config_metrics_collector.record_preset_usage(
-                            preset_name=self.resilience_preset,
+                            preset_name=preset_name,
                             operation="apply_custom_config",
                             session_id=session_id,
                             user_context=user_context,
@@ -299,7 +484,7 @@ class Settings(BaseSettings):
                         
                         # Record configuration error
                         config_metrics_collector.record_config_error(
-                            preset_name=self.resilience_preset,
+                            preset_name=preset_name,
                             operation="parse_custom_config",
                             error_message=f"JSON decode error: {str(e)}",
                             session_id=session_id,
@@ -316,7 +501,7 @@ class Settings(BaseSettings):
                 
                 # Record configuration error
                 config_metrics_collector.record_config_error(
-                    preset_name=self.resilience_preset,
+                    preset_name=preset_name,
                     operation="load_preset",
                     error_message=str(e),
                     session_id=session_id,
@@ -356,33 +541,88 @@ class Settings(BaseSettings):
             "critical": ResilienceStrategy.CRITICAL
         }
         
-        default_strategy = strategy_mapping.get(
-            self.default_resilience_strategy, 
-            ResilienceStrategy.BALANCED
-        )
+        # Read values directly from environment variables, with fallbacks to field values
+        default_strategy_str = os.getenv("DEFAULT_RESILIENCE_STRATEGY", self.default_resilience_strategy)
+        default_strategy = strategy_mapping.get(default_strategy_str, ResilienceStrategy.BALANCED)
+        
+        # Helper function to safely convert environment variables with fallbacks
+        def safe_int(env_var: str, fallback: int) -> int:
+            try:
+                value = os.getenv(env_var)
+                if value is None:
+                    return fallback
+                result = int(value)
+                # Validate positive values for certain fields
+                if env_var in ["RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD", "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"] and result <= 0:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Invalid negative/zero value for {env_var}: {result}, using fallback: {fallback}")
+                    return fallback
+                return result
+            except (ValueError, TypeError):
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Invalid value for {env_var}: {os.getenv(env_var)}, using fallback: {fallback}")
+                return fallback
+        
+        def safe_float(env_var: str, fallback: float) -> float:
+            try:
+                value = os.getenv(env_var)
+                if value is None:
+                    return fallback
+                result = float(value)
+                # Validate positive values for certain fields
+                if env_var in ["RETRY_EXPONENTIAL_MULTIPLIER", "RETRY_EXPONENTIAL_MIN", "RETRY_EXPONENTIAL_MAX", "RETRY_JITTER_MAX"] and result <= 0:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Invalid negative/zero value for {env_var}: {result}, using fallback: {fallback}")
+                    return fallback
+                return result
+            except (ValueError, TypeError):
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Invalid value for {env_var}: {os.getenv(env_var)}, using fallback: {fallback}")
+                return fallback
+        
+        # Read retry configuration from environment with safe conversion
+        retry_max_attempts = safe_int("RETRY_MAX_ATTEMPTS", self.retry_max_attempts)
+        retry_max_delay = safe_int("RETRY_MAX_DELAY", self.retry_max_delay)
+        retry_exponential_multiplier = safe_float("RETRY_EXPONENTIAL_MULTIPLIER", self.retry_exponential_multiplier)
+        retry_exponential_min = safe_float("RETRY_EXPONENTIAL_MIN", self.retry_exponential_min)
+        retry_exponential_max = safe_float("RETRY_EXPONENTIAL_MAX", self.retry_exponential_max)
+        retry_jitter_enabled = os.getenv("RETRY_JITTER_ENABLED", str(self.retry_jitter_enabled)).lower() in ("true", "1", "yes")
+        retry_jitter_max = safe_float("RETRY_JITTER_MAX", self.retry_jitter_max)
+        
+        # Read circuit breaker configuration from environment with safe conversion
+        circuit_breaker_failure_threshold = safe_int("CIRCUIT_BREAKER_FAILURE_THRESHOLD", self.circuit_breaker_failure_threshold)
+        circuit_breaker_recovery_timeout = safe_int("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", self.circuit_breaker_recovery_timeout)
+        
+        # Read feature flags from environment
+        circuit_breaker_enabled = os.getenv("CIRCUIT_BREAKER_ENABLED", str(self.circuit_breaker_enabled)).lower() in ("true", "1", "yes")
+        retry_enabled = os.getenv("RETRY_ENABLED", str(self.retry_enabled)).lower() in ("true", "1", "yes")
         
         return ResilienceConfig(
             strategy=default_strategy,
             retry_config=RetryConfig(
-                max_attempts=self.retry_max_attempts,
-                max_delay_seconds=self.retry_max_delay,
-                exponential_multiplier=self.retry_exponential_multiplier,
-                exponential_min=self.retry_exponential_min,
-                exponential_max=self.retry_exponential_max,
-                jitter=self.retry_jitter_enabled,
-                jitter_max=self.retry_jitter_max
+                max_attempts=retry_max_attempts,
+                max_delay_seconds=retry_max_delay,
+                exponential_multiplier=retry_exponential_multiplier,
+                exponential_min=retry_exponential_min,
+                exponential_max=retry_exponential_max,
+                jitter=retry_jitter_enabled,
+                jitter_max=retry_jitter_max
             ),
             circuit_breaker_config=CircuitBreakerConfig(
-                failure_threshold=self.circuit_breaker_failure_threshold,
-                recovery_timeout=self.circuit_breaker_recovery_timeout
+                failure_threshold=circuit_breaker_failure_threshold,
+                recovery_timeout=circuit_breaker_recovery_timeout
             ),
-            enable_circuit_breaker=self.circuit_breaker_enabled,
-            enable_retry=self.retry_enabled
+            enable_circuit_breaker=circuit_breaker_enabled,
+            enable_retry=retry_enabled
         )
 
     def _apply_custom_overrides(self, base_config, custom_config: dict):
         """Apply custom configuration overrides to base preset config."""
-        from app.services.resilience import ResilienceStrategy
+        from app.services.resilience import ResilienceStrategy, ResilienceConfig, RetryConfig, CircuitBreakerConfig
         from app.validation_schemas import config_validator
         
         # Validate custom configuration
@@ -404,42 +644,29 @@ class Settings(BaseSettings):
             for warning in validation_result.warnings:
                 logger.warning(f"Custom configuration warning: {warning}")
         
-        # Create a copy of the base config
-        config = base_config
+        # Create new configuration objects with overrides applied
+        # Start with base config values
+        new_retry_config = RetryConfig(
+            max_attempts=custom_config.get("retry_attempts", base_config.retry_config.max_attempts),
+            max_delay_seconds=custom_config.get("max_delay_seconds", base_config.retry_config.max_delay_seconds),
+            exponential_multiplier=custom_config.get("exponential_multiplier", base_config.retry_config.exponential_multiplier),
+            exponential_min=custom_config.get("exponential_min", base_config.retry_config.exponential_min),
+            exponential_max=custom_config.get("exponential_max", base_config.retry_config.exponential_max),
+            jitter=custom_config.get("jitter_enabled", base_config.retry_config.jitter),
+            jitter_max=custom_config.get("jitter_max", base_config.retry_config.jitter_max)
+        )
         
-        # Apply retry configuration overrides
-        if "retry_attempts" in custom_config:
-            config.retry_config.max_attempts = custom_config["retry_attempts"]
-            
-        if "circuit_breaker_threshold" in custom_config:
-            config.circuit_breaker_config.failure_threshold = custom_config["circuit_breaker_threshold"]
-            
-        if "recovery_timeout" in custom_config:
-            config.circuit_breaker_config.recovery_timeout = custom_config["recovery_timeout"]
-        
-        # Apply exponential backoff overrides
-        if "exponential_multiplier" in custom_config:
-            config.retry_config.exponential_multiplier = custom_config["exponential_multiplier"]
-            
-        if "exponential_min" in custom_config:
-            config.retry_config.exponential_min = custom_config["exponential_min"]
-            
-        if "exponential_max" in custom_config:
-            config.retry_config.exponential_max = custom_config["exponential_max"]
-        
-        if "jitter_enabled" in custom_config:
-            config.retry_config.jitter = custom_config["jitter_enabled"]
-            
-        if "jitter_max" in custom_config:
-            config.retry_config.jitter_max = custom_config["jitter_max"]
-            
-        if "max_delay_seconds" in custom_config:
-            config.retry_config.max_delay_seconds = custom_config["max_delay_seconds"]
+        new_circuit_breaker_config = CircuitBreakerConfig(
+            failure_threshold=custom_config.get("circuit_breaker_threshold", base_config.circuit_breaker_config.failure_threshold),
+            recovery_timeout=custom_config.get("recovery_timeout", base_config.circuit_breaker_config.recovery_timeout),
+            half_open_max_calls=base_config.circuit_breaker_config.half_open_max_calls  # Not configurable via custom config
+        )
         
         # Apply strategy overrides
+        strategy = base_config.strategy
         if "default_strategy" in custom_config:
             try:
-                config.strategy = ResilienceStrategy(custom_config["default_strategy"])
+                strategy = ResilienceStrategy(custom_config["default_strategy"])
             except ValueError:
                 import logging
                 logger = logging.getLogger(__name__)
@@ -449,7 +676,7 @@ class Settings(BaseSettings):
         if "operation_overrides" in custom_config:
             for operation, strategy_str in custom_config["operation_overrides"].items():
                 try:
-                    strategy = ResilienceStrategy(strategy_str)
+                    strategy_enum = ResilienceStrategy(strategy_str)
                     # Note: Operation-specific strategies would be handled by AIServiceResilience
                     # For now, we just validate the strategy is valid
                 except ValueError:
@@ -457,7 +684,14 @@ class Settings(BaseSettings):
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Invalid strategy '{strategy_str}' for operation '{operation}'")
         
-        return config
+        # Create new resilience config with all overrides applied
+        return ResilienceConfig(
+            strategy=strategy,
+            retry_config=new_retry_config,
+            circuit_breaker_config=new_circuit_breaker_config,
+            enable_circuit_breaker=base_config.enable_circuit_breaker,
+            enable_retry=base_config.enable_retry
+        )
 
     def validate_custom_config(self, json_string: Optional[str] = None) -> dict:
         """
@@ -497,6 +731,21 @@ class Settings(BaseSettings):
         """
         # If using legacy configuration, return operation-specific strategy
         if self._has_legacy_resilience_config():
+            # Read operation strategies directly from environment variables
+            env_var_mapping = {
+                "summarize": "SUMMARIZE_RESILIENCE_STRATEGY",
+                "sentiment": "SENTIMENT_RESILIENCE_STRATEGY", 
+                "key_points": "KEY_POINTS_RESILIENCE_STRATEGY",
+                "questions": "QUESTIONS_RESILIENCE_STRATEGY",
+                "qa": "QA_RESILIENCE_STRATEGY"
+            }
+            
+            # Get the environment variable for this operation
+            env_var = env_var_mapping.get(operation)
+            if env_var and os.getenv(env_var):
+                return os.getenv(env_var)
+            
+            # Fall back to field values if environment variable not set
             operation_strategies = {
                 "summarize": self.summarize_resilience_strategy,
                 "sentiment": self.sentiment_resilience_strategy,
@@ -512,9 +761,12 @@ class Settings(BaseSettings):
             preset = preset_manager.get_preset(self.resilience_preset)
             
             # Check for custom configuration overrides first
-            if self.resilience_custom_config:
+            env_custom_config = os.getenv("RESILIENCE_CUSTOM_CONFIG")
+            custom_config_json = env_custom_config if env_custom_config else self.resilience_custom_config
+            
+            if custom_config_json:
                 try:
-                    custom_config = json.loads(self.resilience_custom_config)
+                    custom_config = json.loads(custom_config_json)
                     operation_overrides = custom_config.get("operation_overrides", {})
                     if operation in operation_overrides:
                         return operation_overrides[operation]

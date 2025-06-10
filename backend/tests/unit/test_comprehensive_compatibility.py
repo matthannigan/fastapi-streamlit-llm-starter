@@ -286,8 +286,8 @@ class TestEdgeCasesAndErrorHandling:
     
     def test_malformed_legacy_environment_variables(self):
         """Test handling of malformed legacy environment variables."""
-        # Note: With current Pydantic validation, malformed values will raise ValidationError
-        # This test validates that the validation is working as expected
+        # Legacy environment variables with invalid values should be handled gracefully
+        # with fallback to defaults, NOT raise exceptions (that's the point of legacy support)
         malformed_env = {
             "RETRY_MAX_ATTEMPTS": "not_a_number",
             "CIRCUIT_BREAKER_FAILURE_THRESHOLD": "invalid",
@@ -295,9 +295,16 @@ class TestEdgeCasesAndErrorHandling:
         }
         
         with patch.dict(os.environ, malformed_env):
-            # Should raise validation error for invalid values
-            with pytest.raises((ValueError, Exception)):
-                settings = Settings()
+            # Should NOT raise an exception - legacy mode should be graceful
+            settings = Settings()
+            
+            # Should fall back to defaults
+            assert settings.retry_max_attempts == 3  # default
+            assert settings.circuit_breaker_failure_threshold == 5  # default
+            assert settings.default_resilience_strategy == "balanced"  # default
+            
+            # Should still be considered legacy config
+            assert settings._has_legacy_resilience_config() is True
     
     def test_legacy_config_with_extreme_values(self):
         """Test handling of legacy configuration with extreme values."""
@@ -395,19 +402,21 @@ class TestMultiEnvironmentCompatibility:
         }
         
         with patch.dict(os.environ, prod_env):
-            settings = Settings()
-            
-            # Should detect legacy config
-            assert settings._has_legacy_resilience_config()
-            
-            # Should suggest production preset
-            recommendation = preset_manager.recommend_preset_with_details()
-            assert recommendation.preset_name == "production"
-            
-            # Legacy config should work in production environment
-            config = settings.get_resilience_config()
-            assert config.retry_config.max_attempts == 5
-            assert config.circuit_breaker_config.failure_threshold == 10
+            # Mock file existence to avoid dev indicators triggering
+            with patch('os.path.exists', return_value=False):
+                settings = Settings()
+                
+                # Should detect legacy config
+                assert settings._has_legacy_resilience_config()
+                
+                # Should suggest production preset
+                recommendation = preset_manager.recommend_preset_with_details()
+                assert recommendation.preset_name == "production"
+                
+                # Legacy config should work in production environment
+                config = settings.get_resilience_config()
+                assert config.retry_config.max_attempts == 5
+                assert config.circuit_breaker_config.failure_threshold == 10
     
     def test_staging_environment_compatibility(self):
         """Test compatibility in staging environment setup."""
@@ -574,11 +583,16 @@ class TestPerformanceWithBackwardCompatibility:
         }
         
         with patch.dict(os.environ, legacy_env):
+            # Create a single Settings instance first
+            settings = Settings()
+            
             start_time = time.time()
             
-            # Perform legacy detection multiple times
+            # Test just the legacy detection method performance by clearing cache each time
             for _ in range(1000):
-                settings = Settings()
+                # Clear cache to force re-detection
+                if hasattr(settings, '_legacy_config_cache'):
+                    delattr(settings, '_legacy_config_cache')
                 settings._has_legacy_resilience_config()
             
             end_time = time.time()

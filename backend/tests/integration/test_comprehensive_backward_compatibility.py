@@ -28,7 +28,12 @@ class TestEndToEndBackwardCompatibility:
         """Create test client."""
         return TestClient(app)
     
-    def test_legacy_environment_api_functionality(self, client):
+    @pytest.fixture
+    def auth_headers(self):
+        """Headers with authentication for protected endpoints."""
+        return {"Authorization": "Bearer test-api-key-12345"}
+    
+    def test_legacy_environment_api_functionality(self, client, auth_headers):
         """Test that API functions correctly with legacy environment configuration."""
         legacy_env = {
             "RETRY_MAX_ATTEMPTS": "4",
@@ -39,8 +44,13 @@ class TestEndToEndBackwardCompatibility:
         }
         
         with patch.dict(os.environ, legacy_env):
+            # Clear the legacy config cache so it re-evaluates with new environment variables
+            from app.config import settings
+            if hasattr(settings, '_legacy_config_cache'):
+                delattr(settings, '_legacy_config_cache')
+            
             # Test resilience configuration endpoint
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config_data = response.json()
@@ -52,17 +62,41 @@ class TestEndToEndBackwardCompatibility:
             assert config_data["operation_strategies"]["summarize"] == "conservative"
             assert config_data["operation_strategies"]["sentiment"] == "aggressive"
     
-    def test_preset_environment_api_functionality(self, client):
+    def test_preset_environment_api_functionality(self, client, auth_headers):
         """Test that API functions correctly with preset configuration."""
         preset_env = {
             "RESILIENCE_PRESET": "production"
         }
         
-        with patch.dict(os.environ, preset_env):
-            response = client.get("/resilience/config")
+        # Clear any legacy variables that might interfere
+        legacy_vars_to_clear = [
+            "RETRY_MAX_ATTEMPTS", 
+            "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+            "DEFAULT_RESILIENCE_STRATEGY",
+            "SUMMARIZE_RESILIENCE_STRATEGY",
+            "SENTIMENT_RESILIENCE_STRATEGY",
+            "KEY_POINTS_RESILIENCE_STRATEGY",
+            "QUESTIONS_RESILIENCE_STRATEGY",
+            "QA_RESILIENCE_STRATEGY"
+        ]
+        
+        with patch.dict(os.environ, preset_env, clear=False):
+            # Clear legacy variables specifically
+            for var in legacy_vars_to_clear:
+                if var in os.environ:
+                    del os.environ[var]
+            
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config_data = response.json()
+            
+            # Debug output (can be removed in production)
+            # print(f"DEBUG: config_data = {config_data}")
+            # print(f"DEBUG: is_legacy_config = {config_data.get('is_legacy_config')}")
+            # print(f"DEBUG: preset_name = {config_data.get('preset_name')}")
+            # print(f"DEBUG: retry_attempts = {config_data['configuration']['retry_attempts']}")
+            
             assert config_data["is_legacy_config"] is False
             assert config_data["preset_name"] == "production"
             
@@ -70,7 +104,7 @@ class TestEndToEndBackwardCompatibility:
             assert config_data["configuration"]["retry_attempts"] == production_preset.retry_attempts
             assert config_data["configuration"]["circuit_breaker_threshold"] == production_preset.circuit_breaker_threshold
     
-    def test_mixed_configuration_api_functionality(self, client):
+    def test_mixed_configuration_api_functionality(self, client, auth_headers):
         """Test API functionality with mixed legacy and preset configuration."""
         mixed_env = {
             "RESILIENCE_PRESET": "development",  # Should be ignored
@@ -79,7 +113,7 @@ class TestEndToEndBackwardCompatibility:
         }
         
         with patch.dict(os.environ, mixed_env):
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config_data = response.json()
@@ -88,7 +122,7 @@ class TestEndToEndBackwardCompatibility:
             assert config_data["configuration"]["retry_attempts"] == 6
             assert config_data["configuration"]["circuit_breaker_threshold"] == 9
     
-    def test_configuration_validation_api_backward_compatibility(self, client):
+    def test_configuration_validation_api_backward_compatibility(self, client, auth_headers):
         """Test configuration validation API with backward compatibility."""
         # Test validation of legacy-like configuration
         legacy_style_config = {
@@ -99,7 +133,8 @@ class TestEndToEndBackwardCompatibility:
         
         response = client.post(
             "/resilience/validate",
-            json={"configuration": legacy_style_config}
+            json={"configuration": legacy_style_config},
+            headers=auth_headers
         )
         assert response.status_code == 200
         
@@ -120,14 +155,15 @@ class TestEndToEndBackwardCompatibility:
         
         response = client.post(
             "/resilience/validate",
-            json={"configuration": advanced_config}
+            json={"configuration": advanced_config},
+            headers=auth_headers
         )
         assert response.status_code == 200
         
         validation_result = response.json()
         assert validation_result["is_valid"] is True
     
-    def test_preset_recommendation_with_legacy_context(self, client):
+    def test_preset_recommendation_with_legacy_context(self, client, auth_headers):
         """Test preset recommendations work with legacy configuration context."""
         legacy_env = {
             "RETRY_MAX_ATTEMPTS": "2",
@@ -137,7 +173,7 @@ class TestEndToEndBackwardCompatibility:
         
         with patch.dict(os.environ, legacy_env):
             # Test auto-recommendation
-            response = client.get("/resilience/recommend-auto")
+            response = client.get("/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -145,7 +181,7 @@ class TestEndToEndBackwardCompatibility:
             assert recommendation["recommended_preset"] == "development"
             
             # Test manual environment recommendation
-            response = client.get("/resilience/recommend/development")
+            response = client.get("/resilience/recommend/development", headers=auth_headers)
             assert response.status_code == 200
             
             manual_recommendation = response.json()
@@ -160,7 +196,23 @@ class TestMigrationWorkflowIntegration:
         """Create test client."""
         return TestClient(app)
     
-    def test_complete_migration_workflow(self, client):
+    @pytest.fixture
+    def auth_headers(self):
+        """Headers with authentication for protected endpoints."""
+        return {"Authorization": "Bearer test-api-key-12345"}
+    
+    def _preserve_essential_env_vars(self, env_dict):
+        """Preserve essential environment variables when clearing environment."""
+        import os
+        preserved_vars = {}
+        for key in ["API_KEY", "ADDITIONAL_API_KEYS", "GEMINI_API_KEY", "PYTEST_CURRENT_TEST"]:
+            if key in os.environ:
+                preserved_vars[key] = os.environ[key]
+        
+        env_dict.update(preserved_vars)
+        return env_dict
+    
+    def test_complete_migration_workflow(self, client, auth_headers):
         """Test complete migration workflow from legacy to preset configuration."""
         # Phase 1: Start with legacy configuration
         initial_legacy_env = {
@@ -174,14 +226,14 @@ class TestMigrationWorkflowIntegration:
         
         with patch.dict(os.environ, initial_legacy_env):
             # Step 1: Analyze current configuration
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             current_config = response.json()
             assert current_config["is_legacy_config"] is True
             
             # Step 2: Get migration recommendation
-            response = client.get("/resilience/recommend-auto")
+            response = client.get("/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -202,7 +254,8 @@ class TestMigrationWorkflowIntegration:
             # Step 4: Validate migration configuration
             response = client.post(
                 "/resilience/validate",
-                json={"configuration": migration_config}
+                json={"configuration": migration_config},
+                headers=auth_headers
             )
             assert response.status_code == 200
             
@@ -215,9 +268,11 @@ class TestMigrationWorkflowIntegration:
             "RESILIENCE_CUSTOM_CONFIG": json.dumps(migration_config)
         }
         
+        migration_env = self._preserve_essential_env_vars(migration_env)
+        
         with patch.dict(os.environ, migration_env, clear=True):
             # Verify migrated configuration works
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             migrated_config = response.json()
@@ -229,7 +284,7 @@ class TestMigrationWorkflowIntegration:
             assert migrated_config["configuration"]["circuit_breaker_threshold"] == migration_config["circuit_breaker_threshold"]
             assert migrated_config["operation_strategies"]["summarize"] == migration_config["operation_overrides"]["summarize"]
     
-    def test_gradual_migration_with_rollback(self, client):
+    def test_gradual_migration_with_rollback(self, client, auth_headers):
         """Test gradual migration with rollback capability."""
         # Original legacy configuration
         original_legacy = {
@@ -240,14 +295,15 @@ class TestMigrationWorkflowIntegration:
         
         # Phase 1: Baseline with legacy
         with patch.dict(os.environ, original_legacy):
-            baseline_response = client.get("/resilience/config")
+            baseline_response = client.get("/resilience/config", headers=auth_headers)
             baseline_config = baseline_response.json()
         
         # Phase 2: Migrate to preset
         preset_env = {"RESILIENCE_PRESET": "simple"}
+        preset_env = self._preserve_essential_env_vars(preset_env)
         
         with patch.dict(os.environ, preset_env, clear=True):
-            preset_response = client.get("/resilience/config")
+            preset_response = client.get("/resilience/config", headers=auth_headers)
             preset_config = preset_response.json()
             
             # Verify preset configuration
@@ -255,8 +311,9 @@ class TestMigrationWorkflowIntegration:
             assert preset_config["preset_name"] == "simple"
         
         # Phase 3: Rollback to legacy (simulate rollback scenario)
-        with patch.dict(os.environ, original_legacy, clear=True):
-            rollback_response = client.get("/resilience/config")
+        rollback_env = self._preserve_essential_env_vars(original_legacy.copy())
+        with patch.dict(os.environ, rollback_env, clear=True):
+            rollback_response = client.get("/resilience/config", headers=auth_headers)
             rollback_config = rollback_response.json()
             
             # Should match original baseline
@@ -264,7 +321,7 @@ class TestMigrationWorkflowIntegration:
             assert rollback_config["configuration"]["retry_attempts"] == baseline_config["configuration"]["retry_attempts"]
             assert rollback_config["configuration"]["circuit_breaker_threshold"] == baseline_config["configuration"]["circuit_breaker_threshold"]
     
-    def test_zero_downtime_migration_simulation(self, client):
+    def test_zero_downtime_migration_simulation(self, client, auth_headers):
         """Test zero-downtime migration simulation."""
         # Simulate a zero-downtime migration by testing configuration
         # changes without service restart
@@ -281,7 +338,7 @@ class TestMigrationWorkflowIntegration:
             assert response.status_code == 200
             
             # Test resilience endpoints
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             legacy_config = response.json()
@@ -289,6 +346,7 @@ class TestMigrationWorkflowIntegration:
         
         # Phase 2: Switch to preset (simulating hot reload)
         preset_env = {"RESILIENCE_PRESET": "production"}
+        preset_env = self._preserve_essential_env_vars(preset_env)
         
         with patch.dict(os.environ, preset_env, clear=True):
             # API should still be available
@@ -296,7 +354,7 @@ class TestMigrationWorkflowIntegration:
             assert response.status_code == 200
             
             # Configuration should update
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             preset_config = response.json()
@@ -312,7 +370,23 @@ class TestRealWorldScenarioIntegration:
         """Create test client."""
         return TestClient(app)
     
-    def test_kubernetes_deployment_scenario(self, client):
+    @pytest.fixture
+    def auth_headers(self):
+        """Headers with authentication for protected endpoints."""
+        return {"Authorization": "Bearer test-api-key-12345"}
+    
+    def _preserve_essential_env_vars(self, env_dict):
+        """Preserve essential environment variables when clearing environment."""
+        import os
+        preserved_vars = {}
+        for key in ["API_KEY", "ADDITIONAL_API_KEYS", "GEMINI_API_KEY", "PYTEST_CURRENT_TEST"]:
+            if key in os.environ:
+                preserved_vars[key] = os.environ[key]
+        
+        env_dict.update(preserved_vars)
+        return env_dict
+    
+    def test_kubernetes_deployment_scenario(self, client, auth_headers):
         """Test Kubernetes deployment scenario with ConfigMap migration."""
         # Simulate Kubernetes ConfigMap with legacy configuration
         k8s_legacy_config = {
@@ -331,7 +405,7 @@ class TestRealWorldScenarioIntegration:
             assert response.status_code == 200
             
             # Verify configuration loads correctly
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -351,19 +425,20 @@ class TestRealWorldScenarioIntegration:
             })
         }
         
+        k8s_preset_config = self._preserve_essential_env_vars(k8s_preset_config)
         with patch.dict(os.environ, k8s_preset_config, clear=True):
             # Test pod with new configuration
             response = client.get("/health")
             assert response.status_code == 200
             
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
             assert config["is_legacy_config"] is False
             assert config["preset_name"] == "production"
     
-    def test_docker_compose_environment_scenario(self, client):
+    def test_docker_compose_environment_scenario(self, client, auth_headers):
         """Test Docker Compose environment scenario."""
         # Simulate Docker Compose environment file with mixed configuration
         docker_env = {
@@ -376,7 +451,7 @@ class TestRealWorldScenarioIntegration:
         }
         
         with patch.dict(os.environ, docker_env):
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -384,7 +459,7 @@ class TestRealWorldScenarioIntegration:
             assert config["is_legacy_config"] is True
             assert config["configuration"]["retry_attempts"] == 6
     
-    def test_cloud_deployment_scenario(self, client):
+    def test_cloud_deployment_scenario(self, client, auth_headers):
         """Test cloud deployment scenario with environment-based configuration."""
         # Simulate cloud deployment with environment detection
         cloud_prod_env = {
@@ -393,10 +468,11 @@ class TestRealWorldScenarioIntegration:
             "DATABASE_URL": "postgres://prod-cluster/db",
             "RESILIENCE_PRESET": "production"
         }
+        cloud_prod_env = self._preserve_essential_env_vars(cloud_prod_env)
         
-        with patch.dict(os.environ, cloud_prod_env):
+        with patch.dict(os.environ, cloud_prod_env, clear=True):
             # Test environment detection
-            response = client.get("/resilience/recommend-auto")
+            response = client.get("/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -404,13 +480,13 @@ class TestRealWorldScenarioIntegration:
             assert recommendation["environment_detected"] == "production (auto-detected)"
             
             # Test configuration
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
             assert config["preset_name"] == "production"
     
-    def test_development_environment_scenario(self, client):
+    def test_development_environment_scenario(self, client, auth_headers):
         """Test development environment scenario."""
         dev_env = {
             "DEBUG": "true",
@@ -418,10 +494,11 @@ class TestRealWorldScenarioIntegration:
             "HOST": "localhost:8000",
             "RESILIENCE_PRESET": "development"
         }
+        dev_env = self._preserve_essential_env_vars(dev_env)
         
-        with patch.dict(os.environ, dev_env):
+        with patch.dict(os.environ, dev_env, clear=True):
             # Test auto-detection
-            response = client.get("/resilience/recommend-auto")
+            response = client.get("/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -429,7 +506,7 @@ class TestRealWorldScenarioIntegration:
             assert "development" in recommendation["environment_detected"].lower()
             
             # Development preset should be optimized for fast feedback
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -446,7 +523,12 @@ class TestCompatibilityWithExternalSystems:
         """Create test client."""
         return TestClient(app)
     
-    def test_monitoring_system_compatibility(self, client):
+    @pytest.fixture
+    def auth_headers(self):
+        """Headers with authentication for protected endpoints."""
+        return {"Authorization": "Bearer test-api-key-12345"}
+    
+    def test_monitoring_system_compatibility(self, client, auth_headers):
         """Test compatibility with monitoring systems that depend on configuration."""
         # Simulate monitoring system checking configuration
         legacy_env = {
@@ -457,11 +539,11 @@ class TestCompatibilityWithExternalSystems:
         
         with patch.dict(os.environ, legacy_env):
             # Test metrics endpoint availability
-            response = client.get("/resilience/metrics")
+            response = client.get("/resilience/metrics", headers=auth_headers)
             assert response.status_code == 200
             
             # Test configuration export for monitoring
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -474,10 +556,10 @@ class TestCompatibilityWithExternalSystems:
             # Monitoring system should be able to extract retry attempts
             assert config["configuration"]["retry_attempts"] == 4
     
-    def test_configuration_management_system_compatibility(self, client):
+    def test_configuration_management_system_compatibility(self, client, auth_headers):
         """Test compatibility with configuration management systems."""
         # Test template-based configuration for config management systems
-        response = client.get("/resilience/templates")
+        response = client.get("/resilience/templates", headers=auth_headers)
         assert response.status_code == 200
         
         templates = response.json()
@@ -491,13 +573,13 @@ class TestCompatibilityWithExternalSystems:
             }
         }
         
-        response = client.post("/resilience/validate-template", json=template_config)
+        response = client.post("/resilience/validate-template", json=template_config, headers=auth_headers)
         assert response.status_code == 200
         
         validation_result = response.json()
         assert validation_result["is_valid"] is True
     
-    def test_api_versioning_compatibility(self, client):
+    def test_api_versioning_compatibility(self, client, auth_headers):
         """Test API versioning compatibility for backward compatibility."""
         # Test that old API endpoints still work
         legacy_env = {
@@ -507,7 +589,7 @@ class TestCompatibilityWithExternalSystems:
         
         with patch.dict(os.environ, legacy_env):
             # Test legacy-style configuration endpoint
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -520,13 +602,13 @@ class TestCompatibilityWithExternalSystems:
             assert "preset_name" in config
             assert "is_legacy_config" in config
     
-    def test_configuration_export_import_compatibility(self, client):
+    def test_configuration_export_import_compatibility(self, client, auth_headers):
         """Test configuration export/import for backup and migration systems."""
         production_env = {"RESILIENCE_PRESET": "production"}
         
         with patch.dict(os.environ, production_env):
             # Export current configuration
-            response = client.get("/resilience/config")
+            response = client.get("/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             exported_config = response.json()
@@ -547,7 +629,8 @@ class TestCompatibilityWithExternalSystems:
             # Test validation of reimported configuration
             response = client.post(
                 "/resilience/validate",
-                json={"configuration": reimport_config}
+                json={"configuration": reimport_config},
+                headers=auth_headers
             )
             assert response.status_code == 200
             

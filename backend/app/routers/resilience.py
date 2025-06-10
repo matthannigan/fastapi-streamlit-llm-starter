@@ -10,6 +10,7 @@ Provides endpoints for:
 
 import json
 import logging
+import os
 from typing import Dict, List, Any, Optional
 
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -306,9 +307,12 @@ async def get_current_config(
         
         # Parse custom overrides if present
         custom_overrides = None
-        if app_settings.resilience_custom_config:
+        env_custom_config = os.getenv("RESILIENCE_CUSTOM_CONFIG")
+        custom_config_json = env_custom_config if env_custom_config else app_settings.resilience_custom_config
+        
+        if custom_config_json:
             try:
-                custom_overrides = json.loads(app_settings.resilience_custom_config)
+                custom_overrides = json.loads(custom_config_json)
             except json.JSONDecodeError:
                 logger.warning("Invalid JSON in resilience_custom_config")
         

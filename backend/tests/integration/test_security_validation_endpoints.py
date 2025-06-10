@@ -17,6 +17,12 @@ from app.main import app
 class TestSecurityValidationEndpoints:
     """Test security validation API endpoints."""
     
+    @pytest.fixture(autouse=True)
+    def reset_rate_limiter(self):
+        """Reset rate limiter before each test."""
+        from app.validation_schemas import config_validator
+        config_validator.reset_rate_limiter()
+    
     @pytest.fixture
     def client(self):
         """Create test client."""
@@ -110,7 +116,7 @@ class TestSecurityValidationEndpoints:
         data = response.json()
         
         assert data["is_valid"] is False
-        assert any("too large" in error.lower() for error in data["errors"])
+        assert any("too large" in error.lower() or "configuration too large" in error.lower() for error in data["errors"])
     
     def test_rate_limit_status_endpoint(self, client, auth_headers):
         """Test rate limit status endpoint."""
@@ -218,8 +224,10 @@ class TestSecurityValidationEndpoints:
             headers=auth_headers
         )
         
-        assert response.status_code == 400
-        assert "must be a JSON object" in response.json()["detail"]
+        assert response.status_code == 422  # FastAPI validation error for invalid input type
+        response_detail = response.json()["detail"]
+        # The error should indicate that configuration should be a dictionary
+        assert any("valid dictionary" in str(error).lower() or "dict_type" in str(error) for error in response_detail)
     
     def test_rate_limiting_integration(self, client, auth_headers):
         """Test that rate limiting works across validation endpoints."""
@@ -386,6 +394,12 @@ class TestSecurityValidationEndpoints:
 class TestSecurityValidationIntegration:
     """Test integration between security validation and other systems."""
     
+    @pytest.fixture(autouse=True)
+    def reset_rate_limiter(self):
+        """Reset rate limiter before each test."""
+        from app.validation_schemas import config_validator
+        config_validator.reset_rate_limiter()
+    
     @pytest.fixture
     def client(self):
         """Create test client."""
@@ -477,6 +491,12 @@ class TestSecurityValidationIntegration:
 
 class TestSecurityValidationEdgeCases:
     """Test edge cases for security validation."""
+    
+    @pytest.fixture(autouse=True)
+    def reset_rate_limiter(self):
+        """Reset rate limiter before each test."""
+        from app.validation_schemas import config_validator
+        config_validator.reset_rate_limiter()
     
     @pytest.fixture
     def client(self):

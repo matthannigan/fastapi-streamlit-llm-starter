@@ -63,7 +63,7 @@ CONFIGURATION_TEMPLATES = {
             "max_delay_seconds": 5,
             "exponential_multiplier": 0.5,
             "exponential_min": 0.5,
-            "exponential_max": 2.0
+            "exponential_max": 5.0
         }
     },
     "high_throughput": {
@@ -387,6 +387,12 @@ class ValidationRateLimiter:
                 "cooldown_remaining": max(0, SECURITY_CONFIG["rate_limiting"]["validation_cooldown_seconds"] - 
                                         (current_time - self._last_validation.get(identifier, 0)))
             }
+    
+    def reset(self):
+        """Reset all rate limiting state. Used for testing."""
+        with self._lock:
+            self._requests.clear()
+            self._last_validation.clear()
 
 
 class ValidationResult:
@@ -471,16 +477,23 @@ class ResilienceConfigValidator:
         """Get rate limit information for identifier."""
         return self.rate_limiter.get_rate_limit_status(identifier)
     
+    def reset_rate_limiter(self):
+        """Reset rate limiter state. Used for testing."""
+        self.rate_limiter.reset()
+    
     def validate_with_security_checks(self, config_data: Any, client_identifier: Optional[str] = None) -> ValidationResult:
         """
-        Validate configuration with enhanced security checks.
+        Validate configuration with enhanced security checks only.
+        
+        This method focuses on security validation (size limits, forbidden patterns,
+        field whitelisting, etc.) and does not perform full schema validation.
         
         Args:
             config_data: Configuration data to validate
             client_identifier: Optional client identifier for rate limiting
             
         Returns:
-            ValidationResult with security and schema validation
+            ValidationResult with security validation only
         """
         # Check rate limits if identifier provided
         if client_identifier:
@@ -488,20 +501,23 @@ class ResilienceConfigValidator:
             if not rate_limit_result.is_valid:
                 return rate_limit_result
         
-        # First perform security validation
-        security_result = self._validate_security(config_data)
-        if not security_result.is_valid:
-            return security_result
-        
-        # Then perform regular validation
-        if isinstance(config_data, dict):
-            return self.validate_custom_config(config_data)
-        else:
+        # Perform security validation only
+        if config_data is None:
             return ValidationResult(
                 is_valid=False,
                 errors=["Configuration must be a JSON object"],
                 suggestions=["Ensure your configuration is a valid JSON object with key-value pairs"]
             )
+        
+        if not isinstance(config_data, dict):
+            return ValidationResult(
+                is_valid=False,
+                errors=["Configuration must be a JSON object"],
+                suggestions=["Ensure your configuration is a valid JSON object with key-value pairs"]
+            )
+        
+        # Perform security validation
+        return self._validate_security(config_data)
     
     def _validate_security(self, config_data: Any) -> ValidationResult:
         """

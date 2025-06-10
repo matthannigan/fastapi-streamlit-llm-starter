@@ -54,7 +54,21 @@ class BenchmarkSuite:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert benchmark suite to dictionary."""
-        return asdict(self)
+        # Convert NamedTuple results to dictionaries manually
+        results_dict = []
+        for result in self.results:
+            result_dict = result._asdict()  # NamedTuple has _asdict method
+            results_dict.append(result_dict)
+        
+        return {
+            'name': self.name,
+            'results': results_dict,
+            'total_duration_ms': self.total_duration_ms,
+            'pass_rate': self.pass_rate,
+            'failed_benchmarks': self.failed_benchmarks,
+            'timestamp': self.timestamp,
+            'environment_info': self.environment_info
+        }
     
     def to_json(self) -> str:
         """Convert benchmark suite to JSON string."""

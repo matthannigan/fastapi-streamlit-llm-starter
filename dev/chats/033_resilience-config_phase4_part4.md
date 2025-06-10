@@ -1,3 +1,33 @@
+# Generate a name for the chat
+_Exported on 6/10/2025 at 00:42:52 EDT from Cursor (1.0.0)_
+
+---
+
+**Cursor**
+
+I can see there are several failing tests in the advanced configuration scenarios. Let me analyze the failures and fix them:
+
+Let me continue reading the Settings class to understand how custom configuration is supposed to work:
+
+Now let me read the `_apply_custom_overrides` method to understand how it works:
+
+Now I understand the issue. Looking at the `_apply_custom_overrides` method, I can see that it's supposed to modify the config in place, but there's a problem. The method is modifying the base_config directly, which might not work as expected due to how Python object references work. Let me also check what presets are available:
+
+Now I understand the issue. Looking at the failing tests and the code, the problem is in the `_apply_custom_overrides` method in `config.py`. The method is supposed to modify the configuration object, but it's not working properly because the configuration objects might be immutable or the changes aren't being applied correctly.
+
+Let me also check if there are legacy environment variables being detected in the test:
+
+Now I understand the issues. Based on my analysis, here are the problems and fixes needed:
+
+1. **Custom config override issue**: The `_apply_custom_overrides` method is trying to modify the config object directly but the objects might be immutable. We need to create new objects.
+
+2. **Legacy config detection**: The test might be triggering legacy mode unintentionally, which would ignore custom configs.
+
+3. **Validation error for invalid presets**: The Settings class validates preset names at initialization, preventing testing of fallback behavior.
+
+Let me fix these issues:
+
+```python
 """
 Advanced configuration scenarios and edge case testing.
 
@@ -468,22 +498,17 @@ class TestErrorHandlingAndRecoveryScenarios:
             else:
                 return original_get_preset(preset_name)
         
-        # Override the field validator by creating a subclass that doesn't validate presets
-        class TestSettings(Settings):
-            @classmethod
-            def validate_resilience_preset(cls, v: str) -> str:
-                # Skip validation for testing
-                return v
-        
-        with patch.object(preset_manager, 'get_preset', side_effect=failing_get_preset):
-            # Try invalid preset, should fall back to simple
-            settings = TestSettings(resilience_preset="invalid_preset")
-            config = settings.get_resilience_config()
-            
-            # Should get simple preset configuration
-            assert config is not None
-            simple_preset = PRESETS["simple"]
-            assert config.retry_config.max_attempts == simple_preset.retry_attempts
+        # Override the field validator to allow invalid preset names for testing
+        with patch.object(Settings, 'validate_resilience_preset', lambda cls, v: v):
+            with patch.object(preset_manager, 'get_preset', side_effect=failing_get_preset):
+                # Try invalid preset, should fall back to simple
+                settings = Settings(resilience_preset="invalid_preset")
+                config = settings.get_resilience_config()
+                
+                # Should get simple preset configuration
+                assert config is not None
+                simple_preset = PRESETS["simple"]
+                assert config.retry_config.max_attempts == simple_preset.retry_attempts
     
     def test_partial_configuration_corruption_handling(self):
         """Test handling of partially corrupted configuration."""
@@ -673,3 +698,293 @@ class TestConfigurationMetricsAndMonitoring:
             assert len(configuration_history) == 2
             assert configuration_history[0]["retry_attempts"] != configuration_history[1]["retry_attempts"]
             assert configuration_history[1]["source"] == "custom_override"
+```
+
+Now I need to look at the actual issue with the `_apply_custom_overrides` method. The problem is that it's modifying the config object directly, but the configuration objects might be immutable or the changes aren't being persisted properly. Let me check and fix the method:
+
+I can see the `ResilienceConfig`, `RetryConfig`, and `CircuitBreakerConfig` are defined as regular dataclasses (not frozen), so they should be mutable. The issue is in the `_apply_custom_overrides` method. Let me fix it by creating proper new objects instead of trying to modify in-place:
+
+```python
+    def _apply_custom_overrides(self, base_config, custom_config: dict):
+        """Apply custom configuration overrides to base preset config."""
+        from app.services.resilience import ResilienceStrategy, ResilienceConfig, RetryConfig, CircuitBreakerConfig
+        from app.validation_schemas import config_validator
+        
+        # Validate custom configuration
+        validation_result = config_validator.validate_custom_config(custom_config)
+        if not validation_result.is_valid:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Invalid custom configuration: {validation_result.errors}")
+            # Log warnings but continue
+            for warning in validation_result.warnings:
+                logger.warning(f"Custom configuration warning: {warning}")
+            # Return base config without applying invalid overrides
+            return base_config
+        
+        # Log any warnings
+        if validation_result.warnings:
+            import logging
+            logger = logging.getLogger(__name__)
+            for warning in validation_result.warnings:
+                logger.warning(f"Custom configuration warning: {warning}")
+        
+        # Create new configuration objects with overrides applied
+        # Start with base config values
+        new_retry_config = RetryConfig(
+            max_attempts=custom_config.get("retry_attempts", base_config.retry_config.max_attempts),
+            max_delay_seconds=custom_config.get("max_delay_seconds", base_config.retry_config.max_delay_seconds),
+            exponential_multiplier=custom_config.get("exponential_multiplier", base_config.retry_config.exponential_multiplier),
+            exponential_min=custom_config.get("exponential_min", base_config.retry_config.exponential_min),
+            exponential_max=custom_config.get("exponential_max", base_config.retry_config.exponential_max),
+            jitter=custom_config.get("jitter_enabled", base_config.retry_config.jitter),
+            jitter_max=custom_config.get("jitter_max", base_config.retry_config.jitter_max)
+        )
+        
+        new_circuit_breaker_config = CircuitBreakerConfig(
+            failure_threshold=custom_config.get("circuit_breaker_threshold", base_config.circuit_breaker_config.failure_threshold),
+            recovery_timeout=custom_config.get("recovery_timeout", base_config.circuit_breaker_config.recovery_timeout),
+            half_open_max_calls=base_config.circuit_breaker_config.half_open_max_calls  # Not configurable via custom config
+        )
+        
+        # Apply strategy overrides
+        strategy = base_config.strategy
+        if "default_strategy" in custom_config:
+            try:
+                strategy = ResilienceStrategy(custom_config["default_strategy"])
+            except ValueError:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Invalid default strategy '{custom_config['default_strategy']}', keeping original")
+        
+        # Apply operation-specific strategy overrides
+        if "operation_overrides" in custom_config:
+            for operation, strategy_str in custom_config["operation_overrides"].items():
+                try:
+                    strategy_enum = ResilienceStrategy(strategy_str)
+                    # Note: Operation-specific strategies would be handled by AIServiceResilience
+                    # For now, we just validate the strategy is valid
+                except ValueError:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Invalid strategy '{strategy_str}' for operation '{operation}'")
+        
+        # Create new resilience config with all overrides applied
+        return ResilienceConfig(
+            strategy=strategy,
+            retry_config=new_retry_config,
+            circuit_breaker_config=new_circuit_breaker_config,
+            enable_circuit_breaker=base_config.enable_circuit_breaker,
+            enable_retry=base_config.enable_retry
+        )
+```
+
+Now let's run the tests to see if our fixes resolve the issues:
+
+Good! That test passes now. Let's run the second failing test:
+
+Great! Now let's run the third failing test:
+
+The third test is still failing because my patch for the `validate_resilience_preset` method isn't working correctly. Let me check the test and fix it properly:
+
+The issue is that I need to patch the validator at the class level. Let me check how the validator is implemented and fix the test properly:
+
+```python
+    def test_invalid_preset_fallback_chain(self):
+        """Test fallback chain when preset loading fails."""
+        # Mock preset manager to simulate failures
+        original_get_preset = preset_manager.get_preset
+        
+        def failing_get_preset(preset_name):
+            if preset_name == "invalid_preset":
+                raise ValueError("Unknown preset")
+            elif preset_name == "simple":
+                # Second call should succeed
+                return original_get_preset(preset_name)
+            else:
+                return original_get_preset(preset_name)
+        
+        # Override the field validator to allow invalid preset names for testing
+        with patch.object(Settings, 'validate_resilience_preset', lambda cls, v: v):
+            with patch.object(preset_manager, 'get_preset', side_effect=failing_get_preset):
+                # Try invalid preset, should fall back to simple
+                settings = Settings(resilience_preset="invalid_preset")
+                config = settings.get_resilience_config()
+                
+                # Should get simple preset configuration
+                assert config is not None
+                simple_preset = PRESETS["simple"]
+                assert config.retry_config.max_attempts == simple_preset.retry_attempts
+
+->
+
+    def test_invalid_preset_fallback_chain(self):
+        """Test fallback chain when preset loading fails."""
+        # Mock preset manager to simulate failures
+        original_get_preset = preset_manager.get_preset
+        
+        def failing_get_preset(preset_name):
+            if preset_name == "invalid_preset":
+                raise ValueError("Unknown preset")
+            elif preset_name == "simple":
+                # Second call should succeed
+                return original_get_preset(preset_name)
+            else:
+                return original_get_preset(preset_name)
+        
+        # Override the field validator to allow invalid preset names for testing
+        # We need to patch the actual validator method on the class
+        original_validator = Settings.__pydantic_validators__['resilience_preset']
+        
+        # Create a mock validator that always passes
+        def mock_validator(cls, v):
+            return v
+        
+        # Temporarily replace the validator
+        Settings.__pydantic_validators__['resilience_preset'] = mock_validator
+        
+        try:
+            with patch.object(preset_manager, 'get_preset', side_effect=failing_get_preset):
+                # Try invalid preset, should fall back to simple
+                settings = Settings(resilience_preset="invalid_preset")
+                config = settings.get_resilience_config()
+                
+                # Should get simple preset configuration
+                assert config is not None
+                simple_preset = PRESETS["simple"]
+                assert config.retry_config.max_attempts == simple_preset.retry_attempts
+        finally:
+            # Restore original validator
+            Settings.__pydantic_validators__['resilience_preset'] = original_validator
+```
+
+Actually, that approach might not work with Pydantic v2. Let me try a different approach using model validation context:
+
+```python
+    def test_invalid_preset_fallback_chain(self):
+        """Test fallback chain when preset loading fails."""
+        # Mock preset manager to simulate failures
+        original_get_preset = preset_manager.get_preset
+        
+        def failing_get_preset(preset_name):
+            if preset_name == "invalid_preset":
+                raise ValueError("Unknown preset")
+            elif preset_name == "simple":
+                # Second call should succeed
+                return original_get_preset(preset_name)
+            else:
+                return original_get_preset(preset_name)
+        
+        # Override the field validator to allow invalid preset names for testing
+        # We need to patch the actual validator method on the class
+        original_validator = Settings.__pydantic_validators__['resilience_preset']
+        
+        # Create a mock validator that always passes
+        def mock_validator(cls, v):
+            return v
+        
+        # Temporarily replace the validator
+        Settings.__pydantic_validators__['resilience_preset'] = mock_validator
+        
+        try:
+            with patch.object(preset_manager, 'get_preset', side_effect=failing_get_preset):
+                # Try invalid preset, should fall back to simple
+                settings = Settings(resilience_preset="invalid_preset")
+                config = settings.get_resilience_config()
+                
+                # Should get simple preset configuration
+                assert config is not None
+                simple_preset = PRESETS["simple"]
+                assert config.retry_config.max_attempts == simple_preset.retry_attempts
+        finally:
+            # Restore original validator
+            Settings.__pydantic_validators__['resilience_preset'] = original_validator
+
+->
+
+    def test_invalid_preset_fallback_chain(self):
+        """Test fallback chain when preset loading fails."""
+        # Mock preset manager to simulate failures
+        original_get_preset = preset_manager.get_preset
+        
+        def failing_get_preset(preset_name):
+            if preset_name == "invalid_preset":
+                raise ValueError("Unknown preset")
+            elif preset_name == "simple":
+                # Second call should succeed
+                return original_get_preset(preset_name)
+            else:
+                return original_get_preset(preset_name)
+        
+        # Override the field validator by creating a subclass that doesn't validate presets
+        class TestSettings(Settings):
+            @classmethod
+            def validate_resilience_preset(cls, v: str) -> str:
+                # Skip validation for testing
+                return v
+        
+        with patch.object(preset_manager, 'get_preset', side_effect=failing_get_preset):
+            # Try invalid preset, should fall back to simple
+            settings = TestSettings(resilience_preset="invalid_preset")
+            config = settings.get_resilience_config()
+            
+            # Should get simple preset configuration
+            assert config is not None
+            simple_preset = PRESETS["simple"]
+            assert config.retry_config.max_attempts == simple_preset.retry_attempts
+```
+
+Now let's test this fix:
+
+Excellent! All three tests are now passing. Let's run the entire test file to make sure we haven't broken anything else:
+
+Perfect! All 24 tests in the advanced configuration scenarios file are now passing. Let's also run a broader test to make sure we haven't broken any other tests:
+
+Excellent! All 106 configuration-related tests are passing. Let's also make sure we haven't broken any other resilience tests:
+
+Based on our conversation, here's a comprehensive summary of the work completed:
+
+## Issue Identified
+We tackled three failing tests in `backend/tests/unit/test_advanced_configuration_scenarios.py` related to advanced configuration scenarios:
+
+1. `test_multi_layer_configuration_override` - AssertionError showing retry attempts weren't being overridden (expected 4, got 3)
+2. `test_configuration_inheritance_chain` - Similar retry attempts override failure (expected 7, got 3) 
+3. `test_invalid_preset_fallback_chain` - Pydantic ValidationError preventing testing of invalid preset fallback behavior
+
+## Root Cause Analysis
+Through detailed investigation of the configuration system, we discovered:
+
+- The `_apply_custom_overrides` method in `backend/app/config.py` was attempting to modify configuration objects in-place
+- This approach failed because the method was modifying object references incorrectly
+- Tests were affected by legacy configuration detection interfering with custom config testing
+- Pydantic field validation was preventing testing of invalid preset scenarios
+
+## Technical Details
+The Settings class uses:
+- `resilience_custom_config` field for JSON string overrides
+- `_has_legacy_resilience_config` method that prioritizes legacy environment variables
+- Configuration objects (ResilienceConfig, RetryConfig, CircuitBreakerConfig) as regular dataclasses
+- `get_resilience_config` method that loads presets then applies custom overrides (which weren't working)
+
+## Solution Implemented
+
+### 1. Fixed `_apply_custom_overrides` method
+Completely rewrote to create new configuration objects instead of modifying existing ones:
+- Created new RetryConfig with custom values or base config fallbacks
+- Created new CircuitBreakerConfig with custom values or base config fallbacks  
+- Created new ResilienceConfig with all new sub-objects
+- Ensured custom configuration overrides are actually applied
+
+### 2. Fixed test isolation
+- Added mocking to prevent legacy mode detection
+- Used clean environment contexts to avoid environment variable interference
+- For invalid preset test, created TestSettings subclass that bypasses validation
+
+## Verification Results
+- All 3 originally failing tests now pass
+- All 24 tests in the advanced configuration scenarios file pass
+- All 106 configuration-related tests pass
+- All 134 resilience-related tests pass
+
+The core issue was that custom configuration overrides weren't being applied due to improper object modification approach, combined with test environment interference from legacy configuration detection. The solution ensures configuration customization works correctly while maintaining backward compatibility and test reliability.
+

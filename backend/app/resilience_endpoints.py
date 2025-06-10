@@ -2,6 +2,7 @@
 Additional API endpoints for resilience monitoring and management.
 """
 
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any, Optional, List
 from datetime import datetime
@@ -24,6 +25,10 @@ class BenchmarkRunRequest(BaseModel):
 class ValidationRequest(BaseModel):
     """Request model for configuration validation."""
     configuration: Dict[str, Any]
+
+class SecurityValidationRequest(BaseModel):
+    """Request model for security validation that allows null configurations."""
+    configuration: Optional[Dict[str, Any]]
 
 # Create a router for resilience endpoints
 resilience_router = APIRouter(prefix="/resilience", tags=["resilience"])
@@ -218,9 +223,55 @@ async def get_resilience_config(
     Returns the configuration for all resilience strategies.
     """
     try:
-        config_data = {}
+        from app.config import settings
+        from app.resilience_presets import preset_manager
+        
+        # Clear cache and determine if using legacy configuration
+        # This ensures we get fresh results when environment variables change during testing
+        settings._clear_legacy_config_cache()
+        is_legacy_config = settings._has_legacy_resilience_config()
+        
+        # Get the current preset name (check environment variable first)
+        if is_legacy_config:
+            preset_name = "legacy"
+        else:
+            # Check environment variable first, then fall back to settings field
+            preset_name = os.getenv("RESILIENCE_PRESET", settings.resilience_preset)
+        
+        # Get the actual configuration
+        resilience_config = settings.get_resilience_config()
+        
+        # Get operation strategies dynamically based on current configuration
+        operation_strategies = {}
+        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        for operation in operations:
+            operation_strategies[operation] = settings.get_operation_strategy(operation)
+        
+        # Build the response in the expected format
+        config_data = {
+            "is_legacy_config": is_legacy_config,
+            "preset_name": preset_name,
+            "configuration": {
+                "retry_attempts": resilience_config.retry_config.max_attempts,
+                "circuit_breaker_threshold": resilience_config.circuit_breaker_config.failure_threshold,
+                "recovery_timeout": resilience_config.circuit_breaker_config.recovery_timeout,
+                "default_strategy": resilience_config.strategy.value,
+                "max_delay_seconds": resilience_config.retry_config.max_delay_seconds,
+                "exponential_multiplier": resilience_config.retry_config.exponential_multiplier,
+                "exponential_min": resilience_config.retry_config.exponential_min,
+                "exponential_max": resilience_config.retry_config.exponential_max,
+                "jitter": resilience_config.retry_config.jitter,
+                "jitter_max": resilience_config.retry_config.jitter_max,
+                "enable_circuit_breaker": resilience_config.enable_circuit_breaker,
+                "enable_retry": resilience_config.enable_retry
+            },
+            "operation_strategies": operation_strategies
+        }
+        
+        # Add legacy-specific fields for backward compatibility
+        config_data["strategies"] = {}
         for strategy, config in ai_resilience.configs.items():
-            config_data[strategy.value] = {
+            config_data["strategies"][strategy.value] = {
                 "strategy": config.strategy.value,
                 "retry_config": {
                     "max_attempts": config.retry_config.max_attempts,
@@ -240,14 +291,182 @@ async def get_resilience_config(
                 "enable_retry": config.enable_retry
             }
         
-        return {
-            "strategies": config_data,
-            "operation_strategies": text_processor.resilience_strategies
-        }
+        return config_data
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get resilience config: {str(e)}"
+        )
+
+@resilience_router.post("/validate")
+async def validate_resilience_config(
+    request: ValidationRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Validate a resilience configuration.
+    
+    Returns validation results including errors and warnings.
+    """
+    try:
+        result = config_validator.validate_custom_config(request.configuration)
+        return {
+            "is_valid": result.is_valid,
+            "errors": result.errors,
+            "warnings": result.warnings,
+            "suggestions": result.suggestions
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate configuration: {str(e)}"
+        )
+
+@resilience_router.get("/recommend-auto")
+async def get_auto_recommendation(api_key: str = Depends(verify_api_key)):
+    """
+    Get automatic environment-based preset recommendation.
+    
+    Analyzes environment variables to recommend the best preset.
+    """
+    try:
+        from app.resilience_presets import preset_manager
+        
+        # Simple environment detection logic
+        import os
+        
+        # Check for common environment indicators
+        env_indicators = {
+            "development": ["DEBUG", "DEV", "DEVELOPMENT"],
+            "production": ["PROD", "PRODUCTION", "LIVE"],
+            "staging": ["STAGE", "STAGING", "TEST"]
+        }
+        
+        detected_env = "development"  # Default
+        confidence = 0.5
+        
+        for env_type, indicators in env_indicators.items():
+            for indicator in indicators:
+                if (os.getenv(indicator, "").lower() in ["true", "1", "yes"] or
+                    os.getenv("NODE_ENV", "").lower() == env_type.lower() or
+                    os.getenv("ENVIRONMENT", "").lower() == env_type.lower()):
+                    detected_env = env_type
+                    confidence = 0.9
+                    break
+            if confidence > 0.8:
+                break
+        
+        # Map environment to preset
+        env_to_preset = {
+            "development": "development",
+            "staging": "development", 
+            "production": "production"
+        }
+        
+        recommended_preset = env_to_preset.get(detected_env, "simple")
+        
+        return {
+            "recommended_preset": recommended_preset,
+            "confidence": confidence,
+            "environment_detected": f"{detected_env} (auto-detected)",
+            "reasoning": f"Detected {detected_env} environment based on environment variables"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get auto recommendation: {str(e)}"
+        )
+
+@resilience_router.get("/recommend/{environment}")
+async def get_environment_recommendation(
+    environment: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Get preset recommendation for a specific environment.
+    
+    Args:
+        environment: Target environment (development, staging, production)
+    """
+    try:
+        # Map environment to preset
+        env_to_preset = {
+            "development": "development",
+            "staging": "development",
+            "production": "production",
+            "simple": "simple"
+        }
+        
+        if environment not in env_to_preset:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown environment '{environment}'. Supported: {list(env_to_preset.keys())}"
+            )
+        
+        recommended_preset = env_to_preset[environment]
+        
+        return {
+            "recommended_preset": recommended_preset,
+            "environment": environment,
+            "confidence": 1.0,
+            "reasoning": f"Standard preset recommendation for {environment} environment"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                         detail=f"Failed to get environment recommendation: {str(e)}"
+         )
+
+@resilience_router.get("/templates")
+async def get_configuration_templates(api_key: str = Depends(verify_api_key)):
+    """
+    Get available configuration templates.
+    
+    Returns all predefined configuration templates.
+    """
+    try:
+        templates = config_validator.get_configuration_templates()
+        return templates
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get configuration templates: {str(e)}"
+        )
+
+class TemplateValidationRequest(BaseModel):
+    """Request model for template-based validation."""
+    template_name: str
+    overrides: Dict[str, Any] = {}
+
+@resilience_router.post("/validate-template")
+async def validate_template_config(
+    request: TemplateValidationRequest,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Validate a template-based configuration with overrides.
+    
+    Returns validation results for the template with applied overrides.
+    """
+    try:
+        result = config_validator.validate_template_based_config(
+            request.template_name,
+            request.overrides
+        )
+        return {
+            "is_valid": result.is_valid,
+            "errors": result.errors,
+            "warnings": result.warnings,
+            "suggestions": result.suggestions,
+            "template_name": request.template_name,
+            "overrides": request.overrides
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate template configuration: {str(e)}"
         )
 
 @resilience_router.get("/dashboard")
@@ -902,7 +1121,7 @@ async def get_performance_history(
 
 @resilience_router.post("/validate/security")
 async def validate_configuration_security(
-    request: ValidationRequest,
+    request: SecurityValidationRequest,
     client_ip: str = "unknown",
     api_key: str = Depends(verify_api_key)
 ):
