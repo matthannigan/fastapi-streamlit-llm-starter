@@ -227,60 +227,77 @@ if __name__ == "__main__":
 
 ## 🛠️ Development
 
-### Local Development Setup
+This project uses a **hybrid approach** to resolve dependency conflicts:
 
-**Recommended: Use the enhanced Makefile (with automatic virtual environment management):**
+- **Backend**: Uses a local virtual environment for fast development
+- **Frontend**: Runs exclusively in Docker to avoid packaging version conflicts
+
+### Quick Start
+
+#### Using Makefile (Recommended)
+
+1. **Complete setup:**
+   ```bash
+   make install
+   ```
+   This creates a `.venv` virtual environment and installs all backend dependencies with lock files.
+
+2. **Run backend locally:**
+   ```bash
+   # Activate the virtual environment
+   source .venv/bin/activate
+   
+   # Start the FastAPI server
+   cd backend && uvicorn app.main:app --reload
+   ```
+
+3. **Run frontend via Docker:**
+   ```bash
+   # Start frontend and dependencies
+   docker-compose up frontend
+   ```
+
+#### Using Scripts (Alternative)
+
+The scripts provide the same functionality with enhanced user experience:
+
 ```bash
-# Create virtual environment and install all dependencies
-make install
-
-# Run tests locally (no Docker required)
-make test-local
-
-# Run code quality checks
-make lint
-
-# Format code
-make format
-
-# Clean up when needed
-make clean-all
-```
-
-**Use the provided scripts:**
-```bash
-# Automated setup
+# One-time automated setup (includes Docker validation)
 ./scripts/setup.sh
 
-# Run backend
+# Run backend (handles venv creation/activation automatically)
 ./scripts/run_backend.sh
 
-# Run frontend (new terminal)
+# Run frontend (Docker-only, includes dependency management)
 ./scripts/run_frontend.sh
 ```
 
-**Or setup manually with project-level virtual environment:**
-```bash
-# Create project-level virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+**Script Benefits:**
+- ✅ Automatic virtual environment detection and creation
+- ✅ Lock file support with fallback to requirements.txt
+- ✅ Comprehensive environment validation
+- ✅ Rich feedback and helpful troubleshooting tips
+- ✅ Consistent with Makefile patterns
 
-# Install backend dependencies
-cd backend
-pip install -r requirements.txt -r requirements-dev.txt
+### Development Workflow
 
-# Install frontend dependencies
-cd ../frontend
-pip install -r requirements.txt -r requirements-dev.txt
+- **Backend development:** Use your local virtual environment with your favorite IDE
+- **Frontend development:** Edit files locally, run via Docker for testing
+- **Full stack testing:** Use Docker Compose for integration testing
 
-# Start backend (from project root)
-cd ../backend
-uvicorn app.main:app --reload
+**Enhanced Script Features:**
+- **Smart Setup**: Scripts automatically detect existing environments and dependencies
+- **Lock File Support**: Prioritizes `requirements.lock` files for reproducible installs
+- **Environment Validation**: Comprehensive checks for Python, Docker, and required files
+- **Rich Feedback**: Clear status messages, tips, and troubleshooting guidance
+- **Graceful Handling**: Proper cleanup and error handling throughout
 
-# Start frontend (new terminal, from project root)
-cd frontend
-streamlit run app/app.py
-```
+This approach provides:
+- ✅ Fast backend development with local virtual environment
+- ✅ No dependency conflicts (frontend isolated in Docker)  
+- ✅ Consistent frontend environment across all machines
+- ✅ Easy deployment (both services already containerized)
+- ✅ Production-quality development tooling
 
 ### Project Structure
 
@@ -347,10 +364,10 @@ make test
 # Run local tests only (no Docker required)
 make test-local
 
-# Run backend tests only
+# Run backend tests only (uses local virtual environment)
 make test-backend
 
-# Run frontend tests only
+# Run frontend tests only (uses Docker)
 make test-frontend
 
 # Run with coverage
@@ -645,51 +662,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [AUTHENTICATION.md](docs/AUTHENTICATION.md) - Authentication setup
 - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [CONTRIBUTING.md](docs/CONTRIBUTING.md) - How to contribute
-
-## Development Setup (Updated)
-
-This project uses a **hybrid approach** to resolve dependency conflicts:
-
-- **Backend**: Uses a local virtual environment for fast development
-- **Frontend**: Runs exclusively in Docker to avoid packaging version conflicts
-
-### Quick Start
-
-1. **Install backend dependencies:**
-   ```bash
-   make install
-   ```
-   This creates a `.venv` virtual environment and installs all backend dependencies.
-
-2. **Run backend locally:**
-   ```bash
-   # Activate the virtual environment
-   source .venv/bin/activate
-   
-   # Start the FastAPI server
-   cd backend && uvicorn app.main:app --reload
-   ```
-
-3. **Run frontend via Docker:**
-   ```bash
-   # Start frontend and dependencies
-   docker-compose up frontend
-   ```
-
-### Testing
-
-- **Backend tests:** `make test-backend` (uses local virtual environment)
-- **Frontend tests:** `make test-frontend` (uses Docker)
-- **All tests:** `make test` (backend local, frontend Docker)
-
-### Development Workflow
-
-- **Backend development:** Use your local virtual environment with your favorite IDE
-- **Frontend development:** Edit files locally, run via Docker for testing
-- **Full stack testing:** Use Docker Compose for integration testing
-
-This approach provides:
-- ✅ Fast backend development with local virtual environment
-- ✅ No dependency conflicts (frontend isolated in Docker)
-- ✅ Consistent frontend environment across all machines
-- ✅ Easy deployment (both services already containerized)
