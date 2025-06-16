@@ -1,0 +1,272 @@
+backend/app/
+├── main.py                          # Streamlined FastAPI app setup
+├── dependencies.py                  # Global dependencies
+├── __init__.py
+│
+├── api/                            # API Layer - All FastAPI routes
+│   ├── __init__.py
+│   ├── v1/                         # API versioning
+│   │   ├── __init__.py
+│   │   ├── endpoints/              # Route handlers
+│   │   │   ├── __init__.py
+│   │   │   ├── text_processing.py  # /process, /batch_process
+│   │   │   ├── health.py           # /health, /auth/status
+│   │   │   ├── cache.py            # /cache/* endpoints
+│   │   │   ├── operations.py       # /operations
+│   │   │   └── auth.py             # /auth/* endpoints
+│   │   └── deps/                   # API-specific dependencies
+│   │       ├── __init__.py
+│   │       ├── auth.py             # API key validation
+│   │       ├── rate_limit.py       # Rate limiting
+│   │       └── common.py           # Common dependencies
+│   │
+│   ├── monitoring/                 # Monitoring & Management APIs
+│   │   ├── __init__.py
+│   │   ├── cache.py                # Cache monitoring endpoints
+│   │   ├── resilience.py           # Resilience monitoring endpoints
+│   │   ├── performance.py          # Performance monitoring endpoints
+│   │   └── system.py               # System monitoring endpoints
+│   │
+│   └── admin/                      # Admin APIs
+│       ├── __init__.py
+│       ├── config.py               # Configuration management
+│       └── migration.py            # Migration tools
+│
+├── core/                           # Core Configuration & Settings
+│   ├── __init__.py
+│   ├── config/                     # Configuration management
+│   │   ├── __init__.py
+│   │   ├── base.py                 # Base settings class
+│   │   ├── api.py                  # API-related settings
+│   │   ├── security.py             # Security settings
+│   │   ├── cache.py                # Cache configuration
+│   │   ├── resilience/             # Resilience configuration
+│   │   │   ├── __init__.py
+│   │   │   ├── settings.py         # Resilience settings
+│   │   │   ├── presets.py          # Preset management
+│   │   │   └── legacy.py           # Legacy config handling
+│   │   └── monitoring.py           # Monitoring settings
+│   │
+│   ├── exceptions/                 # Exception hierarchy
+│   │   ├── __init__.py
+│   │   ├── base.py                 # Base exceptions
+│   │   ├── api.py                  # API exceptions
+│   │   └── business.py             # Business logic exceptions
+│   │
+│   ├── middleware/                 # Middleware modules
+│   │   ├── __init__.py
+│   │   ├── cors.py                 # CORS middleware
+│   │   ├── error_handler.py        # Error handling
+│   │   └── logging.py              # Request logging
+│   │
+│   └── security/                   # Security utilities
+│       ├── __init__.py
+│       ├── auth.py                 # Authentication logic
+│       ├── input_sanitization.py   # Input sanitization
+│       └── response_validator.py   # Response validation
+│
+├── services/                       # Business Logic Layer
+│   ├── __init__.py
+│   │
+│   ├── infrastructure/             # Reusable technical services
+│   │   ├── __init__.py
+│   │   │
+│   │   ├── cache/                  # Caching strategies and implementations
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py             # Cache interface 
+│   │   │   ├── redis_cache.py      # Redis implementation
+│   │   │   ├── memory_cache.py     # In-memory cache
+│   │   │   ├── key_generator.py    # Cache key generation
+│   │   │   └── metrics.py          # Cache metrics & monitoring
+│   │   │
+│   │   ├── resilience/             # Fault tolerance patterns
+│   │   │   ├── __init__.py
+│   │   │   ├── circuit_breaker.py  # Circuit breaker logic
+│   │   │   ├── retry.py            # Retry mechanisms
+│   │   │   ├── strategy.py         # Resilience strategies
+│   │   │   ├── metrics.py          # Resilience metrics & monitoring
+│   │   │   └── presets.py          # Preset handling
+│   │   │
+│   │   ├── monitoring/             # Observability and metrics
+│   │   │   ├── __init__.py
+│   │   │   ├── performance.py      # Performance monitoring
+│   │   │   └── health.py           # System health checking
+│   │   │
+│   │   ├── ai/                     # AI provider abstractions
+│   │   │   ├── __init__.py
+│   │   │   ├── client.py           # AI client wrapper
+│   │   │   ├── prompt_builder.py   # Prompt building
+│   │   │   └── providers/          # AI providers (NEW)
+│   │   │       ├── __init__.py
+│   │   │       ├── base.py         # Provider interface
+│   │   │       └── gemini.py       # Gemini implementation
+│   │   │
+│   │   └── validation/              # Complex validation logic
+│   │       ├── __init__.py
+│   │       ├── config_validator.py     # Config validation
+│   │       ├── security_validator.py   # Security validation
+│   │       └── templates.py            # Validation templates
+│   │
+│   └── domain/                      # Business-specific services (project's unique business logic goes here)
+│       ├── __init__.py
+│       │
+│       └── text_processing/         # Example domain service (replaceable)
+│           ├── __init__.py
+│           ├── processor.py         # Main processor
+│           ├── operations/          # Operation implementations
+│           │   ├── __init__.py
+│           │   ├── summarize.py     # Summarization logic
+│           │   ├── sentiment.py     # Sentiment analysis
+│           │   ├── key_points.py    # Key points extraction
+│           │   ├── questions.py     # Question generation
+│           │   └── qa.py            # Q&A logic
+│           └── batch.py             # Batch processing
+│
+├── schemas/                        # Pydantic Models & Validation
+│   ├── __init__.py
+│   ├── requests/                   # Request models
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # Text processing requests
+│   │   ├── resilience.py           # Resilience configuration
+│   │   └── monitoring.py           # Monitoring requests
+│   │
+│   ├── responses/                  # Response models
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # Text processing responses
+│   │   ├── health.py               # System health responses
+│   │   ├── monitoring.py           # Monitoring responses
+│   │   └── admin.py                # Admin responses
+│   │
+│   └── internal/                   # Internal models
+│       ├── __init__.py
+│       ├── cache.py                # Cache models
+│       ├── metrics.py              # Metric models
+│       └── config.py               # Config models
+│
+└── utils/                          # Utility Functions
+    ├── __init__.py
+    ├── logging.py                  # Logging utilities
+    ├── performance.py              # Performance utilities
+    ├── migration/                  # Migration utilities
+    │   ├── __init__.py
+    │   ├── config_migration.py     # Config migration
+    │   └── import_updater.py       # Import update scripts
+    └── benchmarks/                 # Benchmarking utilities
+        ├── __init__.py
+        └── performance.py          # Performance benchmarks
+
+backend/app/
+├── main.py                          # Streamlined FastAPI app setup
+├── dependencies.py                  # Global dependencies
+│
+├── api/                            # API Layer - All FastAPI routes
+│   ├── v1/                         # API versioning for end-user route handlers
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # /process, /batch_process (replaceable)
+│   │   ├── health.py               # /health, /auth/status
+│   │   ├── cache.py                # /cache/* endpoints
+│   │   ├── operations.py           # /operations
+│   │   ├── auth.py                 # /auth/* endpoints
+│   │   └── deps.py                 # API-specific dependencies
+│   ├── monitoring.py               # Monitoring & Management APIs
+│   └── admin.py                    # Admin APIs
+
+├── services/                       # Business-specific services (project's unique business logic goes here)
+│   ├── __init__.py
+│   └── text_processing/            # Example domain service (replaceable)
+│       ├── __init__.py
+│       ├── processor.py            # Main processor
+│       ├── operations/             # Operation implementations
+│       │   ├── __init__.py
+│       │   ├── summarize.py        # Summarization logic
+│       │   ├── sentiment.py        # Sentiment analysis
+│       │   ├── key_points.py       # Key points extraction
+│       │   ├── questions.py        # Question generation
+│       │   └── qa.py               # Q&A logic
+│       └── batch.py                # Batch processing
+│
+├── infrastructure/                 # Reusable Services & Business Logic
+│   ├── __init__.py
+│   │
+│   ├── config/                     # Configuration management
+│   │   ├── __init__.py
+│   │   ├── base.py                 # Base settings class
+│   │   ├── api.py                  # API-related settings
+│   │   ├── security.py             # Security settings
+│   │   ├── cache.py                # Cache configuration
+│   │   ├── resilience.py           # Resilience configuration
+│   │   ├── monitoring.py           # Monitoring settings
+│   │   └── config_validator.py     # Config validation
+│   │
+│   ├── exceptions/                 # Exception hierarchy
+│   │   ├── __init__.py
+│   │   ├── base.py                 # Base exceptions
+│   │   ├── api.py                  # API exceptions
+│   │   └── business.py             # Business logic exceptions
+│   │
+│   ├── middleware/                 # Middleware modules
+│   │   ├── __init__.py
+│   │   ├── auth.py                 # Authentication logic
+│   │   ├── cors.py                 # CORS middleware
+│   │   ├── error_handler.py        # Error handling
+│   │   └── logging.py              # Request logging
+│   │
+│   ├── ai/                         # AI provider abstractions
+│   │   ├── __init__.py
+│   │   ├── client.py               # AI client wrapper
+│   │   ├── prompt_builder.py       # Prompt building
+│   │   ├── providers/              # AI providers (NEW)
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py             # Provider interface
+│   │   │   └── gemini.py           # Gemini implementation
+│   │   ├── input_sanitization.py   # Input sanitization
+│   │   └── response_validator.py   # Response validation
+│   │
+│   ├── cache/                  # Caching strategies and implementations
+│   │   ├── __init__.py
+│   │   ├── base.py             # Cache interface 
+│   │   ├── redis_cache.py      # Redis implementation
+│   │   ├── memory_cache.py     # In-memory cache
+│   │   ├── key_generator.py    # Cache key generation
+│   │   └── metrics.py          # Cache metrics & monitoring
+│   │
+│   ├── resilience/             # Fault tolerance patterns
+│   │   ├── __init__.py
+│   │   ├── circuit_breaker.py  # Circuit breaker logic
+│   │   ├── retry.py            # Retry mechanisms
+│   │   ├── strategy.py         # Resilience strategies
+│   │   ├── metrics.py          # Resilience metrics & monitoring
+│   │   └── presets.py          # Preset handling
+│   │
+│   └── monitoring/             # Observability and metrics
+│       ├── __init__.py
+│       ├── performance.py      # Performance monitoring
+│       └── health.py           # System health checking
+│
+├── schemas/                        # Pydantic Models & Validation
+│   ├── __init__.py
+│   ├── requests/                   # Request models
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # Text processing requests
+│   │   ├── resilience.py           # Resilience configuration
+│   │   └── monitoring.py           # Monitoring requests
+│   │
+│   ├── responses/                  # Response models
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # Text processing responses
+│   │   ├── health.py               # System health responses
+│   │   ├── monitoring.py           # Monitoring responses
+│   │   └── admin.py                # Admin responses
+│   │
+│   └── internal/                   # Internal models
+│       ├── __init__.py
+│       ├── cache.py                # Cache models
+│       ├── metrics.py              # Metric models
+│       └── config.py               # Config models
+│
+└── utils/                          # Utility Functions
+    ├── __init__.py
+    ├── logging.py                  # Logging utilities
+    ├── performance.py              # Performance utilities
+    ├── migration.py                # Migration utilities
+    └── benchmarks.py               # Benchmarking utilities

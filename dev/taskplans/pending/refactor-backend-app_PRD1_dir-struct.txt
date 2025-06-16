@@ -1,0 +1,90 @@
+backend/app/
+├── main.py                          # Streamlined FastAPI app setup
+├── dependencies.py                  # Global dependencies
+├── __init__.py
+│
+├── api/                            # API Layer - All FastAPI routes
+│   ├── __init__.py
+│   ├── v1/                         # API versioning
+│   │   ├── __init__.py
+│   │   ├── endpoints/              # Route handlers
+│   │   │   ├── __init__.py
+│   │   │   ├── text_processing.py  # /process, /batch_process
+│   │   │   ├── health.py           # /health, /auth/status
+│   │   │   ├── cache.py            # /cache/* endpoints
+│   │   │   └── operations.py       # /operations
+│   │   └── deps/                   # API-specific dependencies
+│   │       ├── __init__.py
+│   │       ├── auth.py             # API key validation
+│   │       └── rate_limit.py       # Rate limiting
+│   │
+│   └── monitoring/                 # Monitoring & Management APIs
+│       ├── __init__.py
+│       ├── resilience.py           # Resilience monitoring endpoints
+│       ├── performance.py          # Performance benchmarking
+│       └── metrics.py              # System metrics
+│
+├── core/                           # Core Configuration & Settings
+│   ├── __init__.py
+│   ├── config/                     # Configuration management
+│   │   ├── __init__.py
+│   │   ├── base.py                 # Base settings class
+│   │   ├── api.py                  # API-related settings
+│   │   ├── resilience.py           # Resilience configuration
+│   │   ├── cache.py                # Cache configuration
+│   │   └── security.py             # Security settings
+│   │
+│   ├── exceptions.py               # Custom exceptions
+│   ├── middleware.py               # Custom middleware
+│   └── security/                   # Security utilities
+│       ├── __init__.py
+│       ├── auth.py                 # Authentication logic
+│       └── validation.py          # Input validation
+│
+├── services/                       # Business Logic Layer
+│   ├── __init__.py
+│   ├── text_processor.py           # Core text processing
+│   ├── cache/                      # Cache services
+│   │   ├── __init__.py
+│   │   ├── redis_cache.py          # Redis implementation
+│   │   └── memory_cache.py         # In-memory cache
+│   │
+│   ├── resilience/                 # Resilience services
+│   │   ├── __init__.py
+│   │   ├── circuit_breaker.py      # Circuit breaker logic
+│   │   ├── retry.py                # Retry mechanisms
+│   │   └── strategy.py             # Resilience strategies
+│   │
+│   ├── monitoring/                 # Monitoring services
+│   │   ├── __init__.py
+│   │   ├── metrics.py              # Metrics collection
+│   │   └── health.py               # Health checking
+│   │
+│   └── ai/                         # AI-related services
+│       ├── __init__.py
+│       ├── client.py               # AI client wrapper
+│       └── prompt_builder.py       # Prompt building
+│
+├── schemas/                        # Pydantic Models & Validation
+│   ├── __init__.py
+│   ├── requests/                   # Request models
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # Text processing requests
+│   │   └── resilience.py           # Resilience configuration
+│   │
+│   ├── responses/                  # Response models
+│   │   ├── __init__.py
+│   │   ├── text_processing.py      # Text processing responses
+│   │   ├── health.py               # Health responses
+│   │   └── monitoring.py           # Monitoring responses
+│   │
+│   └── validation/                 # Complex validation schemas
+│       ├── __init__.py
+│       ├── resilience_config.py    # Resilience validation
+│       └── security.py             # Security validation
+│
+└── utils/                          # Utility Functions
+    ├── __init__.py
+    ├── logging.py                  # Logging utilities
+    ├── performance.py              # Performance utilities
+    └── migration.py                # Migration utilities
