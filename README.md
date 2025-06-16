@@ -299,27 +299,43 @@ This approach provides:
 - ✅ Easy deployment (both services already containerized)
 - ✅ Production-quality development tooling
 
-### Project Structure
+### Project Structure (Abbreviated)
 
 ```
 fastapi-streamlit-llm-starter/
-├── backend/                 # FastAPI application
+├── backend/                    # FastAPI application
 │   ├── app/
-│   │   ├── main.py         # FastAPI app and routes
-│   │   ├── config.py       # Configuration management
-│   │   └── services/       # Business logic services
-│   └── Dockerfile
-├── frontend/                # Streamlit application
+│   │   ├── main.py                     # FastAPI app and main routes
+│   │   ├── config.py                   # Configuration management
+│   │   ├── auth.py                     # Authentication and authorization
+│   │   ├── dependencies.py             # Dependency injection
+│   │   ├── routers/                    # Specialized API route modules
+│   │   ├── services/                   # Business logic services
+│   │   ├── security/                   # Security components
+│   │   └── utils/                      # Utility functions
+│   ├── tests/                      # Comprehensive unit tests
+│   ├── Dockerfile                  # Container configuration
+│   └── README.md                   # Backend documentation
+├── docs/                       # Comprehensive project documentation
+├── examples                    # Practical application guides
+├── frontend/                   # Streamlit application
 │   ├── app/
-│   │   ├── app.py          # Main Streamlit app
-│   │   ├── config.py       # Frontend configuration
-│   │   └── utils/          # Utility functions
-│   └── Dockerfile
-├── shared/                  # Shared Pydantic models
+│   │   ├── app.py                      # Main Streamlit app
+│   │   ├── config.py                   # Frontend configuration
+│   │   └── utils/                      # Utility functions
+│   ├── tests/                      # Unit tests for frontend
+│   ├── Dockerfile                  # Container configuration
+│   └── README.md                   # Frontend documentation
+├── shared/                     # Shared module
+│   ├── shared/
+│   │   ├── examples.py
+│   │   ├── models.py               # Pydantic models
+│   │   └── sample_data.py
 │   └── models.py
 ├── nginx/                   # Nginx configuration
 ├── docker-compose.yml       # Docker orchestration
-└── Makefile                # Development shortcuts
+├── Makefile                 # Development shortcuts
+└── README.md                # Primary project README
 ```
 
 ### Adding New Operations
