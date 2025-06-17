@@ -23,7 +23,15 @@ if USE_REFACTORED_STRUCTURE:
     # EXAMPLE:
     # from .api.v1.routers import text_processing as v1_text_processing
     # app.include_router(v1_text_processing.router)
-    pass
+    
+    from fastapi import FastAPI
+
+    app = FastAPI(title="Refactored FastAPI application")
+
+    @app.get("/")
+    async def root():
+        return {"message": "Hello World - Refactored"}
+
 else:
     # Keep old router registration logic
     from app.config import settings
