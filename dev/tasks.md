@@ -1,12 +1,12 @@
-# Tasks
+# Setup Tasks
 
 ## Task 1: Create Core Directory Structure
 
-**Priority:** high     **Status:** done     **Dependencies:** none
+**Priority:** high     **Status:** pending     **Dependencies:** none
 
 **Description:** Create the foundational directory structure for the refactored backend application as specified in the PRD, including all top-level and nested directories. Add __init__.py files to make them Python packages.
 
-**Details:** Execute the following commands to create the directory tree and initialize Python packages:
+**Details:** Execute the following commands to create the directory tree aßnd initialize Python packages:
 ```bash
 mkdir -p backend/app/api/v1/routers
 mkdir -p backend/app/api/internal
@@ -30,7 +30,7 @@ find backend/app -type d -exec touch {}/__init__.py \;
 
 ## Task 2: Initialize FastAPI Application and Global Dependencies
 
-**Priority:** high     **Status:** in-progress     **Dependencies:** 1
+**Priority:** high     **Status:** pending     **Dependencies:** 1
 
 **Description:** Create the main FastAPI application entry point (`main_refactored.py`) and a placeholder for global dependency injection providers (`dependencies_refactored.py`) in `backend/app/` for the refactored application. During the migration, `main_refactored.py` and `dependencies_refactored.py` will be used for running and testing the refactored app. The original `main.py` and `dependencies.py` files must not be modified until Tasks 20 and 29, where integration will occur. After integration, these `_refactored.py` files will be deleted as they are no longer needed. This approach allows the refactored app to run using the new code while preserving the original files for later integration.
 
@@ -90,6 +90,7 @@ This task is primarily about establishing patterns to be used by `import_update_
 
 **Test Strategy:** Review the documented import strategy for clarity. If path aliases are implemented, verify that imports using these aliases resolve correctly in a test script or by running static analysis tools.
 
+# Infrastructure Extraction
 
 ## Task 5: Create Cache Service Interface and Implementations
 
@@ -198,6 +199,11 @@ Preserve function/class names and signatures.
 
 **Test Strategy:** Unit test the cache monitoring utilities. If integrated with a metrics system, verify that cache metrics are correctly reported.
 
+## Task 12.5: Validate Infrastructure Layer
+
+**Details:** Run `structure_validation.py` focused only on the `infrastructure/` directory to check for internal circular dependencies and file size limits before it's even used by the rest of the app.
+
+# Core & API Structure
 
 ## Task 13: Consolidate Application Configuration
 
@@ -344,6 +350,10 @@ Ensure all existing routes are preserved with correct prefixes and tags.
 **Details:** After `main.py` is updated and verified, delete `backend/app/main_refactored.py` if it exists.
 
 
+## Task 20.5: Validate API and Core Layers
+
+**Details:** Run `structure_validation.py` focused only on `api/` and `core/` to ensure the application skeleton is sound. Start the app with uvicorn to confirm all routers register correctly.
+
 ## Task 21: Refactor Text Processing Service
 
 **Priority:** high     **Status:** pending     **Dependencies:** 1, 5, 6, 7, 9, 11
@@ -388,7 +398,7 @@ REPLACE THIS with your actual business logic.
 
 ## Task 24: Organize Text Processing Schemas
 
-**Priority:** high     **Status:** pending     **Dependencies:** 1, 21
+**Priority:** high     **Status:** in-progress     **Dependencies:** 1, 21
 
 **Description:** Create `schemas/text_processing.py` and move all Pydantic models related to text processing requests and responses into this file. Preserve all model class names.
 
@@ -500,4 +510,3 @@ The script should use a pre-defined mapping of old paths to new paths based on t
 **Details:** Update the main project README.md, any architectural documents, and significant code comments to align with the refactored structure. Ensure documentation clearly explains the separation of `infrastructure/`, `services/`, `core/`, and `api/` layers, and guides developers on where to add new logic or customize the template.
 
 **Test Strategy:** Peer review of updated documentation for clarity, accuracy, and completeness. Ensure the developer journey described in the PRD is well-supported by the documentation.
-
