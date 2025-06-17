@@ -14,7 +14,7 @@ load_dotenv(project_root / ".env")
 
 class Settings(BaseSettings):
     """Application settings with environment variable support and validation."""
-    
+
     # AI Configuration
     gemini_api_key: str = Field(default="", description="Google Gemini API key")
     ai_model: str = Field(default="gemini-2.0-flash-exp", description="Default AI model to use")
