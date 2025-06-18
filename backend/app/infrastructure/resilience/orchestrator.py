@@ -1,0 +1,441 @@
+"""
+Resilience Orchestrator
+
+This module contains the main AIServiceResilience class that orchestrates
+retry and circuit breaker patterns with configuration management. It serves
+as the primary entry point for applying resilience to functions.
+"""
+
+import asyncio
+import json
+import logging
+import os
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Union
+from functools import wraps
+
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+    wait_fixed,
+    wait_random,
+    retry_if_exception_type,
+    retry_if_not_exception_type,
+    before_sleep_log,
+    after_log,
+    RetryError,
+    TryAgain
+)
+
+from .circuit_breaker import (
+    EnhancedCircuitBreaker,
+    CircuitBreakerConfig,
+    ResilienceMetrics,
+    AIServiceException
+)
+from .retry import (
+    RetryConfig,
+    TransientAIError,
+    PermanentAIError,
+    RateLimitError,
+    ServiceUnavailableError,
+    should_retry_on_exception,
+    classify_exception
+)
+from .presets import (
+    ResilienceStrategy,
+    ResilienceConfig,
+    DEFAULT_PRESETS
+)
+
+logger = logging.getLogger(__name__)
+
+
+class AIServiceResilience:
+    """
+    Main orchestrator for AI service resilience patterns.
+    
+    Provides unified interface for retry and circuit breaker patterns
+    with configurable strategies and comprehensive monitoring.
+    """
+    
+    def __init__(self, settings=None):
+        """Initialize resilience service with settings."""
+        self.settings = settings
+        self.circuit_breakers: Dict[str, EnhancedCircuitBreaker] = {}
+        self.configurations: Dict[str, ResilienceConfig] = {}
+        self.operation_metrics: Dict[str, ResilienceMetrics] = {}
+        
+        # Load configurations
+        self._load_configurations()
+        self._load_operation_configs()
+        self._load_fallback_configs()
+    
+    def _load_configurations(self):
+        """Load default strategy configurations."""
+        self.configurations = DEFAULT_PRESETS.copy()
+        
+        # Load custom configuration if provided
+        if self.settings:
+            custom_config_json = getattr(self.settings, 'resilience_custom_config', None)
+            if custom_config_json:
+                try:
+                    custom_config = json.loads(custom_config_json)
+                    self._apply_custom_config(custom_config)
+                except json.JSONDecodeError:
+                    logger.warning("Invalid JSON in resilience_custom_config")
+    
+    def _load_operation_configs(self):
+        """Load operation-specific configurations from settings."""
+        if not self.settings:
+            return
+            
+        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        for operation in operations:
+            strategy_name = getattr(self.settings, f'{operation}_strategy', 'balanced')
+            try:
+                strategy = ResilienceStrategy(strategy_name)
+                if strategy in self.configurations:
+                    self.configurations[operation] = self.configurations[strategy]
+            except ValueError:
+                logger.warning(f"Unknown strategy '{strategy_name}' for operation '{operation}', using balanced")
+                self.configurations[operation] = self.configurations[ResilienceStrategy.BALANCED]
+    
+    def _load_fallback_configs(self):
+        """Load fallback configurations for compatibility."""
+        # Add any legacy or fallback configuration logic here
+        pass
+    
+    def _apply_custom_config(self, custom_config: Dict[str, Any]):
+        """Apply custom configuration overrides."""
+        for strategy_name, config_data in custom_config.items():
+            try:
+                strategy = ResilienceStrategy(strategy_name)
+                if strategy in self.configurations:
+                    # Update existing configuration with custom values
+                    base_config = self.configurations[strategy]
+                    
+                    # Update retry config
+                    if 'retry_config' in config_data:
+                        retry_data = config_data['retry_config']
+                        for key, value in retry_data.items():
+                            if hasattr(base_config.retry_config, key):
+                                setattr(base_config.retry_config, key, value)
+                    
+                    # Update circuit breaker config
+                    if 'circuit_breaker_config' in config_data:
+                        cb_data = config_data['circuit_breaker_config']
+                        for key, value in cb_data.items():
+                            if hasattr(base_config.circuit_breaker_config, key):
+                                setattr(base_config.circuit_breaker_config, key, value)
+                    
+                    # Update flags
+                    if 'enable_circuit_breaker' in config_data:
+                        base_config.enable_circuit_breaker = config_data['enable_circuit_breaker']
+                    if 'enable_retry' in config_data:
+                        base_config.enable_retry = config_data['enable_retry']
+                        
+            except ValueError:
+                logger.warning(f"Unknown strategy '{strategy_name}' in custom config")
+    
+    def get_or_create_circuit_breaker(self, name: str, config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
+        """Get or create a circuit breaker for the given name and configuration."""
+        if name not in self.circuit_breakers:
+            self.circuit_breakers[name] = EnhancedCircuitBreaker(
+                failure_threshold=config.failure_threshold,
+                recovery_timeout=config.recovery_timeout,
+                expected_exception=TransientAIError,
+                name=name
+            )
+        return self.circuit_breakers[name]
+    
+    def get_metrics(self, operation_name: str) -> ResilienceMetrics:
+        """Get metrics for a specific operation."""
+        if operation_name not in self.operation_metrics:
+            self.operation_metrics[operation_name] = ResilienceMetrics()
+        return self.operation_metrics[operation_name]
+    
+    def get_operation_config(self, operation_name: str) -> ResilienceConfig:
+        """Get configuration for a specific operation."""
+        # Try operation-specific config first
+        if operation_name in self.configurations:
+            return self.configurations[operation_name]
+        
+        # Try strategy from settings
+        if self.settings:
+            strategy_name = getattr(self.settings, f'{operation_name}_strategy', None)
+            if strategy_name:
+                try:
+                    strategy = ResilienceStrategy(strategy_name)
+                    return self.configurations[strategy]
+                except ValueError:
+                    pass
+        
+        # Fallback to balanced
+        return self.configurations[ResilienceStrategy.BALANCED]
+    
+    def custom_before_sleep(self, operation_name: str):
+        """Create a custom before_sleep callback for tenacity."""
+        def callback(retry_state):
+            metrics = self.get_metrics(operation_name)
+            metrics.retry_attempts += 1
+            logger.warning(
+                f"Operation '{operation_name}' retry attempt {retry_state.attempt_number}, "
+                f"sleeping {retry_state.next_action.sleep} seconds"
+            )
+        return callback
+    
+    def with_resilience(
+        self,
+        operation_name: str,
+        strategy: Union[ResilienceStrategy, str, None] = None,
+        custom_config: Optional[ResilienceConfig] = None,
+        fallback: Optional[Callable] = None
+    ):
+        """
+        Decorator that applies resilience patterns to a function.
+        
+        Args:
+            operation_name: Name of the operation for metrics and configuration
+            strategy: Resilience strategy to use (defaults to operation config)
+            custom_config: Custom configuration to override defaults
+            fallback: Fallback function to call if all retries fail
+            
+        Returns:
+            Decorated function with resilience patterns applied
+        """
+        def decorator(func: Callable) -> Callable:
+            # Get configuration
+            if custom_config:
+                config = custom_config
+            elif strategy:
+                if isinstance(strategy, str):
+                    strategy_enum = ResilienceStrategy(strategy)
+                else:
+                    strategy_enum = strategy
+                config = self.configurations[strategy_enum]
+            else:
+                config = self.get_operation_config(operation_name)
+            
+            # Get circuit breaker if enabled
+            circuit_breaker = None
+            if config.enable_circuit_breaker:
+                circuit_breaker = self.get_or_create_circuit_breaker(
+                    operation_name, 
+                    config.circuit_breaker_config
+                )
+            
+            # Build tenacity retry decorator
+            retry_decorator = None
+            if config.enable_retry:
+                retry_config = config.retry_config
+                
+                # Build wait strategy
+                if retry_config.exponential_multiplier > 0:
+                    wait_strategy = wait_exponential(
+                        multiplier=retry_config.exponential_multiplier,
+                        min=retry_config.exponential_min,
+                        max=retry_config.exponential_max
+                    )
+                    if retry_config.jitter:
+                        wait_strategy = wait_strategy + wait_random(0, retry_config.jitter_max)
+                else:
+                    wait_strategy = wait_fixed(2)
+                
+                retry_decorator = retry(
+                    stop=stop_after_attempt(retry_config.max_attempts) | 
+                         stop_after_delay(retry_config.max_delay_seconds),
+                    wait=wait_strategy,
+                    retry=should_retry_on_exception,
+                    before_sleep=before_sleep_log(logger, logging.WARNING) if logger.isEnabledFor(logging.WARNING) else None,
+                    after=after_log(logger, logging.INFO) if logger.isEnabledFor(logging.INFO) else None
+                )
+            
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                metrics = self.get_metrics(operation_name)
+                metrics.total_calls += 1
+                
+                start_time = datetime.now()
+                
+                async def execute_function():
+                    """Inner function to execute with resilience patterns."""
+                    try:
+                        if asyncio.iscoroutinefunction(func):
+                            result = await func(*args, **kwargs)
+                        else:
+                            result = func(*args, **kwargs)
+                        
+                        metrics.successful_calls += 1
+                        metrics.last_success = datetime.now()
+                        return result
+                        
+                    except Exception as e:
+                        metrics.failed_calls += 1
+                        metrics.last_failure = datetime.now()
+                        
+                        # Transform exceptions for better classification
+                        if not isinstance(e, AIServiceException):
+                            if classify_exception(e):
+                                raise TransientAIError(str(e)) from e
+                            else:
+                                raise PermanentAIError(str(e)) from e
+                        raise
+                
+                try:
+                    # Apply circuit breaker if enabled
+                    if circuit_breaker:
+                        # Circuit breaker check
+                        if hasattr(circuit_breaker, '_state') and circuit_breaker._state == 'open':
+                            raise ServiceUnavailableError("Circuit breaker is open")
+                        
+                        # Apply retry if enabled
+                        if retry_decorator:
+                            result = await retry_decorator(execute_function)()
+                        else:
+                            result = await execute_function()
+                        
+                        # Record success in circuit breaker
+                        circuit_breaker.metrics.successful_calls += 1
+                        return result
+                    else:
+                        # Apply retry if enabled
+                        if retry_decorator:
+                            return await retry_decorator(execute_function)()
+                        else:
+                            return await execute_function()
+                            
+                except (RetryError, TransientAIError, ServiceUnavailableError) as e:
+                    # All retries failed or circuit breaker open
+                    if fallback:
+                        logger.warning(f"Operation '{operation_name}' failed, using fallback")
+                        if asyncio.iscoroutinefunction(fallback):
+                            return await fallback(*args, **kwargs)
+                        else:
+                            return fallback(*args, **kwargs)
+                    raise
+                except PermanentAIError:
+                    # Don't retry permanent errors, but can still use fallback
+                    if fallback:
+                        logger.warning(f"Operation '{operation_name}' permanent error, using fallback")
+                        if asyncio.iscoroutinefunction(fallback):
+                            return await fallback(*args, **kwargs)
+                        else:
+                            return fallback(*args, **kwargs)
+                    raise
+            
+            return wrapper
+        return decorator
+    
+    def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
+        """Get comprehensive metrics for all operations and circuit breakers."""
+        result = {
+            "operations": {},
+            "circuit_breakers": {},
+            "summary": {
+                "total_operations": len(self.operation_metrics),
+                "total_circuit_breakers": len(self.circuit_breakers),
+                "healthy_circuit_breakers": sum(
+                    1 for cb in self.circuit_breakers.values() 
+                    if not hasattr(cb, '_state') or cb._state != 'open'
+                ),
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+        
+        # Operation metrics
+        for name, metrics in self.operation_metrics.items():
+            result["operations"][name] = metrics.to_dict()
+        
+        # Circuit breaker metrics
+        for name, cb in self.circuit_breakers.items():
+            result["circuit_breakers"][name] = {
+                "state": getattr(cb, '_state', 'closed'),
+                "failure_threshold": cb.failure_threshold,
+                "recovery_timeout": cb.recovery_timeout,
+                "metrics": cb.metrics.to_dict()
+            }
+        
+        return result
+    
+    def reset_metrics(self, operation_name: Optional[str] = None):
+        """Reset metrics for specific operation or all operations."""
+        if operation_name:
+            if operation_name in self.operation_metrics:
+                self.operation_metrics[operation_name] = ResilienceMetrics()
+            if operation_name in self.circuit_breakers:
+                self.circuit_breakers[operation_name].metrics = ResilienceMetrics()
+        else:
+            self.operation_metrics.clear()
+            for cb in self.circuit_breakers.values():
+                cb.metrics = ResilienceMetrics()
+    
+    def is_healthy(self) -> bool:
+        """Check if the resilience service is healthy."""
+        # Check if any circuit breakers are open
+        open_circuit_breakers = [
+            name for name, cb in self.circuit_breakers.items()
+            if hasattr(cb, '_state') and cb._state == 'open'
+        ]
+        return len(open_circuit_breakers) == 0
+    
+    def get_health_status(self) -> Dict[str, Any]:
+        """Get detailed health status."""
+        open_circuit_breakers = [
+            name for name, cb in self.circuit_breakers.items()
+            if hasattr(cb, '_state') and cb._state == 'open'
+        ]
+        
+        return {
+            "healthy": len(open_circuit_breakers) == 0,
+            "open_circuit_breakers": open_circuit_breakers,
+            "total_circuit_breakers": len(self.circuit_breakers),
+            "total_operations": len(self.operation_metrics),
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    def with_operation_resilience(self, operation_name: str, fallback: Optional[Callable] = None):
+        """Convenience method to apply operation-specific resilience."""
+        return self.with_resilience(operation_name=operation_name, fallback=fallback)
+
+
+# Global instance (will be initialized by services layer)
+ai_resilience: Optional[AIServiceResilience] = None
+
+
+# Convenience decorator functions
+def with_operation_resilience(operation_name: str, fallback: Optional[Callable] = None):
+    """Global decorator for operation-specific resilience."""
+    if not ai_resilience:
+        raise RuntimeError("AIServiceResilience not initialized")
+    return ai_resilience.with_operation_resilience(operation_name, fallback)
+
+
+def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable] = None):
+    """Global decorator for aggressive resilience strategy."""
+    if not ai_resilience:
+        raise RuntimeError("AIServiceResilience not initialized")
+    return ai_resilience.with_resilience(operation_name, ResilienceStrategy.AGGRESSIVE, fallback=fallback)
+
+
+def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] = None):
+    """Global decorator for balanced resilience strategy."""
+    if not ai_resilience:
+        raise RuntimeError("AIServiceResilience not initialized")
+    return ai_resilience.with_resilience(operation_name, ResilienceStrategy.BALANCED, fallback=fallback)
+
+
+def with_conservative_resilience(operation_name: str, fallback: Optional[Callable] = None):
+    """Global decorator for conservative resilience strategy."""
+    if not ai_resilience:
+        raise RuntimeError("AIServiceResilience not initialized")
+    return ai_resilience.with_resilience(operation_name, ResilienceStrategy.CONSERVATIVE, fallback=fallback)
+
+
+def with_critical_resilience(operation_name: str, fallback: Optional[Callable] = None):
+    """Global decorator for critical resilience strategy."""
+    if not ai_resilience:
+        raise RuntimeError("AIServiceResilience not initialized")
+    return ai_resilience.with_resilience(operation_name, ResilienceStrategy.CRITICAL, fallback=fallback) 
