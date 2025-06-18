@@ -326,8 +326,10 @@ docs-build:
 
 # Documentation generation with repomix
 repomix:
-	@echo "Generating full repository documentation..."
-	npx repomix --ignore "docs/**/*"
+	@echo "Generating full repository documentation (uncompressed)..."
+	npx repomix            --output repomix-output_uncompressed.md
+	@echo "Generating full repository documentation (compressed)..."
+	npx repomix --compress --output repomix-output_all.md
 	$(MAKE) repomix-backend
 	$(MAKE) repomix-backend-tests
 	$(MAKE) repomix-frontend  
@@ -336,19 +338,19 @@ repomix:
 
 repomix-backend:
 	@echo "Generating backend documentation..."
-	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/tests/**/*" --output repomix-output_backend.md
+	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output repomix-output_backend.md
 
 repomix-backend-tests:
 	@echo "Generating backend documentation..."
-	npx repomix --include "backend/tests/**/*" --output repomix-output_backend-tests.md
+	npx repomix --include "backend/tests/**/*" --compress --output repomix-output_backend-tests.md
 
 repomix-frontend:
 	@echo "Generating frontend documentation..."
-	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --ignore "frontend/tests/**/*"  --output repomix-output_frontend.md
+	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*"  --output repomix-output_frontend.md
 
 repomix-frontend-tests:
 	@echo "Generating frontend documentation..."
-	npx repomix --include "frontend/tests/**/*"  --output repomix-output_frontend-tests.md
+	npx repomix --include "frontend/tests/**/*" --compress --output repomix-output_frontend-tests.md
 
 repomix-docs:
 	@echo "Generating documentation for READMEs and docs/ subdirectory..."
