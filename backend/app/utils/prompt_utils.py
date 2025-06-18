@@ -1,4 +1,6 @@
 """
+REFACTOR: This module was moved into backend/app/infrastructure/ai/prompt_builder.py
+
 Utility functions for prompt processing and user input handling.
 
 This module provides functions for safely handling user input before embedding

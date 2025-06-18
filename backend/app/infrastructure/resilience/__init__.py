@@ -1,8 +1,11 @@
 """
 Resilience Infrastructure Service
 
-Re-exports the resilience components including circuit breaker, retry logic,
-presets, and the main orchestrator for ease of use.
+Re-exports all resilience components including circuit breaker, retry logic,
+presets, orchestrator, configuration validation, monitoring, migration utilities,
+and performance benchmarking for ease of use.
+
+This module serves as the single point of entry for all resilience functionality.
 """
 
 # Core components
@@ -40,13 +43,41 @@ from .orchestrator import (
     with_critical_resilience
 )
 
-# Bridge resilience presets from their old location for backward compatibility
-try:
-    from ...resilience_presets import preset_manager, PRESETS
-except ImportError:
-    # If old resilience_presets module doesn't exist, create placeholder
-    preset_manager = None
-    PRESETS = DEFAULT_PRESETS
+# Configuration validation and security
+from .config_validator import (
+    ResilienceConfigValidator,
+    ValidationResult,
+    ValidationRateLimiter,
+    RESILIENCE_CONFIG_SCHEMA,
+    CONFIGURATION_TEMPLATES,
+    SECURITY_CONFIG
+)
+
+# Configuration monitoring and metrics
+from .config_monitoring import (
+    ConfigurationMetricsCollector,
+    ConfigurationMetric,
+    ConfigurationUsageStats,
+    ConfigurationAlert,
+    MetricType,
+    AlertLevel
+)
+
+# Migration utilities for legacy configurations
+from .migration_utils import (
+    LegacyConfigAnalyzer,
+    ConfigurationMigrator,
+    MigrationRecommendation,
+    MigrationConfidence
+)
+
+# Performance benchmarking
+from .performance_benchmarks import (
+    ConfigurationPerformanceBenchmark,
+    BenchmarkResult,
+    BenchmarkSuite,
+    PerformanceThreshold
+)
 
 __all__ = [
     # Core exceptions
@@ -82,6 +113,34 @@ __all__ = [
     "with_balanced_resilience", 
     "with_conservative_resilience",
     "with_critical_resilience",
+    
+    # Configuration validation
+    "ResilienceConfigValidator",
+    "ValidationResult",
+    "ValidationRateLimiter",
+    "RESILIENCE_CONFIG_SCHEMA",
+    "CONFIGURATION_TEMPLATES",
+    "SECURITY_CONFIG",
+    
+    # Configuration monitoring
+    "ConfigurationMetricsCollector",
+    "ConfigurationMetric",
+    "ConfigurationUsageStats",
+    "ConfigurationAlert",
+    "MetricType",
+    "AlertLevel",
+    
+    # Migration utilities
+    "LegacyConfigAnalyzer",
+    "ConfigurationMigrator",
+    "MigrationRecommendation",
+    "MigrationConfidence",
+    
+    # Performance benchmarking
+    "ConfigurationPerformanceBenchmark",
+    "BenchmarkResult",
+    "BenchmarkSuite",
+    "PerformanceThreshold",
     
     # Backward compatibility
     "preset_manager",

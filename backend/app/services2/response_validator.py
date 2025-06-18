@@ -1,6 +1,4 @@
 """
-REFACTOR: This module was moved to backend/app/services2/response_validator.py
-
 Response validation module for AI outputs.
 
 This module provides validation functions to detect and handle potentially

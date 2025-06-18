@@ -1,4 +1,7 @@
 """
+REFACTOR: This module was divided into multiple files and moved to 
+backend/app/infrastructure/resilience/
+
 Enhanced resilience service for AI operations using tenacity and circuitbreaker.
 
 This module provides:

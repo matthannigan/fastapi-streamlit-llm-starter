@@ -1,8 +1,4 @@
-"""
-REFACTOR: This module was moved to backend/app/services2/text_processor.py
-
-Text processing service with resilience integration.
-"""
+"""Text processing service with resilience integration."""
 
 import time
 import asyncio

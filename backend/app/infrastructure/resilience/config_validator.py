@@ -1,6 +1,4 @@
 """
-REFACTOR: This module was moved to backend/app/infrastructure/resilience/config_validator.py
-
 JSON Schema validation for resilience configuration.
 
 This module provides JSON Schema definitions and validation utilities

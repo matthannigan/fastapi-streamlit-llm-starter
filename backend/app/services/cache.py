@@ -1,3 +1,10 @@
+"""
+REFACTOR: This module was moved to backend/app/infrastructure/cache/redis.py
+
+This module contains the CacheKeyGenerator and AIResponseCache classes, which
+are used to generate cache keys and cache AI responses respectively.
+"""
+
 import hashlib
 import json
 import asyncio

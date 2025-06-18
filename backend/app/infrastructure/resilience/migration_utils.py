@@ -1,6 +1,4 @@
 """
-REFACTOR: This module was moved to backend/app/infrastructure/resilience/migration_utils.py
-
 Configuration migration utilities for legacy-to-preset migration.
 
 This module provides tools to analyze legacy resilience configurations

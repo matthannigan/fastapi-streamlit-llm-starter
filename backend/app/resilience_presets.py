@@ -1,4 +1,6 @@
 """
+REFACTOR: This module was moved to backend/app/infrastructure/resilience/presets.py
+
 Resilience configuration presets for simplified AI service configuration.
 
 This module provides a simplified approach to configuring resilience settings

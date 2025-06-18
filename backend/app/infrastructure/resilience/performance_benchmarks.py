@@ -1,6 +1,4 @@
 """
-REFACTOR: This module was moved to backend/app/infrastructure/resilience/performance_benchmarks.py
-
 Performance benchmarking for resilience configuration loading.
 
 This module provides comprehensive performance testing and monitoring

@@ -1,6 +1,4 @@
 """
-REFACTOR: This module was moved to backend/app/infrastructure/resilience/config_monitoring.py
-
 Configuration monitoring and metrics collection for preset usage tracking.
 
 This module provides comprehensive monitoring capabilities for resilience
