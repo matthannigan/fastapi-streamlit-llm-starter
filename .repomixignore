@@ -16,3 +16,6 @@ PRD*.*
 repomix.config.json
 .flake8
 dev/
+docs-website/
+.claude/
+CLAUDE.md
