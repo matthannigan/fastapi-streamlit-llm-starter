@@ -6,6 +6,10 @@
 #
 anyio==4.9.0
     # via httpx
+babel==2.17.0
+    # via mkdocs-material
+backrefs==5.8
+    # via mkdocs-material
 black==23.7.0
     # via -r requirements-dev.txt
 build==1.2.2.post1
@@ -22,7 +26,12 @@ charset-normalizer==3.4.2
 click==8.2.1
     # via
     #   black
+    #   mkdocs
     #   pip-tools
+colorama==0.4.6
+    # via
+    #   griffe
+    #   mkdocs-material
 coverage[toml]==7.8.2
     # via pytest-cov
 distlib==0.3.9
@@ -33,6 +42,10 @@ filelock==3.18.0
     # via virtualenv
 flake8==6.0.0
     # via -r requirements-dev.txt
+ghp-import==2.1.0
+    # via mkdocs
+griffe==1.7.3
+    # via mkdocstrings-python
 h11==0.16.0
     # via httpcore
 httpcore==1.0.9
@@ -50,8 +63,52 @@ iniconfig==2.1.0
     # via pytest
 isort==5.12.0
     # via -r requirements-dev.txt
+jinja2==3.1.6
+    # via
+    #   mkdocs
+    #   mkdocs-material
+    #   mkdocstrings
+markdown==3.8.1
+    # via
+    #   mkdocs
+    #   mkdocs-autorefs
+    #   mkdocs-material
+    #   mkdocstrings
+    #   pymdown-extensions
+markupsafe==3.0.2
+    # via
+    #   jinja2
+    #   mkdocs
+    #   mkdocs-autorefs
+    #   mkdocstrings
 mccabe==0.7.0
     # via flake8
+mergedeep==1.3.4
+    # via
+    #   mkdocs
+    #   mkdocs-get-deps
+mkdocs==1.6.1
+    # via
+    #   -r requirements-dev.txt
+    #   mkdocs-autorefs
+    #   mkdocs-material
+    #   mkdocstrings
+mkdocs-autorefs==1.4.2
+    # via
+    #   mkdocstrings
+    #   mkdocstrings-python
+mkdocs-get-deps==0.2.0
+    # via mkdocs
+mkdocs-material==9.6.14
+    # via -r requirements-dev.txt
+mkdocs-material-extensions==1.3.1
+    # via mkdocs-material
+mkdocstrings[python]==0.29.1
+    # via
+    #   -r requirements-dev.txt
+    #   mkdocstrings-python
+mkdocstrings-python==1.16.12
+    # via mkdocstrings
 mypy==1.5.0
     # via -r requirements-dev.txt
 mypy-extensions==1.1.0
@@ -64,14 +121,20 @@ packaging==25.0
     # via
     #   black
     #   build
+    #   mkdocs
     #   pytest
+paginate==0.5.7
+    # via mkdocs-material
 pathspec==0.12.1
-    # via black
+    # via
+    #   black
+    #   mkdocs
 pip-tools==7.4.1
     # via -r requirements-dev.txt
 platformdirs==4.3.8
     # via
     #   black
+    #   mkdocs-get-deps
     #   virtualenv
 pluggy==1.6.0
     # via pytest
@@ -82,7 +145,13 @@ pycodestyle==2.10.0
 pyflakes==3.0.1
     # via flake8
 pygments==2.19.1
-    # via pytest
+    # via
+    #   mkdocs-material
+    #   pytest
+pymdown-extensions==10.15
+    # via
+    #   mkdocs-material
+    #   mkdocstrings
 pyproject-hooks==1.2.0
     # via
     #   build
@@ -99,10 +168,23 @@ pytest-cov==4.1.0
     # via -r requirements-dev.txt
 pytest-xdist==3.7.0
     # via -r requirements-dev.txt
+python-dateutil==2.9.0.post0
+    # via ghp-import
 pyyaml==6.0.2
-    # via pre-commit
+    # via
+    #   mkdocs
+    #   mkdocs-get-deps
+    #   pre-commit
+    #   pymdown-extensions
+    #   pyyaml-env-tag
+pyyaml-env-tag==1.1
+    # via mkdocs
 requests==2.32.3
-    # via -r requirements-dev.txt
+    # via
+    #   -r requirements-dev.txt
+    #   mkdocs-material
+six==1.17.0
+    # via python-dateutil
 sniffio==1.3.1
     # via anyio
 typing-extensions==4.14.0
@@ -111,6 +193,8 @@ urllib3==2.4.0
     # via requests
 virtualenv==20.31.2
     # via pre-commit
+watchdog==6.0.0
+    # via mkdocs
 wheel==0.45.1
     # via pip-tools
 
