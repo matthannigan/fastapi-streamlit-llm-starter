@@ -1,4 +1,4 @@
-.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all lock-deps update-deps list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets
+.PHONY: help install test test-backend test-backend-slow test-backend-all test-backend-manual test-frontend test-integration test-coverage test-coverage-all test-retry test-circuit lint lint-backend lint-frontend format clean docker-build docker-up docker-down dev prod logs redis-cli backup restore repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs ci-test ci-test-all lock-deps update-deps list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets docs-serve docs-build
 
 # Python executable detection
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
@@ -76,6 +76,10 @@ help:
 	@echo "  clean-venv       Clean up virtual environments only"
 	@echo ""
 	@echo "Documentation:"
+	@echo "  docs-serve       Serve documentation locally for development"
+	@echo "  docs-build       Build static documentation site"
+	@echo ""
+	@echo "Repomix:"
 	@echo "  repomix                Generate full repository documentation (excluding docs/)"
 	@echo "  repomix-backend        Generate backend-only documentation (excluding tests)"
 	@echo "  repomix-backend-tests  Generate backend-only tests documentation"
@@ -308,6 +312,17 @@ restore:
 	@if [ -z "$(BACKUP)" ]; then echo "Usage: make restore BACKUP=filename"; exit 1; fi
 	docker cp ./backups/$(BACKUP) ai-text-processor-redis:/data/dump.rdb
 	docker-compose restart redis
+
+# Documentation generation with mkdocs
+docs-serve:
+	@echo "Serving documentation locally at http://127.0.0.1:8000"
+	@# Ensure backend venv is active
+	mkdocs serve
+
+docs-build:
+	@echo "Building static documentation site..."
+	@# Ensure backend venv is active
+	mkdocs build --clean
 
 # Documentation generation with repomix
 repomix:
