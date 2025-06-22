@@ -6,7 +6,7 @@ from fastapi import status
 from unittest.mock import patch
 
 from app.main import app
-from app.auth import api_key_auth
+from app.infrastructure.security.auth import api_key_auth
 
 
 class TestAuthEndpoints:
