@@ -30,7 +30,8 @@ from .presets import (
     ResilienceStrategy,
     ResilienceConfig,
     get_default_presets,
-    DEFAULT_PRESETS
+    DEFAULT_PRESETS,
+    preset_manager
 )
 
 from .orchestrator import (
@@ -105,6 +106,7 @@ __all__ = [
     
     # Presets and defaults
     "DEFAULT_PRESETS",
+    "preset_manager",
     
     # Global instance and decorators
     "ai_resilience",

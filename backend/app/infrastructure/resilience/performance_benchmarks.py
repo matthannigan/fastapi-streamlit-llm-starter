@@ -174,7 +174,7 @@ class ConfigurationPerformanceBenchmark:
             BenchmarkResult for preset loading
         """
         def preset_loading_operation(metadata):
-            from app.resilience_presets import preset_manager
+            from app.infrastructure.resilience.presets import preset_manager
             
             # Test loading each preset
             presets = ["simple", "development", "production"]
@@ -239,7 +239,7 @@ class ConfigurationPerformanceBenchmark:
         """
         def service_initialization_operation(metadata):
             from app.config import Settings
-            from app.services.resilience import AIServiceResilience
+            from app.infrastructure.resilience.orchestrator import AIServiceResilience
             
             # Test service initialization with different presets
             presets = ["simple", "development", "production"]
@@ -338,7 +338,7 @@ class ConfigurationPerformanceBenchmark:
         ]
         
         def validation_performance_operation(metadata):
-            from app.validation_schemas import config_validator
+            from app.infrastructure.resilience.config_validator import config_validator
             
             for i, config in enumerate(test_configs):
                 result = config_validator.validate_custom_config(config)

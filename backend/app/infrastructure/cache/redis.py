@@ -149,8 +149,8 @@ except ImportError:
     REDIS_AVAILABLE = False
     aioredis = None
 
-from .base import CacheInterface
-from .monitoring import CachePerformanceMonitor
+from app.infrastructure.cache.base import CacheInterface
+from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
 logger = logging.getLogger(__name__)
 

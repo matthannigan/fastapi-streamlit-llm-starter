@@ -1,20 +1,13 @@
 from functools import lru_cache
 import logging
 from fastapi import Depends
-from app.refactor import USE_REFACTORED_STRUCTURE
 
-if USE_REFACTORED_STRUCTURE:
-    # Import and register routers from new locations
-    from .config import Settings, settings
-    from .infrastructure.cache import AIResponseCache
-    from .services2.text_processor import TextProcessorService
-else:
-    # Keep old router registration logic
-    from .config import Settings, settings
-    from .services.cache import AIResponseCache
-    from .services.text_processor import TextProcessorService
+from app.config import Settings, settings
+from app.infrastructure.cache import AIResponseCache
+from app.services.text_processor import TextProcessorService
 
 logger = logging.getLogger(__name__)
+
 
 @lru_cache()
 def get_settings() -> Settings:

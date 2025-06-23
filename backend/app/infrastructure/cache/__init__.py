@@ -65,7 +65,8 @@ from .base import CacheInterface
 from .redis import (
     AIResponseCache,
     CacheKeyGenerator,
-    REDIS_AVAILABLE
+    REDIS_AVAILABLE,
+    aioredis
 )
 
 # Memory implementation
@@ -89,6 +90,7 @@ __all__ = [
     "AIResponseCache",
     "CacheKeyGenerator",
     "REDIS_AVAILABLE",
+    "aioredis",
     
     # Memory implementation
     "InMemoryCache",

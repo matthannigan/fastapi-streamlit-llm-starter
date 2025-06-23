@@ -384,9 +384,8 @@ class Settings(BaseSettings):
             user_context: Optional user context for monitoring
         """
         # Import here to avoid circular imports
-        from app.resilience_presets import preset_manager
-        from app.services.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience import preset_manager, ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         # Determine configuration type for monitoring
         config_type = "legacy" if self._has_legacy_resilience_config() else "preset"
@@ -531,7 +530,7 @@ class Settings(BaseSettings):
 
     def _load_legacy_resilience_config(self):
         """Load resilience configuration from legacy environment variables."""
-        from app.services.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        from app.infrastructure.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
         
         # Map legacy strategy strings to enum values
         strategy_mapping = {
@@ -622,8 +621,8 @@ class Settings(BaseSettings):
 
     def _apply_custom_overrides(self, base_config, custom_config: dict):
         """Apply custom configuration overrides to base preset config."""
-        from app.services.resilience import ResilienceStrategy, ResilienceConfig, RetryConfig, CircuitBreakerConfig
-        from app.validation_schemas import config_validator
+        from app.infrastructure.resilience import ResilienceStrategy, ResilienceConfig, RetryConfig, CircuitBreakerConfig
+        from app.infrastructure.resilience.config_validator import config_validator
         
         # Validate custom configuration
         validation_result = config_validator.validate_custom_config(custom_config)
@@ -703,7 +702,7 @@ class Settings(BaseSettings):
         Returns:
             Dictionary with validation results
         """
-        from app.validation_schemas import config_validator
+        from app.infrastructure.resilience.config_validator import config_validator
         
         config_to_validate = json_string or self.resilience_custom_config
         if not config_to_validate:
@@ -757,7 +756,7 @@ class Settings(BaseSettings):
         
         # For preset configuration, get operation override or default
         try:
-            from app.resilience_presets import preset_manager
+            from app.infrastructure.resilience.presets import preset_manager
             preset = preset_manager.get_preset(self.resilience_preset)
             
             # Check for custom configuration overrides first

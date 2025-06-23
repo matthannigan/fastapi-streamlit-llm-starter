@@ -223,3 +223,6 @@ tasks/
 
 # Documentation
 docs-website/
+
+# Backend App Refactor in progress
+backend/app.old/

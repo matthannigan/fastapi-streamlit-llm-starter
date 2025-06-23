@@ -92,7 +92,7 @@ class RetryConfig:
 
 
 # Import shared exceptions from circuit_breaker module to avoid duplication
-from .circuit_breaker import AIServiceException
+from app.infrastructure.resilience.circuit_breaker import AIServiceException
 
 
 class TransientAIError(AIServiceException):

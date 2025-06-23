@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from shared.models import (
     TextProcessingRequest,
     TextProcessingResponse,
@@ -15,27 +16,14 @@ from shared.models import (
     BatchTextProcessingRequest,
     BatchTextProcessingResponse
 )
-from app.refactor import USE_REFACTORED_STRUCTURE
 
-if USE_REFACTORED_STRUCTURE:
-    # Import and register routers from new locations
-    from app.config import settings
-    from app.services2.text_processor import TextProcessorService
-    from app.infrastructure.security import verify_api_key, optional_verify_api_key
-    from app.dependencies import get_settings, get_cache_service, get_text_processor
-    from app.infrastructure.cache import AIResponseCache
-    from app.resilience_endpoints import resilience_router
-    from app.routers.monitoring import monitoring_router
-
-else:
-    # Keep old router registration logic
-    from app.config import settings
-    from app.services.text_processor import TextProcessorService
-    from app.auth import verify_api_key, optional_verify_api_key
-    from app.dependencies import get_settings, get_cache_service, get_text_processor
-    from app.services.cache import AIResponseCache
-    from app.resilience_endpoints import resilience_router
-    from app.routers.monitoring import monitoring_router
+from app.config import settings
+from app.services.text_processor import TextProcessorService
+from app.infrastructure.security import verify_api_key, optional_verify_api_key
+from app.dependencies import get_settings, get_cache_service, get_text_processor
+from app.infrastructure.cache import AIResponseCache
+from app.resilience_endpoints import resilience_router
+from app.routers.monitoring import monitoring_router
 
 # Configure logging
 logging.basicConfig(
@@ -43,6 +31,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -101,7 +90,7 @@ async def root():
 async def health_check():
     """Enhanced health check endpoint with resilience status."""
     try:
-        from app.services.resilience import ai_resilience
+        from app.infrastructure.resilience import ai_resilience
         
         ai_healthy = bool(settings.gemini_api_key)
         resilience_healthy = ai_resilience.is_healthy()

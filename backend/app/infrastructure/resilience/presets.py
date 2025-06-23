@@ -47,8 +47,8 @@ import logging
 import os
 import re
 
-from .retry import RetryConfig
-from .circuit_breaker import CircuitBreakerConfig
+from app.infrastructure.resilience.retry import RetryConfig
+from app.infrastructure.resilience.circuit_breaker import CircuitBreakerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +225,7 @@ class PresetManager:
             True if valid, False otherwise
         """
         try:
-            from app.validation_schemas import config_validator
+            from app.infrastructure.resilience.config_validator import config_validator
             
             # Convert preset to dict for validation
             preset_dict = preset.to_dict()

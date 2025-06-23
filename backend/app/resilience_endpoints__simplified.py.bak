@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from app.auth import verify_api_key, optional_verify_api_key
-from app.services.resilience import ai_resilience
+from app.infrastructure.resilience import ai_resilience
 from app.services.text_processor import TextProcessorService
 from app.dependencies import get_text_processor
 
@@ -210,7 +210,7 @@ async def get_resilience_config(
     """
     try:
         config_data = {}
-        for strategy, config in ai_resilience.configs.items():
+        for strategy, config in ai_resilience.configurations.items():
             config_data[strategy.value] = {
                 "strategy": config.strategy.value,
                 "retry_config": {
@@ -316,7 +316,7 @@ async def validate_configuration(
     """
     try:
         # Basic validation using existing validator
-        from app.validation_schemas import config_validator
+        from app.infrastructure.resilience.config_validator import config_validator
         
         result = config_validator.validate(request.configuration)
         

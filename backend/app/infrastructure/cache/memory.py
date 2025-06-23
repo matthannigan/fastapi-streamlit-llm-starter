@@ -152,7 +152,7 @@ import time
 from typing import Any, Optional, Dict
 from datetime import datetime, timedelta
 
-from .base import CacheInterface
+from app.infrastructure.cache.base import CacheInterface
 
 logger = logging.getLogger(__name__)
 

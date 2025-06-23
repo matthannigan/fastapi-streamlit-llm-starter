@@ -1,19 +1,122 @@
-"""
-REFACTOR: This module was moved to backend/app/services2/text_processor.py
+"""Text processing service with resilience integration.
 
-Text processing service with resilience integration.
+This module provides a comprehensive text processing service that leverages AI models
+to perform various natural language processing operations with built-in resilience,
+caching, and security features.
+
+The TextProcessorService class is the main entry point for all text processing operations,
+supporting both individual requests and batch processing with concurrent execution.
+
+Key Features:
+    * Multiple AI-powered text operations (summarization, sentiment analysis, etc.)
+    * Resilience patterns including circuit breakers, retries, and fallback responses
+    * Intelligent caching to reduce API calls and improve performance
+    * Input sanitization and output validation for security
+    * Batch processing with configurable concurrency limits
+    * Comprehensive logging and monitoring integration
+    * Graceful degradation when AI services are unavailable
+
+Supported Operations:
+    * SUMMARIZE: Generate concise summaries of input text
+    * SENTIMENT: Analyze emotional tone and confidence levels
+    * KEY_POINTS: Extract the most important points from text
+    * QUESTIONS: Generate thoughtful questions about the content
+    * QA: Answer specific questions based on provided context
+
+Architecture:
+    The service is built around a resilience-first design with multiple layers:
+    
+    1. Input Layer: Sanitizes and validates all user inputs using PromptSanitizer
+    2. Caching Layer: Checks for cached responses before making AI calls
+    3. AI Processing Layer: Uses Pydantic AI agents with configurable models
+    4. Resilience Layer: Applies circuit breakers, retries, and timeouts
+    5. Validation Layer: Validates AI responses for safety and correctness
+    6. Fallback Layer: Provides degraded responses when services are unavailable
+
+Resilience Strategies:
+    Different operations use tailored resilience strategies:
+    * Aggressive: Fast failures with immediate fallbacks (sentiment analysis)
+    * Balanced: Moderate retries with reasonable timeouts (most operations)
+    * Conservative: Extended retries for critical operations (Q&A)
+
+Security Features:
+    * Prompt injection prevention through input sanitization
+    * Output validation to ensure safe AI responses
+    * Secure prompt templates with parameterized inputs
+    * Comprehensive logging for audit trails
+
+Usage:
+    Basic usage requires a Settings instance and cache service:
+    
+    ```python
+    from app.config import Settings
+    from app.infrastructure.cache import AIResponseCache
+    from app.services.text_processor import TextProcessorService
+    
+    settings = Settings()
+    cache = AIResponseCache(settings)
+    processor = TextProcessorService(settings, cache)
+    
+    # Process individual request
+    request = TextProcessingRequest(
+        text="Your text here",
+        operation=ProcessingOperation.SUMMARIZE
+    )
+    response = await processor.process_text(request)
+    
+    # Process batch requests
+    batch_request = BatchTextProcessingRequest(
+        requests=[request1, request2, request3]
+    )
+    batch_response = await processor.process_batch(batch_request)
+    ```
+
+Dependencies:
+    * pydantic-ai: AI agent framework for model interactions
+    * shared.models: Pydantic models for request/response validation
+    * app.infrastructure: Resilience, caching, and AI infrastructure
+    * app.config: Application settings and configuration
+
+Exceptions:
+    * ServiceUnavailableError: Raised when AI services are temporarily unavailable
+    * TransientAIError: Raised for retryable AI service errors
+    * ValueError: Raised for invalid operations or missing required parameters
+
+Thread Safety:
+    The service is designed to be thread-safe and supports concurrent processing
+    through asyncio semaphores and proper resource management.
+
+Performance Considerations:
+    * Caching significantly reduces redundant AI calls
+    * Batch processing optimizes concurrent request handling
+    * Configurable concurrency limits prevent resource exhaustion
+    * Circuit breakers prevent cascading failures
+
+Monitoring:
+    The service provides comprehensive metrics and health checks:
+    * Processing times and success rates per operation
+    * Cache hit ratios and performance metrics
+    * Resilience pattern statistics (circuit breaker states, retry counts)
+    * Error rates and fallback usage patterns
+
+Author:
+    FastAPI-Streamlit-LLM-Starter Team
+
+Version:
+    1.0.0
 """
 
 import time
 import asyncio
 import uuid
+import re
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 import logging
 from pydantic_ai import Agent
 
 # Only import for type checking to avoid circular dependencies
 if TYPE_CHECKING:
-    from app.services.cache import AIResponseCache
+    from app.infrastructure.cache import AIResponseCache
 
 from shared.models import (
     ProcessingOperation,
@@ -26,9 +129,8 @@ from shared.models import (
     ProcessingStatus
 )
 from app.config import Settings
-from app.utils.sanitization import sanitize_options, PromptSanitizer # Enhanced import
-from app.services.prompt_builder import create_safe_prompt
-from app.services.resilience import (
+from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer # Enhanced import
+from app.infrastructure.resilience import (
     ai_resilience,
     ResilienceStrategy,
     with_balanced_resilience,
@@ -37,7 +139,7 @@ from app.services.resilience import (
     ServiceUnavailableError,
     TransientAIError
 )
-from app.security.response_validator import validate_ai_response
+from app.services.response_validator import ResponseValidator
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +171,7 @@ class TextProcessorService:
         
         # Initialize the advanced sanitizer
         self.sanitizer = PromptSanitizer()
+        self.response_validator = ResponseValidator()
         
         # Configure resilience strategies for different operations
         self._configure_resilience_strategies()
@@ -227,27 +330,27 @@ class TextProcessorService:
             logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: ERROR, Duration: {processing_time:.2f}s")
             raise
     
-    @ai_resilience.with_resilience("summarize_text", strategy=ResilienceStrategy.BALANCED)
+    @with_balanced_resilience("summarize_text")
     async def _summarize_text_with_resilience(self, text: str, options: Dict[str, Any]) -> str:
         """Summarize text with resilience patterns."""
         return await self._summarize_text(text, options)
     
-    @ai_resilience.with_resilience("analyze_sentiment", strategy=ResilienceStrategy.AGGRESSIVE)
+    @with_aggressive_resilience("analyze_sentiment")
     async def _analyze_sentiment_with_resilience(self, text: str) -> SentimentResult:
         """Analyze sentiment with resilience patterns."""
         return await self._analyze_sentiment(text)
     
-    @ai_resilience.with_resilience("extract_key_points", strategy=ResilienceStrategy.BALANCED)
+    @with_balanced_resilience("extract_key_points")
     async def _extract_key_points_with_resilience(self, text: str, options: Dict[str, Any]) -> List[str]:
         """Extract key points with resilience patterns."""
         return await self._extract_key_points(text, options)
     
-    @ai_resilience.with_resilience("generate_questions", strategy=ResilienceStrategy.BALANCED)
+    @with_balanced_resilience("generate_questions")
     async def _generate_questions_with_resilience(self, text: str, options: Dict[str, Any]) -> List[str]:
         """Generate questions with resilience patterns."""
         return await self._generate_questions(text, options)
     
-    @ai_resilience.with_resilience("answer_question", strategy=ResilienceStrategy.CONSERVATIVE)
+    @with_conservative_resilience("answer_question")
     async def _answer_question_with_resilience(self, text: str, question: str) -> str:
         """Answer question with resilience patterns."""
         return await self._answer_question(text, question)
@@ -267,13 +370,15 @@ class TextProcessorService:
         )
         
         try:
-            result = await self.agent.run(prompt)
-            # Pass the original `text` (sanitized user input) and the specific `system_instruction` for this call
             try:
-                validated_output = validate_ai_response(result.data.strip(), 'summary', text, "summarization")
+                result = await self.agent.run(prompt)
+                # Use the validator instance
+                validated_output = self.response_validator.validate(
+                    result.output.strip(), 'summary', text, "summarization"
+                )
                 return validated_output
             except ValueError as ve:
-                logger.error(f"AI response validation failed in summarization: {ve}. Problematic response: {result.data.strip()[:200]}...")
+                logger.error(f"AI response validation failed in summarization: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return "An error occurred while processing your request. The AI response could not be validated."
         except Exception as e:
             logger.error(f"AI agent error in summarization: {e}")
@@ -291,10 +396,10 @@ class TextProcessorService:
         
         try:
             result = await self.agent.run(prompt)
-            raw_output = result.data.strip()
+            raw_output = result.output.strip()
             # Validate the raw string output before JSON parsing
             try:
-                validated_raw_output = validate_ai_response(raw_output, 'sentiment', text, "sentiment analysis")
+                validated_raw_output = self.response_validator.validate(raw_output, 'sentiment', text, "sentiment analysis")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in sentiment analysis: {ve}. Problematic response: {raw_output[:200]}...")
                 return SentimentResult(
@@ -337,9 +442,9 @@ class TextProcessorService:
         try:
             result = await self.agent.run(prompt)
             try:
-                validated_output_str = validate_ai_response(result.data.strip(), 'key_points', text, "key points extraction")
+                validated_output_str = self.response_validator.validate(result.output.strip(), 'key_points', text, "key points extraction")
             except ValueError as ve:
-                logger.error(f"AI response validation failed in key points extraction: {ve}. Problematic response: {result.data.strip()[:200]}...")
+                logger.error(f"AI response validation failed in key points extraction: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return ["An error occurred while processing your request. The AI response could not be validated."]
             
             points = []
@@ -372,9 +477,9 @@ class TextProcessorService:
         try:
             result = await self.agent.run(prompt)
             try:
-                validated_output_str = validate_ai_response(result.data.strip(), 'questions', text, "question generation")
+                validated_output_str = self.response_validator.validate(result.output.strip(), 'questions', text, "question generation")
             except ValueError as ve:
-                logger.error(f"AI response validation failed in question generation: {ve}. Problematic response: {result.data.strip()[:200]}...")
+                logger.error(f"AI response validation failed in question generation: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return ["An error occurred while processing your request. The AI response could not be validated."]
             
             questions = []
@@ -407,10 +512,10 @@ class TextProcessorService:
             # Pass `text` (sanitized user context) and `system_instruction`.
             # `question` is also part of the prompt but `text` is the primary user-generated free-form content.
             try:
-                validated_output = validate_ai_response(result.data.strip(), 'qa', text, "question answering")
+                validated_output = self.response_validator.validate(result.output.strip(), 'qa', text, "question answering")
                 return validated_output
             except ValueError as ve:
-                logger.error(f"AI response validation failed in question answering: {ve}. Problematic response: {result.data.strip()[:200]}...")
+                logger.error(f"AI response validation failed in question answering: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return "An error occurred while processing your request. The AI response could not be validated."
         except Exception as e:
             logger.error(f"AI agent error in question answering: {e}")

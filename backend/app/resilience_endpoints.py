@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from pydantic import BaseModel
-from app.auth import verify_api_key, optional_verify_api_key
-from app.services.resilience import ai_resilience
+from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
+from app.infrastructure.resilience import ai_resilience
 from app.services.text_processor import TextProcessorService
 from app.dependencies import get_text_processor
-from app.performance_benchmarks import performance_benchmark
-from app.validation_schemas import config_validator
+from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
+from app.infrastructure.resilience.config_validator import config_validator
 
 
 class BenchmarkRunRequest(BaseModel):
@@ -224,7 +224,7 @@ async def get_resilience_config(
     """
     try:
         from app.config import settings
-        from app.resilience_presets import preset_manager
+        from app.infrastructure.resilience.presets import preset_manager
         
         # Clear cache and determine if using legacy configuration
         # This ensures we get fresh results when environment variables change during testing
@@ -270,7 +270,7 @@ async def get_resilience_config(
         
         # Add legacy-specific fields for backward compatibility
         config_data["strategies"] = {}
-        for strategy, config in ai_resilience.configs.items():
+        for strategy, config in ai_resilience.configurations.items():
             config_data["strategies"][strategy.value] = {
                 "strategy": config.strategy.value,
                 "retry_config": {
@@ -330,7 +330,7 @@ async def get_auto_recommendation(api_key: str = Depends(verify_api_key)):
     Analyzes environment variables to recommend the best preset.
     """
     try:
-        from app.resilience_presets import preset_manager
+        from app.infrastructure.resilience.presets import preset_manager
         
         # Simple environment detection logic
         import os
@@ -549,7 +549,7 @@ async def get_configuration_usage_statistics(
         Configuration usage statistics and trends
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         stats = config_metrics_collector.get_usage_statistics(time_window_hours)
         
@@ -595,7 +595,7 @@ async def get_preset_usage_trend(
         Hourly usage trend data for the preset
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         trend_data = config_metrics_collector.get_preset_usage_trend(preset_name, hours)
         
@@ -631,7 +631,7 @@ async def get_configuration_performance_metrics(
         Performance metrics for configuration operations
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         metrics = config_metrics_collector.get_performance_metrics(hours)
         
@@ -668,7 +668,7 @@ async def get_configuration_alerts(
         List of active configuration alerts
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         alerts = config_metrics_collector.get_active_alerts(max_alerts)
         
@@ -712,7 +712,7 @@ async def get_session_configuration_metrics(
         Configuration metrics for the session
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         session_metrics = config_metrics_collector.get_session_metrics(session_id)
         
@@ -766,7 +766,7 @@ async def export_configuration_metrics(
         Exported metrics data
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         if format.lower() not in ['json', 'csv']:
             raise HTTPException(
@@ -812,7 +812,7 @@ async def cleanup_old_metrics(
         Cleanup summary
     """
     try:
-        from app.config_monitoring import config_metrics_collector
+        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         # Get counts before cleanup
         total_metrics_before = len(config_metrics_collector.metrics)
@@ -972,7 +972,7 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
         Performance thresholds and targets for configuration operations
     """
     try:
-        from app.performance_benchmarks import PerformanceThreshold
+        from app.infrastructure.resilience.performance_benchmarks import PerformanceThreshold
         
         return {
             "thresholds": {
@@ -1022,7 +1022,7 @@ async def get_performance_report(
             suite = performance_benchmark.run_comprehensive_benchmark()
         else:
             # Create suite from current results
-            from app.performance_benchmarks import BenchmarkSuite
+            from app.infrastructure.resilience.performance_benchmarks import BenchmarkSuite
             import time
             suite = BenchmarkSuite(
                 name="Current Performance Results",
@@ -1206,7 +1206,7 @@ async def get_security_configuration(
         Security validation configuration details
     """
     try:
-        from app.validation_schemas import SECURITY_CONFIG
+        from app.infrastructure.resilience.config_validator import SECURITY_CONFIG
         
         return {
             "security_limits": {
@@ -1261,7 +1261,7 @@ async def validate_against_field_whitelist(
         # Perform only field whitelist validation
         errors, suggestions = config_validator._validate_field_whitelist(request.configuration)
         
-        from app.validation_schemas import SECURITY_CONFIG
+        from app.infrastructure.resilience.config_validator import SECURITY_CONFIG
         whitelist = SECURITY_CONFIG["allowed_field_whitelist"]
         
         field_analysis = {}

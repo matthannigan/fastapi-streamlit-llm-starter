@@ -9,7 +9,7 @@ import time
 import json
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, NamedTuple
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -176,7 +176,7 @@ class ConfigurationMetricsCollector:
             metadata: Additional metadata about the usage
         """
         metric = ConfigurationMetric(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metric_type=MetricType.PRESET_USAGE,
             preset_name=preset_name,
             operation=operation,
@@ -204,7 +204,7 @@ class ConfigurationMetricsCollector:
             metadata: Additional metadata about the load
         """
         metric = ConfigurationMetric(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metric_type=MetricType.CONFIG_LOAD,
             preset_name=preset_name,
             operation=operation,
@@ -242,7 +242,7 @@ class ConfigurationMetricsCollector:
         }
         
         metric = ConfigurationMetric(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metric_type=MetricType.CONFIG_ERROR,
             preset_name=preset_name,
             operation=operation,
@@ -277,7 +277,7 @@ class ConfigurationMetricsCollector:
         }
         
         metric = ConfigurationMetric(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metric_type=MetricType.CONFIG_CHANGE,
             preset_name=new_preset,
             operation=operation,
@@ -313,7 +313,7 @@ class ConfigurationMetricsCollector:
         }
         
         metric = ConfigurationMetric(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             metric_type=MetricType.VALIDATION_EVENT,
             preset_name=preset_name,
             operation=operation,
@@ -338,14 +338,14 @@ class ConfigurationMetricsCollector:
         """
         # Check cache first
         if (self._stats_cache and self._stats_cache_time and 
-            (datetime.utcnow() - self._stats_cache_time).seconds < self._cache_ttl_seconds):
+            (datetime.now(timezone.utc) - self._stats_cache_time).seconds < self._cache_ttl_seconds):
             return self._stats_cache
         
         with self._lock:
             # Filter metrics by time window
             cutoff_time = None
             if time_window_hours:
-                cutoff_time = datetime.utcnow() - timedelta(hours=time_window_hours)
+                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=time_window_hours)
             
             relevant_metrics = [
                 m for m in self.metrics 
@@ -411,7 +411,7 @@ class ConfigurationMetricsCollector:
             
             # Cache the results
             self._stats_cache = stats
-            self._stats_cache_time = datetime.utcnow()
+            self._stats_cache_time = datetime.now(timezone.utc)
             
             return stats
     
@@ -426,7 +426,7 @@ class ConfigurationMetricsCollector:
         Returns:
             List of hourly usage counts
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         # Create hourly buckets
         hourly_usage = defaultdict(int)
@@ -443,7 +443,7 @@ class ConfigurationMetricsCollector:
         # Convert to list format
         trend_data = []
         for hour in range(hours):
-            bucket_time = datetime.utcnow().replace(minute=0, second=0, microsecond=0) - timedelta(hours=hour)
+            bucket_time = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0) - timedelta(hours=hour)
             usage_count = hourly_usage.get(bucket_time, 0)
             trend_data.append({
                 'timestamp': bucket_time.isoformat(),
@@ -462,7 +462,7 @@ class ConfigurationMetricsCollector:
         Returns:
             Performance metrics summary
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         load_times = []
         error_times = []
@@ -523,7 +523,7 @@ class ConfigurationMetricsCollector:
             List of active alerts
         """
         # Filter recent alerts (last 24 hours)
-        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         recent_alerts = [
             alert for alert in self.alerts[-max_alerts:]
             if alert.timestamp >= cutoff_time
@@ -551,7 +551,7 @@ class ConfigurationMetricsCollector:
         Args:
             hours: Hours threshold for clearing old metrics
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         with self._lock:
             # Filter metrics
@@ -591,7 +591,7 @@ class ConfigurationMetricsCollector:
         """
         cutoff_time = None
         if time_window_hours:
-            cutoff_time = datetime.utcnow() - timedelta(hours=time_window_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=time_window_hours)
         
         relevant_metrics = [
             m for m in self.metrics 
@@ -643,7 +643,7 @@ class ConfigurationMetricsCollector:
             error_message: Error message
         """
         alert = ConfigurationAlert(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             level=AlertLevel.ERROR,
             title=f"Configuration Error: {preset_name}",
             description=f"Error in {operation}: {error_message}",
@@ -668,7 +668,7 @@ class ConfigurationMetricsCollector:
         threshold = self.alert_thresholds['load_time_threshold_ms']
         
         alert = ConfigurationAlert(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             level=AlertLevel.WARNING,
             title=f"Slow Configuration Load: {preset_name}",
             description=f"Configuration load time ({load_time_ms:.2f}ms) exceeds threshold ({threshold}ms)",

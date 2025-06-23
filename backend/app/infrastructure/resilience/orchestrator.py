@@ -201,13 +201,13 @@ from tenacity import (
     TryAgain
 )
 
-from .circuit_breaker import (
+from app.infrastructure.resilience.circuit_breaker import (
     EnhancedCircuitBreaker,
     CircuitBreakerConfig,
     ResilienceMetrics,
     AIServiceException
 )
-from .retry import (
+from app.infrastructure.resilience.retry import (
     RetryConfig,
     TransientAIError,
     PermanentAIError,
@@ -216,7 +216,7 @@ from .retry import (
     should_retry_on_exception,
     classify_exception
 )
-from .presets import (
+from app.infrastructure.resilience.presets import (
     ResilienceStrategy,
     ResilienceConfig,
     DEFAULT_PRESETS
@@ -249,15 +249,26 @@ class AIServiceResilience:
         """Load default strategy configurations."""
         self.configurations = DEFAULT_PRESETS.copy()
         
-        # Load custom configuration if provided
+        # Apply any custom configuration overrides from Settings
         if self.settings:
-            custom_config_json = getattr(self.settings, 'resilience_custom_config', None)
-            if custom_config_json:
-                try:
-                    custom_config = json.loads(custom_config_json)
-                    self._apply_custom_config(custom_config)
-                except json.JSONDecodeError:
-                    logger.warning("Invalid JSON in resilience_custom_config")
+            try:
+                # Get the base processed resilience config from Settings
+                base_config = self.settings.get_resilience_config()
+                
+                # Update all strategy configurations with the base overrides
+                # while preserving the strategy-specific settings
+                for strategy_enum, default_config in DEFAULT_PRESETS.items():
+                    # Create a new config combining the base settings with strategy-specific strategy
+                    self.configurations[strategy_enum] = ResilienceConfig(
+                        strategy=strategy_enum,  # Keep the strategy-specific strategy
+                        retry_config=base_config.retry_config,  # Use processed retry config
+                        circuit_breaker_config=base_config.circuit_breaker_config,  # Use processed CB config
+                        enable_circuit_breaker=base_config.enable_circuit_breaker,
+                        enable_retry=base_config.enable_retry
+                    )
+                    
+            except Exception as e:
+                logger.warning(f"Error loading resilience configuration: {e}")
     
     def _load_operation_configs(self):
         """Load operation-specific configurations from settings."""
@@ -266,13 +277,21 @@ class AIServiceResilience:
             
         operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
         for operation in operations:
-            strategy_name = getattr(self.settings, f'{operation}_strategy', 'balanced')
             try:
+                strategy_name = self.settings.get_operation_strategy(operation)
                 strategy = ResilienceStrategy(strategy_name)
-                if strategy in self.configurations:
-                    self.configurations[operation] = self.configurations[strategy]
-            except ValueError:
-                logger.warning(f"Unknown strategy '{strategy_name}' for operation '{operation}', using balanced")
+                
+                # Create operation-specific config with proper strategy but using base settings
+                base_config = self.settings.get_resilience_config()
+                self.configurations[operation] = ResilienceConfig(
+                    strategy=strategy,
+                    retry_config=base_config.retry_config,
+                    circuit_breaker_config=base_config.circuit_breaker_config,
+                    enable_circuit_breaker=base_config.enable_circuit_breaker,
+                    enable_retry=base_config.enable_retry
+                )
+            except (ValueError, AttributeError):
+                logger.warning(f"Unknown strategy for operation '{operation}', using balanced")
                 self.configurations[operation] = self.configurations[ResilienceStrategy.BALANCED]
     
     def _load_fallback_configs(self):
@@ -280,37 +299,7 @@ class AIServiceResilience:
         # Add any legacy or fallback configuration logic here
         pass
     
-    def _apply_custom_config(self, custom_config: Dict[str, Any]):
-        """Apply custom configuration overrides."""
-        for strategy_name, config_data in custom_config.items():
-            try:
-                strategy = ResilienceStrategy(strategy_name)
-                if strategy in self.configurations:
-                    # Update existing configuration with custom values
-                    base_config = self.configurations[strategy]
-                    
-                    # Update retry config
-                    if 'retry_config' in config_data:
-                        retry_data = config_data['retry_config']
-                        for key, value in retry_data.items():
-                            if hasattr(base_config.retry_config, key):
-                                setattr(base_config.retry_config, key, value)
-                    
-                    # Update circuit breaker config
-                    if 'circuit_breaker_config' in config_data:
-                        cb_data = config_data['circuit_breaker_config']
-                        for key, value in cb_data.items():
-                            if hasattr(base_config.circuit_breaker_config, key):
-                                setattr(base_config.circuit_breaker_config, key, value)
-                    
-                    # Update flags
-                    if 'enable_circuit_breaker' in config_data:
-                        base_config.enable_circuit_breaker = config_data['enable_circuit_breaker']
-                    if 'enable_retry' in config_data:
-                        base_config.enable_retry = config_data['enable_retry']
-                        
-            except ValueError:
-                logger.warning(f"Unknown strategy '{strategy_name}' in custom config")
+
     
     def get_or_create_circuit_breaker(self, name: str, config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
         """Get or create a circuit breaker for the given name and configuration."""
@@ -335,15 +324,25 @@ class AIServiceResilience:
         if operation_name in self.configurations:
             return self.configurations[operation_name]
         
-        # Try strategy from settings
+        # Get operation-specific strategy from settings
         if self.settings:
-            strategy_name = getattr(self.settings, f'{operation_name}_strategy', None)
-            if strategy_name:
-                try:
-                    strategy = ResilienceStrategy(strategy_name)
-                    return self.configurations[strategy]
-                except ValueError:
-                    pass
+            try:
+                strategy_name = self.settings.get_operation_strategy(operation_name)
+                strategy = ResilienceStrategy(strategy_name)
+                
+                # Create a configuration with the operation-specific strategy
+                # but using the base configuration's retry/circuit breaker settings
+                base_config = self.settings.get_resilience_config()
+                
+                return ResilienceConfig(
+                    strategy=strategy,
+                    retry_config=base_config.retry_config,
+                    circuit_breaker_config=base_config.circuit_breaker_config,
+                    enable_circuit_breaker=base_config.enable_circuit_breaker,
+                    enable_retry=base_config.enable_retry
+                )
+            except (ValueError, AttributeError):
+                pass
         
         # Fallback to balanced
         return self.configurations[ResilienceStrategy.BALANCED]
@@ -525,9 +524,9 @@ class AIServiceResilience:
         for name, cb in self.circuit_breakers.items():
             result["circuit_breakers"][name] = {
                 "state": getattr(cb, '_state', 'closed'),
-                "failure_threshold": cb.failure_threshold,
-                "recovery_timeout": cb.recovery_timeout,
-                "metrics": cb.metrics.to_dict()
+                "failure_threshold": getattr(cb, 'failure_threshold', 5),
+                "recovery_timeout": getattr(cb, 'recovery_timeout', 60),
+                "metrics": cb.metrics.to_dict() if hasattr(cb, 'metrics') else {}
             }
         
         return result
@@ -560,9 +559,15 @@ class AIServiceResilience:
             if hasattr(cb, '_state') and cb._state == 'open'
         ]
         
+        half_open_circuit_breakers = [
+            name for name, cb in self.circuit_breakers.items()
+            if hasattr(cb, '_state') and cb._state == 'half-open'
+        ]
+        
         return {
             "healthy": len(open_circuit_breakers) == 0,
             "open_circuit_breakers": open_circuit_breakers,
+            "half_open_circuit_breakers": half_open_circuit_breakers,
             "total_circuit_breakers": len(self.circuit_breakers),
             "total_operations": len(self.operation_metrics),
             "timestamp": datetime.now().isoformat()
@@ -573,8 +578,8 @@ class AIServiceResilience:
         return self.with_resilience(operation_name=operation_name, fallback=fallback)
 
 
-# Global instance (will be initialized by services layer)
-ai_resilience: Optional[AIServiceResilience] = None
+# Global instance - initialize immediately to support decorators at import time
+ai_resilience = AIServiceResilience()
 
 
 # Convenience decorator functions
@@ -594,9 +599,18 @@ def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable]
 
 def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] = None):
     """Global decorator for balanced resilience strategy."""
-    if not ai_resilience:
-        raise RuntimeError("AIServiceResilience not initialized")
-    return ai_resilience.with_resilience(operation_name, ResilienceStrategy.BALANCED, fallback=fallback)
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if not ai_resilience:
+                raise RuntimeError("AIServiceResilience not initialized")
+            # Apply resilience at runtime, not at import time
+            resilient_func = ai_resilience.with_resilience(
+                operation_name, ResilienceStrategy.BALANCED, fallback=fallback
+            )(func)
+            return await resilient_func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 def with_conservative_resilience(operation_name: str, fallback: Optional[Callable] = None):

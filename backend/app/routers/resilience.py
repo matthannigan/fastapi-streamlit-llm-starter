@@ -17,9 +17,9 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.config import Settings, settings
-from app.resilience_presets import preset_manager, PresetManager
-from app.validation_schemas import config_validator, ValidationResult
-from app.services.resilience import ai_resilience
+from app.infrastructure.resilience.orchestrator import ai_resilience
+from app.infrastructure.resilience.presets import preset_manager, PresetManager
+from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
 
 logger = logging.getLogger(__name__)
 

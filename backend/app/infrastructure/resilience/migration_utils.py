@@ -173,7 +173,7 @@ class LegacyConfigAnalyzer:
     
     def _calculate_preset_scores(self, legacy_config: Dict[str, Any]) -> Dict[str, float]:
         """Calculate compatibility scores for each preset."""
-        from app.resilience_presets import PRESETS
+        from app.infrastructure.resilience.presets import PRESETS
         
         scores = {}
         
@@ -244,7 +244,7 @@ class LegacyConfigAnalyzer:
     
     def _generate_custom_overrides(self, legacy_config: Dict[str, Any], preset_name: str) -> Optional[Dict[str, Any]]:
         """Generate custom configuration overrides for values that don't match preset."""
-        from app.resilience_presets import PRESETS
+        from app.infrastructure.resilience.presets import PRESETS
         
         if preset_name not in PRESETS:
             return None

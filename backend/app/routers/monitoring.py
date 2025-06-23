@@ -8,10 +8,10 @@ and other monitoring-related functionality.
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
-from app.auth import verify_api_key, optional_verify_api_key
-from app.services.monitoring import CachePerformanceMonitor
+from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
 from app.dependencies import get_cache_service
-from app.services.cache import AIResponseCache
+from app.infrastructure.cache import AIResponseCache
+from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 import logging
 
 # Create a router for monitoring endpoints
