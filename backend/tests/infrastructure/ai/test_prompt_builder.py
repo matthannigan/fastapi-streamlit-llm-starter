@@ -1,6 +1,6 @@
-# TODO: This test is importing from app.infrastructure.ai.prompt_builder but should be testing app.infrastructure.ai.prompt_builder
-# The infrastructure tests should test infrastructure modules, not services modules.
-# Consider moving this test to backend/tests/services/ or updating imports to test infrastructure modules.
+# This file correctly tests app.infrastructure.ai.prompt_builder infrastructure modules
+# and mostly conforms to Infrastructure Test criteria with high coverage, business-agnostic
+# abstractions, isolation with mocking, and comprehensive template testing.
 
 """
 Unit tests for the prompt_builder module.

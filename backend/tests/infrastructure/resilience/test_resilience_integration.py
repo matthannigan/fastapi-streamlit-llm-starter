@@ -1,3 +1,8 @@
+# TODO: Move to backend/tests/integration/test_resilience_service_integration.py
+# This file tests integration between resilience service and preset system, which is
+# cross-layer integration testing. Integration tests should be in tests/integration/
+# directory according to the test organization guidelines.
+
 """
 Unit tests for resilience service integration with preset system.
 

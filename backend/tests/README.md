@@ -93,9 +93,18 @@ backend/tests/
 ├── performance/               # Performance and load tests
 │   └── test_cache_performance.py  # Cache performance tests (14 lines)
 │
-└── manual/                    # Manual testing scripts
-    ├── test_manual_api.py         # Manual API tests (require live server + AI keys) (158 lines)
-    └── test_manual_auth.py        # Manual auth tests (require live server) (167 lines)
+├── manual/                    # Manual testing scripts
+│   ├── test_manual_api.py         # Manual API tests (require live server + AI keys) (158 lines)
+│   └── test_manual_auth.py        # Manual auth tests (require live server) (167 lines)
+│
+└── templates/                 # Code review templates for tests
+    ├── code-review_api.md
+    ├── code-review_core.md 
+    ├── code-review_infrastructure.md
+    ├── code-review_integration.md
+    ├── code-review_performance.md
+    ├── code-review_services.md
+    └── code-review_shared-schemas.md
 ```
 
 ## Test Categories
@@ -262,6 +271,139 @@ uvicorn app.main:app --reload --port 8000
 cd backend
 pytest manual/ -v -s -m "manual" --run-manual
 ```
+
+## Code Review Process 📋
+
+The `templates/` directory contains systematic code review templates for each test category. These templates help ensure tests meet their specific criteria and are properly located within the test directory structure.
+
+### Available Review Templates
+
+Each template is designed for a specific test category:
+
+- **`code-review_infrastructure.md`** - For reviewing infrastructure tests (`infrastructure/` directory)
+- **`code-review_core.md`** - For reviewing core application tests (`core/` directory)
+- **`code-review_services.md`** - For reviewing domain service tests (`services/` directory)
+- **`code-review_api.md`** - For reviewing API endpoint tests (`api/` directory)
+- **`code-review_shared-schemas.md`** - For reviewing schema validation tests (`shared_schemas/` directory)
+- **`code-review_integration.md`** - For reviewing integration tests (`integration/` directory)
+- **`code-review_performance.md`** - For reviewing performance tests (`performance/` directory)
+
+### When to Initiate Code Reviews
+
+**Recommended Review Triggers:**
+
+1. **After major refactoring** - When test structure or organization changes significantly
+2. **Before releases** - To ensure test quality and proper categorization
+3. **When adding new test categories** - To verify tests are placed correctly
+4. **During onboarding** - To help new team members understand test organization
+5. **When test failures increase** - To identify structural issues or misplaced tests
+6. **Quarterly maintenance** - Regular review to maintain test quality standards
+
+### How to Conduct a Code Review
+
+**Step 1: Choose the appropriate template**
+```bash
+# Copy the relevant template for your review area
+cp backend/tests/templates/code-review_infrastructure.md backend/tests/infrastructure/review_2024-01-15.md
+```
+
+**Step 2: Gather file information**
+```bash
+# Get file list and sizes for the review area
+cd backend/tests/infrastructure
+ls -la
+wc -l *.py */*.py
+```
+
+**Step 3: Follow the template process**
+- List all files to be reviewed with checkboxes
+- Review each file systematically against the criteria
+- Document findings and classifications
+- Identify misplaced tests and add TODO comments
+- Provide comprehensive recommendations
+
+**Step 4: Take action on findings**
+```bash
+# Move misplaced tests to correct directories
+mv tests/infrastructure/test_integration_feature.py tests/integration/test_feature_integration.py
+
+# Add TODO comments to files that need relocation
+# (Done during the review process)
+```
+
+### Review Criteria by Category
+
+**Infrastructure Tests** 🏗️
+- Business-agnostic abstractions
+- Isolated testing with mocked dependencies
+- High test coverage (>90%)
+- Stable API contract testing
+- Performance-critical implementations
+
+**Core Tests** ⚙️
+- Application-specific setup and configuration
+- Infrastructure-domain bridge functionality
+- Dependency injection and wiring
+- Middleware and cross-cutting concerns
+- Configuration validation
+
+**Services Tests** 💼
+- Business logic and domain rules
+- Service composition and orchestration
+- Input validation and processing
+- Error handling and edge cases
+- Infrastructure integration
+
+**API Tests** 🌐
+- HTTP endpoint testing
+- Request/response validation
+- Authentication and authorization
+- Error handling and status codes
+- API contract compliance
+
+**Schema Tests** 📋
+- Pydantic model validation
+- Request/response schema testing
+- Data structure integrity
+- Validation edge cases
+- Schema evolution support
+
+**Integration Tests** 🔗
+- Cross-layer integration
+- Service boundary interactions
+- End-to-end workflows
+- Realistic dependency usage
+- System interaction patterns
+
+**Performance Tests** 🚀
+- System characteristic measurement
+- Quantitative metrics collection
+- Load and stress testing
+- Performance regression detection
+- Resource utilization monitoring
+
+### Review Output and Documentation
+
+Each review should produce:
+- **Review report** - Detailed findings and recommendations
+- **Action items** - Specific tasks to address issues
+- **TODO comments** - Added to misplaced files with relocation guidance
+- **Progress tracking** - Metrics on review completion and issue resolution
+
+### Example Review Commands
+
+```bash
+# Start an infrastructure review
+cp backend/tests/templates/code-review_infrastructure.md backend/tests/infrastructure/infrastructure_review.md
+
+# Start an API review  
+cp backend/tests/templates/code-review_api.md backend/tests/api/api_review.md
+
+# Start an integration review
+cp backend/tests/templates/code-review_integration.md backend/tests/integration/integration_review.md
+```
+
+The review templates provide systematic approaches to ensure test quality, proper organization, and adherence to category-specific criteria.
 
 ## Running Tests
 

@@ -1,3 +1,8 @@
+# TODO: Move to backend/tests/performance/test_resilience_performance_benchmarks.py  
+# This file performs actual performance testing with timing measurements and benchmarking.
+# Performance tests that measure system characteristics should be in tests/performance/
+# directory according to the test organization guidelines.
+
 """
 Unit tests for performance benchmarking system.
 
