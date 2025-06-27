@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
 from app.infrastructure.resilience import ai_resilience
 from app.services.text_processor import TextProcessorService
-from app.dependencies import get_text_processor
+from app.api.v1.deps import get_text_processor
 from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
 from app.infrastructure.resilience.config_validator import config_validator
 
@@ -31,50 +31,9 @@ class SecurityValidationRequest(BaseModel):
     configuration: Optional[Dict[str, Any]]
 
 # Create a router for resilience endpoints
-resilience_router = APIRouter(prefix="/resilience", tags=["resilience"])
+router = APIRouter(prefix="/resilience", tags=["resilience"])
 
-@resilience_router.get("/health")
-async def get_resilience_health(
-    api_key: str = Depends(optional_verify_api_key),
-    text_processor: TextProcessorService = Depends(get_text_processor)
-):
-    """
-    Get the health status of the resilience service.
-    
-    Returns information about circuit breaker states and overall health.
-    """
-    try:
-        health_status = ai_resilience.get_health_status()
-        return {
-            "resilience_health": health_status,
-            "service_health": text_processor.get_resilience_health(),
-            "overall_healthy": health_status["healthy"]
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get resilience health: {str(e)}"
-        )
-
-@resilience_router.get("/metrics")
-async def get_resilience_metrics(api_key: str = Depends(verify_api_key)):
-    """
-    Get detailed metrics for all resilience operations.
-    
-    Requires authentication. Returns comprehensive metrics including:
-    - Operation success/failure rates
-    - Retry attempt counts
-    - Circuit breaker state transitions
-    """
-    try:
-        return ai_resilience.get_all_metrics()
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get resilience metrics: {str(e)}"
-        )
-
-@resilience_router.get("/metrics/{operation_name}")
+@router.get("/metrics/{operation_name}")
 async def get_operation_metrics(
     operation_name: str,
     api_key: str = Depends(verify_api_key)
@@ -97,7 +56,7 @@ async def get_operation_metrics(
             detail=f"Failed to get metrics for operation {operation_name}: {str(e)}"
         )
 
-@resilience_router.post("/metrics/reset")
+@router.post("/metrics/reset")
 async def reset_resilience_metrics(
     operation_name: Optional[str] = None,
     api_key: str = Depends(verify_api_key)
@@ -120,7 +79,7 @@ async def reset_resilience_metrics(
             detail=f"Failed to reset metrics: {str(e)}"
         )
 
-@resilience_router.get("/circuit-breakers")
+@router.get("/circuit-breakers")
 async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
     """
     Get the status of all circuit breakers.
@@ -139,7 +98,7 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
             detail=f"Failed to get circuit breaker status: {str(e)}"
         )
 
-@resilience_router.get("/circuit-breakers/{breaker_name}")
+@router.get("/circuit-breakers/{breaker_name}")
 async def get_circuit_breaker_details(
     breaker_name: str,
     api_key: str = Depends(verify_api_key)
@@ -175,7 +134,7 @@ async def get_circuit_breaker_details(
             detail=f"Failed to get circuit breaker details: {str(e)}"
         )
 
-@resilience_router.post("/circuit-breakers/{breaker_name}/reset")
+@router.post("/circuit-breakers/{breaker_name}/reset")
 async def reset_circuit_breaker(
     breaker_name: str,
     api_key: str = Depends(verify_api_key)
@@ -196,8 +155,10 @@ async def reset_circuit_breaker(
         breaker = ai_resilience.circuit_breakers[breaker_name]
         # Reset the circuit breaker
         breaker._failure_count = 0
-        breaker._last_failure_time = None
+        breaker._last_failure = None
         breaker._state = 'closed'
+        # Also reset the enhanced circuit breaker's last_failure_time
+        breaker.last_failure_time = None
         
         return {
             "message": f"Circuit breaker '{breaker_name}' has been reset",
@@ -212,7 +173,7 @@ async def reset_circuit_breaker(
             detail=f"Failed to reset circuit breaker: {str(e)}"
         )
 
-@resilience_router.get("/config")
+@router.get("/config")
 async def get_resilience_config(
     api_key: str = Depends(verify_api_key),
     text_processor: TextProcessorService = Depends(get_text_processor)
@@ -243,9 +204,18 @@ async def get_resilience_config(
         
         # Get operation strategies dynamically based on current configuration
         operation_strategies = {}
-        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        try:
+            operations = settings.get_registered_operations()
+        except Exception:
+            # Fallback to common operations for compatibility
+            operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        
         for operation in operations:
-            operation_strategies[operation] = settings.get_operation_strategy(operation)
+            try:
+                operation_strategies[operation] = settings.get_operation_strategy(operation)
+            except (AttributeError, KeyError):
+                # Skip operations that don't have a strategy defined
+                continue
         
         # Build the response in the expected format
         config_data = {
@@ -298,7 +268,7 @@ async def get_resilience_config(
             detail=f"Failed to get resilience config: {str(e)}"
         )
 
-@resilience_router.post("/validate")
+@router.post("/validate")
 async def validate_resilience_config(
     request: ValidationRequest,
     api_key: str = Depends(verify_api_key)
@@ -322,7 +292,7 @@ async def validate_resilience_config(
             detail=f"Failed to validate configuration: {str(e)}"
         )
 
-@resilience_router.get("/recommend-auto")
+@router.get("/recommend-auto")
 async def get_auto_recommendation(api_key: str = Depends(verify_api_key)):
     """
     Get automatic environment-based preset recommendation.
@@ -377,7 +347,7 @@ async def get_auto_recommendation(api_key: str = Depends(verify_api_key)):
             detail=f"Failed to get auto recommendation: {str(e)}"
         )
 
-@resilience_router.get("/recommend/{environment}")
+@router.get("/recommend/{environment}")
 async def get_environment_recommendation(
     environment: str,
     api_key: str = Depends(verify_api_key)
@@ -419,7 +389,7 @@ async def get_environment_recommendation(
                          detail=f"Failed to get environment recommendation: {str(e)}"
          )
 
-@resilience_router.get("/templates")
+@router.get("/templates")
 async def get_configuration_templates(api_key: str = Depends(verify_api_key)):
     """
     Get available configuration templates.
@@ -440,7 +410,7 @@ class TemplateValidationRequest(BaseModel):
     template_name: str
     overrides: Dict[str, Any] = {}
 
-@resilience_router.post("/validate-template")
+@router.post("/validate-template")
 async def validate_template_config(
     request: TemplateValidationRequest,
     api_key: str = Depends(verify_api_key)
@@ -469,7 +439,7 @@ async def validate_template_config(
             detail=f"Failed to validate template configuration: {str(e)}"
         )
 
-@resilience_router.get("/dashboard")
+@router.get("/dashboard")
 async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_key)):
     """
     Get a dashboard view of resilience status.
@@ -534,7 +504,7 @@ async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_ke
 
 # Configuration Monitoring Endpoints
 
-@resilience_router.get("/monitoring/usage-statistics")
+@router.get("/monitoring/usage-statistics")
 async def get_configuration_usage_statistics(
     time_window_hours: int = 24,
     api_key: str = Depends(verify_api_key)
@@ -578,7 +548,7 @@ async def get_configuration_usage_statistics(
         )
 
 
-@resilience_router.get("/monitoring/preset-trends/{preset_name}")
+@router.get("/monitoring/preset-trends/{preset_name}")
 async def get_preset_usage_trend(
     preset_name: str,
     hours: int = 24,
@@ -616,7 +586,7 @@ async def get_preset_usage_trend(
         )
 
 
-@resilience_router.get("/monitoring/performance-metrics")
+@router.get("/monitoring/performance-metrics")
 async def get_configuration_performance_metrics(
     hours: int = 24,
     api_key: str = Depends(verify_api_key)
@@ -651,7 +621,7 @@ async def get_configuration_performance_metrics(
         )
 
 
-@resilience_router.get("/monitoring/alerts")
+@router.get("/monitoring/alerts")
 async def get_configuration_alerts(
     max_alerts: int = 50,
     level: Optional[str] = None,
@@ -697,7 +667,7 @@ async def get_configuration_alerts(
         )
 
 
-@resilience_router.get("/monitoring/session/{session_id}")
+@router.get("/monitoring/session/{session_id}")
 async def get_session_configuration_metrics(
     session_id: str,
     api_key: str = Depends(verify_api_key)
@@ -749,7 +719,7 @@ async def get_session_configuration_metrics(
         )
 
 
-@resilience_router.get("/monitoring/export")
+@router.get("/monitoring/export")
 async def export_configuration_metrics(
     format: str = "json",
     time_window_hours: Optional[int] = None,
@@ -797,7 +767,7 @@ async def export_configuration_metrics(
         )
 
 
-@resilience_router.post("/monitoring/cleanup")
+@router.post("/monitoring/cleanup")
 async def cleanup_old_metrics(
     hours: int = 24,
     api_key: str = Depends(verify_api_key)
@@ -841,7 +811,7 @@ async def cleanup_old_metrics(
 
 # Performance Benchmarking Endpoints
 
-@resilience_router.get("/performance/benchmark")
+@router.get("/performance/benchmark")
 async def run_performance_benchmark(
     iterations: int = 50,
     include_slow: bool = False,
@@ -881,7 +851,7 @@ async def run_performance_benchmark(
         )
 
 
-@resilience_router.post("/performance/benchmark")
+@router.post("/performance/benchmark")
 async def run_custom_performance_benchmark(
     request: BenchmarkRunRequest,
     api_key: str = Depends(verify_api_key)
@@ -963,7 +933,7 @@ async def run_custom_performance_benchmark(
         )
 
 
-@resilience_router.get("/performance/thresholds")
+@router.get("/performance/thresholds")
 async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_key)):
     """
     Get performance thresholds for different operations.
@@ -1002,7 +972,7 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
         )
 
 
-@resilience_router.get("/performance/report")
+@router.get("/performance/report")
 async def get_performance_report(
     format: str = "json",
     api_key: str = Depends(verify_api_key)
@@ -1074,7 +1044,7 @@ async def get_performance_report(
         )
 
 
-@resilience_router.get("/performance/history")
+@router.get("/performance/history")
 async def get_performance_history(
     limit: int = 10,
     api_key: str = Depends(verify_api_key)
@@ -1119,7 +1089,7 @@ async def get_performance_history(
 
 # Security Validation Endpoints
 
-@resilience_router.post("/validate/security")
+@router.post("/validate/security")
 async def validate_configuration_security(
     request: SecurityValidationRequest,
     client_ip: str = "unknown",
@@ -1161,7 +1131,7 @@ async def validate_configuration_security(
         )
 
 
-@resilience_router.get("/validate/rate-limit-status")
+@router.get("/validate/rate-limit-status")
 async def get_validation_rate_limit_status(
     client_ip: str = "unknown",
     api_key: str = Depends(verify_api_key)
@@ -1195,7 +1165,7 @@ async def get_validation_rate_limit_status(
         )
 
 
-@resilience_router.get("/validate/security-config")
+@router.get("/validate/security-config")
 async def get_security_configuration(
     api_key: str = Depends(verify_api_key)
 ):
@@ -1237,7 +1207,7 @@ async def get_security_configuration(
         )
 
 
-@resilience_router.post("/validate/field-whitelist")
+@router.post("/validate/field-whitelist")
 async def validate_against_field_whitelist(
     request: ValidationRequest,
     api_key: str = Depends(verify_api_key)

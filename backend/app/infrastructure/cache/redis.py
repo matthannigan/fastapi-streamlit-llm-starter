@@ -147,7 +147,7 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    aioredis = None
+    aioredis = None  # type: ignore
 
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
@@ -266,7 +266,7 @@ class AIResponseCache(CacheInterface):
     def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600, 
                  text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256,
                  compression_threshold: int = 1000, compression_level: int = 6,
-                 text_size_tiers: dict = None, memory_cache_size: int = 100,
+                 text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: int = 100,
                  performance_monitor: Optional[CachePerformanceMonitor] = None):
         """
         Initialize AIResponseCache with injectable configuration.
@@ -427,6 +427,7 @@ class AIResponseCache(CacheInterface):
             
         if not self.redis:
             try:
+                assert aioredis is not None  # Type checker hint: aioredis is available when REDIS_AVAILABLE is True
                 self.redis = await aioredis.from_url(
                     self.redis_url,
                     decode_responses=False,  # Handle binary data for compression
@@ -434,7 +435,7 @@ class AIResponseCache(CacheInterface):
                     socket_timeout=5
                 )
                 # Test connection
-                await self.redis.ping()
+                await self.redis.ping()  # Type assertion above ensures redis is not None
                 logger.info(f"Connected to Redis at {self.redis_url}")
                 return True
             except Exception as e:
@@ -443,7 +444,7 @@ class AIResponseCache(CacheInterface):
                 return False
         return True
     
-    def _generate_cache_key(self, text: str, operation: str, options: Dict[str, Any], question: str = None) -> str:
+    def _generate_cache_key(self, text: str, operation: str, options: Dict[str, Any], question: Optional[str] = None) -> str:
         """
         Generate optimized cache key using CacheKeyGenerator.
         
@@ -471,7 +472,7 @@ class AIResponseCache(CacheInterface):
         """
         return self.key_generator.generate_cache_key(text, operation, options, question)
     
-    async def get_cached_response(self, text: str, operation: str, options: Dict[str, Any], question: str = None) -> Optional[Dict[str, Any]]:
+    async def get_cached_response(self, text: str, operation: str, options: Dict[str, Any], question: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Multi-tier cache retrieval with memory cache optimization for small texts.
         Includes comprehensive performance monitoring for cache hit ratio tracking.
@@ -530,6 +531,7 @@ class AIResponseCache(CacheInterface):
             return None
             
         try:
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
             cached_data = await self.redis.get(cache_key)
             duration = time.time() - start_time
             
@@ -602,7 +604,7 @@ class AIResponseCache(CacheInterface):
         
         return None
     
-    async def cache_response(self, text: str, operation: str, options: Dict[str, Any], response: Dict[str, Any], question: str = None):
+    async def cache_response(self, text: str, operation: str, options: Dict[str, Any], response: Dict[str, Any], question: Optional[str] = None):
         """
         Cache AI response with compression for large data and appropriate TTL.
         
@@ -689,6 +691,7 @@ class AIResponseCache(CacheInterface):
                     operation_type=operation
                 )
             
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
             await self.redis.setex(cache_key, ttl, cache_data)
             
             # Record successful cache response generation timing
@@ -779,6 +782,7 @@ class AIResponseCache(CacheInterface):
             return
             
         try:
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
             keys = await self.redis.keys(f"ai_cache:*{pattern}*".encode('utf-8'))
             keys_count = len(keys) if keys else 0
             
@@ -846,6 +850,7 @@ class AIResponseCache(CacheInterface):
         
         if await self.connect():
             try:
+                assert self.redis is not None  # Type checker hint: redis is available after successful connect()
                 keys = await self.redis.keys(b"ai_cache:*")
                 info = await self.redis.info()
                 redis_stats = {
@@ -981,7 +986,7 @@ class AIResponseCache(CacheInterface):
         recent_times = [m.duration for m in self.performance_monitor.cache_operation_times[-10:]]
         return sum(recent_times) / len(recent_times) if recent_times else 0.0
     
-    def record_memory_usage(self, redis_stats: Dict[str, Any] = None):
+    def record_memory_usage(self, redis_stats: Optional[Dict[str, Any]] = None):
         """
         Record current memory usage of cache components.
         
@@ -1258,6 +1263,7 @@ class AIResponseCache(CacheInterface):
             return None
             
         try:
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
             cached_data = await self.redis.get(key)
             if cached_data:
                 # Handle both string and bytes data
@@ -1280,7 +1286,7 @@ class AIResponseCache(CacheInterface):
             logger.warning(f"Cache get error for key {key}: {e}")
             return None
     
-    async def set(self, key: str, value, ttl: int = None):
+    async def set(self, key: str, value, ttl: Optional[int] = None):
         """
         Set a value in cache with optional TTL (implements CacheInterface).
         
@@ -1304,6 +1310,7 @@ class AIResponseCache(CacheInterface):
             else:
                 cache_data = json.dumps(value)
             
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
             await self.redis.setex(key, expiry, cache_data)
             logger.debug(f"Set cache key {key} with TTL {expiry}s")
         except Exception as e:
@@ -1320,6 +1327,7 @@ class AIResponseCache(CacheInterface):
             return
             
         try:
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
             result = await self.redis.delete(key)
             logger.debug(f"Deleted cache key {key} (existed: {bool(result)})")
         except Exception as e:

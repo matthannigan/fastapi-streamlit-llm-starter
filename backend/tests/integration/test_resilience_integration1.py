@@ -19,7 +19,7 @@ from app.main import app
 @pytest.fixture(autouse=True)
 def mock_resilience_service():
     """Mock the resilience service for all tests in this module."""
-    with patch('app.resilience_endpoints.ai_resilience') as mock_resilience:
+    with patch('app.api.internal.resilience2.ai_resilience') as mock_resilience:
         # Default healthy state
         mock_resilience.get_health_status.return_value = {
             "healthy": True,
@@ -60,7 +60,7 @@ def mock_resilience_service():
 @pytest.fixture
 def mock_text_processor():
     """Mock the text processor service."""
-    with patch('app.dependencies.get_text_processor') as mock_get_processor:
+    with patch('app.api.v1.deps.get_text_processor') as mock_get_processor:
         mock_processor = AsyncMock()
         mock_processor.get_resilience_health.return_value = {
             "strategies": {"summarize": "balanced"},

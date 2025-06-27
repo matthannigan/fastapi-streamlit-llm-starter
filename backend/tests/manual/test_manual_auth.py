@@ -69,7 +69,7 @@ class TestManualAuthentication:
         print("\n--- Testing Protected Endpoints (No API Key) ---")
         
         # Test process endpoint without auth
-        status, response = self.test_endpoint("/process", method="POST", data={
+        status, response = self.test_endpoint("/text_processing/process", method="POST", data={
             "text": "Hello world",
             "operation": "summarize"
         })
@@ -84,7 +84,7 @@ class TestManualAuthentication:
         print("\n--- Testing Protected Endpoints (Invalid API Key) ---")
         
         # Test process endpoint with invalid key
-        status, response = self.test_endpoint("/process", api_key="invalid-key", method="POST", data={
+        status, response = self.test_endpoint("/text_processing/process", api_key="invalid-key", method="POST", data={
             "text": "Hello world",
             "operation": "summarize"
         })
@@ -105,7 +105,7 @@ class TestManualAuthentication:
         assert response.get("authenticated") is True
         
         # Test process endpoint with valid key
-        status, response = self.test_endpoint("/process", api_key=TEST_API_KEY, method="POST", data={
+        status, response = self.test_endpoint("/text_processing/process", api_key=TEST_API_KEY, method="POST", data={
             "text": "Hello world",
             "operation": "summarize"
         })
@@ -118,13 +118,13 @@ class TestManualAuthentication:
         print("\n--- Testing Optional Auth Endpoints ---")
         
         # Test operations endpoint without auth
-        status, response = self.test_endpoint("/operations")
+        status, response = self.test_endpoint("/text_processing/operations")
         assert status == 200
         assert isinstance(response, dict)
         assert "operations" in response
         
         # Test operations endpoint with auth
-        status, response = self.test_endpoint("/operations", api_key=TEST_API_KEY)
+        status, response = self.test_endpoint("/text_processing/operations", api_key=TEST_API_KEY)
         assert status == 200
         assert isinstance(response, dict)
         assert "operations" in response
@@ -147,8 +147,8 @@ class TestManualAuthentication:
         print("3. Run this test: pytest backend/tests/test_manual_auth.py -v")
         print("\nExpected behavior:")
         print("- Public endpoints (/, /health) should work without API key")
-        print("- Protected endpoints (/process, /auth/status) should require valid API key")
-        print("- Optional auth endpoints (/operations) should work with or without API key")
+        print("- Protected endpoints (/text_processing/process, /auth/status) should require valid API key")
+        print("- Optional auth endpoints (/text_processing/operations) should work with or without API key")
 
 
 # Standalone function for manual execution

@@ -275,7 +275,7 @@ class InMemoryCache(CacheInterface):
             logger.warning(f"Cache get error for key {key}: {e}")
             return None
     
-    async def set(self, key: str, value: Any, ttl: int = None) -> None:
+    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         """
         Set a value in cache with optional TTL (implements CacheInterface).
         

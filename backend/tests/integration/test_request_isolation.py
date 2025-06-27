@@ -147,7 +147,7 @@ class TestContextIsolation:
             "options": {"max_length": 50}
         }
 
-        response1 = client.post("/process", json=request1_data, headers=headers)
+        response1 = client.post("/text_processing/process", json=request1_data, headers=headers)
         assert response1.status_code == 200
         result1 = response1.json()
 
@@ -158,7 +158,7 @@ class TestContextIsolation:
             "options": {"max_length": 50}
         }
 
-        response2 = client.post("/process", json=request2_data, headers=headers)
+        response2 = client.post("/text_processing/process", json=request2_data, headers=headers)
         assert response2.status_code == 200
         result2 = response2.json()
 
@@ -186,7 +186,7 @@ class TestContextIsolation:
             "options": {"max_length": 50}
         }
 
-        response1 = client.post("/process", json=injection_request, headers=headers)
+        response1 = client.post("/text_processing/process", json=injection_request, headers=headers)
         assert response1.status_code == 200
         result1 = response1.json()
 
@@ -197,7 +197,7 @@ class TestContextIsolation:
             "options": {"max_length": 50}
         }
 
-        response2 = client.post("/process", json=normal_request, headers=headers)
+        response2 = client.post("/text_processing/process", json=normal_request, headers=headers)
         assert response2.status_code == 200
         result2 = response2.json()
 
@@ -228,7 +228,7 @@ class TestContextIsolation:
             # Make all requests concurrently
             tasks = []
             for req_data in requests:
-                task = client.post("/process", json=req_data, headers=headers)
+                task = client.post("/text_processing/process", json=req_data, headers=headers)
                 tasks.append(task)
 
             responses = await asyncio.gather(*tasks)
@@ -267,8 +267,8 @@ class TestContextIsolation:
         }
 
         # Make the same request twice
-        response1 = client.post("/process", json=request_data, headers=headers)
-        response2 = client.post("/process", json=request_data, headers=headers)
+        response1 = client.post("/text_processing/process", json=request_data, headers=headers)
+        response2 = client.post("/text_processing/process", json=request_data, headers=headers)
 
         assert response1.status_code == 200
         assert response2.status_code == 200
@@ -289,7 +289,7 @@ class TestContextIsolation:
             "options": {"max_length": 20}
         }
 
-        response3 = client.post("/process", json=different_request, headers=headers)
+        response3 = client.post("/text_processing/process", json=different_request, headers=headers)
         assert response3.status_code == 200
         result3 = response3.json()
 
@@ -346,7 +346,7 @@ class TestContextIsolation:
             "operation": "sentiment"
         }
 
-        response1 = client.post("/process", json=sentiment_request, headers=headers)
+        response1 = client.post("/text_processing/process", json=sentiment_request, headers=headers)
         assert response1.status_code == 200
         result1 = response1.json()
 
@@ -357,7 +357,7 @@ class TestContextIsolation:
             "options": {"max_length": 30}
         }
 
-        response2 = client.post("/process", json=summary_request, headers=headers)
+        response2 = client.post("/text_processing/process", json=summary_request, headers=headers)
         assert response2.status_code == 200
         result2 = response2.json()
 
@@ -394,7 +394,7 @@ class TestContextIsolation:
             "question": "What is mentioned in this document?"
         }
 
-        response1 = client.post("/process", json=qa_request, headers=headers)
+        response1 = client.post("/text_processing/process", json=qa_request, headers=headers)
         assert response1.status_code == 200
         result1 = response1.json()
 
@@ -405,7 +405,7 @@ class TestContextIsolation:
             "options": {"max_length": 30}
         }
 
-        response2 = client.post("/process", json=normal_request, headers=headers)
+        response2 = client.post("/text_processing/process", json=normal_request, headers=headers)
         assert response2.status_code == 200
         result2 = response2.json()
 
@@ -441,7 +441,7 @@ class TestContextIsolation:
                 ]
             }
 
-            response = await client.post("/batch_process", json=batch_request, headers=headers)
+            response = await client.post("/text_processing/batch_process", json=batch_request, headers=headers)
             assert response.status_code == 200
 
             results = response.json()["results"]
@@ -478,7 +478,7 @@ class TestContextIsolation:
             "options": {"max_length": 30}
         }
 
-        response1 = client.post("/process", json=error_request, headers=headers)
+        response1 = client.post("/text_processing/process", json=error_request, headers=headers)
         # Don't assert on status code as it might legitimately fail
 
         # Second normal request
@@ -488,7 +488,7 @@ class TestContextIsolation:
             "options": {"max_length": 30}
         }
 
-        response2 = client.post("/process", json=normal_request, headers=headers)
+        response2 = client.post("/text_processing/process", json=normal_request, headers=headers)
         assert response2.status_code == 200
 
         result2 = response2.json()
@@ -590,7 +590,7 @@ class TestRequestBoundaryLogging:
         }
 
         with caplog.at_level("INFO"):
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             assert response.status_code == 200
 
         # Check for REQUEST_START and REQUEST_END logs
@@ -624,7 +624,7 @@ class TestRequestBoundaryLogging:
         }
 
         with caplog.at_level("INFO"):
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             assert response.status_code == 200
 
         # Check for PROCESSING_START and PROCESSING_END logs
@@ -662,7 +662,7 @@ class TestRequestBoundaryLogging:
         for _ in range(3):
             with caplog.at_level("INFO"):
                 caplog.clear()
-                response = client.post("/process", json=request_data, headers=headers)
+                response = client.post("/text_processing/process", json=request_data, headers=headers)
                 assert response.status_code == 200
 
                 # Extract request ID from logs

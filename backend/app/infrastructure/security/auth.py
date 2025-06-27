@@ -178,7 +178,7 @@ class AuthConfig:
 class APIKeyAuth:
     """API Key authentication handler with extensibility hooks."""
     
-    def __init__(self, auth_config: AuthConfig = None):
+    def __init__(self, auth_config: Optional[AuthConfig] = None):
         self.config = auth_config or AuthConfig()
         
         # Extension point: metadata can be added for advanced auth
@@ -247,9 +247,9 @@ class APIKeyAuth:
         
         if self.config.enable_request_logging:
             metadata.update({
-                "timestamp": request_info.get("timestamp"),
-                "endpoint": request_info.get("endpoint"),
-                "method": request_info.get("method")
+                "timestamp": request_info.get("timestamp", "unknown"),
+                "endpoint": request_info.get("endpoint", "unknown"),
+                "method": request_info.get("method", "unknown")
             })
         
         return metadata

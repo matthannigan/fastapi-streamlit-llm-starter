@@ -58,7 +58,7 @@ backend/tests/
 │   ├── conftest.py               # API-specific fixtures (auth, clients) (19 lines)
 │   │
 │   ├── v1/                       # Versioned public API tests
-│   │   ├── test_text_processing.py  # /v1/process, /v1/batch_process (703 lines)
+│   │   ├── test_text_processing.py  # /v1/text_processing/process, /v1/text_processing/batch_process (703 lines)
 │   │   └── test_health.py           # /v1/health, /v1/auth/status (20 lines)
 │   │
 │   └── internal/                       # Internal/admin API tests

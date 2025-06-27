@@ -7,7 +7,7 @@ TODO: Split this file into fixtures.py and mocks.py
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, Mock
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -33,7 +33,9 @@ def client():
 @pytest.fixture
 async def async_client():
     """Create an async test client."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
 
 @pytest.fixture
@@ -92,7 +94,8 @@ def sample_request(sample_text):
     return TextProcessingRequest(
         text=sample_text,
         operation=ProcessingOperation.SUMMARIZE,
-        options={"max_length": 100}
+        options={"max_length": 100},
+        question=None  # Explicitly set to fix linter warning
     )
 
 @pytest.fixture
@@ -112,6 +115,7 @@ def mock_processor():
         response = TextProcessingResponse(
             operation=request.operation,
             processing_time=0.1,
+            cache_hit=False,
             metadata={"word_count": len(request.text.split())}
         )
         
@@ -229,7 +233,7 @@ def cache_performance_monitor():
 @pytest.fixture
 def app_with_mock_performance_monitor(mock_performance_monitor):
     """FastAPI app with mock performance monitor dependency override."""
-    from app.routers.monitoring import get_performance_monitor
+    from app.api.internal.cache import get_performance_monitor
     
     # Override the dependency
     app.dependency_overrides[get_performance_monitor] = lambda: mock_performance_monitor

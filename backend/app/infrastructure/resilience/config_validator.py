@@ -14,12 +14,11 @@ from collections import defaultdict, deque
 
 try:
     import jsonschema
-    from jsonschema import ValidationError, Draft7Validator
+    from jsonschema import ValidationError
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
     ValidationError = Exception
-    Draft7Validator = None
 
 logger = logging.getLogger(__name__)
 
@@ -398,7 +397,7 @@ class ValidationRateLimiter:
 class ValidationResult:
     """Result of configuration validation with errors, warnings, and suggestions."""
     
-    def __init__(self, is_valid: bool, errors: List[str] = None, warnings: List[str] = None, suggestions: List[str] = None):
+    def __init__(self, is_valid: bool, errors: Optional[List[str]] = None, warnings: Optional[List[str]] = None, suggestions: Optional[List[str]] = None):
         self.is_valid = is_valid
         self.errors = errors or []
         self.warnings = warnings or []
@@ -427,9 +426,13 @@ class ResilienceConfigValidator:
         self.rate_limiter = ValidationRateLimiter()
         
         if JSONSCHEMA_AVAILABLE:
-            self.config_validator = Draft7Validator(RESILIENCE_CONFIG_SCHEMA)
-            self.preset_validator = Draft7Validator(PRESET_SCHEMA)
-            logger.info("JSON Schema validation enabled")
+            try:
+                from jsonschema import Draft7Validator
+                self.config_validator = Draft7Validator(RESILIENCE_CONFIG_SCHEMA)
+                self.preset_validator = Draft7Validator(PRESET_SCHEMA)
+                logger.info("JSON Schema validation enabled")
+            except ImportError:
+                logger.warning("jsonschema import failed - using basic validation")
         else:
             logger.warning("jsonschema package not available - validation will be basic")
     
@@ -725,7 +728,7 @@ class ResilienceConfigValidator:
             
             i += count
     
-    def validate_template_based_config(self, template_name: str, overrides: Dict[str, Any] = None) -> ValidationResult:
+    def validate_template_based_config(self, template_name: str, overrides: Optional[Dict[str, Any]] = None) -> ValidationResult:
         """
         Validate configuration based on a template with optional overrides.
         
@@ -819,7 +822,10 @@ class ResilienceConfigValidator:
         
         try:
             # JSON Schema validation
-            schema_errors = list(self.config_validator.iter_errors(config_data))
+            if self.config_validator is not None:
+                schema_errors = list(self.config_validator.iter_errors(config_data))
+            else:
+                schema_errors = []
             for error in schema_errors:
                 error_path = ".".join(str(p) for p in error.absolute_path)
                 if error_path:
@@ -862,7 +868,10 @@ class ResilienceConfigValidator:
         
         try:
             # JSON Schema validation
-            schema_errors = list(self.preset_validator.iter_errors(preset_data))
+            if self.preset_validator is not None:
+                schema_errors = list(self.preset_validator.iter_errors(preset_data))
+            else:
+                schema_errors = []
             for error in schema_errors:
                 error_path = ".".join(str(p) for p in error.absolute_path)
                 if error_path:

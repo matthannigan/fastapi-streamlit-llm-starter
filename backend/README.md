@@ -18,9 +18,9 @@ A robust FastAPI application that provides AI-powered text processing capabiliti
 
 ### Core Endpoints
 
-- `GET /health` - Health check endpoint
-- `GET /operations` - List available text processing operations
-- `POST /process` - Process text with specified operation
+- `GET  /health` - Health check endpoint
+- `GET  /text_processing/operations` - List available text processing operations
+- `POST /text_processing/process` - Process text with specified operation
 
 ### Health Check Response
 ```json

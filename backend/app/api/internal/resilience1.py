@@ -1,5 +1,5 @@
 """
-REST API endpoints for resilience configuration management.
+REST API endpoints for resilience infrastructure.
 
 Provides endpoints for:
 - Listing and retrieving presets
@@ -112,13 +112,6 @@ class TemplateSuggestionResponse(BaseModel):
     confidence: float
     reasoning: str
     available_templates: List[str]
-
-
-class ResilienceMetricsResponse(BaseModel):
-    """Resilience service metrics response."""
-    operations: Dict[str, Dict[str, Any]]
-    circuit_breakers: Dict[str, Dict[str, Any]]
-    summary: Dict[str, Any]
 
 
 # Dependency for getting preset manager
@@ -300,10 +293,21 @@ async def get_current_config(
         is_legacy = app_settings._has_legacy_resilience_config()
         
         # Get operation-specific strategies
-        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
-        operation_strategies = {
-            op: app_settings.get_operation_strategy(op) for op in operations
-        }
+        # Use registered operations from settings if available, fall back to common operations
+        try:
+            operations = app_settings.get_registered_operations()
+        except Exception:
+            # Fallback to common operations for compatibility
+            operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        
+        operation_strategies = {}
+        for op in operations:
+            try:
+                operation_strategies[op] = app_settings.get_operation_strategy(op)
+            except (AttributeError, KeyError):
+                # Skip operations that don't have a strategy defined
+                logger.debug(f"No strategy found for operation: {op}")
+                continue
         
         # Parse custom overrides if present
         custom_overrides = None
@@ -459,23 +463,6 @@ async def recommend_preset_legacy(
         raise HTTPException(status_code=500, detail=f"Failed to recommend preset: {str(e)}")
 
 
-@router.get("/metrics", response_model=ResilienceMetricsResponse)
-async def get_resilience_metrics() -> ResilienceMetricsResponse:
-    """
-    Get current resilience service metrics.
-    
-    Returns:
-        Comprehensive metrics about resilience operations and circuit breakers
-    """
-    try:
-        metrics = ai_resilience.get_all_metrics()
-        return ResilienceMetricsResponse(**metrics)
-        
-    except Exception as e:
-        logger.error(f"Error getting resilience metrics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
-
-
 @router.post("/metrics/reset")
 async def reset_resilience_metrics(
     operation_name: Optional[str] = Query(None, description="Operation name to reset (if None, resets all)")
@@ -503,29 +490,6 @@ async def reset_resilience_metrics(
     except Exception as e:
         logger.error(f"Error resetting metrics: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to reset metrics: {str(e)}")
-
-
-@router.get("/health")
-async def get_resilience_health():
-    """
-    Get resilience service health status.
-    
-    Returns:
-        Health status with circuit breaker information
-    """
-    try:
-        health_status = ai_resilience.get_health_status()
-        is_healthy = ai_resilience.is_healthy()
-        
-        return {
-            "healthy": is_healthy,
-            "status": "healthy" if is_healthy else "degraded",
-            "details": health_status
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting health status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get health status: {str(e)}")
 
 
 @router.get("/presets-summary", response_model=Dict[str, PresetDetails])
@@ -611,7 +575,7 @@ async def validate_template_based_config(
     try:
         validation_result = config_validator.validate_template_based_config(
             request.template_name, 
-            request.overrides
+            request.overrides or {}
         )
         return ValidationResponse(
             is_valid=validation_result.is_valid,
@@ -650,20 +614,24 @@ async def suggest_template_for_config(
         if suggested_template:
             # Calculate confidence based on how well the config matches
             template_info = config_validator.get_template(suggested_template)
-            template_config = template_info["config"]
-            
-            # Simple confidence calculation based on matching fields
-            matches = 0
-            total_fields = 0
-            
-            for key in ["retry_attempts", "circuit_breaker_threshold", "default_strategy"]:
-                if key in request.configuration and key in template_config:
-                    total_fields += 1
-                    if request.configuration[key] == template_config[key]:
-                        matches += 1
-            
-            confidence = matches / total_fields if total_fields > 0 else 0.5
-            reasoning = f"Configuration closely matches '{suggested_template}' template with {matches}/{total_fields} key parameters matching"
+            if template_info:
+                template_config = template_info["config"]
+                
+                # Simple confidence calculation based on matching fields  
+                matches = 0
+                total_fields = 0
+                
+                for key in ["retry_attempts", "circuit_breaker_threshold", "default_strategy"]:
+                    if key in request.configuration and key in template_config:
+                        total_fields += 1
+                        if request.configuration[key] == template_config[key]:
+                            matches += 1
+                
+                confidence = matches / total_fields if total_fields > 0 else 0.5
+                reasoning = f"Configuration closely matches '{suggested_template}' template with {matches}/{total_fields} key parameters matching"
+            else:
+                confidence = 0.2
+                reasoning = f"Template '{suggested_template}' found but could not load its configuration"
         else:
             confidence = 0.0
             reasoning = "No template closely matches the provided configuration. Consider using a standard preset instead."

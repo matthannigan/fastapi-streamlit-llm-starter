@@ -4,7 +4,8 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import os
 
-from app.dependencies import get_cache_service, get_text_processor_service, get_settings, get_text_processor
+from app.dependencies import get_cache_service, get_settings
+from app.api.v1.deps import get_text_processor, get_text_processor_service
 from app.infrastructure.cache import AIResponseCache
 from app.services.text_processor import TextProcessorService
 from app.config import Settings

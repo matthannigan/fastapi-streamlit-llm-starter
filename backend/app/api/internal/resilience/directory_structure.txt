@@ -1,0 +1,89 @@
+backend/app/api/internal/
+├── resilience/
+│   ├── __init__.py              # Shared models and router setup
+│   ├── health.py                # Health & core metrics (3 endpoints)
+│   ├── circuit_breakers.py      # Circuit breaker management (3 endpoints)
+│   ├── configuration.py         # Configuration management & validation (8 endpoints)
+│   ├── presets.py               # Preset management & recommendations (6 endpoints)
+│   ├── templates.py             # Template management & suggestions (4 endpoints)
+│   ├── monitoring.py            # Configuration monitoring & analytics (7 endpoints)
+│   ├── performance.py           # Performance benchmarking (5 endpoints)
+│   └── security.py              # Security validation (4 endpoints)
+
+TOTAL: 40 endpoints organized across 8 focused modules
+(Note: 7 endpoints from resilience_endpoints.py appear to overlap with resilience.py)
+
+## Detailed Endpoint Distribution:
+
+### health.py (3 endpoints)
+- GET  /resilience/health - get_resilience_health
+- GET  /resilience/metrics - get_resilience_metrics  
+- GET  /resilience/dashboard - get_resilience_dashboard
+
+### circuit_breakers.py (3 endpoints)
+- GET  /resilience/circuit-breakers - get_circuit_breaker_status
+- GET  /resilience/circuit-breakers/{breaker_name} - get_circuit_breaker_details
+- POST /resilience/circuit-breakers/{breaker_name}/reset - reset_circuit_breaker
+
+### presets.py (6 endpoints)
+- GET  /resilience/presets - list_presets
+- GET  /resilience/presets/{preset_name} - get_preset_details
+- GET  /resilience/presets-summary - get_all_presets_summary
+- GET  /resilience/recommend/{environment} - recommend_preset
+- GET  /resilience/recommend-auto - auto_recommend_preset
+- GET  /resilience/recommend - recommend_preset_legacy
+
+### advanced_config.py (8 endpoints)
+- GET  /resilience/config - get_current_config
+- POST /resilience/validate - validate_custom_config
+- POST /resilience/validate-secure - validate_custom_config_with_security
+- POST /resilience/validate-json - validate_json_config
+- POST /resilience/validate/security - validate_configuration_security
+- GET  /resilience/validate/security-config - get_security_configuration
+
+### templates.py (4 endpoints)
+- GET  /resilience/templates - get_configuration_templates
+- GET  /resilience/templates/{template_name} - get_configuration_template
+- POST /resilience/validate-template - validate_template_based_config
+- POST /resilience/suggest-template - suggest_template_for_config
+
+### monitoring.py (7 endpoints)
+- GET  /resilience/metrics/{operation_name} - get_operation_metrics
+- POST /resilience/metrics/reset - reset_resilience_metrics
+- GET  /resilience/monitoring/usage-statistics - get_configuration_usage_statistics
+- GET  /resilience/monitoring/preset-trends/{preset_name} - get_preset_usage_trend
+- GET  /resilience/monitoring/performance-metrics - get_configuration_performance_metrics
+- GET  /resilience/monitoring/alerts - get_configuration_alerts
+- GET  /resilience/monitoring/session/{session_id} - get_session_configuration_metrics
+- GET  /resilience/monitoring/export - export_configuration_metrics
+- POST /resilience/monitoring/cleanup - cleanup_old_metrics
+
+### performance.py (5 endpoints)
+- GET  /resilience/performance/benchmark - run_performance_benchmark
+- POST /resilience/performance/benchmark - run_custom_performance_benchmark
+- GET  /resilience/performance/thresholds - get_performance_thresholds
+- GET  /resilience/performance/report - get_performance_report
+- GET  /resilience/performance/history - get_performance_history
+
+### security.py (4 endpoints)
+- POST /resilience/validate/field-whitelist - validate_against_field_whitelist
+- GET  /resilience/validate/rate-limit-status - get_validation_rate_limit_status
+- GET  /resilience/recommend-auto - get_auto_recommendation (from resilience_endpoints.py)
+- GET  /resilience/recommend/{environment} - get_environment_recommendation (from resilience_endpoints.py)
+
+## Overlapping Endpoints (Need Resolution):
+Several endpoints exist in both files with similar functionality:
+- /resilience/health (both files)
+- /resilience/metrics (both files) 
+- /resilience/metrics/reset (both files)
+- /resilience/config (both files)
+- /resilience/recommend-auto (both files)
+- /resilience/recommend/{environment} (both files)
+- /resilience/validate (different security levels)
+
+## Recommended Actions:
+1. Consolidate overlapping endpoints by choosing the most feature-complete version
+2. Move authentication logic to shared dependencies in __init__.py
+3. Share common Pydantic models across modules
+4. Consider whether some monitoring endpoints should be moved to a separate admin API
+5. Evaluate if all 40+ endpoints are truly necessary or if some can be combined/simplified

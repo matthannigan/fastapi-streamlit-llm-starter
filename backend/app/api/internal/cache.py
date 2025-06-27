@@ -1,25 +1,29 @@
 """
-Monitoring endpoints for cache performance metrics and system monitoring.
+REST API endpoints for cache infrastructure.
 
-This module provides endpoints for exposing cache performance statistics
-and other monitoring-related functionality.
+Provides endpoints for:
+- Getting cache status and statistics
+- Invalidating cache entries
+- Getting invalidation statistics and recommendations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Dict, Any, Optional, List
+import logging
+from typing import Dict, Any, Optional
+
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from pydantic import BaseModel, Field
-from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
+
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-import logging
-
-# Create a router for monitoring endpoints
-monitoring_router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+from app.infrastructure.security import verify_api_key, optional_verify_api_key
 
 logger = logging.getLogger(__name__)
 
+router = APIRouter(prefix="/cache", tags=["cache"])
 
+
+# Pydantic models for cache performance metrics
 class CacheKeyGenerationStats(BaseModel):
     """Statistics for cache key generation operations."""
     total_operations: int = Field(..., description="Total number of key generation operations")
@@ -133,6 +137,15 @@ class CachePerformanceResponse(BaseModel):
         }
 
 
+# For cache endpoints, we'll use flexible response models that can handle
+# the dynamic nature of cache statistics
+
+
+# Most cache responses will be flexible dictionaries to accommodate
+# the dynamic nature of cache statistics and service responses
+
+
+# Dependency functions
 async def get_performance_monitor(
     cache_service: AIResponseCache = Depends(get_cache_service)
 ) -> CachePerformanceMonitor:
@@ -148,31 +161,104 @@ async def get_performance_monitor(
     return cache_service.performance_monitor
 
 
-@monitoring_router.get("/health")
-async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key)):
+@router.get("/status")
+async def get_cache_status(
+    cache_service: AIResponseCache = Depends(get_cache_service),
+    api_key: str = Depends(optional_verify_api_key)
+):
     """
-    Get the health status of the monitoring system.
+    Get cache status and statistics.
     
-    Returns basic information about monitoring service availability.
+    Returns:
+        Current cache statistics in the format provided by the cache service
     """
     try:
-        return {
-            "status": "healthy",
-            "monitoring_service": "available",
-            "endpoints": [
-                "GET /monitoring/health",
-                "GET /monitoring/cache-metrics"
-            ]
-        }
+        stats = await cache_service.get_cache_stats()
+        return stats
+        
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get monitoring health: {str(e)}"
-        )
+        logger.error(f"Error getting cache status: {e}")
+        # Return a basic error response 
+        return {
+            "redis": {"status": "error"},
+            "memory": {"status": "unavailable"},
+            "performance": {"status": "unavailable"},
+            "error": str(e)
+        }
 
 
-@monitoring_router.get(
-    "/cache-metrics",
+@router.post("/invalidate")
+async def invalidate_cache(
+    pattern: str = Query(default="", description="Pattern to match for cache invalidation"),
+    operation_context: str = Query(default="api_endpoint", description="Context for the invalidation operation"),
+    cache_service: AIResponseCache = Depends(get_cache_service),
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Invalidate cache entries matching the specified pattern.
+    
+    Args:
+        pattern: Pattern to match for cache invalidation (empty string invalidates all)
+        operation_context: Context for the invalidation operation
+        
+    Returns:
+        Confirmation message with invalidation details
+    """
+    try:
+        await cache_service.invalidate_pattern(pattern, operation_context=operation_context)
+        
+        return {"message": f"Cache invalidated for pattern: {pattern}"}
+        
+    except Exception as e:
+        logger.error(f"Error invalidating cache with pattern '{pattern}': {e}")
+        # Return error message in response rather than raising exception
+        return {"message": f"Failed to invalidate cache for pattern '{pattern}': {str(e)}"}
+
+
+@router.get("/invalidation-stats")
+async def get_invalidation_stats(
+    cache_service: AIResponseCache = Depends(get_cache_service),
+    api_key: str = Depends(optional_verify_api_key)
+):
+    """
+    Get cache invalidation frequency statistics.
+    
+    Returns:
+        Statistics about cache invalidation patterns and frequency
+    """
+    try:
+        stats = cache_service.get_invalidation_frequency_stats()
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Error getting invalidation stats: {e}")
+        # Return empty stats on error rather than raising exception
+        return {}
+
+
+@router.get("/invalidation-recommendations")
+async def get_invalidation_recommendations(
+    cache_service: AIResponseCache = Depends(get_cache_service),
+    api_key: str = Depends(optional_verify_api_key)
+):
+    """
+    Get recommendations based on cache invalidation patterns.
+    
+    Returns:
+        List of recommendations for optimizing cache invalidation
+    """
+    try:
+        recommendations = cache_service.get_invalidation_recommendations()
+        return {"recommendations": recommendations}
+        
+    except Exception as e:
+        logger.error(f"Error getting invalidation recommendations: {e}")
+        # Return empty recommendations on error rather than raising exception
+        return {"recommendations": []}
+
+
+@router.get(
+    "/metrics",
     response_model=CachePerformanceResponse,
     summary="Get Cache Performance Metrics",
     description="Retrieve comprehensive cache performance statistics including key generation times, cache operation metrics, compression ratios, and memory usage.",
@@ -383,4 +469,4 @@ async def get_cache_performance_metrics(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve cache performance metrics: Internal server error"
-        ) 
+        )

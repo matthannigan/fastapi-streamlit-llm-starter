@@ -159,7 +159,7 @@ Integration Points:
 import time
 import logging
 import sys
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from statistics import mean, median
@@ -174,7 +174,7 @@ class PerformanceMetric:
     text_length: int
     timestamp: float
     operation_type: str = ""
-    additional_data: Dict[str, Any] = None
+    additional_data: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         if self.additional_data is None:
@@ -208,7 +208,7 @@ class MemoryUsageMetric:
     timestamp: float
     cache_utilization_percent: float
     warning_threshold_reached: bool = False
-    additional_data: Dict[str, Any] = None
+    additional_data: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         if self.additional_data is None:
@@ -224,7 +224,7 @@ class InvalidationMetric:
     timestamp: float
     invalidation_type: str = ""  # 'manual', 'automatic', 'ttl_expired', etc.
     operation_context: str = ""  # Context that triggered invalidation
-    additional_data: Dict[str, Any] = None
+    additional_data: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         if self.additional_data is None:
@@ -287,7 +287,7 @@ class CachePerformanceMonitor:
         duration: float, 
         text_length: int, 
         operation_type: str = "",
-        additional_data: Dict[str, Any] = None
+        additional_data: Optional[Dict[str, Any]] = None
     ):
         """
         Record key generation performance metrics.
@@ -327,7 +327,7 @@ class CachePerformanceMonitor:
         duration: float, 
         cache_hit: bool,
         text_length: int = 0,
-        additional_data: Dict[str, Any] = None
+        additional_data: Optional[Dict[str, Any]] = None
     ):
         """
         Record cache operation performance (get/set operations).
@@ -411,8 +411,8 @@ class CachePerformanceMonitor:
     def record_memory_usage(
         self,
         memory_cache: Dict[str, Any],
-        redis_stats: Dict[str, Any] = None,
-        additional_data: Dict[str, Any] = None
+        redis_stats: Optional[Dict[str, Any]] = None,
+        additional_data: Optional[Dict[str, Any]] = None
     ):
         """
         Record current memory usage of cache components.
@@ -491,7 +491,7 @@ class CachePerformanceMonitor:
         duration: float,
         invalidation_type: str = "manual",
         operation_context: str = "",
-        additional_data: Dict[str, Any] = None
+        additional_data: Optional[Dict[str, Any]] = None
     ):
         """
         Record cache invalidation event for frequency analysis.

@@ -148,7 +148,8 @@ class EnhancedCircuitBreaker(CircuitBreaker):
         self.recovery_timeout = recovery_timeout
         self.last_failure_time = None
         self.metrics = ResilienceMetrics()
-
+        self._last_known_state = None
+        
         # Initialize the base CircuitBreaker
         super().__init__(
             failure_threshold=failure_threshold,
@@ -157,34 +158,55 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             name=name
         )
 
+    def _check_state_change(self):
+        """Check for state changes and update metrics accordingly."""
+        try:
+            # Get current state - this varies by library version
+            current_state = getattr(self, 'current_state', None)
+            if current_state is None:
+                # Fallback: try to determine state from failure count
+                fail_counter = getattr(self, 'fail_counter', 0)
+                if fail_counter >= self.failure_threshold:
+                    current_state = 'open'
+                else:
+                    current_state = 'closed'
+            
+            if current_state != self._last_known_state:
+                if current_state == 'open':
+                    self.metrics.circuit_breaker_opens += 1
+                    logger.warning(f"Circuit breaker '{self.name or 'unnamed'}' opened")
+                elif current_state == 'half-open':
+                    self.metrics.circuit_breaker_half_opens += 1
+                    logger.info(f"Circuit breaker '{self.name or 'unnamed'}' half-opened")
+                elif current_state == 'closed':
+                    self.metrics.circuit_breaker_closes += 1
+                    logger.info(f"Circuit breaker '{self.name or 'unnamed'}' closed")
+                
+                self._last_known_state = current_state
+        except Exception:
+            # If state checking fails, just continue silently
+            pass
+
     def call(self, func, *args, **kwargs):
         """Override call to track metrics."""
         self.metrics.total_calls += 1
+        
+        # Check for state changes before the call
+        self._check_state_change()
 
         try:
             result = super().call(func, *args, **kwargs)
             self.metrics.successful_calls += 1
             self.metrics.last_success = datetime.now()
+            
+            # Check for state changes after successful call
+            self._check_state_change()
             return result
         except Exception as e:
             self.metrics.failed_calls += 1
             self.metrics.last_failure = datetime.now()
             self.last_failure_time = datetime.now()
+            
+            # Check for state changes after failed call
+            self._check_state_change()
             raise
-
-    def _update_state(self, state):
-        """Override state updates to track circuit breaker events."""
-        old_state = getattr(self, '_state', None)
-        super()._update_state(state)
-
-        # Track state transitions
-        if old_state != getattr(self, '_state', None):
-            if getattr(self, '_state', None) == 'open':
-                self.metrics.circuit_breaker_opens += 1
-                logger.warning(f"Circuit breaker opened")
-            elif getattr(self, '_state', None) == 'half-open':
-                self.metrics.circuit_breaker_half_opens += 1
-                logger.info(f"Circuit breaker half-opened")
-            elif getattr(self, '_state', None) == 'closed':
-                self.metrics.circuit_breaker_closes += 1
-                logger.info(f"Circuit breaker closed")

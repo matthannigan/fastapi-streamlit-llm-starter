@@ -18,7 +18,7 @@ class TestAuthEndpoints:
         return TestClient(app)
 
     def test_process_endpoint_with_valid_api_key(self, client):
-        """Test /process endpoint with valid API key."""
+        """Test /text_processing/process endpoint with valid API key."""
         # Mock api_key_auth to accept our test key
         with patch.object(api_key_auth, 'verify_api_key', return_value=True):
             headers = {"Authorization": "Bearer valid-test-key"}
@@ -27,7 +27,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should not get 401 (may get 500 if AI service not configured, but that's OK)
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
@@ -39,7 +39,7 @@ class TestAuthEndpoints:
                 assert "operation" in response_data
 
     def test_process_endpoint_with_invalid_api_key(self, client):
-        """Test /process endpoint with invalid API key."""
+        """Test /text_processing/process endpoint with invalid API key."""
         # Mock api_key_auth to reject our test key
         with patch.object(api_key_auth, 'verify_api_key', return_value=False):
             headers = {"Authorization": "Bearer invalid-test-key"}
@@ -48,7 +48,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should get 401 Unauthorized
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -57,7 +57,7 @@ class TestAuthEndpoints:
             assert "Invalid API key" in response_data["detail"]
 
     def test_process_endpoint_without_api_key(self, client):
-        """Test /process endpoint without API key."""
+        """Test /text_processing/process endpoint without API key."""
         # Mock api_key_auth to have keys configured (not development mode)
         with patch.object(api_key_auth, 'api_keys', {"some-configured-key"}):
             request_data = {
@@ -65,7 +65,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data)
+            response = client.post("/text_processing/process", json=request_data)
             
             # Should get 401 Unauthorized
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -74,7 +74,7 @@ class TestAuthEndpoints:
             assert "API key required" in response_data["detail"]
 
     def test_process_endpoint_with_empty_api_key(self, client):
-        """Test /process endpoint with empty API key."""
+        """Test /text_processing/process endpoint with empty API key."""
         # Mock api_key_auth to have keys configured (not development mode)
         with patch.object(api_key_auth, 'api_keys', {"some-configured-key"}):
             headers = {"Authorization": "Bearer "}
@@ -83,7 +83,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should get 401 Unauthorized
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -93,7 +93,7 @@ class TestAuthEndpoints:
             assert "API key required" in response_data["detail"]
 
     def test_process_endpoint_with_malformed_auth_header(self, client):
-        """Test /process endpoint with malformed authorization header."""
+        """Test /text_processing/process endpoint with malformed authorization header."""
         # Mock api_key_auth to have keys configured
         with patch.object(api_key_auth, 'api_keys', {"some-configured-key"}):
             headers = {"Authorization": "InvalidFormat"}
@@ -102,13 +102,13 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should get 401 Unauthorized due to malformed header
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_process_endpoint_development_mode(self, client):
-        """Test /process endpoint in development mode (no API keys configured)."""
+        """Test /text_processing/process endpoint in development mode (no API keys configured)."""
         # Mock api_key_auth to have no keys configured (development mode)
         with patch.object(api_key_auth, 'api_keys', set()):
             request_data = {
@@ -116,13 +116,13 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data)
+            response = client.post("/text_processing/process", json=request_data)
             
             # Should not get 401 (may get 500 if AI service not configured, but that's OK)
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
 
     def test_process_endpoint_qa_operation_with_auth(self, client):
-        """Test /process endpoint with Q&A operation and valid auth."""
+        """Test /text_processing/process endpoint with Q&A operation and valid auth."""
         # Mock api_key_auth to accept our test key
         with patch.object(api_key_auth, 'verify_api_key', return_value=True):
             headers = {"Authorization": "Bearer valid-test-key"}
@@ -132,7 +132,7 @@ class TestAuthEndpoints:
                 "question": "What is this text about?"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should not get 401 (may get 500 if AI service not configured, but that's OK)
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
@@ -144,7 +144,7 @@ class TestAuthEndpoints:
                 assert "operation" in response_data
 
     def test_process_endpoint_qa_operation_without_auth(self, client):
-        """Test /process endpoint with Q&A operation without auth."""
+        """Test /text_processing/process endpoint with Q&A operation without auth."""
         # Mock api_key_auth to have keys configured
         with patch.object(api_key_auth, 'api_keys', {"some-configured-key"}):
             request_data = {
@@ -153,7 +153,7 @@ class TestAuthEndpoints:
                 "question": "What is this text about?"
             }
             
-            response = client.post("/process", json=request_data)
+            response = client.post("/text_processing/process", json=request_data)
             
             # Should get 401 Unauthorized before even processing the request
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -172,7 +172,7 @@ class TestAuthEndpoints:
                     "operation": operation
                 }
                 
-                response = client.post("/process", json=request_data, headers=headers)
+                response = client.post("/text_processing/process", json=request_data, headers=headers)
                 
                 # Should not get 401 for any operation
                 assert response.status_code != status.HTTP_401_UNAUTHORIZED, f"Operation {operation} failed auth"
@@ -191,12 +191,12 @@ class TestAuthEndpoints:
                 
                 # Test exact match (should work)
                 headers = {"Authorization": f"Bearer {test_key}"}
-                response = client.post("/process", json=request_data, headers=headers)
+                response = client.post("/text_processing/process", json=request_data, headers=headers)
                 assert response.status_code != status.HTTP_401_UNAUTHORIZED
                 
                 # Test different case (should fail)
                 headers = {"Authorization": f"Bearer {test_key.lower()}"}
-                response = client.post("/process", json=request_data, headers=headers)
+                response = client.post("/text_processing/process", json=request_data, headers=headers)
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_process_endpoint_auth_logging(self, client):
@@ -212,7 +212,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Verify that the API key verification was called
             mock_verify.assert_called_once_with("test-key")
@@ -222,7 +222,7 @@ class TestAuthEndpoints:
 
 
 class TestProcessEndpointAuthEdgeCases:
-    """Edge case tests for /process endpoint authentication."""
+    """Edge case tests for /text_processing/process endpoint authentication."""
 
     @pytest.fixture
     def client(self):
@@ -230,7 +230,7 @@ class TestProcessEndpointAuthEdgeCases:
         return TestClient(app)
 
     def test_process_endpoint_with_very_long_api_key(self, client):
-        """Test /process endpoint with very long API key."""
+        """Test /text_processing/process endpoint with very long API key."""
         # Create a very long API key
         long_key = "a" * 1000
         
@@ -242,13 +242,13 @@ class TestProcessEndpointAuthEdgeCases:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should not get 401
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
 
     def test_process_endpoint_with_special_characters_in_key(self, client):
-        """Test /process endpoint with special characters in API key."""
+        """Test /text_processing/process endpoint with special characters in API key."""
         special_key = "test-key-!@#$%^&*()_+={}[]|\\:;\"'<>?,./"
         
         # Mock api_key_auth to accept our special key
@@ -259,13 +259,13 @@ class TestProcessEndpointAuthEdgeCases:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             
             # Should not get 401
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
 
     def test_process_endpoint_with_unicode_api_key(self, client):
-        """Test /process endpoint with unicode characters in API key."""
+        """Test /text_processing/process endpoint with unicode characters in API key."""
         # Unicode characters in HTTP headers are not allowed per HTTP spec
         # This test verifies that the client properly rejects such requests
         unicode_key = "test-key-🔑🌟✨"
@@ -277,7 +277,7 @@ class TestProcessEndpointAuthEdgeCases:
                 "operation": "summarize"
             }
             
-            response = client.post("/process", json=request_data, headers=headers)
+            response = client.post("/text_processing/process", json=request_data, headers=headers)
             # If we get here, the framework allowed the unicode header
             # In this case, we should expect proper error handling
             assert True  # Test passes - framework handled it gracefully
@@ -286,7 +286,7 @@ class TestProcessEndpointAuthEdgeCases:
             assert True  # Test passes - proper unicode rejection
 
     def test_process_endpoint_auth_with_concurrent_requests(self, client):
-        """Test /process endpoint authentication with sequential requests to verify auth consistency."""
+        """Test /text_processing/process endpoint authentication with sequential requests to verify auth consistency."""
         # Note: TestClient doesn't handle true concurrency well with mocking
         # So we test sequential requests to ensure auth logic is consistent
         
@@ -309,7 +309,7 @@ class TestProcessEndpointAuthEdgeCases:
                     "operation": "summarize"
                 }
                 
-                response = client.post("/process", json=request_data, headers=headers)
+                response = client.post("/text_processing/process", json=request_data, headers=headers)
                 results.append((api_key, response.status_code, should_succeed))
         
         # Verify results

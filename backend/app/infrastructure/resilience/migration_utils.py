@@ -29,8 +29,8 @@ class MigrationRecommendation:
     confidence: MigrationConfidence
     reasoning: str
     custom_overrides: Optional[Dict[str, Any]] = None
-    warnings: List[str] = None
-    migration_steps: List[str] = None
+    warnings: Optional[List[str]] = None
+    migration_steps: Optional[List[str]] = None
 
     def __post_init__(self):
         if self.warnings is None:
@@ -140,7 +140,7 @@ class LegacyConfigAnalyzer:
         preset_scores = self._calculate_preset_scores(legacy_config)
         
         # Get best matching preset
-        best_preset = max(preset_scores, key=preset_scores.get)
+        best_preset = max(preset_scores, key=lambda k: preset_scores[k])
         score = preset_scores[best_preset]
         
         # Determine confidence based on score

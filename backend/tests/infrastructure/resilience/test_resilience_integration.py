@@ -4,23 +4,33 @@
 # directory according to the test organization guidelines.
 
 """
-Unit tests for resilience service integration with preset system.
+Comprehensive tests for the resilience service integration.
 
-Tests that the resilience service properly integrates with the preset configuration
-system and respects operation-specific strategy overrides.
+Note: Some tests in this file assume domain-specific operations (summarize, sentiment, etc.)
+are registered. In practice, these operations would be registered by domain services
+like TextProcessorService during initialization.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock
 
+from app.infrastructure.resilience import (
+    AIServiceResilience,
+    ResilienceStrategy,
+    ai_resilience
+)
 from app.config import Settings
-from app.infrastructure.resilience.orchestrator import AIServiceResilience
-from app.infrastructure.resilience.presets import ResilienceStrategy
-from app.infrastructure.resilience import ResilienceConfig
+
+# Import helper functions for mixed domain/infrastructure testing
+from tests.infrastructure.resilience.test_domain_integration_helpers import (
+    register_legacy_operation_names,
+    create_test_resilience_service_with_operations,
+    MockDomainService
+)
 
 
 class TestResilienceIntegration:
-    """Test integration between resilience service and preset system."""
+    """Test resilience service integration with settings."""
     
     def test_resilience_service_with_preset_config(self):
         """Test resilience service initialization with preset configuration."""
@@ -42,6 +52,9 @@ class TestResilienceIntegration:
         settings = Settings(resilience_preset="production")
         resilience_service = AIServiceResilience(settings=settings)
         
+        # Register operations for this test (simulating domain service registration)
+        register_legacy_operation_names(resilience_service)
+        
         # Test QA operation should get CRITICAL strategy in production preset
         qa_config = resilience_service.get_operation_config("qa")
         qa_strategy = settings.get_operation_strategy("qa")
@@ -61,6 +74,9 @@ class TestResilienceIntegration:
         """Test the operation-specific resilience decorator."""
         settings = Settings(resilience_preset="development")
         resilience_service = AIServiceResilience(settings=settings)
+        
+        # Register operation for this test
+        resilience_service.register_operation("sentiment", ResilienceStrategy.AGGRESSIVE)
         
         # Mock function to decorate
         mock_func = MagicMock()
@@ -140,6 +156,9 @@ class TestResilienceIntegration:
         """Test that preset-operation strategy mappings work correctly."""
         settings = Settings(resilience_preset=preset)
         resilience_service = AIServiceResilience(settings=settings)
+        
+        # Register test operations (simulating domain service registration)
+        register_legacy_operation_names(resilience_service)
         
         strategy = settings.get_operation_strategy(operation)
         assert strategy == expected_strategy

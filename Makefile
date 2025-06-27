@@ -27,6 +27,7 @@ help:
 	@echo "  venv                 Create backend virtual environment"
 	@echo "  install              Install backend dependencies (creates venv automatically)"
 	@echo "  install-frontend     Install frontend dependencies in Docker"
+	@echo "  run-backend          Run backend FastAPI server locally with auto-reload"
 	@echo "  test                 Run all tests (with Docker if available)"
 	@echo "  test-local           Run tests without Docker dependency"
 	@echo "  test-backend         Run backend tests only (fast tests by default)"
@@ -104,6 +105,16 @@ install: venv
 install-frontend:
 	@echo "Frontend runs via Docker - no local installation needed"
 	@echo "Use 'make dev-frontend' or 'make run-frontend' to start frontend"
+
+# Local development server
+run-backend:
+	@echo "Starting backend FastAPI server..."
+	@echo "🚀 Server will be available at:"
+	@echo "   - Swagger UI: http://localhost:8000/docs"
+	@echo "   - ReDoc: http://localhost:8000/redoc"
+	@echo "   - API: http://localhost:8000"
+	@echo ""
+	cd backend && $(PYTHON_CMD) -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 	
 # Testing with proper Python command
 test:
@@ -113,6 +124,34 @@ test:
 test-backend:
 	@echo "Running backend tests (fast tests only, excluding manual tests)..."
 	cd backend && $(PYTHON_CMD) -m pytest tests/ -v
+
+test-backend-api:
+	@echo "Running backend API tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/api/ -v
+
+test-backend-core:
+	@echo "Running backend core tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/core/ -v
+
+test-backend-infrastructure:
+	@echo "Running backend infrastructure tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ -v
+
+test-backend-integration:
+	@echo "Running backend integration tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -v
+
+test-backend-performance:
+	@echo "Running backend performance tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/performance/ -v
+
+test-backend-services:
+	@echo "Running backend domain services tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/services/ -v
+
+test-backend-schemas:
+	@echo "Running backend shared schemas tests (fast tests only, excluding manual tests)..."
+	cd backend && $(PYTHON_CMD) -m pytest tests/shared_schemas/ -v
 
 test-backend-slow:
 	@echo "Running slow backend tests only..."

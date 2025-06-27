@@ -173,22 +173,34 @@ class TextProcessorService:
         self.sanitizer = PromptSanitizer()
         self.response_validator = ResponseValidator()
         
-        # Configure resilience strategies for different operations
-        self._configure_resilience_strategies()
+        # Register operations with resilience service
+        self._register_operations()
 
-    def _configure_resilience_strategies(self):
-        """Configure resilience strategies based on settings."""
-        self.resilience_strategies = {
-            ProcessingOperation.SUMMARIZE: self.settings.summarize_resilience_strategy,
-            ProcessingOperation.SENTIMENT: self.settings.sentiment_resilience_strategy,
-            ProcessingOperation.KEY_POINTS: self.settings.key_points_resilience_strategy,
-            ProcessingOperation.QUESTIONS: self.settings.questions_resilience_strategy,
-            ProcessingOperation.QA: self.settings.qa_resilience_strategy,
+    def _register_operations(self):
+        """Register text processing operations with resilience service."""
+        operations = {
+            "summarize_text":     getattr(self.settings, 'summarize_resilience_strategy',  'balanced'),
+            "analyze_sentiment":  getattr(self.settings, 'sentiment_resilience_strategy',  'balanced'),
+            "extract_key_points": getattr(self.settings, 'key_points_resilience_strategy', 'balanced'),
+            "generate_questions": getattr(self.settings, 'questions_resilience_strategy',  'balanced'),
+            "answer_question":    getattr(self.settings, 'qa_resilience_strategy',         'balanced'),
         }
         
-        logger.info(f"Configured resilience strategies: {self.resilience_strategies}")
-    
-    async def _get_fallback_response(self, operation: ProcessingOperation, text: str, question: str = None) -> str:
+        for operation_name, strategy_name in operations.items():
+            try:
+                # Convert string strategy to enum
+                strategy = ResilienceStrategy(strategy_name)
+                ai_resilience.register_operation(operation_name, strategy)
+                logger.info(f"Registered operation '{operation_name}' with strategy '{strategy_name}'")
+            except ValueError:
+                logger.warning(f"Unknown strategy '{strategy_name}' for operation '{operation_name}', using balanced")
+                ai_resilience.register_operation(operation_name, ResilienceStrategy.BALANCED)
+
+    async def _get_fallback_response(
+            self, 
+            operation: ProcessingOperation, 
+            text: str, 
+            question: Optional[str] = None) -> Any:
         """
         Provide fallback responses when AI service is unavailable.
         
@@ -203,6 +215,18 @@ class TextProcessorService:
         
         if cached_response:
             logger.info(f"Using cached fallback for {operation}")
+            # Extract the appropriate field from cached response dict
+            if isinstance(cached_response, dict):
+                if operation == ProcessingOperation.SUMMARIZE:
+                    return cached_response.get('result', "Service temporarily unavailable. Please try again later for text summarization.")
+                elif operation == ProcessingOperation.SENTIMENT:
+                    return cached_response.get('sentiment')
+                elif operation == ProcessingOperation.KEY_POINTS:
+                    return cached_response.get('key_points', ["Service temporarily unavailable", "Please try again later"])
+                elif operation == ProcessingOperation.QUESTIONS:
+                    return cached_response.get('questions', ["What is the main topic of this text?", "Can you provide more details?"])
+                elif operation == ProcessingOperation.QA:
+                    return cached_response.get('result', "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later.")
             return cached_response
         
         # Generate simple fallback responses
@@ -246,15 +270,18 @@ class TextProcessorService:
             # Ensure the response being returned matches the TextProcessingResponse structure
             # If cached_response is a dict, it needs to be converted
             if isinstance(cached_response, dict):
+                cached_response['cache_hit'] = True
                 return TextProcessingResponse(**cached_response)
             elif isinstance(cached_response, TextProcessingResponse): # Or if it's already the correct type
-                 return cached_response
+                cached_response.cache_hit = True
+                return cached_response
             else:
                  # Handle cases where cache might return a simple string or other type not directly convertible
                  # This part depends on how cache_response stores data. Assuming it stores a dict.
                  logger.warning(f"Unexpected cache response type: {type(cached_response)}")
                  # Attempt to recreate response, or handle error
                  # For now, let's assume it's a dict as per Pydantic model usage
+                 cached_response['cache_hit'] = True
                  return TextProcessingResponse(**cached_response)
 
 
@@ -276,6 +303,7 @@ class TextProcessorService:
             response = TextProcessingResponse(
                 operation=request.operation,
                 processing_time=processing_time,
+                cache_hit=False,
                 metadata={"word_count": len(sanitized_text.split())} # Use sanitized_text for word_count
             )
             
@@ -571,7 +599,19 @@ class TextProcessorService:
             task = _process_single_request_in_batch(i, request_item)
             tasks.append(task)
 
-        results: List[BatchProcessingItem] = await asyncio.gather(*tasks, return_exceptions=False)
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Filter out any exceptions and ensure we only have BatchProcessingItem objects
+        results: List[BatchProcessingItem] = []
+        for i, result in enumerate(raw_results):
+            if isinstance(result, Exception):
+                logger.error(f"Batch item {i} (batch_id: {batch_id}) failed with exception: {str(result)}")
+                results.append(BatchProcessingItem(request_index=i, status=ProcessingStatus.FAILED, error=str(result)))
+            elif isinstance(result, BatchProcessingItem):
+                results.append(result)
+            else:
+                logger.error(f"Batch item {i} (batch_id: {batch_id}) returned unexpected type: {type(result)}")
+                results.append(BatchProcessingItem(request_index=i, status=ProcessingStatus.FAILED, error="Unexpected result type"))
 
         completed_count = sum(1 for r in results if r.status == ProcessingStatus.COMPLETED)
         failed_count = total_requests - completed_count

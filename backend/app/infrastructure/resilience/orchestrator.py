@@ -237,7 +237,7 @@ class AIServiceResilience:
         """Initialize resilience service with settings."""
         self.settings = settings
         self.circuit_breakers: Dict[str, EnhancedCircuitBreaker] = {}
-        self.configurations: Dict[str, ResilienceConfig] = {}
+        self.configurations: Dict[Any, ResilienceConfig] = {}
         self.operation_metrics: Dict[str, ResilienceMetrics] = {}
         
         # Load configurations
@@ -247,7 +247,7 @@ class AIServiceResilience:
     
     def _load_configurations(self):
         """Load default strategy configurations."""
-        self.configurations = DEFAULT_PRESETS.copy()
+        self.configurations = dict(DEFAULT_PRESETS)
         
         # Apply any custom configuration overrides from Settings
         if self.settings:
@@ -274,32 +274,16 @@ class AIServiceResilience:
         """Load operation-specific configurations from settings."""
         if not self.settings:
             return
-            
-        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
-        for operation in operations:
-            try:
-                strategy_name = self.settings.get_operation_strategy(operation)
-                strategy = ResilienceStrategy(strategy_name)
-                
-                # Create operation-specific config with proper strategy but using base settings
-                base_config = self.settings.get_resilience_config()
-                self.configurations[operation] = ResilienceConfig(
-                    strategy=strategy,
-                    retry_config=base_config.retry_config,
-                    circuit_breaker_config=base_config.circuit_breaker_config,
-                    enable_circuit_breaker=base_config.enable_circuit_breaker,
-                    enable_retry=base_config.enable_retry
-                )
-            except (ValueError, AttributeError):
-                logger.warning(f"Unknown strategy for operation '{operation}', using balanced")
-                self.configurations[operation] = self.configurations[ResilienceStrategy.BALANCED]
+        
+        # Operations are now registered by domain services via register_operation()
+        # This method is kept for backward compatibility but no longer loads hardcoded operations
+        # The configurations dictionary will be populated as operations are registered
+        pass
     
     def _load_fallback_configs(self):
         """Load fallback configurations for compatibility."""
         # Add any legacy or fallback configuration logic here
         pass
-    
-
     
     def get_or_create_circuit_breaker(self, name: str, config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
         """Get or create a circuit breaker for the given name and configuration."""
@@ -421,7 +405,6 @@ class AIServiceResilience:
                     wait=wait_strategy,
                     retry=should_retry_on_exception,
                     before_sleep=before_sleep_log(logger, logging.WARNING) if logger.isEnabledFor(logging.WARNING) else None,
-                    after=after_log(logger, logging.INFO) if logger.isEnabledFor(logging.INFO) else None
                 )
             
             @wraps(func)
@@ -576,6 +559,15 @@ class AIServiceResilience:
     def with_operation_resilience(self, operation_name: str, fallback: Optional[Callable] = None):
         """Convenience method to apply operation-specific resilience."""
         return self.with_resilience(operation_name=operation_name, fallback=fallback)
+
+    def register_operation(self, operation_name: str, strategy: ResilienceStrategy = ResilienceStrategy.BALANCED):
+        """Register a new operation with the resilience service."""
+        if self.settings:
+            # Let settings handle the registration
+            self.settings.register_operation(operation_name, strategy.value)
+        else:
+            # Direct registration for testing/standalone use
+            self.configurations[operation_name] = self.configurations[strategy]
 
 
 # Global instance - initialize immediately to support decorators at import time

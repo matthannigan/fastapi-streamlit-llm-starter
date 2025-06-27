@@ -107,7 +107,7 @@ class TestConfigurationPerformanceBenchmark:
         assert "config_production_loaded" in result.metadata
     
     def test_benchmark_service_initialization_performance(self):
-        """Test AIServiceResilience initialization benchmark."""
+        """Test service initialization benchmark."""
         benchmark = ConfigurationPerformanceBenchmark()
         
         result = benchmark.benchmark_service_initialization(iterations=3)
@@ -118,15 +118,17 @@ class TestConfigurationPerformanceBenchmark:
         assert result.avg_duration_ms > 0
         assert result.avg_duration_ms < PerformanceThreshold.SERVICE_INIT.value  # <200ms
         
-        # Check that services and operation configs were initialized
+        # Check that services and basic configs were initialized
         presets = ["simple", "development", "production"]
-        operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
         
-        for preset in presets:
-            for operation in operations:
-                key = f"service_{preset}_{operation}_config"
-                assert key in result.metadata
-                assert result.metadata[key] is True
+        # Verify we have metadata indicating successful service initialization
+        # (Don't check for specific domain operations as this is an infrastructure test)
+        assert len(result.metadata) > 0
+        
+        # Verify the benchmark tracked successful preset loading
+        preset_configs_found = sum(1 for key in result.metadata.keys() 
+                                 if any(preset in key for preset in presets))
+        assert preset_configs_found > 0, "No preset configurations were tracked in metadata"
     
     def test_benchmark_custom_config_loading_performance(self):
         """Test custom configuration loading benchmark."""

@@ -1,0 +1,31 @@
+{
+  "include": [
+    "backend/**/*",
+    "frontend/**/*", 
+    "shared/**/*"
+  ],
+  "extraPaths": [
+    "./shared"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "**/venv",
+    "**/.venv",
+    "**/env",
+    "**/.env",
+    "**/build",
+    "**/dist",
+    "**/*.egg-info",
+    "**/docs-website",
+    "**/backups"
+  ],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "All",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "autoSearchPaths": true,
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false
+}

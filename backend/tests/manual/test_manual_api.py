@@ -39,7 +39,7 @@ class TestManualAPI:
     async def test_operations_endpoint(self):
         """Test the operations endpoint."""
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{BASE_URL}/operations")
+            response = await client.get(f"{BASE_URL}/text_processing/operations")
             print(f"Operations: {response.status_code}")
             print(json.dumps(response.json(), indent=2))
             print("-" * 50)
@@ -65,7 +65,7 @@ class TestManualAPI:
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                response = await client.post(f"{BASE_URL}/process", json=data, headers=headers)
+                response = await client.post(f"{BASE_URL}/text_processing/process", json=data, headers=headers)
                 print(f"Process Text ({operation}): {response.status_code}")
                 if response.status_code == 200:
                     result = response.json()
