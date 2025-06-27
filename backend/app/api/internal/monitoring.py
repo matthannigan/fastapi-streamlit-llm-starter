@@ -1,8 +1,34 @@
-"""
-Monitoring endpoints for cache performance metrics and system monitoring.
+"""Internal monitoring endpoints for system health and performance metrics.
 
-This module provides endpoints for exposing cache performance statistics
-and other monitoring-related functionality.
+This module provides FastAPI endpoints for monitoring various system components
+including cache performance, resilience metrics, and monitoring infrastructure health.
+The endpoints are designed for internal monitoring and diagnostics, requiring API key
+authentication for access.
+
+The module exposes detailed health information about:
+    - Cache performance monitoring system
+    - Cache service monitoring capabilities  
+    - Resilience metrics collection (circuit breakers, retry operations)
+    - Monitoring data availability and integrity
+
+Routes:
+    GET /monitoring/health: Comprehensive health check of all monitoring subsystems
+
+Dependencies:
+    - FastAPI for HTTP routing
+    - Authentication via API key verification
+    - Cache service for performance metrics
+    - Resilience infrastructure for circuit breaker metrics
+
+Example:
+    To check monitoring system health:
+    GET /monitoring/health
+    
+    Returns detailed component-level health status with timestamps and metrics.
+
+Note:
+    This module focuses specifically on monitoring infrastructure health,
+    not the main application health. Use /health for overall application status.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -81,11 +107,11 @@ async def get_monitoring_health(
         # Check resilience metrics collection
         try:
             from app.infrastructure.resilience import ai_resilience
-            resilience_stats = ai_resilience.get_stats()
+            resilience_stats = ai_resilience.get_all_metrics()
             monitoring_health["components"]["resilience_monitoring"] = {
                 "status": "healthy",
-                "circuit_breaker_tracked": "failures" in resilience_stats,
-                "retry_metrics_available": "retries" in resilience_stats
+                "circuit_breaker_tracked": len(resilience_stats.get("circuit_breakers", {})) > 0,
+                "retry_metrics_available": len(resilience_stats.get("operations", {})) > 0
             }
         except Exception as e:
             logger.warning(f"Resilience monitoring check failed: {e}")

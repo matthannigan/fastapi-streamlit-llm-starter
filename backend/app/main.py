@@ -1,4 +1,43 @@
-"""Main FastAPI application."""
+"""Main FastAPI application for AI Text Processing with resilience features.
+
+This module contains the primary FastAPI application that provides AI-powered text processing
+capabilities with comprehensive resilience, monitoring, and caching features. The application
+is designed to be highly available and fault-tolerant with circuit breakers, health checks,
+and performance monitoring.
+
+The application includes the following key features:
+    - AI text processing using Google Gemini API
+    - Circuit breaker patterns for resilience
+    - Comprehensive health monitoring and metrics
+    - Response caching for improved performance
+    - API key authentication for security
+    - CORS support for cross-origin requests
+    - Structured error handling and logging
+
+Available API endpoints:
+    - /: Root endpoint with API information
+    - /health: Enhanced health check with resilience status
+    - /auth/status: Authentication status verification
+    - /api/v1/text-processing/*: Text processing endpoints
+    - /api/internal/monitoring/*: System monitoring endpoints
+    - /api/internal/cache/*: Cache management endpoints
+    - /api/internal/resilience/*: Resilience configuration and monitoring
+
+Configuration:
+    The application is configured through environment variables and the settings module,
+    including AI model selection, logging levels, CORS origins, and API authentication.
+
+Usage:
+    Run the application directly:
+        python main.py
+    
+    Or with uvicorn:
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+Note:
+    This application requires proper environment configuration including API keys
+    for AI services and authentication tokens for API access.
+"""
 
 import logging
 from contextlib import asynccontextmanager
@@ -16,8 +55,6 @@ from app.infrastructure.security import verify_api_key
 from app.api.v1.text_processing import router as text_processing_router
 from app.api.internal.cache import router as cache_router
 from app.api.internal.monitoring import monitoring_router
-from app.api.internal.resilience1 import router as resilience_router1
-from app.api.internal.resilience2 import router as resilience_router2
 from app.api.internal.resilience import (
     resilience_advanced_config_router,
     resilience_circuit_breakers_router,
@@ -124,8 +161,6 @@ app.include_router(monitoring_router)
 app.include_router(cache_router)
 
 # Include the resilience routers
-#app.include_router(resilience_router1)
-app.include_router(resilience_router2)
 app.include_router(resilience_health_router)
 app.include_router(resilience_circuit_breakers_router)
 app.include_router(resilience_presets_router)
