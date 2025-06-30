@@ -11,10 +11,10 @@ customization through override mechanisms. All endpoints include comprehensive
 validation and intelligent template suggestion features.
 
 Endpoints:
-    GET /resilience/templates: Retrieve all available configuration templates
-    GET /resilience/templates/{template_name}: Get specific template configuration
-    POST /resilience/validate-template: Validate template-based configuration with overrides
-    POST /resilience/suggest-template: Suggest optimal template for given configuration
+    GET  /resilience/config/templates: Retrieve all available configuration templates
+    GET  /resilience/config/templates/{template_name}: Get specific template configuration
+    POST /resilience/config/validate-template: Validate template-based configuration with overrides
+    POST /resilience/config/recommend-template: Suggest optimal template for given configuration
 
 Template Management Features:
     - Complete template catalog with descriptions and use cases
@@ -96,17 +96,41 @@ from app.api.internal.resilience.models import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience", tags=["resilience"])
+router = APIRouter(prefix="/resilience/config", tags=["resilience-config"])
 
 @router.get("/templates", response_model=TemplateListResponse)
 async def get_configuration_templates(
     api_key: str = Depends(verify_api_key)
 ) -> TemplateListResponse:
-    """
-    Get all available configuration templates.
+    """Get all available resilience configuration templates with descriptions.
+
+    This endpoint provides a comprehensive catalog of all available configuration
+    templates that can be used as blueprints for creating resilience configurations.
     
+    Args:
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Dictionary of available configuration templates with descriptions
+        TemplateListResponse: Response containing available templates:
+            - templates: Dictionary mapping template names to template information
+            - Each template includes description, use cases, and configuration structure
+            - Template metadata including version and compatibility information
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if template listing fails
+        
+    Example:
+        >>> response = await get_configuration_templates()
+        >>> TemplateListResponse(
+        ...     templates={
+        ...         "production": {
+        ...             "description": "High-reliability template for production",
+        ...             "use_cases": ["enterprise", "critical-systems"],
+        ...             "parameters": {...}
+        ...         },
+        ...         "development": {...}
+        ...     }
+        ... )
     """
     try:
         templates = config_validator.get_configuration_templates()
@@ -125,14 +149,41 @@ async def get_configuration_template(
     template_name: str,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Get a specific configuration template.
+    """Get detailed information about a specific configuration template.
+
+    This endpoint provides complete configuration details for a specific template,
+    including all parameters, default values, and customization options.
     
     Args:
-        template_name: Name of the template to retrieve
+        template_name: Name of the specific template to retrieve
+        api_key: API key for authentication (injected via dependency)
         
     Returns:
-        Template configuration with metadata
+        Dict[str, Any]: Template configuration containing:
+            - name: Template identifier
+            - description: Template description and use cases
+            - configuration: Complete template configuration structure
+            - parameters: Available parameters and their constraints
+            - defaults: Default values for all parameters
+            - metadata: Template version and compatibility information
+            - customization_options: Available override and customization points
+            
+    Raises:
+        HTTPException: 404 Not Found if template doesn't exist
+        HTTPException: 500 Internal Server Error if template retrieval fails
+        
+    Example:
+        >>> response = await get_configuration_template("production")
+        >>> {
+        ...     "name": "production",
+        ...     "description": "High-reliability template",
+        ...     "configuration": {
+        ...         "retry_attempts": 3,
+        ...         "circuit_breaker_threshold": 5,
+        ...         "timeout_seconds": 30
+        ...     },
+        ...     "metadata": {...}
+        ... }
     """
     try:
         template = config_validator.get_template(template_name)
@@ -153,18 +204,40 @@ async def validate_template_based_config(
     request: TemplateBasedConfigRequest,
     api_key: str = Depends(verify_api_key)
 ) -> ValidationResponse:
-    """
-    Validate configuration based on a template with optional overrides.
-    
-    Supports both authenticated and unauthenticated access. When authenticated,
-    additional metadata may be included in the response.
+    """Validate configuration based on a template with optional parameter overrides.
+
+    This endpoint validates configurations using a template as the base and applying
+    optional overrides. It provides comprehensive validation including template
+    compatibility, override validity, and configuration correctness.
     
     Args:
-        request: Template name and optional configuration overrides
-        api_key: Optional API key for authenticated access
+        request: Template-based validation request containing:
+                - template_name: Name of the template to use as base
+                - overrides: Optional dictionary of parameter overrides
+        api_key: API key for authentication (injected via dependency)
         
     Returns:
-        Validation results for the template-based configuration
+        ValidationResponse: Validation results containing:
+            - is_valid: Boolean indicating if the template-based configuration is valid
+            - errors: List of validation errors that must be fixed
+            - warnings: List of warnings about potential issues
+            - suggestions: List of suggestions for improvement
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if validation process fails
+        
+    Example:
+        >>> request = TemplateBasedConfigRequest(
+        ...     template_name="production",
+        ...     overrides={"retry_attempts": 5}
+        ... )
+        >>> response = await validate_template_based_config(request)
+        >>> ValidationResponse(
+        ...     is_valid=True,
+        ...     errors=[],
+        ...     warnings=["Override increases retry attempts above template default"],
+        ...     suggestions=["Consider circuit breaker threshold adjustment"]
+        ... )
     """
     try:
         validation_result = config_validator.validate_template_based_config(
@@ -189,19 +262,47 @@ async def validate_template_based_config(
         )
 
 
-@router.post("/suggest-template", response_model=TemplateSuggestionResponse)
+@router.post("/recommend-template", response_model=TemplateSuggestionResponse)
 async def suggest_template_for_config(
     request: CustomConfigRequest,
     api_key: str = Depends(verify_api_key)
 ) -> TemplateSuggestionResponse:
-    """
-    Suggest the most appropriate template for a given configuration.
+    """Suggest the most appropriate template for a given configuration.
+
+    This endpoint analyzes a provided configuration and suggests the most suitable
+    template that matches the configuration parameters, providing confidence scoring
+    and detailed reasoning for the recommendation.
     
     Args:
-        request: Configuration to analyze for template suggestion
+        request: Custom configuration request containing the configuration
+                to analyze for template matching
+        api_key: API key for authentication (injected via dependency)
         
     Returns:
-        Template suggestion with confidence and reasoning
+        TemplateSuggestionResponse: Template suggestion containing:
+            - suggested_template: Name of the recommended template (if any)
+            - confidence: Confidence score (0.0-1.0) in the suggestion
+            - reasoning: Detailed explanation for the suggestion decision
+            - available_templates: List of all available template names
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if template suggestion fails
+        
+    Example:
+        >>> request = CustomConfigRequest(
+        ...     configuration={
+        ...         "retry_attempts": 3,
+        ...         "circuit_breaker_threshold": 5,
+        ...         "default_strategy": "conservative"
+        ...     }
+        ... )
+        >>> response = await suggest_template_for_config(request)
+        >>> TemplateSuggestionResponse(
+        ...     suggested_template="production",
+        ...     confidence=0.85,
+        ...     reasoning="Configuration closely matches 'production' template with 3/3 key parameters matching",
+        ...     available_templates=["production", "development", "testing"]
+        ... )
     """
     try:
         suggested_template = config_validator.suggest_template_for_config(request.configuration)

@@ -98,13 +98,43 @@ router = APIRouter(prefix="/resilience", tags=["resilience"])
 
 @router.get("/circuit-breakers")
 async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
-    """
-    Get the status of all circuit breakers.
+    """Get comprehensive status information for all circuit breakers.
+
+    This endpoint provides detailed monitoring information for all circuit breakers
+    in the resilience system, including current states, failure statistics, and
+    operational metrics for each circuit breaker instance.
     
-    Returns detailed information about each circuit breaker including:
-    - Current state (open, closed, half-open)
-    - Failure counts
-    - Last failure times
+    Args:
+        api_key: API key for authentication (injected via dependency)
+        
+    Returns:
+        Dict[str, Any]: Circuit breaker status data containing:
+            - Dictionary mapping circuit breaker names to their status information
+            - Each circuit breaker includes:
+                - Current state (open, closed, half-open)
+                - Failure counts and thresholds
+                - Last failure timestamps
+                - Recovery timeout configuration
+                - Performance metrics and statistics
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if circuit breaker status retrieval fails
+        
+    Example:
+        >>> response = await get_circuit_breaker_status()
+        >>> {
+        ...     "text_processing_service": {
+        ...         "state": "closed",
+        ...         "failure_count": 2,
+        ...         "failure_threshold": 5,
+        ...         "last_failure_time": "2023-12-01T10:15:00Z"
+        ...     },
+        ...     "ai_summarization": {
+        ...         "state": "open",
+        ...         "failure_count": 5,
+        ...         "failure_threshold": 5
+        ...     }
+        ... }
     """
     try:
         all_metrics = ai_resilience.get_all_metrics()
@@ -120,11 +150,41 @@ async def get_circuit_breaker_details(
     breaker_name: str,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Get detailed information about a specific circuit breaker.
+    """Get detailed information about a specific circuit breaker.
+
+    This endpoint provides comprehensive details for a single circuit breaker,
+    including its current state, configuration parameters, failure statistics,
+    and operational metrics for detailed monitoring and diagnostics.
     
     Args:
-        breaker_name: Name of the circuit breaker
+        breaker_name: Name of the specific circuit breaker to retrieve details for
+        api_key: API key for authentication (injected via dependency)
+        
+    Returns:
+        Dict[str, Any]: Detailed circuit breaker information containing:
+            - name: Circuit breaker name
+            - state: Current state (open, closed, half-open)
+            - failure_count: Current number of consecutive failures
+            - failure_threshold: Maximum failures before opening
+            - recovery_timeout: Time before attempting half-open state
+            - last_failure_time: Timestamp of most recent failure
+            - metrics: Additional performance and operational metrics
+            
+    Raises:
+        HTTPException: 404 Not Found if circuit breaker doesn't exist
+        HTTPException: 500 Internal Server Error if details retrieval fails
+        
+    Example:
+        >>> response = await get_circuit_breaker_details("text_processing_service")
+        >>> {
+        ...     "name": "text_processing_service",
+        ...     "state": "closed",
+        ...     "failure_count": 2,
+        ...     "failure_threshold": 5,
+        ...     "recovery_timeout": 60,
+        ...     "last_failure_time": "2023-12-01T10:15:00Z",
+        ...     "metrics": {...}
+        ... }
     """
     try:
         if breaker_name not in ai_resilience.circuit_breakers:
@@ -156,11 +216,39 @@ async def reset_circuit_breaker(
     breaker_name: str,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Reset a specific circuit breaker to closed state.
+    """Reset a specific circuit breaker to closed state for emergency recovery.
+
+    This administrative endpoint resets a circuit breaker to its closed state,
+    clearing failure counts and allowing normal operation to resume. Use with
+    caution and only after resolving underlying issues that caused the failures.
     
     Args:
-        breaker_name: Name of the circuit breaker to reset
+        breaker_name: Name of the specific circuit breaker to reset
+        api_key: API key for authentication (injected via dependency)
+        
+    Returns:
+        Dict[str, str]: Reset confirmation containing:
+            - message: Human-readable confirmation message
+            - name: Name of the circuit breaker that was reset
+            - new_state: New state of the circuit breaker (should be "closed")
+            
+    Raises:
+        HTTPException: 404 Not Found if circuit breaker doesn't exist
+        HTTPException: 500 Internal Server Error if reset operation fails
+        
+    Warning:
+        Circuit breakers are critical safety components that protect against
+        cascading failures. Manual resets should be used carefully and only
+        when the underlying issues have been resolved to prevent immediate
+        re-opening of the circuit breaker.
+        
+    Example:
+        >>> response = await reset_circuit_breaker("text_processing_service")
+        >>> {
+        ...     "message": "Circuit breaker 'text_processing_service' has been reset",
+        ...     "name": "text_processing_service",
+        ...     "new_state": "closed"
+        ... }
     """
     try:
         if breaker_name not in ai_resilience.circuit_breakers:

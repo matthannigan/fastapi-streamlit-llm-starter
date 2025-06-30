@@ -8,10 +8,12 @@ repo_name: GitHub
 
 nav:
   - Home: index.md
-  - API Reference:
-      - Backend: api_reference/backend.md
-      - Shared Models: api_reference/shared.md
-      - API Documentation: API.md
+  - Code Reference:
+      - Public API v1: code_reference/api/public_v1.md
+      - Internal APIs:
+          - Cache API: code_reference/api/internal_cache.md
+          - Monitoring API: code_reference/api/internal_monitoring.md
+          - Resilience API: code_reference/api/internal_resilience.md
   - Getting Started:
       - Authentication: AUTHENTICATION.md
       - Advanced Auth Guide: ADVANCED_AUTH_GUIDE.md

@@ -11,12 +11,12 @@ endpoints support both legacy and modern resilience configurations with
 automatic detection and appropriate response formatting.
 
 Endpoints:
-    GET /resilience/config: Retrieve current resilience configuration and strategies
-    GET /resilience/health: Get service health status and circuit breaker states
-    GET /resilience/metrics: Get comprehensive resilience metrics for all operations
-    GET /resilience/metrics/{operation_name}: Get metrics for a specific operation
+    GET  /resilience/health: Get service health status and circuit breaker states
+    GET  /resilience/config: Retrieve current resilience configuration and strategies
+    GET  /resilience/metrics: Get comprehensive resilience metrics for all operations
+    GET  /resilience/metrics/{operation_name}: Get metrics for a specific operation
     POST /resilience/metrics/reset: Reset metrics for specific or all operations
-    GET /resilience/dashboard: Get dashboard-style summary for monitoring systems
+    GET  /resilience/dashboard: Get dashboard-style summary for monitoring systems
 
 Configuration Management:
     - Automatic detection of legacy vs. modern configuration formats
@@ -81,23 +81,88 @@ from app.api.internal.resilience.models import CurrentConfigResponse, Resilience
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience", tags=["resilience"])
+main_router = APIRouter(prefix="/resilience", tags=["resilience"])
+config_router = APIRouter(prefix="/resilience/config", tags=["resilience-config"])
 
 def get_settings() -> Settings:
     """Get the global settings instance."""
     return settings
 
 
-@router.get("/config", response_model=CurrentConfigResponse)
+@main_router.get("/health")
+async def get_resilience_health():
+    """Get resilience service health status and circuit breaker information.
+
+    This endpoint provides comprehensive health monitoring for the AI resilience
+    service, including overall health status and detailed circuit breaker states.
+    
+    Returns:
+        Dict[str, Any]: A dictionary containing:
+            - healthy (bool): Overall service health status
+            - status (str): Human-readable status ("healthy" or "degraded")
+            - details (Dict): Detailed health information including circuit breaker states
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if health status retrieval fails
+        
+    Example:
+        >>> response = await get_resilience_health()
+        >>> {
+        ...     "healthy": True,
+        ...     "status": "healthy",
+        ...     "details": {
+        ...         "circuit_breakers": {...},
+        ...         "overall_health": "operational"
+        ...     }
+        ... }
+    """
+    try:
+        health_status = ai_resilience.get_health_status()
+        is_healthy = ai_resilience.is_healthy()
+        
+        return {
+            "healthy": is_healthy,
+            "status": "healthy" if is_healthy else "degraded",
+            "details": health_status
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting health status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get health status: {str(e)}")
+
+
+@config_router.get("/", response_model=CurrentConfigResponse)
 async def get_current_config(
     app_settings: Settings = Depends(get_settings),
     api_key: str = Depends(verify_api_key)
 ) -> CurrentConfigResponse:
-    """
-    Get the current resilience configuration.
+    """Get the current resilience configuration with preset information and operation strategies.
+
+    This endpoint retrieves the complete current resilience configuration, including
+    preset information, operation-specific strategies, and any custom overrides.
+    Automatically detects legacy vs. modern configuration formats.
     
+    Args:
+        app_settings: Application settings dependency for configuration access
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Current configuration with preset info and operation strategies
+        CurrentConfigResponse: Complete configuration response containing:
+            - Current resilience configuration parameters
+            - Preset name and operation strategies
+            - Custom configuration overrides
+            - Available strategies mapping
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if configuration retrieval fails
+        
+    Example:
+        >>> response = await get_current_config()
+        >>> CurrentConfigResponse(
+        ...     preset_name="production",
+        ...     config={...},
+        ...     operation_strategies={...}
+        ... )
     """
     try:
         # Clear cache to ensure fresh results when environment variables change during testing
@@ -200,38 +265,35 @@ async def get_current_config(
         raise HTTPException(status_code=500, detail=f"Failed to get current configuration: {str(e)}")
 
 
-@router.get("/health")
-async def get_resilience_health():
-    """
-    Get resilience service health status.
-    
-    Returns:
-        Health status with circuit breaker information
-    """
-    try:
-        health_status = ai_resilience.get_health_status()
-        is_healthy = ai_resilience.is_healthy()
-        
-        return {
-            "healthy": is_healthy,
-            "status": "healthy" if is_healthy else "degraded",
-            "details": health_status
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting health status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get health status: {str(e)}")
-
-
-@router.get("/metrics", response_model=ResilienceMetricsResponse)
+@main_router.get("/metrics", response_model=ResilienceMetricsResponse)
 async def get_resilience_metrics(
     api_key: str = Depends(verify_api_key)
 ) -> ResilienceMetricsResponse:
-    """
-    Get current resilience service metrics.
+    """Get comprehensive resilience metrics for all operations.
 
+    This endpoint provides detailed metrics covering all resilience operations,
+    including success rates, retry statistics, and circuit breaker performance.
+    
+    Args:
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Comprehensive metrics about resilience operations and circuit breakers
+        ResilienceMetricsResponse: Comprehensive metrics response containing:
+            - Success/failure rates for all operations
+            - Retry attempt statistics and patterns
+            - Circuit breaker activation data
+            - Performance metrics and response times
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if metrics retrieval fails
+        
+    Example:
+        >>> response = await get_resilience_metrics()
+        >>> ResilienceMetricsResponse(
+        ...     total_operations=1500,
+        ...     success_rate=0.95,
+        ...     operations={...}
+        ... )
     """
     try:
         metrics = ai_resilience.get_all_metrics()
@@ -245,16 +307,44 @@ async def get_resilience_metrics(
         )
 
 
-@router.get("/metrics/{operation_name}")
+@main_router.get("/metrics/{operation_name}")
 async def get_operation_metrics(
     operation_name: str,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Get metrics for a specific operation.
+    """Get detailed metrics for a specific resilience operation.
+
+    This endpoint provides comprehensive metrics for a single operation,
+    including performance statistics, error rates, and retry patterns.
     
     Args:
-        operation_name: Name of the operation (e.g., 'summarize_text', 'analyze_sentiment')
+        operation_name: Name of the specific operation to retrieve metrics for
+                       (e.g., 'summarize_text', 'analyze_sentiment')
+        api_key: API key for authentication (injected via dependency)
+        
+    Returns:
+        Dict[str, Any]: Operation-specific metrics containing:
+            - operation: Operation name
+            - metrics: Dictionary with detailed metrics including:
+                - Success/failure counts and rates
+                - Retry attempt statistics
+                - Circuit breaker state and activations
+                - Response time percentiles
+                - Error patterns and trends
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if metrics retrieval fails
+        
+    Example:
+        >>> response = await get_operation_metrics("summarize")
+        >>> {
+        ...     "operation": "summarize",
+        ...     "metrics": {
+        ...         "total_calls": 250,
+        ...         "success_rate": 0.96,
+        ...         "avg_response_time_ms": 1250
+        ...     }
+        ... }
     """
     try:
         metrics = ai_resilience.get_metrics(operation_name)
@@ -269,19 +359,35 @@ async def get_operation_metrics(
         )
 
 
-@router.post("/metrics/reset")
+@main_router.post("/metrics/reset")
 async def reset_resilience_metrics(
     operation_name: Optional[str] = Query(None, description="Operation name to reset (if None, resets all)"),
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Reset resilience metrics for a specific operation or all operations.
+    """Reset resilience metrics for a specific operation or all operations.
+
+    This endpoint clears stored metrics data, useful for testing or after
+    configuration changes. Can target a specific operation or reset all metrics.
     
     Args:
-        operation_name: Optional operation name to reset (if None, resets all)
+        operation_name: Optional name of specific operation to reset.
+                       If None, resets metrics for all operations
+        api_key: API key for authentication (injected via dependency)
         
     Returns:
-        Success message
+        Dict[str, str]: Reset confirmation containing:
+            - message: Human-readable confirmation message indicating
+                      which operations were reset
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if reset operation fails
+        
+    Example:
+        >>> response = await reset_resilience_metrics("summarize")
+        >>> {"message": "Reset metrics for operation: summarize"}
+        >>> 
+        >>> response = await reset_resilience_metrics()
+        >>> {"message": "Reset all resilience metrics"}
     """
     try:
         ai_resilience.reset_metrics(operation_name)
@@ -302,12 +408,54 @@ async def reset_resilience_metrics(
         )
 
 
-@router.get("/dashboard")
+@main_router.get("/dashboard")
 async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_key)):
-    """
-    Get a dashboard view of resilience status.
+    """Get comprehensive resilience dashboard data for monitoring systems.
+
+    This endpoint provides a dashboard-style summary of resilience status,
+    including health indicators, metrics summaries, and operational insights
+    suitable for monitoring dashboards and operational visibility.
     
-    Returns a summary suitable for monitoring dashboards.
+    Args:
+        api_key: Optional API key for authentication (injected via dependency)
+        
+    Returns:
+        Dict[str, Any]: Dashboard data containing:
+            - timestamp: Current timestamp in ISO format
+            - health: Service health summary including:
+                - overall_healthy: Boolean overall health status
+                - open_circuit_breakers: Count of open circuit breakers
+                - half_open_circuit_breakers: Count of half-open circuit breakers
+                - total_circuit_breakers: Total circuit breaker count
+            - performance: Performance metrics including:
+                - total_calls, successful_calls, failed_calls
+                - retry_attempts: Total retry attempts across all operations
+                - success_rate: Overall success rate percentage
+            - operations: List of available operation names
+            - alerts: List of current alerts and warnings
+            - summary: Additional summary metrics
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if dashboard data retrieval fails
+        
+    Note:
+        This endpoint supports optional authentication for flexibility in
+        monitoring system integration scenarios.
+        
+    Example:
+        >>> response = await get_resilience_dashboard()
+        >>> {
+        ...     "timestamp": "2023-12-01T10:30:00Z",
+        ...     "health": {
+        ...         "overall_healthy": True,
+        ...         "open_circuit_breakers": 0
+        ...     },
+        ...     "performance": {
+        ...         "total_calls": 1500,
+        ...         "success_rate": 95.2
+        ...     },
+        ...     "alerts": []
+        ... }
     """
     try:
         health_status = ai_resilience.get_health_status()

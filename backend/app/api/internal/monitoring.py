@@ -5,30 +5,64 @@ including cache performance, resilience metrics, and monitoring infrastructure h
 The endpoints are designed for internal monitoring and diagnostics, requiring API key
 authentication for access.
 
-The module exposes detailed health information about:
-    - Cache performance monitoring system
-    - Cache service monitoring capabilities  
+The module serves as the central hub for monitoring infrastructure health checks,
+providing detailed insights into:
+    - Cache performance monitoring system status and metrics
+    - Cache service monitoring capabilities and Redis connectivity
     - Resilience metrics collection (circuit breakers, retry operations)
-    - Monitoring data availability and integrity
+    - Monitoring data availability and integrity validation
+    - Component-level health status with operational metadata
+
+This monitoring system is specifically designed for infrastructure observability
+and should not be confused with main application health endpoints. It focuses
+on the health of monitoring systems themselves rather than business logic components.
+
+Classes:
+    None: This module contains only router definitions and endpoint functions.
+
+Functions:
+    get_monitoring_health: Comprehensive health check of all monitoring subsystems.
 
 Routes:
-    GET /monitoring/health: Comprehensive health check of all monitoring subsystems
+    GET /monitoring/health: Returns detailed health status of monitoring infrastructure.
 
 Dependencies:
-    - FastAPI for HTTP routing
-    - Authentication via API key verification
-    - Cache service for performance metrics
-    - Resilience infrastructure for circuit breaker metrics
+    FastAPI: Web framework for HTTP routing and dependency injection.
+    Authentication: API key verification for secure access to monitoring data.
+    Cache Service: Performance metrics and health status from cache infrastructure.
+    Resilience Infrastructure: Circuit breaker and retry operation metrics.
 
-Example:
-    To check monitoring system health:
-    GET /monitoring/health
+Typical Usage Example:
+    The monitoring endpoints are automatically registered when the module is imported
+    and included in the main FastAPI application:
     
-    Returns detailed component-level health status with timestamps and metrics.
+    ```python
+    from app.api.internal.monitoring import monitoring_router
+    app.include_router(monitoring_router, prefix="/internal")
+    ```
+    
+    To check monitoring system health:
+    ```bash
+    curl -H "X-API-Key: your-api-key" http://localhost:8000/internal/monitoring/health
+    ```
+    
+    Returns comprehensive monitoring health report with component-level status.
+
+Security:
+    All endpoints require optional API key authentication via the X-API-Key header.
+    This allows for flexible access control in different deployment environments
+    while maintaining security for production monitoring.
 
 Note:
-    This module focuses specifically on monitoring infrastructure health,
-    not the main application health. Use /health for overall application status.
+    This module focuses exclusively on monitoring infrastructure health,
+    not main application health. Use the `/health` endpoint for overall 
+    application status and readiness checks.
+
+Attributes:
+    monitoring_router (APIRouter): FastAPI router instance configured with
+        "/monitoring" prefix and "monitoring" tags for endpoint organization.
+    logger (logging.Logger): Module-level logger for monitoring operations
+        and error reporting.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -49,17 +83,89 @@ async def get_monitoring_health(
     api_key: str = Depends(optional_verify_api_key),
     cache_service: AIResponseCache = Depends(get_cache_service)
 ):
-    """
-    Get the health status of the monitoring subsystems.
+    """Get comprehensive health status of all monitoring subsystems.
     
-    This endpoint specifically checks the health of monitoring infrastructure
-    components, not the main application. Use /health for overall app health.
+    This endpoint performs health checks on monitoring infrastructure components
+    including cache performance monitoring, metrics collection, and resilience
+    systems. It provides detailed component-level status information for
+    operational monitoring and diagnostics.
     
-    Validates:
-    - Cache performance monitoring system
-    - Metrics collection functionality  
-    - Monitoring data availability
-    - Resilience metrics collection
+    Args:
+        api_key (str): Optional API key for authentication. Obtained via dependency
+            injection from optional_verify_api_key function.
+        cache_service (AIResponseCache): Cache service instance for monitoring
+            cache performance metrics. Obtained via dependency injection.
+    
+    Returns:
+        dict: Comprehensive monitoring health report containing:
+            - status (str): Overall health status ("healthy", "degraded", "unhealthy")
+            - timestamp (str): ISO formatted timestamp of the health check
+            - components (dict): Detailed status of each monitoring component:
+                - cache_performance_monitor: Cache performance tracking status
+                - cache_service_monitoring: Cache service health and capabilities
+                - resilience_monitoring: Circuit breaker and retry metrics status
+            - available_endpoints (list): List of available monitoring endpoints
+    
+    Raises:
+        HTTPException: 500 Internal Server Error if the monitoring health check
+            fails catastrophically or if critical monitoring components are
+            completely unavailable.
+    
+    Examples:
+        Successful response:
+        ```json
+        {
+            "status": "healthy",
+            "timestamp": "2024-01-15T10:30:00.123456",
+            "components": {
+                "cache_performance_monitor": {
+                    "status": "healthy",
+                    "total_operations_tracked": 1250,
+                    "has_recent_data": true
+                },
+                "cache_service_monitoring": {
+                    "status": "healthy", 
+                    "redis_monitoring": "connected",
+                    "memory_monitoring": "available"
+                },
+                "resilience_monitoring": {
+                    "status": "healthy",
+                    "circuit_breaker_tracked": true,
+                    "retry_metrics_available": true
+                }
+            },
+            "available_endpoints": [
+                "GET /monitoring/health",
+                "GET /cache/status",
+                "GET /cache/metrics", 
+                "GET /cache/invalidation-stats",
+                "GET /resilience/health"
+            ]
+        }
+        ```
+        
+        Degraded response (partial failures):
+        ```json
+        {
+            "status": "degraded",
+            "timestamp": "2024-01-15T10:30:00.123456",
+            "components": {
+                "cache_performance_monitor": {
+                    "status": "degraded",
+                    "error": "Performance metrics collection temporarily unavailable"
+                }
+            }
+        }
+        ```
+    
+    Note:
+        This endpoint specifically monitors the health of monitoring infrastructure,
+        not the main application components. For overall application health,
+        use the `/health` endpoint instead.
+        
+        The endpoint uses optional API key authentication, making it accessible
+        for internal monitoring while maintaining security for production
+        environments.
     """
     try:
         # Initialize with default timestamp

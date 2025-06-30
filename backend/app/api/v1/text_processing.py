@@ -81,7 +81,46 @@ router = APIRouter(prefix="/text_processing", tags=["text_processing"])
 
 @router.get("/operations")
 async def get_operations(api_key: str = Depends(optional_verify_api_key)):
-    """Get available processing operations."""
+    """Get available text processing operations and their configurations.
+    
+    Retrieves a comprehensive list of all supported AI text processing operations,
+    including their descriptions, supported options, and special requirements.
+    This endpoint supports optional authentication.
+    
+    Args:
+        api_key (str, optional): API key for authentication. Defaults to optional verification.
+    
+    Returns:
+        dict: A dictionary containing:
+            - operations (list): List of operation objects, each containing:
+                - id (str): Unique operation identifier
+                - name (str): Human-readable operation name
+                - description (str): Detailed operation description
+                - options (list): List of supported configuration options
+                - requires_question (bool, optional): Whether operation requires a question parameter
+    
+    Example:
+        Response format:
+        ```json
+        {
+            "operations": [
+                {
+                    "id": "summarize",
+                    "name": "Summarize", 
+                    "description": "Generate a concise summary of the text",
+                    "options": ["max_length"]
+                },
+                {
+                    "id": "qa",
+                    "name": "Question & Answer",
+                    "description": "Answer a specific question about the text",
+                    "options": [],
+                    "requires_question": true
+                }
+            ]
+        }
+        ```
+    """
     return {
         "operations": [
             {
@@ -125,7 +164,53 @@ async def process_text(
     api_key: str = Depends(verify_api_key),
     text_processor: TextProcessorService = Depends(get_text_processor)
 ):
-    """Process text using AI models."""
+    """Process a single text request using specified AI operations.
+    
+    Performs AI-powered text processing operations such as summarization, sentiment analysis,
+    key point extraction, question generation, or question answering. Each request is assigned
+    a unique ID for tracing and logging purposes.
+    
+    Args:
+        request (TextProcessingRequest): The text processing request containing:
+            - text (str): The input text to be processed
+            - operation (TextProcessingOperation): The type of operation to perform
+            - options (dict, optional): Additional options for the operation
+            - question (str, optional): Required for Q&A operations
+        api_key (str): Valid API key for authentication.
+        text_processor (TextProcessorService): Injected text processing service.
+    
+    Returns:
+        TextProcessingResponse: Processing result containing:
+            - result (str): The processed output text
+            - operation (str): The operation that was performed
+            - metadata (dict, optional): Additional information about the processing
+    
+    Raises:
+        HTTPException: 400 Bad Request if:
+            - Question is missing for Q&A operations
+            - Request validation fails
+        HTTPException: 401 Unauthorized if API key is invalid
+        HTTPException: 500 Internal Server Error if processing fails
+    
+    Example:
+        Request:
+        ```json
+        {
+            "text": "The quick brown fox jumps over the lazy dog...",
+            "operation": "summarize",
+            "options": {"max_length": 50}
+        }
+        ```
+        
+        Response:
+        ```json
+        {
+            "result": "A brief summary of the text...",
+            "operation": "summarize",
+            "metadata": {"processing_time": 1.23}
+        }
+        ```
+    """
     # Generate unique request ID for tracing
     request_id = str(uuid.uuid4())
     
@@ -173,7 +258,76 @@ async def batch_process_text(
     api_key: str = Depends(verify_api_key),
     text_processor: TextProcessorService = Depends(get_text_processor)
 ):
-    """Process multiple text requests in batch."""
+    """Process multiple text requests in a single batch operation.
+    
+    Efficiently processes multiple text requests simultaneously, with configurable
+    batch limits and comprehensive error handling. Each batch is assigned a unique
+    ID for tracking and logging. The operation is synchronous and returns results
+    for all processed requests.
+    
+    Args:
+        request (BatchTextProcessingRequest): The batch processing request containing:
+            - requests (list[TextProcessingRequest]): List of individual text processing requests
+            - batch_id (str, optional): Custom batch identifier, auto-generated if not provided
+        api_key (str): Valid API key for authentication.
+        text_processor (TextProcessorService): Injected text processing service.
+    
+    Returns:
+        BatchTextProcessingResponse: Batch processing results containing:
+            - batch_id (str): Unique identifier for this batch
+            - total_requests (int): Total number of requests in the batch
+            - completed (int): Number of successfully processed requests
+            - failed (int): Number of failed requests
+            - results (list[TextProcessingResponse]): Individual processing results
+            - errors (list[dict], optional): Details of any processing errors
+    
+    Raises:
+        HTTPException: 400 Bad Request if:
+            - Batch request list is empty
+            - Batch size exceeds maximum limit (configured in settings)
+            - Individual request validation fails
+        HTTPException: 401 Unauthorized if API key is invalid
+        HTTPException: 500 Internal Server Error if batch processing fails
+    
+    Example:
+        Request:
+        ```json
+        {
+            "requests": [
+                {
+                    "text": "First document to analyze...",
+                    "operation": "sentiment"
+                },
+                {
+                    "text": "Second document to summarize...",
+                    "operation": "summarize",
+                    "options": {"max_length": 100}
+                }
+            ],
+            "batch_id": "my-batch-2024"
+        }
+        ```
+        
+        Response:
+        ```json
+        {
+            "batch_id": "my-batch-2024",
+            "total_requests": 2,
+            "completed": 2,
+            "failed": 0,
+            "results": [
+                {
+                    "result": "Positive sentiment detected",
+                    "operation": "sentiment"
+                },
+                {
+                    "result": "Brief summary of the document...",
+                    "operation": "summarize"
+                }
+            ]
+        }
+        ```
+    """
     # Generate unique request ID for tracing
     request_id = str(uuid.uuid4())
     batch_id = request.batch_id or f"batch_{int(time.time())}"
@@ -215,7 +369,45 @@ async def batch_process_text(
 
 @router.get("/batch_status/{batch_id}", response_model=dict)
 async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)):
-    """Get status of a batch processing job. Placeholder for synchronous implementation."""
+    """Get the status of a batch processing job.
+    
+    Returns the current status of a batch processing operation. Note that the current
+    implementation processes batches synchronously, so this endpoint primarily serves
+    as a status confirmation for completed batches.
+    
+    Args:
+        batch_id (str): The unique identifier of the batch to check status for.
+        api_key (str): Valid API key for authentication.
+    
+    Returns:
+        dict: Batch status information containing:
+            - batch_id (str): The requested batch identifier
+            - status (str): Current status of the batch (typically "COMPLETED_SYNC")
+            - message (str): Descriptive message about the batch status
+    
+    Raises:
+        HTTPException: 401 Unauthorized if API key is invalid
+    
+    Note:
+        This is a placeholder endpoint for the current synchronous implementation.
+        In future versions with asynchronous batch processing, this will provide
+        real-time status updates including progress percentages and partial results.
+    
+    Example:
+        Request:
+        ```
+        GET /text_processing/batch_status/my-batch-2024
+        ```
+        
+        Response:
+        ```json
+        {
+            "batch_id": "my-batch-2024",
+            "status": "COMPLETED_SYNC",
+            "message": "Batch processing is synchronous. If your request to /text_processing/batch_process completed, the results were returned then."
+        }
+        ```
+    """
     logger.info(f"Batch status requested for batch_id: {batch_id} by user (API key prefix): {api_key[:8]}...")
     return {
         "batch_id": batch_id,
@@ -228,11 +420,55 @@ async def get_service_health(
     api_key: str = Depends(optional_verify_api_key),
     text_processor: TextProcessorService = Depends(get_text_processor)
 ):
-    """
-    Domain Service: Text Processing Health Check
+    """Get comprehensive health status for the text processing service.
     
-    📚 EXAMPLE IMPLEMENTATION - Includes domain + infrastructure status
-    Returns comprehensive health including underlying resilience infrastructure.
+    Returns detailed health information for both the domain service layer and
+    underlying resilience infrastructure components. This endpoint provides
+    visibility into service availability, performance, and operational status.
+    
+    Args:
+        api_key (str, optional): API key for authentication. Defaults to optional verification.
+        text_processor (TextProcessorService): Injected text processing service.
+    
+    Returns:
+        dict: Comprehensive health status containing:
+            - overall_healthy (bool): Aggregated health status across all components
+            - service_type (str): Type of service ("domain")
+            - infrastructure (dict): Infrastructure-level health information:
+                - resilience (dict): Resilience system health status
+            - domain_services (dict): Domain service health information:
+                - text_processing (dict): Text processing service specific health
+    
+    Raises:
+        HTTPException: 500 Internal Server Error if health check fails
+    
+    Note:
+        This is an example implementation demonstrating how to combine domain
+        service health with infrastructure health monitoring. The endpoint
+        supports optional authentication and provides detailed diagnostics.
+    
+    Example:
+        Response:
+        ```json
+        {
+            "overall_healthy": true,
+            "service_type": "domain", 
+            "infrastructure": {
+                "resilience": {
+                    "healthy": true,
+                    "circuit_breakers": {"status": "closed"},
+                    "rate_limiters": {"active": false}
+                }
+            },
+            "domain_services": {
+                "text_processing": {
+                    "healthy": true,
+                    "response_time_ms": 150,
+                    "requests_processed": 1024
+                }
+            }
+        }
+        ```
     """
     try:
         # Get infrastructure health (without dependency)

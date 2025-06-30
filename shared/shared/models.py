@@ -156,6 +156,7 @@ class HealthResponse(BaseModel):
     version: str = "1.0.0"
     ai_model_available: bool = True
     resilience_healthy: Optional[bool] = None
+    cache_healthy: Optional[bool] = None
 
     @field_serializer('timestamp')
     def serialize_timestamp(self, dt: datetime, _info):

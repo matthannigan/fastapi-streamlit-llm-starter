@@ -12,11 +12,11 @@ and reliability. All endpoints provide detailed performance insights with
 actionable recommendations for system optimization.
 
 Endpoints:
-    GET /resilience/performance/benchmark: Run comprehensive performance benchmark suite
+    GET  /resilience/performance/benchmark: Run comprehensive performance benchmark suite
     POST /resilience/performance/benchmark: Run custom performance benchmarks with specific parameters
-    GET /resilience/performance/thresholds: Get performance thresholds and targets (optional auth)
-    GET /resilience/performance/report: Generate detailed performance analysis report
-    GET /resilience/performance/history: Retrieve historical performance data and trends
+    GET  /resilience/performance/thresholds: Get performance thresholds and targets (optional auth)
+    GET  /resilience/performance/report: Generate detailed performance analysis report
+    GET  /resilience/performance/history: Retrieve historical performance data and trends
 
 Performance Benchmarking Features:
     - Comprehensive benchmark suite with multiple test scenarios
@@ -104,23 +104,50 @@ from app.api.internal.resilience.models import BenchmarkRunRequest
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience", tags=["resilience"])
+router = APIRouter(prefix="/resilience/performance", tags=["resilience-performance"])
 
-@router.get("/performance/benchmark")
+@router.get("/benchmark")
 async def run_performance_benchmark(
     iterations: int = 50,
     include_slow: bool = False,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Run comprehensive performance benchmark suite.
+    """Run comprehensive performance benchmark suite for resilience configuration operations.
+
+    This endpoint executes a complete performance benchmark suite covering all
+    key resilience operations, providing detailed performance metrics, success
+    rates, and health assessments for monitoring and optimization purposes.
     
     Args:
-        iterations: Number of iterations for each benchmark (default: 50)
-        include_slow: Include slow benchmarks that take longer to run (default: False)
-    
+        iterations: Number of iterations for each benchmark operation (default: 50)
+        include_slow: Include slow/intensive benchmarks that take longer (default: False)
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Complete benchmark suite results with performance metrics
+        Dict[str, Any]: Comprehensive benchmark results containing:
+            - benchmark_suite: Complete suite results with detailed metrics
+            - summary: Performance summary including:
+                - total_benchmarks: Number of benchmark operations executed
+                - pass_rate: Overall pass rate (0.0-1.0) for performance targets
+                - total_duration_ms: Total execution time for all benchmarks
+                - failed_benchmarks: List of failed benchmark operations
+                - performance_target_met: Boolean indicating 80% pass rate threshold
+                
+    Raises:
+        HTTPException: 500 Internal Server Error if benchmark execution fails
+        
+    Example:
+        >>> response = await run_performance_benchmark(iterations=100)
+        >>> {
+        ...     "benchmark_suite": {...},
+        ...     "summary": {
+        ...         "total_benchmarks": 7,
+        ...         "pass_rate": 0.857,
+        ...         "total_duration_ms": 2850,
+        ...         "failed_benchmarks": [],
+        ...         "performance_target_met": True
+        ...     }
+        ... }
     """
     try:
         # Reset previous results
@@ -146,19 +173,58 @@ async def run_performance_benchmark(
         )
 
 
-@router.post("/performance/benchmark")
+@router.post("/benchmark")
 async def run_custom_performance_benchmark(
     request: BenchmarkRunRequest,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Run custom performance benchmark with specific parameters.
+    """Run custom performance benchmarks with specific operations and parameters.
+
+    This endpoint allows selective execution of performance benchmarks with
+    custom parameters, providing flexibility for targeted performance analysis
+    and optimization of specific resilience operations.
     
     Args:
-        request: Custom benchmark configuration
-    
+        request: Custom benchmark configuration containing:
+                - iterations: Number of iterations per benchmark
+                - operations: Optional list of specific operations to benchmark
+                - include_slow: Whether to include intensive benchmarks
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Custom benchmark results
+        Dict[str, Any]: Custom benchmark results containing:
+            - results: List of individual benchmark results with:
+                - operation: Benchmark operation name
+                - avg_duration_ms: Average execution time
+                - min_duration_ms: Minimum execution time
+                - max_duration_ms: Maximum execution time
+                - std_dev_ms: Standard deviation of execution times
+                - memory_peak_mb: Peak memory usage in megabytes
+                - success_rate: Operation success rate (0.0-1.0)
+                - iterations: Number of iterations executed
+                - metadata: Additional benchmark metadata
+            - summary: Overall benchmark summary with performance analysis
+                
+    Raises:
+        HTTPException: 400 Bad Request if unknown operation specified
+        HTTPException: 500 Internal Server Error if benchmark execution fails
+        
+    Example:
+        >>> request = BenchmarkRunRequest(
+        ...     iterations=25,
+        ...     operations=["preset_loading", "validation_performance"]
+        ... )
+        >>> response = await run_custom_performance_benchmark(request)
+        >>> {
+        ...     "results": [
+        ...         {
+        ...             "operation": "preset_loading",
+        ...             "avg_duration_ms": 8.5,
+        ...             "success_rate": 1.0
+        ...         }
+        ...     ],
+        ...     "summary": {...}
+        ... }
     """
     try:
         # Reset previous results
@@ -228,13 +294,52 @@ async def run_custom_performance_benchmark(
         )
 
 
-@router.get("/performance/thresholds")
+@router.get("/thresholds")
 async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_key)):
-    """
-    Get performance thresholds for different operations.
+    """Get performance thresholds and targets for resilience configuration operations.
+
+    This endpoint provides comprehensive information about performance thresholds,
+    targets, and measurement standards used for benchmarking and monitoring
+    resilience configuration operations.
     
+    Args:
+        api_key: Optional API key for authentication (injected via dependency)
+        
     Returns:
-        Performance thresholds and targets for configuration operations
+        Dict[str, Any]: Performance threshold information containing:
+            - thresholds: Performance thresholds in milliseconds for:
+                - config_loading_ms: Configuration loading threshold
+                - preset_access_ms: Preset access threshold
+                - validation_ms: Configuration validation threshold
+                - service_initialization_ms: Service initialization threshold
+            - targets: Performance targets and objectives including:
+                - primary_target: Main performance target description
+                - secondary_targets: List of secondary performance objectives
+            - measurement_info: Measurement methodology including:
+                - default_iterations: Default iteration count for benchmarks
+                - memory_tracking: Memory measurement description
+                - timing_precision: Timing measurement precision details
+                
+    Raises:
+        HTTPException: 500 Internal Server Error if threshold retrieval fails
+        
+    Note:
+        This endpoint supports optional authentication for monitoring system
+        compatibility and can be accessed without authentication.
+        
+    Example:
+        >>> response = await get_performance_thresholds()
+        >>> {
+        ...     "thresholds": {
+        ...         "config_loading_ms": 100,
+        ...         "preset_access_ms": 10,
+        ...         "validation_ms": 50
+        ...     },
+        ...     "targets": {
+        ...         "primary_target": "Configuration loading under 100ms"
+        ...     },
+        ...     "measurement_info": {...}
+        ... }
     """
     try:
         from app.infrastructure.resilience.performance_benchmarks import PerformanceThreshold
@@ -267,19 +372,52 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
         )
 
 
-@router.get("/performance/report")
+@router.get("/report")
 async def get_performance_report(
     format: str = "json",
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Get detailed performance report.
+    """Generate comprehensive performance analysis report with recommendations.
+
+    This endpoint provides detailed performance reports in multiple formats,
+    including benchmark analysis, performance assessments, and actionable
+    recommendations for optimizing resilience configuration operations.
     
     Args:
-        format: Report format ('json' or 'text')
-    
+        format: Report output format specification ("json" or "text")
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Detailed performance report with analysis and recommendations
+        Dict[str, Any]: Performance report containing:
+            - format: Requested report format
+            - report or suite: Report content (text format) or structured data (json format)
+            - timestamp: Report generation timestamp
+            - analysis: Performance analysis including:
+                - performance_summary: Key performance metrics
+                - avg_config_loading_ms: Average configuration loading time
+                - avg_preset_loading_ms: Average preset loading time
+                - target_met: Boolean indicating performance targets met
+                - recommendations: List of optimization recommendations
+                
+    Raises:
+        HTTPException: 500 Internal Server Error if report generation fails
+        
+    Example:
+        >>> response = await get_performance_report("json")
+        >>> {
+        ...     "format": "json",
+        ...     "suite": {...},
+        ...     "analysis": {
+        ...         "performance_summary": {
+        ...             "avg_config_loading_ms": 85.2,
+        ...             "target_met": True
+        ...         },
+        ...         "recommendations": [
+        ...             "Configuration loading meets <100ms target",
+        ...             "Memory usage is efficient"
+        ...         ]
+        ...     }
+        ... }
     """
     try:
         # Run quick benchmark if no recent results
@@ -339,19 +477,51 @@ async def get_performance_report(
         )
 
 
-@router.get("/performance/history")
+@router.get("/history")
 async def get_performance_history(
     limit: int = 10,
     api_key: str = Depends(verify_api_key)
 ):
-    """
-    Get performance benchmark history and trends.
+    """Get historical performance benchmark data and trend analysis.
+
+    This endpoint provides access to historical performance benchmark results
+    and trend analysis for tracking performance changes over time, identifying
+    regressions, and monitoring performance improvements.
     
     Args:
-        limit: Maximum number of historical records to return
-    
+        limit: Maximum number of historical records to return (default: 10)
+        api_key: API key for authentication (injected via dependency)
+        
     Returns:
-        Historical performance data and trend analysis
+        Dict[str, Any]: Historical performance data containing:
+            - message: Current implementation status message
+            - note: Information about planned functionality
+            - expected_features: List of planned features including:
+                - Historical benchmark results storage
+                - Performance trend analysis capabilities
+                - Regression detection algorithms
+                - Performance baseline comparison tools
+            - current_results: Current benchmark results for reference
+            
+    Raises:
+        HTTPException: 500 Internal Server Error if history retrieval fails
+        
+    Note:
+        This endpoint is currently under development. Future implementation
+        will provide comprehensive historical tracking and trend analysis
+        for performance benchmarks with regression detection capabilities.
+        
+    Example:
+        >>> response = await get_performance_history(limit=5)
+        >>> {
+        ...     "message": "Performance history tracking not yet implemented",
+        ...     "expected_features": [
+        ...         "Historical benchmark results",
+        ...         "Performance trend analysis",
+        ...         "Regression detection"
+        ...     ],
+        ...     "current_results": [...]
+        ... }
     """
     try:
         # Note: In a real implementation, this would query a database

@@ -18,7 +18,6 @@ Request Models:
     - CustomConfigRequest: Custom configuration validation requests
     - BenchmarkRunRequest: Performance benchmark execution parameters
     - ValidationRequest: Generic configuration validation requests
-    - SecurityValidationRequest: Security-focused validation with null handling
     - TemplateValidationRequest: Template validation with override support
 
 Response Models:
@@ -92,6 +91,40 @@ Note:
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field
 
+
+# Request models
+
+class TemplateValidationRequest(BaseModel):
+    """Request model for template-based validation."""
+    template_name: str
+    overrides: Dict[str, Any] = {}
+
+
+class CustomConfigRequest(BaseModel):
+    """Request model for custom configuration validation."""
+    configuration: Dict[str, Any]
+
+
+class BenchmarkRunRequest(BaseModel):
+    """Request model for running performance benchmarks."""
+    iterations: int = 50
+    include_slow: bool = False
+    operations: Optional[List[str]] = None  # Specific operations to benchmark
+
+
+class ValidationRequest(BaseModel):
+    """Request model for configuration validation."""
+    configuration: Dict[str, Any]
+
+
+class TemplateBasedConfigRequest(BaseModel):
+    """Request model for template-based configuration."""
+    template_name: str
+    overrides: Optional[Dict[str, Any]] = None
+
+
+# Response models
+
 class ResilienceMetricsResponse(BaseModel):
     """Resilience service metrics response."""
     operations: Dict[str, Dict[str, Any]]
@@ -99,10 +132,50 @@ class ResilienceMetricsResponse(BaseModel):
     summary: Dict[str, Any]
 
 
-class TemplateBasedConfigRequest(BaseModel):
-    """Request model for template-based configuration."""
-    template_name: str
-    overrides: Optional[Dict[str, Any]] = None
+class PresetSummary(BaseModel):
+    """Summary information about a resilience preset."""
+    name: str
+    description: str
+    retry_attempts: int
+    circuit_breaker_threshold: int
+    recovery_timeout: int
+    default_strategy: str
+    environment_contexts: List[str]
+
+
+class PresetDetails(BaseModel):
+    """Detailed information about a resilience preset."""
+    name: str
+    description: str
+    configuration: Dict[str, Any]
+    environment_contexts: List[str]
+
+
+class RecommendationResponse(BaseModel):
+    """Preset recommendation response."""
+    environment: str
+    recommended_preset: str
+    reason: str
+    available_presets: List[str]
+
+
+class DetailedRecommendationResponse(BaseModel):
+    """Enhanced preset recommendation response with confidence and reasoning."""
+    environment_detected: str
+    recommended_preset: str
+    confidence: float
+    reasoning: str
+    available_presets: List[str]
+    auto_detected: bool
+
+
+class AutoDetectResponse(BaseModel):
+    """Auto-detection response for environment-aware recommendations."""
+    environment_detected: str
+    recommended_preset: str
+    confidence: float
+    reasoning: str
+    detection_method: str
 
 
 class TemplateListResponse(BaseModel):
@@ -124,28 +197,8 @@ class ValidationResponse(BaseModel):
     errors: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     suggestions: List[str] = Field(default_factory=list)
+    security_info: Optional[Dict[str, Any]] = Field(default=None, description="Additional security validation metadata")
 
-
-class CustomConfigRequest(BaseModel):
-    """Request model for custom configuration validation."""
-    configuration: Dict[str, Any]
-
-
-class BenchmarkRunRequest(BaseModel):
-    """Request model for running performance benchmarks."""
-    iterations: int = 50
-    include_slow: bool = False
-    operations: Optional[List[str]] = None  # Specific operations to benchmark
-
-
-class ValidationRequest(BaseModel):
-    """Request model for configuration validation."""
-    configuration: Dict[str, Any]
-
-
-class SecurityValidationRequest(BaseModel):
-    """Request model for security validation that allows null configurations."""
-    configuration: Optional[Dict[str, Any]]
 
 class CurrentConfigResponse(BaseModel):
     """Current resilience configuration response."""
@@ -155,9 +208,4 @@ class CurrentConfigResponse(BaseModel):
     operation_strategies: Dict[str, str]
     custom_overrides: Optional[Dict[str, Any]] = None
     strategies: Optional[Dict[str, Dict[str, Any]]] = None  # Complete strategies mapping for backward compatibility
-
-class TemplateValidationRequest(BaseModel):
-    """Request model for template-based validation."""
-    template_name: str
-    overrides: Dict[str, Any] = {}
 
