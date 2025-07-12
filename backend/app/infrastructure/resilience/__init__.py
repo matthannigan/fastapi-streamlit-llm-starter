@@ -8,9 +8,17 @@ and performance benchmarking for ease of use.
 This module serves as the single point of entry for all resilience functionality.
 """
 
+# Core exceptions (imported from centralized location)
+from app.core.exceptions import (
+    AIServiceException,
+    TransientAIError,
+    PermanentAIError,
+    RateLimitError,
+    ServiceUnavailableError,
+)
+
 # Core components
 from .circuit_breaker import (
-    AIServiceException,
     CircuitBreakerConfig,
     ResilienceMetrics,
     EnhancedCircuitBreaker
@@ -18,10 +26,6 @@ from .circuit_breaker import (
 
 from .retry import (
     RetryConfig,
-    TransientAIError,
-    PermanentAIError,
-    RateLimitError,
-    ServiceUnavailableError,
     classify_exception,
     should_retry_on_exception
 )
@@ -146,5 +150,5 @@ __all__ = [
     
     # Backward compatibility
     "preset_manager",
-    "PRESETS"
+    #"PRESETS"
 ]

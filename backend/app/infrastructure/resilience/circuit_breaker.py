@@ -78,13 +78,9 @@ from typing import Any, Callable, Dict, Optional
 from dataclasses import dataclass
 
 from circuitbreaker import CircuitBreaker
+from app.core.exceptions import AIServiceException
 
 logger = logging.getLogger(__name__)
-
-
-class AIServiceException(Exception):
-    """Base exception for AI service errors."""
-    pass
 
 
 @dataclass

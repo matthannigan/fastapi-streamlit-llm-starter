@@ -238,7 +238,7 @@ class TestTextProcessorService:
     @pytest.mark.asyncio
     async def test_qa_without_question(self, service, sample_text):
         """Test Q&A without question raises error."""
-        from app.infrastructure.resilience import PermanentAIError
+        from app.core.exceptions import PermanentAIError
         
         request = TextProcessingRequest(
             text=sample_text,

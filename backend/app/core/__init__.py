@@ -11,9 +11,25 @@ Example:
 """
 
 # This allows other modules to import settings directly from the core package
-# during the transition, even though the file is still in its old location.
-from ..config import settings, Settings
+from .config import settings, Settings
 
-# Note: Once custom exceptions are moved to core/exceptions.py,
-# you would add re-exports for them here as well.
-# from .exceptions import ApplicationError, InfrastructureError
+# Re-export custom exceptions for easy access
+from .exceptions import (
+    # Base exceptions
+    ApplicationError,
+    ValidationError,
+    ConfigurationError,
+    BusinessLogicError,
+    InfrastructureError,
+    
+    # AI service exceptions
+    AIServiceException,
+    TransientAIError,
+    PermanentAIError,
+    RateLimitError,
+    ServiceUnavailableError,
+    
+    # Utility functions
+    classify_ai_exception,
+    get_http_status_for_exception,
+)

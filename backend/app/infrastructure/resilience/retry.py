@@ -91,28 +91,15 @@ class RetryConfig:
     jitter_max: float = 2.0
 
 
-# Import shared exceptions from circuit_breaker module to avoid duplication
-from app.infrastructure.resilience.circuit_breaker import AIServiceException
-
-
-class TransientAIError(AIServiceException):
-    """Transient AI service error that should be retried."""
-    pass
-
-
-class PermanentAIError(AIServiceException):
-    """Permanent AI service error that should not be retried."""
-    pass
-
-
-class RateLimitError(TransientAIError):
-    """Rate limit exceeded error."""
-    pass
-
-
-class ServiceUnavailableError(TransientAIError):
-    """AI service temporarily unavailable."""
-    pass
+# Import all AI service exceptions from centralized location
+from app.core.exceptions import (
+    AIServiceException,
+    TransientAIError,
+    PermanentAIError,
+    RateLimitError,
+    ServiceUnavailableError,
+    classify_ai_exception,
+)
 
 
 def classify_exception(exc: Exception) -> bool:
@@ -120,41 +107,11 @@ def classify_exception(exc: Exception) -> bool:
     Classify whether an exception should trigger retries.
 
     Returns True if the exception is transient and should be retried.
+    
+    Note: This function is now a wrapper around the centralized
+    classify_ai_exception function in core.exceptions.
     """
-    # Network and connection errors (should retry)
-    if isinstance(exc, (
-        httpx.ConnectError,
-        httpx.TimeoutException,
-        httpx.NetworkError,
-        ConnectionError,
-        TimeoutError,
-        TransientAIError,
-        RateLimitError,
-        ServiceUnavailableError
-    )):
-        return True
-
-    # HTTP errors that should be retried
-    if isinstance(exc, httpx.HTTPStatusError):
-        status_code = exc.response.status_code
-        # Retry on server errors and rate limits
-        if status_code in (429, 500, 502, 503, 504):
-            return True
-        # Don't retry on client errors
-        if 400 <= status_code < 500:
-            return False
-
-    # Permanent errors (should not retry)
-    if isinstance(exc, (
-        PermanentAIError,
-        ValueError,
-        TypeError,
-        AttributeError
-    )):
-        return False
-
-    # Default: retry on unknown exceptions (conservative approach)
-    return True
+    return classify_ai_exception(exc)
 
 
 def should_retry_on_exception(retry_state) -> bool:

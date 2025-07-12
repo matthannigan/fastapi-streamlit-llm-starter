@@ -130,14 +130,16 @@ from shared.models import (
 )
 from app.core.config import Settings
 from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer # Enhanced import
+from app.core.exceptions import (
+    ServiceUnavailableError,
+    TransientAIError
+)
 from app.infrastructure.resilience import (
     ai_resilience,
     ResilienceStrategy,
     with_balanced_resilience,
     with_aggressive_resilience,
     with_conservative_resilience,
-    ServiceUnavailableError,
-    TransientAIError
 )
 from app.services.response_validator import ResponseValidator
 

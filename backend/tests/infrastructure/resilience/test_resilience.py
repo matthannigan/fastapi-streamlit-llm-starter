@@ -9,6 +9,12 @@ import time
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
+from app.core.exceptions import (
+    TransientAIError,
+    PermanentAIError,
+    RateLimitError,
+    ServiceUnavailableError,
+)
 from app.infrastructure.resilience import (
     AIServiceResilience,
     ResilienceStrategy,
@@ -18,10 +24,6 @@ from app.infrastructure.resilience import (
     ResilienceMetrics,
     EnhancedCircuitBreaker,
     classify_exception,
-    TransientAIError,
-    PermanentAIError,
-    RateLimitError,
-    ServiceUnavailableError,
     ai_resilience
 )
 from tenacity import RetryError

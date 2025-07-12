@@ -201,18 +201,20 @@ from tenacity import (
     TryAgain
 )
 
-from app.infrastructure.resilience.circuit_breaker import (
-    EnhancedCircuitBreaker,
-    CircuitBreakerConfig,
-    ResilienceMetrics,
-    AIServiceException
-)
-from app.infrastructure.resilience.retry import (
-    RetryConfig,
+from app.core.exceptions import (
+    AIServiceException,
     TransientAIError,
     PermanentAIError,
     RateLimitError,
     ServiceUnavailableError,
+)
+from app.infrastructure.resilience.circuit_breaker import (
+    EnhancedCircuitBreaker,
+    CircuitBreakerConfig,
+    ResilienceMetrics,
+)
+from app.infrastructure.resilience.retry import (
+    RetryConfig,
     should_retry_on_exception,
     classify_exception
 )
