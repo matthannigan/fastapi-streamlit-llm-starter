@@ -552,16 +552,53 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.max_request_size = getattr(settings, 'max_request_size', 10 * 1024 * 1024)  # 10MB
         self.max_headers_count = getattr(settings, 'max_headers_count', 100)
         
-        # Security headers configuration
-        self.security_headers = {
+        # Base security headers (applied to all endpoints)
+        self.base_security_headers = {
             'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
             'X-Frame-Options': 'DENY',
             'X-Content-Type-Options': 'nosniff',
             'X-XSS-Protection': '1; mode=block',
             'Referrer-Policy': 'strict-origin-when-cross-origin',
-            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
-            'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
         }
+        
+        # Strict CSP for API endpoints (production security)
+        self.api_csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+        
+        # Relaxed CSP for documentation endpoints (Swagger UI compatibility)
+        self.docs_csp = "default-src 'self' https://fastapi.tiangolo.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' https://fastapi.tiangolo.com data: https:; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self';"
+        
+        # Documentation endpoints that need relaxed CSP
+        self.docs_endpoints = {'/docs', '/redoc', '/openapi.json'}
+    
+    def _is_docs_endpoint(self, request: Request) -> bool:
+        """
+        Determine if the request is for a documentation endpoint.
+        
+        Checks if the request path matches any of the known documentation
+        endpoints that require relaxed CSP policies for Swagger UI functionality.
+        
+        Args:
+            request (Request): The incoming HTTP request
+            
+        Returns:
+            bool: True if the request is for a documentation endpoint
+        """
+        path = request.url.path
+        
+        # Check exact matches for docs endpoints
+        if path in self.docs_endpoints:
+            return True
+            
+        # Check for docs-related paths (e.g., /docs/oauth2-redirect)
+        if path.startswith('/docs') or path.startswith('/redoc'):
+            return True
+            
+        # Check for OpenAPI schema variants
+        if 'openapi' in path.lower():
+            return True
+            
+        return False
         
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
@@ -603,9 +640,17 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Process request through remaining middleware
         response = await call_next(request)
         
-        # Inject security headers
-        for header, value in self.security_headers.items():
+        # Inject base security headers
+        for header, value in self.base_security_headers.items():
             response.headers[header] = value
+        
+        # Determine and inject appropriate CSP based on endpoint type
+        if self._is_docs_endpoint(request):
+            response.headers['Content-Security-Policy'] = self.docs_csp
+            logger.debug(f"Applied docs CSP for {request.url.path}")
+        else:
+            response.headers['Content-Security-Policy'] = self.api_csp
+            logger.debug(f"Applied API CSP for {request.url.path}")
             
         return response
 
