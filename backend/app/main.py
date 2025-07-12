@@ -83,14 +83,11 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from shared.models import (
-    ErrorResponse,
-    HealthResponse,
-)
-
 from app.core.config import settings
 from app.core.middleware import setup_middleware
 from app.infrastructure.security import verify_api_key
+from app.api.v1.health import health_router
+from app.api.v1.auth import auth_router
 from app.api.v1.text_processing import router as text_processing_router
 from app.api.internal.cache import router as cache_router
 from app.api.internal.monitoring import monitoring_router
@@ -187,174 +184,11 @@ async def root():
     """
     return {"message": "AI Text Processor API", "version": "1.0.0"}
 
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Enhanced health check endpoint with comprehensive system monitoring.
-    
-    Performs health checks on all critical application components including AI model
-    configuration, resilience infrastructure, and cache system status. This endpoint
-    provides a comprehensive view of system health and can be used for monitoring,
-    load balancer health checks, and operational dashboards.
-    
-    The health check evaluates three main components:
-    
-    - **AI Model**: Verifies that the Google Gemini API key is properly configured
-      and available for text processing operations.
-    - **Resilience Infrastructure**: Checks the operational status of circuit breakers,
-      failure detection mechanisms, and resilience orchestration services.
-    - **Cache System**: Validates Redis connectivity, memory cache operations, and
-      overall cache service availability with graceful degradation support.
-    
-    The overall system status is determined as "healthy" when the AI model is available
-    and no critical components report explicit failures. Optional components (resilience
-    and cache services) may be unavailable (None) without affecting overall system
-    health, as the application can continue operating with reduced functionality.
-    
-    Returns:
-        HealthResponse: A comprehensive health status response containing:
-            - status (str): Overall system health status, either "healthy" or "degraded"
-            - ai_model_available (bool): Whether the AI model is properly configured
-            - resilience_healthy (Optional[bool]): Resilience infrastructure status,
-              None if service is unavailable
-            - cache_healthy (Optional[bool]): Cache system operational status,
-              None if service is unavailable  
-            - timestamp (datetime): When the health check was performed (ISO format)
-            - version (str): Current API version identifier
-    
-    Raises:
-        Exception: Internal errors are caught and handled gracefully. Component
-            failures result in None values rather than endpoint failures, ensuring
-            the health check remains available even when subsystems are down.
-    
-    Example:
-        >>> # GET /health
-        >>> {
-        ...   "status": "healthy",
-        ...   "timestamp": "2025-06-28T00:06:39.130848",
-        ...   "version": "1.0.0",
-        ...   "ai_model_available": true,
-        ...   "resilience_healthy": true,
-        ...   "cache_healthy": true
-        ... }
-        
-    Note:
-        This endpoint does not require authentication and should be used by monitoring
-        systems, load balancers, and operational tools. Cache health checks create
-        temporary connections that are automatically cleaned up.
-    """
-    ai_healthy = bool(settings.gemini_api_key)
-    resilience_healthy = None
-    cache_healthy = None
-    
-    # Check resilience health
-    try:
-        from app.infrastructure.resilience import ai_resilience
-        resilience_healthy = ai_resilience.is_healthy()
-    except Exception:
-        logger.warning("Resilience service is not available")
-        resilience_healthy = None
-    
-    # Check cache health
-    try:
-        from app.infrastructure.cache import AIResponseCache
-        
-        # Create cache service instance manually (not using dependency injection)
-        cache_service = AIResponseCache(
-            redis_url=settings.redis_url,
-            default_ttl=settings.cache_default_ttl,
-            text_hash_threshold=settings.cache_text_hash_threshold,
-            compression_threshold=settings.cache_compression_threshold,
-            compression_level=settings.cache_compression_level,
-            text_size_tiers=settings.cache_text_size_tiers,
-            memory_cache_size=settings.cache_memory_cache_size
-        )
-        
-        # Try to connect and get stats
-        await cache_service.connect()
-        cache_stats = await cache_service.get_cache_stats()
-        
-        # Determine cache health based on status indicators
-        cache_healthy = (
-            cache_stats.get("redis", {}).get("status") != "error" and
-            cache_stats.get("memory", {}).get("status") != "unavailable" and
-            cache_stats.get("performance", {}).get("status") != "unavailable" and
-            "error" not in cache_stats
-        )
-                
-    except Exception as e:
-        logger.warning(f"Cache service is not available: {e}")
-        cache_healthy = None
-    
-    # Overall health determination
-    # Consider healthy if AI is available and no critical components are explicitly unhealthy
-    # Allow for optional components (resilience, cache) to be None without affecting overall health
-    overall_healthy = ai_healthy and (
-        resilience_healthy is not False and cache_healthy is not False
-    )
-    
-    return HealthResponse(
-        status="healthy" if overall_healthy else "degraded",
-        ai_model_available=ai_healthy,
-        resilience_healthy=resilience_healthy,
-        cache_healthy=cache_healthy
-    )
+# Include the health router
+app.include_router(health_router)
 
-@app.get("/auth/status")
-async def auth_status(api_key: str = Depends(verify_api_key)):
-    """Verify authentication status and return API key validation information.
-    
-    This endpoint validates the provided API key and returns authentication status
-    information. It serves as a secure health check for authentication systems and
-    provides a safe method to validate API keys without exposing sensitive data.
-    
-    The endpoint requires a valid API key provided through the standard authentication
-    mechanism (Authorization header with "Bearer <token>" format or X-API-Key header).
-    Upon successful authentication, it returns confirmation details with a safely
-    truncated version of the API key for verification purposes.
-    
-    Args:
-        api_key (str): The validated API key obtained through the verify_api_key
-            dependency. This parameter is automatically injected by FastAPI's
-            dependency injection system after successful authentication validation.
-    
-    Returns:
-        dict: Authentication status information containing:
-            - authenticated (bool): Always True when the request reaches this endpoint,
-              confirming successful authentication
-            - api_key_prefix (str): Safely truncated API key showing only the first
-              8 characters followed by "..." for security verification purposes.
-              Keys with 8 characters or fewer display the complete key
-            - message (str): Human-readable confirmation message indicating successful
-              authentication
-    
-    Raises:
-        HTTPException: Authentication failures raise HTTP exceptions:
-            - 401 Unauthorized: No API key provided in request headers
-            - 401 Unauthorized: Invalid or malformed API key provided
-            - 401 Unauthorized: API key format is incorrect or unrecognized
-    
-    Example:
-        >>> # GET /auth/status
-        >>> # Headers: Authorization: Bearer your-api-key-here
-        >>> {
-        ...   "authenticated": true,
-        ...   "api_key_prefix": "abcd1234...",
-        ...   "message": "Authentication successful"
-        ... }
-    
-    Note:
-        This endpoint is designed for:
-        - API key validation in client applications and SDKs
-        - Authentication system health monitoring and diagnostics
-        - Debugging authentication configuration issues
-        - Integration testing of authentication workflows
-        - Verifying API key rotation and management processes
-    """
-    return {
-        "authenticated": True,
-        "api_key_prefix": api_key[:8] + "..." if len(api_key) > 8 else api_key,
-        "message": "Authentication successful"
-    }
+# Include the auth router
+app.include_router(auth_router)
 
 # Include the text processing router
 app.include_router(text_processing_router)
