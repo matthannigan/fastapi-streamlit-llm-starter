@@ -73,7 +73,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 from datetime import datetime
 
-from app.config import Settings, settings
+from app.core.config import Settings, settings
 from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
 from app.infrastructure.resilience.orchestrator import ai_resilience
 

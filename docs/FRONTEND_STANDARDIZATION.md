@@ -19,7 +19,7 @@ The frontend application (`frontend/app/app.py`) was not leveraging the standard
 ```python
 from shared.models import TextProcessingRequest, ProcessingOperation
 from app.utils.api_client import api_client, run_async
-from app.config import settings
+from app.core.config import settings
 ```
 
 **After:**
@@ -31,7 +31,7 @@ from shared.sample_data import (
     get_all_sample_texts
 )
 from app.utils.api_client import api_client, run_async
-from app.config import settings
+from app.core.config import settings
 ```
 
 ### 2. Enhanced Example Text System

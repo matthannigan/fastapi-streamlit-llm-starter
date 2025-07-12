@@ -17,8 +17,8 @@ import os
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
 
-from app.config import Settings
-from app.infrastructure.resilience.presets import preset_manager, PRESETS
+from app.core.config import Settings
+from app.infrastructure.resilience.config_presets import preset_manager, PRESETS
 from app.infrastructure.resilience import AIServiceResilience, ResilienceStrategy
 from app.infrastructure.resilience.config_validator import config_validator
 
@@ -173,7 +173,7 @@ class TestPresetResilienceIntegration:
         settings = Settings(resilience_preset="simple")  # Start with valid preset
         
         # Mock the preset manager to simulate failure then fallback
-        from app.infrastructure.resilience.presets import PRESETS
+        from app.infrastructure.resilience.config_presets import PRESETS
         
         def mock_get_preset_side_effect(preset_name):
             if preset_name == "simple" and mock_get_preset_side_effect.call_count == 1:

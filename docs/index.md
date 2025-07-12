@@ -40,4 +40,4 @@ Welcome to the AI Text Processor API documentation. This FastAPI application pro
 - **analyze**: Analyze text content and structure
 - **qa**: Answer questions about text content
 
-For detailed API reference, see the [Backend API Reference](api_reference/backend.md) and [Shared Models](api_reference/shared.md) sections. 
+For detailed API reference, see the [Backend API Reference]() and [Shared Models]() sections. 

@@ -368,7 +368,7 @@ class TestConfigurationPerformanceBenchmark:
         benchmark = ConfigurationPerformanceBenchmark()
         
         def failing_operation(metadata):
-            from app.infrastructure.resilience.presets import preset_manager
+            from app.infrastructure.resilience.config_presets import preset_manager
             preset_manager.get_preset("simple")  # This will fail due to mock
         
         # Mock a failing operation - use the correct import path

@@ -9,8 +9,8 @@ import json
 import os
 from unittest.mock import patch
 
-from app.config import Settings
-from app.infrastructure.resilience.presets import (
+from app.core.config import Settings
+from app.infrastructure.resilience.config_presets import (
     ResilienceStrategy, 
     ResilienceConfig,
     ResiliencePreset, 

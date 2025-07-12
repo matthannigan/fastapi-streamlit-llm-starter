@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import patch
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.core.config import Settings
 from app.dependencies import get_settings, get_fresh_settings
 
 

@@ -9,7 +9,7 @@ from typing import Any
 
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.cache import AIResponseCache
-from app.config import settings as app_settings # Renamed to avoid conflict
+from app.core.config import settings as app_settings # Renamed to avoid conflict
 from shared.models import (
     TextProcessingRequest,
     TextProcessingResponse,

@@ -55,18 +55,18 @@ Usage:
     Development:
         python main.py
         
-    Production with uvicorn:
+    Production:
         uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
         
-    Docker deployment:
+    Docker:
         docker run -p 8000:8000 your-image:tag
 
-Environment Requirements:
-    Required environment variables:
+Environment Variables:
+    Required:
         * GEMINI_API_KEY: Google Gemini API key for text processing
         * API_KEYS: Comma-separated list of valid API keys for authentication
     
-    Optional environment variables:
+    Optional:
         * REDIS_URL: Redis connection string for caching (defaults to memory-only)
         * LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
         * CORS_ORIGINS: Allowed CORS origins for cross-origin requests
@@ -88,7 +88,7 @@ from shared.models import (
     HealthResponse,
 )
 
-from app.config import settings
+from app.core.config import settings
 from app.infrastructure.security import verify_api_key
 from app.api.v1.text_processing import router as text_processing_router
 from app.api.internal.cache import router as cache_router

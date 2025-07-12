@@ -1,6 +1,6 @@
 from fastapi import Depends
 
-from app.config import Settings
+from app.core.config import Settings
 from app.dependencies import get_settings, get_cache_service
 from app.infrastructure.cache import AIResponseCache
 from app.services.text_processor import TextProcessorService

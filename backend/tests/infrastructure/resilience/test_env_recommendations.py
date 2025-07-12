@@ -9,7 +9,7 @@ import pytest
 import os
 from unittest.mock import patch, MagicMock
 
-from app.infrastructure.resilience.presets import PresetManager, EnvironmentRecommendation
+from app.infrastructure.resilience.config_presets import PresetManager, EnvironmentRecommendation
 
 
 class TestEnvironmentRecommendations:

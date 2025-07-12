@@ -40,7 +40,7 @@ from functools import lru_cache
 import logging
 from fastapi import Depends
 
-from app.config import Settings, settings
+from app.core.config import Settings, settings
 from app.infrastructure.cache import AIResponseCache
 
 logger = logging.getLogger(__name__)

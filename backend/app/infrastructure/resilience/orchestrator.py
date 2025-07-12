@@ -88,7 +88,7 @@ Advanced Usage with Custom Configuration:
 -----------------------------------------
 ```python
 from app.infrastructure.resilience.orchestrator import AIServiceResilience
-from app.infrastructure.resilience.presets import ResilienceStrategy
+from app.infrastructure.resilience.config_presets import ResilienceStrategy
 
 resilience = AIServiceResilience()
 
@@ -153,7 +153,7 @@ Dependencies:
 - `tenacity`: Advanced retry library with comprehensive retry strategies
 - `app.infrastructure.resilience.circuit_breaker`: Enhanced circuit breaker implementation
 - `app.infrastructure.resilience.retry`: Retry configuration and exception classification
-- `app.infrastructure.resilience.presets`: Predefined resilience strategies
+- `app.infrastructure.resilience.config_presets`: Predefined resilience strategies
 
 Example Integration in Service Layer:
 ====================================
@@ -216,7 +216,7 @@ from app.infrastructure.resilience.retry import (
     should_retry_on_exception,
     classify_exception
 )
-from app.infrastructure.resilience.presets import (
+from app.infrastructure.resilience.config_presets import (
     ResilienceStrategy,
     ResilienceConfig,
     DEFAULT_PRESETS

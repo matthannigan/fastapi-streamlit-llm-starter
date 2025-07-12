@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from app.services.text_processor import TextProcessorService
-from app.config import Settings
+from app.core.config import Settings
 from app.infrastructure.cache import AIResponseCache
 
 

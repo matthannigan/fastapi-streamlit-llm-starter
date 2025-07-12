@@ -49,7 +49,7 @@ Usage:
     Basic usage requires a Settings instance and cache service:
     
     ```python
-    from app.config import Settings
+    from app.core.config import Settings
     from app.infrastructure.cache import AIResponseCache
     from app.services.text_processor import TextProcessorService
     
@@ -128,7 +128,7 @@ from shared.models import (
     BatchProcessingItem,
     ProcessingStatus
 )
-from app.config import Settings
+from app.core.config import Settings
 from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer # Enhanced import
 from app.infrastructure.resilience import (
     ai_resilience,

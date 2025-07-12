@@ -21,41 +21,41 @@ from collections import defaultdict
 # Import mapping from old structure to new structure
 IMPORT_MAPPINGS = {
     # Core migrations
-    "from app.config import": "from app.core.config import",
-    "from .config import": "from .core.config import",
-    "import app.config": "import app.core.config",
+#    "from app.core.config import": "from app.core.config import",
+#    "from .config import": "from .core.config import",
+#    "import app.config": "import app.core.config",
     
     # Infrastructure services
-    "from app.services.cache import": "from app.infrastructure.cache.redis import",
-    "from .services.cache import": "from ..infrastructure.cache.redis import",
+    "from app.services.cache import": "from app.infrastructure.cache import",
+    "from .services.cache import": "from ..infrastructure.cache import",
     "from app.services.resilience import": "from app.infrastructure.resilience import",
     "from .services.resilience import": "from ..infrastructure.resilience import",
-    "from app.services.monitoring import": "from app.infrastructure.monitoring.cache_monitor import",
-    "from .services.monitoring import": "from ..infrastructure.monitoring.cache_monitor import",
-    "from app.services.prompt_builder import": "from app.infrastructure.ai.prompt_builder import",
-    "from .services.prompt_builder import": "from ..infrastructure.ai.prompt_builder import",
+    "from app.services.monitoring import": "from app.infrastructure.cache import",
+    "from .services.monitoring import": "from ..infrastructure.cache import",
+    "from app.services.prompt_builder import": "from app.infrastructure.ai import",
+    "from .services.prompt_builder import": "from ..infrastructure.ai import",
     
     # Security migrations
-    "from app.auth import": "from app.infrastructure.security.auth import",
-    "from .auth import": "from ..infrastructure.security.auth import",
-    "from app.security.response_validator import": "from app.infrastructure.security.response_validator import",
-    "from .security.response_validator import": "from ..infrastructure.security.response_validator import",
-    "from app.utils.sanitization import": "from app.infrastructure.security.sanitization import",
-    "from .utils.sanitization import": "from ..infrastructure.security.sanitization import",
+    "from app.auth import": "from app.infrastructure.security import",
+    "from .auth import": "from ..infrastructure.security import",
+    "from app.security.response_validator import": "from app.services.response_validator import",
+    "from .security.response_validator import": "from ..services.response_validator import",
+    "from app.utils.sanitization import": "from app.infrastructure.ai import",
+    "from .utils.sanitization import": "from ..infrastructure.ai import",
     
     # Domain services
     "from app.services.text_processor import": "from app.services.text_processing import",
     "from .services.text_processor import": "from .services.text_processing import",
     
     # API layer
-    "from app.routers.monitoring import": "from app.api.internal.monitoring import",
-    "from .routers.monitoring import": "from ..api.internal.monitoring import",
-    "from app.routers.resilience import": "from app.api.internal.admin import",
-    "from .routers.resilience import": "from ..api.internal.admin import",
+#    "from app.routers.monitoring import": "from app.api.internal.monitoring import",
+#    "from .routers.monitoring import": "from ..api.internal.monitoring import",
+#    "from app.routers.resilience import": "from app.api.internal.admin import",
+#    "from .routers.resilience import": "from ..api.internal.admin import",
     
     # Exception handling
-    "from app.validation_schemas import": "from app.core.exceptions import",
-    "from .validation_schemas import": "from .core.exceptions import",
+    "from app.validation_schemas import": "from app.infrastructure.resilience import",
+    "from .validation_schemas import": "from .infrastructure.resilience import",
 }
 
 # File movement mapping (old path -> new path)
@@ -78,19 +78,21 @@ FILE_MOVEMENTS = {
 
 
 class ImportUpdater:
-    def __init__(self, root_dir: str, dry_run: bool = False, verbose: bool = False):
+    def __init__(self, root_dir: str, target_dir: str = None, dry_run: bool = False, verbose: bool = False, exclude_init: bool = False):
         self.root_dir = Path(root_dir)
+        self.target_dir = Path(target_dir) if target_dir else self.root_dir
         self.dry_run = dry_run
         self.verbose = verbose
+        self.exclude_init = exclude_init
         self.updated_files = []
         self.error_files = []
         self.import_errors = defaultdict(list)
         
     def find_python_files(self) -> List[Path]:
-        """Find all Python files in the project."""
+        """Find all Python files in the target directory."""
         python_files = []
         for ext in ['*.py']:
-            python_files.extend(self.root_dir.rglob(ext))
+            python_files.extend(self.target_dir.rglob(ext))
         
         # Exclude virtual environments and cache directories
         excluded_dirs = {'venv', '__pycache__', '.git', 'node_modules', '.pytest_cache'}
@@ -98,6 +100,13 @@ class ImportUpdater:
             f for f in python_files 
             if not any(excluded in f.parts for excluded in excluded_dirs)
         ]
+        
+        # Exclude __init__.py files if requested
+        if self.exclude_init:
+            python_files = [
+                f for f in python_files 
+                if f.name != '__init__.py'
+            ]
         
         return python_files
     
@@ -213,7 +222,7 @@ class ImportUpdater:
     
     def run(self):
         """Run the import update process."""
-        print(f"Scanning for Python files in {self.root_dir}")
+        print(f"Scanning for Python files in {self.target_dir}")
         python_files = self.find_python_files()
         print(f"Found {len(python_files)} Python files")
         
@@ -280,6 +289,15 @@ def main():
         help="Root directory of the project (default: current directory)"
     )
     parser.add_argument(
+        "--target-dir",
+        help="Specific directory to process (default: same as root-dir)"
+    )
+    parser.add_argument(
+        "--exclude-init",
+        action="store_true",
+        help="Skip processing __init__.py files"
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would be changed without modifying files"
@@ -294,8 +312,10 @@ def main():
     
     updater = ImportUpdater(
         root_dir=args.root_dir,
+        target_dir=args.target_dir,
         dry_run=args.dry_run,
-        verbose=args.verbose
+        verbose=args.verbose,
+        exclude_init=args.exclude_init
     )
     
     try:

@@ -174,7 +174,7 @@ class ConfigurationPerformanceBenchmark:
             BenchmarkResult for preset loading
         """
         def preset_loading_operation(metadata):
-            from app.infrastructure.resilience.presets import preset_manager
+            from app.infrastructure.resilience.config_presets import preset_manager
             
             # Test loading each preset
             presets = ["simple", "development", "production"]
@@ -195,7 +195,7 @@ class ConfigurationPerformanceBenchmark:
             BenchmarkResult for settings initialization
         """
         def settings_initialization_operation(metadata):
-            from app.config import Settings
+            from app.core.config import Settings
             
             # Test different preset configurations
             presets = ["simple", "development", "production"]
@@ -216,7 +216,7 @@ class ConfigurationPerformanceBenchmark:
             BenchmarkResult for config loading
         """
         def config_loading_operation(metadata):
-            from app.config import Settings
+            from app.core.config import Settings
             
             # Test configuration loading for each preset
             presets = ["simple", "development", "production"]
@@ -238,7 +238,7 @@ class ConfigurationPerformanceBenchmark:
             BenchmarkResult for service initialization
         """
         def service_initialization_operation(metadata):
-            from app.config import Settings
+            from app.core.config import Settings
             from app.infrastructure.resilience.orchestrator import AIServiceResilience
             
             # Test service initialization with different presets
@@ -272,7 +272,7 @@ class ConfigurationPerformanceBenchmark:
         ]
         
         def custom_config_loading_operation(metadata):
-            from app.config import Settings
+            from app.core.config import Settings
             
             for i, custom_config in enumerate(custom_configs):
                 settings = Settings(
@@ -309,7 +309,7 @@ class ConfigurationPerformanceBenchmark:
         ]
         
         def legacy_config_loading_operation(metadata):
-            from app.config import Settings
+            from app.core.config import Settings
             from unittest.mock import patch
             
             for i, legacy_env in enumerate(legacy_environments):

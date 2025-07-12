@@ -17,7 +17,7 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.cache import AIResponseCache
-from app.config import Settings
+from app.core.config import Settings
 from app.dependencies import get_cache_service
 
 # Set test environment

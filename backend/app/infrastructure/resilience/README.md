@@ -599,7 +599,7 @@ async def unreliable_ai_call_new(text: str):
 ### Custom Strategy Definition
 
 ```python
-from app.infrastructure.resilience.presets import ResiliencePreset, ResilienceStrategy
+from app.infrastructure.resilience.config_presets import ResiliencePreset, ResilienceStrategy
 
 # Define custom preset
 custom_preset = ResiliencePreset(

@@ -79,11 +79,11 @@ Usage Examples:
     Cache Management:
         >>> # Invalidate specific operation type
         >>> await cache.invalidate_by_operation("summarize", 
-        ...                                    operation_context="model_update")
+        ...                                     operation_context="model_update")
         >>> 
         >>> # Invalidate using pattern matching
         >>> await cache.invalidate_pattern("sentiment", 
-        ...                               operation_context="batch_invalidation")
+        ...                                operation_context="batch_invalidation")
         >>> 
         >>> # Get memory usage warnings
         >>> warnings = cache.get_memory_warnings()

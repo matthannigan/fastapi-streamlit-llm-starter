@@ -11,9 +11,9 @@ import os
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
 
-from app.config import Settings
+from app.core.config import Settings
 from app.infrastructure.resilience import AIServiceResilience
-from app.infrastructure.resilience.presets import preset_manager, PRESETS, PresetManager
+from app.infrastructure.resilience.config_presets import preset_manager, PRESETS, PresetManager
 from app.infrastructure.resilience.config_validator import config_validator, ResilienceConfigValidator, CONFIGURATION_TEMPLATES
 
 

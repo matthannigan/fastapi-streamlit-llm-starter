@@ -26,7 +26,7 @@ from .retry import (
     should_retry_on_exception
 )
 
-from .presets import (
+from .config_presets import (
     ResilienceStrategy,
     ResilienceConfig,
     get_default_presets,

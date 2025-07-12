@@ -12,7 +12,7 @@ from shared.sample_data import (
     get_all_sample_texts
 )
 from app.utils.api_client import api_client, run_async
-from app.config import settings
+from app.core.config import settings
 
 # Configure Streamlit page
 st.set_page_config(

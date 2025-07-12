@@ -14,8 +14,8 @@ from typing import Dict, Any
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.config import Settings
-from app.infrastructure.resilience.presets import preset_manager, PRESETS
+from app.core.config import Settings
+from app.infrastructure.resilience.config_presets import preset_manager, PRESETS
 from app.infrastructure.resilience import AIServiceResilience
 from shared.models import TextProcessingRequest, ProcessingOperation
 
@@ -45,7 +45,7 @@ class TestEndToEndBackwardCompatibility:
         
         with patch.dict(os.environ, legacy_env):
             # Clear the legacy config cache so it re-evaluates with new environment variables
-            from app.config import settings
+            from app.core.config import settings
             if hasattr(settings, '_legacy_config_cache'):
                 delattr(settings, '_legacy_config_cache')
             

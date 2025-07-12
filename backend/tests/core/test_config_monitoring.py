@@ -579,7 +579,7 @@ class TestIntegrationWithConfiguration:
     @patch('app.infrastructure.resilience.config_monitoring.config_metrics_collector')
     def test_config_loading_monitoring_integration(self, mock_collector):
         """Test that configuration loading integrates with monitoring."""
-        from app.config import Settings
+        from app.core.config import Settings
         
         # Create settings with monitoring
         settings = Settings(resilience_preset="simple")

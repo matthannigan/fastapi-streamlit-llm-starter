@@ -36,7 +36,7 @@ from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
 # 3. Local application imports (alphabetical)
-from app.config import settings
+from app.core.config import settings
 from app.services.text_processor import text_processor
 from shared.models import (
     ProcessingOperation,

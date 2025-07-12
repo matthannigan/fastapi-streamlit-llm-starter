@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.main import app
-from app.config import settings
+from app.core.config import settings
 from app.api.v1.deps import get_text_processor
 from app.services.text_processor import TextProcessorService
 from shared.models import (

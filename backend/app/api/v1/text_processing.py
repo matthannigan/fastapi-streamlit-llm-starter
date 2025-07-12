@@ -70,7 +70,7 @@ from shared.models import (
     BatchTextProcessingResponse
 )
 
-from app.config import settings
+from app.core.config import settings
 from app.api.v1.deps import get_text_processor
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.security import verify_api_key, optional_verify_api_key

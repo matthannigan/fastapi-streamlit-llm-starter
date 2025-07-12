@@ -9,11 +9,19 @@ repo_name: GitHub
 nav:
   - Home: index.md
   - Code Reference:
-      - Public API v1: code_reference/api/public_v1.md
-      - Internal APIs:
-          - Cache API: code_reference/api/internal_cache.md
-          - Monitoring API: code_reference/api/internal_monitoring.md
-          - Resilience API: code_reference/api/internal_resilience.md
+      - Main Application: code_ref/main.md
+      - API Endpoints:
+          - Public API v1: code_ref/api/public_v1.md
+          - Internal APIs:
+              - Cache API: code_ref/api/internal/cache.md
+              - Monitoring API: code_ref/api/internal/monitoring.md 
+              - Resilience API: code_ref/api/internal/resilience.md
+      - Services: code_ref/services/text_processor.md
+      - Infrastructure:
+          - AI: code_ref/infrastructure/ai.md
+          - Cache: code_ref/infrastructure/cache.md
+          - Monitoring: code_ref/infrastructure/monitoring.md
+          - Security: code_ref/infrastructure/security.md
   - Getting Started:
       - Authentication: AUTHENTICATION.md
       - Advanced Auth Guide: ADVANCED_AUTH_GUIDE.md
@@ -58,6 +66,7 @@ plugins:
             show_object_full_path: false
             show_category_heading: true
             show_if_no_docstring: false # Don't show members without docstrings
+            show_symbol_type_toc: true
             docstring_style: google # Or numpy, or restructuredtext
             members_order: alphabetical
             separate_signature: true

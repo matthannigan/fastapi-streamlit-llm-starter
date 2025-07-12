@@ -8,7 +8,7 @@ from app.dependencies import get_cache_service, get_settings
 from app.api.v1.deps import get_text_processor, get_text_processor_service
 from app.infrastructure.cache import AIResponseCache
 from app.services.text_processor import TextProcessorService
-from app.config import Settings
+from app.core.config import Settings
 
 
 def create_mock_settings(**overrides):

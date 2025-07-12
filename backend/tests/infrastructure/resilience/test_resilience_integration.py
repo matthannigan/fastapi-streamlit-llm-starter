@@ -19,7 +19,7 @@ from app.infrastructure.resilience import (
     ResilienceStrategy,
     ai_resilience
 )
-from app.config import Settings
+from app.core.config import Settings
 
 # Import helper functions for mixed domain/infrastructure testing
 from tests.infrastructure.resilience.test_domain_integration_helpers import (

@@ -268,7 +268,7 @@ class TestConfigValidatorIntegration:
     
     def test_settings_validate_custom_config(self):
         """Test Settings.validate_custom_config method."""
-        from app.config import Settings
+        from app.core.config import Settings
         
         settings = Settings(
             resilience_preset="simple",
@@ -280,7 +280,7 @@ class TestConfigValidatorIntegration:
     
     def test_settings_validate_invalid_custom_config(self):
         """Test Settings validation with invalid custom config."""
-        from app.config import Settings
+        from app.core.config import Settings
         
         settings = Settings(
             resilience_preset="simple",
@@ -293,7 +293,7 @@ class TestConfigValidatorIntegration:
     
     def test_settings_validate_external_json(self):
         """Test Settings validation with external JSON string."""
-        from app.config import Settings
+        from app.core.config import Settings
         
         settings = Settings()
         external_json = '{"circuit_breaker_threshold": 8}'
