@@ -89,6 +89,7 @@ from shared.models import (
 )
 
 from app.core.config import settings
+from app.core.middleware import setup_middleware
 from app.infrastructure.security import verify_api_key
 from app.api.v1.text_processing import router as text_processing_router
 from app.api.internal.cache import router as cache_router
@@ -161,67 +162,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add CORS middleware
-# Note: mypy has issues with FastAPI's add_middleware and CORSMiddleware
-# This is a known issue and the code works correctly at runtime
-app.add_middleware(
-    CORSMiddleware,  # type: ignore[arg-type]
-    allow_origins=settings.allowed_origins,  # type: ignore[call-arg]
-    allow_credentials=True,  # type: ignore[call-arg]
-    allow_methods=["*"],  # type: ignore[call-arg]
-    allow_headers=["*"],  # type: ignore[call-arg]
-)
-
-# No routers needed - using direct service integration
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    """Global exception handler for unhandled application errors.
-    
-    Provides a centralized error handling mechanism that catches all unhandled
-    exceptions across the application and returns a consistent error response
-    format. This handler ensures that client applications receive predictable
-    error responses even when unexpected server errors occur.
-    
-    The handler logs all exceptions for debugging and monitoring purposes while
-    returning a generic error message to clients to avoid exposing internal
-    implementation details or sensitive information.
-    
-    Args:
-        request: The FastAPI request object that triggered the exception
-        exc (Exception): The unhandled exception that was raised during
-            request processing
-    
-    Returns:
-        JSONResponse: A standardized error response containing:
-            - error (str): Generic error message for client consumption
-            - error_code (str): Standardized error code for programmatic handling
-            - success (bool): Always False for error responses
-            - timestamp (datetime): When the error occurred
-    
-    Example:
-        >>> # Any unhandled exception returns:
-        >>> {
-        ...   "success": false,
-        ...   "error": "Internal server error",
-        ...   "error_code": "INTERNAL_ERROR",
-        ...   "timestamp": "2025-06-28T00:06:39.130848"
-        ... }
-    
-    Note:
-        This handler is registered globally and will catch any exception not
-        handled by more specific exception handlers. All exceptions are logged
-        with full details for debugging while client responses remain generic
-        for security purposes.
-    """
-    logger.error(f"Unhandled exception: {str(exc)}")
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=ErrorResponse(
-            error="Internal server error",
-            error_code="INTERNAL_ERROR"
-        ).dict()
-    )
+# Setup all middleware components
+setup_middleware(app, settings)
 
 @app.get("/")
 async def root():

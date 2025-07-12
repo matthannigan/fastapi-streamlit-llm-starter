@@ -251,7 +251,7 @@ settings = Settings()
 
 **Description:** Create `core/middleware.py` and consolidate or define application-wide middleware such as CORS, error handling, and request/response logging.
 
-**Details:** Create `backend/app/core/middleware.py`. Move existing middleware (e.g., CORS, global error handlers, logging middleware) to this file. If new standard middleware is needed, define it here. Middleware may depend on `core.config` for settings and `core.exceptions` for error handling.
+**Details:** Create `backend/app/core/middleware.py`. Move existing middleware (e.g., CORS, global error handlers, logging middleware) to this file. If new standard middleware is needed, define it here. Middleware may depend on `app.core.config` for settings and `app.core.exceptions` for error handling.
 
 **Test Strategy:** Unit test individual middleware if possible. Verify that middleware is correctly applied to the FastAPI application and functions as expected (e.g., CORS headers are present, errors are handled gracefully).
 
