@@ -268,17 +268,13 @@ def create_public_app() -> FastAPI:
         },
         {
             "name": "Health",
-            "description": "System health monitoring endpoints for availability and dependency status checks.",
-            "externalDocs": {
-                "description": "Health Check Best Practices",
-                "url": "https://docs.fastapi.tiangolo.com/advanced/health-checks/"
-            }
+            "description": "System health monitoring endpoints for availability and dependency status checks."
         },
         {
             "name": "Authentication", 
             "description": "Authentication and authorization endpoints for API key validation and access control.",
             "externalDocs": {
-                "description": "API Security Guide",
+                "description": "FastAPI Security Guide",
                 "url": "https://fastapi.tiangolo.com/tutorial/security/"
             }
         },
