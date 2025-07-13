@@ -105,7 +105,7 @@ from app.infrastructure.resilience.config_validator import config_validator, Val
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience/monitoring", tags=["resilience-monitoring"])
+router = APIRouter(prefix="/resilience/monitoring", tags=["Resilience Monitoring"])
 
 @router.get("/usage-statistics")
 async def get_configuration_usage_statistics(

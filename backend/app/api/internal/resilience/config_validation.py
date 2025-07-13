@@ -127,7 +127,7 @@ from app.api.internal.resilience.models import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience/config", tags=["resilience-config"])
+router = APIRouter(prefix="/resilience/config", tags=["Resilience Configuration"])
 
 @router.post("/validate", response_model=ValidationResponse)
 async def validate_custom_config(

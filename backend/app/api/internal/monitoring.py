@@ -73,7 +73,7 @@ import logging
 from datetime import datetime
 
 # Create a router for monitoring endpoints
-monitoring_router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+monitoring_router = APIRouter(prefix="/monitoring", tags=["System Monitoring"])
 
 logger = logging.getLogger(__name__)
 

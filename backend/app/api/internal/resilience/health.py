@@ -81,8 +81,8 @@ from app.api.internal.resilience.models import CurrentConfigResponse, Resilience
 
 logger = logging.getLogger(__name__)
 
-main_router = APIRouter(prefix="/resilience", tags=["resilience"])
-config_router = APIRouter(prefix="/resilience/config", tags=["resilience-config"])
+main_router = APIRouter(prefix="/resilience", tags=["Resilience Core"])
+config_router = APIRouter(prefix="/resilience/config", tags=["Resilience Configuration"])
 
 def get_settings() -> Settings:
     """Get the global settings instance."""

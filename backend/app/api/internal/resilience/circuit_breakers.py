@@ -94,7 +94,7 @@ from app.infrastructure.resilience.config_validator import config_validator, Val
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience", tags=["resilience"])
+router = APIRouter(prefix="/resilience", tags=["Resilience Core"])
 
 @router.get("/circuit-breakers")
 async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):

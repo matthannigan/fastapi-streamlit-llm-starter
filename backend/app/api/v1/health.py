@@ -18,7 +18,7 @@ from shared.models import (
 from app.core.config import settings
 
 # Create a router for health endpoints
-health_router = APIRouter(prefix="/health", tags=["health"])
+health_router = APIRouter(prefix="/health", tags=["Health"])
 
 logger = logging.getLogger(__name__)
 

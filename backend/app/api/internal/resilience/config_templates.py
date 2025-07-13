@@ -96,7 +96,7 @@ from app.api.internal.resilience.models import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience/config", tags=["resilience-config"])
+router = APIRouter(prefix="/resilience/config", tags=["Resilience Configuration"])
 
 @router.get("/templates", response_model=TemplateListResponse)
 async def get_configuration_templates(

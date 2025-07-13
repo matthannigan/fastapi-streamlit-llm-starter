@@ -77,7 +77,7 @@ from app.infrastructure.security import verify_api_key, optional_verify_api_key
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/text_processing", tags=["text_processing"])
+router = APIRouter(prefix="/text_processing", tags=["Text Processing"])
 
 @router.get("/operations")
 async def get_operations(api_key: str = Depends(optional_verify_api_key)):

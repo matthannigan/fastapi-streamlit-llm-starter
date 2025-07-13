@@ -566,7 +566,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self.api_csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
         
         # Relaxed CSP for documentation endpoints (Swagger UI compatibility)
-        self.docs_csp = "default-src 'self' https://fastapi.tiangolo.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' https://fastapi.tiangolo.com data: https:; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self';"
+        self.docs_csp = "default-src 'self' https://fastapi.tiangolo.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com; img-src 'self' https://fastapi.tiangolo.com data: https:; font-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://fonts.gstatic.com; connect-src 'self'; object-src 'none'; base-uri 'self';"
         
         # Documentation endpoints that need relaxed CSP
         self.docs_endpoints = {'/docs', '/redoc', '/openapi.json'}
@@ -592,6 +592,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             
         # Check for docs-related paths (e.g., /docs/oauth2-redirect)
         if path.startswith('/docs') or path.startswith('/redoc'):
+            return True
+            
+        # Check for internal-related paths (e.g., /internal/docs)
+        if path.startswith('/internal'):
             return True
             
         # Check for OpenAPI schema variants

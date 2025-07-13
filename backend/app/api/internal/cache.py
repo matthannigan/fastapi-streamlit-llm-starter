@@ -54,7 +54,7 @@ from app.infrastructure.security import verify_api_key, optional_verify_api_key
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/cache", tags=["cache"])
+router = APIRouter(prefix="/cache", tags=["Cache Management"])
 
 
 # Pydantic models for cache performance metrics

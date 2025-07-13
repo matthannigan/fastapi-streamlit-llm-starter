@@ -104,7 +104,7 @@ from app.api.internal.resilience.models import BenchmarkRunRequest
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/resilience/performance", tags=["resilience-performance"])
+router = APIRouter(prefix="/resilience/performance", tags=["Resilience Performance"])
 
 @router.get("/benchmark")
 async def run_performance_benchmark(
