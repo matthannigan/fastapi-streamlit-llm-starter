@@ -76,7 +76,7 @@ class TestResilienceHealthEndpoint:
     
     def test_resilience_health_success(self, client, mock_resilience_service, mock_text_processor):
         """Test successful health check."""
-        response = client.get("/resilience/health")
+        response = client.get("/internal/resilience/health")
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -87,14 +87,14 @@ class TestResilienceHealthEndpoint:
 
     def test_resilience_health_with_auth(self, client, auth_headers, mock_resilience_service, mock_text_processor):
         """Test health check with optional authentication."""
-        response = client.get("/resilience/health", headers=auth_headers)
+        response = client.get("/internal/resilience/health", headers=auth_headers)
         assert response.status_code == status.HTTP_200_OK
 
     def test_resilience_health_error(self, client, mock_resilience_service, mock_text_processor):
         """Test health check when service throws error."""
         mock_resilience_service.get_health_status.side_effect = Exception("Service error")
         
-        response = client.get("/resilience/health")
+        response = client.get("/internal/resilience/health")
         
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         data = response.json()
@@ -106,7 +106,7 @@ class TestResilienceMetricsEndpoints:
     
     def test_get_all_metrics_success(self, client, auth_headers, mock_resilience_service):
         """Test GET /resilience/metrics with authentication."""
-        response = client.get("/resilience/metrics", headers=auth_headers)
+        response = client.get("/internal/resilience/metrics", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -115,7 +115,7 @@ class TestResilienceMetricsEndpoints:
 
     def test_get_all_metrics_unauthorized(self, client, mock_resilience_service):
         """Test GET /resilience/metrics without authentication."""
-        response = client.get("/resilience/metrics")
+        response = client.get("/internal/resilience/metrics")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_operation_metrics_success(self, client, auth_headers, mock_resilience_service):
@@ -128,7 +128,7 @@ class TestResilienceMetricsEndpoints:
         }
         mock_resilience_service.get_metrics.return_value = mock_metrics
         
-        response = client.get("/resilience/metrics/summarize_text", headers=auth_headers)
+        response = client.get("/internal/resilience/metrics/summarize_text", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -139,12 +139,12 @@ class TestResilienceMetricsEndpoints:
         """Test GET /resilience/metrics/{operation_name} with error."""
         mock_resilience_service.get_metrics.side_effect = Exception("Metrics error")
         
-        response = client.get("/resilience/metrics/nonexistent", headers=auth_headers)
+        response = client.get("/internal/resilience/metrics/nonexistent", headers=auth_headers)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_reset_metrics_all_operations(self, client, auth_headers, mock_resilience_service):
         """Test POST /resilience/metrics/reset without operation name."""
-        response = client.post("/resilience/metrics/reset", headers=auth_headers)
+        response = client.post("/internal/resilience/metrics/reset", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -155,7 +155,7 @@ class TestResilienceMetricsEndpoints:
     def test_reset_metrics_specific_operation(self, client, auth_headers, mock_resilience_service):
         """Test POST /resilience/metrics/reset with operation name."""
         response = client.post(
-            "/resilience/metrics/reset?operation_name=summarize_text",
+            "/internal/resilience/metrics/reset?operation_name=summarize_text",
             headers=auth_headers
         )
         
@@ -171,7 +171,7 @@ class TestCircuitBreakerEndpoints:
     
     def test_get_circuit_breaker_status(self, client, auth_headers, mock_resilience_service):
         """Test GET /resilience/circuit-breakers."""
-        response = client.get("/resilience/circuit-breakers", headers=auth_headers)
+        response = client.get("/internal/resilience/circuit-breakers", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -190,7 +190,7 @@ class TestCircuitBreakerEndpoints:
         
         mock_resilience_service.circuit_breakers = {"test_breaker": mock_breaker}
         
-        response = client.get("/resilience/circuit-breakers/test_breaker", headers=auth_headers)
+        response = client.get("/internal/resilience/circuit-breakers/test_breaker", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -202,7 +202,7 @@ class TestCircuitBreakerEndpoints:
         """Test GET /resilience/circuit-breakers/{breaker_name} when breaker doesn't exist."""
         mock_resilience_service.circuit_breakers = {}
         
-        response = client.get("/resilience/circuit-breakers/nonexistent", headers=auth_headers)
+        response = client.get("/internal/resilience/circuit-breakers/nonexistent", headers=auth_headers)
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
         data = response.json()
@@ -215,7 +215,7 @@ class TestCircuitBreakerEndpoints:
         
         mock_resilience_service.circuit_breakers = {"test_breaker": mock_breaker}
         
-        response = client.post("/resilience/circuit-breakers/test_breaker/reset", headers=auth_headers)
+        response = client.post("/internal/resilience/circuit-breakers/test_breaker/reset", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -226,7 +226,7 @@ class TestCircuitBreakerEndpoints:
         """Test POST /resilience/circuit-breakers/{breaker_name}/reset when breaker doesn't exist."""
         mock_resilience_service.circuit_breakers = {}
         
-        response = client.post("/resilience/circuit-breakers/nonexistent/reset", headers=auth_headers)
+        response = client.post("/internal/resilience/circuit-breakers/nonexistent/reset", headers=auth_headers)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -257,7 +257,7 @@ class TestResilienceConfigEndpoint:
         
         mock_resilience_service.configs = {ResilienceStrategy.BALANCED: mock_config}
         
-        response = client.get("/resilience/config", headers=auth_headers)
+        response = client.get("/internal/resilience/config", headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -270,7 +270,7 @@ class TestResilienceDashboardEndpoint:
     
     def test_dashboard_success(self, client, mock_resilience_service):
         """Test successful dashboard retrieval."""
-        response = client.get("/resilience/dashboard")
+        response = client.get("/internal/resilience/dashboard")
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -308,7 +308,7 @@ class TestResilienceDashboardEndpoint:
             "summary": {}
         }
         
-        response = client.get("/resilience/dashboard")
+        response = client.get("/internal/resilience/dashboard")
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -322,7 +322,7 @@ class TestResilienceDashboardEndpoint:
         """Test dashboard error handling."""
         mock_resilience_service.get_health_status.side_effect = Exception("Health error")
         
-        response = client.get("/resilience/dashboard")
+        response = client.get("/internal/resilience/dashboard")
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
@@ -330,11 +330,11 @@ class TestAuthenticationProtection:
     """Test authentication requirements for protected endpoints."""
     
     @pytest.mark.parametrize("endpoint", [
-        "/resilience/metrics",
-        "/resilience/metrics/test_operation",
-        "/resilience/circuit-breakers",
-        "/resilience/circuit-breakers/test_breaker",
-        "/resilience/config"
+        "/internal/resilience/metrics",
+        "/internal/resilience/metrics/test_operation",
+        "/internal/resilience/circuit-breakers",
+        "/internal/resilience/circuit-breakers/test_breaker",
+        "/internal/resilience/config"
     ])
     def test_protected_endpoints_require_auth(self, client, endpoint, mock_resilience_service):
         """Test that protected endpoints require authentication."""
@@ -342,8 +342,8 @@ class TestAuthenticationProtection:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @pytest.mark.parametrize("endpoint", [
-        "/resilience/metrics/reset",
-        "/resilience/circuit-breakers/test_breaker/reset"
+        "/internal/resilience/metrics/reset",
+        "/internal/resilience/circuit-breakers/test_breaker/reset"
     ])
     def test_protected_post_endpoints_require_auth(self, client, endpoint, mock_resilience_service):
         """Test that protected POST endpoints require authentication."""
@@ -353,10 +353,10 @@ class TestAuthenticationProtection:
     def test_optional_auth_endpoints_work_without_auth(self, client, mock_resilience_service, mock_text_processor):
         """Test that optional auth endpoints work without authentication."""
         # These endpoints should work without auth
-        response = client.get("/resilience/health")
+        response = client.get("/internal/resilience/health")
         assert response.status_code == status.HTTP_200_OK
         
-        response = client.get("/resilience/dashboard")
+        response = client.get("/internal/resilience/dashboard")
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -367,30 +367,30 @@ class TestErrorHandling:
         """Test handling of invalid operation names."""
         mock_resilience_service.get_metrics.side_effect = KeyError("Operation not found")
         
-        response = client.get("/resilience/metrics/invalid_operation", headers=auth_headers)
+        response = client.get("/internal/resilience/metrics/invalid_operation", headers=auth_headers)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_service_unavailable_scenarios(self, client, auth_headers, mock_resilience_service):
         """Test scenarios where resilience service is unavailable."""
         mock_resilience_service.get_all_metrics.side_effect = Exception("Service unavailable")
         
-        response = client.get("/resilience/metrics", headers=auth_headers)
+        response = client.get("/internal/resilience/metrics", headers=auth_headers)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         
-        response = client.get("/resilience/circuit-breakers", headers=auth_headers)
+        response = client.get("/internal/resilience/circuit-breakers", headers=auth_headers)
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def test_circuit_breaker_reset_error(self, client, auth_headers, mock_resilience_service):
         """Test error handling in circuit breaker reset."""
         mock_resilience_service.circuit_breakers = {}  # Empty to trigger not found
         
-        response = client.post("/resilience/circuit-breakers/test_breaker/reset", headers=auth_headers)
+        response = client.post("/internal/resilience/circuit-breakers/test_breaker/reset", headers=auth_headers)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_malformed_auth_header(self, client, mock_resilience_service):
         """Test handling of malformed authorization headers."""
         headers = {"Authorization": "InvalidFormat"}
-        response = client.get("/resilience/metrics", headers=headers)
+        response = client.get("/internal/resilience/metrics", headers=headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_empty_metrics_response(self, client, mock_resilience_service):
@@ -400,7 +400,7 @@ class TestErrorHandling:
             "summary": {}
         }
         
-        response = client.get("/resilience/dashboard")
+        response = client.get("/internal/resilience/dashboard")
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()

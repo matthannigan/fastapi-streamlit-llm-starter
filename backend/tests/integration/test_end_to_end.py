@@ -50,7 +50,7 @@ class TestEndToEndBackwardCompatibility:
                 delattr(settings, '_legacy_config_cache')
             
             # Test resilience configuration endpoint
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config_data = response.json()
@@ -86,7 +86,7 @@ class TestEndToEndBackwardCompatibility:
                 if var in os.environ:
                     del os.environ[var]
             
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config_data = response.json()
@@ -113,7 +113,7 @@ class TestEndToEndBackwardCompatibility:
         }
         
         with patch.dict(os.environ, mixed_env):
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config_data = response.json()
@@ -132,7 +132,7 @@ class TestEndToEndBackwardCompatibility:
         }
         
         response = client.post(
-            "/resilience/validate",
+            "/internal/resilience/validate",
             json={"configuration": legacy_style_config},
             headers=auth_headers
         )
@@ -154,7 +154,7 @@ class TestEndToEndBackwardCompatibility:
         }
         
         response = client.post(
-            "/resilience/validate",
+            "/internal/resilience/validate",
             json={"configuration": advanced_config},
             headers=auth_headers
         )
@@ -173,7 +173,7 @@ class TestEndToEndBackwardCompatibility:
         
         with patch.dict(os.environ, legacy_env):
             # Test auto-recommendation
-            response = client.get("/resilience/recommend-auto", headers=auth_headers)
+            response = client.get("/internal/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -181,7 +181,7 @@ class TestEndToEndBackwardCompatibility:
             assert recommendation["recommended_preset"] == "development"
             
             # Test manual environment recommendation
-            response = client.get("/resilience/recommend/development", headers=auth_headers)
+            response = client.get("/internal/resilience/recommend/development", headers=auth_headers)
             assert response.status_code == 200
             
             manual_recommendation = response.json()
@@ -226,14 +226,14 @@ class TestMigrationWorkflowIntegration:
         
         with patch.dict(os.environ, initial_legacy_env):
             # Step 1: Analyze current configuration
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             current_config = response.json()
             assert current_config["is_legacy_config"] is True
             
             # Step 2: Get migration recommendation
-            response = client.get("/resilience/recommend-auto", headers=auth_headers)
+            response = client.get("/internal/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -253,7 +253,7 @@ class TestMigrationWorkflowIntegration:
             
             # Step 4: Validate migration configuration
             response = client.post(
-                "/resilience/validate",
+                "/internal/resilience/validate",
                 json={"configuration": migration_config},
                 headers=auth_headers
             )
@@ -272,7 +272,7 @@ class TestMigrationWorkflowIntegration:
         
         with patch.dict(os.environ, migration_env, clear=True):
             # Verify migrated configuration works
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             migrated_config = response.json()
@@ -295,7 +295,7 @@ class TestMigrationWorkflowIntegration:
         
         # Phase 1: Baseline with legacy
         with patch.dict(os.environ, original_legacy):
-            baseline_response = client.get("/resilience/config", headers=auth_headers)
+            baseline_response = client.get("/internal/resilience/config", headers=auth_headers)
             baseline_config = baseline_response.json()
         
         # Phase 2: Migrate to preset
@@ -303,7 +303,7 @@ class TestMigrationWorkflowIntegration:
         preset_env = self._preserve_essential_env_vars(preset_env)
         
         with patch.dict(os.environ, preset_env, clear=True):
-            preset_response = client.get("/resilience/config", headers=auth_headers)
+            preset_response = client.get("/internal/resilience/config", headers=auth_headers)
             preset_config = preset_response.json()
             
             # Verify preset configuration
@@ -313,7 +313,7 @@ class TestMigrationWorkflowIntegration:
         # Phase 3: Rollback to legacy (simulate rollback scenario)
         rollback_env = self._preserve_essential_env_vars(original_legacy.copy())
         with patch.dict(os.environ, rollback_env, clear=True):
-            rollback_response = client.get("/resilience/config", headers=auth_headers)
+            rollback_response = client.get("/internal/resilience/config", headers=auth_headers)
             rollback_config = rollback_response.json()
             
             # Should match original baseline
@@ -338,7 +338,7 @@ class TestMigrationWorkflowIntegration:
             assert response.status_code == 200
             
             # Test resilience endpoints
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             legacy_config = response.json()
@@ -354,7 +354,7 @@ class TestMigrationWorkflowIntegration:
             assert response.status_code == 200
             
             # Configuration should update
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             preset_config = response.json()
@@ -405,7 +405,7 @@ class TestRealWorldScenarioIntegration:
             assert response.status_code == 200
             
             # Verify configuration loads correctly
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -431,7 +431,7 @@ class TestRealWorldScenarioIntegration:
             response = client.get("/health")
             assert response.status_code == 200
             
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -451,7 +451,7 @@ class TestRealWorldScenarioIntegration:
         }
         
         with patch.dict(os.environ, docker_env):
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -472,7 +472,7 @@ class TestRealWorldScenarioIntegration:
         
         with patch.dict(os.environ, cloud_prod_env, clear=True):
             # Test environment detection
-            response = client.get("/resilience/recommend-auto", headers=auth_headers)
+            response = client.get("/internal/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -480,7 +480,7 @@ class TestRealWorldScenarioIntegration:
             assert recommendation["environment_detected"] == "production (auto-detected)"
             
             # Test configuration
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -498,7 +498,7 @@ class TestRealWorldScenarioIntegration:
         
         with patch.dict(os.environ, dev_env, clear=True):
             # Test auto-detection
-            response = client.get("/resilience/recommend-auto", headers=auth_headers)
+            response = client.get("/internal/resilience/recommend-auto", headers=auth_headers)
             assert response.status_code == 200
             
             recommendation = response.json()
@@ -506,7 +506,7 @@ class TestRealWorldScenarioIntegration:
             assert "development" in recommendation["environment_detected"].lower()
             
             # Development preset should be optimized for fast feedback
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -539,11 +539,11 @@ class TestCompatibilityWithExternalSystems:
         
         with patch.dict(os.environ, legacy_env):
             # Test metrics endpoint availability
-            response = client.get("/resilience/metrics", headers=auth_headers)
+            response = client.get("/internal/resilience/metrics", headers=auth_headers)
             assert response.status_code == 200
             
             # Test configuration export for monitoring
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -559,7 +559,7 @@ class TestCompatibilityWithExternalSystems:
     def test_configuration_management_system_compatibility(self, client, auth_headers):
         """Test compatibility with configuration management systems."""
         # Test template-based configuration for config management systems
-        response = client.get("/resilience/templates", headers=auth_headers)
+        response = client.get("/internal/resilience/templates", headers=auth_headers)
         assert response.status_code == 200
         
         templates = response.json()
@@ -573,7 +573,7 @@ class TestCompatibilityWithExternalSystems:
             }
         }
         
-        response = client.post("/resilience/validate-template", json=template_config, headers=auth_headers)
+        response = client.post("/internal/resilience/validate-template", json=template_config, headers=auth_headers)
         assert response.status_code == 200
         
         validation_result = response.json()
@@ -589,7 +589,7 @@ class TestCompatibilityWithExternalSystems:
         
         with patch.dict(os.environ, legacy_env):
             # Test legacy-style configuration endpoint
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             config = response.json()
@@ -608,7 +608,7 @@ class TestCompatibilityWithExternalSystems:
         
         with patch.dict(os.environ, production_env):
             # Export current configuration
-            response = client.get("/resilience/config", headers=auth_headers)
+            response = client.get("/internal/resilience/config", headers=auth_headers)
             assert response.status_code == 200
             
             exported_config = response.json()
@@ -628,7 +628,7 @@ class TestCompatibilityWithExternalSystems:
             
             # Test validation of reimported configuration
             response = client.post(
-                "/resilience/validate",
+                "/internal/resilience/validate",
                 json={"configuration": reimport_config},
                 headers=auth_headers
             )
