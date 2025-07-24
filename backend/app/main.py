@@ -114,6 +114,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress INFO messages from middleware module
+middleware_logger = logging.getLogger('app.core.middleware')
+middleware_logger.setLevel(logging.WARNING)  # Only show WARNING and above
+
 # Custom Swagger UI HTML with navigation between public and internal APIs
 def get_custom_swagger_ui_html(
     openapi_url: str,
