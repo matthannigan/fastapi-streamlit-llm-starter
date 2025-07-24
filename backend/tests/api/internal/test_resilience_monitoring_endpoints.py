@@ -106,8 +106,12 @@ class TestConfigurationMonitoringEndpoints:
     
     def test_get_usage_statistics_unauthorized(self, client):
         """Test getting usage statistics without authentication."""
-        response = client.get("/resilience/monitoring/usage-statistics")
-        assert response.status_code == 401
+        try:
+            response = client.get("/internal/resilience/monitoring/usage-statistics")
+            assert response.status_code == 401
+        except Exception as e:
+            # If exception is thrown, it should be an authentication error
+            assert "AuthenticationError" in str(type(e)) or "API key required" in str(e)
     
     @patch('app.infrastructure.resilience.config_monitoring.config_metrics_collector')
     def test_get_usage_statistics_success(self, mock_collector, client, auth_headers, mock_metrics_collector):
@@ -115,7 +119,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.get_usage_statistics = mock_metrics_collector.get_usage_statistics
         
         response = client.get(
-            "/resilience/monitoring/usage-statistics?time_window_hours=48",
+            "/internal/resilience/monitoring/usage-statistics?time_window_hours=48",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -142,7 +146,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.get_preset_usage_trend = mock_metrics_collector.get_preset_usage_trend
         
         response = client.get(
-            "/resilience/monitoring/preset-trends/simple?hours=48",
+            "/internal/resilience/monitoring/preset-trends/simple?hours=48",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -168,7 +172,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.get_performance_metrics = mock_metrics_collector.get_performance_metrics
         
         response = client.get(
-            "/resilience/monitoring/performance-metrics?hours=12",
+            "/internal/resilience/monitoring/performance-metrics?hours=12",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -197,7 +201,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.get_active_alerts = mock_metrics_collector.get_active_alerts
         
         response = client.get(
-            "/resilience/monitoring/alerts?max_alerts=10&level=warning",
+            "/internal/resilience/monitoring/alerts?max_alerts=10&level=warning",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -224,7 +228,7 @@ class TestConfigurationMonitoringEndpoints:
         
         session_id = "test-session-123"
         response = client.get(
-            f"/resilience/monitoring/session/{session_id}",
+            f"/internal/resilience/monitoring/session/{session_id}",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -249,7 +253,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.export_metrics = mock_metrics_collector.export_metrics
         
         response = client.get(
-            "/resilience/monitoring/export?format=json&time_window_hours=24",
+            "/internal/resilience/monitoring/export?format=json&time_window_hours=24",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -270,7 +274,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.export_metrics.return_value = "header1,header2\nvalue1,value2\n"
         
         response = client.get(
-            "/resilience/monitoring/export?format=csv",
+            "/internal/resilience/monitoring/export?format=csv",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -287,7 +291,7 @@ class TestConfigurationMonitoringEndpoints:
     def test_export_metrics_invalid_format(self, client, auth_headers):
         """Test export with invalid format."""
         response = client.get(
-            "/resilience/monitoring/export?format=xml",
+            "/internal/resilience/monitoring/export?format=xml",
             headers=auth_headers
         )
         assert response.status_code == 400
@@ -308,7 +312,7 @@ class TestConfigurationMonitoringEndpoints:
         mock_collector.clear_old_metrics = mock_clear_old_metrics
         
         response = client.post(
-            "/resilience/monitoring/cleanup?hours=48",
+            "/internal/resilience/monitoring/cleanup?hours=48",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -328,7 +332,7 @@ class TestConfigurationMonitoringEndpoints:
             mock_collector.get_usage_statistics.side_effect = Exception("Service error")
             
             response = client.get(
-                "/resilience/monitoring/usage-statistics",
+                "/internal/resilience/monitoring/usage-statistics",
                 headers=auth_headers
             )
             assert response.status_code == 500
@@ -358,11 +362,11 @@ class TestConfigurationMonitoringIntegration:
         # Make some configuration-related requests to generate metrics
         # These would normally trigger configuration loading
         client.get("/health")  # This loads configuration
-        client.get("/resilience/config", headers=auth_headers)  # This also loads config
+        client.get("/internal/resilience/config", headers=auth_headers)  # This also loads config
         
         # Now check monitoring endpoints for any recorded metrics
         response = client.get(
-            "/resilience/monitoring/usage-statistics",
+            "/internal/resilience/monitoring/usage-statistics",
             headers=auth_headers
         )
         assert response.status_code == 200
@@ -380,7 +384,7 @@ class TestConfigurationMonitoringIntegration:
         mock_collector.record_preset_usage = MagicMock()
         
         # Make a request that loads configuration
-        response = client.get("/resilience/config", headers=auth_headers)
+        response = client.get("/internal/resilience/config", headers=auth_headers)
         assert response.status_code == 200
         
         # Verify monitoring was called (this depends on the implementation)
@@ -401,19 +405,19 @@ class TestConfigurationMonitoringIntegration:
         
         # Get data from different endpoints
         stats_response = client.get(
-            "/resilience/monitoring/usage-statistics",
+            "/internal/resilience/monitoring/usage-statistics",
             headers=auth_headers
         )
         assert stats_response.status_code == 200
         
         session_response = client.get(
-            "/resilience/monitoring/session/test-session",
+            "/internal/resilience/monitoring/session/test-session",
             headers=auth_headers
         )
         assert session_response.status_code == 200
         
         alerts_response = client.get(
-            "/resilience/monitoring/alerts",
+            "/internal/resilience/monitoring/alerts",
             headers=auth_headers
         )
         assert alerts_response.status_code == 200
@@ -446,7 +450,7 @@ class TestConfigurationMonitoringIntegration:
         
         # Make multiple requests
         for _ in range(10):
-            response = client.get("/resilience/monitoring/usage-statistics", headers=auth_headers)
+            response = client.get("/internal/resilience/monitoring/usage-statistics", headers=auth_headers)
             assert response.status_code == 200
         
         end_time = time.perf_counter()
@@ -470,7 +474,7 @@ class TestConfigurationMonitoringIntegration:
         
         # Test JSON export
         json_response = client.get(
-            "/resilience/monitoring/export?format=json",
+            "/internal/resilience/monitoring/export?format=json",
             headers=auth_headers
         )
         assert json_response.status_code == 200
@@ -481,7 +485,7 @@ class TestConfigurationMonitoringIntegration:
         
         # Test CSV export
         csv_response = client.get(
-            "/resilience/monitoring/export?format=csv",
+            "/internal/resilience/monitoring/export?format=csv",
             headers=auth_headers
         )
         assert csv_response.status_code == 200
@@ -506,32 +510,44 @@ class TestMonitoringEndpointSecurity:
     def test_all_monitoring_endpoints_require_authentication(self, client):
         """Test that all monitoring endpoints require authentication."""
         monitoring_endpoints = [
-            "/resilience/monitoring/usage-statistics",
-            "/resilience/monitoring/preset-trends/simple",
-            "/resilience/monitoring/performance-metrics",
-            "/resilience/monitoring/alerts",
-            "/resilience/monitoring/session/test-session",
-            "/resilience/monitoring/export",
+            "/internal/resilience/monitoring/usage-statistics",
+            "/internal/resilience/monitoring/preset-trends/simple",
+            "/internal/resilience/monitoring/performance-metrics",
+            "/internal/resilience/monitoring/alerts",
+            "/internal/resilience/monitoring/session/test-session",
+            "/internal/resilience/monitoring/export",
         ]
         
         for endpoint in monitoring_endpoints:
-            response = client.get(endpoint)
-            assert response.status_code == 401, f"Endpoint {endpoint} should require authentication"
+            try:
+                response = client.get(endpoint)
+                assert response.status_code == 401, f"Endpoint {endpoint} should require authentication"
+            except Exception as e:
+                # If exception is thrown, it should be an authentication error
+                assert "AuthenticationError" in str(type(e)) or "API key required" in str(e), f"Endpoint {endpoint} should require authentication"
     
     def test_monitoring_cleanup_requires_authentication(self, client):
         """Test that cleanup endpoint requires authentication."""
-        response = client.post("/resilience/monitoring/cleanup")
-        assert response.status_code == 401
+        try:
+            response = client.post("/internal/resilience/monitoring/cleanup")
+            assert response.status_code == 401
+        except Exception as e:
+            # If exception is thrown, it should be an authentication error
+            assert "AuthenticationError" in str(type(e)) or "API key required" in str(e)
     
     def test_monitoring_endpoints_with_invalid_auth(self, client):
         """Test monitoring endpoints with invalid authentication."""
         invalid_headers = {"Authorization": "Bearer invalid-key"}
         
-        response = client.get(
-            "/resilience/monitoring/usage-statistics",
-            headers=invalid_headers
-        )
-        assert response.status_code == 401
+        try:
+            response = client.get(
+                "/internal/resilience/monitoring/usage-statistics",
+                headers=invalid_headers
+            )
+            assert response.status_code == 401
+        except Exception as e:
+            # If exception is thrown, it should be an authentication error
+            assert "AuthenticationError" in str(type(e)) or "Invalid API key" in str(e)
     
     def test_session_metrics_access_control(self, client):
         """Test that session metrics don't leak across users."""
@@ -540,7 +556,7 @@ class TestMonitoringEndpointSecurity:
         auth_headers = {"Authorization": "Bearer test-api-key-12345"}
         
         response = client.get(
-            "/resilience/monitoring/session/test-session",
+            "/internal/resilience/monitoring/session/test-session",
             headers=auth_headers
         )
         assert response.status_code == 200

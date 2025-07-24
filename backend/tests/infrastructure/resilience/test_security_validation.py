@@ -358,15 +358,13 @@ class TestSecurityValidationEndpoints:
     def test_security_validation_endpoint_structure(self):
         """Test that security validation endpoints have correct structure."""
         # This test verifies the endpoint functions exist and have correct signatures
-        from app.api.internal.resilience2 import (
-            validate_configuration_security,
+        from app.api.internal.resilience.config_validation import (
             get_validation_rate_limit_status,
             get_security_configuration,
             validate_against_field_whitelist
         )
         
         # Verify functions exist
-        assert callable(validate_configuration_security)
         assert callable(get_validation_rate_limit_status)
         assert callable(get_security_configuration)
         assert callable(validate_against_field_whitelist)

@@ -37,7 +37,6 @@ class TestVerifyAPIKey:
 
     def test_verify_api_key_with_invalid_credentials(self):
         """Test verify_api_key with invalid credentials."""
-        # Mock credentials
         credentials = HTTPAuthorizationCredentials(
             scheme="Bearer",
             credentials="invalid-key"
@@ -45,25 +44,27 @@ class TestVerifyAPIKey:
         
         # Mock the api_key_auth instance to return False for verification
         with patch.object(api_key_auth, 'verify_api_key', return_value=False):
-            # Test async function should raise HTTPException
+            # Test async function should raise AuthenticationError
             import asyncio
-            with pytest.raises(HTTPException) as exc_info:
+            from app.core.exceptions import AuthenticationError
+            with pytest.raises(AuthenticationError) as exc_info:
                 asyncio.run(verify_api_key(credentials))
             
-            assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-            assert "Invalid API key" in exc_info.value.detail
+            assert "Invalid API key" in str(exc_info.value)
+            assert exc_info.value.context["auth_method"] == "bearer_token"
 
     def test_verify_api_key_without_credentials(self):
         """Test verify_api_key without credentials."""
         # Mock api_key_auth to have some keys configured
         with patch.object(api_key_auth, 'api_keys', {"test-key"}):
-            # Test async function should raise HTTPException
+            # Test async function should raise AuthenticationError
             import asyncio
-            with pytest.raises(HTTPException) as exc_info:
+            from app.core.exceptions import AuthenticationError
+            with pytest.raises(AuthenticationError) as exc_info:
                 asyncio.run(verify_api_key(None))
             
-            assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-            assert "API key required" in exc_info.value.detail
+            assert "API key required" in str(exc_info.value)
+            assert exc_info.value.context["auth_method"] == "bearer_token"
 
     def test_verify_api_key_development_mode_no_keys(self):
         """Test verify_api_key in development mode (no API keys configured)."""
@@ -108,11 +109,12 @@ class TestVerifyAPIKey:
         # Mock the api_key_auth instance to return False for empty key
         with patch.object(api_key_auth, 'verify_api_key', return_value=False):
             import asyncio
-            with pytest.raises(HTTPException) as exc_info:
+            from app.core.exceptions import AuthenticationError
+            with pytest.raises(AuthenticationError) as exc_info:
                 asyncio.run(verify_api_key(credentials))
             
-            assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-            assert "Invalid API key" in exc_info.value.detail
+            assert "Invalid API key" in str(exc_info.value)
+            assert exc_info.value.context["auth_method"] == "bearer_token"
 
 
 class TestVerifyAPIKeyString:
@@ -161,10 +163,12 @@ class TestOptionalVerifyAPIKey:
         
         with patch.object(api_key_auth, 'verify_api_key', return_value=False):
             import asyncio
-            with pytest.raises(HTTPException) as exc_info:
+            from app.core.exceptions import AuthenticationError
+            with pytest.raises(AuthenticationError) as exc_info:
                 asyncio.run(optional_verify_api_key(credentials))
             
-            assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+            assert "Invalid API key" in str(exc_info.value)
+            assert exc_info.value.context["auth_method"] == "bearer_token"
 
     def test_optional_verify_api_key_without_credentials(self):
         """Test optional_verify_api_key without credentials should return None."""

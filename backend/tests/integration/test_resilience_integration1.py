@@ -19,7 +19,7 @@ from app.main import app
 @pytest.fixture(autouse=True)
 def mock_resilience_service():
     """Mock the resilience service for all tests in this module."""
-    with patch('app.api.internal.resilience2.ai_resilience') as mock_resilience:
+    with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
         # Default healthy state
         mock_resilience.get_health_status.return_value = {
             "healthy": True,
