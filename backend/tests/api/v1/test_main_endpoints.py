@@ -12,13 +12,13 @@ from app.main import app
 from app.core.config import settings
 from app.api.v1.deps import get_text_processor
 from app.services.text_processor import TextProcessorService
-from shared.models import (
-    ProcessingOperation,
+from app.schemas import (
+    TextProcessingOperation,
     BatchTextProcessingRequest,
     BatchTextProcessingResponse,
     TextProcessingRequest,
-    BatchProcessingItem,
-    ProcessingStatus,
+    BatchTextProcessingItem,
+    BatchTextProcessingStatus,
     TextProcessingResponse,
     SentimentResult
 )

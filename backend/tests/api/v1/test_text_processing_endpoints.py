@@ -12,13 +12,13 @@ from app.main import app
 from app.core.config import settings
 from app.api.v1.deps import get_text_processor
 from app.services.text_processor import TextProcessorService
-from shared.models import (
-    ProcessingOperation,
+from app.schemas import (
+    TextProcessingOperation,
     BatchTextProcessingRequest,
     BatchTextProcessingResponse,
     TextProcessingRequest,
-    BatchProcessingItem,
-    ProcessingStatus,
+    BatchTextProcessingItem,
+    BatchTextProcessingStatus,
     TextProcessingResponse,
     SentimentResult
 )
@@ -74,7 +74,7 @@ class TestProcessEndpoint:
             mock_processor.process_text.assert_called_once()
             call_args = mock_processor.process_text.call_args[0][0]
             assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
-            assert call_args.operation == ProcessingOperation.SUMMARIZE
+            assert call_args.operation == TextProcessingOperation.SUMMARIZE
             assert call_args.options == {"max_length": 100}
         finally:
             # Clean up the override
@@ -103,7 +103,7 @@ class TestProcessEndpoint:
             mock_processor.process_text.assert_called_once()
             call_args = mock_processor.process_text.call_args[0][0]
             assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
-            assert call_args.operation == ProcessingOperation.SENTIMENT
+            assert call_args.operation == TextProcessingOperation.SENTIMENT
         finally:
             # Clean up the override
             app.dependency_overrides.clear()
@@ -152,7 +152,7 @@ class TestProcessEndpoint:
             mock_processor.process_text.assert_called_once()
             call_args = mock_processor.process_text.call_args[0][0]
             assert call_args.text == sample_text.strip()  # Text gets sanitized/stripped
-            assert call_args.operation == ProcessingOperation.QA
+            assert call_args.operation == TextProcessingOperation.QA
             assert call_args.question == "What is artificial intelligence?"
         finally:
             # Clean up the override

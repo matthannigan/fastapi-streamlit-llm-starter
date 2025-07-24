@@ -17,7 +17,7 @@ from app.main import app
 from app.core.config import Settings
 from app.infrastructure.resilience.config_presets import preset_manager, PRESETS
 from app.infrastructure.resilience import AIServiceResilience
-from shared.models import TextProcessingRequest, ProcessingOperation
+from app.schemas import TextProcessingRequest, TextProcessingOperation
 
 
 class TestEndToEndBackwardCompatibility:

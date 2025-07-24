@@ -66,7 +66,7 @@ processor = TextProcessorService(settings, cache)
 # Process individual request
 request = TextProcessingRequest(
 text="Your text here",
-operation=ProcessingOperation.SUMMARIZE
+operation=TextProcessingOperation.SUMMARIZE
 )
 response = await processor.process_text(request)
 

@@ -19,13 +19,13 @@ pip install -e ../shared
 ## Usage
 
 ```python
-from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.models import TextProcessingRequest, TextProcessingOperation
 from shared.sample_data import get_sample_text
 
 # Create a processing request
 request = TextProcessingRequest(
     text=get_sample_text("ai_technology"),
-    operation=ProcessingOperation.SUMMARIZE
+    operation=TextProcessingOperation.SUMMARIZE
 )
 ```
 

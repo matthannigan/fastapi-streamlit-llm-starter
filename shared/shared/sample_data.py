@@ -8,7 +8,7 @@ be used in all examples, tests, and documentation to ensure consistency.
 
 from typing import Dict, List, Any
 from shared.models import (
-    ProcessingOperation,
+    TextProcessingOperation,
     TextProcessingRequest,
     TextProcessingResponse,
     SentimentResult
@@ -81,35 +81,35 @@ STANDARD_SAMPLE_TEXTS = {
 STANDARD_REQUEST_EXAMPLES = {
     "summarize": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["ai_technology"],
-        operation=ProcessingOperation.SUMMARIZE,
+        operation=TextProcessingOperation.SUMMARIZE,
         options={"max_length": 100}
     ),
     
     "sentiment_positive": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["positive_review"],
-        operation=ProcessingOperation.SENTIMENT
+        operation=TextProcessingOperation.SENTIMENT
     ),
     
     "sentiment_negative": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["negative_review"],
-        operation=ProcessingOperation.SENTIMENT
+        operation=TextProcessingOperation.SENTIMENT
     ),
     
     "key_points": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["business_report"],
-        operation=ProcessingOperation.KEY_POINTS,
+        operation=TextProcessingOperation.KEY_POINTS,
         options={"max_points": 4}
     ),
     
     "questions": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["climate_change"],
-        operation=ProcessingOperation.QUESTIONS,
+        operation=TextProcessingOperation.QUESTIONS,
         options={"num_questions": 3}
     ),
     
     "qa": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["technical_documentation"],
-        operation=ProcessingOperation.QA,
+        operation=TextProcessingOperation.QA,
         question="What authentication method does the API use?"
     )
 }
@@ -117,7 +117,7 @@ STANDARD_REQUEST_EXAMPLES = {
 # Standard response examples for documentation
 STANDARD_RESPONSE_EXAMPLES = {
     "summarize": TextProcessingResponse(
-        operation=ProcessingOperation.SUMMARIZE,
+        operation=TextProcessingOperation.SUMMARIZE,
         success=True,
         result="AI is transforming industries through automation and predictive analytics, processing vast data to identify patterns and make previously impossible predictions.",
         metadata={
@@ -129,7 +129,7 @@ STANDARD_RESPONSE_EXAMPLES = {
     ),
     
     "sentiment_positive": TextProcessingResponse(
-        operation=ProcessingOperation.SENTIMENT,
+        operation=TextProcessingOperation.SENTIMENT,
         success=True,
         sentiment=SentimentResult(
             sentiment="positive",
@@ -144,7 +144,7 @@ STANDARD_RESPONSE_EXAMPLES = {
     ),
     
     "sentiment_negative": TextProcessingResponse(
-        operation=ProcessingOperation.SENTIMENT,
+        operation=TextProcessingOperation.SENTIMENT,
         success=True,
         sentiment=SentimentResult(
             sentiment="negative",
@@ -159,7 +159,7 @@ STANDARD_RESPONSE_EXAMPLES = {
     ),
     
     "key_points": TextProcessingResponse(
-        operation=ProcessingOperation.KEY_POINTS,
+        operation=TextProcessingOperation.KEY_POINTS,
         success=True,
         key_points=[
             "Revenue increased by 15% compared to last year",
@@ -175,7 +175,7 @@ STANDARD_RESPONSE_EXAMPLES = {
     ),
     
     "questions": TextProcessingResponse(
-        operation=ProcessingOperation.QUESTIONS,
+        operation=TextProcessingOperation.QUESTIONS,
         success=True,
         questions=[
             "What are the main causes of rising global temperatures?",
@@ -190,7 +190,7 @@ STANDARD_RESPONSE_EXAMPLES = {
     ),
     
     "qa": TextProcessingResponse(
-        operation=ProcessingOperation.QA,
+        operation=TextProcessingOperation.QA,
         success=True,
         result="The API uses Bearer token authentication for securing access to endpoints.",
         metadata={

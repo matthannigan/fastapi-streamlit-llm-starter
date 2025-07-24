@@ -60,10 +60,11 @@ import uuid
 import time
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
-from shared.models import (
+from app.schemas import (
+    ErrorResponse,
     TextProcessingRequest,
     TextProcessingResponse,
     BatchTextProcessingRequest,
@@ -71,6 +72,11 @@ from shared.models import (
 )
 
 from app.core.config import settings
+from app.core.exceptions import (
+    ValidationError,
+    BusinessLogicError,
+    InfrastructureError
+)
 from app.api.v1.deps import get_text_processor
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.security import verify_api_key, optional_verify_api_key
@@ -79,7 +85,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/text_processing", tags=["Text Processing"])
 
-@router.get("/operations")
+@router.get("/operations",
+            responses={
+                401: {"model": ErrorResponse, "description": "Authentication Error"},
+            })
 async def get_operations(api_key: str = Depends(optional_verify_api_key)):
     """Get available text processing operations and their configurations.
     
@@ -158,7 +167,15 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
     }
 
 
-@router.post("/process", response_model=TextProcessingResponse)
+@router.post("/process", 
+             response_model=TextProcessingResponse,
+             responses={
+                 400: {"model": ErrorResponse, "description": "Validation Error"},
+                 422: {"model": ErrorResponse, "description": "Validation Error"},
+                 500: {"model": ErrorResponse, "description": "Internal Server Error"},
+                 502: {"model": ErrorResponse, "description": "AI Service Error"},
+                 503: {"model": ErrorResponse, "description": "Service Unavailable"}
+             })
 async def process_text(
     request: TextProcessingRequest,
     api_key: str = Depends(verify_api_key),
@@ -173,7 +190,7 @@ async def process_text(
     Args:
         request (TextProcessingRequest): The text processing request containing:
             - text (str): The input text to be processed
-            - operation (TextProcessingOperation): The type of operation to perform
+            - operation (TextTextProcessingOperation): The type of operation to perform
             - options (dict, optional): Additional options for the operation
             - question (str, optional): Required for Q&A operations
         api_key (str): Valid API key for authentication.
@@ -186,11 +203,12 @@ async def process_text(
             - metadata (dict, optional): Additional information about the processing
     
     Raises:
-        HTTPException: 400 Bad Request if:
+        ValidationError: If:
             - Question is missing for Q&A operations
             - Request validation fails
-        HTTPException: 401 Unauthorized if API key is invalid
-        HTTPException: 500 Internal Server Error if processing fails
+            - Input data is invalid
+        BusinessLogicError: If text processing business rules are violated
+        InfrastructureError: If underlying services fail
     
     Example:
         Request:
@@ -221,9 +239,9 @@ async def process_text(
         
         # Validate Q&A request
         if request.operation.value == "qa" and not request.question:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Question is required for Q&A operation"
+            raise ValidationError(
+                "Question is required for Q&A operation",
+                context={"operation": request.operation.value, "request_id": request_id}
             )
         
         # Process the text
@@ -233,26 +251,37 @@ async def process_text(
         logger.info("Request processed successfully")
         return result
         
-    except HTTPException:
-        logger.info(f"REQUEST_END - ID: {request_id}, Status: HTTP_ERROR, Operation: {request.operation}")
+    except (ValidationError, BusinessLogicError, InfrastructureError):
+        # Re-raise custom exceptions - they'll be handled by the global exception handler
+        logger.info(f"REQUEST_END - ID: {request_id}, Status: ERROR, Operation: {request.operation}")
         raise
     except ValueError as e:
+        # Convert ValueError to ValidationError for consistent handling
         logger.warning(f"Validation error: {str(e)}")
         logger.info(f"REQUEST_END - ID: {request_id}, Status: VALIDATION_ERROR, Operation: {request.operation}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+        raise ValidationError(
+            str(e),
+            context={"operation": request.operation.value, "request_id": request_id}
         )
     except Exception as e:
+        # Convert unexpected exceptions to InfrastructureError
         logger.error(f"Processing error: {str(e)}")
         logger.info(f"REQUEST_END - ID: {request_id}, Status: INTERNAL_ERROR, Operation: {request.operation}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process text"
+        raise InfrastructureError(
+            "Failed to process text",
+            context={"operation": request.operation.value, "request_id": request_id, "error": str(e)}
         )
 
 
-@router.post("/batch_process", response_model=BatchTextProcessingResponse)
+@router.post("/batch_process", 
+             response_model=BatchTextProcessingResponse,
+             responses={
+                 400: {"model": ErrorResponse, "description": "Validation Error"},
+                 422: {"model": ErrorResponse, "description": "Validation Error"},
+                 500: {"model": ErrorResponse, "description": "Internal Server Error"},
+                 502: {"model": ErrorResponse, "description": "AI Service Error"},
+                 503: {"model": ErrorResponse, "description": "Service Unavailable"}
+             })
 async def batch_process_text(
     request: BatchTextProcessingRequest,
     api_key: str = Depends(verify_api_key),
@@ -282,12 +311,12 @@ async def batch_process_text(
             - errors (list[dict], optional): Details of any processing errors
     
     Raises:
-        HTTPException: 400 Bad Request if:
+        ValidationError: If:
             - Batch request list is empty
-            - Batch size exceeds maximum limit (configured in settings)
+            - Batch size exceeds maximum limit
             - Individual request validation fails
-        HTTPException: 401 Unauthorized if API key is invalid
-        HTTPException: 500 Internal Server Error if batch processing fails
+        BusinessLogicError: If batch processing business rules are violated
+        InfrastructureError: If batch processing infrastructure fails
     
     Example:
         Request:
@@ -336,15 +365,20 @@ async def batch_process_text(
     
     try:
         if not request.requests:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Batch request list cannot be empty."
+            raise ValidationError(
+                "Batch request list cannot be empty",
+                context={"batch_id": batch_id, "request_id": request_id}
             )
         
         if len(request.requests) > settings.MAX_BATCH_REQUESTS_PER_CALL:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Batch size exceeds maximum limit of {settings.MAX_BATCH_REQUESTS_PER_CALL} requests."
+            raise ValidationError(
+                f"Batch size exceeds maximum limit of {settings.MAX_BATCH_REQUESTS_PER_CALL} requests",
+                context={
+                    "batch_id": batch_id, 
+                    "request_id": request_id, 
+                    "requested_size": len(request.requests),
+                    "max_allowed": settings.MAX_BATCH_REQUESTS_PER_CALL
+                }
             )
             
         logger.info(f"Batch processing {len(request.requests)} requests for user (API key prefix): {api_key[:8]}..., batch_id: {request.batch_id or 'N/A'}")
@@ -355,19 +389,31 @@ async def batch_process_text(
         logger.info(f"Batch (batch_id: {result.batch_id}) completed: {result.completed}/{result.total_requests} successful for user (API key prefix): {api_key[:8]}...")
         return result
         
-    except HTTPException:
-        logger.info(f"BATCH_REQUEST_END - ID: {request_id}, Batch ID: {batch_id}, Status: HTTP_ERROR")
+    except (ValidationError, BusinessLogicError, InfrastructureError):
+        # Re-raise custom exceptions - they'll be handled by the global exception handler
+        logger.info(f"BATCH_REQUEST_END - ID: {request_id}, Batch ID: {batch_id}, Status: ERROR")
         raise
     except Exception as e:
+        # Convert unexpected exceptions to InfrastructureError
         logger.error(f"Batch processing error for user (API key prefix) {api_key[:8]}..., batch_id {request.batch_id or 'N/A'}: {str(e)}", exc_info=True)
         logger.info(f"BATCH_REQUEST_END - ID: {request_id}, Batch ID: {batch_id}, Status: INTERNAL_ERROR")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process batch request due to an internal server error."
+        raise InfrastructureError(
+            "Failed to process batch request due to an internal server error",
+            context={
+                "batch_id": batch_id,
+                "request_id": request_id,
+                "request_count": len(request.requests),
+                "error": str(e)
+            }
         )
 
 
-@router.get("/batch_status/{batch_id}", response_model=dict)
+@router.get("/batch_status/{batch_id}", 
+            response_model=dict,
+            responses={
+                401: {"model": ErrorResponse, "description": "Authentication Error"},
+                422: {"model": ErrorResponse, "description": "Validation Error"},
+            })
 async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)):
     """Get the status of a batch processing job.
     
@@ -384,9 +430,6 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
             - batch_id (str): The requested batch identifier
             - status (str): Current status of the batch (typically "COMPLETED_SYNC")
             - message (str): Descriptive message about the batch status
-    
-    Raises:
-        HTTPException: 401 Unauthorized if API key is invalid
     
     Note:
         This is a placeholder endpoint for the current synchronous implementation.
@@ -415,7 +458,11 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
         "message": "Batch processing is synchronous. If your request to /text_processing/batch_process completed, the results were returned then."
     }
 
-@router.get("/health")
+@router.get("/health",
+            responses={
+                401: {"model": ErrorResponse, "description": "Authentication Error"},
+                500: {"model": ErrorResponse, "description": "Infrastructure Error"},
+            })
 async def get_service_health(
     api_key: str = Depends(optional_verify_api_key),
     text_processor: TextProcessorService = Depends(get_text_processor)
@@ -440,7 +487,7 @@ async def get_service_health(
                 - text_processing (dict): Text processing service specific health
     
     Raises:
-        HTTPException: 500 Internal Server Error if health check fails
+        InfrastructureError: If health check fails
     
     Note:
         This is an example implementation demonstrating how to combine domain
@@ -491,7 +538,8 @@ async def get_service_health(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get service health: {str(e)}"
+        # Convert health check failures to InfrastructureError
+        raise InfrastructureError(
+            f"Failed to get service health: {str(e)}",
+            context={"endpoint": "/health", "error": str(e)}
         )

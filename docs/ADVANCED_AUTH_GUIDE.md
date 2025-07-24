@@ -118,7 +118,7 @@ class RateLimitInfo(BaseModel):
 class TextProcessingRequest(BaseModel):
     """Enhanced request model with optional user context."""
     text: str = Field(..., min_length=10, max_length=10000)
-    operation: ProcessingOperation = Field(...)
+    operation: TextProcessingOperation = Field(...)
     question: Optional[str] = Field(None)
     options: Optional[Dict[str, Any]] = Field(default_factory=dict)
     

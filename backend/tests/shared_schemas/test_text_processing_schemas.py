@@ -6,10 +6,10 @@ import pytest
 from datetime import datetime
 from pydantic import ValidationError
 
-from shared.models import (
+from app.schemas import (
     TextProcessingRequest,
     TextProcessingResponse,
-    ProcessingOperation,
+    TextProcessingOperation,
     SentimentResult
 )
 
@@ -20,12 +20,12 @@ class TestTextProcessingRequest:
         """Test valid request creation."""
         request = TextProcessingRequest(
             text="This is a test text for processing.",
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"max_length": 100}
         )
         
         assert request.text == "This is a test text for processing."
-        assert request.operation == ProcessingOperation.SUMMARIZE
+        assert request.operation == TextProcessingOperation.SUMMARIZE
         assert request.options == {"max_length": 100}
         assert request.question is None
     
@@ -33,7 +33,7 @@ class TestTextProcessingRequest:
         """Test Q&A request with question."""
         request = TextProcessingRequest(
             text="Sample text",
-            operation=ProcessingOperation.QA,
+            operation=TextProcessingOperation.QA,
             question="What is this about?"
         )
         
@@ -44,7 +44,7 @@ class TestTextProcessingRequest:
         with pytest.raises(ValidationError):
             TextProcessingRequest(
                 text="Short",  # Less than 10 characters
-                operation=ProcessingOperation.SUMMARIZE
+                operation=TextProcessingOperation.SUMMARIZE
             )
     
     def test_text_too_long(self):
@@ -53,7 +53,7 @@ class TestTextProcessingRequest:
         with pytest.raises(ValidationError):
             TextProcessingRequest(
                 text=long_text,
-                operation=ProcessingOperation.SUMMARIZE
+                operation=TextProcessingOperation.SUMMARIZE
             )
     
     def test_invalid_operation(self):
@@ -70,11 +70,11 @@ class TestTextProcessingResponse:
     def test_basic_response(self):
         """Test basic response creation."""
         response = TextProcessingResponse(
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             result="This is a summary."
         )
         
-        assert response.operation == ProcessingOperation.SUMMARIZE
+        assert response.operation == TextProcessingOperation.SUMMARIZE
         assert response.success is True
         assert response.result == "This is a summary."
         assert isinstance(response.timestamp, datetime)
@@ -88,7 +88,7 @@ class TestTextProcessingResponse:
         )
         
         response = TextProcessingResponse(
-            operation=ProcessingOperation.SENTIMENT,
+            operation=TextProcessingOperation.SENTIMENT,
             sentiment=sentiment
         )
         
@@ -98,7 +98,7 @@ class TestTextProcessingResponse:
     def test_key_points_response(self):
         """Test key points response."""
         response = TextProcessingResponse(
-            operation=ProcessingOperation.KEY_POINTS,
+            operation=TextProcessingOperation.KEY_POINTS,
             key_points=["Point 1", "Point 2", "Point 3"]
         )
         
@@ -108,7 +108,7 @@ class TestTextProcessingResponse:
     def test_questions_response(self):
         """Test questions response."""
         response = TextProcessingResponse(
-            operation=ProcessingOperation.QUESTIONS,
+            operation=TextProcessingOperation.QUESTIONS,
             questions=["Question 1?", "Question 2?"]
         )
         
@@ -142,22 +142,22 @@ class TestSentimentResult:
         with pytest.raises(ValidationError):
             SentimentResult(sentiment="neutral", confidence=1.1, explanation="Test")
 
-class TestProcessingOperation:
-    """Test ProcessingOperation enum."""
+class TestTextProcessingOperation:
+    """Test TextProcessingOperation enum."""
     
     def test_all_operations(self):
         """Test all operation values are valid."""
         operations = [
-            ProcessingOperation.SUMMARIZE,
-            ProcessingOperation.SENTIMENT,
-            ProcessingOperation.KEY_POINTS,
-            ProcessingOperation.QUESTIONS,
-            ProcessingOperation.QA
+            TextProcessingOperation.SUMMARIZE,
+            TextProcessingOperation.SENTIMENT,
+            TextProcessingOperation.KEY_POINTS,
+            TextProcessingOperation.QUESTIONS,
+            TextProcessingOperation.QA
         ]
         
         assert len(operations) == 5
-        assert ProcessingOperation.SUMMARIZE == "summarize"
-        assert ProcessingOperation.SENTIMENT == "sentiment"
-        assert ProcessingOperation.KEY_POINTS == "key_points"
-        assert ProcessingOperation.QUESTIONS == "questions"
-        assert ProcessingOperation.QA == "qa" 
+        assert TextProcessingOperation.SUMMARIZE == "summarize"
+        assert TextProcessingOperation.SENTIMENT == "sentiment"
+        assert TextProcessingOperation.KEY_POINTS == "key_points"
+        assert TextProcessingOperation.QUESTIONS == "questions"
+        assert TextProcessingOperation.QA == "qa" 

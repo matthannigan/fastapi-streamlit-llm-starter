@@ -449,7 +449,7 @@ class TestContextIsolation:
 
             # Verify each result only contains content from its own input
             for i, batch_item in enumerate(results):
-                # Batch processing returns BatchProcessingItem objects with a nested response
+                # Batch processing returns BatchTextProcessingItem objects with a nested response
                 # We need to access the response field within each batch item
                 if batch_item["status"] == "completed" and batch_item.get("response"):
                     item_response = batch_item["response"]

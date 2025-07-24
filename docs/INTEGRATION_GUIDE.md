@@ -491,7 +491,7 @@ Follow these steps to add custom text processing operations:
 #### 1. Extend the Models
 ```python
 # shared/models.py
-class ProcessingOperation(str, Enum):
+class TextProcessingOperation(str, Enum):
     SUMMARIZE = "summarize"
     SENTIMENT = "sentiment"
     KEY_POINTS = "key_points"
@@ -522,7 +522,7 @@ async def _translate_text(self, text: str, options: Dict[str, Any]) -> str:
     return result.data.strip()
 
 # Add to process_text method
-elif request.operation == ProcessingOperation.TRANSLATE:
+elif request.operation == TextProcessingOperation.TRANSLATE:
     result = await self._translate_text(request.text, request.options)
 ```
 

@@ -60,7 +60,7 @@ Usage:
     # Process individual request
     request = TextProcessingRequest(
         text="Your text here",
-        operation=ProcessingOperation.SUMMARIZE
+        operation=TextProcessingOperation.SUMMARIZE
     )
     response = await processor.process_text(request)
     
@@ -118,15 +118,15 @@ from pydantic_ai import Agent
 if TYPE_CHECKING:
     from app.infrastructure.cache import AIResponseCache
 
-from shared.models import (
-    ProcessingOperation,
+from app.schemas import (
+    TextProcessingOperation,
     TextProcessingRequest,
     TextProcessingResponse,
     SentimentResult,
     BatchTextProcessingRequest,
     BatchTextProcessingResponse,
-    BatchProcessingItem,
-    ProcessingStatus
+    BatchTextProcessingItem,
+    BatchTextProcessingStatus
 )
 from app.core.config import Settings
 from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer # Enhanced import
@@ -200,7 +200,7 @@ class TextProcessorService:
 
     async def _get_fallback_response(
             self, 
-            operation: ProcessingOperation, 
+            operation: TextProcessingOperation, 
             text: str, 
             question: Optional[str] = None) -> Any:
         """
@@ -219,25 +219,25 @@ class TextProcessorService:
             logger.info(f"Using cached fallback for {operation}")
             # Extract the appropriate field from cached response dict
             if isinstance(cached_response, dict):
-                if operation == ProcessingOperation.SUMMARIZE:
+                if operation == TextProcessingOperation.SUMMARIZE:
                     return cached_response.get('result', "Service temporarily unavailable. Please try again later for text summarization.")
-                elif operation == ProcessingOperation.SENTIMENT:
+                elif operation == TextProcessingOperation.SENTIMENT:
                     return cached_response.get('sentiment')
-                elif operation == ProcessingOperation.KEY_POINTS:
+                elif operation == TextProcessingOperation.KEY_POINTS:
                     return cached_response.get('key_points', ["Service temporarily unavailable", "Please try again later"])
-                elif operation == ProcessingOperation.QUESTIONS:
+                elif operation == TextProcessingOperation.QUESTIONS:
                     return cached_response.get('questions', ["What is the main topic of this text?", "Can you provide more details?"])
-                elif operation == ProcessingOperation.QA:
+                elif operation == TextProcessingOperation.QA:
                     return cached_response.get('result', "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later.")
             return cached_response
         
         # Generate simple fallback responses
         fallback_responses = {
-            ProcessingOperation.SUMMARIZE: "Service temporarily unavailable. Please try again later for text summarization.",
-            ProcessingOperation.SENTIMENT: None,  # Will use neutral sentiment
-            ProcessingOperation.KEY_POINTS: ["Service temporarily unavailable", "Please try again later"],
-            ProcessingOperation.QUESTIONS: ["What is the main topic of this text?", "Can you provide more details?"],
-            ProcessingOperation.QA: "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later."
+            TextProcessingOperation.SUMMARIZE: "Service temporarily unavailable. Please try again later for text summarization.",
+            TextProcessingOperation.SENTIMENT: None,  # Will use neutral sentiment
+            TextProcessingOperation.KEY_POINTS: ["Service temporarily unavailable", "Please try again later"],
+            TextProcessingOperation.QUESTIONS: ["What is the main topic of this text?", "Can you provide more details?"],
+            TextProcessingOperation.QA: "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later."
         }
         
         return fallback_responses.get(operation, "Service temporarily unavailable. Please try again later.")
@@ -298,7 +298,7 @@ class TextProcessorService:
         try:
             logger.info(f"Processing text with operation: {request.operation}")
             
-            if request.operation not in [op.value for op in ProcessingOperation]:
+            if request.operation not in [op.value for op in TextProcessingOperation]:
                 raise ValueError(f"Unsupported operation: {request.operation}")
             
             processing_time = time.time() - start_time
@@ -310,26 +310,26 @@ class TextProcessorService:
             )
             
             try:
-                if request.operation == ProcessingOperation.SUMMARIZE:
+                if request.operation == TextProcessingOperation.SUMMARIZE:
                     response.result = await self._summarize_text_with_resilience(sanitized_text, sanitized_options)
-                elif request.operation == ProcessingOperation.SENTIMENT:
+                elif request.operation == TextProcessingOperation.SENTIMENT:
                     response.sentiment = await self._analyze_sentiment_with_resilience(sanitized_text)
-                elif request.operation == ProcessingOperation.KEY_POINTS:
+                elif request.operation == TextProcessingOperation.KEY_POINTS:
                     response.key_points = await self._extract_key_points_with_resilience(sanitized_text, sanitized_options)
-                elif request.operation == ProcessingOperation.QUESTIONS:
+                elif request.operation == TextProcessingOperation.QUESTIONS:
                     response.questions = await self._generate_questions_with_resilience(sanitized_text, sanitized_options)
-                elif request.operation == ProcessingOperation.QA:
+                elif request.operation == TextProcessingOperation.QA:
                     response.result = await self._answer_question_with_resilience(sanitized_text, sanitized_question)
                 else:
                     raise ValueError(f"Unsupported operation: {request.operation}")
             
             except ServiceUnavailableError:
-                if request.operation == ProcessingOperation.SENTIMENT:
+                if request.operation == TextProcessingOperation.SENTIMENT:
                     response.sentiment = await self._get_fallback_sentiment()
-                elif request.operation == ProcessingOperation.KEY_POINTS:
+                elif request.operation == TextProcessingOperation.KEY_POINTS:
                     # Fallback should also use sanitized inputs if they are part of the fallback generation logic
                     response.key_points = await self._get_fallback_response(request.operation, sanitized_text)
-                elif request.operation == ProcessingOperation.QUESTIONS:
+                elif request.operation == TextProcessingOperation.QUESTIONS:
                     response.questions = await self._get_fallback_response(request.operation, sanitized_text)
                 else:
                     response.result = await self._get_fallback_response(request.operation, sanitized_text, sanitized_question)
@@ -566,20 +566,20 @@ class TextProcessorService:
         semaphore = asyncio.Semaphore(self.settings.BATCH_AI_CONCURRENCY_LIMIT)
         tasks = []
 
-        async def _process_single_request_in_batch(index: int, item_request: TextProcessingRequest) -> BatchProcessingItem:
+        async def _process_single_request_in_batch(index: int, item_request: TextProcessingRequest) -> BatchTextProcessingItem:
             """Helper function to process a single request within the batch with resilience."""
             async with semaphore:
                 try:
                     # Ensure the operation is valid before processing
                     # No sanitization needed for item_request.operation itself as it's an enum/string check
-                    if not hasattr(ProcessingOperation, item_request.operation.upper()):
+                    if not hasattr(TextProcessingOperation, item_request.operation.upper()):
                         raise ValueError(f"Unsupported operation: {item_request.operation}")
                     
                     # Create a new TextProcessingRequest object for process_text
                     # process_text will handle the sanitization of its inputs
                     current_request = TextProcessingRequest(
                         text=item_request.text, # Pass original text
-                        operation=ProcessingOperation[item_request.operation.upper()],
+                        operation=TextProcessingOperation[item_request.operation.upper()],
                         options=item_request.options, # Pass original options
                         question=item_request.question # Pass original question
                     )
@@ -587,15 +587,15 @@ class TextProcessorService:
                     # Process with resilience (this will use the resilience decorators)
                     # process_text will sanitize
                     response = await self.process_text(current_request)
-                    return BatchProcessingItem(request_index=index, status=ProcessingStatus.COMPLETED, response=response)
+                    return BatchTextProcessingItem(request_index=index, status=BatchTextProcessingStatus.COMPLETED, response=response)
                     
                 except ServiceUnavailableError as e:
                     logger.warning(f"Batch item {index} (batch_id: {batch_id}) degraded service: {str(e)}")
-                    return BatchProcessingItem(request_index=index, status=ProcessingStatus.FAILED, error=str(e))
+                    return BatchTextProcessingItem(request_index=index, status=BatchTextProcessingStatus.FAILED, error=str(e))
 
                 except Exception as e:
                     logger.error(f"Batch item {index} (batch_id: {batch_id}) failed: {str(e)}")
-                    return BatchProcessingItem(request_index=index, status=ProcessingStatus.FAILED, error=str(e))
+                    return BatchTextProcessingItem(request_index=index, status=BatchTextProcessingStatus.FAILED, error=str(e))
 
         for i, request_item in enumerate(batch_request.requests):
             task = _process_single_request_in_batch(i, request_item)
@@ -603,19 +603,19 @@ class TextProcessorService:
 
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Filter out any exceptions and ensure we only have BatchProcessingItem objects
-        results: List[BatchProcessingItem] = []
+        # Filter out any exceptions and ensure we only have BatchTextProcessingItem objects
+        results: List[BatchTextProcessingItem] = []
         for i, result in enumerate(raw_results):
             if isinstance(result, Exception):
                 logger.error(f"Batch item {i} (batch_id: {batch_id}) failed with exception: {str(result)}")
-                results.append(BatchProcessingItem(request_index=i, status=ProcessingStatus.FAILED, error=str(result)))
-            elif isinstance(result, BatchProcessingItem):
+                results.append(BatchTextProcessingItem(request_index=i, status=BatchTextProcessingStatus.FAILED, error=str(result)))
+            elif isinstance(result, BatchTextProcessingItem):
                 results.append(result)
             else:
                 logger.error(f"Batch item {i} (batch_id: {batch_id}) returned unexpected type: {type(result)}")
-                results.append(BatchProcessingItem(request_index=i, status=ProcessingStatus.FAILED, error="Unexpected result type"))
+                results.append(BatchTextProcessingItem(request_index=i, status=BatchTextProcessingStatus.FAILED, error="Unexpected result type"))
 
-        completed_count = sum(1 for r in results if r.status == ProcessingStatus.COMPLETED)
+        completed_count = sum(1 for r in results if r.status == BatchTextProcessingStatus.COMPLETED)
         failed_count = total_requests - completed_count
         total_time = time.time() - start_time
 

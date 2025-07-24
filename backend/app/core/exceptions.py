@@ -10,6 +10,8 @@ Exception Hierarchy:
 Exception
 ├── ApplicationError (Base for all application-specific errors)
 │   ├── ValidationError (Input validation failures)
+│   ├── AuthenticationError (Authentication failures - missing/invalid credentials)
+│   ├── AuthorizationError (Authorization failures - insufficient permissions)
 │   ├── ConfigurationError (Configuration-related errors)
 │   └── BusinessLogicError (Domain/business rule violations)
 └── InfrastructureError (Base for infrastructure-related errors)
@@ -110,6 +112,32 @@ class BusinessLogicError(ApplicationError):
     
     Use this for domain-specific errors that represent violations of
     business rules rather than technical failures.
+    """
+    pass
+
+
+class AuthenticationError(ApplicationError):
+    """
+    Raised when authentication fails.
+    
+    Use this when a user fails to provide valid credentials, such as:
+    - Missing API key
+    - Invalid API key
+    - Malformed authentication headers
+    - Expired tokens
+    """
+    pass
+
+
+class AuthorizationError(ApplicationError):
+    """
+    Raised when authorization fails.
+    
+    Use this when an authenticated user lacks permission for a resource:
+    - Insufficient privileges for an endpoint
+    - Access denied to specific resources
+    - Role-based access control violations
+    - Resource ownership violations
     """
     pass
 
@@ -259,6 +287,10 @@ def get_http_status_for_exception(exc: Exception) -> int:
     """
     if isinstance(exc, ValidationError):
         return 400  # Bad Request
+    elif isinstance(exc, AuthenticationError):
+        return 401  # Unauthorized
+    elif isinstance(exc, AuthorizationError):
+        return 403  # Forbidden
     elif isinstance(exc, ConfigurationError):
         return 500  # Internal Server Error
     elif isinstance(exc, BusinessLogicError):
@@ -292,6 +324,8 @@ __all__ = [
     # Base exceptions
     "ApplicationError",
     "ValidationError", 
+    "AuthenticationError",
+    "AuthorizationError",
     "ConfigurationError",
     "BusinessLogicError",
     "InfrastructureError",

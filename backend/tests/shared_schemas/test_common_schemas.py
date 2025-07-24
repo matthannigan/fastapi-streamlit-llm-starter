@@ -6,9 +6,12 @@ import pytest
 from datetime import datetime
 from pydantic import ValidationError
 
-from shared.models import (
-    ErrorResponse,
-    HealthResponse
+from app.schemas.health import (
+    HealthResponse,
+)
+
+from app.schemas import (
+    ErrorResponse
 )
 
 class TestErrorResponse:

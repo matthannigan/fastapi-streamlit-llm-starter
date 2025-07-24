@@ -342,7 +342,7 @@ fastapi-streamlit-llm-starter/
 
 1. **Update Shared Models** (`shared/models.py`):
 ```python
-class ProcessingOperation(str, Enum):
+class TextProcessingOperation(str, Enum):
     SUMMARIZE = "summarize"
     # Add your new operation
     TRANSLATE = "translate"
@@ -612,12 +612,12 @@ make dev
 ### Basic Text Processing
 
 ```python
-from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.models import TextProcessingRequest, TextProcessingOperation
 
 # Create request
 request = TextProcessingRequest(
     text="Artificial intelligence is transforming industries...",
-    operation=ProcessingOperation.SUMMARIZE,
+    operation=TextProcessingOperation.SUMMARIZE,
     options={"max_length": 100}
 )
 

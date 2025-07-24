@@ -11,7 +11,7 @@ dependencies.
 from fastapi import APIRouter
 import logging
 
-from shared.models import (
+from app.schemas.health import (
     HealthResponse,
 )
 

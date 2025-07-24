@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 
 from app.utils.api_client import APIClient, run_async
-from shared.models import ProcessingOperation
+from shared.models import TextProcessingOperation
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ class TestAPIClient:
             
             result = await api_client.process_text(sample_request)
             assert result is not None
-            assert result.operation == ProcessingOperation.SUMMARIZE
+            assert result.operation == TextProcessingOperation.SUMMARIZE
             assert result.success is True
     
     @pytest.mark.asyncio

@@ -129,9 +129,10 @@ License: MIT
 import os
 import logging
 from typing import Optional, Dict, Any
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
+from app.core.exceptions import AuthenticationError
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +276,7 @@ async def verify_api_key(
         The verified API key
         
     Raises:
-        HTTPException: If authentication fails
+        AuthenticationError: If authentication fails (missing or invalid API key)
     """
     # Check if we're in test mode
     if os.getenv("PYTEST_CURRENT_TEST"):  # pytest sets this automatically
@@ -293,19 +294,21 @@ async def verify_api_key(
     
     # Check if credentials are provided
     if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required. Please provide a valid API key in the Authorization header.",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            "API key required. Please provide a valid API key in the Authorization header.",
+            context={"auth_method": "bearer_token", "credentials_provided": False}
         )
     
     # Verify the API key
     if not api_key_auth.verify_api_key(credentials.credentials):
         logger.warning(f"Invalid API key attempted: {credentials.credentials[:8]}...")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            "Invalid API key",
+            context={
+                "auth_method": "bearer_token", 
+                "key_prefix": credentials.credentials[:8],
+                "credentials_provided": True
+            }
         )
     
     logger.debug("API key authentication successful")

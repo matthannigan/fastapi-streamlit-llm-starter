@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 import logging
 
 from app.infrastructure.security import verify_api_key
+from app.schemas import ErrorResponse
 
 # Create a router for auth endpoints
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -12,7 +13,10 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 logger = logging.getLogger(__name__)
 
 
-@auth_router.get("/status")
+@auth_router.get("/status",
+                 responses={
+                     401: {"model": ErrorResponse, "description": "Authentication Error"},
+                 })
 async def auth_status(api_key: str = Depends(verify_api_key)):
     """Verify authentication status and return API key validation information.
     
@@ -41,10 +45,10 @@ async def auth_status(api_key: str = Depends(verify_api_key)):
               authentication
     
     Raises:
-        HTTPException: Authentication failures raise HTTP exceptions:
-            - 401 Unauthorized: No API key provided in request headers
-            - 401 Unauthorized: Invalid or malformed API key provided
-            - 401 Unauthorized: API key format is incorrect or unrecognized
+        AuthenticationError: Authentication failures raise authentication errors:
+            - Missing API key: No API key provided in request headers
+            - Invalid API key: API key is malformed or unrecognized
+            - Authentication failure: API key format is incorrect
     
     Example:
         >>> # GET /auth/status

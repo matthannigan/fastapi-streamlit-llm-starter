@@ -6,7 +6,7 @@ import json
 import re
 from typing import Dict, Any, Optional
 
-from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.models import TextProcessingRequest, TextProcessingOperation
 from shared.sample_data import (
     get_sample_text,
     get_all_sample_texts
@@ -290,7 +290,7 @@ def main():
             # Create request
             request = TextProcessingRequest(
                 text=text_content,
-                operation=ProcessingOperation(selected_operation),
+                operation=TextProcessingOperation(selected_operation),
                 question=question,
                 options=options
             )

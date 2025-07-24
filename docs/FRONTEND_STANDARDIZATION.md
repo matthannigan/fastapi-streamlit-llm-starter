@@ -17,14 +17,14 @@ The frontend application (`frontend/app/app.py`) was not leveraging the standard
 
 **Before:**
 ```python
-from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.models import TextProcessingRequest, TextProcessingOperation
 from app.utils.api_client import api_client, run_async
 from app.core.config import settings
 ```
 
 **After:**
 ```python
-from shared.models import TextProcessingRequest, ProcessingOperation
+from shared.models import TextProcessingRequest, TextProcessingOperation
 from shared.sample_data import (
     STANDARD_SAMPLE_TEXTS,
     get_sample_text,

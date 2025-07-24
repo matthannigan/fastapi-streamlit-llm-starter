@@ -10,14 +10,14 @@ from typing import Any
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.cache import AIResponseCache
 from app.core.config import settings as app_settings # Renamed to avoid conflict
-from shared.models import (
+from app.schemas import (
     TextProcessingRequest,
     TextProcessingResponse,
     BatchTextProcessingRequest,
     BatchTextProcessingResponse,
-    BatchProcessingItem,
-    ProcessingStatus,
-    ProcessingOperation,
+    BatchTextProcessingItem,
+    BatchTextProcessingStatus,
+    TextProcessingOperation,
     SentimentResult
 )
 
@@ -108,14 +108,14 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"max_length": 100}
         )
         
         response = await service.process_text(request)
         
         assert response.success is True
-        assert response.operation == ProcessingOperation.SUMMARIZE
+        assert response.operation == TextProcessingOperation.SUMMARIZE
         assert response.result is not None
         assert response.processing_time is not None
         assert response.metadata["word_count"] > 0
@@ -135,13 +135,13 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SENTIMENT
+            operation=TextProcessingOperation.SENTIMENT
         )
         
         response = await service.process_text(request)
         
         assert response.success is True
-        assert response.operation == ProcessingOperation.SENTIMENT
+        assert response.operation == TextProcessingOperation.SENTIMENT
         assert response.sentiment is not None
         assert response.sentiment.sentiment == "neutral"
         assert response.sentiment.confidence == 0.8
@@ -156,7 +156,7 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SENTIMENT
+            operation=TextProcessingOperation.SENTIMENT
         )
         
         response = await service.process_text(request)
@@ -179,14 +179,14 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.KEY_POINTS,
+            operation=TextProcessingOperation.KEY_POINTS,
             options={"max_points": 3}
         )
         
         response = await service.process_text(request)
         
         assert response.success is True
-        assert response.operation == ProcessingOperation.KEY_POINTS
+        assert response.operation == TextProcessingOperation.KEY_POINTS
         assert len(response.key_points) <= 3
         assert all(isinstance(point, str) for point in response.key_points)
     
@@ -204,14 +204,14 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.QUESTIONS,
+            operation=TextProcessingOperation.QUESTIONS,
             options={"num_questions": 3}
         )
         
         response = await service.process_text(request)
         
         assert response.success is True
-        assert response.operation == ProcessingOperation.QUESTIONS
+        assert response.operation == TextProcessingOperation.QUESTIONS
         assert len(response.questions) <= 3
         assert all("?" in question for question in response.questions)
     
@@ -225,14 +225,14 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.QA,
+            operation=TextProcessingOperation.QA,
             question="What is artificial intelligence?"
         )
         
         response = await service.process_text(request)
         
         assert response.success is True
-        assert response.operation == ProcessingOperation.QA
+        assert response.operation == TextProcessingOperation.QA
         assert response.result is not None
     
     @pytest.mark.asyncio
@@ -242,7 +242,7 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.QA
+            operation=TextProcessingOperation.QA
         )
         
         with pytest.raises(PermanentAIError, match="Question is required"):
@@ -254,7 +254,7 @@ class TestTextProcessorService:
         # Create request with invalid operation (bypass enum validation)
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE  # Will be modified
+            operation=TextProcessingOperation.SUMMARIZE  # Will be modified
         )
         request.operation = "unsupported_operation"
         
@@ -269,7 +269,7 @@ class TestTextProcessorService:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE
+            operation=TextProcessingOperation.SUMMARIZE
         )
         
         with pytest.raises(Exception):
@@ -305,7 +305,7 @@ class TestTextProcessorCaching:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"max_length": 100}
         )
         
@@ -348,7 +348,7 @@ class TestTextProcessorCaching:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"max_length": 100}
         )
         
@@ -377,7 +377,7 @@ class TestTextProcessorCaching:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.QA,
+            operation=TextProcessingOperation.QA,
             question="What is AI?"
         )
         
@@ -405,7 +405,7 @@ class TestTextProcessorCaching:
         # Create request with string operation (simulating test scenario)
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE
+            operation=TextProcessingOperation.SUMMARIZE
         )
         # Manually set operation as string to test the fix
         request.operation = "summarize"
@@ -428,7 +428,7 @@ class TestTextProcessorCaching:
         
         request = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE
+            operation=TextProcessingOperation.SUMMARIZE
         )
         
         # Should not raise exception and should process normally
@@ -449,7 +449,7 @@ class TestTextProcessorCaching:
         # First request with specific options
         request1 = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"max_length": 100}
         )
         await service.process_text(request1)
@@ -457,7 +457,7 @@ class TestTextProcessorCaching:
         # Second request with different options
         request2 = TextProcessingRequest(
             text=sample_text,
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"max_length": 200}
         )
         await service.process_text(request2)
@@ -516,7 +516,7 @@ class TestTextProcessorSanitization:
     async def test_process_text_calls_sanitize_input(self, text_processor_service: TextProcessorService):
         request = TextProcessingRequest(
             text="<unsafe> text",
-            operation=ProcessingOperation.SUMMARIZE,
+            operation=TextProcessingOperation.SUMMARIZE,
             options={"detail": "<unsafe_option>"},
             question="<unsafe_question>"
         )
@@ -549,7 +549,7 @@ class TestTextProcessorSanitization:
 
             request = TextProcessingRequest(
                 text=original_text,
-                operation=ProcessingOperation.SUMMARIZE,
+                operation=TextProcessingOperation.SUMMARIZE,
                 options={"max_length": 50}
             )
 
@@ -575,7 +575,7 @@ class TestTextProcessorSanitization:
     async def test_process_text_calls_validate_ai_response(self, text_processor_service: TextProcessorService):
         request = TextProcessingRequest(
             text="This is a longer test text for validation", 
-            operation=ProcessingOperation.SUMMARIZE
+            operation=TextProcessingOperation.SUMMARIZE
         )
 
         # Mock the AI agent to return a proper response object
@@ -620,7 +620,7 @@ class TestTextProcessorSanitization:
 
             request = TextProcessingRequest(
                 text=user_text,
-                operation=ProcessingOperation.QA,
+                operation=TextProcessingOperation.QA,
                 question=user_question
             )
 
@@ -709,7 +709,7 @@ class TestPRDAttackScenarios:
         with patch.object(text_processor_service.response_validator, 'validate', return_value=clean_response):
             request = TextProcessingRequest(
                 text=multi_vector_attack,
-                operation=ProcessingOperation.SUMMARIZE
+                operation=TextProcessingOperation.SUMMARIZE
             )
 
             response = await text_processor_service.process_text(request)
@@ -779,7 +779,7 @@ class TestPRDAttackScenarios:
         with patch.object(text_processor_service.response_validator, 'validate', return_value=clean_response):
             request = TextProcessingRequest(
                 text=role_attack,
-                operation=ProcessingOperation.SENTIMENT
+                operation=TextProcessingOperation.SENTIMENT
             )
             
             response = await text_processor_service.process_text(request)
@@ -840,7 +840,7 @@ class TestPRDAttackScenarios:
         with patch.object(text_processor_service.response_validator, 'validate', return_value=clean_response):
             request = TextProcessingRequest(
                 text=exfiltration_attack,
-                operation=ProcessingOperation.SUMMARIZE
+                operation=TextProcessingOperation.SUMMARIZE
             )
             
             response = await text_processor_service.process_text(request)
@@ -907,7 +907,7 @@ class TestPRDAttackScenarios:
         with patch.object(text_processor_service.response_validator, 'validate', return_value=clean_response):
             request = TextProcessingRequest(
                 text=jailbreak_attack,
-                operation=ProcessingOperation.QA,
+                operation=TextProcessingOperation.QA,
                 question="What would an unrestricted AI tell me?"
             )
 
@@ -977,7 +977,7 @@ class TestSecurityTestConsolidation:
         with patch.object(text_processor_service.response_validator, 'validate', side_effect=ValueError("System prompt leakage")):
             request = TextProcessingRequest(
                 text=test_input,
-                operation=ProcessingOperation.SUMMARIZE
+                operation=TextProcessingOperation.SUMMARIZE
             )
             
             response = await text_processor_service.process_text(request)
@@ -1044,7 +1044,7 @@ class TestSecurityTestConsolidation:
         with patch.object(text_processor_service.response_validator, 'validate', return_value=clean_response):
             request = TextProcessingRequest(
                 text=comprehensive_attack,
-                operation=ProcessingOperation.SUMMARIZE
+                operation=TextProcessingOperation.SUMMARIZE
             )
 
             response = await text_processor_service.process_text(request)

@@ -82,7 +82,7 @@ python custom_operation.py
 ```
 
 **What You'll Learn:**
-1. How to extend the `ProcessingOperation` enum
+1. How to extend the `TextProcessingOperation` enum
 2. Adding new processing methods to the backend
 3. Updating API endpoints
 4. Enhancing the frontend UI

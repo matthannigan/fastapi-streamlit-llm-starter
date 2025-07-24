@@ -18,6 +18,8 @@ from .exceptions import (
     # Base exceptions
     ApplicationError,
     ValidationError,
+    AuthenticationError,
+    AuthorizationError,
     ConfigurationError,
     BusinessLogicError,
     InfrastructureError,

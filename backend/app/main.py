@@ -251,6 +251,51 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down FastAPI application")
 
 
+def custom_openapi_schema(app: FastAPI):
+    """Generate custom OpenAPI schema without default validation error schemas."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    # Generate the default schema
+    from fastapi.openapi.utils import get_openapi
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags,
+    )
+    
+    # Remove unwanted schemas from components
+    if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
+        schemas_to_remove = [
+            "HTTPValidationError",
+            "ValidationError", 
+            "ValidationErrorElement",
+            "ErrorDetails"  # Sometimes FastAPI generates this
+        ]
+        
+        # Find any other validation-related schemas
+        all_schemas = list(openapi_schema["components"]["schemas"].keys())
+        for schema_name in all_schemas:
+            if "validation" in schema_name.lower() or "http" in schema_name.lower():
+                if schema_name not in ["ErrorResponse"]:  # Keep our custom error response
+                    schemas_to_remove.append(schema_name)
+        
+        # Remove the schemas
+        removed_count = 0
+        for schema_name in schemas_to_remove:
+            if openapi_schema["components"]["schemas"].pop(schema_name, None) is not None:
+                removed_count += 1
+        
+        # Log what was removed (only in debug mode)
+        if settings.debug and removed_count > 0:
+            logger.info(f"Removed {removed_count} default validation schemas from OpenAPI spec")
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
 def create_public_app() -> FastAPI:
     """Create the public-facing FastAPI application.
     
@@ -345,6 +390,9 @@ def create_public_app() -> FastAPI:
     public_app.include_router(health_router)
     public_app.include_router(auth_router)
     public_app.include_router(text_processing_router)
+    
+    # Apply custom OpenAPI schema generation
+    public_app.openapi = lambda: custom_openapi_schema(public_app)
     
     return public_app
 
@@ -452,6 +500,9 @@ def create_internal_app() -> FastAPI:
     internal_app.include_router(resilience_config_validation_router)
     internal_app.include_router(resilience_monitoring_router)
     internal_app.include_router(resilience_performance_router)
+    
+    # Apply custom OpenAPI schema generation
+    internal_app.openapi = lambda: custom_openapi_schema(internal_app)
     
     return internal_app
 

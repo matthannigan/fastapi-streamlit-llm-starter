@@ -23,10 +23,10 @@ from shared.sample_data import get_sample_text, get_medium_text
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# This example shows how to extend the existing ProcessingOperation enum
+# This example shows how to extend the existing TextProcessingOperation enum
 # In practice, you would modify the actual files as shown below
 
-class ExtendedProcessingOperation(str, Enum):
+class ExtendedTextProcessingOperation(str, Enum):
     """Extended processing operations including custom ones."""
     # Existing operations
     SUMMARIZE = "summarize"
@@ -61,11 +61,11 @@ def show_file_modifications():
     print("=" * 80)
     
     # Step 1: Modify shared models
-    print_step(1, "Extend ProcessingOperation Enum in shared/models.py")
+    print_step(1, "Extend TextProcessingOperation Enum in shared/models.py")
     
     models_code = '''
 # Add new operations to the existing enum
-class ProcessingOperation(str, Enum):
+class TextProcessingOperation(str, Enum):
     """Available text processing operations."""
     SUMMARIZE = "summarize"
     SENTIMENT = "sentiment"
@@ -88,7 +88,7 @@ class TextProcessingRequest(BaseModel):
     def validate_translation_options(cls, v, info):
         """Validate translation-specific options."""
         operation = info.data.get('operation')
-        if operation == ProcessingOperation.TRANSLATE:
+        if operation == TextProcessingOperation.TRANSLATE:
             if not v.get('target_language'):
                 raise ValueError('target_language is required for translation')
         return v
@@ -213,20 +213,20 @@ class TextProcessor:
             # ... existing operation handling ...
             
             # Add new custom operations
-            elif request.operation == ProcessingOperation.TRANSLATE:
+            elif request.operation == TextProcessingOperation.TRANSLATE:
                 result = await self._translate_text(request.text, request.options)
                 
-            elif request.operation == ProcessingOperation.CLASSIFY:
+            elif request.operation == TextProcessingOperation.CLASSIFY:
                 classification = await self._classify_text(request.text, request.options)
                 result = classification.get("category", "Unknown")
                 metadata.update(classification)
                 
-            elif request.operation == ProcessingOperation.EXTRACT_ENTITIES:
+            elif request.operation == TextProcessingOperation.EXTRACT_ENTITIES:
                 entities = await self._extract_entities(request.text, request.options)
                 result = f"Found {len(entities)} entities"
                 metadata["entities"] = entities
                 
-            elif request.operation == ProcessingOperation.READABILITY:
+            elif request.operation == TextProcessingOperation.READABILITY:
                 readability = await self._analyze_readability(request.text, request.options)
                 result = f"Reading level: {readability.get('reading_level', 'Unknown')}"
                 metadata.update(readability)

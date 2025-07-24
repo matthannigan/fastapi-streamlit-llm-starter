@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.services.text_processor import text_processor
 from shared.models import (
-    ProcessingOperation,
+    TextProcessingOperation,
     TextProcessingRequest,
     TextProcessingResponse,
     ErrorResponse

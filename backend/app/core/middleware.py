@@ -127,6 +127,8 @@ from app.core.config import Settings
 from app.core.exceptions import (
     ApplicationError,
     ValidationError,
+    AuthenticationError,
+    AuthorizationError,
     ConfigurationError,
     BusinessLogicError,
     InfrastructureError,
@@ -135,7 +137,8 @@ from app.core.exceptions import (
     PermanentAIError,
     get_http_status_for_exception
 )
-from shared.models import ErrorResponse
+from fastapi.exceptions import RequestValidationError
+from app.schemas.common import ErrorResponse
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -267,6 +270,60 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         any exception not handled by more specific exception handlers. It ensures
         the application never returns unhandled exceptions to clients.
     """
+    
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        """
+        Handle FastAPI request validation errors with consistent formatting.
+        
+        This handler catches Pydantic validation errors that occur during request
+        parsing and converts them to the standardized ErrorResponse format. This
+        ensures all validation errors (both automatic and custom) follow the same
+        response structure.
+        
+        Args:
+            request (Request): The FastAPI request object that failed validation
+            exc (RequestValidationError): The Pydantic validation error
+        
+        Returns:
+            JSONResponse: Standardized error response with validation details
+        """
+        # Get request ID for correlation (if available)
+        request_id = getattr(request.state, 'request_id', request_id_context.get('unknown'))
+        
+        # Extract validation error details
+        error_details = []
+        for error in exc.errors():
+            field_name = " -> ".join(str(loc) for loc in error["loc"])
+            error_details.append(f"{field_name}: {error['msg']}")
+        
+        error_message = "Invalid request data"
+        if error_details:
+            # Include first error for user feedback, log all details
+            error_message = f"Invalid request data: {error_details[0]}"
+        
+        # Log the validation error with context
+        logger.warning(
+            f"Request validation error in request {request_id}: {'; '.join(error_details)}",
+            extra={
+                'request_id': request_id,
+                'method': request.method,
+                'url': str(request.url),
+                'validation_errors': exc.errors()
+            }
+        )
+        
+        # Create standardized error response
+        error_response = ErrorResponse(
+            error=error_message,
+            error_code="VALIDATION_ERROR"
+        )
+        
+        return JSONResponse(
+            status_code=422,  # Unprocessable Entity (standard for validation errors)
+            content=error_response.dict()
+        )
+    
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """
@@ -312,6 +369,12 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         if isinstance(exc, (ValidationError, BusinessLogicError)):
             error_response.error = "Invalid request data"
             error_response.error_code = "VALIDATION_ERROR"
+        elif isinstance(exc, AuthenticationError):
+            error_response.error = "Authentication failed"
+            error_response.error_code = "AUTHENTICATION_ERROR"
+        elif isinstance(exc, AuthorizationError):
+            error_response.error = "Access denied"
+            error_response.error_code = "AUTHORIZATION_ERROR"
         elif isinstance(exc, ConfigurationError):
             error_response.error = "Service configuration error"
             error_response.error_code = "CONFIGURATION_ERROR"

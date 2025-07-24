@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.cache import AIResponseCache, CachePerformanceMonitor
-from shared.models import TextProcessingRequest, ProcessingOperation
+from app.schemas import TextProcessingRequest, TextProcessingOperation
 
 # Test API key for authentication
 TEST_API_KEY = "test-api-key-12345"
@@ -93,7 +93,7 @@ def sample_request(sample_text):
     """Sample request for testing."""
     return TextProcessingRequest(
         text=sample_text,
-        operation=ProcessingOperation.SUMMARIZE,
+        operation=TextProcessingOperation.SUMMARIZE,
         options={"max_length": 100},
         question=None  # Explicitly set to fix linter warning
     )
@@ -110,7 +110,7 @@ def mock_processor():
     
     # Configure default return values for process_text method
     async def mock_process_text(request):
-        from shared.models import TextProcessingResponse, SentimentResult
+        from app.schemas import TextProcessingResponse, SentimentResult
         
         response = TextProcessingResponse(
             operation=request.operation,
