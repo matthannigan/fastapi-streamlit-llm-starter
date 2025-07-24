@@ -6,9 +6,17 @@ TODO: Split this file into fixtures.py and mocks.py
 
 import pytest
 import asyncio
+import sys
+import os
+from pathlib import Path
 from unittest.mock import AsyncMock, patch, Mock
 from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
+
+# Add the backend directory to Python path so we can import the app module
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from app.main import app
 from app.services.text_processor import TextProcessorService
