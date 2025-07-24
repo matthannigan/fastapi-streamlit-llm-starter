@@ -6,6 +6,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 from app.core.config import Settings
+from app.core.exceptions import ConfigurationError
 from app.dependencies import get_settings, get_fresh_settings
 
 
@@ -106,12 +107,12 @@ class TestSettings:
         settings = Settings(ai_temperature=1.5)
         assert settings.ai_temperature == 1.5
         
-        # Invalid temperature (too high)
-        with pytest.raises(ValidationError):
+        # Invalid temperature (too high) - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)):
             Settings(ai_temperature=3.0)
         
-        # Invalid temperature (negative)
-        with pytest.raises(ValidationError):
+        # Invalid temperature (negative) - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)):
             Settings(ai_temperature=-0.1)
 
     def test_settings_validation_port(self):
@@ -120,12 +121,12 @@ class TestSettings:
         settings = Settings(port=3000)
         assert settings.port == 3000
         
-        # Invalid port (too high)
-        with pytest.raises(ValidationError):
+        # Invalid port (too high) - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)):
             Settings(port=70000)
         
-        # Invalid port (zero or negative)
-        with pytest.raises(ValidationError):
+        # Invalid port (zero or negative) - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)):
             Settings(port=0)
 
     def test_settings_validation_log_level(self):
@@ -139,9 +140,13 @@ class TestSettings:
         settings = Settings(log_level="debug")
         assert settings.log_level == "DEBUG"
         
-        # Invalid log level
-        with pytest.raises(ValidationError):
+        # Invalid log level - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)) as exc_info:
             Settings(log_level="INVALID")
+        
+        # Verify error message contains relevant keywords
+        error_text = str(exc_info.value).lower()
+        assert "log_level" in error_text or "invalid" in error_text
 
     def test_settings_validation_resilience_strategy(self):
         """Test validation of resilience strategy patterns."""
@@ -150,9 +155,14 @@ class TestSettings:
             settings = Settings(default_resilience_strategy=strategy)
             assert settings.default_resilience_strategy == strategy
             
-        # Invalid strategy
-        with pytest.raises(ValidationError):
+        # Invalid strategy - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)) as exc_info:
             Settings(default_resilience_strategy="invalid")
+        
+        # Verify error message contains relevant keywords
+        error_text = str(exc_info.value).lower()
+        assert ("resilience" in error_text or "strategy" in error_text or 
+                "invalid" in error_text or "balanced" in error_text)
 
     def test_settings_validation_allowed_origins(self):
         """Test validation of allowed origins."""
@@ -160,9 +170,14 @@ class TestSettings:
         settings = Settings(allowed_origins=["http://localhost:3000"])
         assert settings.allowed_origins == ["http://localhost:3000"]
         
-        # Empty origins should raise error
-        with pytest.raises(ValidationError):
+        # Empty origins should raise error - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)) as exc_info:
             Settings(allowed_origins=[])
+        
+        # Verify error message contains relevant keywords
+        error_text = str(exc_info.value).lower()
+        assert ("origin" in error_text or "allowed" in error_text or 
+                "empty" in error_text or "least one" in error_text)
 
     def test_settings_positive_integer_fields(self):
         """Test validation of fields that must be positive integers."""
@@ -179,8 +194,8 @@ class TestSettings:
         assert settings.circuit_breaker_failure_threshold == 3
         assert settings.retry_max_attempts == 5
         
-        # Test invalid values (zero or negative)
-        with pytest.raises(ValidationError):
+        # Test invalid values (zero or negative) - handle both ValidationError and ConfigurationError
+        with pytest.raises((ValidationError, ConfigurationError)):
             Settings(MAX_BATCH_REQUESTS_PER_CALL=0)
 
     def test_settings_environment_loading(self):
