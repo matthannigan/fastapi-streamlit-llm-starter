@@ -59,6 +59,8 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
+from app.core.exceptions import ConfigurationError
+
 # Load .env from project root
 project_root = Path(__file__).parent.parent.parent.parent
 load_dotenv(project_root / ".env")
@@ -355,7 +357,15 @@ class Settings(BaseSettings):
         """Validate log level is one of the allowed values."""
         allowed_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if v.upper() not in allowed_levels:
-            raise ValueError(f"log_level must be one of: {', '.join(allowed_levels)}")
+            raise ConfigurationError(
+                f"Invalid log_level: must be one of {', '.join(allowed_levels)}",
+                context={
+                    "field": "log_level",
+                    "provided_value": v,
+                    "allowed_values": list(allowed_levels),
+                    "validation_context": "pydantic_field_validator"
+                }
+            )
         return v.upper()
 
     @field_validator('allowed_origins')
@@ -363,7 +373,15 @@ class Settings(BaseSettings):
     def validate_origins(cls, v: List[str]) -> List[str]:
         """Validate CORS origins format."""
         if not v:
-            raise ValueError("At least one allowed origin must be specified")
+            raise ConfigurationError(
+                "At least one allowed origin must be specified",
+                context={
+                    "field": "allowed_origins",
+                    "provided_value": v,
+                    "validation_context": "pydantic_field_validator",
+                    "requirement": "minimum_one_origin"
+                }
+            )
         return v
 
     @field_validator('resilience_preset')
@@ -372,7 +390,15 @@ class Settings(BaseSettings):
         """Validate resilience preset name."""
         allowed_presets = {"simple", "development", "production"}
         if v not in allowed_presets:
-            raise ValueError(f"Invalid resilience_preset '{v}'. Allowed values: {', '.join(allowed_presets)}")
+            raise ConfigurationError(
+                f"Invalid resilience_preset '{v}': must be one of {', '.join(allowed_presets)}",
+                context={
+                    "field": "resilience_preset",
+                    "provided_value": v,
+                    "allowed_values": list(allowed_presets),
+                    "validation_context": "pydantic_field_validator"
+                }
+            )
         return v
 
     @field_validator('default_resilience_strategy', 'summarize_resilience_strategy', 'sentiment_resilience_strategy', 
@@ -420,7 +446,16 @@ class Settings(BaseSettings):
                 return default_value
             else:
                 # Value was passed directly - strict validation
-                raise ValueError(f"Invalid resilience strategy '{v}'. Allowed values: {', '.join(allowed_strategies)}")
+                raise ConfigurationError(
+                    f"Invalid resilience strategy '{v}': must be one of {', '.join(allowed_strategies)}",
+                    context={
+                        "field": info.field_name,
+                        "provided_value": v,
+                        "allowed_values": list(allowed_strategies),
+                        "validation_context": "pydantic_field_validator",
+                        "validation_mode": "strict"
+                    }
+                )
         return v
 
     @field_validator('circuit_breaker_failure_threshold', 'circuit_breaker_recovery_timeout', 'retry_max_attempts', 'retry_max_delay', mode='before')
@@ -440,7 +475,16 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             # Empty strings should always fail validation
             if v.strip() == "":
-                raise ValueError(f"Invalid empty value for {info.field_name}. Must be a positive integer.")
+                raise ConfigurationError(
+                    f"Invalid empty value for {info.field_name}: must be a positive integer",
+                    context={
+                        "field": info.field_name,
+                        "provided_value": v,
+                        "expected_type": "positive_integer",
+                        "validation_context": "pydantic_field_validator",
+                        "error_type": "empty_string"
+                    }
+                )
             
             try:
                 v = int(v)
@@ -456,7 +500,17 @@ class Settings(BaseSettings):
                     return default_value
                 else:
                     # Strict validation in normal mode
-                    raise ValueError(f"Invalid value for {info.field_name}: '{v}'. Must be a positive integer.")
+                    raise ConfigurationError(
+                        f"Invalid value for {info.field_name}: '{v}' must be a positive integer",
+                        context={
+                            "field": info.field_name,
+                            "provided_value": v,
+                            "expected_type": "positive_integer",
+                            "validation_context": "pydantic_field_validator",
+                            "error_type": "invalid_conversion",
+                            "validation_mode": "strict"
+                        }
+                    )
         
         # Handle negative/zero values - be graceful for these
         if isinstance(v, (int, float)) and v <= 0:
