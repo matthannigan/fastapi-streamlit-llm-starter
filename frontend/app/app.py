@@ -1,29 +1,81 @@
 #!/usr/bin/env python3
-"""Main Streamlit application."""
+"""AI Text Processing Frontend Application.
+
+This module provides a Streamlit-based web interface for an AI text processing service.
+It demonstrates best practices for building interactive data applications that connect
+to backend APIs, handle user input validation, and provide real-time feedback.
+
+The application supports multiple text processing operations including:
+- Text summarization with configurable length
+- Sentiment analysis with confidence scoring
+- Key point extraction with customizable count
+- Question generation for educational purposes
+- Question & Answer functionality
+
+Key Features:
+    - Real-time API health monitoring
+    - Operation-specific parameter configuration
+    - Example text library with categorized samples
+    - File upload support for text documents
+    - Results caching and download functionality
+    - Responsive UI with progress indicators
+    - Error handling and user feedback
+
+Architecture:
+    The application follows a modular design pattern with clear separation of concerns:
+    - UI rendering functions for each component
+    - API communication through a dedicated client
+    - Centralized configuration management
+    - Standardized sample data from shared module
+
+Example:
+    Run the application with:
+        streamlit run app.py
+        
+    Or via Docker:
+        docker-compose up frontend
+
+Dependencies:
+    - streamlit: Web application framework
+    - shared: Custom module containing data models and sample texts
+    - utils.api_client: Backend API communication layer
+    - config: Application configuration settings
+
+Author: AI Text Processing Team
+Version: 1.0.0
+"""
 
 import streamlit as st
 import json
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from shared.models import TextProcessingRequest, TextProcessingOperation
 from shared.sample_data import (
     get_sample_text,
-    get_all_sample_texts
+    get_all_sample_texts,
+    get_example_options,
+    get_recommended_examples
 )
-from app.utils.api_client import api_client, run_async
-from app.core.config import settings
+from utils.api_client import api_client, run_async
+from config import settings
 
-# Configure Streamlit page
+# Configure Streamlit page with professional defaults
 st.set_page_config(
     page_title=settings.page_title,
     page_icon=settings.page_icon,
-    layout=settings.layout,
+    layout=settings.layout if settings.layout in ("centered", "wide") else "wide",
     initial_sidebar_state="expanded"
 )
 
-def display_header():
-    """Display the application header."""
+
+def display_header() -> None:
+    """Display the main application header with title and description.
+    
+    Creates a professional header section with the application title,
+    description, and visual separator. This provides users with immediate
+    context about the application's purpose and capabilities.
+    """
     st.title("🤖 AI Text Processor")
     st.markdown(
         "Process text using advanced AI models. Choose from summarization, "
@@ -31,12 +83,25 @@ def display_header():
     )
     st.divider()
 
-def check_api_health():
-    """Check API health and display status."""
+
+def check_api_health() -> bool:
+    """Check the health status of the backend API service.
+    
+    Performs a health check against the backend API and displays the
+    connection status in the sidebar. This provides immediate feedback
+    to users about service availability and helps with troubleshooting.
+    
+    Returns:
+        bool: True if the API is healthy and accessible, False otherwise.
+        
+    Side Effects:
+        - Displays health status in the sidebar
+        - Shows error message if API is unavailable
+    """
     with st.sidebar:
         st.subheader("🔧 System Status")
 
-        # Check API health
+        # Perform async health check with error handling
         is_healthy = run_async(api_client.health_check())
 
         if is_healthy:
@@ -48,25 +113,66 @@ def check_api_health():
 
         return True
 
+
 def get_operation_info() -> Optional[Dict[str, Any]]:
-    """Get operation information from API."""
+    """Retrieve available operations and their configurations from the API.
+    
+    Fetches the list of supported text processing operations from the backend
+    API, including their descriptions and configurable options. This enables
+    dynamic UI generation based on available backend capabilities.
+    
+    Returns:
+        Optional[Dict[str, Any]]: Dictionary mapping operation IDs to their
+        configuration details, or None if the API call fails.
+        
+    Note:
+        The returned dictionary structure:
+        {
+            "operation_id": {
+                "name": "Display Name",
+                "description": "Operation description",
+                "options": ["max_length", "max_points", ...]
+            }
+        }
+    """
     operations = run_async(api_client.get_operations())
     if operations:
         return {op['id']: op for op in operations['operations']}
     return None
 
-def create_sidebar():
-    """Create the sidebar with operation selection."""
+
+def select_operation_sidebar() -> Tuple[Optional[str], Dict[str, Any]]:
+    """Create the sidebar interface for operation selection and configuration.
+    
+    Builds a dynamic sidebar that allows users to:
+    1. Select from available text processing operations
+    2. Configure operation-specific parameters (length, points, questions)
+    3. View operation descriptions and requirements
+    
+    The function dynamically generates configuration controls based on the
+    selected operation's supported options, providing a responsive UI that
+    adapts to backend capabilities.
+    
+    Returns:
+        Tuple[Optional[str], Dict[str, Any]]: A tuple containing:
+            - The selected operation ID (None if no operations available)
+            - A dictionary of configured options for the selected operation
+            
+    Side Effects:
+        - Renders operation selection dropdown in sidebar
+        - Renders parameter controls for selected operation
+        - Updates session state with selected operation
+    """
     with st.sidebar:
         st.subheader("⚙️ Configuration")
 
-        # Get available operations
+        # Fetch and validate available operations
         operations_info = get_operation_info()
         if not operations_info:
             st.error("Failed to load operations")
             return None, {}
 
-        # Operation selection
+        # Create user-friendly operation selection dropdown
         operation_options = {
             op_id: f"{info['name']} - {info['description']}"
             for op_id, info in operations_info.items()
@@ -76,96 +182,273 @@ def create_sidebar():
             "Choose Operation",
             options=list(operation_options.keys()),
             format_func=lambda x: operation_options[x],
-            key="operation_select"
+            key="operation_select",
+            help="Select the type of text processing you want to perform"
         )
 
-        # Operation-specific options
+        # Validate selection
+        if selected_op is None:
+            return None, {}
+
+        # Generate operation-specific configuration controls
         options = {}
         op_info = operations_info[selected_op]
 
+        # Summarization length control
         if "max_length" in op_info.get("options", []):
             options["max_length"] = st.slider(
                 "Summary Length (words)",
                 min_value=50,
                 max_value=500,
                 value=150,
-                step=25
+                step=25,
+                help="Maximum number of words in the generated summary"
             )
 
+        # Key points count control
         if "max_points" in op_info.get("options", []):
             options["max_points"] = st.slider(
                 "Number of Key Points",
                 min_value=3,
                 max_value=10,
-                value=5
+                value=5,
+                help="Maximum number of key points to extract"
             )
 
+        # Questions count control
         if "num_questions" in op_info.get("options", []):
             options["num_questions"] = st.slider(
                 "Number of Questions",
                 min_value=3,
                 max_value=10,
-                value=5
+                value=5,
+                help="Number of questions to generate about the text"
             )
 
         return selected_op, options
 
-def display_text_input() -> tuple[str, Optional[str]]:
-    """Display text input area."""
+
+def make_example_buttons(example_options: Dict[str, str]) -> None:
+    """Create interactive buttons for loading example texts.
+    
+    Generates a grid of buttons allowing users to quickly load predefined
+    example texts. This improves user experience by providing immediate
+    content to test different operations without requiring manual input.
+    
+    Args:
+        example_options: Dictionary mapping text type IDs to their display names.
+        
+    Side Effects:
+        - Creates button grid in the current Streamlit context
+        - Updates session state when example is selected
+        - Triggers page rerun when example is loaded
+        - Displays success/error messages
+    """
+    cols = st.columns(2)
+    for i, (text_type, description) in enumerate(example_options.items()):
+        col = cols[i % 2]
+        with col:
+            if st.button(
+                description, 
+                key=f"example_{text_type}", 
+                use_container_width=True,
+                help=f"Load {text_type.replace('_', ' ').title()} example text"
+            ):
+                try:
+                    example_text = get_sample_text(text_type)
+                    # Normalize whitespace for consistent formatting
+                    st.session_state['text_input'] = normalize_whitespace(example_text)
+                    st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error loading example: {e}")
+
+
+def examples_sidebar() -> None:
+    """Create the sidebar section for example text selection.
+    
+    Builds an intelligent example selection interface that:
+    1. Shows operation-specific recommendations first
+    2. Provides access to all available examples
+    3. Displays preview of currently loaded text
+    4. Identifies which example is currently active
+    
+    The function leverages the shared sample data module to provide
+    consistent examples across the application and offers contextual
+    recommendations based on the selected operation.
+    
+    Side Effects:
+        - Renders example selection interface in sidebar
+        - Updates session state with selected example text
+        - Displays text preview and identification
+    """
+    with st.sidebar:
+        st.subheader("📚 Example Texts")
+        
+        # Load standardized example options
+        example_options = get_example_options()
+
+        # Provide operation-specific recommendations
+        current_operation = st.session_state.get("operation_select")
+        if current_operation:
+            recommended = get_recommended_examples(current_operation)
+            if recommended:
+                st.markdown(f"**Recommended for {current_operation.replace('_', ' ').title()}:**")
+
+                # Display recommended examples with star indicator
+                for text_type in recommended:
+                    if text_type in example_options:
+                        description = example_options[text_type]
+                        if st.button(
+                            f"⭐ {description}", 
+                            key=f"rec_{text_type}", 
+                            use_container_width=True,
+                            help=f"Recommended example for {current_operation}"
+                        ):
+                            try:
+                                example_text = get_sample_text(text_type)
+                                st.session_state['text_input'] = normalize_whitespace(example_text)
+                                st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error loading example: {e}")
+            
+                # Provide access to all examples in expandable section
+                with st.expander("**All Examples:**"):
+                    make_example_buttons(example_options)
+        else:
+            # Show all examples when no operation is selected
+            st.markdown("**Choose from standardized examples:**")
+            make_example_buttons(example_options)
+
+        # Display preview and identification of current text
+        if st.session_state.get('text_input'):
+            current_text = st.session_state['text_input']
+            # Attempt to identify which example is currently loaded
+            for text_type, sample_text in get_all_sample_texts().items():
+                if current_text.strip() == sample_text.strip():
+                    st.info(f"Currently loaded: {text_type.replace('_', ' ').title()}")
+                    st.caption("Preview:")
+                    preview_text = current_text[:200] + "..." if len(current_text) > 200 else current_text
+                    st.text(preview_text)
+                    break
+
+
+def display_text_input() -> Tuple[str, Optional[str]]:
+    """Display and handle text input interface with multiple input methods.
+    
+    Creates a comprehensive text input section that supports:
+    1. Direct text entry via textarea
+    2. File upload for text documents (.txt, .md)
+    3. Character count validation
+    4. File preview functionality
+    5. Question input for Q&A operations
+    
+    The function adapts its interface based on the selected operation,
+    showing additional fields when required (e.g., question field for Q&A).
+    
+    Returns:
+        Tuple[str, Optional[str]]: A tuple containing:
+            - The input text content (empty string if none provided)
+            - The question text for Q&A operations (None for other operations)
+            
+    Side Effects:
+        - Renders text input interface
+        - Displays file upload controls when selected
+        - Shows character count and validation messages
+        - Handles file reading and error reporting
+    """
     st.subheader("📝 Input Text")
 
-    # Text input options
+    # Input method selection
     input_method = st.radio(
         "Input Method",
         ["Type/Paste Text", "Upload File"],
-        horizontal=True
+        horizontal=True,
+        help="Choose how you want to provide the text for processing"
     )
 
     text_content = ""
 
     if input_method == "Type/Paste Text":
+        # Direct text input with validation
         text_content = st.text_area(
             "Enter your text here:",
             height=200,
             max_chars=settings.max_text_length,
             placeholder="Paste or type the text you want to process...",
-            value=st.session_state.get('text_input', '')
+            value=st.session_state.get('text_input', ''),
+            help=f"Maximum {settings.max_text_length} characters allowed"
         )
     else:
+        # File upload handling
         uploaded_file = st.file_uploader(
             "Upload a text file",
             type=['txt', 'md'],
-            help="Upload a .txt or .md file"
+            help="Upload a .txt or .md file (UTF-8 encoded)",
+            accept_multiple_files=False
         )
 
         if uploaded_file is not None:
             try:
+                # Read and decode file content
                 text_content = str(uploaded_file.read(), "utf-8")
-                st.success(f"File uploaded successfully! ({len(text_content)} characters)")
+                file_size = len(text_content)
+                
+                # Validate file size
+                if file_size > settings.max_text_length:
+                    st.error(f"File too large ({file_size} characters). Maximum allowed: {settings.max_text_length}")
+                    text_content = ""
+                else:
+                    st.success(f"File uploaded successfully! ({file_size} characters)")
 
-                # Show preview
-                with st.expander("Preview uploaded text"):
-                    st.text(text_content[:500] + "..." if len(text_content) > 500 else text_content)
+                    # Show expandable preview
+                    with st.expander("Preview uploaded text"):
+                        preview_text = text_content[:500] + "..." if len(text_content) > 500 else text_content
+                        st.text(preview_text)
+                        
+            except UnicodeDecodeError:
+                st.error("Error: File must be UTF-8 encoded text")
+                text_content = ""
             except Exception as e:
                 st.error(f"Error reading file: {e}")
+                text_content = ""
 
-    # Question input for Q&A
+    # Operation-specific additional inputs
     question = None
     if st.session_state.get("operation_select") == "qa":
         question = st.text_input(
             "Enter your question about the text:",
-            placeholder="What is the main topic discussed in this text?"
+            placeholder="What is the main topic discussed in this text?",
+            help="Be specific and clear for best results"
         )
 
     return text_content, question
 
-def normalize_whitespace(text: str) -> str:
-    """Normalize whitespace in text by replacing multiple spaces with single spaces.
 
-    This function is specifically for cleaning up example texts that may have
-    formatting issues with extra spaces, while preserving paragraph structure.
-    """  # noqa: E231,E221
-    # First, remove leading/trailing whitespace from each line
+def normalize_whitespace(text: str) -> str:
+    """Normalize whitespace in text while preserving paragraph structure.
+
+    This function cleans up text formatting by:
+    1. Removing leading/trailing whitespace from each line
+    2. Replacing multiple spaces/tabs with single spaces
+    3. Standardizing paragraph breaks (max 2 consecutive newlines)
+    4. Preserving overall text structure and readability
+    
+    This is particularly useful for example texts that may have formatting
+    inconsistencies from various sources while maintaining readability.
+
+    Args:
+        text: The input text string to normalize.
+        
+    Returns:
+        str: The normalized text with standardized whitespace formatting.
+        
+    Example:
+        >>> normalize_whitespace("Line 1   with   spaces\\n\\n\\n\\nLine 2")
+        "Line 1 with spaces\\n\\nLine 2"
+    """
+    # Remove leading/trailing whitespace from each line
     lines = text.split('\n')
     cleaned_lines = [line.strip() for line in lines]
 
@@ -184,17 +467,39 @@ def normalize_whitespace(text: str) -> str:
     # Remove any leading/trailing whitespace from the entire text
     return normalized.strip()
 
-def display_results(response, operation: str):
-    """Display processing results."""
+
+def display_results(response: Any, operation: str) -> None:
+    """Display comprehensive processing results with operation-specific formatting.
+    
+    Creates a rich results display that adapts to different operation types:
+    - Summary operations: Shows formatted summary text
+    - Sentiment analysis: Displays sentiment with confidence visualization
+    - Key points: Lists points in numbered format
+    - Questions: Shows generated questions in organized list
+    - Q&A: Displays answer with proper formatting
+    
+    The function also provides metadata including processing time, word count,
+    and debug information when enabled.
+    
+    Args:
+        response: The API response object containing processing results.
+        operation: The operation type that was performed.
+        
+    Side Effects:
+        - Renders formatted results section
+        - Displays operation metrics and metadata
+        - Shows debug information if configured
+        - Creates downloadable results
+    """
     st.subheader("📊 Results")
 
-    # Processing info
+    # Display processing metadata in columns
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Operation", operation.replace("_", " ").title())
     with col2:
         if response.processing_time:
-            st.metric("Processing Time", f"{response.processing_time:.2f}s")  # noqa: E231
+            st.metric("Processing Time", f"{response.processing_time:.2f}s")
     with col3:
         word_count = response.metadata.get("word_count", "N/A")
         st.metric("Word Count", word_count)
@@ -210,18 +515,19 @@ def display_results(response, operation: str):
         st.markdown("### 🎭 Sentiment Analysis")
         sentiment = response.sentiment
 
-        # Color code sentiment
-        color = {
+        # Color-coded sentiment display
+        color_map = {
             "positive": "green",
             "negative": "red",
             "neutral": "gray"
-        }.get(sentiment.sentiment, "gray")
+        }
+        color = color_map.get(sentiment.sentiment, "gray")
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown(f"**Sentiment:** : {color}[{sentiment.sentiment.title()}]")  # noqa: E231
+            st.markdown(f"**Sentiment:** :{color}[{sentiment.sentiment.title()}]")
             st.progress(sentiment.confidence)
-            st.caption(f"Confidence: {sentiment.confidence: .2%}")
+            st.caption(f"Confidence: {sentiment.confidence:.2%}")
 
         with col2:
             st.markdown("**Explanation:**")
@@ -241,44 +547,170 @@ def display_results(response, operation: str):
         st.markdown("### 💬 Answer")
         st.write(response.result)
 
-    # Debug information
+    # Optional debug information
     if settings.show_debug_info:
         with st.expander("🔍 Debug Information"):
-            st.json(response.dict())
+            st.json(response.model_dump())
 
-def get_recommended_examples(operation: str) -> list:
-    """Get recommended example texts for specific operations."""
-    recommendations = {
-        "summarize": ["ai_technology", "climate_change", "business_report"],
-        "sentiment": ["positive_review", "negative_review", "business_report"],
-        "key_points": ["business_report", "climate_change", "technical_documentation"],
-        "questions": ["educational_content", "climate_change", "ai_technology"],
-        "qa": ["technical_documentation", "educational_content", "ai_technology"]
-    }
-    return recommendations.get(operation, ["ai_technology", "climate_change"])
 
-def main():
-    """Main application function."""
+def create_processing_request(
+    text_content: str, 
+    selected_operation: str, 
+    question: Optional[str], 
+    options: Dict[str, Any]
+) -> TextProcessingRequest:
+    """Create a validated text processing request object.
+    
+    Constructs a properly formatted TextProcessingRequest using the shared
+    models from the backend. This ensures type safety and validation before
+    sending requests to the API.
+    
+    Args:
+        text_content: The text to be processed.
+        selected_operation: The operation type identifier.
+        question: Optional question for Q&A operations.
+        options: Dictionary of operation-specific configuration options.
+        
+    Returns:
+        TextProcessingRequest: A validated request object ready for API submission.
+        
+    Raises:
+        ValidationError: If the request parameters are invalid.
+    """
+    return TextProcessingRequest(
+        text=text_content,
+        operation=TextProcessingOperation(selected_operation),
+        question=question,
+        options=options
+    )
+
+
+def handle_processing_result(response: Any, selected_operation: str) -> None:
+    """Handle and store successful processing results.
+    
+    Processes the API response and updates the session state to enable
+    result display and download functionality. This function centralizes
+    result handling logic and provides consistent success feedback.
+    
+    Args:
+        response: The successful API response object.
+        selected_operation: The operation that was performed.
+        
+    Side Effects:
+        - Updates session state with response data
+        - Displays success message
+        - Enables result display and download
+    """
+    if response and response.success:
+        # Store results in session state for display and download
+        st.session_state['last_response'] = response
+        st.session_state['last_operation'] = selected_operation
+        st.success("✅ Processing completed!")
+    else:
+        st.error("❌ Processing failed. Please try again.")
+
+
+def display_usage_tips() -> None:
+    """Display helpful usage tips and best practices.
+    
+    Creates an informative sidebar section with practical advice for
+    getting the best results from the text processing operations.
+    This improves user experience by setting proper expectations
+    and providing guidance.
+    
+    Side Effects:
+        - Renders tips section in the current column context
+    """
+    st.subheader("💡 Tips")
+    st.markdown("""
+    **For best results:**
+    - Use clear, well-structured text
+    - Longer texts work better for summarization
+    - Be specific with your questions for Q&A
+    - Try different operations to explore your text
+    - Check the recommended examples for each operation
+    
+    **Text Requirements:**
+    - Minimum 10 characters
+    - Maximum 10,000 characters
+    - UTF-8 encoding for uploaded files
+    """)
+
+
+def handle_results_download() -> None:
+    """Handle results download functionality.
+    
+    Provides users with the ability to download their processing results
+    as a formatted JSON file. This enables result preservation and
+    integration with other tools or workflows.
+    
+    Side Effects:
+        - Creates download button if results are available
+        - Generates JSON file with formatted results
+        - Provides appropriate filename with operation type
+    """
+    if 'last_response' in st.session_state and 'last_operation' in st.session_state:
+        if st.button("📥 Download Results", help="Download results as JSON file"):
+            results_json = json.dumps(
+                st.session_state['last_response'].model_dump(), 
+                indent=2,
+                default=str  # Handle datetime serialization
+            )
+            st.download_button(
+                label="Download as JSON",
+                data=results_json,
+                file_name=f"ai_text_processing_results_{st.session_state['last_operation']}.json",
+                mime="application/json"
+            )
+
+
+def main() -> None:
+    """Main application entry point and orchestration function.
+    
+    Coordinates the entire application flow:
+    1. Displays header and checks API health
+    2. Sets up sidebar with operation selection and examples
+    3. Creates main content area with input and processing
+    4. Handles result display and download functionality
+    5. Manages error states and user feedback
+    
+    This function demonstrates proper Streamlit application structure
+    with clear separation of concerns and comprehensive error handling.
+    
+    Side Effects:
+        - Renders complete application interface
+        - Manages session state
+        - Handles API communication
+        - Provides user feedback and error handling
+    """
+    # Initialize application interface
     display_header()
 
-    # Check API health
+    # Verify backend connectivity
     if not check_api_health():
         st.stop()
 
-    # Create sidebar
-    selected_operation, options = create_sidebar()
+    # Setup operation selection and configuration
+    selected_operation, options = select_operation_sidebar()
     if not selected_operation:
         st.stop()
+    
+    # Type assertion for type checker - we know selected_operation is not None here
+    assert selected_operation is not None
 
-    # Main content area
+    # Add example text selection interface
+    examples_sidebar()
+
+    # Main content layout
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Text input
+        # Text input handling
         text_content, question = display_text_input()
 
-        # Process button
+        # Processing trigger
         if st.button("🚀 Process Text", type="primary", use_container_width=True):
+            # Input validation
             if not text_content.strip():
                 st.error("Please enter some text to process.")
                 return
@@ -287,128 +719,40 @@ def main():
                 st.error("Please enter a question for Q&A operation.")
                 return
 
-            # Create request
-            request = TextProcessingRequest(
-                text=text_content,
-                operation=TextProcessingOperation(selected_operation),
-                question=question,
-                options=options
-            )
+            # Create and validate request
+            try:
+                request = create_processing_request(
+                    text_content, selected_operation, question, options
+                )
+            except Exception as e:
+                st.error(f"Invalid input: {e}")
+                return
 
             # Process text with progress indicator
             with st.spinner("Processing your text..."):
                 response = run_async(api_client.process_text(request))
 
-            if response and response.success:
-                # Store results in session state
-                st.session_state['last_response'] = response
-                st.session_state['last_operation'] = selected_operation
-                st.success("✅ Processing completed!")
-            else:
-                st.error("❌ Processing failed. Please try again.")
+            # Handle results
+            handle_processing_result(response, selected_operation)
 
     with col2:
-        # Tips and information
-        st.subheader("💡 Tips")
-        st.markdown("""
-        **For best results:**
-        - Use clear, well-structured text
-        - Longer texts work better for summarization
-        - Be specific with your questions for Q&A
-        - Try different operations to explore your text
-        """)  # noqa: E231,E221
+        # Usage guidance and tips
+        display_usage_tips()
 
-        # Example texts using standardized sample data
-        with st.expander("📚 Example Texts"):
-            # Show operation-specific recommendations
-            current_operation = st.session_state.get("operation_select")
-            if current_operation:
-                recommended = get_recommended_examples(current_operation)
-                st.markdown(f"**Recommended for {current_operation.replace('_', ' ').title()}:**")  # noqa: E231
-
-                # Create example options with descriptions
-                example_options = {
-                    "ai_technology": "🤖 AI Technology - About artificial intelligence trends",
-                    "climate_change": "🌍 Climate Change - Environmental challenges and solutions",
-                    "business_report": "📊 Business Report - Quarterly earnings and performance",
-                    "positive_review": "😊 Positive Review - Customer satisfaction example",
-                    "negative_review": "😞 Negative Review - Customer complaint example",
-                    "technical_documentation": "📖 Technical Docs - API documentation sample",
-                    "educational_content": "🎓 Educational - Science learning content"
-                }
-
-                # Show recommended examples first
-                for text_type in recommended:
-                    if text_type in example_options:
-                        description = example_options[text_type]
-                        if st.button(f"⭐ {description}", key=f"rec_{text_type}", use_container_width=True):
-                            try:
-                                example_text = get_sample_text(text_type)
-                                # Normalize whitespace for example texts only
-                                st.session_state['text_input'] = normalize_whitespace(example_text)
-                                st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error loading example: {e}")
-
-                st.markdown("**All Examples:**")
-            else:
-                st.markdown("**Choose from standardized examples:**")
-                example_options = {
-                    "ai_technology": "🤖 AI Technology - About artificial intelligence trends",
-                    "climate_change": "🌍 Climate Change - Environmental challenges and solutions",
-                    "business_report": "📊 Business Report - Quarterly earnings and performance",
-                    "positive_review": "😊 Positive Review - Customer satisfaction example",
-                    "negative_review": "😞 Negative Review - Customer complaint example",
-                    "technical_documentation": "📖 Technical Docs - API documentation sample",
-                    "educational_content": "🎓 Educational - Science learning content"
-                }
-
-            # Create buttons for all examples
-            cols = st.columns(2)
-            for i, (text_type, description) in enumerate(example_options.items()):
-                col = cols[i % 2]
-                with col:
-                    if st.button(description, key=f"example_{text_type}", use_container_width=True):
-                        try:
-                            example_text = get_sample_text(text_type)
-                            # Normalize whitespace for example texts only
-                            st.session_state['text_input'] = normalize_whitespace(example_text)
-                            st.success(f"Loaded {text_type.replace('_', ' ').title()} example!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error loading example: {e}")
-
-            # Show preview of selected text type
-            if st.session_state.get('text_input'):
-                current_text = st.session_state['text_input']
-                # Try to identify which example is currently loaded
-                for text_type, sample_text in get_all_sample_texts().items():
-                    if current_text.strip() == sample_text.strip():
-                        st.info(f"Currently loaded: {text_type.replace('_', ' ').title()}")
-                        st.caption("Preview:")
-                        st.text(current_text[:200] + "..." if len(current_text) > 200 else current_text)
-                        break
-
-    # Display results if available
+    # Results display section
     if 'last_response' in st.session_state and 'last_operation' in st.session_state:
         st.divider()
         display_results(st.session_state['last_response'], st.session_state['last_operation'])
+        
+        # Download functionality
+        handle_results_download()
 
-        # Download results
-        if st.button("📥 Download Results"):
-            results_json = json.dumps(st.session_state['last_response'].dict(), indent=2)
-            st.download_button(
-                label="Download as JSON",
-                data=results_json,
-                file_name=f"ai_text_processing_results_{st.session_state['last_operation']}.json",
-                mime="application/json"
-            )
 
 if __name__ == "__main__":
-    # Load example text if set
+    # Handle example text loading from session state
     if 'example_text' in st.session_state:
         st.session_state['text_input'] = st.session_state['example_text']
         del st.session_state['example_text']
 
+    # Launch main application
     main()
