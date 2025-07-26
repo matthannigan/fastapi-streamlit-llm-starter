@@ -15,7 +15,7 @@ from app.dependencies import get_cache_service
 
 
 class TestMonitoringHealthEndpoint:
-    """Test the /monitoring/health/ endpoint."""
+    """Test the /monitoring/health endpoint."""
     
     @pytest.fixture
     def auth_headers(self):
@@ -53,7 +53,7 @@ class TestMonitoringHealthEndpoint:
                     "retries": 5
                 }
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -89,7 +89,7 @@ class TestMonitoringHealthEndpoint:
                 
                 # Check available endpoints
                 endpoints = data["available_endpoints"]
-                assert "GET /internal/monitoring/health/" in endpoints
+                assert "GET /internal/monitoring/health" in endpoints
                 assert "GET /internal/cache/status" in endpoints
                 assert "GET /internal/cache/metrics" in endpoints
         finally:
@@ -119,7 +119,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.return_value = {"failures": 0}
                 
-                response = client.get("/internal/monitoring/health/", headers=auth_headers)
+                response = client.get("/internal/monitoring/health", headers=auth_headers)
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -151,7 +151,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.return_value = {"failures": 0}
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -203,7 +203,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.return_value = {"retries": 3}
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -254,7 +254,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.side_effect = Exception("Circuit breaker not initialized")
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -301,7 +301,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.side_effect = Exception("Resilience failure")
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -336,7 +336,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.side_effect = Exception("Resilience failure")
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 # Should still return 200 with degraded status (graceful degradation)
                 assert response.status_code == 200
@@ -386,7 +386,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.return_value = {"failures": 0}
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -425,7 +425,7 @@ class TestMonitoringHealthEndpoint:
             with patch('app.infrastructure.resilience.ai_resilience') as mock_resilience:
                 mock_resilience.get_stats.return_value = {"retries": 5}  # No "failures" key
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()
@@ -447,7 +447,7 @@ class TestMonitoringHealthEndpoint:
         
         # This test may throw an exception or return 401 depending on implementation
         try:
-            response = client.get("/internal/monitoring/health/", headers=invalid_headers)
+            response = client.get("/internal/monitoring/health", headers=invalid_headers)
             # If it returns a response, it should be 401 or similar
             assert response.status_code in [401, 403]
             data = response.json()
@@ -479,7 +479,7 @@ class TestMonitoringHealthEndpoint:
                 mock_resilience.get_stats.return_value = {"failures": 1}
                 
                 # No auth headers at all
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 # Should work since no credentials were provided (optional auth)
                 assert response.status_code == 200
@@ -519,7 +519,7 @@ class TestMonitoringHealthEndpoint:
                     "success_rate": 0.95
                 }
                 
-                response = client.get("/internal/monitoring/health/")
+                response = client.get("/internal/monitoring/health")
                 
                 assert response.status_code == 200
                 data = response.json()

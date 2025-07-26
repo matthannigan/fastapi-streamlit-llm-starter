@@ -27,7 +27,7 @@ Key Features:
 API Endpoints:
     Public API (/docs):
         * GET  /: Root endpoint providing API information and version details
-        * GET  /v1/health/: Comprehensive health check with AI, resilience, and cache status
+        * GET  /v1/health: Comprehensive health check with AI, resilience, and cache status
         * GET  /v1/auth/status: Authentication validation and API key verification
         * POST /v1/text_processing/process: Main text processing endpoint
         * POST /v1/text_processing/batch_process: Batch text processing operations
@@ -390,7 +390,7 @@ def create_public_app() -> FastAPI:
             "internal_docs": "/internal/docs",
             "api_version": "v1",
             "endpoints": {
-                "health": "/v1/health/",
+                "health": "/v1/health",
                 "auth": "/v1/auth/status",
                 "text_processing": "/v1/text_processing/process"
             }
@@ -401,33 +401,32 @@ def create_public_app() -> FastAPI:
     public_app.include_router(auth_router, prefix="/v1")
     public_app.include_router(text_processing_router, prefix="/v1")
     
-    # Backward compatibility - redirect old unversioned routes to v1
-    # Remove these after deprecation period
-    @public_app.get("/v1/health/", include_in_schema=False, deprecated=True)
+    # Unversioned routes compatibility - redirect unversioned routes to v1
+    @public_app.get("/health", include_in_schema=False, deprecated=True)
     async def health_redirect():
-        """Backward compatibility redirect - Use /v1/health/ instead."""
+        """Helper redirect for unversioned GET /health requests."""
         from fastapi import Response
         return Response(
             status_code=301,
-            headers={"Location": "/v1/health/"}
+            headers={"Location": "/v1/health"}
         )
     
-    @public_app.get("/v1/auth/status", include_in_schema=False, deprecated=True) 
+    @public_app.get("/auth/status", include_in_schema=False, deprecated=True) 
     async def auth_status_redirect():
-        """Backward compatibility redirect - Use /v1/auth/status instead."""
+        """Helper redirect for unversioned GET /auth/status requests."""
         from fastapi import Response
         return Response(
             status_code=301,
             headers={"Location": "/v1/auth/status"}
         )
     
-    @public_app.post("/v1/text_processing/process", include_in_schema=False, deprecated=True)
+    @public_app.post("/text_processing/operations", include_in_schema=False, deprecated=True)
     async def text_process_redirect():
-        """Backward compatibility redirect - Use /v1/text_processing/process instead."""
+        """Helper redirect for unversioned GET /text_processing/operations requests."""
         from fastapi import Response
         return Response(
             status_code=301,
-            headers={"Location": "/v1/text_processing/process"}
+            headers={"Location": "/v1/text_processing/operations"}
         )
     
     # Apply custom OpenAPI schema generation

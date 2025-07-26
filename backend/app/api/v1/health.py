@@ -23,7 +23,7 @@ health_router = APIRouter(prefix="/health", tags=["Health"])
 logger = logging.getLogger(__name__)
 
 
-@health_router.get("/", response_model=HealthResponse)
+@health_router.get("", response_model=HealthResponse)
 async def health_check():
     """Enhanced health check endpoint with comprehensive system monitoring.
     
@@ -63,7 +63,7 @@ async def health_check():
             the health check remains available even when subsystems are down.
     
     Example:
-        >>> # GET /health/
+        >>> # GET /health
         >>> {
         ...   "status": "healthy",
         ...   "timestamp": "2025-06-28T00:06:39.130848",

@@ -106,8 +106,8 @@ def main():
             (["docker-compose", "build"], "Building Docker images"),
             (["docker-compose", "up", "-d"], "Starting services"),
             (["sleep", "30"], "Waiting for services to start"),
-            (["curl", "-f", "http://localhost:8000/health/"], "Testing backend health"),
-            (["curl", "-f", "http://localhost:8501/_stcore/health/"], "Testing frontend health"),
+            (["curl", "-f", "http://localhost:8000/v1/health"], "Testing backend health"),
+            (["curl", "-f", "http://localhost:8501/_stcore/v1/health"], "Testing frontend health"),
             (["docker-compose", "down"], "Stopping services")
         ]
         

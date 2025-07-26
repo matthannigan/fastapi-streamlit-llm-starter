@@ -24,7 +24,7 @@ Endpoints:
 
 Authentication:
     Most endpoints require API key authentication via the Authorization header
-    or api_key parameter. The /operations and /health/ endpoints support
+    or api_key parameter. The /operations and /health endpoints support
     optional authentication.
 
 Features:
@@ -458,7 +458,7 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
         "message": "Batch processing is synchronous. If your request to /text_processing/batch_process completed, the results were returned then."
     }
 
-@router.get("/v1/health/",
+@router.get("/health",
             responses={
                 401: {"model": ErrorResponse, "description": "Authentication Error"},
                 500: {"model": ErrorResponse, "description": "Infrastructure Error"},
@@ -541,5 +541,5 @@ async def get_service_health(
         # Convert health check failures to InfrastructureError
         raise InfrastructureError(
             f"Failed to get service health: {str(e)}",
-            context={"endpoint": "/v1/health/", "error": str(e)}
+            context={"endpoint": "/v1/health", "error": str(e)}
         )

@@ -11,12 +11,12 @@ endpoints support both legacy and modern resilience configurations with
 automatic detection and appropriate response formatting.
 
 Endpoints:
-    GET  /resilience/health/: Get service health status and circuit breaker states
-    GET  /resilience/config: Retrieve current resilience configuration and strategies
-    GET  /resilience/metrics: Get comprehensive resilience metrics for all operations
-    GET  /resilience/metrics/{operation_name}: Get metrics for a specific operation
+    GET  /internal/resilience/health: Get service health status and circuit breaker states
+    GET  /internal/resilience/config: Retrieve current resilience configuration and strategies
+    GET  /internal/resilience/metrics: Get comprehensive resilience metrics for all operations
+    GET  /internal/resilience/metrics/{operation_name}: Get metrics for a specific operation
     POST /internal/resilience/metrics/reset: Reset metrics for specific or all operations
-    GET  /resilience/dashboard: Get dashboard-style summary for monitoring systems
+    GET  /internal/resilience/dashboard: Get dashboard-style summary for monitoring systems
 
 Configuration Management:
     - Automatic detection of legacy vs. modern configuration formats
@@ -50,7 +50,7 @@ Authentication:
 
 Example:
     To check overall resilience service health:
-        GET /internal/resilience/health/
+        GET /internal/resilience/health
         
     To get comprehensive metrics for monitoring:
         GET /internal/resilience/dashboard
@@ -89,7 +89,7 @@ def get_settings() -> Settings:
     return settings
 
 
-@main_router.get("/v1/health/")
+@main_router.get("/health")
 async def get_resilience_health():
     """Get resilience service health status and circuit breaker information.
 
@@ -131,7 +131,7 @@ async def get_resilience_health():
         raise HTTPException(status_code=500, detail=f"Failed to get health status: {str(e)}")
 
 
-@config_router.get("/", response_model=CurrentConfigResponse)
+@config_router.get("", response_model=CurrentConfigResponse)
 async def get_current_config(
     app_settings: Settings = Depends(get_settings),
     api_key: str = Depends(verify_api_key)

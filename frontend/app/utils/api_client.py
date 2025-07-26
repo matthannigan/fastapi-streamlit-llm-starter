@@ -25,7 +25,7 @@ class APIClient:
         """Check if the API is healthy."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/health/")
+                response = await client.get(f"{self.base_url}/v1/health")
                 return response.status_code == 200
         except Exception as e:
             logger.error(f"Health check failed: {e}")
@@ -35,7 +35,7 @@ class APIClient:
         """Get available processing operations."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/text_processing/operations")
+                response = await client.get(f"{self.base_url}/v1/text_processing/operations")
                 if response.status_code == 200:
                     return response.json()
                 else:
@@ -50,7 +50,7 @@ class APIClient:
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/text_processing/process",
+                    f"{self.base_url}/v1/text_processing/process",
                     json=request.model_dump()
                 )
                 

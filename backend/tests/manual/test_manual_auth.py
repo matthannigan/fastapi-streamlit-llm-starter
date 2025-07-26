@@ -68,7 +68,7 @@ class TestManualAuthentication:
         assert status == 200
         
         # Test health endpoint
-        status, response = self.call_endpoint("/v1/health/")
+        status, response = self.call_endpoint("/v1/health")
         # Handle potential redirects
         if status == 307:
             print("Health endpoint returned redirect, checking if it's working...")
@@ -161,7 +161,7 @@ class TestManualAuthentication:
         print("2. Set API_KEY environment variable: export API_KEY=test-api-key-12345")
         print("3. Run this test: pytest backend/tests/test_manual_auth.py -v")
         print("\nExpected behavior:")
-        print("- Public endpoints (/, /health/) should work without API key")
+        print("- Public endpoints (/, /health) should work without API key")
         print("- Protected endpoints (/text_processing/process, /auth/status) should require valid API key")
         print("- Optional auth endpoints (/text_processing/operations) should work with or without API key")
 

@@ -77,7 +77,7 @@ class TestEndToEndBackwardCompatibility:
     def test_legacy_api_endpoint_compatibility(self, client, mock_resilience_service):
         """Test that legacy API endpoints still work."""
         # Test legacy health endpoint
-        response = client.get("/internal/resilience/health/")
+        response = client.get("/internal/resilience/health")
         assert response.status_code == 200
         
         # Test legacy dashboard endpoint
@@ -217,7 +217,7 @@ class TestEndToEndBackwardCompatibility:
         
         def make_request():
             try:
-                response = client.get("/internal/resilience/health/")
+                response = client.get("/internal/resilience/health")
                 results.append(response.status_code)
             except Exception as e:
                 errors.append(str(e))
@@ -248,7 +248,7 @@ class TestRealWorldScenarios:
     def test_kubernetes_deployment_scenario(self, client, mock_resilience_service):
         """Test scenario simulating Kubernetes deployment."""
         # Simulate health check probe
-        response = client.get("/internal/resilience/health/")
+        response = client.get("/internal/resilience/health")
         assert response.status_code == 200
         
         data = response.json()
@@ -268,7 +268,7 @@ class TestRealWorldScenarios:
         """Test scenario simulating Docker Compose environment."""
         # Test service discovery
         endpoints_to_test = [
-            "/internal/resilience/health/",
+            "/internal/resilience/health",
             "/internal/resilience/dashboard"
         ]
         
@@ -291,7 +291,7 @@ class TestRealWorldScenarios:
     def test_cloud_deployment_scenario(self, client, mock_resilience_service):
         """Test scenario simulating cloud deployment."""
         # Test load balancer health check
-        response = client.get("/internal/resilience/health/")
+        response = client.get("/internal/resilience/health")
         assert response.status_code == 200
         
         # Test monitoring integration
@@ -368,7 +368,7 @@ class TestDataIntegrity:
         # Make multiple requests
         responses = []
         for _ in range(3):
-            response = client.get("/internal/resilience/health/")
+            response = client.get("/internal/resilience/health")
             assert response.status_code == 200
             responses.append(response.json())
         

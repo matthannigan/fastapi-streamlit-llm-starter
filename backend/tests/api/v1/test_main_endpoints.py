@@ -31,7 +31,7 @@ class TestHealthEndpoint:
     
     def test_health_check(self, client: TestClient):
         """Test health check returns 200."""
-        response = client.get("/v1/health/")
+        response = client.get("/v1/health")
         assert response.status_code == 200
         
         data = response.json()
@@ -46,7 +46,7 @@ class TestCORS:
     def test_cors_headers(self, client: TestClient):
         """Test CORS headers are set correctly."""
         # Test CORS on a GET request instead of OPTIONS
-        response = client.get("/v1/health/")
+        response = client.get("/v1/health")
         assert response.status_code == 200
         # Check if CORS headers are present (they should be added by middleware)
         # Note: In test environment, CORS headers might not be present

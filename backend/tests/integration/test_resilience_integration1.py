@@ -184,7 +184,7 @@ class TestResilienceHealthEndpoint:
 
     def test_resilience_health_success(self, client, mock_resilience_service):
         """Test successful health check."""
-        response = client.get("/internal/resilience/health/")
+        response = client.get("/internal/resilience/health")
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -212,7 +212,7 @@ class TestResilienceHealthEndpoint:
         """Test health check with service error."""
         mock_resilience_service.get_health_status.side_effect = Exception("Health check failed")
         
-        response = client.get("/internal/resilience/health/")
+        response = client.get("/internal/resilience/health")
         
         # Should return 500 on internal error, but the current implementation may handle it differently
         # Using flexible assertion
@@ -463,7 +463,7 @@ class TestAuthenticationProtection:
     def test_optional_auth_endpoints_work_without_auth(self, client, mock_resilience_service, mock_text_processor):
         """Test that optional auth endpoints work without authentication."""
         # These endpoints should work without auth
-        response = client.get("/internal/resilience/health/")
+        response = client.get("/internal/resilience/health")
         assert response.status_code == status.HTTP_200_OK
         
         response = client.get("/internal/resilience/dashboard")

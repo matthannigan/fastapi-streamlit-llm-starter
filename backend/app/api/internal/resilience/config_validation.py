@@ -17,8 +17,8 @@ Endpoints:
     POST /internal/resilience/config/validate-secure: Enhanced security validation with security metadata
     POST /internal/resilience/config/validate-json: Direct JSON string configuration validation
     POST /internal/resilience/config/validate/field-whitelist: Validate configuration against field whitelist
-    GET  /resilience/config/validate/security-config: Get security validation configuration and limits
-    GET  /resilience/config/validate/rate-limit-status: Get current rate limiting status and quotas
+    GET  /internal/resilience/config/validate/security-config: Get security validation configuration and limits
+    GET  /internal/resilience/config/validate/rate-limit-status: Get current rate limiting status and quotas
 
 Validation Features:
     - Multi-tier validation with standard and enhanced security modes

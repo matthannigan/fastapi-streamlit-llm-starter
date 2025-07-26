@@ -8,7 +8,7 @@ from app.infrastructure.security import verify_api_key
 from app.schemas import ErrorResponse
 
 # Create a router for auth endpoints
-auth_router = APIRouter(prefix="/v1/auth", tags=["Authentication"])
+auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 logger = logging.getLogger(__name__)
 

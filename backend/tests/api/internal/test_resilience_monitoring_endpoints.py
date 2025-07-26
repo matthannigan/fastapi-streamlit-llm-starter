@@ -361,7 +361,7 @@ class TestConfigurationMonitoringIntegration:
         
         # Make some configuration-related requests to generate metrics
         # These would normally trigger configuration loading
-        client.get("/v1/health/")  # This loads configuration
+        client.get("/v1/health")  # This loads configuration
         client.get("/internal/resilience/config", headers=auth_headers)  # This also loads config
         
         # Now check monitoring endpoints for any recorded metrics

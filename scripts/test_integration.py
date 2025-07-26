@@ -105,7 +105,7 @@ class IntegrationTester:
     
     async def test_api_health(self) -> Dict[str, Any]:
         """Test API health endpoint."""
-        response = await self.session.get(f"{self.api_url}/health/")
+        response = await self.session.get(f"{self.api_url}/v1/health")
         response.raise_for_status()
         
         health_data = response.json()
