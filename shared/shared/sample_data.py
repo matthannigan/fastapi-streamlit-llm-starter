@@ -77,33 +77,58 @@ STANDARD_SAMPLE_TEXTS = {
     """.strip()
 }
 
+# Example options with user-friendly descriptions for UI display
+EXAMPLE_OPTIONS = {
+    "ai_technology": "🤖 AI Technology - About artificial intelligence trends",
+    "climate_change": "🌍 Climate Change - Environmental challenges and solutions",
+    "business_report": "📊 Business Report - Quarterly earnings and performance",
+    "positive_review": "😊 Positive Review - Customer satisfaction example",
+    "negative_review": "😞 Negative Review - Customer complaint example",
+    "technical_documentation": "📖 Technical Docs - API documentation sample",
+    "educational_content": "🎓 Educational - Science learning content"
+}
+
+# Recommended examples for specific operations
+OPERATION_RECOMMENDATIONS = {
+    "summarize": ["ai_technology", "climate_change", "business_report"],
+    "sentiment": ["positive_review", "negative_review", "business_report"],
+    "key_points": ["business_report", "climate_change", "technical_documentation"],
+    "questions": ["educational_content", "climate_change", "ai_technology"],
+    "qa": ["technical_documentation", "educational_content", "ai_technology"]
+}
+
 # Standard request examples for different operations
 STANDARD_REQUEST_EXAMPLES = {
     "summarize": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["ai_technology"],
         operation=TextProcessingOperation.SUMMARIZE,
+        question=None,
         options={"max_length": 100}
     ),
     
     "sentiment_positive": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["positive_review"],
-        operation=TextProcessingOperation.SENTIMENT
+        operation=TextProcessingOperation.SENTIMENT,
+        question=None
     ),
     
     "sentiment_negative": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["negative_review"],
-        operation=TextProcessingOperation.SENTIMENT
+        operation=TextProcessingOperation.SENTIMENT,
+        question=None
     ),
     
     "key_points": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["business_report"],
         operation=TextProcessingOperation.KEY_POINTS,
+        question=None,
         options={"max_points": 4}
     ),
     
     "questions": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["climate_change"],
         operation=TextProcessingOperation.QUESTIONS,
+        question=None,
         options={"num_questions": 3}
     ),
     
@@ -125,7 +150,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "model_used": "gemini-pro",
             "original_length": 312
         },
-        processing_time=2.1
+        processing_time=2.1,
+        cache_hit=False
     ),
     
     "sentiment_positive": TextProcessingResponse(
@@ -140,7 +166,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 45,
             "model_used": "gemini-pro"
         },
-        processing_time=1.8
+        processing_time=1.8,
+        cache_hit=False
     ),
     
     "sentiment_negative": TextProcessingResponse(
@@ -155,7 +182,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 42,
             "model_used": "gemini-pro"
         },
-        processing_time=1.6
+        processing_time=1.6,
+        cache_hit=False
     ),
     
     "key_points": TextProcessingResponse(
@@ -171,7 +199,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 52,
             "model_used": "gemini-pro"
         },
-        processing_time=2.5
+        processing_time=2.5,
+        cache_hit=False
     ),
     
     "questions": TextProcessingResponse(
@@ -186,7 +215,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 78,
             "model_used": "gemini-pro"
         },
-        processing_time=2.0
+        processing_time=2.0,
+        cache_hit=False
     ),
     
     "qa": TextProcessingResponse(
@@ -198,7 +228,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "model_used": "gemini-pro",
             "question_answered": "What authentication method does the API use?"
         },
-        processing_time=1.9
+        processing_time=1.9,
+        cache_hit=False
     )
 }
 
@@ -394,4 +425,48 @@ def get_technical_text() -> str:
 
 def get_business_text() -> str:
     """Get a business-oriented sample text."""
-    return STANDARD_SAMPLE_TEXTS["business_report"] 
+    return STANDARD_SAMPLE_TEXTS["business_report"]
+
+def get_example_options() -> Dict[str, str]:
+    """
+    Get all available example options with their user-friendly descriptions.
+    
+    Returns:
+        Dictionary mapping text type keys to display descriptions
+    """
+    return EXAMPLE_OPTIONS.copy()
+
+def get_example_description(text_type: str) -> str:
+    """
+    Get the user-friendly description for a specific text type.
+    
+    Args:
+        text_type: Type of sample text to get description for
+        
+    Returns:
+        The user-friendly description string
+        
+    Raises:
+        KeyError: If the text type is not found
+    """
+    if text_type not in EXAMPLE_OPTIONS:
+        available_types = list(EXAMPLE_OPTIONS.keys())
+        raise KeyError(f"Text type '{text_type}' not found. Available types: {available_types}")
+    
+    return EXAMPLE_OPTIONS[text_type]
+
+def get_recommended_examples(operation: str) -> List[str]:
+    """
+    Get recommended example texts for a specific operation.
+    
+    Args:
+        operation: The operation type to get recommendations for
+        
+    Returns:
+        List of recommended text type keys for the operation
+    """
+    return OPERATION_RECOMMENDATIONS.get(operation, ["ai_technology", "climate_change"])
+
+def get_all_operation_recommendations() -> Dict[str, List[str]]:
+    """Get all operation recommendations."""
+    return OPERATION_RECOMMENDATIONS.copy() 
