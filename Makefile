@@ -106,6 +106,18 @@ install-frontend:
 	@echo "Frontend runs via Docker - no local installation needed"
 	@echo "Use 'make dev-frontend' or 'make run-frontend' to start frontend"
 
+install-frontend-local:
+	@echo "Installing frontend Python dependencies into current virtual environment..."
+	@if [ -z "$$VIRTUAL_ENV" ]; then \
+		echo "❌ Error: No virtual environment detected. Please activate your virtual environment first."; \
+		echo "   Run: source .venv/bin/activate (or your venv path)"; \
+		exit 1; \
+	fi
+	@echo "📦 Installing frontend dependencies..."
+	cd frontend && pip install -r requirements.txt -r requirements-dev.txt
+	@echo "✅ Frontend dependencies installed successfully!"
+	@echo "💡 Note: You can still use Docker with 'make dev-frontend' for containerized development"
+
 # Local development server
 run-backend:
 	@echo "Starting backend FastAPI server..."
@@ -332,7 +344,10 @@ stop: ## Stop all services
 	docker-compose stop
 
 # Additional commands
-dev:
+dev: ## Start development environment with file watching (requires Docker Compose v2.22+)
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+
+dev-legacy:
 	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 prod:

@@ -12,6 +12,33 @@ services:
       - ./backend:/app
       - ./shared:/app/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    develop:
+      watch:
+        # Sync Python source code changes
+        - action: sync
+          path: ./backend/app
+          target: /app/app
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - "*.pyd"
+            - ".pytest_cache/"
+        # Sync shared library changes
+        - action: sync
+          path: ./shared
+          target: /app/shared
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - "*.pyd"
+        # Rebuild when requirements change
+        - action: rebuild
+          path: ./backend/requirements*.txt
+        # Restart when config files change
+        - action: restart
+          path: ./backend/pytest.ini
 
   frontend:
     build:
@@ -24,6 +51,32 @@ services:
       - ./frontend:/app
       - ./shared:/app/shared
     command: streamlit run app/app.py --server.address 0.0.0.0 --server.port 8501 --server.runOnSave true
+    develop:
+      watch:
+        # Sync frontend app changes
+        - action: sync
+          path: ./frontend/app
+          target: /app/app
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - "*.pyd"
+        # Sync shared library changes
+        - action: sync
+          path: ./shared
+          target: /app/shared
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - "*.pyd"
+        # Rebuild when requirements change
+        - action: rebuild
+          path: ./frontend/requirements*.txt
+        # Restart when config files change
+        - action: restart
+          path: ./frontend/pytest.ini
 
   # Remove production services for development
   nginx:
