@@ -12,11 +12,11 @@ resilience configurations. All endpoints require API key authentication for
 secure access to configuration data.
 
 Endpoints:
-    GET /resilience/config/presets: List all available resilience presets with summaries
-    GET /resilience/config/presets/{preset_name}: Get detailed configuration for a specific preset
-    GET /resilience/config/presets-summary: Get comprehensive summary of all presets
-    GET /resilience/config/recommend-preset/{environment}: Get preset recommendation for specific environment
-    GET /resilience/config/recommend-preset-auto: Auto-detect environment and recommend optimal preset
+    GET /internal/resilience/config/presets: List all available resilience presets with summaries
+    GET /internal/resilience/config/presets/{preset_name}: Get detailed configuration for a specific preset
+    GET /internal/resilience/config/presets-summary: Get comprehensive summary of all presets
+    GET /internal/resilience/config/recommend-preset/{environment}: Get preset recommendation for specific environment
+    GET /internal/resilience/config/recommend-preset-auto: Auto-detect environment and recommend optimal preset
 
 Preset Management Features:
     - Complete preset catalog with descriptions and configurations
@@ -45,13 +45,13 @@ Authentication:
 
 Example:
     To get a recommendation for production environment:
-        GET /api/internal/resilience/recommend/prod
+        GET /internal/resilience/recommend/prod
         
     To auto-detect environment and get recommendation:
-        GET /api/internal/resilience/recommend-auto
+        GET /internal/resilience/recommend-auto
         
     To list all available presets:
-        GET /api/internal/resilience/presets
+        GET /internal/resilience/presets
 
 Note:
     Preset recommendations include confidence scores to help administrators

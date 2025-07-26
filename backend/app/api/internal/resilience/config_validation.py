@@ -13,10 +13,10 @@ detailed feedback including errors, warnings, and actionable suggestions
 for configuration improvements.
 
 Endpoints:
-    POST /resilience/config/validate: Standard custom configuration validation
-    POST /resilience/config/validate-secure: Enhanced security validation with security metadata
-    POST /resilience/config/validate-json: Direct JSON string configuration validation
-    POST /resilience/config/validate/field-whitelist: Validate configuration against field whitelist
+    POST /internal/resilience/config/validate: Standard custom configuration validation
+    POST /internal/resilience/config/validate-secure: Enhanced security validation with security metadata
+    POST /internal/resilience/config/validate-json: Direct JSON string configuration validation
+    POST /internal/resilience/config/validate/field-whitelist: Validate configuration against field whitelist
     GET  /resilience/config/validate/security-config: Get security validation configuration and limits
     GET  /resilience/config/validate/rate-limit-status: Get current rate limiting status and quotas
 
@@ -65,7 +65,7 @@ Authentication:
 
 Example:
     Standard configuration validation:
-        POST /api/internal/resilience/config/validate
+        POST /internal/resilience/config/validate
         {
             "configuration": {
                 "retry_attempts": 3,
@@ -75,7 +75,7 @@ Example:
         }
         
     Enhanced security validation with metadata:
-        POST /api/internal/resilience/config/validate-secure
+        POST /internal/resilience/config/validate-secure
         {
             "configuration": {
                 "retry_attempts": 3,
@@ -84,7 +84,7 @@ Example:
         }
         
     Field whitelist validation:
-        POST /api/internal/resilience/config/validate/field-whitelist
+        POST /internal/resilience/config/validate/field-whitelist
         {
             "configuration": {
                 "retry_attempts": 3,

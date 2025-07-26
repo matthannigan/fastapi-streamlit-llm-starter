@@ -8,7 +8,7 @@ from app.infrastructure.security import verify_api_key
 from app.schemas import ErrorResponse
 
 # Create a router for auth endpoints
-auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
+auth_router = APIRouter(prefix="/v1/auth", tags=["Authentication"])
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ async def auth_status(api_key: str = Depends(verify_api_key)):
             - Authentication failure: API key format is incorrect
     
     Example:
-        >>> # GET /auth/status
+        >>> # GET /v1/auth/status
         >>> # Headers: Authorization: Bearer your-api-key-here
         >>> {
         ...   "authenticated": true,

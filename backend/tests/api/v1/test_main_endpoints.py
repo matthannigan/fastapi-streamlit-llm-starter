@@ -31,7 +31,7 @@ class TestHealthEndpoint:
     
     def test_health_check(self, client: TestClient):
         """Test health check returns 200."""
-        response = client.get("/health")
+        response = client.get("/v1/health/")
         assert response.status_code == 200
         
         data = response.json()
@@ -46,7 +46,7 @@ class TestCORS:
     def test_cors_headers(self, client: TestClient):
         """Test CORS headers are set correctly."""
         # Test CORS on a GET request instead of OPTIONS
-        response = client.get("/health")
+        response = client.get("/v1/health/")
         assert response.status_code == 200
         # Check if CORS headers are present (they should be added by middleware)
         # Note: In test environment, CORS headers might not be present
@@ -91,7 +91,7 @@ class TestAuthentication:
     
     def test_auth_status_with_valid_key(self, authenticated_client):
         """Test auth status with valid API key."""
-        response = authenticated_client.get("/auth/status")
+        response = authenticated_client.get("/v1/auth/status")
         assert response.status_code == 200
         
         data = response.json()
@@ -106,7 +106,7 @@ class TestAuthentication:
         from app.core.exceptions import AuthenticationError
         
         with pytest.raises(AuthenticationError) as exc_info:
-            response = client.get("/auth/status")
+            response = client.get("/v1/auth/status")
         
         # Verify the exception contains the expected message
         assert "API key required" in str(exc_info.value)

@@ -6,25 +6,25 @@ operations including summarization, sentiment analysis, key point extraction,
 question generation, and Q&A functionality.
 
 Endpoints:
-    GET /text_processing/operations: 
+    GET /v1/text_processing/operations: 
         Retrieve available text processing operations and their configurations.
         
-    POST /text_processing/process:
+    POST /v1/text_processing/process:
         Process a single text request using specified AI operations.
         
-    POST /text_processing/batch_process:
+    POST /v1/text_processing/batch_process:
         Process multiple text requests in a single batch operation.
         
-    GET /text_processing/batch_status/{batch_id}:
+    GET /v1/text_processing/batch_status/{batch_id}:
         Check the status of a batch processing job (synchronous implementation).
         
-    GET /text_processing/health:
+    GET /v1/text_processing/health:
         Get comprehensive health status for the text processing service,
         including domain service and underlying resilience infrastructure.
 
 Authentication:
     Most endpoints require API key authentication via the Authorization header
-    or api_key parameter. The /operations and /health endpoints support
+    or api_key parameter. The /operations and /health/ endpoints support
     optional authentication.
 
 Features:
@@ -37,7 +37,7 @@ Features:
 
 Examples:
     Single text processing:
-        POST /text_processing/process
+        POST /v1/text_processing/process
         {
             "text": "Your text here",
             "operation": "summarize",
@@ -45,7 +45,7 @@ Examples:
         }
         
     Batch processing:
-        POST /text_processing/batch_process
+        POST /v1/text_processing/batch_process
         {
             "requests": [
                 {"text": "Text 1", "operation": "sentiment"},
@@ -439,7 +439,7 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
     Example:
         Request:
         ```
-        GET /text_processing/batch_status/my-batch-2024
+        GET /v1/text_processing/batch_status/my-batch-2024
         ```
         
         Response:
@@ -458,7 +458,7 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
         "message": "Batch processing is synchronous. If your request to /text_processing/batch_process completed, the results were returned then."
     }
 
-@router.get("/health",
+@router.get("/v1/health/",
             responses={
                 401: {"model": ErrorResponse, "description": "Authentication Error"},
                 500: {"model": ErrorResponse, "description": "Infrastructure Error"},
@@ -541,5 +541,5 @@ async def get_service_health(
         # Convert health check failures to InfrastructureError
         raise InfrastructureError(
             f"Failed to get service health: {str(e)}",
-            context={"endpoint": "/health", "error": str(e)}
+            context={"endpoint": "/v1/health/", "error": str(e)}
         )

@@ -28,7 +28,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/text_processing/process", json=request_data, headers=headers)
+            response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
             
             # Should not get 401 (may get 500 if AI service not configured, but that's OK)
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
@@ -50,7 +50,7 @@ class TestAuthEndpoints:
         
         # Handle both HTTP response and exception patterns
         try:
-            response = client.post("/text_processing/process", json=request_data, headers=headers)
+            response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
             # If we get a response, it should be 401 Unauthorized
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
             response_data = response.json()
@@ -73,7 +73,7 @@ class TestAuthEndpoints:
             
             # Handle both HTTP response and exception patterns
             try:
-                response = client.post("/text_processing/process", json=request_data)
+                response = client.post("/v1/text_processing/process", json=request_data)
                 # If we get a response, it should be 401 Unauthorized
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
                 response_data = response.json()
@@ -96,7 +96,7 @@ class TestAuthEndpoints:
             
             # Handle both HTTP response and exception patterns
             try:
-                response = client.post("/text_processing/process", json=request_data, headers=headers)
+                response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
                 # If we get a response, it should be 401 Unauthorized  
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
                 response_data = response.json()
@@ -119,7 +119,7 @@ class TestAuthEndpoints:
             
             # Handle both HTTP response and exception patterns
             try:
-                response = client.post("/text_processing/process", json=request_data, headers=headers)
+                response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
                 # If we get a response, it should be 401 Unauthorized
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
                 response_data = response.json()
@@ -139,7 +139,7 @@ class TestAuthEndpoints:
                 "operation": "summarize"
             }
             
-            response = client.post("/text_processing/process", json=request_data)
+            response = client.post("/v1/text_processing/process", json=request_data)
             
             # Should not get 401 (may get 500 if AI service not configured, but that's OK)
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
@@ -155,7 +155,7 @@ class TestAuthEndpoints:
                 "question": "What is this text about?"
             }
             
-            response = client.post("/text_processing/process", json=request_data, headers=headers)
+            response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
             
             # Should not get 401 (may get 500 if AI service not configured, but that's OK)
             assert response.status_code != status.HTTP_401_UNAUTHORIZED
@@ -176,7 +176,7 @@ class TestAuthEndpoints:
         
         # Handle both HTTP response and exception patterns
         try:
-            response = client.post("/text_processing/process", json=request_data)
+            response = client.post("/v1/text_processing/process", json=request_data)
             # If we get a response, it should be 401 Unauthorized
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         except AuthenticationError as e:
@@ -198,7 +198,7 @@ class TestAuthEndpoints:
                     "operation": operation
                 }
                 
-                response = client.post("/text_processing/process", json=request_data, headers=headers)
+                response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
                 
                 # Should not get 401 for any operation
                 assert response.status_code != status.HTTP_401_UNAUTHORIZED, f"Operation {operation} failed auth"
@@ -216,7 +216,7 @@ class TestAuthEndpoints:
             
             # Handle both HTTP response and exception patterns
             try:
-                response = client.post("/text_processing/process", json=request_data, headers=headers)
+                response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
                 # If we get a response, it should be 401 Unauthorized
                 assert response.status_code == status.HTTP_401_UNAUTHORIZED
             except AuthenticationError as e:
@@ -234,7 +234,7 @@ class TestAuthEndpoints:
         
         # Handle both HTTP response and exception patterns
         try:
-            response = client.post("/text_processing/process", json=request_data, headers=headers)
+            response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
             # If we get a response, it should be 401 Unauthorized
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         except AuthenticationError as e:
@@ -266,7 +266,7 @@ class TestProcessEndpointAuthEdgeCases:
             }
             
             try:
-                response = client.post("/text_processing/process", json=request_data, headers=headers)
+                response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
                 results.put(("response", response.status_code))
             except AuthenticationError as e:
                 results.put(("exception", str(e)))

@@ -13,7 +13,7 @@ actionable recommendations for system optimization.
 
 Endpoints:
     GET  /resilience/performance/benchmark: Run comprehensive performance benchmark suite
-    POST /resilience/performance/benchmark: Run custom performance benchmarks with specific parameters
+    POST /internal/resilience/performance/benchmark: Run custom performance benchmarks with specific parameters
     GET  /resilience/performance/thresholds: Get performance thresholds and targets (optional auth)
     GET  /resilience/performance/report: Generate detailed performance analysis report
     GET  /resilience/performance/history: Retrieve historical performance data and trends
@@ -62,10 +62,10 @@ Authentication:
 
 Example:
     Run comprehensive benchmark suite:
-        GET /api/internal/resilience/performance/benchmark?iterations=100
+        GET /internal/resilience/performance/benchmark?iterations=100
         
     Run custom benchmarks for specific operations:
-        POST /api/internal/resilience/performance/benchmark
+        POST /internal/resilience/performance/benchmark
         {
             "iterations": 50,
             "operations": ["preset_loading", "validation_performance"],
@@ -73,7 +73,7 @@ Example:
         }
         
     Get performance thresholds:
-        GET /api/internal/resilience/performance/thresholds
+        GET /internal/resilience/performance/thresholds
 
 Note:
     Performance benchmarks provide valuable insights for optimization but

@@ -24,7 +24,7 @@ class TestManualAPI:
     async def test_health_endpoint(self):
         """Test the health endpoint."""
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{BASE_URL}/health")
+            response = await client.get(f"{BASE_URL}/health/")
             print(f"Health Check: {response.status_code}")
             
             # Handle different response types gracefully

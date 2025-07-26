@@ -32,7 +32,7 @@ class TestOperationsEndpoint:
     
     def test_get_operations(self, client: TestClient):
         """Test getting available operations."""
-        response = client.get("/text_processing/operations")
+        response = client.get("/v1/text_processing/operations")
         assert response.status_code == 200
         
         data = response.json()
@@ -61,7 +61,7 @@ class TestProcessEndpoint:
                 "options": {"max_length": 100}
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 200
             
             data = response.json()
@@ -92,7 +92,7 @@ class TestProcessEndpoint:
                 "operation": "sentiment"
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 200
             
             data = response.json()
@@ -122,7 +122,7 @@ class TestProcessEndpoint:
             
             # Handle both patterns: HTTP response errors and ValidationError exceptions
             try:
-                response = authenticated_client.post("/text_processing/process", json=request_data)
+                response = authenticated_client.post("/v1/text_processing/process", json=request_data)
                 # If we get a response, check for appropriate error status codes
                 assert response.status_code in [400, 422]  # Accept both business logic and validation errors
             except ValidationError as e:
@@ -147,7 +147,7 @@ class TestProcessEndpoint:
                 "question": "What is artificial intelligence?"
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 200
             
             data = response.json()
@@ -176,7 +176,7 @@ class TestProcessEndpoint:
                 "operation": "invalid_operation"
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 422  # Validation error
             
             # Mock should not be called for invalid requests
@@ -196,7 +196,7 @@ class TestProcessEndpoint:
                 "operation": "summarize"
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 422
             
             # Mock should not be called for invalid requests
@@ -217,7 +217,7 @@ class TestProcessEndpoint:
                 "operation": "summarize"
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 422
             
             # Mock should not be called for invalid requests
@@ -249,7 +249,7 @@ class TestCacheIntegration:
                 "options": {"max_length": 100}
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 200
             
             # Verify cache was checked and response was stored
@@ -293,7 +293,7 @@ class TestCacheIntegration:
                 "operation": "summarize"
             }
             
-            response = authenticated_client.post("/text_processing/process", json=request_data)
+            response = authenticated_client.post("/v1/text_processing/process", json=request_data)
             assert response.status_code == 200
             
             # Verify cache was checked but not stored again
@@ -352,7 +352,7 @@ class TestBatchProcessEndpoint:
         app.dependency_overrides[get_text_processor] = lambda: mock_text_processor
         
         try:
-            response = authenticated_client.post("/text_processing/batch_process", json=request_payload_dict)
+            response = authenticated_client.post("/v1/text_processing/batch_process", json=request_payload_dict)
 
             assert response.status_code == status.HTTP_200_OK
             
@@ -405,7 +405,7 @@ class TestBatchProcessEndpoint:
             
             # Handle both patterns: HTTP response errors and ValidationError exceptions
             try:
-                response = authenticated_client.post("/text_processing/batch_process", json=payload)
+                response = authenticated_client.post("/v1/text_processing/batch_process", json=payload)
                 # If we get a response, check for appropriate error status codes
                 assert response.status_code in [400, 422]  # Accept both business logic and validation errors
                 # Check that the error mentions the limit exceeded
@@ -422,7 +422,7 @@ class TestBatchProcessEndpoint:
     def test_batch_process_empty_requests_list(self, authenticated_client: TestClient):
         """Test batch processing with an empty requests list - use flexible response structure checking."""
         payload = {"requests": []}
-        response = authenticated_client.post("/text_processing/batch_process", json=payload)
+        response = authenticated_client.post("/v1/text_processing/batch_process", json=payload)
         
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY  # Pydantic validation error
         
@@ -451,7 +451,7 @@ class TestBatchProcessEndpoint:
         
         # Handle both patterns: HTTP response errors and AuthenticationError exceptions
         try:
-            response = client.post("/text_processing/batch_process", json=payload) # No headers
+            response = client.post("/v1/text_processing/batch_process", json=payload) # No headers
             # If we get a response, check for authentication error status code
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         except AuthenticationError as e:
@@ -467,7 +467,7 @@ class TestBatchProcessEndpoint:
         
         # Handle both patterns: HTTP response errors and AuthenticationError exceptions
         try:
-            response = client.post("/text_processing/batch_process", json=payload, headers=headers)
+            response = client.post("/v1/text_processing/batch_process", json=payload, headers=headers)
             # If we get a response, check for authentication error status code
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         except AuthenticationError as e:
@@ -494,7 +494,7 @@ class TestBatchProcessEndpoint:
             
             # Handle both patterns: HTTP response errors and InfrastructureError exceptions
             try:
-                response = authenticated_client.post("/text_processing/batch_process", json=payload)
+                response = authenticated_client.post("/v1/text_processing/batch_process", json=payload)
                 # If we get a response, check for internal server error status code
                 assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
                 # Check that error mentions internal server issue
@@ -515,7 +515,7 @@ class TestBatchStatusEndpoint:
     def test_get_batch_status_success(self, authenticated_client: TestClient):
         """Test getting batch status successfully."""
         batch_id_test = "test_batch_123"
-        response = authenticated_client.get(f"/text_processing/batch_status/{batch_id_test}")
+        response = authenticated_client.get(f"/v1/text_processing/batch_status/{batch_id_test}")
         
         assert response.status_code == status.HTTP_200_OK
         expected_json = {
@@ -529,7 +529,7 @@ class TestBatchStatusEndpoint:
         """Test getting batch status without authentication - handle both HTTP responses and AuthenticationError exceptions."""
         # Handle both patterns: HTTP response errors and AuthenticationError exceptions
         try:
-            response = client.get("/text_processing/batch_status/some_id") # No headers
+            response = client.get("/v1/text_processing/batch_status/some_id") # No headers
             # If we get a response, check for authentication error status code
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         except AuthenticationError as e:
@@ -542,7 +542,7 @@ class TestBatchStatusEndpoint:
         
         # Handle both patterns: HTTP response errors and AuthenticationError exceptions
         try:
-            response = client.get("/text_processing/batch_status/some_id", headers=headers)
+            response = client.get("/v1/text_processing/batch_status/some_id", headers=headers)
             # If we get a response, check for authentication error status code
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
         except AuthenticationError as e:
@@ -561,7 +561,7 @@ class TestAuthentication:
         }
         
         headers = {"Authorization": "Bearer test-api-key-12345"}
-        response = client.post("/text_processing/process", json=request_data, headers=headers)
+        response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -579,7 +579,7 @@ class TestAuthentication:
         
         # Handle both patterns: HTTP response errors and AuthenticationError exceptions
         try:
-            response = client.post("/text_processing/process", json=request_data, headers=headers)
+            response = client.post("/v1/text_processing/process", json=request_data, headers=headers)
             # If we get a response, check for authentication error status code
             assert response.status_code == 401
             
@@ -604,7 +604,7 @@ class TestAuthentication:
             "operation": "summarize"
         }
         
-        response = authenticated_client.post("/text_processing/process", json=request_data)
+        response = authenticated_client.post("/v1/text_processing/process", json=request_data)
         assert response.status_code == 200
         
         data = response.json()
@@ -612,7 +612,7 @@ class TestAuthentication:
     
     def test_operations_endpoint_with_auth(self, authenticated_client):
         """Test operations endpoint with authentication (optional auth)."""
-        response = authenticated_client.get("/text_processing/operations")
+        response = authenticated_client.get("/v1/text_processing/operations")
         assert response.status_code == 200
         
         data = response.json()

@@ -11,11 +11,11 @@ endpoints support both legacy and modern resilience configurations with
 automatic detection and appropriate response formatting.
 
 Endpoints:
-    GET  /resilience/health: Get service health status and circuit breaker states
+    GET  /resilience/health/: Get service health status and circuit breaker states
     GET  /resilience/config: Retrieve current resilience configuration and strategies
     GET  /resilience/metrics: Get comprehensive resilience metrics for all operations
     GET  /resilience/metrics/{operation_name}: Get metrics for a specific operation
-    POST /resilience/metrics/reset: Reset metrics for specific or all operations
+    POST /internal/resilience/metrics/reset: Reset metrics for specific or all operations
     GET  /resilience/dashboard: Get dashboard-style summary for monitoring systems
 
 Configuration Management:
@@ -50,13 +50,13 @@ Authentication:
 
 Example:
     To check overall resilience service health:
-        GET /api/internal/resilience/health
+        GET /internal/resilience/health/
         
     To get comprehensive metrics for monitoring:
-        GET /api/internal/resilience/dashboard
+        GET /internal/resilience/dashboard
         
     To reset metrics for a specific operation:
-        POST /api/internal/resilience/metrics/reset?operation_name=summarize
+        POST /internal/resilience/metrics/reset?operation_name=summarize
 
 Note:
     This module automatically handles both legacy and modern resilience
@@ -89,7 +89,7 @@ def get_settings() -> Settings:
     return settings
 
 
-@main_router.get("/health")
+@main_router.get("/v1/health/")
 async def get_resilience_health():
     """Get resilience service health status and circuit breaker information.
 

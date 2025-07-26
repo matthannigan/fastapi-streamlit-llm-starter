@@ -11,13 +11,13 @@ patterns, and performance characteristics across different time windows and
 operational contexts.
 
 Endpoints:
-    GET /resilience/monitoring/usage-statistics: Configuration usage statistics and trends
-    GET /resilience/monitoring/preset-trends/{preset_name}: Usage trends for specific presets
-    GET /resilience/monitoring/performance-metrics: Performance metrics analysis
-    GET /resilience/monitoring/alerts: Active configuration alerts and notifications
-    GET /resilience/monitoring/session/{session_id}: Session-specific configuration metrics
-    GET /resilience/monitoring/export: Export monitoring data in various formats
-    POST /resilience/monitoring/cleanup: Clean up old metrics and monitoring data
+    GET /internal/resilience/monitoring/usage-statistics: Configuration usage statistics and trends
+    GET /internal/resilience/monitoring/preset-trends/{preset_name}: Usage trends for specific presets
+    GET /internal/resilience/monitoring/performance-metrics: Performance metrics analysis
+    GET /internal/resilience/monitoring/alerts: Active configuration alerts and notifications
+    GET /internal/resilience/monitoring/session/{session_id}: Session-specific configuration metrics
+    GET /internal/resilience/monitoring/export: Export monitoring data in various formats
+    POST /internal/resilience/monitoring/cleanup: Clean up old metrics and monitoring data
 
 Monitoring Features:
     - Real-time configuration usage tracking and analysis
@@ -70,13 +70,13 @@ Authentication:
 
 Example:
     Get usage statistics for last 24 hours:
-        GET /api/internal/resilience/monitoring/usage-statistics?time_window_hours=24
+        GET /internal/resilience/monitoring/usage-statistics?time_window_hours=24
         
     Get performance metrics:
-        GET /api/internal/resilience/monitoring/performance-metrics?hours=48
+        GET /internal/resilience/monitoring/performance-metrics?hours=48
         
     Export monitoring data:
-        GET /api/internal/resilience/monitoring/export?format=json&time_window_hours=168
+        GET /internal/resilience/monitoring/export?format=json&time_window_hours=168
 
 Note:
     Monitoring data provides valuable operational insights but may include

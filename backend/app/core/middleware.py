@@ -439,9 +439,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     
     Example Logs:
         ```
-        INFO: Request started: GET /api/v1/process [req_id: abc123]
-        INFO: Request completed: GET /api/v1/process 200 1.2KB 150ms [req_id: abc123]
-        WARN: Slow request: POST /api/v1/batch 200 5.6KB 2500ms [req_id: def456]
+        INFO: Request started: GET /v1/text_processing/process [req_id: abc123]
+        INFO: Request completed: GET /v1/text_processing/process 200 1.2KB 150ms [req_id: abc123]
+        WARN: Slow request: POST /v1/text_processing/batch_process 200 5.6KB 2500ms [req_id: def456]
         ```
     
     Note:
@@ -778,9 +778,9 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     
     Example Metrics:
         ```
-        request_duration_seconds{method="POST", endpoint="/api/v1/process"} 0.125
-        request_memory_usage_bytes{method="POST", endpoint="/api/v1/process"} 1048576
-        slow_requests_total{method="POST", endpoint="/api/v1/process"} 1
+        request_duration_seconds{method="POST", endpoint="/v1/text_processing/process"} 0.125
+        request_memory_usage_bytes{method="POST", endpoint="/v1/text_processing/process"} 1048576
+        slow_requests_total{method="POST", endpoint="/v1/text_processing/process"} 1
         ```
     
     Note:

@@ -63,7 +63,7 @@ async def health_check():
             the health check remains available even when subsystems are down.
     
     Example:
-        >>> # GET /health
+        >>> # GET /health/
         >>> {
         ...   "status": "healthy",
         ...   "timestamp": "2025-06-28T00:06:39.130848",

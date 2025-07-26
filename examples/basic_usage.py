@@ -66,7 +66,7 @@ class APIClient:
             Health status dictionary or None if error occurred
         """
         try:
-            response = await self.session.get(f"{self.base_url}/health")
+            response = await self.session.get(f"{self.base_url}/health/")
             response.raise_for_status()
             return response.json()
         except httpx.TimeoutException:

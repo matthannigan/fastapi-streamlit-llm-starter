@@ -24,7 +24,7 @@ Functions:
     get_monitoring_health: Comprehensive health check of all monitoring subsystems.
 
 Routes:
-    GET /monitoring/health: Returns detailed health status of monitoring infrastructure.
+    GET /internal/monitoring/health/: Returns detailed health status of monitoring infrastructure.
 
 Dependencies:
     FastAPI: Web framework for HTTP routing and dependency injection.
@@ -43,7 +43,7 @@ Typical Usage Example:
     
     To check monitoring system health:
     ```bash
-    curl -H "X-API-Key: your-api-key" http://localhost:8000/internal/monitoring/health
+    curl -H "X-API-Key: your-api-key" http://localhost:8000/internal/monitoring/health/
     ```
     
     Returns comprehensive monitoring health report with component-level status.
@@ -55,7 +55,7 @@ Security:
 
 Note:
     This module focuses exclusively on monitoring infrastructure health,
-    not main application health. Use the `/health` endpoint for overall 
+    not main application health. Use the `/health/` endpoint for overall 
     application status and readiness checks.
 
 Attributes:
@@ -78,7 +78,7 @@ monitoring_router = APIRouter(prefix="/monitoring", tags=["System Monitoring"])
 logger = logging.getLogger(__name__)
 
 
-@monitoring_router.get("/health")
+@monitoring_router.get("/v1/health/")
 async def get_monitoring_health(
     api_key: str = Depends(optional_verify_api_key),
     cache_service: AIResponseCache = Depends(get_cache_service)
@@ -135,11 +135,11 @@ async def get_monitoring_health(
                 }
             },
             "available_endpoints": [
-                "GET /monitoring/health",
-                "GET /cache/status",
-                "GET /cache/metrics", 
-                "GET /cache/invalidation-stats",
-                "GET /resilience/health"
+                "GET /internal/monitoring/health/",
+                "GET /internal/cache/status",
+                "GET /internal/cache/metrics", 
+                "GET /internal/cache/invalidation-stats",
+                "GET /internal/resilience/health/"
             ]
         }
         ```
@@ -161,7 +161,7 @@ async def get_monitoring_health(
     Note:
         This endpoint specifically monitors the health of monitoring infrastructure,
         not the main application components. For overall application health,
-        use the `/health` endpoint instead.
+        use the `/health/` endpoint instead.
         
         The endpoint uses optional API key authentication, making it accessible
         for internal monitoring while maintaining security for production
@@ -229,11 +229,11 @@ async def get_monitoring_health(
         
         # Add available monitoring endpoints
         monitoring_health["available_endpoints"] = [
-            "GET /monitoring/health",
-            "GET /cache/status", 
-            "GET /cache/metrics",
-            "GET /cache/invalidation-stats",
-            "GET /resilience/health"
+            "GET /internal/monitoring/health/",
+            "GET /internal/cache/status", 
+            "GET /internal/cache/metrics",
+            "GET /internal/cache/invalidation-stats",
+            "GET /internal/resilience/health/"
         ]
         
         return monitoring_health

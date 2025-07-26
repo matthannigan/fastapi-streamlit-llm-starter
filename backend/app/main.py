@@ -26,16 +26,16 @@ Key Features:
 
 API Endpoints:
     Public API (/docs):
-        * GET /: Root endpoint providing API information and version details
-        * GET /health: Comprehensive health check with AI, resilience, and cache status
-        * GET /auth/status: Authentication validation and API key verification
-        * POST /api/v1/text-processing/process: Main text processing endpoint
-        * POST /api/v1/text-processing/batch: Batch text processing operations
+        * GET  /: Root endpoint providing API information and version details
+        * GET  /v1/health/: Comprehensive health check with AI, resilience, and cache status
+        * GET  /v1/auth/status: Authentication validation and API key verification
+        * POST /v1/text_processing/process: Main text processing endpoint
+        * POST /v1/text_processing/batch_process: Batch text processing operations
     
     Internal API (/internal/docs):
-        * GET /api/internal/monitoring/*: System metrics and performance data
-        * GET /api/internal/cache/*: Cache status, metrics, and management
-        * GET /api/internal/resilience/*: Circuit breaker status and configuration
+        * GET /internal/monitoring/*: System metrics and performance data
+        * GET /internal/cache/*: Cache status, metrics, and management
+        * GET /internal/resilience/*: Circuit breaker status and configuration
 
 Configuration:
     The application uses environment-based configuration through the Settings class,
@@ -387,13 +387,48 @@ def create_public_app() -> FastAPI:
             "message": "AI Text Processor API",
             "version": "1.0.0",
             "docs": "/docs",
-            "internal_docs": "/internal/docs"
+            "internal_docs": "/internal/docs",
+            "api_version": "v1",
+            "endpoints": {
+                "health": "/v1/health/",
+                "auth": "/v1/auth/status",
+                "text_processing": "/v1/text_processing/process"
+            }
         }
     
     # Include public API routers
-    public_app.include_router(health_router)
-    public_app.include_router(auth_router)
-    public_app.include_router(text_processing_router)
+    public_app.include_router(health_router, prefix="/v1")
+    public_app.include_router(auth_router, prefix="/v1")
+    public_app.include_router(text_processing_router, prefix="/v1")
+    
+    # Backward compatibility - redirect old unversioned routes to v1
+    # Remove these after deprecation period
+    @public_app.get("/v1/health/", include_in_schema=False, deprecated=True)
+    async def health_redirect():
+        """Backward compatibility redirect - Use /v1/health/ instead."""
+        from fastapi import Response
+        return Response(
+            status_code=301,
+            headers={"Location": "/v1/health/"}
+        )
+    
+    @public_app.get("/v1/auth/status", include_in_schema=False, deprecated=True) 
+    async def auth_status_redirect():
+        """Backward compatibility redirect - Use /v1/auth/status instead."""
+        from fastapi import Response
+        return Response(
+            status_code=301,
+            headers={"Location": "/v1/auth/status"}
+        )
+    
+    @public_app.post("/v1/text_processing/process", include_in_schema=False, deprecated=True)
+    async def text_process_redirect():
+        """Backward compatibility redirect - Use /v1/text_processing/process instead."""
+        from fastapi import Response
+        return Response(
+            status_code=301,
+            headers={"Location": "/v1/text_processing/process"}
+        )
     
     # Apply custom OpenAPI schema generation
     public_app.openapi = lambda: custom_openapi_schema(public_app)

@@ -12,9 +12,9 @@ capabilities. All endpoints provide extensive information about circuit
 breaker health and operational status.
 
 Endpoints:
-    GET /resilience/circuit-breakers: Get status of all circuit breakers
-    GET /resilience/circuit-breakers/{breaker_name}: Get detailed information for specific breaker
-    POST /resilience/circuit-breakers/{breaker_name}/reset: Reset circuit breaker to closed state
+    GET /internal/resilience/circuit-breakers: Get status of all circuit breakers
+    GET /internal/resilience/circuit-breakers/{breaker_name}: Get detailed information for specific breaker
+    POST /internal/resilience/circuit-breakers/{breaker_name}/reset: Reset circuit breaker to closed state
 
 Circuit Breaker Management Features:
     - Real-time circuit breaker status monitoring
@@ -59,13 +59,13 @@ Authentication:
 
 Example:
     Get all circuit breaker statuses:
-        GET /api/internal/resilience/circuit-breakers
+        GET /internal/resilience/circuit-breakers
         
     Get specific circuit breaker details:
-        GET /api/internal/resilience/circuit-breakers/text_processing_service
+        GET /internal/resilience/circuit-breakers/text_processing_service
         
     Reset a circuit breaker:
-        POST /api/internal/resilience/circuit-breakers/text_processing_service/reset
+        POST /internal/resilience/circuit-breakers/text_processing_service/reset
 
 Note:
     Circuit breakers are critical safety components that protect against

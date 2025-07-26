@@ -11,7 +11,7 @@ endpoints support optional API key authentication for security.
 
 Endpoints:
     GET  /cache/status: Retrieve current cache status and basic statistics
-    POST /cache/invalidate: Invalidate cache entries matching a pattern
+    POST /internal/cache/invalidate: Invalidate cache entries matching a pattern
     GET  /cache/invalidation-stats: Get cache invalidation frequency statistics
     GET  /cache/invalidation-recommendations: Get optimization recommendations
     GET  /cache/metrics: Get comprehensive cache performance metrics
@@ -30,10 +30,10 @@ Dependencies:
 
 Example:
     To get comprehensive cache metrics:
-        GET /api/internal/cache/metrics
+        GET /internal/cache/metrics
         
     To invalidate all cache entries:
-        POST /api/internal/cache/invalidate?pattern=
+        POST /internal/cache/invalidate?pattern=
 
 Note:
     Cache performance metrics are computed on-demand and may cause brief
@@ -239,7 +239,7 @@ async def get_cache_status(
             information in the response body if cache status retrieval fails.
     
     Example:
-        >>> # GET /api/internal/cache/status
+        >>> # GET /internal/cache/status
         >>> {
         ...     "redis": {"status": "connected", "memory_usage": "2.5MB"},
         ...     "memory": {"status": "normal", "entries": 1250},
@@ -297,10 +297,10 @@ async def invalidate_cache(
             the response message rather than raising exceptions.
     
     Example:
-        >>> # POST /api/internal/cache/invalidate?pattern=user:123:*
+        >>> # POST /internal/cache/invalidate?pattern=user:123:*
         >>> {"message": "Cache invalidated for pattern: user:123:*"}
         
-        >>> # POST /api/internal/cache/invalidate (invalidate all)
+        >>> # POST /internal/cache/invalidate (invalidate all)
         >>> {"message": "Cache invalidated for pattern: "}
     """
     try:
@@ -345,7 +345,7 @@ async def get_invalidation_stats(
             statistics if data retrieval fails.
     
     Example:
-        >>> # GET /api/internal/cache/invalidation-stats
+        >>> # GET /internal/cache/invalidation-stats
         >>> {
         ...     "frequency": {"hourly": 45, "daily": 1080},
         ...     "patterns": {"user:*": 0.35, "api:*": 0.28, "": 0.15},
@@ -391,7 +391,7 @@ async def get_invalidation_recommendations(
             recommendations list if analysis fails.
     
     Example:
-        >>> # GET /api/internal/cache/invalidation-recommendations
+        >>> # GET /internal/cache/invalidation-recommendations
         >>> {
         ...     "recommendations": [
         ...         "Consider using more specific patterns instead of wildcard invalidations",
@@ -549,7 +549,7 @@ async def get_cache_performance_metrics(
               or performance monitor methods are not available.
     
     Example:
-        >>> # GET /api/internal/cache/metrics
+        >>> # GET /internal/cache/metrics
         >>> {
         ...     "timestamp": "2024-01-15T10:30:00.123456",
         ...     "retention_hours": 1,
