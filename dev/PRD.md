@@ -110,84 +110,6 @@ The backend application has evolved organically, resulting in oversized files (u
 
 # Technical Architecture
 
-## Proposed Directory Structure
-
-```
-backend/app/
-├── main.py                          # FastAPI app setup, middleware, router registration
-├── dependencies.py                  # Global dependency injection providers
-├── __init__.py
-│
-├── api/                            # API Layer - All HTTP endpoints
-│   ├── __init__.py
-│   ├── v1/                         # Versioned public APIs
-│   │   ├── __init__.py
-│   │   ├── routers/                # Route handlers
-│   │   │   ├── __init__.py
-│   │   │   ├── text_processing.py  # /v1/process, /v1/batch_process
-│   │   │   └── health.py           # /v1/health, /v1/auth/status
-│   │   └── deps.py                 # API-specific dependencies (auth, rate limiting)
-│   │
-│   └── internal/                   # Unversioned internal APIs
-│       ├── __init__.py
-│       ├── monitoring.py           # /monitoring/* endpoints
-│       └── admin.py                # /admin/*, /cache/* endpoints
-│
-├── core/                           # Application setup and configuration
-│   ├── __init__.py
-│   ├── config.py                   # All settings (organized by section)
-│   ├── exceptions.py               # Custom exception hierarchy
-│   └── middleware.py               # CORS, error handling, logging middleware
-│
-├── infrastructure/                 # Reusable technical services (TEMPLATE VALUE)
-│   ├── __init__.py
-│   ├── ai/                         # AI provider abstractions
-│   │   ├── __init__.py
-│   │   ├── client.py               # Abstract AI client interface
-│   │   ├── gemini.py               # Google Gemini implementation
-│   │   └── prompt_builder.py       # Prompt construction utilities
-│   │
-│   ├── cache/                      # Caching infrastructure
-│   │   ├── __init__.py
-│   │   ├── base.py                 # Cache interface (ABC)
-│   │   ├── redis.py                # Redis cache implementation
-│   │   └── memory.py               # In-memory cache implementation
-│   │
-│   ├── resilience/                 # Fault tolerance patterns
-│   │   ├── __init__.py
-│   │   ├── circuit_breaker.py      # Circuit breaker implementation
-│   │   ├── retry.py                # Retry logic with strategies
-│   │   └── presets.py              # Resilience configuration presets
-│   │
-│   ├── security/                   # Security utilities
-│   │   ├── __init__.py
-│   │   ├── auth.py                 # API key validation
-│   │   ├── response_validator.py   # Response security validation
-│   │   └── sanitization.py         # Input sanitization utilities
-│   │
-│   └── monitoring/                 # Observability infrastructure
-│       ├── __init__.py
-│       ├── metrics.py              # Performance metrics collection
-│       ├── health.py               # Health check utilities
-│       └── cache_monitor.py        # Cache performance monitoring
-│
-├── services/                       # Domain-specific business logic (REPLACE THIS)
-│   ├── __init__.py
-│   └── text_processing.py          # Example domain service
-│
-├── schemas/                        # Pydantic models for validation
-│   ├── __init__.py
-│   ├── text_processing.py          # Text processing request/response models
-│   ├── monitoring.py               # Monitoring endpoint models
-│   ├── resilience.py               # Resilience configuration models
-│   └── common.py                   # Shared models and enums
-│
-└── examples/                       # Reference implementations (NOT FOR PRODUCTION)
-    ├── __init__.py
-    ├── README.md                   # "These are examples for learning!"
-    └── advanced_text_processing.py # Complex usage patterns
-```
-
 ## Design Principles
 
 1. **Infrastructure vs Domain Separation**: Top-level distinction between reusable components and business logic
@@ -247,7 +169,7 @@ backend/app/
 
 ## Phase 4: API Layer Reorganization
 **Scope:** Implement versioned/unversioned API separation
-- Create `api/v1/routers/` directory
+- Create `api/v1/` directory
   - Move text processing endpoints to `text_processing.py`
   - Move health endpoints to `health.py`
 - Create `api/internal/` directory
@@ -380,24 +302,6 @@ Successfully separate infrastructure from domain services while maintaining all 
 
 # Appendix
 
-## Current File Analysis
-
-### Oversized Files Requiring Split
-- `config.py`: 37KB → Split into sections within `core/config.py`
-- `resilience_endpoints.py`: 46KB → Split between `api/internal/admin.py` and `infrastructure/resilience/`
-- `validation_schemas.py`: 49KB → Split between `schemas/` and `infrastructure/resilience/`
-
-### File Migration Mapping
-
-| Current Location | New Location | Notes |
-|-----------------|--------------|-------|
-| `app/config.py` | `app/core/config.py` | Consolidate all settings |
-| `app/services/cache.py` | `app/infrastructure/cache/redis.py` | Preserve AIResponseCache name |
-| `app/services/resilience.py` | `app/infrastructure/resilience/` | Split into multiple files |
-| `app/services/text_processor.py` | `app/services/text_processing.py` | Simplify as example |
-| `app/routers/monitoring.py` | `app/api/internal/monitoring.py` | Unversioned internal API |
-| `app/auth.py` | `app/infrastructure/security/auth.py` | Preserve function names |
-
 ## Infrastructure vs Domain Guidelines
 
 ### Infrastructure Services (Keep These)
@@ -427,63 +331,6 @@ Successfully separate infrastructure from domain services while maintaining all 
 - Obvious customization points
 - Improved developer onboarding
 - Better code organization
-
-## Migration Tools
-
-The scripts include comprehensive error handling, progress reporting, and actionable feedback to guide the refactoring process.
-
-Both scripts are designed to be run during and after the refactoring process:
-- Use `import_update_script.py` during each phase to update imports
-- Use `structure_validation.py` after each phase to ensure architectural integrity
-
-### 1. `import_update_script.py` - Automated Import Migration Tool
-
-This script handles the automatic updating of import statements throughout the codebase:
-
-**Features:**
-- Comprehensive import mapping from old to new structure
-- Handles both absolute and relative imports
-- Dry-run mode to preview changes before applying
-- Validates imports after updating to catch broken references
-- Provides detailed summary of changes and errors
-- Excludes virtual environments and cache directories
-
-**Usage:**
-```bash
-# Preview changes without modifying files
-cd backend && python scripts/import_update_script.py --dry-run --verbose
-
-# Apply changes
-cd backend && python scripts/import_update_script.py
-
-# Run from a specific directory
-cd backend && python scripts/import_update_script.py --root-dir /path/to/project
-```
-
-### 2. `structure_validation.py` - Project Structure Validation Tool
-
-This script validates the refactored structure to ensure architectural principles are maintained:
-
-**Features:**
-- Detects circular dependencies between modules
-- Validates layer hierarchy (e.g., API → Services → Infrastructure)
-- Checks file size limits (default 500 lines)
-- Tracks infrastructure vs domain module separation
-- Measures import depth and complexity metrics
-- Warns about domain services importing from each other
-- Generates detailed JSON report with `--verbose` flag
-
-**Usage:**
-```bash
-# Run validation with default settings
-cd backend && python scripts/structure_validation.py
-
-# Custom file size limit and detailed report
-cd backend && python scripts/structure_validation.py --max-file-lines 300 --verbose
-
-# Run from specific directory
-cd backend && python scripts/structure_validation.py --root-dir /path/to/project
-```
 
 ## Post-Refactoring Enhancements (Future)
 
