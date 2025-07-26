@@ -27,19 +27,14 @@ debugging, monitoring, and audit trails
 
 ## API Endpoints
 
-### Core Endpoints
-
+Public API (/docs):
 - `GET /`: Root endpoint providing API information and version details
 - `GET /health`: Comprehensive health check with AI, resilience, and cache status
 - `GET /auth/status`: Authentication validation and API key verification
-
-### Text Processing
-
 - `POST /api/v1/text-processing/process`: Main text processing endpoint
 - `POST /api/v1/text-processing/batch`: Batch text processing operations
 
-### Monitoring & Administration
-
+Internal API (/internal/docs):
 - `GET /api/internal/monitoring/*`: System metrics and performance data
 - `GET /api/internal/cache/*`: Cache status, metrics, and management
 - `GET /api/internal/resilience/*`: Circuit breaker status and configuration
@@ -70,6 +65,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ### Docker
 
 docker run -p 8000:8000 your-image:tag
+
+## Documentation
+
+- Public API Docs: http://localhost:8000/docs
+- Internal API Docs: http://localhost:8000/internal/docs
+- OpenAPI JSON: http://localhost:8000/openapi.json (public)
+- Internal OpenAPI JSON: http://localhost:8000/internal/openapi.json
 
 ## Environment Variables
 
