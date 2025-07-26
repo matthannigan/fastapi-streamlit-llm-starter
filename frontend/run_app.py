@@ -26,6 +26,11 @@ except ImportError as e:
 if __name__ == "__main__":
     import streamlit.web.cli as stcli
     
+    # Ensure the app directory is in the Python path for imports
+    app_dir = os.path.join(current_dir, "app")
+    if app_dir not in sys.path:
+        sys.path.insert(0, app_dir)
+    
     # Set up Streamlit arguments
     sys.argv = [
         "streamlit",
