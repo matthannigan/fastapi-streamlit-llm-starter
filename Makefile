@@ -386,30 +386,25 @@ repomix:
 	@echo "Generating full repository documentation (compressed)..."
 	npx repomix --compress --output repomix-output_all.md
 	$(MAKE) repomix-backend
-	$(MAKE) repomix-backend-tests
 	$(MAKE) repomix-frontend  
-	$(MAKE) repomix-frontend-tests
 	$(MAKE) repomix-docs
 
 repomix-backend:
 	@echo "Generating backend documentation..."
 	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output repomix-output_backend.md
-
-repomix-backend-tests:
-	@echo "Generating backend documentation..."
 	npx repomix --include "backend/tests/**/*" --compress --output repomix-output_backend-tests.md
 
 repomix-frontend:
 	@echo "Generating frontend documentation..."
 	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*"  --output repomix-output_frontend.md
-
-repomix-frontend-tests:
-	@echo "Generating frontend documentation..."
 	npx repomix --include "frontend/tests/**/*" --compress --output repomix-output_frontend-tests.md
 
 repomix-docs:
 	@echo "Generating documentation for READMEs and docs/ subdirectory..."
-	npx repomix --include "**/README.md,docs/**/*" --output repomix-output_docs.md
+	$(PYTHON_CMD) scripts/generate_code_docs.py backend/app/  docs/code_ref/backend/
+	$(PYTHON_CMD) scripts/generate_code_docs.py frontend/app/ docs/code_ref/frontend/
+	npx repomix --include "docs/code_ref/**/*" --output repomix-output_code-ref.md
+	npx repomix --include "**/README.md,docs/**/*"  --ignore "docs/code_ref*/**/*" --output repomix-output_docs.md
 
  ## Generate lock files from requirements (backend only - frontend uses Docker)
 lock-deps: venv
