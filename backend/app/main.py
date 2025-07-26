@@ -420,7 +420,7 @@ def create_public_app() -> FastAPI:
             headers={"Location": "/v1/auth/status"}
         )
     
-    @public_app.post("/text_processing/operations", include_in_schema=False, deprecated=True)
+    @public_app.get("/text_processing/operations", include_in_schema=False, deprecated=True)
     async def text_process_redirect():
         """Helper redirect for unversioned GET /text_processing/operations requests."""
         from fastapi import Response
