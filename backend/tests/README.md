@@ -1,6 +1,6 @@
 # Backend Test Suite
 
-This directory contains comprehensive tests for the FastAPI backend application, organized into clear categories for better maintainability and discoverability.
+This directory contains comprehensive tests for the FastAPI backend application, organized into clear categories for better maintainability and discoverability. The test suite includes **23,162 lines** across **59 test files**, providing extensive coverage of all application components.
 
 ## Test Structure
 
@@ -8,94 +8,98 @@ The test suite follows a hierarchical structure that mirrors the application sou
 
 ```
 backend/tests/
-├── conftest.py                    # Global fixtures and test configuration (405 lines)
-├── fixtures.py                    # Reusable test data factories (39 lines)
-├── mocks.py                       # Common mock objects (61 lines)
-├── assertions.py                  # Custom test assertions (35 lines)
-├── README.md                      # Test documentation and guidelines (288 lines)
+├── conftest.py                    # Global fixtures and test configuration (440 lines)
+├── fixtures.py                    # Reusable test data factories (38 lines)
+├── mocks.py                       # Common mock objects (60 lines)
+├── assertions.py                  # Custom test assertions (34 lines)
+├── README.md                      # Test documentation and guidelines
+├── directory-structure.txt        # Directory structure reference
 │
 ├── infrastructure/                # Tests for reusable template components
-│   ├── conftest.py                # Infrastructure-specific fixtures (15 lines)
+│   ├── conftest.py                # Infrastructure-specific fixtures (14 lines)
 │   │
 │   ├── ai/
-│   │   ├── test_client.py              # AI client interface tests (21 lines)
-│   │   ├── test_gemini.py              # Gemini implementation tests (14 lines)
-│   │   ├── test_prompt_builder.py      # Prompt construction tests (415 lines)
-│   │   ├── test_sanitization.py        # Input sanitization tests (307 lines)
-│   │   └── test_response_validator.py  # Response validation tests (301 lines)
+│   │   ├── test_client.py              # AI client interface tests (24 lines)
+│   │   ├── test_gemini.py              # Gemini implementation tests (17 lines)
+│   │   ├── test_prompt_builder.py      # Prompt construction tests (418 lines)
+│   │   └── test_sanitization.py        # Input sanitization tests (310 lines)
 │   │
 │   ├── cache/
-│   │   ├── test_base.py          # Cache interface tests (14 lines)
-│   │   ├── test_redis.py         # Redis cache implementation (14 lines)
-│   │   ├── test_memory.py        # In-memory cache tests (14 lines)
-│   │   ├── test_cache.py         # Comprehensive cache tests (3673 lines)
-│   │   └── test_monitoring.py    # Cache monitoring tests (2337 lines)
+│   │   ├── test_base.py          # Cache interface tests (15 lines)
+│   │   ├── test_redis.py         # Redis cache implementation (15 lines)
+│   │   ├── test_memory.py        # In-memory cache tests (15 lines)
+│   │   ├── test_cache.py         # Comprehensive cache tests (3672 lines)
+│   │   └── test_monitoring.py    # Cache monitoring tests (2015 lines)
 │   │
 │   ├── resilience/
-│   │   ├── test_resilience.py              # Core resilience functionality (1753 lines)
-│   │   ├── test_circuit_breaker.py         # Circuit breaker pattern tests (14 lines)
-│   │   ├── test_retry.py                   # Retry mechanism tests (14 lines)
-│   │   ├── test_presets.py                 # Resilience preset configuration tests (408 lines)
-│   │   ├── test_resilience_integration.py  # Resilience integration tests (230 lines)
-│   │   ├── test_validation_schemas.py      # Schema validation tests (361 lines)
-│   │   ├── test_backward_compatibility.py  # Backward compatibility tests (743 lines)
-│   │   ├── test_env_recommendations.py     # Environment-specific tests (340 lines)
-│   │   ├── test_adv_config_scenarios.py    # Complex config tests (675 lines)
-│   │   ├── test_security_validation.py     # Security validation tests (473 lines)
-│   │   └── test_migration_utils.py         # Migration utility tests (478 lines)
+│   │   ├── test_resilience.py              # Core resilience functionality (1888 lines)
+│   │   ├── test_circuit_breaker.py         # Circuit breaker pattern tests (13 lines)
+│   │   ├── test_retry.py                   # Retry mechanism tests (13 lines)
+│   │   ├── test_presets.py                 # Resilience preset configuration tests (453 lines)
+│   │   ├── test_resilience_integration.py  # Resilience integration tests (321 lines)
+│   │   ├── test_validation_schemas.py      # Schema validation tests (360 lines)
+│   │   ├── test_backward_compatibility.py  # Backward compatibility tests (802 lines)
+│   │   ├── test_env_recommendations.py     # Environment-specific tests (339 lines)
+│   │   ├── test_adv_config_scenarios.py    # Complex config tests (729 lines)
+│   │   ├── test_security_validation.py     # Security validation tests (470 lines)
+│   │   ├── test_migration_utils.py         # Migration utility tests (477 lines)
+│   │   ├── test_performance_benchmarks.py  # Performance benchmarking tests (514 lines)
+│   │   ├── test_domain_integration_helpers.py # Domain integration helpers (127 lines)
+│   │   └── infrastructure_review.md        # Infrastructure review documentation
 │   │
 │   ├── security/
-│   │   └── test_auth.py          # Authentication and authorization tests (362 lines)
+│   │   └── test_auth.py          # Authentication and authorization tests (365 lines)
 │   │
 │   └── monitoring/
-│       ├── test_metrics.py       # Metrics collection tests (14 lines)
-│       ├── test_health.py        # Health check tests (14 lines)
-│       └── test_performance_benchmarks.py # Performance monitoring tests (508 lines)
+│       ├── test_metrics.py       # Metrics collection tests (17 lines)
+│       └── test_health.py        # Health check tests (17 lines)
 │
 ├── core/                         # Tests for application-specific setup
-│   ├── test_config.py                # Configuration loading and validation (224 lines)
-│   ├── test_config_monitoring.py     # Configuration monitoring tests (602 lines)
-│   ├── test_exceptions.py            # Custom exception handling (14 lines)
-│   ├── test_middleware.py            # CORS, error handling, logging (19 lines)
+│   ├── test_config.py                # Configuration loading and validation (238 lines)
+│   ├── test_config_monitoring.py     # Configuration monitoring tests (601 lines)
+│   ├── test_exceptions.py            # Custom exception handling (13 lines)
+│   ├── test_middleware.py            # CORS, error handling, logging (18 lines)
 │   ├── test_dependencies.py          # Dependency injection (426 lines)
-│   └── test_dependency_injection.py  # Advanced dependency injection tests (82 lines)
+│   └── test_dependency_injection.py  # Advanced dependency injection tests (81 lines)
 │
 ├── services/                     # Tests for domain/business logic
-│   └── test_text_processing.py   # Text processing service tests (1163 lines)
+│   ├── test_text_processing.py   # Text processing service tests (1169 lines)
+│   └── test_response_validator.py # Response validation tests (311 lines)
 │
 ├── api/                          # API endpoint tests
-│   ├── conftest.py               # API-specific fixtures (auth, clients) (19 lines)
+│   ├── conftest.py               # API-specific fixtures (auth, clients) (11 lines)
 │   │
 │   ├── v1/                       # Versioned public API tests
-│   │   ├── test_text_processing.py  # /v1/text_processing/process, /v1/text_processing/batch_process (703 lines)
-│   │   └── test_health.py           # /v1/health, /v1/auth/status (20 lines)
+│   │   ├── test_text_processing_endpoints.py  # /v1/text_processing/* endpoints (620 lines)
+│   │   └── test_main_endpoints.py             # /v1/health, /v1/auth/status (114 lines)
 │   │
 │   └── internal/                       # Internal/admin API tests
-│       ├── test_monitoring.py              # /monitoring/* endpoints (550 lines)
-│       ├── test_admin.py                   # /admin/* endpoints (14 lines)
-│       ├── test_resilience_validation.py   # Resilience validation endpoints (575 lines)
-│       └── test_resilience_performance.py  # Resilience performance tests (333 lines)
+│       ├── test_monitoring_endpoints.py         # /internal/monitoring/* endpoints (561 lines)
+│       ├── test_admin_endpoints.py              # /internal/admin/* endpoints (13 lines)
+│       ├── test_resilience_validation_endpoints.py   # Resilience validation endpoints (591 lines)
+│       ├── test_resilience_performance_endpoints.py  # Resilience performance tests (336 lines)
+│       ├── test_resilience_monitoring_endpoints.py   # Resilience monitoring endpoints (566 lines)
+│       └── test_cache_endpoints.py               # Cache management endpoints (571 lines)
 │
 ├── shared_schemas/           # Schema validation tests
-│   ├── test_text_processing.py   # Request/response model tests (164 lines)
-│   ├── test_monitoring.py        # Monitoring model tests (15 lines)
-│   └── test_common.py            # Shared models and enums (61 lines)
+│   ├── test_text_processing_schemas.py   # Request/response model tests (163 lines)
+│   └── test_common_schemas.py            # Shared models and enums (63 lines)
 │
 ├── integration/                     # Cross-layer integration tests
-│   ├── conftest.py                      # Integration-specific fixtures (19 lines)
-│   ├── test_end_to_end.py               # Full request flow tests (638 lines)
-│   ├── test_auth_endpoints.py           # Authentication integration (321 lines)
-│   ├── test_resilience_integration1.py  # Resilience + API integration part 1 (408 lines)
-│   ├── test_resilience_integration2.py  # Resilience + API integration part 2 (554 lines)
-│   ├── test_cache_integration.py        # Cache + service integration (14 lines)
-│   └── test_request_isolation.py        # Request isolation and context tests (627 lines)
+│   ├── conftest.py                      # Integration-specific fixtures (18 lines)
+│   ├── test_end_to_end.py               # Full request flow tests (395 lines)
+│   ├── test_auth_endpoints.py           # Authentication integration (300 lines)
+│   ├── test_resilience_integration1.py  # Resilience + API integration part 1 (538 lines)
+│   ├── test_resilience_integration2.py  # Resilience + API integration part 2 (370 lines)
+│   ├── test_cache_integration.py        # Cache + service integration (13 lines)
+│   └── test_request_isolation.py        # Request isolation and context tests (686 lines)
 │
 ├── performance/               # Performance and load tests
-│   └── test_cache_performance.py  # Cache performance tests (14 lines)
+│   └── test_cache_performance.py  # Cache performance tests (13 lines)
 │
 ├── manual/                    # Manual testing scripts
-│   ├── test_manual_api.py         # Manual API tests (require live server + AI keys) (158 lines)
-│   └── test_manual_auth.py        # Manual auth tests (require live server) (167 lines)
+│   ├── test_manual_api.py         # Manual API tests (require live server + AI keys) (190 lines)
+│   └── test_manual_auth.py        # Manual auth tests (require live server) (181 lines)
 │
 └── templates/                 # Code review templates for tests
     ├── code-review_api.md
@@ -523,6 +527,10 @@ Place domain/business logic tests:
 app/services/new_domain_service.py  →  tests/services/test_new_domain_service.py
 ```
 
+**Current service tests:**
+- `test_text_processing.py` - Text processing service tests
+- `test_response_validator.py` - Response validation tests
+
 **Note:** These are meant to be replaced in actual projects.
 
 ### API Tests 🌐
@@ -537,6 +545,10 @@ app/routers/v1/new_endpoint.py    →  tests/api/v1/test_new_endpoint.py
 app/routers/internal/new_admin.py →  tests/api/internal/test_new_admin.py
 ```
 
+**Current API tests:**
+- **v1/**: `test_main_endpoints.py`, `test_text_processing_endpoints.py`
+- **internal/**: `test_admin_endpoints.py`, `test_cache_endpoints.py`, `test_monitoring_endpoints.py`, `test_resilience_*_endpoints.py`
+
 ### Schema Tests 📋
 
 Place Pydantic model tests:
@@ -544,6 +556,10 @@ Place Pydantic model tests:
 ```bash
 shared/models/new_model.py  →  tests/shared_schemas/test_new_model.py
 ```
+
+**Current schema tests:**
+- `test_text_processing_schemas.py` - Request/response model tests
+- `test_common_schemas.py` - Shared models and enums
 
 ### Integration Tests 🔗
 
