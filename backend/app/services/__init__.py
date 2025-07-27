@@ -1,7 +1,21 @@
 """
-Domain Services Layer
+Domain Services Package
 
-Re-exports the primary domain services of the application.
+This package contains domain-specific business logic implementations that serve as 
+customizable examples for text processing and AI integration workflows.
+
+## Services
+
+- `TextProcessorService`: Main AI-powered text processing service with resilience patterns
+- `ResponseValidator`: AI response validation for security and quality assurance
+
+## Usage
+
+```python
+from app.services import TextProcessorService, ResponseValidator
+```
+
+Note: These are example domain services expected to be replaced per project requirements.
 """
 
 # Bridge the example domain service from its old location.
