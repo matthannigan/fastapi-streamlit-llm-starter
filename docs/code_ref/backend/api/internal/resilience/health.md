@@ -12,12 +12,12 @@ automatic detection and appropriate response formatting.
 
 ## Endpoints
 
-GET  /resilience/health: Get service health status and circuit breaker states
-GET  /resilience/config: Retrieve current resilience configuration and strategies
-GET  /resilience/metrics: Get comprehensive resilience metrics for all operations
-GET  /resilience/metrics/{operation_name}: Get metrics for a specific operation
-POST /resilience/metrics/reset: Reset metrics for specific or all operations
-GET  /resilience/dashboard: Get dashboard-style summary for monitoring systems
+GET  /internal/resilience/health: Get service health status and circuit breaker states
+GET  /internal/resilience/config: Retrieve current resilience configuration and strategies
+GET  /internal/resilience/metrics: Get comprehensive resilience metrics for all operations
+GET  /internal/resilience/metrics/{operation_name}: Get metrics for a specific operation
+POST /internal/resilience/metrics/reset: Reset metrics for specific or all operations
+GET  /internal/resilience/dashboard: Get dashboard-style summary for monitoring systems
 
 ## Configuration Management
 
@@ -57,13 +57,13 @@ for flexibility in different deployment scenarios.
 ## Example
 
 To check overall resilience service health:
-GET /api/internal/resilience/health
+GET /internal/resilience/health
 
 To get comprehensive metrics for monitoring:
-GET /api/internal/resilience/dashboard
+GET /internal/resilience/dashboard
 
 To reset metrics for a specific operation:
-POST /api/internal/resilience/metrics/reset?operation_name=summarize
+POST /internal/resilience/metrics/reset?operation_name=summarize
 
 ## Note
 

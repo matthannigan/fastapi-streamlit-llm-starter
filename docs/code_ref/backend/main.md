@@ -29,15 +29,15 @@ debugging, monitoring, and audit trails
 
 Public API (/docs):
 - `GET /`: Root endpoint providing API information and version details
-- `GET /health`: Comprehensive health check with AI, resilience, and cache status
-- `GET /auth/status`: Authentication validation and API key verification
-- `POST /api/v1/text-processing/process`: Main text processing endpoint
-- `POST /api/v1/text-processing/batch`: Batch text processing operations
+- `GET /v1/health`: Comprehensive health check with AI, resilience, and cache status
+- `GET /v1/auth/status`: Authentication validation and API key verification
+- `POST /v1/text_processing/process`: Main text processing endpoint
+- `POST /v1/text_processing/batch_process`: Batch text processing operations
 
 Internal API (/internal/docs):
-- `GET /api/internal/monitoring/*`: System metrics and performance data
-- `GET /api/internal/cache/*`: Cache status, metrics, and management
-- `GET /api/internal/resilience/*`: Circuit breaker status and configuration
+- `GET /internal/monitoring/*`: System metrics and performance data
+- `GET /internal/cache/*`: Cache status, metrics, and management
+- `GET /internal/resilience/*`: Circuit breaker status and configuration
 
 ## Configuration
 

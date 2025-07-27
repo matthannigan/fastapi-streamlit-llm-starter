@@ -27,7 +27,7 @@ get_monitoring_health: Comprehensive health check of all monitoring subsystems.
 
 ## Routes
 
-GET /monitoring/health: Returns detailed health status of monitoring infrastructure.
+GET /internal/monitoring/health: Returns detailed health status of monitoring infrastructure.
 
 ## Dependencies
 

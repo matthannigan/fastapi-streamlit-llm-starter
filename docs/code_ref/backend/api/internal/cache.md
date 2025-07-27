@@ -12,7 +12,7 @@ endpoints support optional API key authentication for security.
 ## Endpoints
 
 GET  /cache/status: Retrieve current cache status and basic statistics
-POST /cache/invalidate: Invalidate cache entries matching a pattern
+POST /internal/cache/invalidate: Invalidate cache entries matching a pattern
 GET  /cache/invalidation-stats: Get cache invalidation frequency statistics
 GET  /cache/invalidation-recommendations: Get optimization recommendations
 GET  /cache/metrics: Get comprehensive cache performance metrics
@@ -34,10 +34,10 @@ GET  /cache/metrics: Get comprehensive cache performance metrics
 ## Example
 
 To get comprehensive cache metrics:
-GET /api/internal/cache/metrics
+GET /internal/cache/metrics
 
 To invalidate all cache entries:
-POST /api/internal/cache/invalidate?pattern=
+POST /internal/cache/invalidate?pattern=
 
 ## Note
 
