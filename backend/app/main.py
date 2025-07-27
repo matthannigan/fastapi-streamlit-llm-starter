@@ -401,33 +401,37 @@ def create_public_app() -> FastAPI:
     public_app.include_router(auth_router, prefix="/v1")
     public_app.include_router(text_processing_router, prefix="/v1")
     
-    # Unversioned routes compatibility - redirect unversioned routes to v1
-    @public_app.get("/health", include_in_schema=False, deprecated=True)
+    # Utility endpoint compatibility - redirect to current version  
+    # These are stable utility endpoints that rarely have breaking changes
+    # and are commonly expected to be available without version prefixes
+    @public_app.get("/health", include_in_schema=False)
     async def health_redirect():
-        """Helper redirect for unversioned GET /health requests."""
+        """Utility redirect - monitoring systems often expect unversioned health endpoints."""
         from fastapi import Response
         return Response(
             status_code=301,
-            headers={"Location": "/v1/health"}
+            headers={
+                "Location": "/v1/health",
+                "X-API-Version": "v1", 
+                "X-Endpoint-Type": "utility"
+            }
         )
-    
-    @public_app.get("/auth/status", include_in_schema=False, deprecated=True) 
+
+    @public_app.get("/auth/status", include_in_schema=False) 
     async def auth_status_redirect():
-        """Helper redirect for unversioned GET /auth/status requests."""
+        """Utility redirect - auth validation is typically stable across versions."""
         from fastapi import Response
         return Response(
             status_code=301,
-            headers={"Location": "/v1/auth/status"}
+            headers={
+                "Location": "/v1/auth/status",
+                "X-API-Version": "v1",
+                "X-Endpoint-Type": "utility" 
+            }
         )
-    
-    @public_app.get("/text_processing/operations", include_in_schema=False, deprecated=True)
-    async def text_process_redirect():
-        """Helper redirect for unversioned GET /text_processing/operations requests."""
-        from fastapi import Response
-        return Response(
-            status_code=301,
-            headers={"Location": "/v1/text_processing/operations"}
-        )
+
+    # Note: Text processing endpoints require explicit versioning as they
+    # contain core business logic that may have breaking changes between versions
     
     # Apply custom OpenAPI schema generation
     public_app.openapi = lambda: custom_openapi_schema(public_app)
