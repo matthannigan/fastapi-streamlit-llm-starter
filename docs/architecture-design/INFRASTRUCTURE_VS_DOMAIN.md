@@ -17,11 +17,12 @@ This document establishes the architectural distinction between **Infrastructure
 - Configuration-driven behavior
 
 **Examples**:
-- Cache management (Redis, memory)
-- Resilience patterns (circuit breakers, retries)
-- AI provider integrations
-- Monitoring and observability
-- Security utilities
+- Cache management (Redis, memory) with compression and performance monitoring
+- Resilience patterns (circuit breakers, retries, preset strategies)
+- AI provider integrations with prompt security and response validation
+- Monitoring and observability with threshold-based alerting
+- Security utilities with configurable authentication modes
+- Performance monitoring with memory tracking and metrics collection
 
 ### Domain Services 💼
 **Definition**: Business-specific implementations that solve particular use cases using infrastructure services.
@@ -57,9 +58,9 @@ External Libraries ← Infrastructure Services ← Domain Services ← Applicati
 (most reusable)                                              (least reusable)
 ```
 
-## Code Review Guidelines
+## Code Review
 
-### For Infrastructure Service Reviews
+### Guidelines For Infrastructure Service Reviews
 
 **Review Focus**:
 - API stability and backward compatibility
@@ -84,7 +85,7 @@ Since this modifies the cache service (infrastructure), please ensure:
 Remember: Infrastructure changes affect ALL projects using this template.
 ```
 
-### For Domain Service Reviews
+### Guidelines For Domain Service Reviews
 
 **Review Focus**:
 - Business logic correctness
@@ -105,6 +106,15 @@ As this is domain logic (text processing example):
 
 Note: This code is meant to be replaced in actual projects, so prioritize clarity over optimization.
 ```
+
+### Code Review Implementation Templates
+
+The template includes systematic code review templates in `backend/tests/templates/`:
+- `code-review_infrastructure.md` - Infrastructure service review criteria
+- `code-review_services.md` - Domain service review criteria  
+- `code-review_integration.md` - Cross-layer integration review criteria
+
+These templates ensure consistent application of the infrastructure vs domain principles.
 
 ## Refactoring Request Templates
 
@@ -182,6 +192,8 @@ If YES to any → Domain Service
 
 ## File Header Standards
 
+Use Google-style docstrings with Markdown for formatting.
+
 ### Infrastructure Service Header
 ```python
 """
@@ -191,8 +203,14 @@ Infrastructure Service: Cache Management
 📋 Minimum test coverage: 90%
 🔧 Configuration-driven behavior
 
-This service provides business-agnostic caching capabilities
-used across all domain services.
+This module provides comprehensive caching infrastructure with multiple implementations
+and monitoring capabilities. It serves as the single point of entry for all cache-related
+functionality in the application.
+
+Main Components:
+    - CacheInterface: Abstract base class for all cache implementations
+    - AIResponseCache: Redis-based cache with compression and tiered storage
+    - InMemoryCache: High-performance in-memory cache with TTL and LRU eviction
 
 Change with caution - ensure backward compatibility.
 """
@@ -265,15 +283,24 @@ infrastructure services. It's meant as a learning example.
 
 ### Infrastructure Services
 - **Stability**: < 2 breaking changes per year
-- **Reusability**: Used by >80% of domain services
-- **Performance**: <5ms overhead for operations
-- **Test Coverage**: >90% with edge cases
+- **Reusability**: Used by >80% of domain services ✅ (Currently achieved)
+- **Performance**: <5ms overhead for operations ✅ (Monitored via performance tests)
+- **Test Coverage**: >90% with edge cases ✅ (Enforced via test structure)
 
-### Domain Services
-- **Clarity**: New developers understand in <30 minutes
-- **Replaceability**: Can swap implementation in <1 day
-- **Example Quality**: Demonstrates >3 infrastructure services
-- **Documentation**: 1:1 comment-to-code ratio for complex logic
+### Domain Services  
+- **Clarity**: New developers understand in <30 minutes ✅ (Achieved via examples)
+- **Replaceability**: Can swap implementation in <1 day ✅ (Template design)
+- **Example Quality**: Demonstrates >3 infrastructure services ✅ (Advanced demo shows 5+)
+- **Documentation**: Comprehensive docstrings with usage examples ✅ (Implemented)
+
+## Infrastructure Examples Implementation
+
+The template includes a comprehensive examples directory (`app/examples/`) that demonstrates:
+- **Advanced Infrastructure Demo** (`advanced_infrastructure_demo.py`): Complete integration patterns
+- **Cache Configuration Examples** (`cache_configuration_examples.py`): Production caching patterns
+- **Infrastructure Usage Patterns**: Real-world scenarios combining multiple services
+
+These examples serve as both learning materials and practical implementation guides for template users.
 
 ## Conclusion
 

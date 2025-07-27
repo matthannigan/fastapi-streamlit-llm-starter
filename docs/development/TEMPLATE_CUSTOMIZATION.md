@@ -63,17 +63,22 @@ backend/app/
 │  
 ├── api/                     \# API Layer: Request/Response handling (thin layer)  
 │   ├── v1/  
-│   │   ├── text\_processing\_router.py \# Endpoints for the main business logic  
-│   │   └── system\_router.py          \# /health, /operations, etc.  
-│   ├── monitoring\_router.py      \# /monitoring/\* endpoints  
-│   └── admin\_router.py           \# /admin/\* and /cache/\* endpoints  
+│   │   ├── text\_processing.py      \# Endpoints for the main business logic  
+│   │   ├── health.py                \# /health, /operations, system endpoints  
+│   │   ├── auth.py                  \# Authentication endpoints (/auth/*)
+│   │   └── deps.py                  \# API-specific dependencies  
+│   └── internal/            \# Internal/admin endpoints  
+│       ├── monitoring.py          \# /monitoring/\* endpoints  
+│       ├── cache.py               \# /cache/\* and admin endpoints
+│       └── resilience/           \# Resilience management endpoints
 │  
 ├── core/                    \# Application-wide setup & cross-cutting concerns  
 │   ├── config.py              \# Centralized Pydantic settings  
 │   └── exceptions.py          \# Custom exception classes  
 │  
 ├── services/ (Domain)       \# Business-specific, replaceable logic  
-│   └── text\_processing\_service.py \# Composes infrastructure to achieve a business goal  
+│   ├── text\_processor.py         \# Main text processing service (composes infrastructure)
+│   └── response\_validator.py     \# AI response validation and security service
 │  
 ├── infrastructure/          \# Reusable, business-agnostic technical services  
 │   ├── ai/                    \# AI provider abstractions, prompt building  
@@ -84,8 +89,8 @@ backend/app/
 │  
 └── schemas/                 \# Pydantic models (data contracts)  
     ├── text\_processing.py       \# Request/Response models for text processing  
-    ├── monitoring.py            \# Models for monitoring endpoints  
-    └── resilience.py            \# Models for resilience config endpoints
+    ├── health.py                \# Models for health check endpoints  
+    └── common.py                \# Shared response models (errors, success, pagination)
 
 ## **4\. Getting Started: Your Customization Roadmap**
 
@@ -103,22 +108,39 @@ This is the first place you should go.
 
 This is where your unique application comes to life.
 
-* **Delete the Example**: Start by deleting app/services/text\_processing\_service.py.  
-* **Create Your Service(s)**: Create new Python files that contain the core logic of your application. These services will import and use the components from app/infrastructure/. For example, you might create invoicing\_service.py or document\_analysis\_service.py.
+* **Understand the Example**: Review `app/services/text_processor.py` to understand how domain services are structured and how they compose infrastructure services.
+* **Replace or Extend**: You have two options:
+  - **Replace**: Delete `app/services/text_processor.py` and create entirely new services for your domain (e.g., `invoicing_service.py`, `document_analysis_service.py`)
+  - **Extend**: Keep the text processing service as an example and add new services alongside it
+* **Keep Supporting Services**: The `response_validator.py` service provides important security validation for AI responses - consider keeping it if you're working with AI-generated content.
+* **Follow the Pattern**: New services should import and compose infrastructure services from `app/infrastructure/` rather than implementing technical concerns directly.
 
 ### **Step 3: Create Your Data Contracts (schemas/)**
 
 Define the shape of your API's inputs and outputs.
 
-* **Delete the Example**: You can remove app/schemas/text\_processing.py.  
-* **Add Your Models**: Create new files with Pydantic models that define the request and response bodies for your API endpoints. This ensures data validation and generates accurate OpenAPI documentation.
+* **Review the Examples**: Examine `app/schemas/text_processing.py` to understand how to structure domain-specific schemas, and `app/schemas/common.py` to see reusable response patterns.
+* **Keep Common Schemas**: The `common.py` file provides standardized error responses, success messages, and pagination - keep these as they ensure API consistency.
+* **Replace or Extend Domain Schemas**: For `text_processing.py`, you can either:
+  - **Replace**: Delete it and create new schema files for your domain (e.g., `invoicing.py`, `document_analysis.py`)
+  - **Extend**: Keep it as an example and add new schema files alongside it
+* **Maintain Health Schemas**: The `health.py` file provides system health check models - typically keep this unchanged.
 
 ### **Step 4: Expose Your Services via API (api/)**
 
 Make your domain services accessible over HTTP.
 
-* **Delete or Modify Routers**: Remove the example routers and create new ones that map HTTP endpoints (e.g., POST /invoices) to your new domain services.  
-* **Keep System Routers**: The system\_router.py, monitoring\_router.py, and admin\_router.py are part of the template's infrastructure and can often be kept as-is.
+* **Understand the Structure**: The API is organized into:
+  - `api/v1/`: Public API endpoints for your core business functionality
+  - `api/internal/`: Internal/admin endpoints for monitoring, caching, and system management
+* **Replace or Extend v1 Endpoints**: In the `api/v1/` directory:
+  - **Replace**: Delete `text_processing.py` and create new routers for your domain (e.g., `invoicing.py`, `document_analysis.py`)
+  - **Extend**: Keep the text processing router as an example and add new routers alongside it
+* **Keep System Routers**: These routers provide essential functionality and should typically be kept:
+  - `auth.py`: Authentication endpoints
+  - `health.py`: Health check endpoints
+  - `deps.py`: API-specific dependencies
+* **Internal Endpoints**: The `api/internal/` directory contains infrastructure management endpoints (monitoring, cache, resilience) - these are typically kept unchanged.
 
 ### **Step 5: Define Custom Errors (core/exceptions.py)**
 
@@ -127,7 +149,36 @@ Give your application a clear error contract.
 * **Add Domain Exceptions**: As you write your domain services, define specific exceptions for them here (e.g., InvoiceNotFoundError). These should inherit from the base exceptions provided in the file.  
 * **Leave Base Exceptions Alone**: Do not modify the base ApplicationError or InfrastructureError, as these provide a consistent error handling foundation.
 
-## **5\. Extending the Infrastructure**
+## **5\. Available Infrastructure Services**
+
+Before extending the infrastructure, it's important to understand what services are already available. The template includes several production-ready infrastructure services that you can leverage:
+
+### **AI Services (`infrastructure/ai/`)**
+* **PromptBuilder & Input Sanitization**: Safe prompt construction and input validation for AI operations
+* **AI Client Abstractions**: Clean interfaces for working with different AI providers
+
+### **Caching (`infrastructure/cache/`)**
+* **Multi-Implementation Cache**: Both Redis-based and in-memory cache implementations
+* **AI Response Caching**: Specialized caching optimized for AI responses with compression
+* **Performance Monitoring**: Built-in cache performance tracking and analytics
+
+### **Resilience (`infrastructure/resilience/`)**
+* **Circuit Breakers**: Prevent cascading failures in AI service calls
+* **Retry Logic**: Intelligent retry mechanisms with exponential backoff
+* **Configuration Presets**: Pre-configured resilience strategies (aggressive, balanced, conservative)
+* **Performance Monitoring**: Comprehensive metrics and monitoring for resilience patterns
+
+### **Security (`infrastructure/security/`)**
+* **API Key Authentication**: Flexible API key authentication with multiple operation modes
+* **Request Validation**: Input sanitization and validation utilities
+
+### **Monitoring (`infrastructure/monitoring/`)**
+* **Health Checks**: System health monitoring and status reporting
+* **Metrics Collection**: Application performance metrics and analytics
+
+These services are designed to be composed together in your domain services. For example, the `TextProcessorService` combines AI, caching, resilience, and security services to provide robust text processing functionality.
+
+## **6\. Extending the Infrastructure**
 
 As your application grows, you may need to add new technical capabilities, such as a database, a message queue, or more advanced monitoring. This section provides a guide for adding new components to the infrastructure/ layer correctly.
 
@@ -229,3 +280,33 @@ This follows the same pattern, even though it's not a client library.
 4. **Integration**: Instead of a dependency provider, you would call your telemetry setup function from within the application's lifespan manager in app/main.py.
 
 By following this pattern, you keep your new technical capabilities isolated, reusable, and cleanly separated from your core business logic, making your application easier to maintain and scale.
+
+## **7\. Summary and Next Steps**
+
+Congratulations! You now have a comprehensive understanding of the FastAPI LLM Starter Template's architecture and how to customize it for your specific needs.
+
+### **Batteries Are Included**
+
+The template now provides you with:
+
+* **Production-Ready Infrastructure**: Comprehensive caching, resilience, security, and monitoring services that are battle-tested and ready for production use.
+* **Clean Separation of Concerns**: Clear boundaries between domain logic (your business rules) and infrastructure (technical capabilities).
+* **Flexible API Structure**: Organized API endpoints with separation between public (v1) and internal administrative endpoints.
+* **Comprehensive Examples**: The text processing domain serves as a complete example showing how to compose infrastructure services into business functionality.
+
+### **Recommended Development Approach**
+
+1. **Start Small**: Begin by examining the text processing example to understand the patterns, then gradually replace or extend it with your domain logic.
+2. **Leverage Infrastructure**: Use the existing infrastructure services rather than implementing technical concerns from scratch. They're designed to handle edge cases and production requirements.
+3. **Follow the Patterns**: The dependency injection, error handling, and service composition patterns are designed for maintainability and testability.
+4. **Incremental Changes**: Make changes incrementally rather than wholesale replacements. This allows you to validate each step and maintain a working system.
+
+### **Key Benefits of This Architecture**
+
+* **Rapid Development**: Focus on business logic rather than infrastructure concerns
+* **Production Readiness**: Built-in resilience, monitoring, and security features
+* **Maintainability**: Clear separation makes the codebase easier to understand and modify
+* **Scalability**: Infrastructure services are designed to handle production loads
+* **Testability**: Dependency injection makes services easy to test in isolation
+
+By following this guide, you'll be able to build robust, production-ready applications while maintaining clean, maintainable code that can grow with your needs.
