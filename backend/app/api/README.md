@@ -40,7 +40,7 @@ The API uses **Bearer Token authentication** with API keys to protect sensitive 
 
 **Using curl:**
 ```bash
-curl -X POST "http://localhost:8000/process" \
+curl -X POST "http://localhost:8000/v1/text_processing/process" \
   -H "Authorization: Bearer your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"text": "Hello world", "operation": "summarize"}'
@@ -52,7 +52,7 @@ import requests
 
 headers = {"Authorization": "Bearer your_api_key_here"}
 response = requests.post(
-    "http://localhost:8000/process",
+    "http://localhost:8000/v1/text_processing/process",
     headers=headers,
     json={"text": "Hello world", "operation": "summarize"}
 )
@@ -94,7 +94,7 @@ Get basic API information.
 
 ### Health Check
 
-**GET** `/health`
+**GET** `/v1/health`
 
 Check if the API is running and AI models are available.
 
@@ -130,7 +130,7 @@ Authorization: Bearer your_api_key_here
 
 ### Get Operations
 
-**GET** `/operations`
+**GET** `/v1/text_processing/operations`
 
 Get list of available text processing operations.
 
@@ -175,7 +175,7 @@ Get list of available text processing operations.
 
 ### Process Text
 
-**POST** `/process`
+**POST** `/v1/text_processing/process`
 
 Process text using specified operation.
 
@@ -317,7 +317,7 @@ Process text using specified operation.
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/process \
+curl -X POST http://localhost:8000/v1/text_processing/process \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Artificial intelligence is transforming industries across the globe. From healthcare diagnostics to autonomous vehicles, AI systems are becoming increasingly sophisticated and capable. Machine learning algorithms can now process vast amounts of data to identify patterns and make predictions with remarkable accuracy.",
@@ -344,7 +344,7 @@ curl -X POST http://localhost:8000/process \
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/process \
+curl -X POST http://localhost:8000/v1/text_processing/process \
   -H "Content-Type: application/json" \
   -d '{
     "text": "I am absolutely thrilled with the new product launch! The features are amazing and the user experience is fantastic.",
@@ -374,7 +374,7 @@ curl -X POST http://localhost:8000/process \
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/process \
+curl -X POST http://localhost:8000/v1/text_processing/process \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Climate change represents one of the most significant challenges facing humanity today. Rising global temperatures are leading to more frequent extreme weather events and rising sea levels.",
@@ -401,7 +401,7 @@ curl -X POST http://localhost:8000/process \
 
 **Request with invalid input:**
 ```bash
-curl -X POST http://localhost:8000/process \
+curl -X POST http://localhost:8000/v1/text_processing/process \
   -H "Content-Type: application/json" \
   -d '{
     "text": "short",
