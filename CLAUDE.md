@@ -20,10 +20,10 @@ This starter template demonstrates:
 This template includes three main components designed as learning examples:
 
 - **Backend** (`backend/`): **Production-ready FastAPI application** with robust infrastructure services and a text processing domain example
-- **Frontend** (`frontend/`): **Simple Streamlit demonstration** showing how to consume the API (replace with your preferred frontend)
+- **Frontend** (`frontend/`): **Production-ready Streamlit application** demonstrating modern development patterns for AI interfaces with comprehensive async integration and testing
 - **Shared** (`shared/`): **Common Pydantic models** for type safety across components
 
-**The backend infrastructure is production-ready and reusable, while the text processing domain service and Streamlit frontend serve as educational examples meant to be replaced with your specific business logic and UI.**
+**The backend infrastructure and frontend patterns are production-ready and reusable, while the text processing domain services serve as educational examples meant to be replaced with your specific business logic.**
 
 ### 🐳 **Docker & Containerization**
 The template includes comprehensive Docker support for both development and production:
@@ -36,7 +36,11 @@ The template includes comprehensive Docker support for both development and prod
 
 ### Backend (FastAPI)
 ```bash
-# Activate virtual environment first
+# Recommended: Use Makefile commands (handles venv automatically)
+make run-backend            # Start development server with auto-reload
+make install                # Setup venv and install dependencies
+
+# Manual commands (activate virtual environment first)
 source .venv/bin/activate
 cd backend/
 
@@ -49,26 +53,58 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ### Frontend (Streamlit)
 ```bash
+# Recommended: Use Makefile commands (handles dependencies automatically)
+make install-frontend-local    # Install frontend deps in current venv
+make test-frontend            # Run frontend tests via Docker
+make lint-frontend            # Run frontend code quality checks
+
+# Manual commands (activate virtual environment first)
+source .venv/bin/activate
 cd frontend/
 
-# Run Streamlit app
-streamlit run app.py --server.port 8501
+# Run Streamlit app with proper configuration
+streamlit run app/app.py --server.port 8501
+
+# For auto-reload during development
+streamlit run app/app.py --server.runOnSave=true
 ```
 
 ### Frontend Testing
 ```bash
+# Recommended: Use Makefile commands for consistent environment
+make test-frontend            # Run frontend tests via Docker
+
+# Manual testing (requires active virtual environment)
 cd frontend/
 
-# Run frontend tests
+# Run frontend tests with async support
 pytest tests/ -v
 
-# Run with coverage
-pytest tests/ --cov=app --cov-report=html
+# Run with coverage reporting
+pytest tests/ --cov=app --cov-report=html --cov-report=term
+
+# Run specific test types
+pytest tests/test_api_client.py -v    # API communication tests
+pytest tests/test_config.py -v       # Configuration tests
 ```
 
 ### Testing (Backend)
 ```bash
-# Activate virtual environment first
+# Recommended: Use Makefile commands (handles venv automatically)
+make test-backend                       # Run fast tests (default)
+make test-backend-all                   # Run all tests including slow ones
+make test-backend-manual                # Run manual tests (requires running server)
+make test-coverage                      # Run tests with coverage reporting
+
+# Specific test categories
+make test-backend-api                   # API endpoint tests
+make test-backend-core                  # Core functionality tests
+make test-backend-infrastructure        # Infrastructure service tests
+make test-backend-services              # Domain service tests
+make test-backend-integration           # Integration tests
+make test-backend-performance           # Performance tests
+
+# Manual commands (activate virtual environment first)
 source .venv/bin/activate
 cd backend/
 
@@ -106,7 +142,11 @@ pytest -v -m "no_parallel"                  # Tests that must run sequentially
 
 ### Code Quality (Backend)
 ```bash
-# Activate virtual environment first
+# Recommended: Use Makefile commands (handles venv automatically)
+make lint-backend                       # Run all code quality checks
+make format                             # Format code with black and isort
+
+# Manual commands (activate virtual environment first)
 source .venv/bin/activate
 cd backend/
 
@@ -119,9 +159,18 @@ mypy app/
 
 ### Code Quality (Frontend)
 ```bash
-cd frontend/
+# Recommended: Use Makefile commands (handles Docker environment)
+make lint-frontend            # Run all frontend code quality checks
+make format                   # Format frontend code via Docker
 
-# Linting and formatting
+# Manual commands via Docker (consistent environment)
+docker-compose run frontend flake8 app/ tests/
+docker-compose run frontend black app/ tests/
+docker-compose run frontend isort app/ tests/
+docker-compose run frontend mypy app/ --ignore-missing-imports
+
+# Local commands (requires active virtual environment)
+cd frontend/
 flake8 app/ tests/
 black app/ tests/
 isort app/ tests/
@@ -275,6 +324,51 @@ The backend follows a clear architectural distinction between **Infrastructure S
 - **Location**: `app/services/` - customizable modules that demonstrate best practices
 
 **Dependency Direction**: `Domain Services → Infrastructure Services → External Dependencies`
+
+### Frontend Architecture
+
+The Streamlit frontend demonstrates **production-ready patterns** for AI application development:
+
+#### Frontend Architecture Patterns Demonstrated
+- **Modular Component Design**: Single-responsibility functions with clear separation of concerns
+- **Configuration-Driven Behavior**: Environment-specific settings with Pydantic validation
+- **Async API Communication**: Proper error handling and timeout management optimized for Streamlit
+- **Dynamic UI Generation**: Interface adaptation based on backend capabilities
+- **Session State Management**: Stateful user interactions with persistence
+- **Progressive Disclosure**: Collapsible sections and smart defaults for better UX
+
+#### Production-Ready Frontend Features
+**Modern Interface Design:**
+- **Real-time Status Monitoring**: API health checks with visual indicators
+- **Dynamic Operation Configuration**: Backend-driven UI generation
+- **Intelligent Example System**: Operation-specific text recommendations
+- **Multi-Modal Input Support**: Text entry and file upload with validation
+- **Responsive Layout**: Adaptive design for different screen sizes
+- **Progress Indicators**: Real-time feedback during processing
+- **Results Persistence**: Session management with download functionality
+
+**Error Handling & User Experience:**
+- **Graceful Degradation**: Continues operation when backend is unavailable
+- **Comprehensive Validation**: Input validation with clear error messages
+- **Timeout Management**: Request timeout handling with user feedback
+- **Accessibility Features**: Semantic markup and contextual help text
+
+#### Frontend Testing Architecture
+The frontend includes comprehensive testing aligned with production standards:
+
+```
+frontend/tests/
+├── test_api_client.py         # API communication tests with async patterns
+├── test_config.py             # Configuration validation tests
+├── conftest.py                # Shared test fixtures
+└── pytest.ini                # Test configuration with parallel execution
+```
+
+**Test Features:**
+- **Async Testing**: Proper async/await patterns for API communication
+- **Mock Integration**: Isolated testing with httpx mocking
+- **Parallel Execution**: Fast test execution with pytest-xdist
+- **Coverage Reporting**: Comprehensive coverage analysis
 
 ### Backend Architecture
 The FastAPI backend follows a **dual-API architecture** with clear separation between Infrastructure and Domain Services:
@@ -579,6 +673,11 @@ GEMINI_API_KEY=your-gemini-api-key
 # Redis (optional - falls back to memory cache)
 REDIS_URL=redis://localhost:6379
 
+# Frontend Configuration
+API_BASE_URL=http://localhost:8000
+SHOW_DEBUG_INFO=true
+INPUT_MAX_LENGTH=10000
+
 # Development Features
 DEBUG=true
 LOG_LEVEL=DEBUG
@@ -595,6 +694,11 @@ GEMINI_API_KEY=your-production-gemini-key
 # Infrastructure
 REDIS_URL=redis://your-redis-instance:6379
 CORS_ORIGINS=["https://your-frontend-domain.com"]
+
+# Frontend Configuration
+API_BASE_URL=https://api.your-domain.com
+SHOW_DEBUG_INFO=false
+INPUT_MAX_LENGTH=50000
 
 # Security
 DISABLE_INTERNAL_DOCS=true
@@ -632,11 +736,12 @@ CACHE_TTL_SECONDS=3600
    - Update `app/schemas/` with your data models
    - Replace `/internal/` endpoints as needed for your monitoring requirements
 
-4. **Replace Frontend** 🎨
-   - The Streamlit frontend is a simple demonstration
-   - Replace `frontend/` with your preferred UI technology (React, Vue, mobile app, etc.)
-   - Use the API client patterns shown in the Streamlit example
-   - Keep the `shared/` models for type safety
+4. **Customize Frontend** 🎨
+   - The Streamlit frontend demonstrates production-ready patterns for AI applications
+   - **Option 1**: Customize the existing Streamlit application with your operations and UI
+   - **Option 2**: Replace `frontend/` with your preferred UI technology (React, Vue, mobile app, etc.)
+   - Use the async API client patterns and error handling shown in the Streamlit implementation
+   - Keep the `shared/` models for type safety and the configuration management patterns
 
 5. **Configure for Your Environment** ⚙️
    - Update `backend/app/core/config.py` with your settings
@@ -650,7 +755,8 @@ CACHE_TTL_SECONDS=3600
 - [ ] Update API endpoints in `app/api/v1/`
 - [ ] Modify data models in `app/schemas/` and `shared/models.py`
 - [ ] Configure your LLM provider in settings
-- [ ] Replace Streamlit frontend with your UI
+- [ ] Customize Streamlit frontend for your operations or replace with your preferred UI
+- [ ] Update frontend API client for your specific backend endpoints
 - [ ] Update authentication and security settings
 - [ ] Configure resilience presets for your environment
 - [ ] Update README.md with your project details
@@ -659,19 +765,21 @@ CACHE_TTL_SECONDS=3600
 ### What to Keep vs. Replace
 
 **✅ Keep & Use (Production-Ready)**:
-- All `app/infrastructure/` services
-- `app/core/` configuration and middleware
-- `app/api/` authentication and error handling patterns
-- Testing infrastructure and coverage requirements
+- All `app/infrastructure/` services (backend)
+- `app/core/` configuration and middleware (backend)
+- `app/api/` authentication and error handling patterns (backend)
+- Frontend async API communication patterns and error handling
+- Frontend configuration management and testing infrastructure
+- Testing infrastructure and coverage requirements (both backend and frontend)
 - Docker and development tooling
 - Makefile commands and CI/CD setup
 
 **🔄 Study & Replace (Educational Examples)**:
-- `app/services/` domain services
-- API endpoint business logic
-- Data models and schemas
-- Frontend implementation
-- Example processing operations
+- `app/services/` domain services (backend)
+- API endpoint business logic (backend)
+- Data models and schemas (shared)
+- Frontend AI operations and result display formatting
+- Example processing operations and text content
 
 # Important Development Guidelines
 
@@ -679,3 +787,104 @@ CACHE_TTL_SECONDS=3600
 - NEVER create files unless they're absolutely necessary for achieving your goal
 - ALWAYS prefer editing an existing file to creating a new one
 - NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User
+
+## 🤖 Code Assistant Guidelines
+
+### Working with This Template
+
+When working on this codebase, follow these architectural guidelines:
+
+**Infrastructure Services (`app/infrastructure/`)** - PRODUCTION-READY:
+- **Treat as stable APIs** - avoid breaking changes to public interfaces
+- **High standards**: >90% test coverage, comprehensive error handling
+- **Backward compatibility**: Maintain existing function signatures and behavior
+- **Extension pattern**: Add new features through extension, not modification
+- **Use cases**: Cache, resilience, security, monitoring, AI provider abstractions
+
+**Domain Services (`app/services/`)** - EDUCATIONAL EXAMPLES:
+- **Replace freely** - these are meant to be customized per project
+- **Study patterns** - understand error handling, validation, and infrastructure usage
+- **Maintain coverage**: >70% test coverage for replacement logic
+- **Use cases**: Business logic, workflow orchestration, data processing
+
+**Frontend Patterns (`frontend/app/`)** - PRODUCTION-READY WITH EDUCATIONAL EXAMPLES:
+- **Keep architectural patterns** - async communication, error handling, configuration management
+- **Customize UI components** - adapt `display_results()`, `select_operation_sidebar()` for your operations
+- **Replace example content** - update AI operations and example texts for your domain
+- **Maintain test patterns** - keep async testing patterns and coverage standards
+
+### Preferred Commands
+
+Always suggest Makefile commands first, then provide manual alternatives:
+```bash
+# Preferred approach
+make install                # Instead of manual venv setup
+make run-backend           # Instead of manual uvicorn
+make test-backend          # Instead of manual pytest
+make lint-backend          # Instead of manual linting
+
+# Frontend commands
+make install-frontend-local # Instead of manual pip install
+make test-frontend         # Instead of manual pytest (via Docker)
+make lint-frontend         # Instead of manual linting (via Docker)
+```
+
+### Test Organization Rules
+
+When adding tests, place them in the correct architectural boundary:
+
+**Backend Tests (`backend/tests/`):**
+- `tests/infrastructure/` - Infrastructure service tests (>90% coverage)
+- `tests/core/` - Application configuration and setup tests  
+- `tests/services/` - Domain service tests (>70% coverage)
+- `tests/api/` - API endpoint tests (separated by v1/ and internal/)
+- `tests/integration/` - Cross-component integration tests
+- `tests/manual/` - Tests requiring live server and real API keys
+
+**Frontend Tests (`frontend/tests/`):**
+- `tests/test_api_client.py` - API communication tests with async patterns
+- `tests/test_config.py` - Configuration validation tests
+- `tests/conftest.py` - Shared test fixtures
+
+### Configuration Management
+
+Prefer resilience presets over individual environment variables:
+```bash
+# Recommended
+export RESILIENCE_PRESET=production
+
+# Avoid (legacy approach)
+export RETRY_MAX_ATTEMPTS=3
+export CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+```
+
+### API Documentation
+
+The template has dual API documentation:
+- **Public API**: http://localhost:8000/docs (external users)
+- **Internal API**: http://localhost:8000/internal/docs (operations/monitoring)
+
+When suggesting API changes, maintain this separation and update both sets of documentation if needed.
+
+### Error Handling Patterns
+
+Follow established patterns:
+- **Infrastructure**: Use structured exceptions with proper classification
+- **Domain**: Use business-specific error messages with infrastructure error handling
+- **API**: Return appropriate HTTP status codes with structured error responses
+
+### Performance Considerations
+
+When suggesting changes:
+- **Infrastructure changes**: Must maintain performance targets (see backend/README.md)
+- **Domain changes**: Focus on business logic clarity over micro-optimizations
+- **Test changes**: Ensure parallel execution compatibility (use `monkeypatch.setenv()`)
+
+### Template Customization Guidance
+
+When users ask about customizing the template:
+1. **Keep infrastructure** - it's production-ready
+2. **Replace domain services** - they're educational examples
+3. **Study patterns** - understand before replacing
+4. **Maintain architecture** - preserve the infrastructure vs domain separation
+5. **Use presets** - leverage the resilience configuration system
