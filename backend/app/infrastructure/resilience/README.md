@@ -10,7 +10,7 @@ resilience/
 ├── circuit_breaker.py            # Circuit breaker implementation with metrics
 ├── retry.py                      # Retry logic with exception classification  
 ├── orchestrator.py               # Main orchestration layer and decorators
-├── presets.py                    # Configuration presets and strategy management
+├── config_presets.py             # Configuration presets and strategy management
 ├── config_validator.py           # JSON schema validation and security
 ├── config_monitoring.py          # Performance monitoring and analytics
 ├── migration_utils.py            # Legacy configuration migration tools
@@ -122,7 +122,7 @@ async def answer_question(question: str, context: str) -> str:
     return await ai_service.answer_question(question, context)
 ```
 
-### Configuration Presets (`presets.py`)
+### Configuration Presets (`config_presets.py`)
 
 **Purpose:** Predefined configuration templates and intelligent environment-based preset recommendations for different deployment scenarios.
 
@@ -132,6 +132,11 @@ async def answer_question(question: str, context: str) -> str:
 - ✅ **Preset Management:** Extensible preset system with validation
 - ✅ **Override Support:** Operation-specific strategy overrides
 - ✅ **Migration Support:** Tools for legacy configuration migration
+
+**Available Presets:**
+- **simple**: General use, testing (3 retries, 5 failure threshold, 60s recovery)
+- **development**: Local dev, fast feedback (2 retries, 3 failure threshold, 30s recovery)  
+- **production**: Production workloads (5 retries, 10 failure threshold, 120s recovery)
 
 **Available Strategies:**
 - **AGGRESSIVE**: Fast retries, low tolerance (development/testing)
@@ -149,8 +154,8 @@ preset = preset_manager.get_preset(recommendation.preset_name)
 resilience_config = preset.to_resilience_config()
 
 # Access predefined presets
-simple_preset = PRESETS["simple"]
-production_preset = PRESETS["production"]
+simple_preset = DEFAULT_PRESETS["simple"]
+production_preset = DEFAULT_PRESETS["production"]
 ```
 
 ### Configuration Validation (`config_validator.py`)
@@ -318,9 +323,9 @@ The resilience system uses a **preset-based configuration approach** that automa
 recommendation = preset_manager.recommend_preset_with_details()
 
 # Environment-specific configurations
-development_preset = PRESETS["development"]    # Fast-fail, minimal retries
-production_preset = PRESETS["production"]      # High reliability, comprehensive retries
-simple_preset = PRESETS["simple"]             # Balanced for general use
+development_preset = DEFAULT_PRESETS["development"]    # Fast-fail, minimal retries
+production_preset = DEFAULT_PRESETS["production"]      # High reliability, comprehensive retries
+simple_preset = DEFAULT_PRESETS["simple"]             # Balanced for general use
 ```
 
 ### Custom Configuration Override

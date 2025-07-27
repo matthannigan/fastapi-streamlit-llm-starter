@@ -6,11 +6,13 @@ This directory provides a comprehensive caching infrastructure with multiple imp
 
 ```
 cache/
-├── __init__.py          # Module exports and documentation
+├── __init__.py          # Module exports and comprehensive documentation
 ├── base.py             # Abstract interface defining cache contract
-├── memory.py           # In-memory cache implementation
-├── redis.py            # Redis-based cache with advanced features
-├── monitoring.py       # Performance monitoring and analytics
+├── memory.py           # In-memory cache implementation with TTL and LRU
+├── redis.py            # Redis-based AIResponseCache with advanced features
+├── monitoring.py       # Comprehensive performance monitoring and analytics
+├── redis.py.md         # Additional Redis cache documentation
+├── redis.py.txt        # Redis cache implementation notes
 └── README.md           # This documentation file
 ```
 
@@ -28,7 +30,7 @@ class CacheInterface(ABC):
         pass
     
     @abstractmethod
-    async def set(self, key: str, value: any, ttl: int = None):
+    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
         """Store a value in cache with optional TTL"""
         pass
     
@@ -38,11 +40,12 @@ class CacheInterface(ABC):
         pass
 ```
 
-**Role in Construction:**
-- Provides a common interface for dependency injection
-- Ensures consistent behavior across implementations
-- Enables seamless switching between cache types
-- Enforces the async/await pattern for all operations
+**Architecture Role:**
+- **Interface Compliance**: Provides common contract for dependency injection
+- **Implementation Flexibility**: Ensures consistent behavior across cache types  
+- **Seamless Integration**: Enables switching between cache implementations
+- **Async Pattern**: Enforces async/await pattern for all cache operations
+- **Type Safety**: Supports proper type hints for development and testing
 
 ## Cache Implementations Comparison
 
@@ -51,12 +54,14 @@ class CacheInterface(ABC):
 **Purpose:** Lightweight, fast in-memory caching for development, testing, and scenarios where Redis is unavailable.
 
 **Key Features:**
-- ✅ **Storage:** Pure Python dictionaries in RAM
-- ✅ **TTL Support:** Automatic expiration with configurable time-to-live
-- ✅ **LRU Eviction:** Intelligent memory management with configurable size limits
-- ✅ **Performance:** Sub-millisecond access times
-- ✅ **Statistics:** Built-in metrics and cache performance monitoring
-- ✅ **Thread Safety:** Safe for asyncio concurrent usage
+- ✅ **Storage**: Pure Python dictionaries in RAM with metadata tracking
+- ✅ **TTL Support**: Automatic expiration with configurable time-to-live per entry
+- ✅ **LRU Eviction**: Intelligent memory management with access order tracking
+- ✅ **Performance**: Sub-millisecond access times with O(1) operations
+- ✅ **Statistics**: Built-in metrics including utilization and performance tracking
+- ✅ **Thread Safety**: Safe for asyncio concurrent usage within single event loop
+- ✅ **Automatic Cleanup**: Periodic cleanup of expired entries during operations
+- ✅ **Comprehensive API**: Additional methods like `exists()`, `get_ttl()`, `get_active_keys()`
 
 **Configuration:**
 ```python
@@ -83,14 +88,16 @@ cache = InMemoryCache(
 **Purpose:** Production-ready, feature-rich caching system specifically optimized for AI response caching with persistence and advanced monitoring.
 
 **Key Features:**
-- ✅ **Persistent Storage:** Redis-backed with data persistence across restarts
-- ✅ **Tiered Caching:** Memory cache for hot data + Redis for persistence
-- ✅ **Intelligent Compression:** Automatic compression of large responses using zlib
-- ✅ **Smart Key Generation:** Optimized cache keys that hash large texts efficiently
-- ✅ **Graceful Degradation:** Falls back to memory-only when Redis unavailable  
-- ✅ **Advanced Monitoring:** Comprehensive performance analytics via `CachePerformanceMonitor`
-- ✅ **Pattern Invalidation:** Flexible cache invalidation with pattern matching
-- ✅ **Operation-Specific TTLs:** Different expiration times per operation type
+- ✅ **Persistent Storage**: Redis-backed with data persistence across application restarts
+- ✅ **Tiered Caching**: Memory cache for hot data + Redis for persistence layer
+- ✅ **Intelligent Compression**: Automatic zlib compression with configurable thresholds
+- ✅ **Smart Key Generation**: Optimized cache keys using `CacheKeyGenerator` for large texts
+- ✅ **Graceful Degradation**: Falls back to memory-only when Redis unavailable
+- ✅ **Advanced Monitoring**: Comprehensive analytics via `CachePerformanceMonitor`
+- ✅ **Pattern Invalidation**: Flexible cache invalidation with pattern matching support
+- ✅ **Operation-Specific TTLs**: Different expiration times per AI operation type
+- ✅ **Memory Management**: Configurable memory cache size with intelligent eviction
+- ✅ **Performance Optimization**: Streaming compression and efficient key hashing
 
 **Configuration:**
 ```python
@@ -212,42 +219,87 @@ await cache.invalidate_pattern("sentiment",
 
 ## Performance Monitoring System
 
-The `monitoring.py` module provides comprehensive analytics through the `CachePerformanceMonitor` class:
+The `monitoring.py` module provides comprehensive analytics through the `CachePerformanceMonitor` class with detailed metrics collection and analysis capabilities:
 
 ### Metrics Tracked
-- **Key Generation Performance:** Timing and text length correlations
-- **Cache Operations:** Get/Set timing, hit/miss ratios  
-- **Memory Usage:** Total consumption, growth trends, threshold alerts
-- **Compression Efficiency:** Ratios, timing, size savings
-- **Cache Invalidation:** Frequency, patterns, efficiency metrics
+- **Key Generation Performance**: Timing analysis with text length correlations and slow operation detection
+- **Cache Operations**: Get/Set operation timing, hit/miss ratios, and operation type breakdown
+- **Memory Usage**: Total consumption monitoring, growth trends, and threshold-based alerting
+- **Compression Efficiency**: Compression ratios, timing analysis, and size savings calculations
+- **Cache Invalidation**: Frequency monitoring, pattern analysis, and efficiency metrics
 
-### Alert Thresholds
-- **Memory Warnings:** Configurable byte thresholds (default: 50MB warning, 100MB critical)
-- **Slow Operations:** Automatic detection of performance degradation
-- **Invalidation Frequency:** Alerts for excessive cache churn
+### Advanced Analytics
+- **Statistical Analysis**: Mean, median, min/max calculations for all performance metrics
+- **Trend Analysis**: Historical performance patterns with growth rate calculations
+- **Threshold Monitoring**: Configurable byte thresholds with warning and critical levels
+- **Performance Recommendations**: Automated optimization suggestions based on collected data
+- **Slow Operation Detection**: Automatic identification of operations exceeding thresholds
 
-### Analytics Features
-- **Trend Analysis:** Historical performance patterns
-- **Recommendations:** Automated optimization suggestions  
-- **Export Capabilities:** Metrics export for external analysis
-- **Automatic Cleanup:** Configurable data retention (default: 1 hour)
+### Configurable Alerting
+- **Memory Thresholds**: Default 50MB warning, 100MB critical (configurable)
+- **Performance Thresholds**: 100ms key generation, 50ms cache operations (configurable)
+- **Invalidation Rate Monitoring**: 50/hour warning, 100/hour critical (configurable)
+- **Alert Levels**: INFO, WARNING, ERROR, CRITICAL with contextual messages
+
+### Data Management
+- **Automatic Cleanup**: Configurable data retention (default: 1 hour, max 1000 measurements)
+- **Export Capabilities**: JSON export for external monitoring systems
+- **Memory Efficiency**: Bounded data structures prevent unbounded growth
+- **Thread Safety**: Safe for concurrent usage within asyncio event loops
 
 ## Integration Patterns
 
 ### Dependency Injection
+
+The cache system integrates seamlessly with FastAPI's dependency injection:
+
 ```python
 from app.infrastructure.cache import CacheInterface, InMemoryCache, AIResponseCache
 
-def create_cache() -> CacheInterface:
-    if settings.USE_REDIS:
-        return AIResponseCache(redis_url=settings.REDIS_URL)
-    else:
-        return InMemoryCache(default_ttl=settings.CACHE_TTL)
+async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIResponseCache:
+    """Dependency provider for AI response cache service."""
+    cache = AIResponseCache(
+        redis_url=settings.redis_url,
+        default_ttl=settings.cache_default_ttl,
+        text_hash_threshold=settings.cache_text_hash_threshold,
+        compression_threshold=settings.cache_compression_threshold,
+        compression_level=settings.cache_compression_level,
+        text_size_tiers=settings.cache_text_size_tiers,
+        memory_cache_size=settings.cache_memory_cache_size
+    )
+    
+    try:
+        await cache.connect()
+    except Exception as e:
+        # Graceful degradation - cache operates without Redis
+        logger.warning(f"Redis connection failed: {e}")
+    
+    return cache
 
-# Inject into services
-class TextProcessingService:
-    def __init__(self, cache: CacheInterface):
-        self.cache = cache
+# Use in FastAPI endpoints
+@app.post("/process")
+async def process_text(
+    request: ProcessRequest,
+    cache: AIResponseCache = Depends(get_cache_service)
+):
+    cached_result = await cache.get_cached_response(
+        text=request.text,
+        operation=request.operation,
+        options=request.options
+    )
+    
+    if cached_result:
+        return cached_result
+    
+    # Process and cache result
+    result = await ai_service.process(request)
+    await cache.cache_response(
+        text=request.text,
+        operation=request.operation,
+        options=request.options,
+        response=result
+    )
+    return result
 ```
 
 ### Environment-Based Configuration
