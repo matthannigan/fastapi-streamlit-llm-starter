@@ -1,40 +1,37 @@
-# Common Pydantic schemas for standardized API responses and data structures.
+# Common API Response Schemas
 
 This module defines reusable Pydantic models that provide consistent data structures
 across all API endpoints. These schemas ensure predictable response formats, improve
 API documentation quality, and enable robust client-side integration.
 
-The module follows a design philosophy of standardization and consistency, where
-common response patterns are abstracted into reusable components that can be
-composed into more complex endpoint-specific schemas.
+## Models
 
-## Classes
-
-ErrorResponse: Standardized error response format for all API error conditions.
+**ErrorResponse**: Standardized error response format for all API error conditions.
 Provides consistent error reporting with structured context data, error codes,
 and timestamps for debugging and monitoring.
 
-SuccessResponse: Generic success response wrapper for simple operations that
+**SuccessResponse**: Generic success response wrapper for simple operations that
 don't return complex data. Includes success indicators and optional messages.
 
-PaginationInfo: Standardized pagination metadata for list endpoints. Provides
+**PaginationInfo**: Standardized pagination metadata for list endpoints. Provides
 comprehensive pagination information including page counts, navigation flags,
 and item totals.
 
 ## Design Patterns
 
 - **Consistent Field Naming**: All schemas use consistent field names (success,
-timestamp, etc.) to provide predictable client experience.
+timestamp, etc.) to provide predictable client experience
 - **Rich Documentation**: Each field includes comprehensive descriptions for
-automatic OpenAPI documentation generation.
+automatic OpenAPI documentation generation
 - **JSON Schema Examples**: All schemas include realistic examples for better
-API documentation and testing.
+API documentation and testing
 - **Validation Rules**: Appropriate Pydantic validators ensure data integrity
-and provide clear validation error messages.
+and provide clear validation error messages
 
 ## Usage Examples
 
 Basic error response creation:
+
 ```python
 from app.schemas.common import ErrorResponse
 
@@ -46,6 +43,7 @@ details={"field": "email", "reason": "format"}
 ```
 
 Success response for simple endpoints:
+
 ```python
 from app.schemas.common import SuccessResponse
 
@@ -55,6 +53,7 @@ message="User profile updated successfully"
 ```
 
 Pagination information for list endpoints:
+
 ```python
 from app.schemas.common import PaginationInfo
 
@@ -71,23 +70,11 @@ has_previous=False
 ## Integration Notes
 
 - **FastAPI Integration**: These schemas are designed to work seamlessly with
-FastAPI's automatic OpenAPI documentation generation and response validation.
+FastAPI's automatic OpenAPI documentation generation and response validation
 - **Global Exception Handler**: The ErrorResponse schema is tightly integrated
 with the application's global exception handling system for consistent error
-reporting across all endpoints.
+reporting across all endpoints
 - **Client Libraries**: The standardized format enables robust client library
-generation and simplifies error handling in client applications.
+generation and simplifies error handling in client applications
 - **Monitoring**: Structured error responses with timestamps and context data
-facilitate comprehensive application monitoring and debugging.
-
-## Version History
-
-1.0.0: Initial implementation with ErrorResponse, SuccessResponse, and PaginationInfo
-
-## Author
-
-FastAPI LLM Starter Team
-
-## License
-
-MIT License - See LICENSE file for details
+facilitate comprehensive application monitoring and debugging

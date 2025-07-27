@@ -1,4 +1,8 @@
-# Resilience preset management REST API endpoints.
+# Infrastructure Service: Resilience Preset Management API
+
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
+🔧 **Configuration-driven behavior**
 
 This module provides comprehensive REST API endpoints for managing and querying
 resilience configuration presets. It includes functionality for listing presets,

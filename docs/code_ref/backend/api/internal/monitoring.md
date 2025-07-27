@@ -1,73 +1,162 @@
-# Internal monitoring endpoints for system health and performance metrics.
+# Infrastructure Service: Monitoring System Health API
 
-This module provides FastAPI endpoints for monitoring various system components
-including cache performance, resilience metrics, and monitoring infrastructure health.
-The endpoints are designed for internal monitoring and diagnostics, requiring API key
-authentication for access.
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
+🔧 **Configuration-driven behavior**
 
-The module serves as the central hub for monitoring infrastructure health checks,
-providing detailed insights into:
-- Cache performance monitoring system status and metrics
-- Cache service monitoring capabilities and Redis connectivity
-- Resilience metrics collection (circuit breakers, retry operations)
-- Monitoring data availability and integrity validation
-- Component-level health status with operational metadata
+This module provides comprehensive FastAPI endpoints for monitoring the health and
+performance of monitoring infrastructure components. It serves as the central hub
+for infrastructure observability, focusing on the health of monitoring systems
+themselves rather than business logic components.
 
-This monitoring system is specifically designed for infrastructure observability
-and should not be confused with main application health endpoints. It focuses
-on the health of monitoring systems themselves rather than business logic components.
+## Core Components
 
-## Classes
+### API Endpoints
+- `GET /internal/monitoring/health`: Comprehensive health check of all monitoring subsystems (optional auth)
 
-None: This module contains only router definitions and endpoint functions.
+### Monitoring Subsystems
+The health endpoint performs checks on three critical monitoring components:
 
-## Functions
+1. **Cache Performance Monitor**: Validates cache performance tracking capabilities
+- Checks `cache_service.performance_monitor.get_performance_stats()`
+- Monitors operation tracking and recent data availability
+- Validates performance metrics collection integrity
 
-get_monitoring_health: Comprehensive health check of all monitoring subsystems.
+2. **Cache Service Monitoring**: Verifies cache service health and connectivity
+- Validates Redis connectivity via `cache_service.get_cache_stats()`
+- Monitors memory usage tracking capabilities
+- Checks cache service operational status
 
-## Routes
+3. **Resilience Monitoring**: Assesses resilience metrics collection
+- Imports and validates `app.infrastructure.resilience.ai_resilience`
+- Checks circuit breaker metrics availability via `get_all_metrics()`
+- Monitors retry operation tracking capabilities
 
-GET /internal/monitoring/health: Returns detailed health status of monitoring infrastructure.
+### Health Status Algorithm
+The system uses a cascading health status determination:
+- **"healthy"**: All components operational with no errors
+- **"degraded"**: One or more components failed but system remains functional
+- **"unhealthy"**: Critical failures or complete monitoring unavailability
 
-## Dependencies
+## Dependencies & Integration
 
-FastAPI: Web framework for HTTP routing and dependency injection.
-Authentication: API key verification for secure access to monitoring data.
-Cache Service: Performance metrics and health status from cache infrastructure.
-Resilience Infrastructure: Circuit breaker and retry operation metrics.
+### Infrastructure Dependencies
+- `AIResponseCache`: Cache service with performance monitoring capabilities
+- `app.infrastructure.resilience.ai_resilience`: Resilience metrics collection
+- **Security**: Optional API key verification for access control
+- **Logging**: Structured logging with warning and error context
 
-## Typical Usage Example
+### FastAPI Dependencies
+- `get_cache_service()`: Injected cache service with monitoring capabilities
+- `optional_verify_api_key()`: Optional authentication for flexible access control
 
-The monitoring endpoints are automatically registered when the module is imported
-and included in the main FastAPI application:
+### Runtime Imports
+- Dynamic import of resilience infrastructure for metrics validation
+- Error-safe component checking with graceful degradation
 
+## Error Handling Patterns
+
+### Graceful Degradation
+- Individual component failures do not prevent overall health reporting
+- Failed components are marked as "degraded" with error details
+- System continues operating with partial monitoring capabilities
+
+### Exception Handling
+- Component-level try-catch blocks for isolated error handling
+- Warning-level logging for component failures (non-critical)
+- Error-level logging for catastrophic monitoring failures
+
+### HTTP Status Codes
+- `200 OK`: Successful health check (may include degraded components)
+- `500 Internal Server Error`: Complete monitoring system failure
+
+## Response Structure
+
+### Successful Health Check
+```json
+{
+"status": "healthy|degraded|unhealthy",
+"timestamp": "2024-01-15T10:30:00.123456",
+"components": {
+"cache_performance_monitor": {
+"status": "healthy",
+"total_operations_tracked": 1250,
+"has_recent_data": true
+},
+"cache_service_monitoring": {
+"status": "healthy",
+"redis_monitoring": "connected",
+"memory_monitoring": "available"
+},
+"resilience_monitoring": {
+"status": "healthy",
+"circuit_breaker_tracked": true,
+"retry_metrics_available": true
+}
+},
+"available_endpoints": [
+"GET /internal/monitoring/health",
+"GET /internal/cache/status",
+"GET /internal/cache/metrics",
+"GET /internal/cache/invalidation-stats",
+"GET /internal/resilience/health"
+]
+}
+```
+
+### Component Failure Response
+```json
+{
+"status": "degraded",
+"components": {
+"cache_performance_monitor": {
+"status": "degraded",
+"error": "Performance metrics collection temporarily unavailable"
+}
+}
+}
+```
+
+## Usage Examples
+
+### Integration with FastAPI Application
 ```python
 from app.api.internal.monitoring import monitoring_router
 app.include_router(monitoring_router, prefix="/internal")
 ```
 
-To check monitoring system health:
+### Health Check Request
 ```bash
+# With authentication
 curl -H "X-API-Key: your-api-key" http://localhost:8000/internal/monitoring/health
+
+# Without authentication (if configured)
+curl http://localhost:8000/internal/monitoring/health
 ```
 
-Returns comprehensive monitoring health report with component-level status.
+## Monitoring Architecture
 
-## Security
+### Infrastructure Focus
+This module monitors the monitoring infrastructure itself, providing:
+- **Meta-monitoring**: Health of monitoring systems
+- **Component isolation**: Individual subsystem health tracking
+- **Operational visibility**: Real-time monitoring system status
 
-All endpoints require optional API key authentication via the X-API-Key header.
-This allows for flexible access control in different deployment environments
-while maintaining security for production monitoring.
+### Relationship to Other Endpoints
+- **Complements** `/health` (main application health)
+- **Aggregates** `/internal/cache/*` and `/internal/resilience/*` endpoints
+- **Provides** centralized monitoring infrastructure status
 
-## Note
+### Security Model
+- **Optional Authentication**: Flexible access control for different environments
+- **Internal Access**: Designed for internal monitoring and diagnostics
+- **Production Ready**: Secure monitoring for production deployments
 
-This module focuses exclusively on monitoring infrastructure health,
-not main application health. Use the `/health` endpoint for overall
-application status and readiness checks.
+## Module Attributes
 
-## Attributes
+- `monitoring_router` (APIRouter): FastAPI router with "/monitoring" prefix and "System Monitoring" tags
+- `logger` (logging.Logger): Module-level logger for monitoring operations and error reporting
 
-monitoring_router (APIRouter): FastAPI router instance configured with
-"/monitoring" prefix and "monitoring" tags for endpoint organization.
-logger (logging.Logger): Module-level logger for monitoring operations
-and error reporting.
+**Change with caution** - This infrastructure service provides stable monitoring
+APIs used across the application. Ensure backward compatibility and comprehensive
+testing for any modifications.

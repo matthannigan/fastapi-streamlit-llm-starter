@@ -1,4 +1,4 @@
-# Text processing service with resilience integration.
+# Text Processing Service with Resilience Integration
 
 This module provides a comprehensive text processing service that leverages AI models
 to perform various natural language processing operations with built-in resilience,
@@ -19,29 +19,29 @@ supporting both individual requests and batch processing with concurrent executi
 
 ## Supported Operations
 
-- `SUMMARIZE`: Generate concise summaries of input text
-- `SENTIMENT`: Analyze emotional tone and confidence levels
-- `KEY_POINTS`: Extract the most important points from text
-- `QUESTIONS`: Generate thoughtful questions about the content
-- `QA`: Answer specific questions based on provided context
+- **SUMMARIZE**: Generate concise summaries of input text
+- **SENTIMENT**: Analyze emotional tone and confidence levels
+- **KEY_POINTS**: Extract the most important points from text
+- **QUESTIONS**: Generate thoughtful questions about the content
+- **QA**: Answer specific questions based on provided context
 
 ## Architecture
 
 The service is built around a resilience-first design with multiple layers:
 
-1. Input Layer: Sanitizes and validates all user inputs using PromptSanitizer
-2. Caching Layer: Checks for cached responses before making AI calls
-3. AI Processing Layer: Uses Pydantic AI agents with configurable models
-4. Resilience Layer: Applies circuit breakers, retries, and timeouts
-5. Validation Layer: Validates AI responses for safety and correctness
-6. Fallback Layer: Provides degraded responses when services are unavailable
+1. **Input Layer**: Sanitizes and validates all user inputs using PromptSanitizer
+2. **Caching Layer**: Checks for cached responses before making AI calls
+3. **AI Processing Layer**: Uses Pydantic AI agents with configurable models
+4. **Resilience Layer**: Applies circuit breakers, retries, and timeouts
+5. **Validation Layer**: Validates AI responses for safety and correctness
+6. **Fallback Layer**: Provides degraded responses when services are unavailable
 
 ## Resilience Strategies
 
 Different operations use tailored resilience strategies:
-- Aggressive: Fast failures with immediate fallbacks (sentiment analysis)
-- Balanced: Moderate retries with reasonable timeouts (most operations)
-- Conservative: Extended retries for critical operations (Q&A)
+- **Aggressive**: Fast failures with immediate fallbacks (sentiment analysis)
+- **Balanced**: Moderate retries with reasonable timeouts (most operations)
+- **Conservative**: Extended retries for critical operations (Q&A)
 
 ## Security Features
 
@@ -79,16 +79,16 @@ batch_response = await processor.process_batch(batch_request)
 
 ## Dependencies
 
-- pydantic-ai: AI agent framework for model interactions
-- shared.models: Pydantic models for request/response validation
-- app.infrastructure: Resilience, caching, and AI infrastructure
-- app.config: Application settings and configuration
+- `pydantic-ai`: AI agent framework for model interactions
+- `shared.models`: Pydantic models for request/response validation
+- `app.infrastructure`: Resilience, caching, and AI infrastructure
+- `app.config`: Application settings and configuration
 
 ## Exceptions
 
-- ServiceUnavailableError: Raised when AI services are temporarily unavailable
-- TransientAIError: Raised for retryable AI service errors
-- ValueError: Raised for invalid operations or missing required parameters
+- **ServiceUnavailableError**: Raised when AI services are temporarily unavailable
+- **TransientAIError**: Raised for retryable AI service errors
+- **ValueError**: Raised for invalid operations or missing required parameters
 
 ## Thread Safety
 
@@ -109,11 +109,3 @@ The service provides comprehensive metrics and health checks:
 - Cache hit ratios and performance metrics
 - Resilience pattern statistics (circuit breaker states, retry counts)
 - Error rates and fallback usage patterns
-
-## Author
-
-FastAPI-Streamlit-LLM-Starter Team
-
-## Version
-
-1.0.0

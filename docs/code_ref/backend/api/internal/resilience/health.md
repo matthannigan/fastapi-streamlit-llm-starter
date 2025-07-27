@@ -1,4 +1,8 @@
-# Resilience service health monitoring and metrics REST API endpoints.
+# Infrastructure Service: Resilience Health Monitoring API
+
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
+🔧 **Configuration-driven behavior**
 
 This module provides comprehensive FastAPI endpoints for monitoring and managing
 the AI resilience service's health, configuration, and performance metrics. It

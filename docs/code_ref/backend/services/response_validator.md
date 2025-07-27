@@ -1,4 +1,4 @@
-# AI response validation service for security and format compliance.
+# AI Response Validation Service
 
 This module provides comprehensive validation of AI-generated responses to ensure security,
 prevent information leakage, and maintain output quality standards. It serves as a critical
@@ -20,58 +20,53 @@ leakage, prompt injection attempts, verbatim input regurgitation, and malformed 
 
 ## Validation Categories
 
-1. Security Validation:
+### 1. Security Validation
 - Detects system prompt exposure in responses
 - Identifies internal AI reasoning leakage
 - Prevents debug and development information disclosure
 - Blocks common prompt injection patterns
 - Stops jailbreak attempt indicators
 
-2. Quality Validation:
+### 2. Quality Validation
 - Ensures minimum response length requirements
 - Validates format compliance by expected output type
 - Checks for meaningful content based on operation type
 - Identifies AI refusal and error messages
 
-3. Privacy Validation:
+### 3. Privacy Validation
 - Prevents verbatim regurgitation of long user inputs
 - Blocks system instruction exposure
 - Filters potentially sensitive debugging information
 
 ## Supported Response Types
 
-- summary: Text summarization responses with length validation
-- sentiment: Sentiment analysis outputs with structure checks
-- key_points: Key point extraction with content validation
-- questions: Question generation with format verification
-- qa: Question-answering responses with meaningfulness checks
+- `summary`: Text summarization responses with length validation
+- `sentiment`: Sentiment analysis outputs with structure checks
+- `key_points`: Key point extraction with content validation
+- `questions`: Question generation with format verification
+- `qa`: Question-answering responses with meaningfulness checks
 
 ## Forbidden Pattern Detection
 
 The validator uses regex patterns to detect various security threats:
 
 ### System Prompt Leakage
-
 - "system prompt:", "my instructions are", "You are an AI assistant"
 - "I was instructed to", "According to my instructions"
 
 ### Internal Reasoning Leakage
-
 - "thinking step by step", "let me think about this"
 - "my reasoning is", "chain of thought:"
 
 ### Debug Information
-
 - "debug mode", "development version", "test response"
 - "TODO:", "FIXME:", console and print statements
 
 ### Prompt Injection Attempts
-
 - "ignore previous instructions", "disregard the above"
 - "forget everything", "new instructions:", "admin mode"
 
 ### Jailbreak Attempts
-
 - "pretend you are", "act as if", "roleplaying as"
 - "simulation mode", "hypothetical scenario"
 
@@ -79,12 +74,12 @@ The validator uses regex patterns to detect various security threats:
 
 The validation process follows a multi-stage approach:
 
-1. Input Sanitization: Converts response to string and normalizes
-2. Empty Response Handling: Manages empty responses per type requirements
-3. Security Scanning: Applies forbidden pattern detection
-4. Leakage Prevention: Checks for system prompt and input regurgitation
-5. Quality Assurance: Validates format and content quality
-6. Type-Specific Validation: Applies operation-specific requirements
+1. **Input Sanitization**: Converts response to string and normalizes
+2. **Empty Response Handling**: Manages empty responses per type requirements
+3. **Security Scanning**: Applies forbidden pattern detection
+4. **Leakage Prevention**: Checks for system prompt and input regurgitation
+5. **Quality Assurance**: Validates format and content quality
+6. **Type-Specific Validation**: Applies operation-specific requirements
 
 ## Usage
 
@@ -149,7 +144,7 @@ return validated_output
 
 ## Error Handling
 
-- ValueError: Raised for all validation failures with descriptive messages
+- **ValueError**: Raised for all validation failures with descriptive messages
 - Comprehensive logging for security monitoring and debugging
 - Graceful handling of non-string inputs with automatic conversion
 - Clear error messages for different validation failure types
@@ -164,9 +159,9 @@ The validator provides detailed logging for:
 
 ## Dependencies
 
-- re: Regular expression pattern matching for security validation
-- logging: Comprehensive logging for security monitoring
-- typing: Type hints for better code documentation
+- `re`: Regular expression pattern matching for security validation
+- `logging`: Comprehensive logging for security monitoring
+- `typing`: Type hints for better code documentation
 
 ## Thread Safety
 
@@ -179,11 +174,3 @@ use in async environments.
 New validation patterns can be easily added to RAW_FORBIDDEN_PATTERNS,
 and new response types can be supported by extending the validate method
 with additional type-specific validation logic.
-
-## Author
-
-FastAPI-Streamlit-LLM-Starter Team
-
-## Version
-
-1.0.0

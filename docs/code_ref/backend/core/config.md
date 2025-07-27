@@ -5,12 +5,12 @@ All application settings are consolidated here with proper organization and vali
 
 ## Classes
 
-Settings: Main configuration class that handles environment variables, validation,
+**Settings**: Main configuration class that handles environment variables, validation,
 and provides methods for resilience configuration management.
 
 ## Module Variables
 
-settings: Global Settings instance for dependency injection throughout the application.
+**settings**: Global Settings instance for dependency injection throughout the application.
 
 ## Features
 
@@ -30,9 +30,10 @@ settings: Global Settings instance for dependency injection throughout the appli
 - Custom JSON configuration overrides
 - Legacy environment variable support for backward compatibility
 
-## Example
+## Usage
 
 Basic usage for accessing configuration:
+
 ```python
 from app.core.config import settings
 
@@ -46,6 +47,54 @@ resilience_config = settings.get_resilience_config()
 # Check operation strategy
 strategy = settings.get_operation_strategy("summarize")
 ```
+
+## Configuration Architecture
+
+The Settings class provides comprehensive configuration management with:
+
+### AI Configuration
+- Google Gemini API integration
+- Model selection and temperature control
+- Batch processing limits and concurrency control
+
+### Resilience Configuration
+- **Preset System**: Simple, development, and production presets
+- **Legacy Support**: Backward compatibility with individual environment variables
+- **Custom Overrides**: JSON-based configuration customization
+- **Operation Strategies**: Per-operation resilience strategy configuration
+
+### Cache Configuration
+- Redis connection and clustering support
+- Compression settings with configurable thresholds
+- Text size tiering for optimal performance
+- Memory cache integration for small texts
+
+### Security Configuration
+- API key management with multi-key support
+- CORS origins with production-ready defaults
+- Request validation and size limits
+
+## Environment Variables
+
+The configuration system supports both modern preset-based configuration and
+legacy individual environment variables for backward compatibility:
+
+```bash
+# Modern preset approach (recommended)
+RESILIENCE_PRESET=production
+RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 5}'
+
+# Legacy individual variables (supported for compatibility)
+RETRY_MAX_ATTEMPTS=3
+CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+```
+
+## Validation and Error Handling
+
+- Comprehensive field validation using Pydantic validators
+- Graceful fallback for invalid values with warning logs
+- Strict validation for direct API usage
+- Configuration error classification and reporting
 
 ## Note
 

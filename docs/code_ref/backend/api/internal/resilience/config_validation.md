@@ -1,4 +1,8 @@
-# Resilience configuration validation REST API endpoints.
+# Infrastructure Service: Resilience Configuration Validation API
+
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
+🔧 **Configuration-driven behavior**
 
 This module provides sophisticated REST API endpoints for validating custom
 resilience configurations with multiple validation strategies and security

@@ -1,8 +1,12 @@
-# Resilience circuit breaker management and monitoring REST API endpoints.
+# Infrastructure Service: Resilience Circuit Breaker Management API
+
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
+🔧 **Configuration-driven behavior**
 
 This module provides REST API endpoints for monitoring and managing circuit
 breakers within the resilience infrastructure. Circuit breakers are critical
-components that protect services from cascading failures by detecting and
+infrastructure components that protect services from cascading failures by detecting and
 isolating failing operations, providing real-time status monitoring and
 administrative control capabilities.
 
