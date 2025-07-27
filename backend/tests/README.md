@@ -1,83 +1,222 @@
 # Backend Test Suite
 
-This directory contains comprehensive tests for the FastAPI backend application, organized into clear categories for better maintainability and discoverability.
+This directory contains comprehensive tests for the FastAPI backend application, organized into clear categories for better maintainability and discoverability. The test suite includes **23,162 lines** across **59 test files**, providing extensive coverage of all application components.
 
 ## Test Structure
 
 The test suite follows a hierarchical structure that mirrors the application source code:
 
 ```
-tests/
-├── __init__.py
-├── conftest.py
-├── README.md (this file)
+backend/tests/
+├── conftest.py                    # Global fixtures and test configuration (440 lines)
+├── fixtures.py                    # Reusable test data factories (38 lines)
+├── mocks.py                       # Common mock objects (60 lines)
+├── assertions.py                  # Custom test assertions (34 lines)
+├── README.md                      # Test documentation and guidelines
+├── directory-structure.txt        # Directory structure reference
 │
-├── unit/                          # Unit tests (no external dependencies)
-│   ├── __init__.py
-│   ├── test_auth.py              # Authentication unit tests
-│   ├── test_config.py            # Configuration tests
-│   ├── test_dependencies.py      # Dependency injection tests
-│   ├── test_dependency_injection.py
-│   ├── test_models.py            # Data model tests
-│   ├── test_resilience.py        # Resilience service unit tests
-│   ├── test_sanitization.py      # Text sanitization tests
-│   ├── test_text_processor.py    # Text processor service tests
+├── infrastructure/                # Tests for reusable template components
+│   ├── conftest.py                # Infrastructure-specific fixtures (14 lines)
 │   │
-│   ├── security/                 # Security module tests
-│   │   ├── __init__.py
-│   │   ├── test_context_isolation.py
-│   │   └── test_response_validator.py
+│   ├── ai/
+│   │   ├── test_client.py              # AI client interface tests (24 lines)
+│   │   ├── test_gemini.py              # Gemini implementation tests (17 lines)
+│   │   ├── test_prompt_builder.py      # Prompt construction tests (418 lines)
+│   │   └── test_sanitization.py        # Input sanitization tests (310 lines)
 │   │
-│   ├── services/                 # Service layer tests
-│   │   ├── __init__.py
-│   │   ├── test_cache.py         # Cache service tests (merged)
-│   │   └── test_monitoring.py    # Monitoring service tests
+│   ├── cache/
+│   │   ├── test_base.py          # Cache interface tests (15 lines)
+│   │   ├── test_redis.py         # Redis cache implementation (15 lines)
+│   │   ├── test_memory.py        # In-memory cache tests (15 lines)
+│   │   ├── test_cache.py         # Comprehensive cache tests (3672 lines)
+│   │   └── test_monitoring.py    # Cache monitoring tests (2015 lines)
 │   │
-│   └── utils/                    # Utility function tests
-│       ├── __init__.py
-│       ├── test_prompt_builder.py
-│       └── test_prompt_utils.py
+│   ├── resilience/
+│   │   ├── test_resilience.py              # Core resilience functionality (1888 lines)
+│   │   ├── test_circuit_breaker.py         # Circuit breaker pattern tests (13 lines)
+│   │   ├── test_retry.py                   # Retry mechanism tests (13 lines)
+│   │   ├── test_presets.py                 # Resilience preset configuration tests (453 lines)
+│   │   ├── test_resilience_integration.py  # Resilience integration tests (321 lines)
+│   │   ├── test_validation_schemas.py      # Schema validation tests (360 lines)
+│   │   ├── test_backward_compatibility.py  # Backward compatibility tests (802 lines)
+│   │   ├── test_env_recommendations.py     # Environment-specific tests (339 lines)
+│   │   ├── test_adv_config_scenarios.py    # Complex config tests (729 lines)
+│   │   ├── test_security_validation.py     # Security validation tests (470 lines)
+│   │   ├── test_migration_utils.py         # Migration utility tests (477 lines)
+│   │   ├── test_performance_benchmarks.py  # Performance benchmarking tests (514 lines)
+│   │   ├── test_domain_integration_helpers.py # Domain integration helpers (127 lines)
+│   │   └── infrastructure_review.md        # Infrastructure review documentation
+│   │
+│   ├── security/
+│   │   └── test_auth.py          # Authentication and authorization tests (365 lines)
+│   │
+│   └── monitoring/
+│       ├── test_metrics.py       # Metrics collection tests (17 lines)
+│       └── test_health.py        # Health check tests (17 lines)
 │
-├── integration/                   # Integration tests (require running app)
-│   ├── __init__.py
-│   ├── test_auth_endpoints.py    # API authentication tests
-│   ├── test_main_endpoints.py    # Main application endpoints
-│   └── test_resilience_endpoints.py  # Resilience endpoint tests
+├── core/                         # Tests for application-specific setup
+│   ├── test_config.py                # Configuration loading and validation (238 lines)
+│   ├── test_config_monitoring.py     # Configuration monitoring tests (601 lines)
+│   ├── test_exceptions.py            # Custom exception handling (13 lines)
+│   ├── test_middleware.py            # CORS, error handling, logging (18 lines)
+│   ├── test_dependencies.py          # Dependency injection (426 lines)
+│   └── test_dependency_injection.py  # Advanced dependency injection tests (81 lines)
 │
-├── test_manual_api.py            # Manual API tests (require live server + AI keys)
-└── test_manual_auth.py           # Manual auth tests (require live server)
+├── services/                     # Tests for domain/business logic
+│   ├── test_text_processing.py   # Text processing service tests (1169 lines)
+│   └── test_response_validator.py # Response validation tests (311 lines)
+│
+├── api/                          # API endpoint tests
+│   ├── conftest.py               # API-specific fixtures (auth, clients) (11 lines)
+│   │
+│   ├── v1/                       # Versioned public API tests
+│   │   ├── test_text_processing_endpoints.py  # /v1/text_processing/* endpoints (620 lines)
+│   │   └── test_main_endpoints.py             # /v1/health, /v1/auth/status (114 lines)
+│   │
+│   └── internal/                       # Internal/admin API tests
+│       ├── test_monitoring_endpoints.py         # /internal/monitoring/* endpoints (561 lines)
+│       ├── test_admin_endpoints.py              # /internal/admin/* endpoints (13 lines)
+│       ├── test_resilience_validation_endpoints.py   # Resilience validation endpoints (591 lines)
+│       ├── test_resilience_performance_endpoints.py  # Resilience performance tests (336 lines)
+│       ├── test_resilience_monitoring_endpoints.py   # Resilience monitoring endpoints (566 lines)
+│       └── test_cache_endpoints.py               # Cache management endpoints (571 lines)
+│
+├── shared_schemas/           # Schema validation tests
+│   ├── test_text_processing_schemas.py   # Request/response model tests (163 lines)
+│   └── test_common_schemas.py            # Shared models and enums (63 lines)
+│
+├── integration/                     # Cross-layer integration tests
+│   ├── conftest.py                      # Integration-specific fixtures (18 lines)
+│   ├── test_end_to_end.py               # Full request flow tests (395 lines)
+│   ├── test_auth_endpoints.py           # Authentication integration (300 lines)
+│   ├── test_resilience_integration1.py  # Resilience + API integration part 1 (538 lines)
+│   ├── test_resilience_integration2.py  # Resilience + API integration part 2 (370 lines)
+│   ├── test_cache_integration.py        # Cache + service integration (13 lines)
+│   └── test_request_isolation.py        # Request isolation and context tests (686 lines)
+│
+├── performance/               # Performance and load tests
+│   └── test_cache_performance.py  # Cache performance tests (13 lines)
+│
+├── manual/                    # Manual testing scripts
+│   ├── test_manual_api.py         # Manual API tests (require live server + AI keys) (190 lines)
+│   └── test_manual_auth.py        # Manual auth tests (require live server) (181 lines)
+│
+└── templates/                 # Code review templates for tests
+    ├── code-review_api.md
+    ├── code-review_core.md 
+    ├── code-review_infrastructure.md
+    ├── code-review_integration.md
+    ├── code-review_performance.md
+    ├── code-review_services.md
+    └── code-review_shared-schemas.md
 ```
 
 ## Test Categories
 
-### 1. Unit Tests (`unit/` directory)
+### 1. Infrastructure Tests (`infrastructure/` directory) 🏗️
 
-Unit tests can be run without any external dependencies and test individual components in isolation.
+Tests for reusable template components that are business-agnostic and stable across projects. These test individual infrastructure services in isolation with mocked external dependencies.
 
-**Run all unit tests:**
+**Characteristics:**
+- High test coverage requirements (>90%)
+- Business-agnostic abstractions
+- Stable APIs with backward compatibility guarantees
+- Performance-critical implementations
+
+**Run all infrastructure tests:**
 ```bash
 cd backend
-pytest unit/ -v
+pytest infrastructure/ -v
 ```
 
-**Run specific unit test categories:**
+**Run specific infrastructure categories:**
 ```bash
-# Service layer tests
-pytest unit/services/ -v
+# AI infrastructure (clients, prompt builders, validators)
+pytest infrastructure/ai/ -v
 
-# Security tests
-pytest unit/security/ -v
+# Cache infrastructure (Redis, memory, monitoring)
+pytest infrastructure/cache/ -v
 
-# Utility tests
-pytest unit/utils/ -v
+# Resilience infrastructure (circuit breakers, retries, presets)
+pytest infrastructure/resilience/ -v
 
-# Specific service
-pytest unit/services/test_cache.py -v
+# Security infrastructure (auth, validation)
+pytest infrastructure/security/ -v
+
+# Monitoring infrastructure (metrics, health, benchmarks)
+pytest infrastructure/monitoring/ -v
 ```
 
-### 2. Integration Tests (`integration/` directory)
+### 2. Core Tests (`core/` directory) ⚙️
 
-Integration tests verify that components work together correctly. They use mocked external dependencies but test real endpoint behavior.
+Tests for application-specific setup and configuration that bridges infrastructure and domain concerns.
+
+**Run core tests:**
+```bash
+cd backend
+pytest core/ -v
+```
+
+**Core test categories:**
+```bash
+# Configuration management
+pytest core/test_config.py -v
+
+# Dependency injection
+pytest core/test_dependencies.py -v
+
+# Exception handling
+pytest core/test_exceptions.py -v
+```
+
+### 3. Domain Service Tests (`services/` directory) 💼
+
+Tests for business-specific implementations that compose infrastructure services. These are expected to be replaced/modified per project.
+
+**Run service tests:**
+```bash
+cd backend
+pytest services/ -v
+```
+
+### 4. API Tests (`api/` directory) 🌐
+
+Tests for HTTP endpoints using FastAPI TestClient, organized by API visibility and versioning.
+
+**Run all API tests:**
+```bash
+cd backend
+pytest api/ -v
+```
+
+**API test categories:**
+```bash
+# Public versioned API endpoints
+pytest api/v1/ -v
+
+# Internal/admin API endpoints
+pytest api/internal/ -v
+```
+
+### 5. Schema Tests (`shared_schemas/` directory) 📋
+
+Tests for Pydantic model validation, request/response schemas, and data structures.
+
+**Run schema tests:**
+```bash
+cd backend
+pytest shared_schemas/ -v
+```
+
+### 6. Integration Tests (`integration/` directory) 🔗
+
+Cross-layer integration tests that verify components work together correctly. These test interactions between multiple services and layers.
+
+**Characteristics:**
+- Test multiple services together
+- May use real external dependencies (Redis, databases)
+- Focus on service boundary interactions
+- End-to-end request flows
 
 **Run all integration tests:**
 ```bash
@@ -85,28 +224,42 @@ cd backend
 pytest integration/ -v
 ```
 
-**Run specific integration test files:**
+**Integration test categories:**
 ```bash
-# Main application endpoints
-pytest integration/test_main_endpoints.py -v
+# Full request flow tests
+pytest integration/test_end_to_end.py -v
 
-# Authentication endpoints
+# Authentication integration
 pytest integration/test_auth_endpoints.py -v
 
-# Resilience endpoints
-pytest integration/test_resilience_endpoints.py -v
+# Resilience integration
+pytest integration/test_resilience_integration*.py -v
+
+# Cache integration
+pytest integration/test_cache_integration.py -v
+
+# Request isolation and context
+pytest integration/test_request_isolation.py -v
 ```
 
-### 3. Manual Tests (root directory)
+### 7. Performance Tests (`performance/` directory) 🚀
 
-Manual tests are designed for manual verification against a live server and require:
-- A running FastAPI server at `http://localhost:8000`
+Actual performance and load testing that measures system characteristics rather than testing functionality.
+
+**Run performance tests:**
+```bash
+cd backend
+pytest performance/ -v
+```
+
+### 8. Manual Tests (`manual/` directory) 🔧
+
+Manual tests designed for verification against a live server. These require external setup and are marked for manual execution.
+
+**Requirements:**
+- Running FastAPI server at `http://localhost:8000`
 - Valid AI API keys (e.g., `GEMINI_API_KEY`)
 - Manual test API key: `API_KEY=test-api-key-12345`
-
-**Manual test files:**
-- `test_manual_api.py` - Manual API endpoint tests (marked with `@pytest.mark.manual`)
-- `test_manual_auth.py` - Manual authentication tests (marked with `@pytest.mark.manual`)
 
 **To run manual tests:**
 ```bash
@@ -120,8 +273,141 @@ uvicorn app.main:app --reload --port 8000
 
 # 3. Run manual tests in another terminal
 cd backend
-pytest test_manual_api.py test_manual_auth.py -v -s -m "manual" --run-manual
+pytest manual/ -v -s -m "manual" --run-manual
 ```
+
+## Code Review Process 📋
+
+The `templates/` directory contains systematic code review templates for each test category. These templates help ensure tests meet their specific criteria and are properly located within the test directory structure.
+
+### Available Review Templates
+
+Each template is designed for a specific test category:
+
+- **`code-review_infrastructure.md`** - For reviewing infrastructure tests (`infrastructure/` directory)
+- **`code-review_core.md`** - For reviewing core application tests (`core/` directory)
+- **`code-review_services.md`** - For reviewing domain service tests (`services/` directory)
+- **`code-review_api.md`** - For reviewing API endpoint tests (`api/` directory)
+- **`code-review_shared-schemas.md`** - For reviewing schema validation tests (`shared_schemas/` directory)
+- **`code-review_integration.md`** - For reviewing integration tests (`integration/` directory)
+- **`code-review_performance.md`** - For reviewing performance tests (`performance/` directory)
+
+### When to Initiate Code Reviews
+
+**Recommended Review Triggers:**
+
+1. **After major refactoring** - When test structure or organization changes significantly
+2. **Before releases** - To ensure test quality and proper categorization
+3. **When adding new test categories** - To verify tests are placed correctly
+4. **During onboarding** - To help new team members understand test organization
+5. **When test failures increase** - To identify structural issues or misplaced tests
+6. **Quarterly maintenance** - Regular review to maintain test quality standards
+
+### How to Conduct a Code Review
+
+**Step 1: Choose the appropriate template**
+```bash
+# Copy the relevant template for your review area
+cp backend/tests/templates/code-review_infrastructure.md backend/tests/infrastructure/review_2024-01-15.md
+```
+
+**Step 2: Gather file information**
+```bash
+# Get file list and sizes for the review area
+cd backend/tests/infrastructure
+ls -la
+wc -l *.py */*.py
+```
+
+**Step 3: Follow the template process**
+- List all files to be reviewed with checkboxes
+- Review each file systematically against the criteria
+- Document findings and classifications
+- Identify misplaced tests and add TODO comments
+- Provide comprehensive recommendations
+
+**Step 4: Take action on findings**
+```bash
+# Move misplaced tests to correct directories
+mv tests/infrastructure/test_integration_feature.py tests/integration/test_feature_integration.py
+
+# Add TODO comments to files that need relocation
+# (Done during the review process)
+```
+
+### Review Criteria by Category
+
+**Infrastructure Tests** 🏗️
+- Business-agnostic abstractions
+- Isolated testing with mocked dependencies
+- High test coverage (>90%)
+- Stable API contract testing
+- Performance-critical implementations
+
+**Core Tests** ⚙️
+- Application-specific setup and configuration
+- Infrastructure-domain bridge functionality
+- Dependency injection and wiring
+- Middleware and cross-cutting concerns
+- Configuration validation
+
+**Services Tests** 💼
+- Business logic and domain rules
+- Service composition and orchestration
+- Input validation and processing
+- Error handling and edge cases
+- Infrastructure integration
+
+**API Tests** 🌐
+- HTTP endpoint testing
+- Request/response validation
+- Authentication and authorization
+- Error handling and status codes
+- API contract compliance
+
+**Schema Tests** 📋
+- Pydantic model validation
+- Request/response schema testing
+- Data structure integrity
+- Validation edge cases
+- Schema evolution support
+
+**Integration Tests** 🔗
+- Cross-layer integration
+- Service boundary interactions
+- End-to-end workflows
+- Realistic dependency usage
+- System interaction patterns
+
+**Performance Tests** 🚀
+- System characteristic measurement
+- Quantitative metrics collection
+- Load and stress testing
+- Performance regression detection
+- Resource utilization monitoring
+
+### Review Output and Documentation
+
+Each review should produce:
+- **Review report** - Detailed findings and recommendations
+- **Action items** - Specific tasks to address issues
+- **TODO comments** - Added to misplaced files with relocation guidance
+- **Progress tracking** - Metrics on review completion and issue resolution
+
+### Example Review Commands
+
+```bash
+# Start an infrastructure review
+cp backend/tests/templates/code-review_infrastructure.md backend/tests/infrastructure/infrastructure_review.md
+
+# Start an API review  
+cp backend/tests/templates/code-review_api.md backend/tests/api/api_review.md
+
+# Start an integration review
+cp backend/tests/templates/code-review_integration.md backend/tests/integration/integration_review.md
+```
+
+The review templates provide systematic approaches to ensure test quality, proper organization, and adherence to category-specific criteria.
 
 ## Running Tests
 
@@ -159,20 +445,24 @@ pytest -v -n 0
 ### Test-Specific Commands
 
 ```bash
-# Run all unit tests only
-pytest unit/ -v
+# Run all infrastructure tests only
+pytest infrastructure/ -v
 
 # Run all integration tests only
 pytest integration/ -v
 
 # Run specific test file
-pytest unit/services/test_cache.py -v
+pytest infrastructure/cache/test_cache.py -v
 
 # Run specific test class
-pytest unit/test_resilience.py::TestAIServiceResilience -v
+pytest infrastructure/resilience/test_resilience.py::TestAIServiceResilience -v
 
 # Run specific test method
-pytest unit/test_resilience.py::TestAIServiceResilience::test_service_initialization -v
+pytest infrastructure/resilience/test_resilience.py::TestAIServiceResilience::test_service_initialization -v
+
+# Run by test category
+pytest core/ api/ services/ -v  # Application-specific tests
+pytest infrastructure/ -v       # Template component tests
 ```
 
 ### Coverage Reports
@@ -182,7 +472,9 @@ pytest unit/test_resilience.py::TestAIServiceResilience::test_service_initializa
 pytest --cov=app --cov-report=html --cov-report=term -v
 
 # Coverage for specific modules
-pytest unit/services/ --cov=app.services --cov-report=html -v
+pytest infrastructure/cache/ --cov=app.infrastructure.cache --cov-report=html -v
+pytest services/ --cov=app.services --cov-report=html -v
+pytest api/ --cov=app.routers --cov-report=html -v
 ```
 
 ## Test Markers
@@ -203,25 +495,82 @@ The test suite uses several pytest markers to categorize tests:
 
 ## Adding New Tests
 
-### Unit Tests
+### Infrastructure Tests 🏗️
 
-Place unit tests in the appropriate subdirectory under `unit/` that mirrors the application structure:
+Place infrastructure tests for reusable template components:
 
 ```bash
-app/services/new_service.py  →  tests/unit/services/test_new_service.py
-app/utils/new_utility.py     →  tests/unit/utils/test_new_utility.py
-app/security/new_validator.py →  tests/unit/security/test_new_validator.py
+app/infrastructure/cache/new_cache.py     →  tests/infrastructure/cache/test_new_cache.py
+app/infrastructure/ai/new_client.py       →  tests/infrastructure/ai/test_new_client.py
+app/infrastructure/security/new_auth.py   →  tests/infrastructure/security/test_new_auth.py
 ```
 
-### Integration Tests
+**Requirements:**
+- >90% test coverage
+- Mock external dependencies
+- Test API contracts and error handling
 
-Place integration tests in the `integration/` directory:
-- Endpoint tests: `test_*_endpoints.py`
-- Cross-component tests: `test_*_integration.py`
+### Core Tests ⚙️
 
-### Manual Tests
+Place core application setup tests:
 
-Add manual tests to the root test directory with `@pytest.mark.manual` decorator. These tests require the `--run-manual` flag to run.
+```bash
+app/core/new_config.py        →  tests/core/test_new_config.py
+app/core/new_middleware.py    →  tests/core/test_new_middleware.py
+```
+
+### Domain Service Tests 💼
+
+Place domain/business logic tests:
+
+```bash
+app/services/new_domain_service.py  →  tests/services/test_new_domain_service.py
+```
+
+**Current service tests:**
+- `test_text_processing.py` - Text processing service tests
+- `test_response_validator.py` - Response validation tests
+
+**Note:** These are meant to be replaced in actual projects.
+
+### API Tests 🌐
+
+Place endpoint tests organized by API type:
+
+```bash
+# Public API endpoints
+app/routers/v1/new_endpoint.py    →  tests/api/v1/test_new_endpoint.py
+
+# Internal/admin endpoints  
+app/routers/internal/new_admin.py →  tests/api/internal/test_new_admin.py
+```
+
+**Current API tests:**
+- **v1/**: `test_main_endpoints.py`, `test_text_processing_endpoints.py`
+- **internal/**: `test_admin_endpoints.py`, `test_cache_endpoints.py`, `test_monitoring_endpoints.py`, `test_resilience_*_endpoints.py`
+
+### Schema Tests 📋
+
+Place Pydantic model tests:
+
+```bash
+shared/models/new_model.py  →  tests/shared_schemas/test_new_model.py
+```
+
+**Current schema tests:**
+- `test_text_processing_schemas.py` - Request/response model tests
+- `test_common_schemas.py` - Shared models and enums
+
+### Integration Tests 🔗
+
+Place cross-layer integration tests in `integration/`:
+- Full workflow tests: `test_*_end_to_end.py`
+- Service interaction tests: `test_*_integration.py`
+- Authentication flows: `test_*_auth.py`
+
+### Manual Tests 🔧
+
+Add manual tests to `manual/` directory with `@pytest.mark.manual` decorator. These tests require the `--run-manual` flag to run.
 
 ## Common Issues and Solutions
 
@@ -234,7 +583,7 @@ If you see `httpx.ConnectError: All connection attempts failed`:
 ### Missing API Keys
 If tests skip or fail due to missing API keys:
 - Set the required environment variables (see manual tests section above)
-- For testing without real API calls, use the unit tests instead
+- For testing without real API calls, use the infrastructure tests instead (they mock external dependencies)
 
 ### Parallel Testing Issues
 If tests fail when run in parallel but pass when run sequentially:
@@ -269,12 +618,12 @@ This dual protection ensures that special test categories only run when explicit
 
 **Run with detailed output:**
 ```bash
-pytest unit/test_resilience.py -v -s --tb=long
+pytest infrastructure/resilience/test_resilience.py -v -s --tb=long
 ```
 
 **Stop on first failure:**
 ```bash
-pytest unit/ -x -v
+pytest infrastructure/ -x -v
 ```
 
 **Run only failed tests:**
@@ -284,5 +633,5 @@ pytest --lf -v
 
 **Debug specific failing test:**
 ```bash
-pytest unit/test_resilience.py::TestAIServiceResilience::test_service_initialization -v -s --tb=long
+pytest infrastructure/resilience/test_resilience.py::TestAIServiceResilience::test_service_initialization -v -s --tb=long
 ```

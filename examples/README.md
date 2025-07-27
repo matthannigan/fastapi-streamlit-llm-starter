@@ -1,13 +1,15 @@
-# FastAPI-Streamlit-LLM Starter Template - Examples
+# API Integration Examples
 
-This directory contains comprehensive examples and usage guides for the FastAPI-Streamlit-LLM Starter Template. These examples demonstrate how to use, extend, and test the application.
+This directory contains comprehensive examples demonstrating **API integration patterns** for the FastAPI-Streamlit-LLM Starter Template. These examples show how to interact with the backend API using HTTP clients and are designed for frontend developers, API consumers, and integration testing.
+
+> **🏗️ Looking for backend infrastructure examples?** See [Infrastructure Examples](../backend/examples/README.md) for advanced backend service configurations, caching patterns, and resilience systems.
 
 ## 📁 Directory Contents
 
-### Core Examples
+### API Integration Examples
 
-- **`basic_usage.py`** - Complete demonstration of all API operations
-- **`custom_operation.py`** - Guide for adding custom text processing operations
+- **`basic_usage.py`** - Complete demonstration of all API operations via HTTP client
+- **`custom_operation.py`** - Guide for adding custom text processing operations  
 - **`integration_test.py`** - Comprehensive integration testing suite
 
 ### Quick Start
@@ -22,22 +24,19 @@ cd examples
 python basic_usage.py
 ```
 
-## 🚀 Basic Usage Examples
+## 🚀 API Integration Examples
 
 ### `basic_usage.py`
 
-This script demonstrates all core functionality of the FastAPI-Streamlit-LLM Starter Template.
+This script demonstrates how to interact with all API endpoints using HTTP clients. Perfect for understanding API integration patterns and building your own client applications.
 
-**Features Demonstrated:**
-- ✅ API health checks
-- 📋 Available operations listing
-- 📝 Text summarization
-- 😊 Sentiment analysis
-- 🔑 Key points extraction
-- ❓ Question generation
-- 💬 Question & answer
-- 🚨 Error handling
-- ⚡ Performance benchmarking
+**API Integration Features Demonstrated:**
+- ✅ HTTP client setup and connection management
+- 📋 REST API endpoint interaction patterns
+- 📝 Text processing via API calls (summarization, sentiment, etc.)
+- 🚨 Comprehensive error handling and retry logic
+- ⚡ Performance benchmarking of API operations
+- 🔗 Async HTTP client usage with context managers
 
 **Usage:**
 ```bash
@@ -64,11 +63,11 @@ python basic_usage.py
    ...
 ```
 
-## 🔧 Custom Operations Guide
+## 🔧 API Extension Guide
 
 ### `custom_operation.py`
 
-This script provides a step-by-step guide for extending the application with custom text processing operations.
+This script provides a step-by-step guide for extending the API with custom text processing operations, including how to modify both backend and frontend components.
 
 **Custom Operations Demonstrated:**
 - 🌐 Text translation
@@ -82,7 +81,7 @@ python custom_operation.py
 ```
 
 **What You'll Learn:**
-1. How to extend the `ProcessingOperation` enum
+1. How to extend the `TextProcessingOperation` enum
 2. Adding new processing methods to the backend
 3. Updating API endpoints
 4. Enhancing the frontend UI
@@ -126,10 +125,10 @@ Before running the examples, ensure you have:
    pip install httpx asyncio
    ```
 
-## 🎯 Usage Scenarios
+## 🎯 API Integration Scenarios
 
-### Scenario 1: API Development
-Use `basic_usage.py` to understand how to interact with the API programmatically:
+### Scenario 1: Building API Clients
+Use `basic_usage.py` to understand how to build robust API clients:
 
 ```python
 from examples.basic_usage import APIClient
@@ -144,16 +143,16 @@ async def my_app():
         print(result)
 ```
 
-### Scenario 2: Adding New Features
-Follow `custom_operation.py` to add new text processing capabilities:
+### Scenario 2: Extending API Functionality
+Follow `custom_operation.py` to add new API endpoints and text processing capabilities:
 
 1. Define new operation in `shared/models.py`
 2. Implement processing logic in `backend/app/services/text_processor.py`
 3. Update API endpoints in `backend/app/main.py`
 4. Enhance frontend UI in `frontend/app/app.py`
 
-### Scenario 3: Quality Assurance
-Use `integration_test.py` for comprehensive system validation:
+### Scenario 3: API Testing & Validation
+Use `integration_test.py` for comprehensive API testing and system validation:
 
 ```bash
 # Run all tests
@@ -277,11 +276,15 @@ logging.basicConfig(level=logging.DEBUG)
 
 ## 📚 Additional Resources
 
-- **Main README:** `../README.md` - Project overview and setup
-- **API Documentation:** `http://localhost:8000/docs` - Interactive API docs
-- **Frontend:** `http://localhost:8501` - Streamlit interface
-- **Backend Tests:** `../backend/tests/` - Unit tests
-- **Frontend Tests:** `../frontend/tests/` - UI tests
+### Related Examples
+- 🏗️ [Infrastructure Examples](../backend/examples/README.md) - Backend service configurations, caching patterns, and resilience systems
+- 📚 [Main Project README](../README.md) - Project overview and setup instructions
+
+### Development Resources
+- **API Documentation:** `http://localhost:8000/docs` - Interactive Swagger/OpenAPI docs
+- **Frontend Interface:** `http://localhost:8501` - Streamlit web interface
+- **Backend Tests:** `../backend/tests/` - Backend unit and integration tests
+- **Frontend Tests:** `../frontend/tests/` - Frontend UI tests
 
 ## 🤝 Contributing
 
@@ -295,4 +298,4 @@ To add new examples:
 
 ## 📄 License
 
-These examples are part of the FastAPI-Streamlit-LLM Starter Template and are subject to the same license terms as the main project. 
+These API integration examples are part of the FastAPI-Streamlit-LLM Starter Template and are subject to the same license terms as the main project. 

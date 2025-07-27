@@ -1,11 +1,28 @@
-"""Backend services package."""
+"""
+Domain Services Package
 
-from .monitoring import CachePerformanceMonitor, PerformanceMetric, CompressionMetric, MemoryUsageMetric, InvalidationMetric
+This package contains domain-specific business logic implementations that serve as 
+customizable examples for text processing and AI integration workflows.
+
+## Services
+
+- `TextProcessorService`: Main AI-powered text processing service with resilience patterns
+- `ResponseValidator`: AI response validation for security and quality assurance
+
+## Usage
+
+```python
+from app.services import TextProcessorService, ResponseValidator
+```
+
+Note: These are example domain services expected to be replaced per project requirements.
+"""
+
+# Bridge the example domain service from its old location.
+from .text_processor import TextProcessorService
+from .response_validator import ResponseValidator
 
 __all__ = [
-    "CachePerformanceMonitor",
-    "PerformanceMetric", 
-    "CompressionMetric",
-    "MemoryUsageMetric",
-    "InvalidationMetric"
+    "TextProcessorService",
+    "ResponseValidator"
 ]

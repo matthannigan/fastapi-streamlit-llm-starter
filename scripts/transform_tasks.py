@@ -92,8 +92,11 @@ def transform_tasks_to_markdown(input_file="tasks/tasks.json", output_file="task
         with open(input_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        # Extract tasks from the JSON structure
-        tasks = data.get('tasks', [])
+        # Extract tasks from the JSON structure (support new format with 'master' key)
+        if 'master' in data and 'tasks' in data['master']:
+            tasks = data['master']['tasks']
+        else:
+            tasks = data.get('tasks', [])
         
         if not tasks:
             print("Warning: No tasks found in the JSON file.")
@@ -143,12 +146,12 @@ def main():
     parser.add_argument(
         "--input", 
         default=".taskmaster/tasks/tasks.json",
-        help="Input JSON file path (default: tasks/tasks.json)"
+        help="Input JSON file path (default: .taskmaster/tasks/tasks.json)"
     )
     parser.add_argument(
         "--output", 
-        default=".taskmaster/docs/tasks.md",
-        help="Output markdown file path (default: tasks.md)"
+        default="dev/tasks.md",
+        help="Output markdown file path (default: dev/tasks.md)"
     )
     
     args = parser.parse_args()

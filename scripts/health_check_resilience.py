@@ -28,7 +28,7 @@ def check_resilience_health():
     """
     try:
         # Import required modules
-        from app.config import Settings
+        from app.core.config import Settings
         from app.resilience_presets import preset_manager
         from app.services.resilience import AIServiceResilience
         

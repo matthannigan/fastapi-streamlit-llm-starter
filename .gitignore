@@ -193,7 +193,7 @@ logs/
 Thumbs.db
 
 # Repomix
-repomix-output*.*
+repomix-output/
 
 # Added by Claude Task Master
 logs
@@ -223,3 +223,6 @@ tasks/
 
 # Documentation
 docs-website/
+
+# Backend App Refactor in progress
+backend/app.old/

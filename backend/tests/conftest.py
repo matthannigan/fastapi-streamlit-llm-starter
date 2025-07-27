@@ -1,14 +1,27 @@
+"""
+Conftest file for pytest.
+
+TODO: Split this file into fixtures.py and mocks.py
+"""
+
 import pytest
 import asyncio
+import sys
+import os
+from pathlib import Path
 from unittest.mock import AsyncMock, patch, Mock
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
+
+# Add the backend directory to Python path so we can import the app module
+backend_dir = Path(__file__).parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from app.main import app
 from app.services.text_processor import TextProcessorService
-from app.services.cache import AIResponseCache
-from app.services.monitoring import CachePerformanceMonitor
-from shared.models import TextProcessingRequest, ProcessingOperation
+from app.infrastructure.cache import AIResponseCache, CachePerformanceMonitor
+from app.schemas import TextProcessingRequest, TextProcessingOperation
 
 # Test API key for authentication
 TEST_API_KEY = "test-api-key-12345"
@@ -28,7 +41,9 @@ def client():
 @pytest.fixture
 async def async_client():
     """Create an async test client."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
 
 @pytest.fixture
@@ -86,8 +101,9 @@ def sample_request(sample_text):
     """Sample request for testing."""
     return TextProcessingRequest(
         text=sample_text,
-        operation=ProcessingOperation.SUMMARIZE,
-        options={"max_length": 100}
+        operation=TextProcessingOperation.SUMMARIZE,
+        options={"max_length": 100},
+        question=None  # Explicitly set to fix linter warning
     )
 
 @pytest.fixture
@@ -102,11 +118,12 @@ def mock_processor():
     
     # Configure default return values for process_text method
     async def mock_process_text(request):
-        from shared.models import TextProcessingResponse, SentimentResult
+        from app.schemas import TextProcessingResponse, SentimentResult
         
         response = TextProcessingResponse(
             operation=request.operation,
             processing_time=0.1,
+            cache_hit=False,
             metadata={"word_count": len(request.text.split())}
         )
         
@@ -224,7 +241,7 @@ def cache_performance_monitor():
 @pytest.fixture
 def app_with_mock_performance_monitor(mock_performance_monitor):
     """FastAPI app with mock performance monitor dependency override."""
-    from app.routers.monitoring import get_performance_monitor
+    from app.api.internal.cache import get_performance_monitor
     
     # Override the dependency
     app.dependency_overrides[get_performance_monitor] = lambda: mock_performance_monitor
@@ -259,57 +276,68 @@ def mock_ai_agent():
         
         user_text_lower = user_text.lower()
         
+        # Create a mock result object that mimics the real agent response structure
+        from unittest.mock import MagicMock
+        
         # Check the type of task based on the task instruction section
         if "JSON object containing" in prompt and "sentiment" in prompt:
             # Return valid JSON for sentiment analysis
+            mock_result = MagicMock()
             if "positive" in user_text_lower or "good" in user_text_lower or "great" in user_text_lower:
-                return AsyncMock(data='{"sentiment": "positive", "confidence": 0.85, "explanation": "Test sentiment analysis"}')
+                mock_result.output = '{"sentiment": "positive", "confidence": 0.85, "explanation": "Test sentiment analysis"}'
             elif "negative" in user_text_lower or "bad" in user_text_lower or "terrible" in user_text_lower:
-                return AsyncMock(data='{"sentiment": "negative", "confidence": 0.85, "explanation": "Test sentiment analysis"}')
+                mock_result.output = '{"sentiment": "negative", "confidence": 0.85, "explanation": "Test sentiment analysis"}'
             else:
-                return AsyncMock(data='{"sentiment": "neutral", "confidence": 0.75, "explanation": "Test sentiment analysis"}')
+                mock_result.output = '{"sentiment": "neutral", "confidence": 0.75, "explanation": "Test sentiment analysis"}'
+            return mock_result
         elif "Return each point as a separate line starting with a dash" in prompt:
             # This is specifically for key points extraction
+            mock_result = MagicMock()
             if "cooking" in user_text_lower:
-                return AsyncMock(data="- Cooking techniques\n- Recipe ingredients\n- Food preparation")
+                mock_result.output = "- Cooking techniques\n- Recipe ingredients\n- Food preparation"
             elif "weather" in user_text_lower:
-                return AsyncMock(data="- Weather patterns\n- Climate change\n- Meteorological data")
+                mock_result.output = "- Weather patterns\n- Climate change\n- Meteorological data"
             else:
-                return AsyncMock(data="- First key point\n- Second key point\n- Third key point")
+                mock_result.output = "- First key point\n- Second key point\n- Third key point"
+            return mock_result
         elif "Generate thoughtful questions" in prompt:
             # This is specifically for question generation
+            mock_result = MagicMock()
             if "ai" in user_text_lower or "artificial intelligence" in user_text_lower:
-                return AsyncMock(data="1. What is AI?\n2. How does it work?\n3. What are the applications?")
+                mock_result.output = "1. What is AI?\n2. How does it work?\n3. What are the applications?"
             elif "cooking" in user_text_lower:
-                return AsyncMock(data="1. What ingredients are needed?\n2. How long does it take to cook?\n3. What cooking method is used?")
+                mock_result.output = "1. What ingredients are needed?\n2. How long does it take to cook?\n3. What cooking method is used?"
             else:
-                return AsyncMock(data="1. What is the main topic?\n2. How does it work?\n3. What are the key benefits?")
+                mock_result.output = "1. What is the main topic?\n2. How does it work?\n3. What are the key benefits?"
+            return mock_result
         else:
             # Default response for summarization and Q&A - make it content-aware
+            mock_result = MagicMock()
             if "cooking" in user_text_lower and ("recipes" in user_text_lower or "ingredients" in user_text_lower):
-                return AsyncMock(data="This text discusses cooking recipes and ingredients for food preparation.")
+                mock_result.output = "This text discusses cooking recipes and ingredients for food preparation."
             elif "weather" in user_text_lower and "climate" in user_text_lower:
-                return AsyncMock(data="This text covers weather patterns and climate change topics.")
+                mock_result.output = "This text covers weather patterns and climate change topics."
             elif "alice" in user_text_lower and "secret" in user_text_lower:
-                return AsyncMock(data="This text contains information about Alice and sensitive data.")
+                mock_result.output = "This text contains information about Alice and sensitive data."
             elif "financial" in user_text_lower and "earnings" in user_text_lower:
-                return AsyncMock(data="This text discusses financial data and earnings information.")
+                mock_result.output = "This text discusses financial data and earnings information."
             elif "injection" in user_text_lower or "ignore" in user_text_lower:
-                return AsyncMock(data="I can help you analyze text content for legitimate purposes.")
+                mock_result.output = "I can help you analyze text content for legitimate purposes."
             elif "error_context" in user_text_lower:
-                return AsyncMock(data="This text contains error context and special characters.")
+                mock_result.output = "This text contains error context and special characters."
             elif "cache isolation testing" in user_text_lower:
-                return AsyncMock(data="This is a summary about cache isolation and testing mechanisms.")
+                mock_result.output = "This is a summary about cache isolation and testing mechanisms."
             elif "completely different content" in user_text_lower:
-                return AsyncMock(data="This is a summary about different content and cache verification.")
+                mock_result.output = "This is a summary about different content and cache verification."
             elif "unique_content_" in user_text_lower:
                 # Extract the content number for unique responses
                 import re
                 match = re.search(r'unique_content_(\d+)', user_text_lower)
                 if match:
                     num = match.group(1)
-                    return AsyncMock(data=f"This is a unique summary about topic {num} from request number {num}.")
-                return AsyncMock(data="This is a unique summary about specific content.")
+                    mock_result.output = f"This is a unique summary about topic {num} from request number {num}."
+                else:
+                    mock_result.output = "This is a unique summary about specific content."
             elif "batch_item_" in user_text_lower:
                 # Extract the batch item number for unique responses
                 import re
@@ -317,20 +345,27 @@ def mock_ai_agent():
                 if match:
                     num = match.group(1)
                     if "financial" in user_text_lower:
-                        return AsyncMock(data=f"Summary about financial data from batch item {num}.")
+                        mock_result.output = f"Summary about financial data from batch item {num}."
                     elif "announcement" in user_text_lower:
-                        return AsyncMock(data=f"Summary about product announcement from batch item {num}.")
+                        mock_result.output = f"Summary about product announcement from batch item {num}."
                     elif "memo" in user_text_lower:
-                        return AsyncMock(data=f"Summary about security protocols from batch item {num}.")
-                return AsyncMock(data="This is a batch processing summary.")
+                        mock_result.output = f"Summary about security protocols from batch item {num}."
+                    else:
+                        mock_result.output = "This is a batch processing summary."
+                else:
+                    mock_result.output = "This is a batch processing summary."
             else:
                 # Generic fallback that tries to be somewhat relevant
                 words = user_text_lower.split()
                 if len(words) > 3:
                     key_words = [w for w in words[:5] if len(w) > 3]
                     if key_words:
-                        return AsyncMock(data=f"This is a summary about {' and '.join(key_words[:2])}.")
-                return AsyncMock(data="This is a test summary response from the mocked AI.")
+                        mock_result.output = f"This is a summary about {' and '.join(key_words[:2])}."
+                    else:
+                        mock_result.output = "This is a test summary response from the mocked AI."
+                else:
+                    mock_result.output = "This is a test summary response from the mocked AI."
+            return mock_result
     
     # Mock the Agent class constructor to return a mock agent with the smart_run method
     with patch('app.services.text_processor.Agent') as mock_agent_class:

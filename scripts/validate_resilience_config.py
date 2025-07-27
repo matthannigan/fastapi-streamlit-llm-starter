@@ -26,7 +26,7 @@ sys.path.insert(0, str(backend_dir))
 
 try:
     from app.resilience_presets import preset_manager, PRESETS, EnvironmentRecommendation
-    from app.config import Settings
+    from app.core.config import Settings
     from app.validation_schemas import config_validator
     from app.services.resilience import AIServiceResilience
 except ImportError as e:

@@ -1,304 +1,491 @@
-# FastAPI Backend with PydanticAI Integration
+# FastAPI Backend - Production-Ready AI Text Processing API
 
-A robust FastAPI application that provides AI-powered text processing capabilities using PydanticAI and Google's Gemini models.
+A comprehensive FastAPI application showcasing production-ready architecture for AI-powered text processing services. This backend serves as both a working application and an educational template demonstrating modern software engineering practices for building scalable, maintainable LLM-powered APIs.
 
-## Features
+## 🎯 Template Purpose & Architecture Overview
 
-- **Text Summarization**: Generate concise summaries of long texts
-- **Sentiment Analysis**: Analyze emotional tone with confidence scores
-- **Key Points Extraction**: Extract main points from text content
-- **Question Generation**: Create thoughtful questions about text
-- **Question & Answer**: Answer specific questions based on text content
-- **Health Monitoring**: Built-in health checks and monitoring
-- **Comprehensive Error Handling**: Robust error handling with detailed logging
-- **CORS Support**: Configured for frontend integration
-- **Docker Support**: Containerized deployment ready
+**This backend is a production-ready starter template** that demonstrates industry best practices for building sophisticated AI APIs. It combines reusable infrastructure services with educational domain examples to help developers understand and implement robust AI applications.
 
-## API Endpoints
+### Dual-API Architecture
 
-### Core Endpoints
+The application implements a **dual-API architecture** with clear separation of concerns:
 
-- `GET /health` - Health check endpoint
-- `GET /operations` - List available text processing operations
-- `POST /process` - Process text with specified operation
+- **Public API** (`/v1/`): External-facing domain endpoints with authentication
+- **Internal API** (`/internal/`): Administrative infrastructure endpoints for monitoring and management
 
-### Health Check Response
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-01-01T12:00:00Z",
-  "version": "1.0.0",
-  "ai_model_available": true
-}
-```
+This separation provides security isolation, allows independent scaling, and enables different documentation strategies for different user types.
 
-### Text Processing Request
-```json
-{
-  "text": "Your text content here...",
-  "operation": "summarize",
-  "options": {
-    "max_length": 100
-  },
-  "question": "Optional question for Q&A operation"
-}
-```
+### Infrastructure vs Domain Services Architecture
 
-### Text Processing Response
-```json
-{
-  "operation": "summarize",
-  "success": true,
-  "result": "Generated summary...",
-  "metadata": {
-    "word_count": 150
-  },
-  "processing_time": 2.3,
-  "timestamp": "2024-01-01T12:00:00Z"
-}
-```
+The backend follows a clear architectural distinction between **Infrastructure Services** (production-ready, reusable) and **Domain Services** (educational examples to be replaced):
 
-## Available Operations
+#### Infrastructure Services 🏗️ **[Production-Ready - Keep & Extend]**
+- **Purpose**: Business-agnostic, reusable technical capabilities that form the backbone of any LLM API
+- **Characteristics**: Stable APIs, high test coverage (>90%), configuration-driven behavior
+- **Examples**: Cache management, resilience patterns, AI provider integrations, monitoring, security utilities
+- **Location**: `app/infrastructure/` - core modules designed to remain stable across projects
 
-1. **Summarize** (`summarize`)
-   - Options: `max_length` (default: 100)
-   - Returns: Concise summary in `result` field
+#### Domain Services 💼 **[Educational Examples - Replace with Your Logic]**
+- **Purpose**: Business-specific implementations serving as **educational examples**
+- **Characteristics**: Designed to be replaced per project, moderate test coverage (>70%), feature-driven
+- **Examples**: Text processing workflows (summarization, sentiment analysis), document analysis pipelines
+- **Location**: `app/services/` - customizable modules that demonstrate best practices
 
-2. **Sentiment Analysis** (`sentiment`)
-   - Options: None
-   - Returns: Sentiment data in `sentiment` field with confidence score
+**Dependency Direction**: `Domain Services → Infrastructure Services → External Dependencies`
 
-3. **Key Points** (`key_points`)
-   - Options: `max_points` (default: 5)
-   - Returns: List of key points in `key_points` field
+## 🚀 Quick Start
 
-4. **Generate Questions** (`questions`)
-   - Options: `num_questions` (default: 5)
-   - Returns: List of questions in `questions` field
+### Using Makefile Commands (Recommended)
 
-5. **Question & Answer** (`qa`)
-   - Options: None
-   - Required: `question` field
-   - Returns: Answer in `result` field
-
-## Setup and Installation
-
-### Prerequisites
-
-- Python 3.11+
-- Google Gemini API key
-
-### Environment Variables
-
-Create a `.env` file in the backend directory:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-AI_MODEL=gemini-2.0-flash-exp
-AI_TEMPERATURE=0.7
-BACKEND_HOST=0.0.0.0
-BACKEND_PORT=8000
-DEBUG=false
-LOG_LEVEL=INFO
-```
-
-### Local Development
-
-1. Install dependencies:
 ```bash
-pip install -r requirements.txt
+# Complete setup (creates venv and installs dependencies)
+make install
+
+# Start development server with auto-reload
+make run-backend
+
+# Run comprehensive test suite
+make test-backend
+
+# Check code quality
+make lint-backend
+
+# Get all available commands
+make help
 ```
 
-2. Run the application:
+### Manual Setup
+
 ```bash
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+cd backend
+pip install -r requirements.lock -r requirements-dev.lock
+
+# Set up environment variables
+export GEMINI_API_KEY="your-gemini-api-key"
+export API_KEY="your-secure-api-key"
+
+# Start server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-3. Access the API documentation:
-   - Swagger UI: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+### Docker Development
 
-### Docker Deployment
-
-1. Build the Docker image:
 ```bash
-docker build -t fastapi-backend .
+# Start full development environment with hot reload
+make dev
+
+# Access services:
+# - Backend (FastAPI): http://localhost:8000
+# - Frontend (Streamlit): http://localhost:8501
+# - Redis: localhost:6379
 ```
 
-2. Run the container:
-```bash
-docker run -p 8000:8000 --env-file .env fastapi-backend
+## 📊 API Documentation
+
+### Interactive Documentation
+
+When the server is running, access comprehensive API documentation:
+
+- **Public API (Swagger)**: http://localhost:8000/docs
+- **Internal API (Swagger)**: http://localhost:8000/internal/docs  
+- **Public API (ReDoc)**: http://localhost:8000/redoc
+- **Internal API (ReDoc)**: http://localhost:8000/internal/redoc
+
+### Key API Endpoints
+
+#### Public API (`/v1/`)
+- `GET /v1/health` - Comprehensive health check with component status
+- `GET /v1/auth/status` - Authentication validation and API key verification
+- `GET /v1/text_processing/operations` - List available AI operations
+- `POST /v1/text_processing/process` - Single text processing operation
+- `POST /v1/text_processing/batch_process` - Batch text processing operations
+
+#### Internal API (`/internal/`)
+- `GET /internal/monitoring/health` - System metrics and performance monitoring
+- `GET /internal/cache/status` - Cache status and performance metrics
+- `POST /internal/cache/invalidate` - Cache management operations
+- `GET /internal/resilience/health` - Resilience infrastructure status
+- `GET /internal/resilience/circuit-breakers` - Circuit breaker monitoring
+- `GET /internal/resilience/config/presets` - Resilience configuration management
+
+### Available AI Operations **[Educational Examples]**
+
+The template includes these **educational examples** to demonstrate API patterns:
+
+1. **Summarize** (`summarize`) - Text summarization with configurable length
+2. **Sentiment Analysis** (`sentiment`) - Emotional tone analysis with confidence scores  
+3. **Key Points** (`key_points`) - Key point extraction with configurable count
+4. **Questions** (`questions`) - Question generation from text
+5. **Q&A** (`qa`) - Question answering requiring question parameter
+
+**💡 Template Usage**: These operations showcase how to structure LLM-powered API endpoints. Replace them with your specific business operations while following the same patterns.
+
+## 🧪 Testing
+
+### Test Organization
+
+The backend includes a comprehensive test suite with **23,162 lines** across **59 test files**, organized by architectural boundaries:
+
+```
+backend/tests/
+├── infrastructure/         # Tests for reusable infrastructure (>90% coverage)
+│   ├── ai/                # AI infrastructure tests
+│   ├── cache/             # Cache infrastructure tests  
+│   ├── resilience/        # Resilience infrastructure tests
+│   ├── security/          # Security infrastructure tests
+│   └── monitoring/        # Monitoring infrastructure tests
+├── core/                  # Application configuration and setup tests
+├── services/              # Domain service tests (educational examples)
+├── api/                   # API endpoint tests
+│   ├── v1/               # Public API tests
+│   └── internal/         # Internal API tests
+├── integration/           # Cross-component integration tests
+├── performance/           # Performance and load tests
+└── manual/               # Manual tests (require live server)
 ```
 
-### Testing
+### Test Execution
 
-Run the test suite:
 ```bash
-pytest tests/ -v
+# Run fast tests (default - excludes slow and manual tests)
+make test-backend
+
+# Run specific test categories
+make test-backend-api              # API endpoint tests
+make test-backend-core             # Core functionality tests
+make test-backend-infrastructure   # Infrastructure service tests
+make test-backend-integration      # Integration tests
+make test-backend-services         # Domain service tests
+
+# Run comprehensive tests including slow tests
+make test-backend-all
+
+# Run manual tests (requires running server)
+make test-backend-manual
+
+# Run with coverage reporting
+make test-coverage
 ```
 
-Run specific test categories:
+### Manual Test Requirements
+
+Manual tests require a live server and real API keys:
+
 ```bash
-# Fast unit tests (mocked AI services - default)
-pytest tests/ -v
-
-# Unit tests only
-pytest unit/ -v
-
-# Integration tests
-pytest integration/ -v
-
-# Slow tests (requires --run-slow flag)
-pytest tests/ -v -m "slow" --run-slow
-
-# Manual integration tests (requires running server and --run-manual flag)
-pytest tests/ -v -m "manual" --run-manual
-
-# All tests including slow ones (excluding manual)
-pytest tests/ -v -m "not manual" --run-slow
-
-# All tests with coverage
-pytest tests/ --cov=app --cov-report=html
-```
-
-Manual testing requirements:
-```bash
-# Set up environment for manual tests
+# 1. Set environment variables
 export GEMINI_API_KEY="your-actual-gemini-api-key"
 export API_KEY="test-api-key-12345"
 
-# Start the server
-uvicorn app.main:app --reload --port 8000
+# 2. Start server
+make run-backend
 
-# Run manual tests (in another terminal)
-pytest tests/ -v -m "manual" --run-manual
+# 3. Run manual tests (in another terminal)
+make test-backend-manual
 ```
 
-## Architecture
+## ⚙️ Configuration Management
 
-### Project Structure
+### Resilience Configuration System
+
+The application uses a comprehensive **resilience configuration system** with **38 endpoints** for managing circuit breakers, retry mechanisms, and performance monitoring.
+
+#### Environment-Based Presets (Recommended)
+
+```bash
+# Choose one preset based on environment
+export RESILIENCE_PRESET=simple      # General use, testing
+export RESILIENCE_PRESET=development # Local dev, fast feedback  
+export RESILIENCE_PRESET=production  # Production workloads
+```
+
+**Available presets:**
+- **simple**: 3 retries, 5 failure threshold, 60s recovery, balanced strategy
+- **development**: 2 retries, 3 failure threshold, 30s recovery, aggressive strategy
+- **production**: 5 retries, 10 failure threshold, 120s recovery, conservative strategy
+
+#### Advanced Custom Configuration
+
+```bash
+# Custom JSON configuration for advanced scenarios
+export RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
+```
+
+#### Resilience Management Commands
+
+```bash
+# List available presets
+make list-presets
+
+# Show preset details  
+make show-preset PRESET=production
+
+# Validate current configuration
+make validate-config
+
+# Get environment recommendations
+make recommend-preset ENV=production
+
+# Migrate legacy configuration
+make migrate-config
+```
+
+### Core Environment Variables
+
+#### Essential Configuration
+```bash
+# AI Model Configuration
+GEMINI_API_KEY=your_gemini_api_key        # Required for AI operations
+AI_MODEL=gemini-2.0-flash-exp             # AI model selection
+AI_TEMPERATURE=0.7                        # Model temperature
+
+# Authentication
+API_KEY=your_secure_api_key               # Primary API key
+ADDITIONAL_API_KEYS=key1,key2,key3        # Additional valid keys
+
+# Resilience Configuration  
+RESILIENCE_PRESET=production              # Resilience preset
+```
+
+#### Optional Configuration
+```bash
+# Server Settings
+BACKEND_HOST=0.0.0.0                      # Server host
+BACKEND_PORT=8000                         # Server port
+DEBUG=false                               # Debug mode
+LOG_LEVEL=INFO                            # Logging level
+
+# Cache Configuration
+REDIS_URL=redis://localhost:6379          # Redis connection
+CACHE_DEFAULT_TTL=3600                    # Cache TTL in seconds
+CACHE_COMPRESSION_THRESHOLD=1000          # Compression threshold
+
+# Security Settings
+CORS_ORIGINS=["http://localhost:8501"]    # Allowed CORS origins
+DISABLE_INTERNAL_DOCS=true                # Disable internal docs in production
+```
+
+## 🏗️ Project Structure
+
 ```
 backend/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application
-│   ├── config.py            # Configuration settings with caching options
-│   └── services/
-│       ├── __init__.py
-│       ├── text_processor.py # AI text processing service
-│       ├── cache.py         # Multi-tiered caching system
-│       └── monitoring.py    # Cache performance monitoring
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py          # Test configuration and fixtures
-│   ├── test_main.py         # Main application tests
-│   ├── test_text_processor.py # Text processing service tests
-│   ├── test_models.py       # Data model tests
-│   ├── test_cache.py        # Caching functionality tests
-│   ├── test_resilience.py   # Error handling and resilience tests
-│   ├── test_manual_api.py   # Manual API integration tests
-│   └── test_manual_auth.py  # Manual authentication tests
-├── shared/                  # Shared models and utilities
-├── requirements.txt         # Python dependencies
-├── requirements-dev.txt     # Development dependencies
-├── Dockerfile              # Docker configuration
-├── pytest.ini             # Pytest configuration
-└── README.md               # This file
+│   ├── main.py                          # FastAPI app setup, dual-API routing
+│   ├── dependencies.py                  # Global dependency injection
+│   │
+│   ├── api/                             # API Layer: Request/Response handling
+│   │   ├── v1/                         # Public API endpoints
+│   │   │   ├── text_processing.py      # Main business logic endpoints
+│   │   │   ├── health.py               # Health check endpoints
+│   │   │   ├── auth.py                 # Authentication endpoints
+│   │   │   └── deps.py                 # API-specific dependencies
+│   │   └── internal/                   # Internal/admin endpoints
+│   │       ├── monitoring.py           # System monitoring endpoints
+│   │       ├── cache.py                # Cache management endpoints
+│   │       └── resilience/             # Resilience management (38 endpoints)
+│   │
+│   ├── core/                           # Application-wide setup
+│   │   ├── config.py                   # Centralized Pydantic settings
+│   │   ├── exceptions.py               # Custom exception classes
+│   │   └── middleware.py               # CORS, error handling middleware
+│   │
+│   ├── infrastructure/                 # Reusable infrastructure services [KEEP]
+│   │   ├── ai/                        # AI provider abstractions, security
+│   │   │   ├── input_sanitizer.py     # Prompt injection protection
+│   │   │   └── prompt_builder.py      # Secure prompt construction
+│   │   ├── cache/                     # Multi-tier caching system
+│   │   │   ├── base.py                # Cache interface
+│   │   │   ├── redis.py               # Redis implementation
+│   │   │   ├── memory.py              # Memory cache implementation
+│   │   │   └── monitoring.py          # Cache performance monitoring
+│   │   ├── resilience/                # Comprehensive resilience patterns
+│   │   │   ├── circuit_breaker.py     # Circuit breaker implementation
+│   │   │   ├── retry.py               # Retry mechanisms
+│   │   │   ├── orchestrator.py        # Resilience orchestration
+│   │   │   ├── config_presets.py      # Preset configuration system
+│   │   │   └── performance_benchmarks.py # Performance testing
+│   │   ├── security/                  # Authentication and authorization
+│   │   │   └── auth.py                # API key authentication
+│   │   └── monitoring/                # Health checks and metrics
+│   │       ├── health.py              # Health check implementations
+│   │       └── metrics.py             # Metrics collection
+│   │
+│   ├── services/                      # Domain services [REPLACE WITH YOUR LOGIC]
+│   │   ├── text_processor.py          # Example text processing service
+│   │   └── response_validator.py      # Example response validation
+│   │
+│   └── schemas/                       # Pydantic models (data contracts)
+│       ├── text_processing.py         # Request/response models
+│       ├── health.py                  # Health check models
+│       └── common.py                  # Shared response models
+├── examples/                          # Infrastructure usage examples
+├── tests/                            # Comprehensive test suite (23k+ lines)
+├── scripts/                          # Utility scripts
+├── requirements.txt                  # Python dependencies
+├── requirements-dev.txt              # Development dependencies
+├── Dockerfile                        # Docker configuration
+└── README.md                         # This file
 ```
 
-### Service Architecture
+## 🛡️ Security & AI Safety Features
 
-The application follows a service-oriented architecture with integrated caching:
+**Production-grade security measures built into the infrastructure:**
 
-- **FastAPI Application** (`main.py`): Handles HTTP requests, validation, and responses
-- **Text Processor Service** (`text_processor.py`): Manages AI model interactions with caching integration
-- **Cache Service** (`cache.py`): Multi-tiered caching system with intelligent key generation
-- **Performance Monitor** (`monitoring.py`): Comprehensive cache performance tracking and metrics
-- **Configuration** (`config.py`): Centralized settings management including cache configuration
-- **Shared Models** (`../shared/models.py`): Pydantic models for data validation
+- **Prompt Injection Protection**: Detects and blocks malicious prompt injection attempts
+- **Input Sanitization**: Comprehensive input validation for all AI operations
+- **API Key Authentication**: Multi-key support with secure header-based authentication
+- **Internal API Protection**: Administrative endpoints disabled in production environments
+- **Response Validation**: AI output validation and sanitization
+- **Security Logging**: Comprehensive audit trails for security monitoring
 
-### Error Handling
+## 🔧 Infrastructure Features
 
-The application includes comprehensive error handling:
+### Multi-Tier Caching System
+- **Redis-backed Storage**: Persistent caching with automatic failover to memory-only
+- **Compression Support**: Automatic compression for large responses  
+- **Performance Monitoring**: Real-time cache metrics and optimization recommendations
+- **Graceful Degradation**: Continues operation without Redis if connection fails
 
-- **Global Exception Handler**: Catches unhandled exceptions
-- **Validation Errors**: Automatic Pydantic validation
-- **Service Errors**: Graceful handling of AI service failures
-- **Logging**: Structured logging for debugging and monitoring
+### Comprehensive Resilience Patterns
+- **Circuit Breakers**: Prevent cascade failures during AI service outages
+- **Intelligent Retry Logic**: Exponential backoff with jitter for transient failures
+- **Exception Classification**: Smart categorization of permanent vs transient errors
+- **Graceful Degradation**: Fallback mechanisms for failed operations
 
-## Configuration
+### Advanced Monitoring
+- **Health Checks**: Component-level health monitoring and status reporting
+- **Performance Metrics**: Operation timing, success rates, and failure patterns
+- **Circuit Breaker Status**: Real-time resilience pattern monitoring
+- **Cache Analytics**: Hit rates, memory usage, and performance statistics
 
-### AI Model Settings
+## 📈 Performance Characteristics
 
-- `GEMINI_API_KEY`: Your Google Gemini API key (required)
-- `AI_MODEL`: Gemini model to use (default: gemini-2.0-flash-exp)
-- `AI_TEMPERATURE`: Model temperature for response variability (0.0-2.0)
+### Performance Targets
 
-### Server Settings
+| Component | Target Performance | Actual Performance |
+|-----------|-------------------|-------------------|
+| **Preset Loading** | <10ms | ~2-5ms typical |
+| **Configuration Loading** | <100ms | ~15-50ms typical |
+| **Service Initialization** | <200ms | ~50-150ms typical |
+| **Circuit Breaker Call** | <1ms overhead | ~0.1-0.5ms typical |
 
-- `BACKEND_HOST`: Server host (default: 0.0.0.0)
-- `BACKEND_PORT`: Server port (default: 8000)
-- `DEBUG`: Enable debug mode (default: false)
-- `LOG_LEVEL`: Logging level (default: INFO)
+### Memory Usage
+- **Base Memory**: ~2-5MB for core resilience infrastructure
+- **Per-Operation**: ~100-500KB additional memory per registered operation
+- **Metrics Storage**: ~1-10MB depending on retention settings
 
-### Cache Settings
+## 🔧 Development Tools
 
-- `REDIS_URL`: Redis connection URL (default: redis://redis:6379)
-- `CACHE_TEXT_HASH_THRESHOLD`: Character threshold for text hashing (default: 1000)
-- `CACHE_MEMORY_CACHE_SIZE`: Maximum items in memory cache (default: 100)
-- `CACHE_COMPRESSION_THRESHOLD`: Size threshold for compression in bytes (default: 1000)
-- `CACHE_COMPRESSION_LEVEL`: Compression level 1-9 (default: 6)
-- `CACHE_DEFAULT_TTL`: Default cache TTL in seconds (default: 3600)
+### Code Quality
 
-> **📖 Detailed Cache Documentation**: For comprehensive information about the multi-tiered caching system, architecture, monitoring, troubleshooting, and performance optimization, see [`docs/CACHE.md`](../docs/CACHE.md).
+```bash
+# Run all code quality checks
+make lint-backend
 
-### CORS Settings
+# Format code with black and isort
+make format
 
-The application is configured to allow requests from:
-- `http://localhost:8501` (Streamlit frontend)
-- `http://frontend:8501` (Docker frontend)
+# Run type checking with mypy
+cd backend && python -m mypy app/ --ignore-missing-imports
+```
 
-## Monitoring and Health Checks
+### Documentation Generation
 
-### Health Endpoint
+```bash
+# Generate code documentation
+make repomix-backend        # Backend-only documentation
+make repomix-backend-tests  # Backend tests documentation
+```
 
-The `/health` endpoint provides:
-- Application status
-- AI model availability
-- Version information
-- Timestamp
+### Performance Monitoring
 
-### Docker Health Check
+```bash
+# Run performance benchmarks
+cd backend && python -c "
+from app.infrastructure.resilience.performance_benchmarks import ConfigurationPerformanceBenchmark
+benchmark = ConfigurationPerformanceBenchmark()
+suite = benchmark.run_comprehensive_benchmark()
+print(f'Overall pass rate: {suite.pass_rate:.1f}%')
+"
+```
 
-The Docker container includes a health check that:
-- Runs every 30 seconds
-- Has a 30-second timeout
-- Allows 3 retries
-- Checks the `/health` endpoint
+## 🚀 Deployment
 
-### Logging
+### Docker Production
 
-Structured logging includes:
-- Request processing times
-- Error details and stack traces
-- AI model interactions
-- Application lifecycle events
+```bash
+# Start production environment
+make prod
 
-## Performance Considerations
+# Access production services:
+# - Backend: http://localhost:8000 (internal docs disabled)
+# - Redis: localhost:6379
+```
 
-- **Async Processing**: All AI operations are asynchronous
-- **Connection Pooling**: HTTP client connection reuse
-- **Error Recovery**: Graceful handling of AI service failures
-- **Resource Management**: Proper cleanup of resources
+### Environment-Specific Configuration
 
-## Security
+**Development:**
+```bash
+export RESILIENCE_PRESET=development
+export DEBUG=true
+export LOG_LEVEL=DEBUG
+```
 
-- **Input Validation**: Comprehensive Pydantic validation
-- **Error Sanitization**: Safe error messages without sensitive data
-- **CORS Configuration**: Restricted to known origins
-- **Environment Variables**: Secure configuration management
+**Production:**
+```bash
+export RESILIENCE_PRESET=production
+export DISABLE_INTERNAL_DOCS=true
+export LOG_LEVEL=INFO
+export CORS_ORIGINS='["https://your-frontend-domain.com"]'
+```
 
-## Troubleshooting
+## 🛠️ Customizing This Template for Your Project
+
+### Quick Start Guide
+
+1. **Keep the Infrastructure** 🏗️
+   - Use `app/infrastructure/` services as-is (cache, resilience, security, monitoring)
+   - Configure resilience presets for your environment
+   - Extend infrastructure services if needed, maintaining existing APIs
+
+2. **Replace Domain Services** 💼
+   - Study patterns in `app/services/text_processor.py`
+   - Replace with your specific business logic
+   - Maintain the same error handling and validation patterns
+   - Keep the >70% test coverage requirement
+
+3. **Update API Endpoints** 🌐
+   - Modify `app/api/v1/text_processing.py` with your business endpoints
+   - Keep the authentication and error handling patterns
+   - Update `app/schemas/` with your data models
+
+4. **Configure for Your Environment** ⚙️
+   - Update `app/core/config.py` with your settings
+   - Configure your AI provider (replace Gemini with your preferred LLM)
+   - Set up Redis or use memory cache fallback
+   - Configure authentication keys and CORS settings
+
+### What to Keep vs. Replace
+
+**✅ Keep & Use (Production-Ready)**:
+- All `app/infrastructure/` services
+- `app/core/` configuration and middleware
+- `app/api/` authentication and error handling patterns
+- Testing infrastructure and coverage requirements
+- Docker and development tooling
+- Makefile commands and CI/CD setup
+
+**🔄 Study & Replace (Educational Examples)**:
+- `app/services/` domain services  
+- API endpoint business logic
+- Data models and schemas
+- Example processing operations
+
+## 🔍 Troubleshooting
 
 ### Common Issues
 
@@ -307,35 +494,45 @@ Structured logging includes:
    - Verify API key has proper permissions
    - Check network connectivity
 
-2. **Import Errors**
-   - Ensure `PYTHONPATH` includes the project root
-   - Verify all dependencies are installed
+2. **Redis Connection Errors**
+   - Verify Redis is running at `REDIS_URL`
+   - Application will automatically fallback to memory cache
+   - Check `make health` for service status
 
-3. **CORS Errors**
-   - Check frontend URL is in `allowed_origins`
-   - Verify CORS middleware configuration
+3. **Import Errors**
+   - Ensure working directory is `backend/`
+   - Verify virtual environment is activated
+   - Check all dependencies are installed: `make install`
+
+4. **Test Failures**
+   - For manual tests: ensure server is running and API keys are set
+   - For parallel test issues: use `pytest -n 0` to run sequentially
+   - Check test isolation with `monkeypatch.setenv()`
 
 ### Debug Mode
 
-Enable debug mode for development:
-```env
-DEBUG=true
-LOG_LEVEL=DEBUG
+Enable comprehensive debugging:
+```bash
+export DEBUG=true
+export LOG_LEVEL=DEBUG
+make run-backend
 ```
 
 This provides:
-- Detailed error messages
+- Detailed error messages and stack traces
 - Request/response logging
 - Auto-reload on code changes
+- Internal API documentation access
 
-## Contributing
+## 📚 Additional Documentation
 
-1. Follow PEP 8 style guidelines
-2. Add tests for new features
-3. Update documentation
-4. Use type hints
-5. Handle errors gracefully
+For comprehensive documentation, see:
+- **API Documentation**: `backend/app/api/README.md`
+- **Infrastructure Services**: `backend/app/infrastructure/*/README.md`
+- **Test Suite**: `backend/tests/README.md`
+- **Architecture Design**: `docs/architecture-design/`
+- **Code Reference**: `docs/code_ref/backend/`
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.

@@ -1,6 +1,6 @@
 {
   "output": {
-    "filePath": "repomix-output.md",
+    "filePath": ".repomix-output/repomix-output.md",
     "style": "markdown",
     "parsableStyle": false,
     "fileSummary": true,
@@ -12,7 +12,7 @@
     "showLineNumbers": false,
     "copyToClipboard": false,
     "git": {
-      "sortByChanges": true,
+      "sortByChanges": false,
       "sortByChangesMaxCommits": 100
     }
   },

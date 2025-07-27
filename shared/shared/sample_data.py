@@ -1,14 +1,106 @@
 #!/usr/bin/env python3
-"""
-Standardized sample data for consistent examples across the codebase.
+"""Standardized sample data and example content for AI text processing operations.
 
-This module provides centralized sample texts and data structures that should
-be used in all examples, tests, and documentation to ensure consistency.
+This module provides a comprehensive collection of sample texts, example requests,
+response templates, and API examples for consistent use across testing, documentation,
+and user interfaces. It ensures standardized examples throughout the application
+while supporting different text types and processing operations.
+
+# Sample Data Categories
+
+## Text Content Library
+Curated sample texts covering various domains:
+- **AI Technology**: Content about artificial intelligence trends and applications
+- **Climate Change**: Environmental topics for educational and analytical examples
+- **Business Reports**: Professional content for summarization and analysis
+- **Product Reviews**: Positive and negative sentiment examples
+- **Technical Documentation**: API and technical content for Q&A operations
+- **Educational Content**: Learning materials for question generation
+
+## Example Templates
+Pre-configured request and response examples:
+- **Request Examples**: Complete TextProcessingRequest objects for each operation
+- **Response Examples**: Realistic TextProcessingResponse objects with metadata
+- **API Examples**: HTTP request/response examples for documentation
+- **Error Examples**: Common error scenarios for testing and documentation
+
+## UI Integration Support
+User interface components and recommendations:
+- **Example Options**: User-friendly descriptions for UI display
+- **Operation Recommendations**: Suggested examples for specific operations
+- **Convenience Functions**: Quick access to texts by length and domain
+
+# Key Features
+
+## Consistency Guarantees
+- **Standardized Content**: All examples use the same base texts across components
+- **Validated Responses**: Response examples match actual API response structure
+- **UI Consistency**: Example descriptions and recommendations are centralized
+
+## Testing Support
+- **Comprehensive Coverage**: Examples for all supported operations and scenarios
+- **Error Cases**: Predefined error examples for negative testing
+- **Performance Testing**: Texts of varying lengths for performance validation
+
+## Documentation Integration
+- **API Documentation**: Ready-to-use examples for OpenAPI documentation
+- **User Guides**: Consistent examples for tutorials and help content
+- **Developer Examples**: Code snippets with realistic data
+
+Usage Examples:
+    Basic text retrieval:
+        ```python
+        from shared.sample_data import get_sample_text, get_medium_text
+        
+        # Get specific sample text
+        ai_text = get_sample_text("ai_technology")
+        
+        # Get text by length category
+        demo_text = get_medium_text()
+        ```
+    
+    UI integration:
+        ```python
+        from shared.sample_data import get_example_options, get_recommended_examples
+        
+        # Get options for dropdown/buttons
+        options = get_example_options()
+        
+        # Get operation-specific recommendations
+        recommendations = get_recommended_examples("summarize")
+        ```
+    
+    API documentation:
+        ```python
+        from shared.sample_data import get_api_example, get_error_example
+        
+        # Get complete API request example
+        request_example = get_api_example("basic_request")
+        
+        # Get error response example
+        error_example = get_error_example("validation_error")
+        ```
+
+Data Validation:
+    All sample data includes validation to ensure:
+    - Text length compliance with application limits
+    - Proper formatting and encoding
+    - Realistic content that demonstrates features effectively
+    - Error examples that match actual API error formats
+
+Integration Notes:
+    - **Frontend Integration**: Example options and recommendations support dynamic UI
+    - **Backend Testing**: Request/response examples validate service functionality
+    - **Documentation**: API examples generate comprehensive API documentation
+    - **Performance Testing**: Varied text lengths support load and performance testing
+
+This module serves as the single source of truth for all example content,
+ensuring consistency across documentation, testing, and user experiences.
 """
 
 from typing import Dict, List, Any
 from shared.models import (
-    ProcessingOperation,
+    TextProcessingOperation,
     TextProcessingRequest,
     TextProcessingResponse,
     SentimentResult
@@ -77,39 +169,64 @@ STANDARD_SAMPLE_TEXTS = {
     """.strip()
 }
 
+# Example options with user-friendly descriptions for UI display
+EXAMPLE_OPTIONS = {
+    "ai_technology": "🤖 AI Technology - About artificial intelligence trends",
+    "climate_change": "🌍 Climate Change - Environmental challenges and solutions",
+    "business_report": "📊 Business Report - Quarterly earnings and performance",
+    "positive_review": "😊 Positive Review - Customer satisfaction example",
+    "negative_review": "😞 Negative Review - Customer complaint example",
+    "technical_documentation": "📖 Technical Docs - API documentation sample",
+    "educational_content": "🎓 Educational - Science learning content"
+}
+
+# Recommended examples for specific operations
+OPERATION_RECOMMENDATIONS = {
+    "summarize": ["ai_technology", "climate_change", "business_report"],
+    "sentiment": ["positive_review", "negative_review", "business_report"],
+    "key_points": ["business_report", "climate_change", "technical_documentation"],
+    "questions": ["educational_content", "climate_change", "ai_technology"],
+    "qa": ["technical_documentation", "educational_content", "ai_technology"]
+}
+
 # Standard request examples for different operations
 STANDARD_REQUEST_EXAMPLES = {
     "summarize": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["ai_technology"],
-        operation=ProcessingOperation.SUMMARIZE,
+        operation=TextProcessingOperation.SUMMARIZE,
+        question=None,
         options={"max_length": 100}
     ),
     
     "sentiment_positive": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["positive_review"],
-        operation=ProcessingOperation.SENTIMENT
+        operation=TextProcessingOperation.SENTIMENT,
+        question=None
     ),
     
     "sentiment_negative": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["negative_review"],
-        operation=ProcessingOperation.SENTIMENT
+        operation=TextProcessingOperation.SENTIMENT,
+        question=None
     ),
     
     "key_points": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["business_report"],
-        operation=ProcessingOperation.KEY_POINTS,
+        operation=TextProcessingOperation.KEY_POINTS,
+        question=None,
         options={"max_points": 4}
     ),
     
     "questions": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["climate_change"],
-        operation=ProcessingOperation.QUESTIONS,
+        operation=TextProcessingOperation.QUESTIONS,
+        question=None,
         options={"num_questions": 3}
     ),
     
     "qa": TextProcessingRequest(
         text=STANDARD_SAMPLE_TEXTS["technical_documentation"],
-        operation=ProcessingOperation.QA,
+        operation=TextProcessingOperation.QA,
         question="What authentication method does the API use?"
     )
 }
@@ -117,7 +234,7 @@ STANDARD_REQUEST_EXAMPLES = {
 # Standard response examples for documentation
 STANDARD_RESPONSE_EXAMPLES = {
     "summarize": TextProcessingResponse(
-        operation=ProcessingOperation.SUMMARIZE,
+        operation=TextProcessingOperation.SUMMARIZE,
         success=True,
         result="AI is transforming industries through automation and predictive analytics, processing vast data to identify patterns and make previously impossible predictions.",
         metadata={
@@ -125,11 +242,12 @@ STANDARD_RESPONSE_EXAMPLES = {
             "model_used": "gemini-pro",
             "original_length": 312
         },
-        processing_time=2.1
+        processing_time=2.1,
+        cache_hit=False
     ),
     
     "sentiment_positive": TextProcessingResponse(
-        operation=ProcessingOperation.SENTIMENT,
+        operation=TextProcessingOperation.SENTIMENT,
         success=True,
         sentiment=SentimentResult(
             sentiment="positive",
@@ -140,11 +258,12 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 45,
             "model_used": "gemini-pro"
         },
-        processing_time=1.8
+        processing_time=1.8,
+        cache_hit=False
     ),
     
     "sentiment_negative": TextProcessingResponse(
-        operation=ProcessingOperation.SENTIMENT,
+        operation=TextProcessingOperation.SENTIMENT,
         success=True,
         sentiment=SentimentResult(
             sentiment="negative",
@@ -155,11 +274,12 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 42,
             "model_used": "gemini-pro"
         },
-        processing_time=1.6
+        processing_time=1.6,
+        cache_hit=False
     ),
     
     "key_points": TextProcessingResponse(
-        operation=ProcessingOperation.KEY_POINTS,
+        operation=TextProcessingOperation.KEY_POINTS,
         success=True,
         key_points=[
             "Revenue increased by 15% compared to last year",
@@ -171,11 +291,12 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 52,
             "model_used": "gemini-pro"
         },
-        processing_time=2.5
+        processing_time=2.5,
+        cache_hit=False
     ),
     
     "questions": TextProcessingResponse(
-        operation=ProcessingOperation.QUESTIONS,
+        operation=TextProcessingOperation.QUESTIONS,
         success=True,
         questions=[
             "What are the main causes of rising global temperatures?",
@@ -186,11 +307,12 @@ STANDARD_RESPONSE_EXAMPLES = {
             "word_count": 78,
             "model_used": "gemini-pro"
         },
-        processing_time=2.0
+        processing_time=2.0,
+        cache_hit=False
     ),
     
     "qa": TextProcessingResponse(
-        operation=ProcessingOperation.QA,
+        operation=TextProcessingOperation.QA,
         success=True,
         result="The API uses Bearer token authentication for securing access to endpoints.",
         metadata={
@@ -198,7 +320,8 @@ STANDARD_RESPONSE_EXAMPLES = {
             "model_used": "gemini-pro",
             "question_answered": "What authentication method does the API use?"
         },
-        processing_time=1.9
+        processing_time=1.9,
+        cache_hit=False
     )
 }
 
@@ -394,4 +517,48 @@ def get_technical_text() -> str:
 
 def get_business_text() -> str:
     """Get a business-oriented sample text."""
-    return STANDARD_SAMPLE_TEXTS["business_report"] 
+    return STANDARD_SAMPLE_TEXTS["business_report"]
+
+def get_example_options() -> Dict[str, str]:
+    """
+    Get all available example options with their user-friendly descriptions.
+    
+    Returns:
+        Dictionary mapping text type keys to display descriptions
+    """
+    return EXAMPLE_OPTIONS.copy()
+
+def get_example_description(text_type: str) -> str:
+    """
+    Get the user-friendly description for a specific text type.
+    
+    Args:
+        text_type: Type of sample text to get description for
+        
+    Returns:
+        The user-friendly description string
+        
+    Raises:
+        KeyError: If the text type is not found
+    """
+    if text_type not in EXAMPLE_OPTIONS:
+        available_types = list(EXAMPLE_OPTIONS.keys())
+        raise KeyError(f"Text type '{text_type}' not found. Available types: {available_types}")
+    
+    return EXAMPLE_OPTIONS[text_type]
+
+def get_recommended_examples(operation: str) -> List[str]:
+    """
+    Get recommended example texts for a specific operation.
+    
+    Args:
+        operation: The operation type to get recommendations for
+        
+    Returns:
+        List of recommended text type keys for the operation
+    """
+    return OPERATION_RECOMMENDATIONS.get(operation, ["ai_technology", "climate_change"])
+
+def get_all_operation_recommendations() -> Dict[str, List[str]]:
+    """Get all operation recommendations."""
+    return OPERATION_RECOMMENDATIONS.copy() 

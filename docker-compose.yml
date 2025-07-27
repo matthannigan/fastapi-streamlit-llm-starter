@@ -24,7 +24,7 @@ services:
     depends_on:
       - redis
     healthcheck:
-      test: ["CMD", "sh", "-c", "curl -f http://localhost:8000/health && curl -f http://localhost:8000/resilience/config && python scripts/health_check_resilience.py"]
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:8000/v1/health && curl -f http://localhost:8000/internal/resilience/health && python scripts/health_check_resilience.py"]
       interval: 30s
       timeout: 10s
       retries: 3

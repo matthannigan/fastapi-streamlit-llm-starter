@@ -21,10 +21,9 @@ ENV PYTHONPATH="${PYTHONPATH}:/app"
 # Development stage
 FROM base AS development
 
-# Install development dependencies
-RUN pip install --no-cache-dir \
-    pytest \
-    pytest-asyncio
+# Copy and install development dependencies
+COPY frontend/requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Copy frontend application code (excluding local shared directory)
 COPY frontend/app/ ./app/
