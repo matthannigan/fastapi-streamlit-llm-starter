@@ -6,12 +6,12 @@ The Resilience API provides comprehensive endpoints for managing, configuring, a
 
 The resilience API is organized into **8 focused modules** providing **38 endpoints** across two main categories:
 
-### **Configuration Management** (`/resilience/config/*`)
+### **Configuration Management** (`/internal/resilience/config/*`)
 - **config_validation.py** - Configuration validation and security checks
 - **config_presets.py** - Environment-specific preset configurations  
 - **config_templates.py** - Configuration blueprints and templates
 
-### **Operations & Monitoring** (`/resilience/*`)
+### **Operations & Monitoring** (`/internal/resilience/*`)
 - **health.py** - Health monitoring and core metrics
 - **circuit_breakers.py** - Circuit breaker management
 - **monitoring.py** - Analytics and usage monitoring
@@ -28,11 +28,11 @@ curl -H "X-API-Key: your-api-key" \
 
 ## 📋 **Complete Endpoint Reference**
 
-### **Configuration Validation** (`/resilience/config/*`)
+### **Configuration Validation** (`/internal/resilience/config/*`)
 
 #### **Basic Validation**
 ```http
-POST /resilience/config/validate
+POST /internal/resilience/config/validate
 ```
 Validate custom resilience configurations against standard requirements.
 
@@ -59,7 +59,7 @@ Validate custom resilience configurations against standard requirements.
 
 #### **Security Validation**
 ```http
-POST /resilience/config/validate-secure
+POST /internal/resilience/config/validate-secure
 ```
 Enhanced validation with security checks and metadata collection.
 
@@ -81,7 +81,7 @@ Enhanced validation with security checks and metadata collection.
 
 #### **JSON String Validation**
 ```http
-POST /resilience/config/validate-json
+POST /internal/resilience/config/validate-json
 ```
 Validate configurations provided as JSON strings.
 
@@ -94,7 +94,7 @@ Validate configurations provided as JSON strings.
 
 #### **Field Whitelist Validation**
 ```http
-POST /resilience/config/validate/field-whitelist
+POST /internal/resilience/config/validate/field-whitelist
 ```
 Validate configurations against security field whitelist.
 
@@ -113,21 +113,21 @@ Validate configurations against security field whitelist.
 
 #### **Security Configuration Info**
 ```http
-GET /resilience/config/validate/security-config
+GET /internal/resilience/config/validate/security-config
 ```
 Get current security validation configuration and limits.
 
 #### **Rate Limiting Status**
 ```http
-GET /resilience/config/validate/rate-limit-status?client_ip=192.168.1.1
+GET /internal/resilience/config/validate/rate-limit-status?client_ip=192.168.1.1
 ```
 Check current rate limiting status for validation requests.
 
-### **Configuration Presets** (`/resilience/config/*`)
+### **Configuration Presets** (`/internal/resilience/config/*`)
 
 #### **List All Presets**
 ```http
-GET /resilience/config/presets
+GET /internal/resilience/config/presets
 ```
 Get summary of all available environment-specific presets.
 
@@ -148,25 +148,25 @@ Get summary of all available environment-specific presets.
 
 #### **Get Preset Details**
 ```http
-GET /resilience/config/presets/{preset_name}
+GET /internal/resilience/config/presets/{preset_name}
 ```
 Get comprehensive details for a specific preset.
 
 #### **Get All Presets Summary**
 ```http
-GET /resilience/config/presets-summary
+GET /internal/resilience/config/presets-summary
 ```
 Get detailed information for all presets in a single response.
 
 #### **Environment-Based Recommendation**
 ```http
-GET /resilience/config/recommend-preset/{environment}
+GET /internal/resilience/config/recommend-preset/{environment}
 ```
 Get intelligent preset recommendation for a deployment environment.
 
 **Example:**
 ```bash
-GET /resilience/config/recommend-preset/production
+GET /internal/resilience/config/recommend-preset/production
 ```
 
 **Response:**
@@ -186,15 +186,15 @@ GET /resilience/config/recommend-preset/production
 
 #### **Auto-Detect Recommendation**
 ```http
-GET /resilience/config/recommend-preset-auto
+GET /internal/resilience/config/recommend-preset-auto
 ```
 Automatically detect and recommend optimal preset based on current system state.
 
-### **Configuration Templates** (`/resilience/config/*`)
+### **Configuration Templates** (`/internal/resilience/config/*`)
 
 #### **List All Templates**
 ```http
-GET /resilience/config/templates
+GET /internal/resilience/config/templates
 ```
 Get all available configuration templates with descriptions.
 
@@ -216,13 +216,13 @@ Get all available configuration templates with descriptions.
 
 #### **Get Template Details**
 ```http
-GET /resilience/config/templates/{template_name}
+GET /internal/resilience/config/templates/{template_name}
 ```
 Get complete configuration details for a specific template.
 
 #### **Validate Template-Based Configuration**
 ```http
-POST /resilience/config/validate-template
+POST /internal/resilience/config/validate-template
 ```
 Validate configuration using a template with optional overrides.
 
@@ -238,7 +238,7 @@ Validate configuration using a template with optional overrides.
 
 #### **Suggest Template for Configuration**
 ```http
-POST /resilience/config/recommend-template
+POST /internal/resilience/config/recommend-template
 ```
 Analyze a configuration and suggest the most appropriate template.
 
@@ -263,11 +263,11 @@ Analyze a configuration and suggest the most appropriate template.
 }
 ```
 
-### **Health & Metrics** (`/resilience/*`)
+### **Health & Metrics** (`/internal/resilience/*`)
 
 #### **Core Health Check**
 ```http
-GET /resilience/health
+GET /internal/resilience/health
 ```
 Get basic health status of the resilience service.
 
@@ -283,25 +283,25 @@ Get basic health status of the resilience service.
 
 #### **Detailed Health Status**
 ```http
-GET /resilience/health/detailed
+GET /internal/resilience/health/detailed
 ```
 Get comprehensive health information including circuit breaker states.
 
 #### **Service Metrics**
 ```http
-GET /resilience/metrics
+GET /internal/resilience/metrics
 ```
 Get detailed metrics for all resilience operations.
 
 #### **Operation-Specific Metrics**
 ```http
-GET /resilience/metrics/{operation_name}
+GET /internal/resilience/metrics/{operation_name}
 ```
 Get metrics for a specific operation.
 
 #### **Reset Metrics**
 ```http
-POST /resilience/metrics/reset
+POST /internal/resilience/metrics/reset
 ```
 Reset metrics for specific or all operations.
 
@@ -314,16 +314,13 @@ Reset metrics for specific or all operations.
 ```
 
 #### **Configuration Monitoring**
-```http
-GET /resilience/config-monitoring
-```
-Get configuration monitoring and change tracking information.
+**Note:** Configuration monitoring endpoints are available under `/internal/resilience/monitoring/`. See the monitoring section below for details.
 
-### **Circuit Breakers** (`/resilience/*`)
+### **Circuit Breakers** (`/internal/resilience/*`)
 
 #### **List Circuit Breakers**
 ```http
-GET /resilience/circuit-breakers
+GET /internal/resilience/circuit-breakers
 ```
 Get status and configuration of all circuit breakers.
 
@@ -347,13 +344,13 @@ Get status and configuration of all circuit breakers.
 
 #### **Get Circuit Breaker Details**
 ```http
-GET /resilience/circuit-breakers/{breaker_name}
+GET /internal/resilience/circuit-breakers/{breaker_name}
 ```
 Get detailed information about a specific circuit breaker.
 
 #### **Reset Circuit Breaker**
 ```http
-POST /resilience/circuit-breakers/{breaker_name}/reset
+POST /internal/resilience/circuit-breakers/{breaker_name}/reset
 ```
 Manually reset a circuit breaker to closed state.
 
@@ -368,61 +365,61 @@ Manually reset a circuit breaker to closed state.
 }
 ```
 
-### **Monitoring & Analytics** (`/resilience/*`)
+### **Monitoring & Analytics** (`/internal/resilience/monitoring/*`)
 
 #### **Usage Statistics**
 ```http
-GET /resilience/usage-statistics
+GET /internal/resilience/monitoring/usage-statistics
 ```
 Get comprehensive usage statistics and trends.
 
 #### **Preset Trends**
 ```http
-GET /resilience/preset-trends/{preset_name}
+GET /internal/resilience/monitoring/preset-trends/{preset_name}
 ```
 Get usage trends for a specific preset.
 
 #### **Performance Metrics**
 ```http
-GET /resilience/performance-metrics
+GET /internal/resilience/monitoring/performance-metrics
 ```
 Get performance metrics and benchmarking data.
 
 #### **Alerts**
 ```http
-GET /resilience/alerts
+GET /internal/resilience/monitoring/alerts
 ```
 Get current alerts and notifications.
 
 #### **Session Information**
 ```http
-GET /resilience/session/{session_id}
+GET /internal/resilience/monitoring/session/{session_id}
 ```
 Get detailed information about a specific monitoring session.
 
 #### **Export Data**
 ```http
-GET /resilience/export
+GET /internal/resilience/monitoring/export
 ```
 Export monitoring data in various formats.
 
 #### **Cleanup Operations**
 ```http
-POST /resilience/cleanup
+POST /internal/resilience/monitoring/cleanup
 ```
 Perform cleanup of old monitoring data.
 
-### **Performance Benchmarking** (`/resilience/*`)
+### **Performance Benchmarking** (`/internal/resilience/performance/*`)
 
 #### **Get Benchmark Data**
 ```http
-GET /resilience/benchmark
+GET /internal/resilience/performance/benchmark
 ```
 Get current benchmark results and performance data.
 
 #### **Run Performance Benchmark**
 ```http
-POST /resilience/benchmark
+POST /internal/resilience/performance/benchmark
 ```
 Execute performance benchmark tests.
 
@@ -453,21 +450,21 @@ Execute performance benchmark tests.
 
 #### **Performance Thresholds**
 ```http
-GET /resilience/thresholds
+GET /internal/resilience/performance/thresholds
 ```
-Get current performance thresholds and limits.
+Get current performance thresholds and limits. **Note:** This endpoint supports optional authentication for monitoring system compatibility.
 
 #### **Performance Report**
 ```http
-GET /resilience/report
+GET /internal/resilience/performance/report
 ```
 Get comprehensive performance analysis report.
 
 #### **Performance History**
 ```http
-GET /resilience/history
+GET /internal/resilience/performance/history
 ```
-Get historical performance data and trends.
+Get historical performance data and trends. **Note:** This endpoint is currently under development and returns placeholder data.
 
 ## 🚀 **Usage Examples**
 
@@ -476,13 +473,13 @@ Get historical performance data and trends.
 1. **List available presets:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/config/presets"
+     GET "http://localhost:8000/internal/resilience/config/presets"
 ```
 
 2. **Get preset details:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/config/presets/production"
+     GET "http://localhost:8000/internal/resilience/config/presets/production"
 ```
 
 3. **Validate custom configuration:**
@@ -490,7 +487,7 @@ curl -H "X-API-Key: your-key" \
 curl -H "X-API-Key: your-key" \
      -H "Content-Type: application/json" \
      -d '{"configuration": {"retry_attempts": 3}}' \
-     POST "http://localhost:8000/resilience/config/validate"
+     POST "http://localhost:8000/internal/resilience/config/validate"
 ```
 
 ### **Template-Based Configuration**
@@ -498,7 +495,7 @@ curl -H "X-API-Key: your-key" \
 1. **List templates:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/config/templates"
+     GET "http://localhost:8000/internal/resilience/config/templates"
 ```
 
 2. **Validate with template:**
@@ -506,7 +503,7 @@ curl -H "X-API-Key: your-key" \
 curl -H "X-API-Key: your-key" \
      -H "Content-Type: application/json" \
      -d '{"template_name": "production", "overrides": {"retry_attempts": 5}}' \
-     POST "http://localhost:8000/resilience/config/validate-template"
+     POST "http://localhost:8000/internal/resilience/config/validate-template"
 ```
 
 ### **Monitoring Workflow**
@@ -514,19 +511,19 @@ curl -H "X-API-Key: your-key" \
 1. **Check overall health:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/health"
+     GET "http://localhost:8000/internal/resilience/health"
 ```
 
 2. **Monitor circuit breakers:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/circuit-breakers"
+     GET "http://localhost:8000/internal/resilience/circuit-breakers"
 ```
 
 3. **Get performance metrics:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/performance-metrics"
+     GET "http://localhost:8000/internal/resilience/monitoring/performance-metrics"
 ```
 
 ### **Performance Testing**
@@ -535,14 +532,14 @@ curl -H "X-API-Key: your-key" \
 ```bash
 curl -H "X-API-Key: your-key" \
      -H "Content-Type: application/json" \
-     -d '{"operation_name": "text_processing", "iterations": 100}' \
-     POST "http://localhost:8000/resilience/benchmark"
+     -d '{"iterations": 100, "operations": ["preset_loading"]}' \
+     POST "http://localhost:8000/internal/resilience/performance/benchmark"
 ```
 
 2. **Check thresholds:**
 ```bash
 curl -H "X-API-Key: your-key" \
-     GET "http://localhost:8000/resilience/thresholds"
+     GET "http://localhost:8000/internal/resilience/performance/thresholds"
 ```
 
 ## 🔧 **Configuration Concepts**
@@ -621,7 +618,7 @@ curl -H "X-API-Key: your-key" \
 - **Monitoring endpoints**: Higher limits for operational needs
 - **Benchmark endpoints**: Lower limits due to resource intensity
 
-Check current status: `GET /resilience/config/validate/rate-limit-status`
+Check current status: `GET /internal/resilience/config/validate/rate-limit-status`
 
 ## 🛠️ **Development & Testing**
 
@@ -633,7 +630,7 @@ uvicorn app.main:app --reload --port 8000
 
 # Test endpoints
 curl -H "X-API-Key: dev-test-key" \
-     GET "http://localhost:8000/resilience/health"
+     GET "http://localhost:8000/internal/resilience/health"
 ```
 
 ### **Integration Testing**
