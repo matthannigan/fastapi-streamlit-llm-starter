@@ -21,6 +21,7 @@ def sample_request(sample_text):
     return TextProcessingRequest(
         text=sample_text,
         operation=TextProcessingOperation.SUMMARIZE,
+        question=None,
         options={"max_length": 100}
     )
 
@@ -32,5 +33,6 @@ def sample_response():
         success=True,
         result="This is a test summary.",
         processing_time=1.5,
-        metadata={"word_count": 50}
+        metadata={"word_count": 50},
+        cache_hit=None
     ) 

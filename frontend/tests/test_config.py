@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import os
 
-from app.core.config import Settings, settings
+from app.config import Settings, settings
 
 class TestSettings:
     """Test the Settings configuration class."""
