@@ -1,6 +1,6 @@
 {
   "output": {
-    "filePath": "repomix-output.md",
+    "filePath": ".repomix-output/repomix-output.md",
     "style": "markdown",
     "parsableStyle": false,
     "fileSummary": true,
