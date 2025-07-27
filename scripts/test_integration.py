@@ -38,15 +38,22 @@ class IntegrationTester:
     def __init__(self, api_url: str = "http://localhost:8000"):
         self.api_url = api_url
         self.results: List[TestResult] = []
-        self.session: Optional[httpx.AsyncClient] = None
+        self._session: Optional[httpx.AsyncClient] = None
+    
+    @property
+    def session(self) -> httpx.AsyncClient:
+        """Get the HTTP session, ensuring it's available."""
+        if self._session is None:
+            raise RuntimeError("Session not initialized. Use as async context manager.")
+        return self._session
     
     async def __aenter__(self):
-        self.session = httpx.AsyncClient(timeout=60.0)
+        self._session = httpx.AsyncClient(timeout=60.0)
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.aclose()
+        if self._session:
+            await self._session.aclose()
     
     def print_header(self, title: str):
         """Print formatted test section header."""
@@ -123,7 +130,7 @@ class IntegrationTester:
     
     async def test_operations_endpoint(self) -> Dict[str, Any]:
         """Test operations listing endpoint."""
-        response = await self.session.get(f"{self.api_url}/operations")
+        response = await self.session.get(f"{self.api_url}/v1/text_processing/operations")
         response.raise_for_status()
         
         ops_data = response.json()
@@ -163,7 +170,7 @@ class IntegrationTester:
             "options": {"max_length": 50}
         }
         
-        response = await self.session.post(f"{self.api_url}/process", json=payload)
+        response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
         response.raise_for_status()
         
         result = response.json()
@@ -196,7 +203,7 @@ class IntegrationTester:
                 "operation": "sentiment"
             }
             
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             response.raise_for_status()
             
             result = response.json()
@@ -235,7 +242,7 @@ class IntegrationTester:
             "options": {"max_points": 4}
         }
         
-        response = await self.session.post(f"{self.api_url}/process", json=payload)
+        response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
         response.raise_for_status()
         
         result = response.json()
@@ -268,7 +275,7 @@ class IntegrationTester:
             "options": {"num_questions": 3}
         }
         
-        response = await self.session.post(f"{self.api_url}/process", json=payload)
+        response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
         response.raise_for_status()
         
         result = response.json()
@@ -311,7 +318,7 @@ class IntegrationTester:
                 "question": question
             }
             
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             response.raise_for_status()
             
             result = response.json()
@@ -324,7 +331,7 @@ class IntegrationTester:
             results.append({
                 "question": question,
                 "answer": result["result"],
-                "processing_time": result.get("processing_time", 0)
+                "processing_time": result.get("processing_time", 0.0)
             })
         
         return {"qa_pairs": results}
@@ -336,7 +343,7 @@ class IntegrationTester:
         # Test 1: Empty text
         try:
             payload = {"text": "", "operation": "summarize"}
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             error_tests.append({
                 "test": "empty_text",
                 "status_code": response.status_code,
@@ -352,7 +359,7 @@ class IntegrationTester:
         # Test 2: Invalid operation
         try:
             payload = {"text": "Valid text", "operation": "invalid_operation"}
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             error_tests.append({
                 "test": "invalid_operation",
                 "status_code": response.status_code,
@@ -368,7 +375,7 @@ class IntegrationTester:
         # Test 3: Missing question for Q&A
         try:
             payload = {"text": "Valid text", "operation": "qa"}
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             error_tests.append({
                 "test": "missing_question",
                 "status_code": response.status_code,
@@ -385,7 +392,7 @@ class IntegrationTester:
         try:
             long_text = "A" * 15000  # Exceeds max_length
             payload = {"text": long_text, "operation": "summarize"}
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             error_tests.append({
                 "test": "text_too_long",
                 "status_code": response.status_code,
@@ -418,7 +425,7 @@ class IntegrationTester:
         """
         
         performance_results = []
-        total_time = 0
+        total_time = 0.0
         
         for operation in operations:
             start_time = time.time()
@@ -428,7 +435,7 @@ class IntegrationTester:
                 "operation": operation
             }
             
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             response.raise_for_status()
             
             result = response.json()
@@ -438,7 +445,7 @@ class IntegrationTester:
             performance_results.append({
                 "operation": operation,
                 "duration": duration,
-                "processing_time": result.get("processing_time", 0),
+                "processing_time": result.get("processing_time", 0.0),
                 "success": result.get("success", False)
             })
         
@@ -459,7 +466,7 @@ class IntegrationTester:
                 "text": test_text,
                 "operation": "sentiment"
             }
-            response = await self.session.post(f"{self.api_url}/process", json=payload)
+            response = await self.session.post(f"{self.api_url}/v1/text_processing/process", json=payload)
             return response.status_code == 200
         
         start_time = time.time()
