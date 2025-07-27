@@ -18,9 +18,9 @@ A robust FastAPI application that provides AI-powered text processing capabiliti
 
 ### Core Endpoints
 
-- `GET  /health` - Health check endpoint
-- `GET  /text_processing/operations` - List available text processing operations
-- `POST /text_processing/process` - Process text with specified operation
+- `GET  /v1/health` - Health check endpoint
+- `GET  /v1/text_processing/operations` - List available text processing operations
+- `POST /v1/text_processing/process` - Process text with specified operation
 
 ### Health Check Response
 ```json
@@ -122,12 +122,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 1. Build the Docker image:
 ```bash
-docker build -t fastapi-backend .
+docker build -t backend .
 ```
 
 2. Run the container:
 ```bash
-docker run -p 8000:8000 --env-file .env fastapi-backend
+docker run -p 8000:8000 --env-file .env backend
 ```
 
 ### Testing
@@ -180,30 +180,48 @@ pytest tests/ -v -m "manual" --run-manual
 ```
 backend/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application
-│   ├── config.py            # Configuration settings with caching options
-│   └── services/
-│       ├── __init__.py
-│       ├── text_processor.py # AI text processing service
-│       ├── cache.py         # Multi-tiered caching system
-│       └── monitoring.py    # Cache performance monitoring
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py          # Test configuration and fixtures
-│   ├── test_main.py         # Main application tests
-│   ├── test_text_processor.py # Text processing service tests
-│   ├── test_models.py       # Data model tests
-│   ├── test_cache.py        # Caching functionality tests
-│   ├── test_resilience.py   # Error handling and resilience tests
-│   ├── test_manual_api.py   # Manual API integration tests
-│   └── test_manual_auth.py  # Manual authentication tests
+│   ├── main.py                  \# FastAPI app setup, middleware, top-level routers  
+│   ├── dependencies.py          \# Global dependency injection functions  
+│   │  
+│   ├── api/                     \# API Layer: Request/Response handling (thin layer)  
+│   │   ├── v1/  
+│   │   │   ├── text\_processing.py      \# Endpoints for the main business logic  
+│   │   │   ├── health.py                \# /health, /operations, system endpoints  
+│   │   │   ├── auth.py                  \# Authentication endpoints (/auth/*)
+│   │   │   └── deps.py                  \# API-specific dependencies  
+│   │   └── internal/            \# Internal/admin endpoints  
+│   │       ├── monitoring.py          \# /monitoring/\* endpoints  
+│   │       ├── cache.py               \# /cache/\* and admin endpoints
+│   │       └── resilience/           \# Resilience management endpoints
+│   │  
+│   ├── core/                    \# Application-wide setup & cross-cutting concerns  
+│   │   ├── config.py              \# Centralized Pydantic settings  
+│   │   └── exceptions.py          \# Custom exception classes  
+│   │  
+│   ├── services/ (Domain)       \# Business-specific, replaceable logic  
+│   │   ├── text\_processor.py         \# Main text processing service (composes infrastructure)
+│   │   └── response\_validator.py     \# AI response validation and security service
+│   │  
+│   ├── infrastructure/          \# Reusable, business-agnostic technical services  
+│   │   ├── ai/                    \# AI provider abstractions, prompt building  
+│   │   ├── cache/                 \# Caching logic and implementation  
+│   │   ├── resilience/            \# Circuit breakers, retries, presets  
+│   │   ├── security/              \# Auth, input/output validation logic  
+│   │   └── monitoring/            \# Monitoring logic and metrics collection  
+│   │  
+│   └── schemas/                 \# Pydantic models (data contracts)  
+│       ├── text\_processing.py      \# Request/Response models for text processing  
+│       ├── health.py                \# Models for health check endpoints  
+│       └── common.py                \# Shared response models (errors, success, pagination)
+├── scripts/                 # Helper scripts
 ├── shared/                  # Shared models and utilities
+├── tests/                   # Backend tests
 ├── requirements.txt         # Python dependencies
 ├── requirements-dev.txt     # Development dependencies
-├── Dockerfile              # Docker configuration
-├── pytest.ini             # Pytest configuration
-└── README.md               # This file
+├── requirements-docker.txt  # Docker dependencies
+├── Dockerfile               # Docker configuration
+├── pytest.ini               # Pytest configuration
+└── README.md                # This file
 ```
 
 ### Service Architecture
