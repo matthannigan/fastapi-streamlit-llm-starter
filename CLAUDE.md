@@ -34,7 +34,11 @@ The template includes comprehensive Docker support for both development and prod
 
 ## Development Commands
 
-### Backend (FastAPI)
+The project includes a comprehensive `Makefile` for common tasks. Access the complete list of commands with `make help`. All Python scripts called from the `Makefile` run from the `.venv` virtual environment automatically.
+
+### Installation & Startup
+
+#### Backend (FastAPI)
 ```bash
 # Recommended: Use Makefile commands (handles venv automatically)
 make run-backend            # Start development server with auto-reload
@@ -51,7 +55,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Frontend (Streamlit)
+#### Frontend (Streamlit)
 ```bash
 # Recommended: Use Makefile commands (handles dependencies automatically)
 make install-frontend-local    # Install frontend deps in current venv
@@ -69,26 +73,9 @@ streamlit run app/app.py --server.port 8501
 streamlit run app/app.py --server.runOnSave=true
 ```
 
-### Frontend Testing
-```bash
-# Recommended: Use Makefile commands for consistent environment
-make test-frontend            # Run frontend tests via Docker
+### Testing
 
-# Manual testing (requires active virtual environment)
-cd frontend/
-
-# Run frontend tests with async support
-pytest tests/ -v
-
-# Run with coverage reporting
-pytest tests/ --cov=app --cov-report=html --cov-report=term
-
-# Run specific test types
-pytest tests/test_api_client.py -v    # API communication tests
-pytest tests/test_config.py -v       # Configuration tests
-```
-
-### Testing (Backend)
+#### Backend Testing
 ```bash
 # Recommended: Use Makefile commands (handles venv automatically)
 make test-backend                       # Run fast tests (default)
@@ -140,7 +127,34 @@ pytest -v -m "circuit_breaker" --run-slow   # Circuit breaker tests
 pytest -v -m "no_parallel"                  # Tests that must run sequentially
 ```
 
-### Code Quality (Backend)
+#### Frontend Testing
+```bash
+# Recommended: Use Makefile commands for consistent environment
+make test-frontend            # Run frontend tests via Docker
+
+# Manual testing (requires active virtual environment)
+cd frontend/
+
+# Run frontend tests with async support
+pytest tests/ -v
+
+# Run with coverage reporting
+pytest tests/ --cov=app --cov-report=html --cov-report=term
+
+# Run specific test types
+pytest tests/test_api_client.py -v    # API communication tests
+pytest tests/test_config.py -v       # Configuration tests
+```
+
+
+
+
+
+
+
+### Code Quality
+
+#### Code Quality (Backend)
 ```bash
 # Recommended: Use Makefile commands (handles venv automatically)
 make lint-backend                       # Run all code quality checks
@@ -157,7 +171,7 @@ isort app/ tests/
 mypy app/
 ```
 
-### Code Quality (Frontend)
+#### Code Quality (Frontend)
 ```bash
 # Recommended: Use Makefile commands (handles Docker environment)
 make lint-frontend            # Run all frontend code quality checks
@@ -174,121 +188,6 @@ cd frontend/
 flake8 app/ tests/
 black app/ tests/
 isort app/ tests/
-```
-
-### Makefile Commands
-The project includes a comprehensive Makefile for common tasks. All Python scripts run from the `.venv` virtual environment automatically:
-
-```bash
-# Quick Start
-make help                   # Show all available commands with descriptions
-make install                # Complete setup - creates venv and installs dependencies  
-make dev                    # Start development environment with hot reload
-make test                   # Run all tests (backend + frontend)
-make lint                   # Check code quality for both backend and frontend
-
-# Setup and Installation
-make venv                   # Create backend virtual environment (.venv)
-make install                # Install backend dependencies (auto-creates venv)
-make install-frontend       # Install frontend dependencies via Docker
-make install-frontend-local # Install frontend deps locally (requires active venv)
-
-# Development Servers
-make run-backend            # Start FastAPI server with auto-reload (localhost:8000)
-make dev                    # Start full development environment with file watching
-make dev-legacy             # Start development environment (legacy Docker Compose)
-make prod                   # Start production environment
-
-# Testing Commands
-make test                   # Run all tests (backend + frontend with Docker)
-make test-local             # Run backend tests locally (no Docker required)
-make test-backend           # Run backend tests (fast tests by default)
-make test-backend-api       # Run backend API endpoint tests
-make test-backend-core      # Run backend core functionality tests
-make test-backend-infrastructure # Run infrastructure service tests
-make test-backend-integration    # Run backend integration tests
-make test-backend-performance    # Run backend performance tests
-make test-backend-services       # Run domain services tests
-make test-backend-schemas        # Run shared schema tests
-make test-backend-slow      # Run slow/comprehensive backend tests
-make test-backend-all       # Run all backend tests (including slow tests)
-make test-backend-manual    # Run manual tests (requires running server)
-make test-frontend          # Run frontend tests via Docker
-make test-integration       # Run end-to-end integration tests
-make test-coverage          # Run tests with coverage reporting
-make test-coverage-all      # Run coverage including slow tests
-make test-retry             # Run retry mechanism tests
-make test-circuit           # Run circuit breaker tests
-make ci-test                # Run CI tests (fast tests only)
-make ci-test-all            # Run comprehensive CI tests (including slow tests)
-
-# Code Quality
-make lint                   # Run all code quality checks (backend + frontend)
-make lint-backend           # Run backend linting (flake8 + mypy)
-make lint-frontend          # Run frontend linting via Docker
-make format                 # Format code with black and isort
-
-# Resilience Configuration Management
-make list-presets           # List available resilience configuration presets
-make show-preset            # Show preset details (Usage: make show-preset PRESET=simple)
-make validate-config        # Validate current resilience configuration
-make validate-preset        # Validate specific preset (Usage: make validate-preset PRESET=simple)
-make recommend-preset       # Get preset recommendation (Usage: make recommend-preset ENV=development)
-make migrate-config         # Migrate legacy resilience configuration to presets
-make test-presets           # Run all preset-related tests
-
-# Docker Operations
-make docker-build           # Build all Docker images
-make docker-up              # Start services with Docker Compose
-make docker-down            # Stop and remove Docker services
-make restart                # Restart all Docker services
-make backend-shell          # Open shell in backend container
-make frontend-shell         # Open shell in frontend container
-make backend-logs           # Show backend container logs
-make frontend-logs          # Show frontend container logs
-make logs                   # Show all service logs
-make status                 # Show status of all services
-make health                 # Check health of all services
-make stop                   # Stop all services
-
-# Data Management
-make redis-cli              # Access Redis command line interface
-make backup                 # Backup Redis data with timestamp
-make restore                # Restore Redis data (Usage: make restore BACKUP=filename)
-
-# Cleanup
-make clean                  # Clean Python cache files and test artifacts
-make clean-venv             # Remove virtual environment
-make clean-all              # Complete cleanup (cache + venv)
-
-# Documentation
-make docs-serve             # Serve documentation locally (http://127.0.0.1:8000)
-make docs-build             # Build static documentation site
-
-# Repository Documentation (Repomix)
-make repomix                # Generate complete repository documentation
-make repomix-backend        # Generate backend-only documentation
-make repomix-backend-tests  # Generate backend tests documentation
-make repomix-frontend       # Generate frontend-only documentation
-make repomix-frontend-tests # Generate frontend tests documentation
-make repomix-docs           # Generate README and docs/ documentation
-
-# Dependencies
-make lock-deps              # Generate dependency lock files
-make update-deps            # Update and lock dependencies
-```
-
-### Shared Module
-The `shared/` directory contains common Pydantic models used by both frontend and backend:
-```bash
-# Activate virtual environment first
-source .venv/bin/activate
-cd shared/
-
-# Install shared module in development mode
-pip install -e .
-
-# This allows imports like: from shared.models import TextProcessingRequest
 ```
 
 ## 🏗️ Architecture Overview
