@@ -2,83 +2,165 @@
 
 This module serves as the primary entry point for the AI Text Processing API, providing
 a robust and scalable FastAPI application with advanced text processing capabilities.
-The application integrates AI-powered text analysis, comprehensive resilience patterns,
-intelligent caching, and extensive monitoring to deliver a production-ready service.
+The application implements a dual-API architecture with separate public and internal
+interfaces, comprehensive resilience patterns, intelligent caching, and extensive
+monitoring to deliver a production-ready service.
 
-The application architecture is designed for high availability and fault tolerance,
-incorporating industry best practices for API design, error handling, and operational
-monitoring. It supports graceful degradation when dependencies are unavailable and
-provides comprehensive observability for production environments.
+## Architecture
 
-Key Features:
-    * **AI Text Processing**: Powered by Google Gemini API for advanced text analysis
-      including summarization, sentiment analysis, key point extraction, and Q&A
-    * **Resilience Infrastructure**: Circuit breaker patterns, retry mechanisms, and
-      failure detection to handle API failures and service degradation gracefully
-    * **Intelligent Caching**: Redis-backed response caching with compression, memory
-      tiering, and performance monitoring for improved response times and cost efficiency
-    * **Comprehensive Monitoring**: Health checks, performance metrics, circuit breaker
-      status, and cache analytics for operational visibility
-    * **Security**: API key authentication, CORS configuration, and input validation
-      to protect against unauthorized access and malicious inputs
-    * **Structured Logging**: Comprehensive logging with configurable levels for
-      debugging, monitoring, and audit trails
+The application follows a **dual-API architecture pattern**:
 
-API Endpoints:
-    Public API (/docs):
-        * GET  /: Root endpoint providing API information and version details
-        * GET  /v1/health: Comprehensive health check with AI, resilience, and cache status
-        * GET  /v1/auth/status: Authentication validation and API key verification
-        * POST /v1/text_processing/process: Main text processing endpoint
-        * POST /v1/text_processing/batch_process: Batch text processing operations
-    
-    Internal API (/internal/docs):
-        * GET /internal/monitoring/*: System metrics and performance data
-        * GET /internal/cache/*: Cache status, metrics, and management
-        * GET /internal/resilience/*: Circuit breaker status and configuration
+- **Public API** (`/`): External-facing endpoints for AI text processing operations
+- **Internal API** (`/internal/`): Administrative endpoints for monitoring and management
 
-Configuration:
-    The application uses environment-based configuration through the Settings class,
-    supporting deployment flexibility across different environments. Key configuration
-    areas include:
-    
-    * AI model selection and API credentials
-    * Cache settings (Redis URL, TTL, compression)
-    * Resilience parameters (timeouts, retry counts, circuit breaker thresholds)
-    * Logging levels and output formats
-    * CORS origins and security settings
-    * Authentication tokens and access control
+This separation provides security isolation, allows independent scaling, and enables
+different documentation and authentication strategies for different user types.
 
-Usage:
-    Development:
-        python main.py
-        
-    Production:
-        uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
-        
-    Docker:
-        docker run -p 8000:8000 your-image:tag
+## Key Features
 
-Documentation:
-    * Public API Docs: http://localhost:8000/docs
-    * Internal API Docs: http://localhost:8000/internal/docs
-    * OpenAPI JSON: http://localhost:8000/openapi.json (public)
-    * Internal OpenAPI JSON: http://localhost:8000/internal/openapi.json
+### AI Text Processing
+- **Powered by Google Gemini API** for advanced text analysis
+- **Supported Operations**: summarization, sentiment analysis, key point extraction, 
+  question generation, and question answering
+- **Batch Processing**: Efficient handling of multiple text processing requests
+- **Input Sanitization**: Protection against prompt injection and malicious inputs
 
-Environment Variables:
-    Required:
-        * GEMINI_API_KEY: Google Gemini API key for text processing
-        * API_KEYS: Comma-separated list of valid API keys for authentication
-    
-    Optional:
-        * REDIS_URL: Redis connection string for caching (defaults to memory-only)
-        * LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
-        * CORS_ORIGINS: Allowed CORS origins for cross-origin requests
+### Resilience Infrastructure
+- **Circuit Breaker Patterns**: Prevent cascade failures during API outages
+- **Intelligent Retry Logic**: Exponential backoff with jitter for transient failures
+- **Exception Classification**: Smart categorization of permanent vs transient errors
+- **Graceful Degradation**: Continued operation during partial service failures
 
-Note:
-    This application is designed for production use and includes comprehensive error
-    handling, monitoring, and resilience features. Ensure all required environment
-    variables are properly configured before deployment.
+### Intelligent Caching
+- **Redis-backed Storage**: Persistent caching with automatic failover to memory-only
+- **Compression Support**: Automatic compression for large responses
+- **Memory Tiering**: Two-tier caching with memory and Redis backends
+- **Performance Monitoring**: Real-time cache metrics and optimization recommendations
+
+### Monitoring & Observability
+- **Health Checks**: Comprehensive system and dependency health monitoring
+- **Performance Metrics**: Operation timing, success rates, and failure patterns
+- **Circuit Breaker Status**: Real-time resilience pattern monitoring
+- **Cache Analytics**: Hit rates, memory usage, and performance statistics
+
+### Security
+- **API Key Authentication**: Bearer token authentication with multi-key support
+- **CORS Configuration**: Configurable cross-origin resource sharing
+- **Input Validation**: Comprehensive request validation and sanitization
+- **Internal API Protection**: Restricted access to administrative endpoints
+
+## API Endpoints
+
+### Public API (`/docs`)
+- `GET /`: Root endpoint with API information and navigation links
+- `GET /v1/health`: Comprehensive health check with component status
+- `GET /v1/auth/status`: Authentication validation and API key verification
+- `POST /v1/text_processing/process`: Single text processing operations
+- `POST /v1/text_processing/batch_process`: Batch text processing operations
+
+### Internal API (`/internal/docs`)
+- `GET /internal/`: Internal API root with administrative information
+- `GET /internal/monitoring/*`: System metrics and performance data
+- `GET /internal/cache/*`: Cache status, metrics, and management operations
+- `GET /internal/resilience/*`: Resilience configuration and monitoring endpoints
+
+### Utility Redirects
+- `GET /health` → `/v1/health` (for monitoring system compatibility)
+- `GET /auth/status` → `/v1/auth/status` (for auth validation compatibility)
+
+## Configuration
+
+The application uses environment-based configuration through the `Settings` class:
+
+### AI Configuration
+- `GEMINI_API_KEY`: Google Gemini API key (required)
+- `AI_MODEL`: AI model selection (default: gemini-1.5-flash)
+
+### Authentication
+- `API_KEY`: Primary API key for authentication
+- `ADDITIONAL_API_KEYS`: Comma-separated additional valid keys
+
+### Caching
+- `REDIS_URL`: Redis connection string (optional, defaults to memory-only)
+- Cache TTL and compression settings
+
+### Resilience
+- `RESILIENCE_PRESET`: Resilience configuration preset (simple, development, production)
+- Circuit breaker and retry parameters
+
+### Server Configuration
+- `HOST`: Server bind address (default: 0.0.0.0)
+- `PORT`: Server port (default: 8000)
+- `DEBUG`: Debug mode flag
+- `LOG_LEVEL`: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
+- `CORS_ORIGINS`: Allowed CORS origins
+
+## Application Lifecycle
+
+The application uses an async context manager for proper lifecycle management:
+
+1. **Startup**: Logs configuration, initializes services, validates connections
+2. **Runtime**: Handles requests with resilience patterns and monitoring
+3. **Shutdown**: Graceful cleanup of resources and connections
+
+## Documentation Access
+
+### Development Mode
+- Public API Docs: `http://localhost:8000/docs`
+- Internal API Docs: `http://localhost:8000/internal/docs` 
+- ReDoc: `http://localhost:8000/redoc` and `http://localhost:8000/internal/redoc`
+
+### Production Mode
+- Public API Docs: Available at `/docs`
+- Internal API Docs: **Disabled for security** (404 response)
+- OpenAPI Schemas: **Disabled for security**
+
+## Usage Examples
+
+### Development
+```bash
+python main.py
+# or
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Production
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### Docker
+```bash
+docker run -p 8000:8000 -e GEMINI_API_KEY=your_key your-image:tag
+```
+
+## Custom Features
+
+### Custom Swagger UI
+- **Navigation Between APIs**: Built-in navigation between public and internal docs
+- **Enhanced Styling**: Custom styling and branding
+- **Security-aware**: Internal docs disabled in production mode
+
+### OpenAPI Schema Customization
+- **Clean Schemas**: Removes default FastAPI validation error schemas
+- **Custom Error Responses**: Maintains application-specific error schemas
+- **Version-aware**: Separate schemas for public and internal APIs
+
+## Error Handling
+
+The application implements comprehensive error handling:
+- **Global Exception Handlers**: Centralized error processing
+- **Structured Error Responses**: Consistent error format across all endpoints  
+- **Security-aware Errors**: No sensitive information exposure in production
+- **Logging Integration**: All errors logged with appropriate detail levels
+
+## Security Considerations
+
+- **Production Hardening**: Internal API documentation disabled in production
+- **API Key Protection**: Secure handling of authentication credentials
+- **Input Sanitization**: Protection against injection attacks
+- **CORS Configuration**: Controlled cross-origin access
+- **Audit Logging**: Security event tracking and monitoring
 """
 
 import logging
