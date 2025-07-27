@@ -1,4 +1,8 @@
-"""Resilience configuration monitoring and analytics REST API endpoints.
+"""Infrastructure Service: Resilience Configuration Monitoring API
+
+🏗️ **STABLE API** - Changes affect all template users  
+📋 **Minimum test coverage**: 90%  
+🔧 **Configuration-driven behavior**
 
 This module provides comprehensive REST API endpoints for monitoring resilience
 configuration usage, performance metrics, alerts, and analytics. It includes

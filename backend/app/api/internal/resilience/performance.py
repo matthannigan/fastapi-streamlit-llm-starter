@@ -1,4 +1,8 @@
-"""Resilience performance benchmarking and analysis REST API endpoints.
+"""Infrastructure Service: Resilience Performance Benchmarking API
+
+🏗️ **STABLE API** - Changes affect all template users  
+📋 **Minimum test coverage**: 90%  
+🔧 **Configuration-driven behavior**
 
 This module provides comprehensive REST API endpoints for performance
 benchmarking, threshold management, and performance analysis of resilience

@@ -1,4 +1,8 @@
-"""Resilience configuration template management REST API endpoints.
+"""Infrastructure Service: Resilience Configuration Template Management API
+
+🏗️ **STABLE API** - Changes affect all template users  
+📋 **Minimum test coverage**: 90%  
+🔧 **Configuration-driven behavior**
 
 This module provides REST API endpoints for managing and utilizing resilience
 configuration templates. Templates serve as structured blueprints for creating
