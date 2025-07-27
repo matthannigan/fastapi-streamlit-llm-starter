@@ -1,362 +1,484 @@
-# FastAPI-Streamlit-LLM Starter Template
+# 🚀 FastAPI + Streamlit LLM Starter Template
 
-A production-ready starter template for building AI-powered applications using FastAPI, Streamlit, and PydanticAI.
+**A comprehensive starter template for building production-ready LLM-powered APIs with FastAPI.** This template showcases industry best practices, robust architecture patterns, and educational examples to help developers quickly bootstrap sophisticated AI applications.
 
-## 🌟 Features
+## 🎯 Template Purpose & Educational Goals
 
-- **🚀 Modern Stack**: FastAPI + Streamlit + PydanticAI
-- **🤖 AI Integration**: Easy integration with multiple AI models
-- **📊 Rich UI**: Interactive Streamlit interface with real-time updates
-- **🐳 Docker Ready**: Complete containerization for easy deployment
-- **🔒 Production Ready**: Security headers, rate limiting, health checks
-- **📈 Scalable**: Designed for horizontal scaling
-- **🧪 Extensible**: Easy to add new features and AI operations
+This starter template demonstrates:
+- **Production-ready FastAPI architecture** with dual-API design (public + internal endpoints)
+- **Enterprise-grade infrastructure services** (resilience patterns, caching, monitoring, security)
+- **Clean separation** between reusable infrastructure and customizable domain logic
+- **Comprehensive testing strategies** with high coverage requirements
+- **Modern development practices** (preset-based configuration, automated tooling, containerization)
 
-## 🏗️ Architecture
+## 🌟 Key Features
+
+### 🏗️ **Production-Ready Architecture**
+- **Dual-API Design**: Separate public (`/v1/`) and internal (`/internal/`) endpoints with distinct documentation
+- **Infrastructure vs Domain Separation**: Clear boundaries between reusable components and customizable business logic
+- **Comprehensive Resilience Patterns**: Circuit breakers, retry logic, graceful degradation
+- **Multi-tier Caching System**: Redis-backed with automatic fallback to in-memory cache
+
+### 🤖 **AI Integration Excellence**  
+- **PydanticAI Agents**: Built-in security and validation for AI model interactions
+- **Prompt Injection Protection**: Comprehensive security measures against malicious inputs
+- **Multi-Provider Support**: Easy integration with Gemini, OpenAI, Anthropic, and other providers
+- **Response Validation**: AI output sanitization and structured validation
+
+### 🔧 **Developer Experience**
+- **Virtual Environment Automation**: All Python scripts automatically use `.venv` from project root
+- **Preset-Based Configuration**: Simplified resilience system reduces 47+ environment variables to single preset choice
+- **Parallel Testing**: Fast feedback cycles with comprehensive coverage requirements
+- **Hot Reload Development**: Docker Compose with file watching for both frontend and backend
+
+### 🛡️ **Production Security**
+- **Multi-Key Authentication**: Primary + additional API keys for flexibility
+- **Internal API Protection**: Administrative endpoints disabled in production environments
+- **Security Logging**: Comprehensive audit trails for monitoring
+- **Rate Limiting**: Built-in request limiting with configurable thresholds
+
+## 📦 Monorepo Structure
+
+This template includes three main components designed as learning examples:
+
+- **Backend** (`backend/`): **Production-ready FastAPI application** with robust infrastructure services and text processing domain examples
+- **Frontend** (`frontend/`): **Production-ready Streamlit application** demonstrating modern development patterns for AI interfaces
+- **Shared** (`shared/`): **Common Pydantic models** for type safety across components
+
+**The backend infrastructure and frontend patterns are production-ready and reusable, while the text processing domain services serve as educational examples meant to be replaced with your specific business logic.**
+
+## 🏗️ Architecture Overview
+
+### Infrastructure vs Domain Services Architecture
+
+The backend follows a clear architectural distinction between **Infrastructure Services** and **Domain Services**:
+
+#### Infrastructure Services 🏗️ **[Production-Ready - Keep & Extend]**
+- **Purpose**: Business-agnostic, reusable technical capabilities that form the backbone of any LLM API
+- **Characteristics**: Stable APIs, high test coverage (>90%), configuration-driven behavior
+- **Examples**: Cache management, resilience patterns, AI provider integrations, monitoring, security utilities
+- **Location**: `app/infrastructure/` - core modules designed to remain stable across projects
+
+#### Domain Services 💼 **[Educational Examples - Replace with Your Logic]**
+- **Purpose**: Business-specific implementations serving as **educational examples**
+- **Characteristics**: Designed to be replaced per project, moderate test coverage (>70%), feature-driven
+- **Examples**: Text processing workflows (summarization, sentiment analysis), document analysis pipelines
+- **Location**: `app/services/` - customizable modules that demonstrate best practices
+
+### Dual-API Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Streamlit     │───▶│     FastAPI      │───▶│   PydanticAI    │
-│   Frontend      │    │     Backend      │    │   + LLM APIs    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                      │
-         │              ┌─────────────────┐             │
-         └─────────────▶│  Shared Models  │◀────────────┘
-                        │   (Pydantic)    │
-                        └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     FastAPI Application                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Public API (/v1/)           │  Internal API (/internal/)       │
+│  ├─ Text Processing          │  ├─ Cache Management              │
+│  ├─ Health Checks            │  ├─ System Monitoring             │
+│  ├─ Authentication           │  ├─ Circuit Breaker Control       │
+│  └─ Business Operations      │  └─ Resilience Configuration      │
+├─────────────────────────────────────────────────────────────────┤
+│                   Infrastructure Services                       │
+│  ├─ AI (Security & Providers)  ├─ Resilience (Circuit Breakers) │
+│  ├─ Cache (Redis + Memory)     ├─ Security (Auth & Validation)  │
+│  └─ Monitoring (Health & Metrics)                              │
+└─────────────────────────────────────────────────────────────────┘
+           │                            │
+    ┌─────────────┐              ┌─────────────┐
+    │  Streamlit  │              │   Shared    │
+    │  Frontend   │              │   Models    │
+    │  (8501)     │              │ (Pydantic) │
+    └─────────────┘              └─────────────┘
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- AI API Key (Gemini, OpenAI, or Anthropic)
+- **Python 3.8+** for backend development
+- **Docker and Docker Compose** for containerized development
+- **AI API Key** (Gemini, OpenAI, or Anthropic)
 
-### 1. Clone and Setup
+### 1. Clone and Setup Environment
 
 ```bash
 git clone <repository-url>
 cd fastapi-streamlit-llm-starter
+
+# Complete setup - creates venv and installs all dependencies
+make install
+```
+
+### 2. Configure Environment Variables
+
+Create and configure your environment file:
+
+```bash
 cp .env.example .env
 ```
 
-### 2. Configure Environment
-
-Edit `.env` file with your API keys and resilience settings:
-
+**Essential Configuration:**
 ```env
-# AI Configuration
+# AI Model Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 AI_MODEL=gemini-2.0-flash-exp
 AI_TEMPERATURE=0.7
 
-# Resilience Configuration (Choose one approach)
-# Option 1: Use preset (recommended)
-RESILIENCE_PRESET=simple  # Options: simple, development, production
+# Resilience Configuration (Choose one preset)
+RESILIENCE_PRESET=simple      # General use, testing
+# RESILIENCE_PRESET=development # Local dev, fast feedback  
+# RESILIENCE_PRESET=production  # Production workloads
 
-# Option 2: Custom configuration (advanced users)
-# RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
+# Optional: Redis for caching (falls back to memory cache)
+REDIS_URL=redis://localhost:6379
 ```
+
+**Available Resilience Presets:**
+- **simple**: 3 retries, 5 failure threshold, 60s recovery, balanced strategy
+- **development**: 2 retries, 3 failure threshold, 30s recovery, aggressive strategy
+- **production**: 5 retries, 10 failure threshold, 120s recovery, conservative strategy
 
 ### 3. Start the Application
 
+**Option A: Full Development Environment (Recommended)**
 ```bash
-# Development mode (with hot reload)
+# Start all services with hot reload and file watching
 make dev
+```
 
-# Or production mode
+**Option B: Backend Only (Local Development)**
+```bash
+# Start FastAPI server locally with auto-reload
+make run-backend
+```
+
+**Option C: Production Mode**
+```bash
+# Start optimized production environment
 make prod
-
-# Or using docker-compose directly
-docker-compose up --build
 ```
 
 ### 4. Access the Application
 
-- **Frontend**: http://localhost:8501
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
+- **🌐 Frontend (Streamlit)**: http://localhost:8501
+- **🔌 Backend API**: http://localhost:8000
+- **📚 API Documentation (Swagger)**: http://localhost:8000/docs
+- **📖 Internal API Documentation**: http://localhost:8000/internal/docs
+- **❤️ Health Check**: http://localhost:8000/health
 
-## 🐳 Docker Setup
-
-This project includes a comprehensive Docker setup for both development and production environments.
-
-### Services
-
-- **Backend**: FastAPI application with AI text processing
-- **Frontend**: Streamlit web interface
-- **Redis**: Caching and session storage (see [`docs/CACHE.md`](docs/CACHE.md) for details)
-- **Nginx**: Reverse proxy and load balancer (production only)
-
-### Quick Commands
+### 5. Verify Installation
 
 ```bash
-# Show all available commands
+# Check service health
+make health
+
+# Run comprehensive tests
+make test
+
+# Check code quality
+make lint
+```
+
+## 🐳 Docker & Containerization
+
+The template includes comprehensive Docker support for both development and production:
+
+### Available Services
+- **Backend (FastAPI)**: AI text processing API with resilience infrastructure
+- **Frontend (Streamlit)**: Interactive web interface with real-time updates
+- **Redis**: High-performance caching with graceful fallback to memory cache
+
+### Essential Commands
+
+```bash
+# Show all available commands with descriptions
 make help
 
-# Setup and testing
-make install          # Create venv and install dependencies
-make test            # Run all tests (with Docker if available)
-make test-local      # Run tests without Docker
-make lint            # Code quality checks
-make format          # Format code
+# 🏗️ Setup and Installation
+make install                # Complete setup - creates venv and installs dependencies
+make install-frontend-local # Install frontend deps in current venv (local dev)
 
-# Development environment (with hot reload)
-make dev
+# 🖥️ Development Servers
+make run-backend           # Start FastAPI server locally (localhost:8000)
+make dev                   # Start full development environment with hot reload
+make prod                  # Start production environment
 
-# Production environment (with scaling and nginx)
-make prod
+# 🧪 Testing Commands
+make test                  # Run all tests (backend + frontend)
+make test-backend          # Run backend tests (fast tests by default)
+make test-backend-all      # Run all backend tests (including slow tests)
+make test-frontend         # Run frontend tests via Docker
+make test-coverage         # Run tests with coverage reporting
 
-# Docker management
-make status          # Check service status
-make logs            # View logs
-make health          # Health check all services
+# 🔍 Code Quality
+make lint                  # Run all code quality checks (backend + frontend)
+make lint-backend          # Run backend linting (flake8 + mypy)
+make format                # Format code with black and isort
 
-# Cleanup
-make clean           # Clean generated files
-make clean-all       # Clean including virtual environment
+# ⚙️ Resilience Configuration Management
+make list-presets          # List available resilience configuration presets
+make show-preset PRESET=production  # Show preset details
+make validate-config       # Validate current resilience configuration
+make recommend-preset ENV=production # Get preset recommendation
+
+# 🐳 Docker Operations
+make docker-build          # Build all Docker images
+make status                # Show status of all services
+make logs                  # Show all service logs
+make health                # Check health of all services
+make stop                  # Stop all services
+
+# 🗄️ Data Management
+make redis-cli             # Access Redis command line interface
+make backup                # Backup Redis data with timestamp
+make restore BACKUP=filename # Restore Redis data
+
+# 🧹 Cleanup
+make clean                 # Clean Python cache files and test artifacts
+make clean-all             # Complete cleanup (cache + venv)
 ```
 
-### Development vs Production
+### Development vs Production Modes
 
-**Development Features:**
-- Hot reloading for both backend and frontend
-- Debug mode enabled
-- Volume mounts for live code editing
-- Development dependencies included
+**Development Features (`make dev`):**
+- **Hot Reload**: Automatic reloads on code changes with file watching
+- **Debug Mode**: Comprehensive logging and error details
+- **Volume Mounts**: Live code editing without rebuilds
+- **Internal Docs**: Access to administrative API documentation
 
-**Production Features:**
-- Optimized builds without development dependencies
-- Non-root users for security
-- Resource limits and horizontal scaling
-- Nginx reverse proxy with rate limiting
-- No volume mounts for security
+**Production Features (`make prod`):**
+- **Optimized Builds**: Multi-stage Docker builds without dev dependencies
+- **Security Hardening**: Non-root users, disabled internal docs
+- **Resource Limits**: Memory and CPU constraints for stability
+- **Graceful Degradation**: Fallback mechanisms for service failures
 
-### Service Management
+## 🎯 Available AI Operations **[Educational Examples]**
 
-```bash
-# Individual service logs
-make backend-logs
-make frontend-logs
-make redis-logs
+The template includes these **educational examples** to demonstrate API patterns:
 
-# Access containers
-make backend-shell
-make frontend-shell
-make redis-cli
+1. **Summarize** (`summarize`) - Text summarization with configurable length (50-500 words)
+2. **Sentiment Analysis** (`sentiment`) - Emotional tone analysis with confidence scores and explanations
+3. **Key Points** (`key_points`) - Key point extraction with customizable count (3-10 points)
+4. **Question Generation** (`questions`) - Educational question creation (3-10 questions)
+5. **Q&A** (`qa`) - Interactive question answering requiring question parameter
 
-# Backup/restore Redis data
-make backup
-make restore BACKUP=redis-20240101-120000.rdb
-```
+**💡 Template Usage**: These operations showcase how to structure LLM-powered API endpoints. Replace them with your specific business operations while following the same patterns.
 
-For detailed Docker setup information, see [DOCKER_README.md](DOCKER_README.md).
+## 🔧 Technology Stack
 
-## 📖 Usage
+### Backend (Production-Ready)
+- **FastAPI**: Modern, fast web framework with automatic API documentation
+- **PydanticAI**: Type-safe AI agent framework with built-in security
+- **Redis**: High-performance caching with automatic fallback to in-memory
+- **Pydantic**: Data validation and settings management with type hints
+- **uvicorn**: ASGI server with hot reload capabilities
 
-> **📋 Code Standards:** All examples follow standardized patterns for imports, error handling, and sample data. See [`docs/CODE_STANDARDS.md`](docs/CODE_STANDARDS.md) for detailed guidelines.
+### Frontend (Production-Ready Patterns)
+- **Streamlit**: Modern web application framework for AI interfaces
+- **httpx**: Async HTTP client for robust API communication
+- **asyncio**: Proper async/await patterns optimized for Streamlit
 
-### Available Operations
+### Infrastructure (Production-Ready)
+- **Docker**: Multi-stage containerization for development and production
+- **Docker Compose**: Service orchestration with health checks and dependency management
+- **Circuit Breakers**: Automatic failure detection and service protection
+- **Retry Mechanisms**: Intelligent retry with exponential backoff and jitter
+- **Comprehensive Monitoring**: Health checks, metrics collection, and performance analysis
 
-1. **Summarize**: Generate concise summaries of long texts
-2. **Sentiment Analysis**: Analyze emotional tone and confidence
-3. **Key Points**: Extract main points from content
-4. **Question Generation**: Create questions about the text
-5. **Q&A**: Answer specific questions about the content
+## 📚 Usage Examples
 
-### Example API Usage
+### API Integration
 
 ```python
 #!/usr/bin/env python3
-"""Example API usage with standardized patterns."""
+"""Example API usage with comprehensive error handling."""
 
-# Standard library imports
 import asyncio
-import logging
-from typing import Optional, Dict, Any
-
-# Third-party imports
 import httpx
-
-# Local application imports
 from shared.sample_data import get_sample_text
 
-# Configure logging
-logger = logging.getLogger(__name__)
-
-async def example_api_usage():
-    """Demonstrate API usage with proper error handling."""
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Process text using standardized sample data
-            response = await client.post(
-                "http://localhost:8000/process", 
-                json={
-                    "text": get_sample_text("ai_technology"),
-                    "operation": "summarize",
-                    "options": {"max_length": 100}
-                }
-            )
-            response.raise_for_status()
-            result = response.json()
-            print(f"Summary: {result['result']}")
-            
-    except httpx.TimeoutException:
-        logger.error("Request timeout")
-        print("Request timed out. Please try again.")
-    except httpx.HTTPStatusError as e:
-        logger.error(f"HTTP error: {e.response.status_code}")
-        print(f"API Error: {e.response.status_code}")
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        print(f"Error: {str(e)}")
+async def process_text_example():
+    """Demonstrate text processing with the API."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # Single text processing
+        response = await client.post(
+            "http://localhost:8000/v1/text_processing/process",
+            headers={"X-API-Key": "your-api-key"},
+            json={
+                "text": get_sample_text("ai_technology"),
+                "operation": "summarize",
+                "options": {"max_length": 150}
+            }
+        )
+        result = response.json()
+        print(f"Summary: {result['result']}")
+        
+        # Batch processing
+        batch_response = await client.post(
+            "http://localhost:8000/v1/text_processing/batch_process",
+            headers={"X-API-Key": "your-api-key"},
+            json={
+                "requests": [
+                    {"text": get_sample_text("business_report"), "operation": "sentiment"},
+                    {"text": get_sample_text("climate_change"), "operation": "key_points"}
+                ],
+                "batch_id": "example_batch"
+            }
+        )
+        batch_result = batch_response.json()
+        print(f"Batch completed: {batch_result['completed']}/{batch_result['total_requests']}")
 
 # Run the example
 if __name__ == "__main__":
-    asyncio.run(example_api_usage())
+    asyncio.run(process_text_example())
 ```
 
-### Frontend Features
+### Shared Models Usage
 
-- **File Upload**: Support for .txt and .md files
-- **Real-time Processing**: Live progress indicators
-- **Rich Results**: Formatted output with metrics
-- **Download Results**: Export results as JSON
-- **Example Content**: Built-in examples for testing
+```python
+from shared.models import TextProcessingRequest, TextProcessingOperation
+from shared.sample_data import get_sample_text, get_example_options
 
-## 🛠️ Development
+# Create type-safe requests
+request = TextProcessingRequest(
+    text=get_sample_text("ai_technology"),
+    operation=TextProcessingOperation.SUMMARIZE,
+    options={"max_length": 100}
+)
 
-This project uses a **hybrid approach** to resolve dependency conflicts:
+# Q&A operation (requires question)
+qa_request = TextProcessingRequest(
+    text=get_sample_text("technical_documentation"),
+    operation=TextProcessingOperation.QA,
+    question="What authentication method does the API use?"
+)
 
-- **Backend**: Uses a local virtual environment for fast development
-- **Frontend**: Runs exclusively in Docker to avoid packaging version conflicts
+# Get UI-friendly example options
+example_options = get_example_options()
+# Returns: {"ai_technology": "🤖 AI Technology - About AI trends", ...}
+```
 
-### Quick Start
+## 🎨 Frontend Features
 
-#### Using Makefile (Recommended)
+### Production-Ready UI Components
+- **Real-time Status Monitoring**: API health checks with visual indicators
+- **Dynamic Operation Configuration**: Backend-driven UI generation
+- **Intelligent Example System**: Operation-specific text recommendations
+- **Multi-Modal Input Support**: Text entry and file upload with validation (.txt, .md)
+- **Progress Indicators**: Real-time feedback during processing
+- **Results Persistence**: Session management with download functionality
 
-1. **Complete setup:**
-   ```bash
-   make install
-   ```
-   This creates a `.venv` virtual environment and installs all backend dependencies with lock files.
+### User Experience Features
+- **Graceful Degradation**: Continues operation when backend is unavailable
+- **Comprehensive Validation**: Input validation with clear error messages
+- **Timeout Management**: Request timeout handling with user feedback
+- **Progressive Disclosure**: Collapsible sections and smart defaults for better UX
 
-2. **Run backend locally:**
-   ```bash
-   # Activate the virtual environment
-   source .venv/bin/activate
-   
-   # Start the FastAPI server
-   cd backend && uvicorn app.main:app --reload
-   ```
+## 🛠️ Development Workflow
 
-3. **Run frontend via Docker:**
-   ```bash
-   # Start frontend and dependencies
-   docker-compose up frontend
-   ```
+### Architecture-Driven Development
 
-#### Using Scripts (Alternative)
+The template uses a **hybrid development approach** optimized for modern AI application development:
 
-The scripts provide the same functionality with enhanced user experience:
+- **Backend**: Local virtual environment for fast iteration and IDE integration
+- **Frontend**: Docker-only to ensure consistent Streamlit environment across machines
+- **Infrastructure**: Docker Compose for Redis and service integration testing
+
+### Development Commands
 
 ```bash
-# One-time automated setup (includes Docker validation)
-./scripts/setup.sh
+# 🚀 Quick Start Development
+make install && make dev    # Complete setup and start development environment
 
-# Run backend (handles venv creation/activation automatically)
-./scripts/run_backend.sh
+# 🔧 Backend Development (Local Virtual Environment)
+make run-backend           # Start FastAPI server with auto-reload (localhost:8000)
+source .venv/bin/activate  # Activate virtual environment for IDE integration
 
-# Run frontend (Docker-only, includes dependency management)
-./scripts/run_frontend.sh
+# 🎨 Frontend Development (Docker Only)
+make dev                   # Start Streamlit via Docker with hot reload (localhost:8501)
+
+# 🧪 Testing Workflow
+make test-backend          # Fast backend tests (parallel execution)
+make test-frontend         # Frontend tests via Docker
+make test-coverage         # Comprehensive coverage reporting
+
+# 📊 Quality Assurance
+make lint                  # All code quality checks (backend + frontend)
+make format                # Automatic code formatting with black/isort
 ```
 
-**Script Benefits:**
-- ✅ Automatic virtual environment detection and creation
-- ✅ Lock file support with fallback to requirements.txt
-- ✅ Comprehensive environment validation
-- ✅ Rich feedback and helpful troubleshooting tips
-- ✅ Consistent with Makefile patterns
-
-### Development Workflow
-
-- **Backend development:** Use your local virtual environment with your favorite IDE
-- **Frontend development:** Edit files locally, run via Docker for testing
-- **Full stack testing:** Use Docker Compose for integration testing
-
-**Enhanced Script Features:**
-- **Smart Setup**: Scripts automatically detect existing environments and dependencies
-- **Lock File Support**: Prioritizes `requirements.lock` files for reproducible installs
-- **Environment Validation**: Comprehensive checks for Python, Docker, and required files
-- **Rich Feedback**: Clear status messages, tips, and troubleshooting guidance
-- **Graceful Handling**: Proper cleanup and error handling throughout
-
-This approach provides:
-- ✅ Fast backend development with local virtual environment
-- ✅ No dependency conflicts (frontend isolated in Docker)  
-- ✅ Consistent frontend environment across all machines
-- ✅ Easy deployment (both services already containerized)
-- ✅ Production-quality development tooling
-
-### Project Structure (Abbreviated)
+### Project Structure
 
 ```
 fastapi-streamlit-llm-starter/
-├── backend/                    # FastAPI application
+├── backend/                          # 🏗️ FastAPI Application
 │   ├── app/
-│   │   ├── main.py                     # FastAPI app and main routes
-│   │   ├── config.py                   # Configuration management
-│   │   ├── auth.py                     # Authentication and authorization
-│   │   ├── dependencies.py             # Dependency injection
-│   │   ├── routers/                    # Specialized API route modules
-│   │   ├── services/                   # Business logic services
-│   │   ├── security/                   # Security components
-│   │   └── utils/                      # Utility functions
-│   ├── tests/                      # Comprehensive unit tests
-│   ├── Dockerfile                  # Container configuration
-│   └── README.md                   # Backend documentation
-├── docs/                       # Comprehensive project documentation
-├── examples                    # Practical application guides
-├── frontend/                   # Streamlit application
+│   │   ├── main.py                   # Dual FastAPI app (public + internal APIs)
+│   │   ├── dependencies.py           # Global dependency injection
+│   │   ├── api/                      # API Layer
+│   │   │   ├── v1/                   # Public API endpoints (/v1/)
+│   │   │   └── internal/             # Internal API endpoints (/internal/)
+│   │   ├── infrastructure/           # 🏗️ Production-Ready Infrastructure
+│   │   │   ├── ai/                   # AI security & provider abstractions
+│   │   │   ├── cache/                # Multi-tier caching (Redis + Memory)
+│   │   │   ├── resilience/           # Circuit breakers, retry, orchestration
+│   │   │   ├── security/             # Authentication & authorization
+│   │   │   └── monitoring/           # Health checks & metrics
+│   │   ├── services/                 # 💼 Domain Services [Educational Examples]
+│   │   │   ├── text_processor.py     # Example AI text processing service
+│   │   │   └── response_validator.py # Example response validation
+│   │   ├── schemas/                  # Request/response models
+│   │   └── core/                     # Application configuration
+│   ├── tests/                        # Comprehensive test suite (23k+ lines)
+│   └── examples/                     # Infrastructure usage examples
+|
+├── frontend/                         # 🎨 Streamlit Application
 │   ├── app/
-│   │   ├── app.py                      # Main Streamlit app
-│   │   ├── config.py                   # Frontend configuration
-│   │   └── utils/                      # Utility functions
-│   ├── tests/                      # Unit tests for frontend
-│   ├── Dockerfile                  # Container configuration
-│   └── README.md                   # Frontend documentation
-├── shared/                     # Shared module
-│   ├── shared/
-│   │   ├── examples.py
-│   │   ├── models.py               # Pydantic models
-│   │   └── sample_data.py
-│   └── models.py
-├── nginx/                   # Nginx configuration
-├── docker-compose.yml       # Docker orchestration
-├── Makefile                 # Development shortcuts
-└── README.md                # Primary project README
+│   │   ├── app.py                    # Main Streamlit application (854 lines)
+│   │   ├── config.py                 # Configuration management
+│   │   └── utils/api_client.py       # Async API client with error handling
+│   └── tests/                        # Frontend tests with async patterns
+|
+├── shared/                           # 📊 Shared Pydantic Models
+│   ├── models.py                     # Core data models & validation
+│   └── sample_data.py                # Standardized example content
+|
+├── examples/                         # 📚 API Integration Examples
+├── docs/                             # 📖 Comprehensive Documentation
+├── docker-compose.yml                # 🐳 Development orchestration
+├── docker-compose.prod.yml           # 🚀 Production configuration
+└── Makefile                          # 🛠️ Development commands (762 lines)
 ```
 
 ### Adding New Operations
 
-1. **Update Shared Models** (`shared/models.py`):
+**1. Update Shared Models** (`shared/models.py`):
 ```python
 class TextProcessingOperation(str, Enum):
     SUMMARIZE = "summarize"
+    SENTIMENT = "sentiment"
     # Add your new operation
     TRANSLATE = "translate"
 ```
 
-2. **Add Backend Logic** (`backend/app/services/text_processor.py`):
+**2. Add Backend Logic** (`backend/app/services/text_processor.py`):
 ```python
 async def _translate_text(self, text: str, options: Dict[str, Any]) -> str:
+    """Translate text to target language."""
     target_language = options.get("target_language", "Spanish")
-    # Implementation here
-    return translated_text
+    
+    prompt = f"""
+    Translate the following text to {target_language}:
+    
+    Text: {text}
+    
+    Translation:
+    """
+    
+    result = await self.agent.run(prompt)
+    return result.output.strip()
 ```
 
-3. **Update Frontend UI** (`frontend/app/app.py`):
+**3. Update Frontend UI** (`frontend/app/app.py`):
 ```python
 # Add UI controls for new operation
 if "target_language" in op_info.get("options", []):
@@ -366,111 +488,139 @@ if "target_language" in op_info.get("options", []):
     )
 ```
 
-### Testing
+## 🧪 Comprehensive Testing
 
-The project includes comprehensive testing with **parallel execution by default** for fast feedback:
+The project includes a robust testing framework with **parallel execution by default** for fast feedback cycles:
+
+### Test Organization & Coverage
+
+**Backend Testing** (`backend/tests/` - 23,162 lines across 59 test files):
+- **Infrastructure Tests** (>90% coverage): Cache, resilience, AI, security, monitoring
+- **Domain Service Tests** (>70% coverage): Text processing, validation
+- **API Tests**: Public (`/v1/`) and internal (`/internal/`) endpoints
+- **Integration Tests**: Cross-component testing with mocked external services
+- **Performance Tests**: Load testing and resilience pattern validation
+
+**Frontend Testing** (`frontend/tests/`):
+- **API Client Tests**: Async communication patterns with proper error handling
+- **Configuration Tests**: Environment variable validation and settings
+- **Mock Integration**: Isolated testing with httpx mocking
+- **Parallel Execution**: Fast test execution with pytest-xdist
+
+### Testing Commands
 
 ```bash
-# Install dependencies and setup virtual environment
-make install
+# 🏗️ Setup and Basic Testing
+make install               # Setup environment and dependencies
+make test                 # Run all tests (backend + frontend)
+make test-coverage        # Comprehensive coverage reporting
 
-# Run all tests (includes Docker integration tests if available)
-make test
+# 🔬 Backend Testing (Granular)
+make test-backend                    # Fast tests (parallel, excludes slow/manual)
+make test-backend-api               # API endpoint tests
+make test-backend-infrastructure    # Infrastructure service tests  
+make test-backend-integration       # Integration tests
+make test-backend-all               # All tests including slow tests
+make test-backend-manual            # Manual tests (requires live server)
 
-# Run local tests only (no Docker required)
-make test-local
+# 🎨 Frontend Testing
+make test-frontend         # Frontend tests via Docker
 
-# Run backend tests only (uses local virtual environment)
-make test-backend
-
-# Run frontend tests only (uses Docker)
-make test-frontend
-
-# Run with coverage
-make test-coverage
-
-# Run code quality checks
-make lint
-
-# Format code
-make format
+# 📊 Specialized Testing
+make test-retry           # Retry mechanism tests
+make test-circuit         # Circuit breaker tests
+make test-presets         # Resilience preset tests
 ```
 
-**Advanced Testing with Parallel Execution:**
+### Test Execution Features
+
+**Parallel Execution (Default):**
+- Tests run with `pytest-xdist` for faster feedback cycles
+- Environment isolation with `monkeypatch.setenv()`
+- Sequential mode available for debugging: `pytest -n 0`
+
+**Test Categories:**
+- **Fast Tests** (default): Unit tests, quick integration tests
+- **Slow Tests** (`--run-slow` flag): Comprehensive resilience testing, timing tests
+- **Manual Tests** (`--run-manual` flag): Require live server and real API keys
+
+**Manual Test Setup:**
 ```bash
-# Backend parallel testing (default behavior)
-cd backend
-scripts/test.sh                                    # All tests in parallel
-scripts/test.sh -c                                # With coverage report
-scripts/test.sh -w 4                              # Use 4 workers specifically
-scripts/test.sh tests/test_specific.py            # Specific test file
-scripts/test.sh -m debug tests/test_failing.py    # Debug mode (sequential)
+# 1. Set environment variables
+export GEMINI_API_KEY="your-actual-gemini-api-key"
+export API_KEY="test-api-key-12345"
 
-# Test execution modes
-scripts/test.sh -m parallel                       # Fast parallel execution (default)
-scripts/test.sh -m sequential                     # Sequential for debugging
-scripts/test.sh -m debug                          # Detailed debugging output
+# 2. Start server
+make run-backend
 
-# Coverage and reporting
-scripts/test.sh -c -v                             # Coverage with verbose output
-scripts/test.sh -w 8 -c                          # Maximum parallelization with coverage
+# 3. Run manual tests (in another terminal)
+make test-backend-manual
 ```
 
-**Manual testing with Docker:**
+## 🚀 Production Deployment
+
+### Environment-Specific Configuration
+
+**Development:**
 ```bash
-# Run backend tests in Docker (parallel by default)
-docker-compose exec backend python -m pytest
-
-# Run with coverage in Docker
-docker-compose exec backend python -m pytest --cov=app
-
-# Debug mode in Docker
-docker-compose exec backend python -m pytest -s -vv -n 0
+export RESILIENCE_PRESET=development
+export DEBUG=true
+export LOG_LEVEL=DEBUG
+export SHOW_DEBUG_INFO=true
 ```
 
-**Testing Best Practices:**
-- ✅ All tests run in parallel by default for faster feedback
-- ✅ Environment isolation ensures reliable parallel execution
-- ✅ Use debug mode (`-m debug`) for troubleshooting failing tests
-- ✅ Coverage reports available in `htmlcov/index.html`
-
-## 🚀 Deployment
-
-### Production Deployment
-
-1. **Configure Environment**:
+**Production:**
 ```bash
-# Set production environment variables
+export RESILIENCE_PRESET=production
 export DEBUG=false
 export LOG_LEVEL=INFO
-export GEMINI_API_KEY=your_production_key
+export DISABLE_INTERNAL_DOCS=true
+export CORS_ORIGINS='["https://your-frontend-domain.com"]'
 ```
 
-2. **Deploy with Docker**:
+### Deployment Options
+
+**Option 1: Production Mode**
 ```bash
-# Production mode
+# Start optimized production environment
 make prod
 
-# Or with docker-compose
+# Access services:
+# - Backend: http://localhost:8000 (internal docs disabled)
+# - Frontend: http://localhost:8501
+# - Redis: localhost:6379
+```
+
+**Option 2: Manual Docker Compose**
+```bash
+# Production configuration with optimizations
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Check deployment status
+make status
+make health
 ```
 
-3. **Setup SSL** (optional):
-```bash
-# Add SSL certificates to nginx/ssl/
-# Update nginx configuration for HTTPS
-```
+### Scaling & Performance
 
-### Scaling
-
-Scale individual services:
+**Horizontal Scaling:**
 ```bash
-# Scale backend instances
+# Scale backend instances for load distribution
 docker-compose up -d --scale backend=3
 
-# Scale frontend instances  
+# Scale frontend instances for user load
 docker-compose up -d --scale frontend=2
+
+# Monitor performance
+make logs
+make health
 ```
+
+**Performance Optimization:**
+- **Redis Caching**: Automatic caching with compression for improved response times
+- **Circuit Breakers**: Prevent cascade failures during high load
+- **Connection Pooling**: Efficient resource utilization
+- **Multi-stage Docker Builds**: Optimized container sizes
 
 ## ⚙️ Configuration
 
@@ -532,115 +682,192 @@ curl -X POST http://localhost:8000/resilience/validate \
   -d '{"configuration": {"retry_attempts": 3, "circuit_breaker_threshold": 5}}'
 ```
 
-For complete configuration details, see [Resilience Configuration](docs/RESILIENCE_CONFIG.md).
+### Complete Environment Variables Reference
 
-### Environment Variables
+| Variable | Description | Default | Environment |
+|----------|-------------|---------|-------------|
+| `RESILIENCE_PRESET` | Resilience configuration preset | `simple` | All |
+| `GEMINI_API_KEY` | Google Gemini API key | Required | All |
+| `AI_MODEL` | AI model to use | `gemini-2.0-flash-exp` | All |
+| `AI_TEMPERATURE` | Model temperature | `0.7` | All |
+| `API_KEY` | Primary API key | Required | All |
+| `ADDITIONAL_API_KEYS` | Additional valid API keys (comma-separated) | None | Production |
+| `REDIS_URL` | Redis connection URL | `redis://localhost:6379` | Optional |
+| `DEBUG` | Enable debug mode | `false` | Development |
+| `LOG_LEVEL` | Logging level | `INFO` | All |
+| `DISABLE_INTERNAL_DOCS` | Disable internal API docs | `false` | Production |
+| `CORS_ORIGINS` | Allowed CORS origins (JSON array) | `["http://localhost:8501"]` | Production |
+| `MAX_TEXT_LENGTH` | Max input text length | `10000` | All |
+| `SHOW_DEBUG_INFO` | Frontend debug information | `false` | Development |
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `RESILIENCE_PRESET` | Resilience configuration preset | `simple` |
-| `RESILIENCE_CUSTOM_CONFIG` | Custom JSON configuration (optional) | None |
-| `GEMINI_API_KEY` | Google Gemini API key | Required |
-| `AI_MODEL` | AI model to use | `gemini-2.0-flash-exp` |
-| `AI_TEMPERATURE` | Model temperature | `0.7` |
-| `DEBUG` | Enable debug mode | `false` |
-| `LOG_LEVEL` | Logging level | `INFO` |
-| `MAX_TEXT_LENGTH` | Max input text length | `10000` |
+## 🛠️ Customizing This Template for Your Project
 
-### Model Configuration
+### Template Customization Checklist
 
-Easily switch between AI providers:
-
-```python
-# In backend/app/config.py
-class Settings(BaseSettings):
-    # Use OpenAI instead of Gemini
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    ai_model: str = "gpt-4"
-    
-    # Or use Anthropic Claude
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
-    ai_model: str = "claude-3-sonnet"
-```
+- [ ] Replace `TextProcessorService` with your business logic
+- [ ] Update API endpoints in `app/api/v1/` 
+- [ ] Modify data models in `app/schemas/` and `shared/models.py`
+- [ ] Configure your LLM provider in settings
+- [ ] Customize Streamlit frontend for your operations or replace with your preferred UI
+- [ ] Update authentication and security settings
+- [ ] Configure resilience presets for your environment
+- [ ] Update README.md with your project details
+- [ ] Replace example tests with your business logic tests
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
-**1. CORS Errors**
-```bash
-# Check CORS configuration in backend/app/main.py
-# Ensure frontend URL is in allowed_origins
-```
-
-**2. API Connection Failed**
+**1. API Connection Failed**
 ```bash
 # Check if backend is running
 curl http://localhost:8000/health
 
-# Check Docker network
-docker-compose logs backend
+# Verify services status
+make status
+make health
+
+# Check logs for errors
+make logs
+make backend-logs
 ```
 
-**3. AI API Errors**
+**2. AI API Errors**
 ```bash
 # Verify API keys are set correctly
 echo $GEMINI_API_KEY
 
-# Check API quota and billing
+# Check AI service availability
+curl http://localhost:8000/v1/health
+
+# Check API quota and billing in your AI provider console
+```
+
+**3. Redis Connection Errors**
+```bash
+# Check Redis connectivity
+make redis-cli
+
+# Application automatically falls back to memory cache
+# Verify cache status
+curl http://localhost:8000/internal/cache/status
 ```
 
 **4. Port Conflicts**
 ```bash
-# Change ports in docker-compose.yml
+# Change ports in docker-compose.yml if needed
 ports:
   - "8001:8000"  # Backend
   - "8502:8501"  # Frontend
+  - "6380:6379"  # Redis
+```
+
+**5. Import Errors**
+```bash
+# Ensure virtual environment is activated and dependencies installed
+make install
+
+# For manual setup
+source .venv/bin/activate
+cd backend && pip install -r requirements.lock
+```
+
+**6. Test Failures**
+```bash
+# For manual tests, ensure server is running
+make run-backend
+
+# Set required environment variables
+export API_KEY="test-api-key-12345"
+export GEMINI_API_KEY="your-gemini-api-key"
+
+# Run manual tests
+make test-backend-manual
 ```
 
 ### Debug Mode
 
-Enable debug mode for development:
+Enable comprehensive debugging:
 ```bash
+# Backend debug mode
 export DEBUG=true
+export LOG_LEVEL=DEBUG
+
+# Frontend debug mode  
 export SHOW_DEBUG_INFO=true
+
+# Start with debugging enabled
 make dev
 ```
 
-## 📚 Examples
+This provides:
+- Detailed error messages and stack traces
+- Request/response logging
+- Auto-reload on code changes
+- Internal API documentation access
 
-### Basic Text Processing
+## 📚 Learning Resources
 
-```python
-from shared.models import TextProcessingRequest, TextProcessingOperation
+### Examples and Documentation
 
-# Create request
-request = TextProcessingRequest(
-    text="Artificial intelligence is transforming industries...",
-    operation=TextProcessingOperation.SUMMARIZE,
-    options={"max_length": 100}
-)
+**API Integration Examples** (`examples/`):
+- **`basic_usage.py`**: Complete HTTP client integration examples
+- **`custom_operation.py`**: Step-by-step guide for adding new operations
+- **`integration_test.py`**: Comprehensive integration testing patterns
 
-# Process with API
-response = await api_client.process_text(request)
-print(response.result)
-```
+**Infrastructure Examples** (`backend/examples/`):
+- **`advanced_infrastructure_demo.py`**: Complete infrastructure component integration
+- **`cache_configuration_examples.py`**: Different caching patterns for various environments
 
-### Custom AI Operations
+**Comprehensive Documentation** (`docs/`):
+- **`architecture-design/`**: Detailed architectural guidance and design patterns
+- **`code_ref/`**: Auto-generated code reference documentation
+- **Component READMEs**: Detailed documentation for each major component
 
-See `docs/examples/` for detailed examples:
-- Adding new text operations
-- Integrating different AI models
-- Custom UI components
-- Authentication integration
+### Additional Resources
+
+**Interactive Documentation** (when server is running):
+- **Public API (Swagger)**: http://localhost:8000/docs
+- **Internal API (Swagger)**: http://localhost:8000/internal/docs
+- **Public API (ReDoc)**: http://localhost:8000/redoc
+- **Internal API (ReDoc)**: http://localhost:8000/internal/redoc
+
+**Component Documentation**:
+- **Backend**: `backend/README.md` - FastAPI application architecture and setup
+- **Frontend**: `frontend/README.md` - Streamlit application patterns and features
+- **Shared**: `shared/README.md` - Common data models and sample data
+- **API**: `backend/app/api/README.md` - Comprehensive API endpoint documentation
+
+## 💡 Template Benefits
+
+This starter template provides:
+
+- **Rapid Prototyping**: Quick setup for AI application development with comprehensive infrastructure
+- **Production-Ready Architecture**: Scalable patterns suitable for enterprise deployment
+- **Educational Value**: Best practices demonstration for FastAPI, Streamlit, and AI integration
+- **Extensible Design**: Clear separation between infrastructure and domain logic for easy customization
+- **Comprehensive Testing**: Reliable test patterns with high coverage requirements
+- **Modern Development Experience**: Automated tooling, hot reload, and intelligent configuration management
+
+### Learning Outcomes
+
+Developers using this template will learn:
+
+- **Modern FastAPI Architecture**: Dual-API design, dependency injection, and comprehensive configuration management
+- **Production AI Integration**: Secure LLM integration with proper error handling, resilience patterns, and monitoring
+- **Infrastructure vs Domain Patterns**: Clear architectural boundaries for maintainable, scalable applications
+- **Advanced Streamlit Development**: Production-ready frontend patterns with async integration and comprehensive testing
+- **DevOps Best Practices**: Docker containerization, automated testing, and deployment strategies
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following the established patterns
+4. Add tests maintaining coverage requirements (Infrastructure >90%, Domain >70%)
+5. Run the test suite: `make test`
+6. Run code quality checks: `make lint`
+7. Submit a pull request with a clear description
 
 ## 📄 License
 
@@ -648,33 +875,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](issues/)
-- 💬 [Discussions](discussions/)
+- **📖 Documentation**: Comprehensive guides in `docs/` directory
+- **🔧 Makefile Help**: Run `make help` for all available commands
+- **🏗️ Architecture Guide**: See `docs/architecture-design/` for detailed patterns
+- **📊 API Documentation**: Interactive docs at http://localhost:8000/docs when running
 
 ---
 
-**Happy coding! 🚀**
-
-# Documentation Index
-
-## Getting Started
-- [README.md](../README.md) - Project overview and quick start
-- [CHECKLIST.md](docs/CHECKLIST.md) - Complete setup checklist
-- [VIRTUAL_ENVIRONMENT_GUIDE.md](docs/VIRTUAL_ENVIRONMENT_GUIDE.md) - Virtual environment management
-
-## Development
-- [INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) - Complete integration guide
-- [TESTING.md](docs/TESTING.md) - Testing guide with virtual environment support
-- [CODE_STANDARDS.md](docs/CODE_STANDARDS.md) - Code standards and patterns
-- [RESILIENCE_CONFIG.md](docs/RESILIENCE_CONFIG.md) - Resilience configuration guide and migration
-
-## Deployment
-- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deployment guide
-- [DOCKER.md](docs/DOCKER.md) - Docker setup and management
-- [API.md](docs/API.md) - API documentation
-
-## Support
-- [AUTHENTICATION.md](docs/AUTHENTICATION.md) - Authentication setup
-- [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [CONTRIBUTING.md](docs/CONTRIBUTING.md) - How to contribute
+**🚀 Start building production-ready AI applications today!**
