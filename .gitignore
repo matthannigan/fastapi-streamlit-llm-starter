@@ -193,7 +193,7 @@ logs/
 Thumbs.db
 
 # Repomix
-.repomix-output/
+repomix-output/
 
 # Added by Claude Task Master
 logs

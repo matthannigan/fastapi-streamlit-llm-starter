@@ -382,29 +382,29 @@ docs-build:
 # Documentation generation with repomix
 repomix:
 	@echo "Generating full repository documentation (uncompressed)..."
-	npx repomix --ignore "docs/code_ref*/**/*" --output .repomix-output/repomix_uncompressed.md
+	npx repomix --ignore "docs/code_ref*/**/*"             --output repomix-output/repomix_all-uncompressed.md
 	@echo "Generating full repository documentation (compressed)..."
-	npx repomix --compress --output .repomix-output/repomix_all.md
+	npx repomix --ignore "docs/code_ref*/**/*"  --compress --output repomix-output/repomix_all-compressed.md
 	$(MAKE) repomix-backend
 	$(MAKE) repomix-frontend  
 	$(MAKE) repomix-docs
 
 repomix-backend:
 	@echo "Generating backend documentation..."
-	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output .repomix-output/repomix_backend.md
-	npx repomix --include "backend/tests/**/*" --compress --output .repomix-output/repomix_backend-tests.md
+	npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output repomix-output/repomix_backend.md
+	npx repomix --include "backend/tests/**/*" --compress --output repomix-output/repomix_backend-tests.md
 
 repomix-frontend:
 	@echo "Generating frontend documentation..."
-	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*"  --output .repomix-output/repomix_frontend.md
-	npx repomix --include "frontend/tests/**/*" --compress --output .repomix-output/repomix_frontend-tests.md
+	npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*"  --output repomix-output/repomix_frontend.md
+	npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
 repomix-docs:
 	@echo "Generating documentation for READMEs and docs/ subdirectory..."
 	$(PYTHON_CMD) scripts/generate_code_docs.py backend/app/  docs/code_ref/backend/
 	$(PYTHON_CMD) scripts/generate_code_docs.py frontend/app/ docs/code_ref/frontend/
-	npx repomix --include "docs/code_ref/**/*" --output .repomix-output/repomix_code-ref.md
-	npx repomix --include "**/README.md,docs/**/*"  --ignore "docs/code_ref*/**/*" --output .repomix-output/repomix_docs.md
+	npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
+	npx repomix --include "**/README.md,docs/**/*"  --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
 
  ## Generate lock files from requirements (backend only - frontend uses Docker)
 lock-deps: venv
