@@ -253,7 +253,7 @@ from app.infrastructure.ai import sanitize_input_advanced, create_safe_prompt
 app = FastAPI()
 
 @app.post("/ai/process")
-async def process_text(request: ProcessingRequest):
+async def process_text(request: TextProcessingRequest):
     """Secure text processing endpoint."""
     
     try:
