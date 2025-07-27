@@ -184,7 +184,7 @@ test-backend-manual:
 
 test-frontend:
 	@echo "Running frontend tests via Docker..."
-	docker-compose run frontend pytest tests/ -v
+	docker-compose -f docker-compose.yml -f docker-compose.dev.yml run frontend pytest tests/ -v
 
 test-integration:
 	@echo "Running comprehensive integration tests..."
@@ -382,7 +382,7 @@ docs-build:
 # Documentation generation with repomix
 repomix:
 	@echo "Generating full repository documentation (uncompressed)..."
-	npx repomix            --output repomix-output_uncompressed.md
+	npx repomix --ignore "docs/code_ref*/**/*" --output repomix-output_uncompressed.md
 	@echo "Generating full repository documentation (compressed)..."
 	npx repomix --compress --output repomix-output_all.md
 	$(MAKE) repomix-backend
