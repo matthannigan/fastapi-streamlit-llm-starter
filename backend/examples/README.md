@@ -1,6 +1,8 @@
 # Infrastructure Examples
 
-This directory contains comprehensive examples demonstrating advanced usage of the infrastructure services available in the FastAPI Streamlit LLM Starter project. These examples serve as both learning materials and practical implementation guides.
+This directory contains comprehensive examples demonstrating advanced usage of the **backend infrastructure services** available in the FastAPI Streamlit LLM Starter project. These examples serve as both learning materials and practical implementation guides for backend developers and infrastructure engineers.
+
+> **📖 Looking for API integration examples?** See [API Integration Examples](../../examples/README.md) in the root `examples/` folder for HTTP client usage and external API interaction patterns.
 
 ## 📋 Available Examples
 
@@ -26,7 +28,7 @@ This directory contains comprehensive examples demonstrating advanced usage of t
 **Usage:**
 ```bash
 cd backend
-python -m app.examples.advanced_infrastructure_demo
+python -m examples.advanced_infrastructure_demo
 ```
 
 ### 2. Cache Configuration Examples (`cache_configuration_examples.py`)
@@ -49,7 +51,7 @@ python -m app.examples.advanced_infrastructure_demo
 **Usage:**
 ```bash
 cd backend
-python -m app.examples.cache_configuration_examples
+python -m examples.cache_configuration_examples
 ```
 
 ## 🚀 Getting Started
@@ -83,10 +85,10 @@ Each example is self-contained and can be run independently:
 cd backend
 
 # Advanced infrastructure demo
-python -m app.examples.advanced_infrastructure_demo
+python -m examples.advanced_infrastructure_demo
 
 # Cache configuration examples  
-python -m app.examples.cache_configuration_examples
+python -m examples.cache_configuration_examples
 ```
 
 ## 🏗️ Infrastructure Components Covered
@@ -143,8 +145,11 @@ These examples are designed to be easily customizable for your specific needs:
 
 ## 📚 Additional Resources
 
-For more information about the infrastructure components:
+### Related Examples
+- 🌐 [API Integration Examples](../../examples/README.md) - HTTP client usage and external API interaction patterns
+- 📚 [Main Project README](../../README.md) - Project overview and setup instructions
 
+### Infrastructure Documentation
 - 📖 [Cache Documentation](../infrastructure/cache/README.md)
 - 🛡️ [Resilience Documentation](../infrastructure/resilience/README.md)  
 - 🤖 [AI Infrastructure Documentation](../infrastructure/ai/)
@@ -168,7 +173,7 @@ ModuleNotFoundError: No module named 'app.infrastructure'
 **Solution**: Run examples from the `backend` directory using the module syntax:
 ```bash
 cd backend
-python -m app.examples.advanced_infrastructure_demo
+python -m examples.advanced_infrastructure_demo
 ```
 
 ### Permission Errors
