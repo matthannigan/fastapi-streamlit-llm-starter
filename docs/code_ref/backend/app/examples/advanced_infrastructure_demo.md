@@ -1,7 +1,5 @@
 # Advanced Infrastructure Services Demo
 
-  file_path: `backend/examples/advanced_infrastructure_demo.py`
-
 This script demonstrates advanced usage of the infrastructure services available in the
 FastAPI Streamlit LLM Starter project. It showcases:
 

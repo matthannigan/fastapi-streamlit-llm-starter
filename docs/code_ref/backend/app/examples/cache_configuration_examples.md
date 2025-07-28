@@ -1,7 +1,5 @@
 # AIResponseCache Configuration Examples
 
-  file_path: `backend/examples/cache_configuration_examples.py`
-
 This script provides practical examples of how to configure and use the AIResponseCache
 with different settings for various use cases. It demonstrates:
 

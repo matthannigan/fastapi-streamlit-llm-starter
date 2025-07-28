@@ -653,8 +653,10 @@ repomix-frontend-tests:
 repomix-docs:
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
-	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/app/ docs/code_ref/backend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/app/ docs/code_ref/frontend/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/ docs/code_ref/backend/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/ docs/code_ref/shared/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
 	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
 	@npx repomix --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
 

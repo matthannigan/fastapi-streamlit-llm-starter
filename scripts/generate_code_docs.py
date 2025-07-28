@@ -1,6 +1,7 @@
 import ast
 import re
 import argparse
+import shutil
 from pathlib import Path
 
 def extract_module_docstring(file_path):
@@ -49,7 +50,7 @@ def analyze_section_header(line):
     }
 
 
-def parse_google_docstring(docstring):
+def parse_google_docstring(docstring, file_path):
     """
     Parses a Google-style docstring and converts it to Markdown.
 
@@ -69,7 +70,7 @@ def parse_google_docstring(docstring):
     
     # The first line is the title
     title = lines[0].strip()
-    markdown_parts = [f"# {title}\n"]
+    markdown_parts = [f"# {title}\n\n  file_path: `{file_path}`\n"]
     
     body_lines = lines[1:]
     
@@ -169,9 +170,10 @@ def process_files(source_dir, output_dir):
     """
     Walks through the source directory, finds .py files, extracts their
     docstrings, converts them to Markdown, and saves them to the output directory.
+    Also copies any README.md files found to preserve documentation structure.
 
     Args:
-        source_dir (str or Path): The directory to search for .py files.
+        source_dir (str or Path): The directory to search for .py files and README.md files.
         output_dir (str or Path): The directory to save the .md files.
     """
     source_path = Path(source_dir)
@@ -194,7 +196,7 @@ def process_files(source_dir, output_dir):
             print(f"  -> No module docstring found. Skipping.")
             continue
             
-        markdown_content = parse_google_docstring(docstring)
+        markdown_content = parse_google_docstring(docstring, py_file)
         
         # Create a corresponding path in the output directory
         relative_path = py_file.relative_to(source_path)
@@ -209,6 +211,25 @@ def process_files(source_dir, output_dir):
             print(f"  -> Successfully created '{md_file_path}'")
         except IOError as e:
             print(f"  -> Error writing to file '{md_file_path}': {e}")
+    
+    # Process README.md files
+    print(f"Searching for README.md files in '{source_path.resolve()}'...")
+    
+    for readme_file in source_path.rglob('README.md'):
+        print(f"Copying '{readme_file}'...")
+        
+        # Create a corresponding path in the output directory
+        relative_path = readme_file.relative_to(source_path)
+        output_readme_path = output_path / relative_path
+        
+        # Ensure the parent directory for the README file exists
+        output_readme_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            shutil.copy2(readme_file, output_readme_path)
+            print(f"  -> Successfully copied to '{output_readme_path}'")
+        except IOError as e:
+            print(f"  -> Error copying file to '{output_readme_path}': {e}")
 
 def main():
     """Main function to run the script from the command line."""
