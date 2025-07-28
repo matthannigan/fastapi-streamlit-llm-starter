@@ -71,6 +71,7 @@ def parse_google_docstring(docstring, file_path):
     # The first line is the title
     title = lines[0].strip()
     markdown_parts = [f"# {title}\n\n  file_path: `{file_path}`\n"]
+    # markdown_parts = [f"# {title}\n"]
     
     body_lines = lines[1:]
     
@@ -200,7 +201,7 @@ def process_files(source_dir, output_dir):
         
         # Create a corresponding path in the output directory
         relative_path = py_file.relative_to(source_path)
-        md_file_path = output_path / relative_path.with_suffix('.md')
+        md_file_path = output_path / relative_path.with_suffix('.py.md')
         
         # Ensure the parent directory for the markdown file exists
         md_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -212,24 +213,24 @@ def process_files(source_dir, output_dir):
         except IOError as e:
             print(f"  -> Error writing to file '{md_file_path}': {e}")
     
-    # Process README.md files
-    print(f"Searching for README.md files in '{source_path.resolve()}'...")
+    # Don't Process README.md files
+    # print(f"Searching for README.md files in '{source_path.resolve()}'...")
     
-    for readme_file in source_path.rglob('README.md'):
-        print(f"Copying '{readme_file}'...")
+    # for readme_file in source_path.rglob('README.md'):
+    #     print(f"Copying '{readme_file}'...")
         
-        # Create a corresponding path in the output directory
-        relative_path = readme_file.relative_to(source_path)
-        output_readme_path = output_path / relative_path
+    #     # Create a corresponding path in the output directory
+    #     relative_path = readme_file.relative_to(source_path)
+    #     output_readme_path = output_path / relative_path
         
-        # Ensure the parent directory for the README file exists
-        output_readme_path.parent.mkdir(parents=True, exist_ok=True)
+    #     # Ensure the parent directory for the README file exists
+    #     output_readme_path.parent.mkdir(parents=True, exist_ok=True)
         
-        try:
-            shutil.copy2(readme_file, output_readme_path)
-            print(f"  -> Successfully copied to '{output_readme_path}'")
-        except IOError as e:
-            print(f"  -> Error copying file to '{output_readme_path}': {e}")
+    #     try:
+    #         shutil.copy2(readme_file, output_readme_path)
+    #         print(f"  -> Successfully copied to '{output_readme_path}'")
+    #     except IOError as e:
+    #         print(f"  -> Error copying file to '{output_readme_path}': {e}")
 
 def main():
     """Main function to run the script from the command line."""
