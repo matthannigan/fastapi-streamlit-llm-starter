@@ -649,8 +649,19 @@ repomix-frontend-tests:
 	@mkdir -p repomix-output
 	@npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
+# Copy READMEs save with code to docs/
+copy-readmes:
+	@cp README.md docs/README.md
+	@mkdir -p docs/quick-guides
+	@find backend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find frontend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find shared -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find examples -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find scripts -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@echo "✅ READMEs copied to docs/quick-guides/"
+
 # Generate documentation for code_ref, READMEs and docs/
-repomix-docs:
+repomix-docs: copy-readmes
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
 	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
@@ -658,7 +669,6 @@ repomix-docs:
 	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
 	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
 	@$(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
-	@cp README.md docs/code_ref/README.md
 	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
 	@npx repomix --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
 
