@@ -1,7 +1,7 @@
 # Auth Test Coverage Improvement PRD
 
 # Overview  
-The authentication module (`backend/app/auth.py`) currently has substantial test coverage for core authentication flows but contains critical gaps in testing utility functions, advanced features, and edge cases. This project aims to achieve comprehensive test coverage for all authentication functionality, ensuring production reliability and maintainability.
+The authentication module (`backend/app/infrastructure/security/auth.py`) currently has substantial test coverage for core authentication flows but contains critical gaps in testing utility functions, advanced features, and edge cases. This project aims to achieve comprehensive test coverage for all authentication functionality, ensuring production reliability and maintainability.
 
 **Problem**: Missing test coverage for utility functions, advanced configuration scenarios, metadata features, and edge cases could lead to production failures and difficult debugging.
 
