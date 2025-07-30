@@ -29,7 +29,9 @@
         docker-build docker-up docker-down restart backend-shell frontend-shell \
         backend-logs frontend-logs status health stop \
         dev dev-legacy prod logs redis-cli backup restore \
-        docs-serve docs-build \
+				copy-readmes code_ref \
+				docusaurus docusaurus-serve docusaurus-build docusaurus-clear \
+        mkdocs-serve mkdocs-build \
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
         ci-test ci-test-all lock-deps update-deps \
         list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets
@@ -592,24 +594,68 @@ restore:
 	@echo "✅ Redis data restored from $(BACKUP)!"
 
 ##################################################################################################
-# Documentation
+# Documentation Scripts
+##################################################################################################
+
+# Copy all READMEs saved within the codebase to docs/quick-guides
+copy-readmes:
+	@cp README.md docs/README.md
+	@mkdir -p docs/quick-guides
+	@find backend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find frontend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find shared -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find examples -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@find scripts -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
+	@echo "✅ READMEs copied to docs/quick-guides/"
+
+# Export docstrings from codebase to docs/code_ref
+code_ref:
+	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
+	@$(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
+	@echo "✅ docstrings copied to docs/code_ref/"
+
+##################################################################################################
+# Documentation Website (via Docusaurus)
+##################################################################################################
+
+docusaurus: copy-readmes code_ref
+	@echo "📖 Serving documentation locally..."
+	@echo "⏹️  Press Ctrl+C to stop"
+	cd docs-website && npm run start
+
+docusaurus-build: copy-readmes code_ref
+	@echo "📖 Building static documentation site..."
+	cd docs-website && npm run build
+	@echo "✅ Documentation built in docs-website/build/"
+
+docusaurus-serve: docusaurus-build
+	cd docs-website && npm run serve
+
+docusaurus-clear:
+	cd docs-website && npm run clear
+
+##################################################################################################
+# Documentation Website (via Mkdocs)
 ##################################################################################################
 
 # Serve documentation locally for development
-docs-serve:
+mkdocs-serve:
 	@echo "📖 Serving documentation locally..."
 	@echo "🌐 Documentation available at: http://127.0.0.1:8000"
 	@echo "⏹️  Press Ctrl+C to stop"
 	@mkdocs serve
 
 # Build static documentation site
-docs-build:
+mkdocs-build:
 	@echo "📖 Building static documentation site..."
 	@mkdocs build --clean
 	@echo "✅ Documentation built in site/ directory"
 
 ##################################################################################################
-# Repository Documentation (Repomix)
+# Documentation Export (Repomix)
 ##################################################################################################
 
 # Generate complete repository documentation
@@ -649,26 +695,10 @@ repomix-frontend-tests:
 	@mkdir -p repomix-output
 	@npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
-# Copy READMEs save with code to docs/
-copy-readmes:
-	@cp README.md docs/README.md
-	@mkdir -p docs/quick-guides
-	@find backend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find frontend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find shared -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find examples -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find scripts -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@echo "✅ READMEs copied to docs/quick-guides/"
-
 # Generate documentation for code_ref, READMEs and docs/
-repomix-docs: copy-readmes
+repomix-docs: copy-readmes code_ref
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
-	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
 	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
 	@npx repomix --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
 
