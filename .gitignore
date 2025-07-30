@@ -222,7 +222,7 @@ tasks.json
 tasks/ 
 
 # Documentation
-docs-website/
+#docs-website/
 
 # Backend App Refactor in progress
 backend/app.old/
