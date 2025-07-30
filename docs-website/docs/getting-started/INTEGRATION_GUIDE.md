@@ -59,9 +59,11 @@ python basic_usage.py
 ```
 
 **🎉 You're ready to go!**
-- Backend API: http://localhost:8000
+- Backend Public API: http://localhost:8000/v1/
+- Backend Internal API: http://localhost:8000/internal/
 - Frontend UI: http://localhost:8501
-- API Docs: http://localhost:8000/docs
+- Public API Docs: http://localhost:8000/docs
+- Internal API Docs: http://localhost:8000/internal/docs
 
 ## 🏗️ System Architecture
 
@@ -69,35 +71,59 @@ python basic_usage.py
 graph TB
     subgraph "Frontend Layer"
         ST[Streamlit UI]
-        ST --> API[FastAPI Backend]
+        ST --> PUB[Public API /v1/]
     end
     
-    subgraph "Backend Layer"
-        API --> TP[Text Processor]
-        API --> SM[Shared Models]
-        TP --> AI[AI Agent]
+    subgraph "Dual-API Backend"
+        PUB[Public API /v1/] --> DS[Domain Services]
+        INT[Internal API /internal/] --> IS[Infrastructure Services]
+        
+        subgraph "Infrastructure Services"
+            IS --> CACHE[Cache Service]
+            IS --> RES[Resilience Patterns]
+            IS --> SEC[Security Service]
+            IS --> MON[Monitoring Service]
+        end
+        
+        subgraph "Domain Services"
+            DS --> TP[Text Processor]
+            DS --> RV[Response Validator]
+        end
+        
+        CACHE --> REDIS[Redis Cache]
+        CACHE --> MEM[Memory Cache]
+        TP --> AI[PydanticAI Agent]
     end
     
     subgraph "AI Layer"
         AI --> GM[Gemini Model]
     end
     
+    subgraph "Shared Layer"
+        SM[Shared Models] --> PUB
+        SM --> INT
+    end
+    
     subgraph "Examples & Testing"
-        EX[Examples] --> API
-        IT[Integration Tests] --> API
+        EX[Examples] --> PUB
+        IT[Integration Tests] --> PUB
+        IT --> INT
     end
 ```
 
 ### Component Overview
 
-| Component | Purpose | Technology |
-|-----------|---------|------------|
-| **Frontend** | User interface for text processing | Streamlit |
-| **Backend** | REST API for text operations | FastAPI |
-| **Text Processor** | Core AI processing logic | Python + AI Agent |
-| **Shared Models** | Data validation and types | Pydantic |
-| **Examples** | Usage demonstrations | Python scripts |
-| **Tests** | Quality assurance | pytest + custom |
+| Component | Purpose | Technology | Coverage |
+|-----------|---------|------------|----------|
+| **Frontend** | Production-ready UI for AI operations | Streamlit | N/A |
+| **Public API** | External-facing business endpoints | FastAPI | 95%+ |
+| **Internal API** | Administrative/infrastructure endpoints | FastAPI | 95%+ |
+| **Infrastructure Services** | Production-ready technical capabilities | Python | >90% |
+| **Domain Services** | Educational examples (replace with your logic) | Python + PydanticAI | >70% |
+| **Resilience Patterns** | Circuit breakers, retry, orchestration | Python | >90% |
+| **Cache System** | Redis + memory cache with fallback | Redis/Python | >90% |
+| **Security Service** | Multi-key auth, input sanitization | Python | >90% |
+| **Shared Models** | Cross-service data validation | Pydantic | 100% |
 
 ## 🔧 Complete Setup Guide
 
@@ -116,13 +142,27 @@ graph TB
    
    Edit `.env`:
    ```env
+   # Essential Configuration
+   RESILIENCE_PRESET=development  # Choose: simple, development, production
    GEMINI_API_KEY=your_api_key_here
-   AI_MODEL=gemini-pro
+   API_KEY=dev-test-key-12345
+   
+   # AI Configuration
+   AI_MODEL=gemini-2.0-flash-exp
+   
+   # Development Settings
    DEBUG=true
+   LOG_LEVEL=DEBUG
    HOST=0.0.0.0
    PORT=8000
-   LOG_LEVEL=INFO
-   ALLOWED_ORIGINS=["http://localhost:8501"]
+   
+   # Infrastructure Settings
+   REDIS_URL=redis://localhost:6379  # Optional - falls back to memory cache
+   CORS_ORIGINS=["http://localhost:8501"]
+   DISABLE_INTERNAL_DOCS=false  # Enable internal API docs in development
+   
+   # Additional API Keys (optional)
+   ADDITIONAL_API_KEYS=additional-key-1,additional-key-2
    ```
 
 2. **Install Dependencies:**
@@ -299,79 +339,163 @@ asyncio.run(demonstrate_all_operations())
 
 ## 🔌 API Integration
 
-### RESTful Endpoints
+### Dual-API Architecture
 
-#### Health Check
+The template provides two distinct API interfaces:
+
+#### Public API (`/v1/`) - External Business Logic
+For external applications and frontend integration:
+
+**Health Check**
 ```http
-GET /health
+GET /v1/health
 ```
 **Response:**
 ```json
 {
   "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00",
-  "version": "1.0.0",
-  "ai_model_available": true
+  "timestamp": "2024-01-15T10:30:00Z",
+  "version": "1.0.0"
 }
 ```
 
-#### Process Text
+**Process Text**
 ```http
-POST /process
+POST /v1/text-processing/{operation}
 Content-Type: application/json
+X-API-Key: your-api-key
 
 {
   "text": "Your text here",
-  "operation": "summarize",
   "options": {"max_length": 100},
-  "question": "Optional question for Q&A"
+  "question": "Optional question for Q&A operations"
 }
 ```
 
-**Response:**
-```json
-{
-  "operation": "summarize",
-  "success": true,
-  "result": "Processed text result",
-  "sentiment": null,
-  "key_points": null,
-  "questions": null,
-  "metadata": {"word_count": 150},
-  "processing_time": 2.3,
-  "timestamp": "2024-01-15T10:30:00"
-}
-```
-
-#### Available Operations
+**Available Operations**
 ```http
-GET /operations
+GET /v1/operations
+X-API-Key: your-api-key
+```
+
+#### Internal API (`/internal/`) - Infrastructure Management
+For administrative and monitoring tasks (requires API key authentication):
+
+**System Health**
+```http
+GET /internal/health
+X-API-Key: your-api-key
 ```
 **Response:**
 ```json
 {
-  "operations": [
-    {
-      "id": "summarize",
-      "name": "Summarize",
-      "description": "Generate a concise summary of the text",
-      "options": ["max_length"]
-    }
-  ]
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "components": {
+    "cache": "healthy",
+    "ai_service": "healthy",
+    "resilience": "healthy"
+  },
+  "metrics": {
+    "uptime": "2d 5h 30m",
+    "total_requests": 15420,
+    "cache_hit_rate": 0.85
+  }
 }
+```
+
+**Resilience Management (38 endpoints across 8 modules)**
+```http
+# Configuration Management
+GET /internal/resilience/config
+GET /internal/resilience/presets
+POST /internal/resilience/validate
+
+# Circuit Breaker Management  
+GET /internal/resilience/circuit-breakers
+POST /internal/resilience/circuit-breakers/{name}/reset
+
+# Performance Monitoring
+GET /internal/resilience/metrics
+POST /internal/resilience/benchmark
+
+# Cache Management
+GET /internal/cache/stats
+POST /internal/cache/clear
+
+# System Monitoring
+GET /internal/monitoring/metrics
+GET /internal/monitoring/alerts
+```
+
+### Example API Usage
+
+#### Public API Integration
+```python
+import httpx
+
+async def use_public_api():
+    headers = {"X-API-Key": "your-api-key"}
+    
+    async with httpx.AsyncClient() as client:
+        # Health check
+        health = await client.get("http://localhost:8000/v1/health")
+        print(f"API Status: {health.json()['status']}")
+        
+        # Process text
+        response = await client.post(
+            "http://localhost:8000/v1/text-processing/summarize",
+            headers=headers,
+            json={
+                "text": "Your long text here...",
+                "options": {"max_length": 100}
+            }
+        )
+        result = response.json()
+        print(f"Summary: {result['result']}")
+```
+
+#### Internal API Integration
+```python
+async def monitor_system():
+    headers = {"X-API-Key": "your-api-key"}
+    
+    async with httpx.AsyncClient() as client:
+        # Check system health
+        health = await client.get(
+            "http://localhost:8000/internal/health",
+            headers=headers
+        )
+        
+        # Get resilience metrics
+        metrics = await client.get(
+            "http://localhost:8000/internal/resilience/metrics",
+            headers=headers
+        )
+        
+        # Check cache performance
+        cache_stats = await client.get(
+            "http://localhost:8000/internal/cache/stats",
+            headers=headers
+        )
+        
+        print(f"System Health: {health.json()['status']}")
+        print(f"Cache Hit Rate: {cache_stats.json()['hit_rate']:.2%}")
 ```
 
 ### Python Client Library
 
-Create a reusable client:
+Create a comprehensive client for both APIs:
 
 ```python
 class LLMClient:
-    """Reusable client for the FastAPI-Streamlit-LLM API."""
+    """Comprehensive client for the dual-API FastAPI-Streamlit-LLM template."""
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://localhost:8000", api_key: str = None):
         self.base_url = base_url
+        self.api_key = api_key
         self.session = None
+        self.headers = {"X-API-Key": api_key} if api_key else {}
     
     async def __aenter__(self):
         self.session = httpx.AsyncClient(timeout=30.0)
@@ -381,47 +505,112 @@ class LLMClient:
         if self.session:
             await self.session.aclose()
     
+    # Public API Methods
     async def summarize(self, text: str, max_length: int = 100) -> str:
-        """Summarize text."""
+        """Summarize text using public API."""
         response = await self.session.post(
-            f"{self.base_url}/process",
-            json={
-                "text": text,
-                "operation": "summarize",
-                "options": {"max_length": max_length}
-            }
+            f"{self.base_url}/v1/text-processing/summarize",
+            headers=self.headers,
+            json={"text": text, "options": {"max_length": max_length}}
         )
         response.raise_for_status()
         return response.json()["result"]
     
     async def analyze_sentiment(self, text: str) -> dict:
-        """Analyze sentiment."""
+        """Analyze sentiment using public API."""
         response = await self.session.post(
-            f"{self.base_url}/process",
-            json={"text": text, "operation": "sentiment"}
+            f"{self.base_url}/v1/text-processing/sentiment",
+            headers=self.headers,
+            json={"text": text}
         )
         response.raise_for_status()
         return response.json()["sentiment"]
     
-    async def extract_key_points(self, text: str, max_points: int = 5) -> list:
-        """Extract key points."""
-        response = await self.session.post(
-            f"{self.base_url}/process",
-            json={
-                "text": text,
-                "operation": "key_points",
-                "options": {"max_points": max_points}
-            }
+    async def get_operations(self) -> dict:
+        """Get available operations from public API."""
+        response = await self.session.get(
+            f"{self.base_url}/v1/operations",
+            headers=self.headers
         )
         response.raise_for_status()
-        return response.json()["key_points"]
+        return response.json()
+    
+    # Internal API Methods (Infrastructure Management)
+    async def get_system_health(self) -> dict:
+        """Get comprehensive system health from internal API."""
+        response = await self.session.get(
+            f"{self.base_url}/internal/health",
+            headers=self.headers
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_resilience_metrics(self) -> dict:
+        """Get resilience metrics from internal API."""
+        response = await self.session.get(
+            f"{self.base_url}/internal/resilience/metrics",
+            headers=self.headers
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_cache_stats(self) -> dict:
+        """Get cache statistics from internal API."""
+        response = await self.session.get(
+            f"{self.base_url}/internal/cache/stats",
+            headers=self.headers
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    async def validate_resilience_config(self, config: dict) -> dict:
+        """Validate resilience configuration."""
+        response = await self.session.post(
+            f"{self.base_url}/internal/resilience/validate",
+            headers=self.headers,
+            json={"configuration": config}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    async def reset_circuit_breaker(self, name: str) -> dict:
+        """Reset a specific circuit breaker."""
+        response = await self.session.post(
+            f"{self.base_url}/internal/resilience/circuit-breakers/{name}/reset",
+            headers=self.headers
+        )
+        response.raise_for_status()
+        return response.json()
 
-# Usage
-async def use_client():
-    async with LLMClient() as client:
-        summary = await client.summarize("Your long text here...")
-        sentiment = await client.analyze_sentiment("I love this!")
-        points = await client.extract_key_points("Complex document...")
+# Usage Examples
+async def use_public_api():
+    """Example using public API for business operations."""
+    async with LLMClient(api_key="your-api-key") as client:
+        # Business operations
+        summary = await client.summarize("Your long text here...", max_length=150)
+        sentiment = await client.analyze_sentiment("I love this product!")
+        operations = await client.get_operations()
+        
+        print(f"Summary: {summary}")
+        print(f"Sentiment: {sentiment}")
+        print(f"Available operations: {len(operations['operations'])}")
+
+async def monitor_infrastructure():
+    """Example using internal API for infrastructure monitoring."""
+    async with LLMClient(api_key="your-api-key") as client:
+        # Infrastructure monitoring
+        health = await client.get_system_health()
+        metrics = await client.get_resilience_metrics()
+        cache_stats = await client.get_cache_stats()
+        
+        print(f"System Status: {health['status']}")
+        print(f"Cache Hit Rate: {cache_stats.get('hit_rate', 0):.2%}")
+        print(f"Total Requests: {health['metrics']['total_requests']}")
+        
+        # Validate configuration
+        test_config = {"retry_attempts": 3, "circuit_breaker_threshold": 5}
+        validation = await client.validate_resilience_config(test_config)
+        print(f"Config Valid: {validation['is_valid']}")
 ```
 
 ## 🎨 Frontend Integration
@@ -673,19 +862,70 @@ Error: Connection refused to localhost:8000
 ```
 **Solutions:**
 - Ensure backend is running: `python -m uvicorn app.main:app --reload`
+- Check both API endpoints:
+  - Public API: `curl http://localhost:8000/v1/health`
+  - Internal API: `curl http://localhost:8000/internal/health -H "X-API-Key: your-key"`
 - Check port availability: `lsof -i :8000`
 - Verify firewall settings
 
-#### 2. AI Model Issues
+#### 2. Authentication Issues
+```
+Error: 401 Unauthorized
+```
+**Solutions:**
+- Set `API_KEY` environment variable
+- Include `X-API-Key` header in requests to internal API
+- Verify API key format (no extra whitespace)
+- Check `ADDITIONAL_API_KEYS` for multi-key setup
+
+#### 3. Resilience Configuration Issues
+```
+Error: Invalid resilience configuration
+```
+**Solutions:**
+- Set `RESILIENCE_PRESET` environment variable (`simple`, `development`, or `production`)
+- Validate custom configuration:
+  ```bash
+  curl -X POST http://localhost:8000/internal/resilience/validate \
+    -H "X-API-Key: your-key" \
+    -H "Content-Type: application/json" \
+    -d '{"configuration": {"retry_attempts": 3}}'
+  ```
+- Check configuration health:
+  ```bash
+  curl http://localhost:8000/internal/resilience/config/health-check \
+    -H "X-API-Key: your-key"
+  ```
+
+#### 4. Cache Issues
+```
+Error: Redis connection failed
+```
+**Solutions:**
+- Redis is optional - the application automatically falls back to memory cache
+- Check Redis connection: `docker-compose exec redis redis-cli ping`
+- Verify `REDIS_URL` environment variable
+- Monitor cache performance:
+  ```bash
+  curl http://localhost:8000/internal/cache/stats \
+    -H "X-API-Key: your-key"
+  ```
+
+#### 5. AI Model Issues
 ```
 Error: AI model not available
 ```
 **Solutions:**
 - Set `GEMINI_API_KEY` environment variable
-- Verify API key validity
+- Verify API key validity with Google AI Studio
 - Check internet connectivity
+- Monitor resilience metrics for AI service failures:
+  ```bash
+  curl http://localhost:8000/internal/resilience/metrics \
+    -H "X-API-Key: your-key"
+  ```
 
-#### 3. Frontend Issues
+#### 6. Frontend Issues
 ```
 Error: Streamlit app won't start
 ```
@@ -693,15 +933,33 @@ Error: Streamlit app won't start
 - Install dependencies: `pip install -r requirements.txt`
 - Check Python version (3.8+)
 - Clear Streamlit cache: `streamlit cache clear`
+- Verify backend API connectivity from frontend
 
-#### 4. Performance Issues
+#### 7. Performance Issues
 ```
-Error: Request timeout
+Error: Request timeout / Circuit breaker open
 ```
 **Solutions:**
-- Increase timeout settings
-- Optimize text length
-- Check AI model rate limits
+- Check resilience patterns are working:
+  ```bash
+  curl http://localhost:8000/internal/resilience/circuit-breakers \
+    -H "X-API-Key: your-key"
+  ```
+- Reset circuit breakers if needed:
+  ```bash
+  curl -X POST http://localhost:8000/internal/resilience/circuit-breakers/ai_service/reset \
+    -H "X-API-Key: your-key"
+  ```
+- Monitor system performance:
+  ```bash
+  curl http://localhost:8000/internal/monitoring/metrics \
+    -H "X-API-Key: your-key"
+  ```
+- Adjust resilience preset for your environment:
+  ```bash
+  export RESILIENCE_PRESET=production  # For higher reliability
+  export RESILIENCE_PRESET=development  # For faster feedback
+  ```
 
 ### Debug Mode
 
@@ -717,26 +975,52 @@ logging.basicConfig(
 
 ### Health Monitoring
 
-Monitor system health:
+Monitor system health with dual-API endpoints:
 
 ```bash
-# Check API health
-curl http://localhost:8000/health
+# Check Public API health (basic)
+curl http://localhost:8000/v1/health
 
-# Monitor logs
-tail -f backend/logs/app.log
+# Check Internal API health (comprehensive)
+curl http://localhost:8000/internal/health \
+  -H "X-API-Key: your-api-key"
+
+# Monitor resilience system
+curl http://localhost:8000/internal/resilience/health \
+  -H "X-API-Key: your-api-key"
+
+# Check cache performance
+curl http://localhost:8000/internal/cache/stats \
+  -H "X-API-Key: your-api-key"
+
+# Get system metrics
+curl http://localhost:8000/internal/monitoring/metrics \
+  -H "X-API-Key: your-api-key"
+
+# Monitor logs with filtering
+tail -f backend/logs/app.log | grep -E "(ERROR|WARNING|resilience|circuit|retry)"
 
 # Check resource usage
 htop
+
+# Monitor Docker containers
+docker-compose ps
+docker stats
 ```
 
 ## 📚 Additional Resources
 
 ### Documentation
-- **API Documentation:** http://localhost:8000/docs
+- **Public API Documentation:** http://localhost:8000/docs
+- **Internal API Documentation:** http://localhost:8000/internal/docs (disable in production)
+- **Architecture Guide:** `docs/architecture-design/INFRASTRUCTURE_VS_DOMAIN.md`
+- **Testing Guide:** `docs/development/TESTING.md`
+- **Deployment Guide:** `docs/deployment/DEPLOYMENT.md`
+- **Resilience Configuration:** `docs/infrastructure/RESILIENCE_CONFIG.md`
+- **Cache Guide:** `docs/infrastructure/CACHE.md`
+- **Security Guide:** `docs/infrastructure/SECURITY.md`
 - **Examples:** `examples/README.md`
-- **Testing Guide:** `TESTING.md`
-- **Docker Guide:** `DOCKER_README.md`
+- **Docker Guide:** `docs/deployment/DOCKER.md`
 
 ### Community & Support
 - **Issues:** GitHub Issues

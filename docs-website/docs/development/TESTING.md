@@ -13,27 +13,63 @@ The test suite covers both backend and frontend components with the following ty
 
 ## Test Structure
 
+The testing architecture follows the infrastructure vs domain service separation:
+
 ```
 ├── backend/
 │   ├── tests/
-│   │   ├── conftest.py            # Test fixtures and configuration
-│   │   ├── test_main.py           # FastAPI endpoint tests
-│   │   ├── test_text_processor.py # Service layer tests
-│   │   └── test_models.py         # Pydantic model tests
-│   ├── pytest.ini                 # Pytest configuration
-│   └── requirements-dev.txt       # Testing dependencies
+│   │   ├── conftest.py            # Global test fixtures and configuration
+│   │   ├── api/                   # API endpoint tests (dual-API structure)
+│   │   │   ├── conftest.py        # API-specific fixtures
+│   │   │   ├── v1/                # Public API tests (/v1/)
+│   │   │   │   ├── test_main_endpoints.py
+│   │   │   │   └── test_text_processing_endpoints.py
+│   │   │   └── internal/          # Internal API tests (/internal/)
+│   │   │       ├── test_admin_endpoints.py
+│   │   │       ├── test_cache_endpoints.py
+│   │   │       ├── test_monitoring_endpoints.py
+│   │   │       └── test_resilience_*_endpoints.py
+│   │   ├── core/                  # Core application functionality
+│   │   │   ├── test_config.py
+│   │   │   ├── test_dependencies.py
+│   │   │   ├── test_exceptions.py
+│   │   │   └── test_middleware.py
+│   │   ├── infrastructure/        # Infrastructure service tests (>90% coverage)
+│   │   │   ├── ai/               # AI infrastructure tests
+│   │   │   ├── cache/            # Cache infrastructure tests
+│   │   │   ├── monitoring/       # Monitoring infrastructure tests
+│   │   │   ├── resilience/       # Resilience pattern tests
+│   │   │   └── security/         # Security infrastructure tests
+│   │   ├── services/             # Domain service tests (>70% coverage)
+│   │   │   ├── test_response_validator.py
+│   │   │   └── test_text_processing.py
+│   │   ├── integration/          # Cross-component integration tests
+│   │   │   ├── test_auth_endpoints.py
+│   │   │   ├── test_cache_integration.py
+│   │   │   ├── test_end_to_end.py
+│   │   │   └── test_resilience_integration*.py
+│   │   ├── performance/          # Performance and load testing
+│   │   │   └── test_cache_performance.py
+│   │   ├── manual/               # Manual tests (require running server)
+│   │   │   ├── test_manual_api.py
+│   │   │   └── test_manual_auth.py
+│   │   └── shared_schemas/       # Shared model tests
+│   │       ├── test_common_schemas.py
+│   │       └── test_text_processing_schemas.py
+│   ├── pytest.ini                # Pytest configuration with markers
+│   └── requirements-dev.txt      # Testing dependencies
 ├── frontend/
 │   ├── tests/
-│   │   ├── conftest.py            # Test fixtures and configuration
-│   │   ├── test_api_client.py     # API client tests
-│   │   └── test_config.py         # Configuration tests
-│   ├── pytest.ini                 # Pytest configuration
-│   └── requirements-dev.txt       # Testing dependencies
-├── frontend/
-│   ├── run_tests.py               # Main test runner script
-│   └── test_integration.py        # Comprehensive testing scenarios
-├── Makefile                       # Test automation commands
-└── .github/workflows/test.yml     # CI/CD pipeline
+│   │   ├── conftest.py           # Test fixtures and configuration
+│   │   ├── test_api_client.py    # API client tests
+│   │   └── test_config.py        # Configuration tests
+│   ├── pytest.ini               # Pytest configuration
+│   └── requirements-dev.txt     # Testing dependencies
+├── scripts/
+│   ├── run_tests.py             # Main test runner script
+│   └── test_integration.py      # Comprehensive testing scenarios
+├── Makefile                     # Test automation commands
+└── .github/workflows/test.yml   # CI/CD pipeline
 ```
 
 ## Running Tests
@@ -91,23 +127,52 @@ make clean-all
 
 ```bash
 # Using Makefile (recommended - handles virtual environment automatically)
-make test-backend
+make test-backend                       # Run fast tests (default)
+make test-backend-all                   # Run all tests including slow ones
+make test-backend-manual                # Run manual tests (requires running server)
+make test-coverage                      # Run tests with coverage reporting
 
-# Or manually with virtual environment
+# Specific test categories
+make test-backend-api                   # API endpoint tests
+make test-backend-core                  # Core functionality tests  
+make test-backend-infrastructure        # Infrastructure service tests
+make test-backend-services              # Domain service tests
+make test-backend-integration           # Integration tests
+make test-backend-performance           # Performance tests
+
+# Manual commands with virtual environment
 cd backend
+
+# Default: Run fast tests in parallel (excludes slow and manual tests)
 ../.venv/bin/python -m pytest tests/ -v
 
-# Run specific test file
-../.venv/bin/python -m pytest tests/test_main.py -v
+# Run specific test directories
+../.venv/bin/python -m pytest tests/api/ -v                        # API endpoint tests
+../.venv/bin/python -m pytest tests/core/ -v                       # Core functionality tests
+../.venv/bin/python -m pytest tests/infrastructure/ -v             # Infrastructure service tests
+../.venv/bin/python -m pytest tests/services/ -v                   # Domain service tests
+../.venv/bin/python -m pytest tests/integration/ -v                # Integration tests
+../.venv/bin/python -m pytest tests/performance/ -v                # Performance tests
+
+# Run all tests including slow ones (excluding manual)
+../.venv/bin/python -m pytest tests/ -v -m "not manual" --run-slow
+
+# Run only slow tests (requires --run-slow flag)
+../.venv/bin/python -m pytest tests/ -v -m "slow" --run-slow
+
+# Run manual tests (requires running server and --run-manual flag)
+../.venv/bin/python -m pytest tests/ -v -m "manual" --run-manual
 
 # Run with coverage
-../.venv/bin/python -m pytest tests/ --cov=app --cov-report=html
+../.venv/bin/python -m pytest tests/ --cov=app --cov-report=html --cov-report=term
 
-# Run specific test class
-../.venv/bin/python -m pytest tests/test_main.py::TestHealthEndpoint -v
+# Run tests sequentially (for debugging)
+../.venv/bin/python -m pytest tests/ -v -n 0
 
-# Run specific test method
-../.venv/bin/python -m pytest tests/test_main.py::TestHealthEndpoint::test_health_check -v
+# Run specific test markers
+../.venv/bin/python -m pytest tests/ -v -m "retry" --run-slow             # Retry logic tests
+../.venv/bin/python -m pytest tests/ -v -m "circuit_breaker" --run-slow   # Circuit breaker tests
+../.venv/bin/python -m pytest tests/ -v -m "no_parallel"                  # Tests that must run sequentially
 ```
 
 #### Frontend Tests
@@ -194,25 +259,69 @@ Typical performance metrics from `integration_test.py`:
 
 ## Test Coverage
 
-### Backend Coverage
+### Backend Coverage Requirements
 
-The backend test suite covers:
+The backend follows different coverage requirements based on architectural boundaries:
 
-- **API Endpoints** (95%+ coverage)
-  - Health check endpoint
-  - Operations listing
-  - Text processing endpoints
-  - Error handling
-  - CORS configuration
+#### Infrastructure Services (>90% coverage required)
+- **AI Infrastructure** (`app/infrastructure/ai/`)
+  - Input sanitization and prompt injection protection
+  - Prompt builder utilities
+  - AI provider abstractions
 
-- **Service Layer** (90%+ coverage)
-  - Text processing service
-  - AI agent integration (mocked)
-  - Error handling and validation
+- **Cache Infrastructure** (`app/infrastructure/cache/`)
+  - Redis and memory cache implementations
+  - Cache monitoring and performance metrics
+  - Graceful degradation patterns
 
-- **Models** (100% coverage)
-  - Pydantic model validation
-  - Field constraints
+- **Resilience Infrastructure** (`app/infrastructure/resilience/`)
+  - Circuit breaker pattern implementation
+  - Retry mechanisms with exponential backoff
+  - Orchestrator and configuration presets
+  - Performance benchmarks
+
+- **Security Infrastructure** (`app/infrastructure/security/`)
+  - Multi-key authentication system
+  - Security validation and protection
+
+- **Monitoring Infrastructure** (`app/infrastructure/monitoring/`)
+  - Health check implementations
+  - Metrics collection and alerting
+
+#### Domain Services (>70% coverage required)
+- **Text Processing Service** (`app/services/text_processor.py`)
+  - AI text processing using PydanticAI agents
+  - Business-specific processing logic (educational examples)
+
+- **Response Validator** (`app/services/response_validator.py`)
+  - Business-specific response validation logic
+
+#### API Endpoints (95%+ coverage)
+- **Public API** (`/v1/`) - External-facing endpoints
+  - Authentication validation
+  - Health checks
+  - Text processing operations
+  - Error handling and CORS
+
+- **Internal API** (`/internal/`) - Administrative endpoints  
+  - Cache management (38 resilience endpoints)
+  - Monitoring and metrics
+  - Resilience management across 8 modules
+
+#### Core Components (95%+ coverage)
+- **Configuration Management** (`app/core/config.py`)
+  - Dual-API configuration
+  - Preset-based resilience system
+  - Security and infrastructure settings
+
+- **Dependency Injection** (`app/dependencies.py`)
+  - Service provider patterns
+  - Preset-based configuration loading
+
+#### Shared Models (100% coverage)
+- **Pydantic Models** (`shared/models.py` and `app/schemas/`)
+  - Cross-service data models
+  - Field validation and constraints
   - Serialization/deserialization
 
 ### Frontend Coverage
@@ -234,7 +343,38 @@ The frontend test suite covers:
 
 ### Pytest Configuration
 
-Both backend and frontend use pytest with the following configuration:
+The backend uses pytest with parallel execution and comprehensive markers:
+
+```ini
+[pytest]
+testpaths = tests
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+addopts = 
+    -n auto                    # Parallel execution with auto-detection
+    --dist worksteal          # Work-stealing load balancing
+    -v                        # Verbose output
+    --strict-markers          # Strict marker validation
+    --tb=short               # Short traceback format
+    --asyncio-mode=auto      # Automatic async support
+    -m "not slow and not manual"  # Exclude slow and manual tests by default
+asyncio_default_fixture_loop_scope = function
+markers =
+    asyncio: marks tests as async
+    slow: marks tests as slow (deselect with '-m "not slow"')
+    manual: marks tests as manual (deselect with '-m "not manual"')
+    integration: marks tests as integration tests
+    retry: marks tests that test retry logic specifically
+    circuit_breaker: marks tests that test circuit breaker functionality
+    no_parallel: marks tests that must run sequentially (not in parallel)
+filterwarnings =
+    ignore::DeprecationWarning
+    ignore::PendingDeprecationWarning
+    ignore::pytest.PytestDeprecationWarning
+```
+
+The frontend uses a simpler configuration:
 
 ```ini
 [tool:pytest]
@@ -249,19 +389,33 @@ addopts =
     --asyncio-mode=auto
 markers =
     asyncio: marks tests as async
-    slow: marks tests as slow
-    integration: marks tests as integration tests
 ```
 
 ### Test Fixtures
 
 #### Backend Fixtures (`backend/tests/conftest.py`)
 
-- `client`: FastAPI test client
-- `async_client`: Async HTTP client
-- `sample_text`: Sample text for processing
-- `sample_request`: Sample processing request
-- `mock_ai_agent`: Mocked AI agent (auto-used)
+**Global Fixtures:**
+- `client`: FastAPI test client for main application
+- `internal_client`: FastAPI test client for internal API
+- `async_client`: Async HTTP client for integration tests
+- `sample_text`: Sample text for processing operations
+- `sample_request`: Sample processing request data
+- `mock_ai_agent`: Mocked AI agent (auto-used to avoid external API calls)
+- `redis_client`: Redis client for cache testing
+- `memory_cache`: In-memory cache for testing
+
+**Infrastructure-Specific Fixtures** (`backend/tests/infrastructure/conftest.py`):
+- `circuit_breaker`: Circuit breaker instance for testing
+- `retry_policy`: Retry policy configuration for testing  
+- `resilience_config`: Test resilience configuration
+- `cache_service`: Cache service with test configuration
+- `health_monitor`: Health monitoring service for testing
+
+**API-Specific Fixtures** (`backend/tests/api/conftest.py`):
+- `authenticated_client`: Test client with API key authentication
+- `internal_api_client`: Test client for internal endpoints
+- `mock_dependencies`: Mocked dependency injection for testing
 
 #### Frontend Fixtures (`frontend/tests/conftest.py`)
 
@@ -279,17 +433,50 @@ The test suite uses comprehensive mocking for AI services to:
 - Avoid external API calls during testing
 - Ensure consistent test results
 - Speed up test execution
-- Test error scenarios
+- Test error scenarios and resilience patterns
 
 ```python
 @pytest.fixture(autouse=True)
 def mock_ai_agent():
     """Mock the AI agent to avoid actual API calls during testing."""
-    with patch('backend.app.services.text_processor.Agent') as mock:
+    with patch('app.services.text_processor.Agent') as mock:
         mock_instance = AsyncMock()
         mock_instance.run = AsyncMock(return_value=AsyncMock(data="Mock AI response"))
         mock.return_value = mock_instance
         yield mock_instance
+```
+
+### Infrastructure Service Mocking
+
+Infrastructure tests use targeted mocking to test resilience patterns:
+
+```python
+# Circuit breaker testing
+@pytest.fixture
+def failing_service():
+    """Mock service that fails to test circuit breaker behavior."""
+    mock_service = AsyncMock()
+    mock_service.call = AsyncMock(side_effect=Exception("Service unavailable"))
+    return mock_service
+
+# Cache testing with Redis fallback
+@pytest.fixture
+def redis_unavailable():
+    """Mock Redis unavailability to test memory cache fallback."""
+    with patch('redis.Redis') as mock_redis:
+        mock_redis.side_effect = ConnectionError("Redis unavailable")
+        yield mock_redis
+```
+
+### Environment Isolation
+
+Tests use `monkeypatch.setenv()` for clean environment isolation:
+
+```python
+def test_resilience_preset_loading(monkeypatch):
+    """Test preset loading with clean environment."""
+    monkeypatch.setenv("RESILIENCE_PRESET", "production")
+    # Test preset loading logic
 ```
 
 ### HTTP Client Mocking
@@ -442,15 +629,89 @@ class TestNewComponent:
 make test-backend PYTEST_ARGS="-v -s --pdb"
 ```
 
+### Test Execution Features
+
+#### Parallel Execution
+By default, tests run in parallel using pytest-xdist:
+- **Auto-detection**: `-n auto --dist worksteal` automatically determines optimal worker count
+- **Environment isolation**: Tests use `monkeypatch.setenv()` for clean environments
+- **Work-stealing**: Dynamic load balancing across test workers
+- **Sequential tests**: Use `@pytest.mark.no_parallel` for tests that must run sequentially
+
+#### Test Markers
+- **`slow`**: Comprehensive resilience tests, timing tests, and performance scenarios
+- **`manual`**: Require running FastAPI server and real API keys
+- **`integration`**: Test component interactions with mocked external services
+- **`retry`**: Test retry logic and exponential backoff patterns
+- **`circuit_breaker`**: Test circuit breaker functionality and recovery
+- **`no_parallel`**: Must run sequentially (not in parallel with other tests)
+
+#### Special Flags
+- **`--run-slow`**: Enable tests marked as `slow` (excluded by default)
+- **`--run-manual`**: Enable tests marked as `manual` (excluded by default)
+
+### Manual Test Requirements
+
+Manual tests (`-m "manual"`) require:
+- FastAPI server running on `http://localhost:8000`
+- `API_KEY=test-api-key-12345` environment variable for authentication tests
+- `GEMINI_API_KEY` environment variable for AI features and live API testing
+- Use `--run-manual` flag to enable manual tests
+
+**Setup for manual tests:**
+```bash
+# 1. Set environment variables
+export GEMINI_API_KEY="your-actual-gemini-api-key"
+export API_KEY="test-api-key-12345"
+export RESILIENCE_PRESET="development"  # or appropriate preset
+
+# 2. Start server (from project root)
+source .venv/bin/activate
+cd backend/
+uvicorn app.main:app --reload --port 8000
+
+# 3. Run manual tests (in another terminal, from project root)
+source .venv/bin/activate
+cd backend/
+pytest -v -s -m "manual" --run-manual
+
+# 4. Test both public and internal APIs
+curl http://localhost:8000/v1/health        # Public API
+curl http://localhost:8000/internal/health  # Internal API
+```
+
+### Slow Test Categories
+
+Slow tests (`-m "slow"`) include:
+- **Resilience pattern testing**: Circuit breaker recovery, retry with backoff
+- **Performance benchmarks**: Cache performance, concurrent request handling
+- **Integration scenarios**: End-to-end workflows with multiple service interactions
+- **Timeout testing**: Testing various timeout scenarios and recovery patterns
+
 ### Common Issues
 
-1. **Python Command Not Found**: The Makefile automatically detects `python3` or `python` - no manual configuration needed
-2. **Virtual Environment Issues**: Run `make clean-all` and `make install` to recreate the virtual environment
-3. **Import Errors**: Ensure you're using the virtual environment Python (`.venv/bin/python`) or Makefile commands
-4. **Async Test Issues**: Use `pytest-asyncio` and proper async fixtures
-5. **Mock Issues**: Ensure mocks are properly configured and reset between tests
-6. **Environment Variables**: Use `patch.dict` to mock environment variables
-7. **Docker Not Available**: Use `make test-local` to run tests without Docker dependency
+#### Configuration Issues
+1. **Resilience Configuration**: Ensure `RESILIENCE_PRESET` is set (default: `simple`)
+2. **API Key Issues**: Set `GEMINI_API_KEY` for AI tests (can be dummy value for unit tests)
+3. **Authentication**: Use `API_KEY=test-api-key-12345` for manual authentication tests
+4. **Environment Variables**: Use `monkeypatch.setenv()` in fixtures for test isolation
+
+#### Infrastructure Issues
+5. **Redis Connection**: Tests automatically fall back to memory cache if Redis unavailable
+6. **Port Conflicts**: Ensure ports 8000 (backend) and 8501 (frontend) are available
+7. **Docker Issues**: Use `make test-local` to run tests without Docker dependency
+
+#### Test Execution Issues
+8. **Parallel Execution**: Use `-n 0` to disable parallel execution for debugging
+9. **Slow Tests**: Use `--run-slow` flag to enable comprehensive resilience testing
+10. **Manual Tests**: Requires running server - use `--run-manual` flag
+11. **Marker Issues**: Use `--strict-markers` to catch undefined test markers
+
+#### Development Issues
+12. **Virtual Environment**: Run `make clean-all` and `make install` to reset environment
+13. **Python Version**: Makefile automatically detects `python3` or `python`
+14. **Dependencies**: Run `make install` to update all dependencies
+15. **Coverage Issues**: Infrastructure services require >90%, domain services >70%
 
 ## Performance Testing
 

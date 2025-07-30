@@ -226,3 +226,5 @@ tasks/
 
 # Backend App Refactor in progress
 backend/app.old/
+
+/docusaurus.bak/
