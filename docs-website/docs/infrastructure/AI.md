@@ -1,3 +1,6 @@
+---
+sidebar_label: AI
+---
 # AI Infrastructure Service
 
 The AI Infrastructure Service provides production-ready, security-first utilities for safe Large Language Model (LLM) interactions within the FastAPI-Streamlit-LLM Starter Template. This infrastructure service implements comprehensive protection against prompt injection attacks while offering flexible templating capabilities for AI operations.
@@ -30,13 +33,13 @@ graph TB
 
 ### Key Features
 
--  **Security-First Design**: Multi-layered defense against prompt injection attacks
--  **Template System**: Pre-built, secure templates for common AI operations
--  **Comprehensive Sanitization**: 50+ attack pattern detection rules
--  **Performance Optimized**: Pre-compiled regex patterns for efficient processing
--  **Flexible Integration**: Both class-based and function-based APIs
--  **Production Ready**: Extensive testing and validation
--  **Environment Configurable**: Customizable security thresholds
+- ✅ **Security-First Design**: Multi-layered defense against prompt injection attacks
+- ✅ **Template System**: Pre-built, secure templates for common AI operations
+- ✅ **Comprehensive Sanitization**: 50+ attack pattern detection rules
+- ✅ **Performance Optimized**: Pre-compiled regex patterns for efficient processing
+- ✅ **Flexible Integration**: Both class-based and function-based APIs
+- ✅ **Production Ready**: Extensive testing and validation
+- ✅ **Environment Configurable**: Customizable security thresholds
 
 ## Core Components
 

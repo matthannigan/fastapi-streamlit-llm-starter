@@ -1,3 +1,6 @@
+---
+sidebar_label: Resilience
+---
 # Resilience Infrastructure Service
 
 The Resilience Infrastructure Service provides production-ready, comprehensive resilience patterns for AI service operations within the FastAPI-Streamlit-LLM Starter Template. This infrastructure service implements circuit breaker patterns, intelligent retry mechanisms, configuration presets, and performance monitoring to handle transient failures and ensure robust service operations.
@@ -40,7 +43,7 @@ graph TB
     
     subgraph "External Dependencies"
         RESILIENCE_INFRA --> AI_SERVICES[AI Services]
-        RESILIENCE_INFRA --> REDIS[Redis (Optional)]
+        RESILIENCE_INFRA --> REDIS["Redis (optional)"]
     end
 ```
 
@@ -974,9 +977,7 @@ async def comprehensive_health_check():
 
 ## Troubleshooting
 
-### Common Issues
-
-#### Invalid Preset Name
+### Invalid Preset Name
 **Error**: `Invalid preset 'prod'. Available: ['simple', 'development', 'production']`
 
 **Solution**: Use the Internal API to check available presets:
@@ -986,7 +987,7 @@ curl -H "X-API-Key: your-api-key" \
 export RESILIENCE_PRESET=production  # not 'prod'
 ```
 
-#### Configuration Validation Failures
+### Configuration Validation Failures
 **Error**: `retry_attempts must be between 1 and 10`
 
 **Solution**: Use validation endpoints for detailed guidance:
@@ -997,7 +998,7 @@ curl -H "X-API-Key: your-api-key" \
      http://localhost:8000/internal/resilience/config/validate-secure
 ```
 
-#### Circuit Breaker Stuck Open
+### Circuit Breaker Stuck Open
 **Symptoms**: All requests failing immediately
 
 **Diagnosis**:
@@ -1015,7 +1016,7 @@ curl -H "X-API-Key: your-api-key" \
      http://localhost:8000/internal/resilience/circuit-breakers/ai_service/reset
 ```
 
-#### Performance Issues
+### Performance Issues
 **Symptoms**: High latency or low throughput
 
 **Diagnosis**:

@@ -1,3 +1,6 @@
+---
+sidebar_label: Security
+---
 # Security Infrastructure Service
 
 The Security Infrastructure Service provides production-ready, defense-in-depth security capabilities specifically designed for AI-powered applications within the FastAPI-Streamlit-LLM Starter Template. This infrastructure service implements comprehensive authentication, authorization, and protection mechanisms against AI-specific security threats while maintaining flexibility for development and production environments.
@@ -1039,9 +1042,7 @@ async def advanced_endpoint(
 
 ## Troubleshooting
 
-### Common Issues
-
-#### Authentication Not Working
+### Authentication Not Working
 **Symptoms**: All requests return 401 Unauthorized
 **Diagnosis**:
 ```bash
@@ -1057,14 +1058,14 @@ echo $AUTH_MODE
 - Check API key format in Authorization header: `Bearer your-api-key`
 - Ensure AUTH_MODE is not set to "development" in production
 
-#### Development Mode Not Activating
+### Development Mode Not Activating
 **Symptoms**: Authentication required when expecting development mode
 **Solutions**:
 - Remove or unset API_KEY environment variable
 - Verify no ADDITIONAL_API_KEYS are configured
 - Check for PYTEST_CURRENT_TEST environment variable in test environments
 
-#### Performance Issues
+### Performance Issues
 **Symptoms**: Slow authentication response times
 **Solutions**:
 - Monitor authentication metrics via `/internal/auth/status`

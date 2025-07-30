@@ -1,3 +1,6 @@
+---
+sidebar_label: Cache
+---
 # Cache Infrastructure Service
 
 The Cache Infrastructure Service provides production-ready, multi-tiered caching capabilities specifically optimized for AI response caching within the FastAPI-Streamlit-LLM Starter Template. This infrastructure service implements intelligent caching strategies, comprehensive monitoring, and graceful degradation to ensure optimal performance and reliability.
@@ -822,9 +825,7 @@ cache = AIResponseCache(
 
 ## Troubleshooting
 
-### Common Issues
-
-#### Cache Not Working
+### Cache Not Working
 **Symptoms**: All requests show full processing time
 **Diagnosis**:
 ```bash
@@ -839,7 +840,7 @@ docker logs redis-container
 - Verify Redis URL configuration
 - Check network connectivity
 
-#### Low Hit Rates
+### Low Hit Rates
 **Symptoms**: Cache hit rate <50%
 **Diagnosis**:
 ```bash
@@ -851,7 +852,7 @@ curl http://localhost:8000/internal/cache/metrics
 - Adjust TTL settings
 - Investigate key generation patterns
 
-#### High Memory Usage
+### High Memory Usage
 **Symptoms**: Memory usage approaching limits
 **Solutions**:
 - Enable/increase compression
