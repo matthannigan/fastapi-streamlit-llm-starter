@@ -25,6 +25,36 @@ This template includes three main components designed as learning examples:
 
 **The backend infrastructure and frontend patterns are production-ready and reusable, while the text processing domain services serve as educational examples meant to be replaced with your specific business logic.**
 
+## 📖 Key Architectural Concepts
+
+### Infrastructure vs Domain Services Architecture
+
+The template demonstrates a critical architectural distinction documented in `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`:
+
+**Infrastructure Services** 🏗️ **[Production-Ready - Keep & Extend]**
+- Business-agnostic, reusable technical capabilities (>90% test coverage)
+- Stable APIs designed for cross-project reuse
+- Location: `app/infrastructure/` (AI, Cache, Resilience, Security, Monitoring)
+
+**Domain Services** 💼 **[Educational Examples - Replace with Your Logic]**  
+- Business-specific implementations serving as learning examples (>70% test coverage)
+- Expected to be replaced per project with your business logic
+- Location: `app/services/` (text processing workflows, validation examples)
+
+### Dual-API Architecture
+
+The backend implements a sophisticated dual-API design documented in `docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`:
+
+**Public API** (`/v1/`): External-facing business endpoints with authentication
+- Text processing operations, health checks, business functionality
+- Swagger documentation at `http://localhost:8000/docs`
+
+**Internal API** (`/internal/`): Administrative infrastructure endpoints  
+- Cache management, system monitoring, resilience configuration
+- Swagger documentation at `http://localhost:8000/internal/docs`
+
+This separation provides clear boundaries between external business operations and internal infrastructure management.
+
 ### 🐳 **Docker & Containerization**
 The template includes comprehensive Docker support for both development and production:
 - **Development**: Hot-reload containers with file watching (`make dev`)
@@ -540,7 +570,7 @@ pytest -v -s -m "manual" --run-manual
 - Infrastructure changes: API stability, performance, error handling, test coverage >90%
 - Domain changes: Business logic clarity, proper infrastructure usage, example quality
 
-Refer to `docs/architecture-design/INFRASTRUCTURE_VS_DOMAIN.md` for detailed architectural guidance and code review standards.
+Refer to `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md` for detailed architectural guidance and code review standards.
 
 ### 🛠️ Utility Scripts & Tools
 **Development and operational scripts (`scripts/` directory):**
@@ -553,11 +583,22 @@ Refer to `docs/architecture-design/INFRASTRUCTURE_VS_DOMAIN.md` for detailed arc
 **All scripts run from project root using `.venv` virtual environment automatically.**
 
 ### 📚 Documentation Structure
-**Comprehensive documentation in `docs/` directory:**
-- **`architecture-design/`**: Detailed architectural guidance and design patterns
-- **`code_ref/`**: Auto-generated code reference documentation (backend + frontend)
-- **Development guides**: Setup, testing, deployment, and operational procedures
-- **API documentation**: Comprehensive endpoint documentation with examples
+**Comprehensive documentation in `docs/` directory following `docs/DOCUMENTATION_INDEX.md`:**
+
+**📖 Template Documentation:**
+- **`docs/README.md`**: Main project overview and quick start guide
+- **`docs/get-started/`**: Setup & complete systems integration guide, installation checklist
+- **`docs/reference/key-concepts/`**: Infrastructure vs Domain Services, Dual API Architecture
+- **`docs/guides/`**: Comprehensive guides (backend, frontend, testing, deployment, customization)
+- **`docs/guides/infrastructure/`**: AI, Cache, Monitoring, Resilience, Security services
+- **`docs/guides/developer/`**: Authentication, code standards, Docker, documentation guidance
+
+**📚 Technical Deep Dives:**
+- **`docs/reference/deep-dives/`**: FastAPI and Streamlit comprehensive technical analysis
+
+**📦 Code Reference (Auto-Generated):**
+- **`docs/code_ref/`**: Auto-generated code reference documentation (backend + frontend) - **DO NOT EDIT** these files manually, they are generated via `make code_ref`
+- Auto-generated files `./code_ref/**/index.md` correspond to `**/README.md` files throughout the repository structure
 
 ### 🔧 Environment Variables Reference
 **Essential environment variables for configuration:**
@@ -689,6 +730,17 @@ CACHE_TTL_SECONDS=3600
 
 ## 🤖 Code Assistant Guidelines
 
+### Documentation Resources
+
+**Essential Reading for Code Assistants:**
+- **`docs/DOCUMENTATION_INDEX.md`**: Complete documentation index with all available guides
+- **`docs/get-started/SETUP_INTEGRATION.md`**: Complete systems integration guide
+- **`docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`**: Critical architectural distinction
+- **`docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`**: Dual-API design patterns
+- **`docs/guides/developer/CODE_STANDARDS.md`**: Standardized patterns and architectural guidelines
+- **`docs/guides/developer/AUTHENTICATION.md`**: Authentication and authorization system
+- **`docs/guides/CUSTOMIZATION.md`**: Understanding architecture for stability and customization
+
 ### Working with This Template
 
 When working on this codebase, follow these architectural guidelines:
@@ -787,3 +839,22 @@ When users ask about customizing the template:
 3. **Study patterns** - understand before replacing
 4. **Maintain architecture** - preserve the infrastructure vs domain separation
 5. **Use presets** - leverage the resilience configuration system
+
+## 📚 Documentation Reorganization (July 2025)
+
+The project documentation has been comprehensively reorganized following a hierarchical, purpose-driven approach:
+
+**New Structure Benefits:**
+- **Clear Navigation**: `docs/DOCUMENTATION_INDEX.md` provides complete guide discovery
+- **Purpose-Driven Organization**: Documentation organized by user intent (get-started, guides, reference)  
+- **Educational Focus**: Key concepts section explains critical architectural decisions
+- **Developer-Centric**: Dedicated developer guidance section for code standards and best practices
+- **Auto-Generated Integration**: Seamless integration between manually written guides and auto-generated code reference
+
+**Migration Notes:**
+- Former `docs/architecture-design/` content moved to `docs/reference/key-concepts/`
+- Setup guides consolidated into `docs/get-started/` with comprehensive integration examples
+- Infrastructure service documentation enhanced in `docs/guides/infrastructure/`
+- Developer-specific guidance centralized in `docs/guides/developer/`
+
+**Code Assistants:** Always reference the current documentation structure via `docs/DOCUMENTATION_INDEX.md` for the most up-to-date file locations and organizational hierarchy.
