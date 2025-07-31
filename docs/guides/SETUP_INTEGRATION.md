@@ -1,6 +1,6 @@
-# 🚀 FastAPI-Streamlit-LLM Starter Template - Complete Integration Guide
+# Setup & Complete Systems Integration Guide
 
-Welcome to the comprehensive integration guide for the FastAPI-Streamlit-LLM Starter Template! This guide ties together all components and provides complete usage examples to get you up and running quickly.
+Welcome to the comprehensive setup and system integration guide for the FastAPI-Streamlit-LLM Starter Template! This guide ties together all components and provides complete usage examples to get you up and running quickly.
 
 ## 📋 Table of Contents
 
