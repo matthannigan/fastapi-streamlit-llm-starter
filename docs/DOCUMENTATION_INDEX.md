@@ -1,0 +1,91 @@
+# Documentation Index
+
+## 📝 Template Documentation
+
+- **[README About the Template](./README.md)**: Main project overview and quick start guide for the FastAPI-Streamlit-LLM starter template *(Last updated 2024-07-27)*
+
+### Get Started
+
+- **[Setup & Complete Systems Integration Guide](./get-started/SETUP_INTEGRATION.md)**: Ties together all components and provides complete usage examples to get up and running quickly *(Last updated 2025-07-31)*
+- **[Checklist](./get-started/CHECKLIST.md)**: Complete installation and setup checklist covering initial setup, API keys, Docker configuration, testing, and development workflows *(Last updated 2025-07-31)*
+
+### Key Concepts
+
+- **[Infrastructure vs Domain Services](./reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability *(Last updated 2025-07-30)*
+- **[Dual API Architecture](./reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Sophisticated dual-API architecture that separates external business operations from internal infrastructure management with clear boundaries *(Last updated 2025-07-30)*
+
+### Comprehensive Guides
+
+- **[FastAPI Backend](./guides/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations *(Last updated 2024-07-27)*
+- **[API Documentation](./guides/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services *(Last updated 2024-07-27)*
+- **Infrastructure Services**:
+  - **[AI](./guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating *(Last updated 2025-07-30)*
+  - **[Cache](./guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation *(Last updated 2025-07-30)*
+  - **[Monitoring](./guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection *(Last updated 2025-07-30)*
+  - **[Resilience](./guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring *(Last updated 2025-07-30)*
+  - **[Security](./guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection *(Last updated 2025-07-30)*
+- **[Streamlit Frontend](./guides/FRONTEND.md)**: Streamlit frontend documentation covering UI features, API integration, and development setup *(Last updated 2024-07-27)*
+- **[Shared Module](./guides/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend *(Last updated 2024-07-27)*
+- **[Testing](./guides/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-07-30)*
+- **[Deployment](./guides/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments *(Last updated 2025-07-30)*
+- **[Customization](./guides/CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic *(Last updated 2025-07-31)*
+
+### Developer Guidance
+
+- **[API Authentication & Authorization](./guides/developer/AUTHENTICATION.md)**: Comprehensive authentication and authorization system with multi-key authentication, dual-API architecture protection, and flexible security modes *(Last updated 2025-07-31)*
+- **[Code Standards & Examples](./guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation *(Last updated 2025-07-31)*
+- **[Docker Setup & Usage](./guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services *(Last updated 2025-07-31)*
+- **[Documentation Guidance & Philosophy](./guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation *(Last updated 2025-07-31)*
+- **[Virtual Environment Management](./guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation *(Last updated 2025-07-30)*
+
+### Miscellaneous
+
+- **[Future Features](./future-features/)**: Roadmaps for planned future features of the template or strategies to extend template for production use.
+- **[Additional Documentation](./ADDITIONAL_DOCS.md)**: Implementation roadmap for improving template documentation with quick wins, operational guides, and tutorial series *(Last updated 2025-07-31)*
+- **[Documentation Index](./DOCUMENTATION_INDEX.md)**: This file.
+
+## 📚 Technical Deep Dives
+
+Gemini deep research reports.
+
+- **[FastAPI](./reference/deep-dives/FastAPI.md)**: Comprehensive technical deep-dive into architecture, performance, and application in Large Language Model systems *(Last updated 2025-07-30)*
+- **[Streamlit](./reference/deep-dives/Streamlit.md)**: Comprehensive technical analysis of the Python application framework for data and AI applications *(Last updated 2025-07-30)*
+
+## 📦 Code Reference
+
+Automatically generated from Python docstrings and README files within project code.
+
+### [Backend](./code_ref/backend/)
+
+- **[Backend README](./guides/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations *(Last updated 2024-07-27 15:55)*
+
+#### API
+
+- **[API README](./guides/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services *(Last updated 2024-07-27)*
+- **[Resilience API](./code_ref/backend/app/api/internal/resilience/)**: Resilience API documentation with 38 endpoints for configuration management and monitoring *(Last updated 2024-07-27)*
+
+#### Infrastructure
+
+- **[AI](./code_ref/backend/app/infrastructure/ai/)**: AI infrastructure documentation covering input sanitization, prompt building, and security-first design *(Last updated 2024-07-27)*
+- **[Cache](./code_ref/backend/app/infrastructure/cache/)**: Cache infrastructure documentation with Redis and memory implementations, performance monitoring *(Last updated 2024-07-27)*
+- **[Monitoring](./code_ref/backend/app/infrastructure/monitoring/)**: Comprehensive monitoring and observability infrastructure serving as centralized access point for performance monitoring, health checks, and metrics collection *(Last updated 2025-07-30)*
+- **[Resilience](./code_ref/backend/app/infrastructure/resilience/)**: Resilience infrastructure documentation covering circuit breakers, retry mechanisms, and configuration management *(Last updated 2024-07-27)*
+- **[Security](./code_ref/backend/app/infrastructure/security/)**: Comprehensive security infrastructure implementing defense-in-depth security practices with configurable authentication, authorization, and input protection *(Last updated 2025-07-30)*
+
+#### Tests & Examples
+
+- **[Backend Testing](./code_ref/backend/tests/)**: Comprehensive test suite documentation with test structure, organization, and testing guidelines *(Last updated 2024-07-27)*
+- **[Backend Examples](./code_ref/backend/examples/)**: Infrastructure examples demonstrating advanced usage of caching, resilience, and AI components *(Last updated 2024-07-27)*
+
+### [Frontend](./code_ref/frontend/)
+
+- **[Frontend README](./guides/FRONTEND.md)**: Streamlit frontend documentation covering UI features, API integration, and development setup *(Last updated 2024-07-27)*
+
+### [Shared Module](./code_ref/shared/)
+
+- **[Shared Module README](./guides/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend *(Last updated 2024-07-27)*
+
+### Miscellaneous
+
+- **[Examples Documentation](./code_ref/examples/)**: Comprehensive examples and usage guides demonstrating API integration and HTTP client usage *(Last updated 2024-07-27)*
+- **[Scripts Documentation](./code_ref/scripts/)**: Utility scripts for API key generation, health checks, configuration validation, testing, and documentation management *(Last updated 2024-07-27)*
