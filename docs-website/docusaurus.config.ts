@@ -7,7 +7,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'FastAPI + Streamlit LLM Starter Template',
   tagline: 'Starter template for web-based LLM app with FastAPI backend and Streamlit frontend',
-  favicon: 'img/favicon.ico',
+  favicon: 'favicon/favicon.ico',
 
   // Set the production url of your site here
   url: 'https://matthannigan.github.io', // Replace with your GitHub username
@@ -98,6 +98,12 @@ const config: Config = {
           sidebarId: 'docs',
           position: 'left',
           label: 'Documentation',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'deep_dives',
+          position: 'left',
+          label: 'Technical Deep Dives',
         },
         {
           type: 'docSidebar',
