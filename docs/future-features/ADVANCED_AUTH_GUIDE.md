@@ -8,24 +8,46 @@ This guide explains how to extend the FastAPI-Streamlit-LLM Starter Template's s
 
 ## 🎯 **Current Authentication System**
 
-The starter template uses **simple API key authentication** that works well for most use cases:
+The starter template uses a **production-ready multi-mode authentication system** with comprehensive security features:
 
 ```python
-# Current implementation
-@app.post("/process")
+# Current implementation - Multiple authentication patterns
+from app.infrastructure.security import verify_api_key, optional_verify_api_key
+from app.infrastructure.security.auth import verify_api_key_with_metadata
+
+# Standard authentication (required)
+@app.post("/v1/text_processing/process")
 async def process_text(
     request: TextProcessingRequest,
-    api_key: str = Depends(verify_api_key)  # Simple string validation
+    api_key: str = Depends(verify_api_key)
 ):
-    # Process text with basic authentication
+    # Process text with required authentication
+
+# Optional authentication
+@app.get("/v1/operations")
+async def get_operations(
+    api_key: Optional[str] = Depends(optional_verify_api_key)
+):
+    # Process with optional authentication
+
+# Advanced mode with metadata
+@app.post("/v1/advanced-process")
+async def advanced_process(
+    request: ProcessRequest,
+    auth_data: dict = Depends(verify_api_key_with_metadata)
+):
+    # Process with user context tracking
 ```
 
 ### Current Features:
-- ✅ API key validation
-- ✅ Multiple key support
-- ✅ Development mode fallback
-- ✅ Test mode integration
-- ✅ Environment-based configuration
+- ✅ **Multi-Mode Operation**: Simple, advanced, development, and test modes
+- ✅ **RFC 6750 Compliant**: Bearer Token authentication following web standards
+- ✅ **Multi-Key Support**: Primary + additional API keys with metadata tracking
+- ✅ **Dual-API Protection**: Separate authentication for public (`/v1/`) and internal (`/internal/`) APIs
+- ✅ **User Context Tracking**: Optional user metadata and request tracking (advanced mode)
+- ✅ **Security Event Logging**: Comprehensive audit trails with secure key truncation
+- ✅ **Development Integration**: Automatic development mode with graceful fallbacks
+- ✅ **Test Integration**: Built-in support for automated testing environments
 
 ## 🚀 **When to Upgrade to Advanced Authentication**
 
@@ -40,21 +62,88 @@ Consider upgrading when you need:
 
 ## 🏗️ **Architecture Overview**
 
-### Simple Auth (Current)
-```
-API Request → API Key Check → Allow/Deny
+### Current Multi-Mode Auth Architecture
+```mermaid
+graph TB
+    subgraph "Current System - Multi-Mode Authentication"
+        REQ[API Request]
+        MODE{Auth Mode?}
+        SIMPLE[Simple Mode]
+        ADVANCED[Advanced Mode]
+        DEV[Development Mode]
+        TEST[Test Mode]
+        
+        API_KEY[API Key Validation]
+        METADATA[User Context Tracking]
+        LOGGING[Security Event Logging]
+        
+        ALLOW[Allow Request]
+        DENY[Deny Request]
+    end
+    
+    REQ --> MODE
+    MODE -->|AUTH_MODE=simple| SIMPLE
+    MODE -->|AUTH_MODE=advanced| ADVANCED
+    MODE -->|No keys configured| DEV
+    MODE -->|PYTEST_CURRENT_TEST| TEST
+    
+    SIMPLE --> API_KEY
+    ADVANCED --> API_KEY
+    ADVANCED --> METADATA
+    ADVANCED --> LOGGING
+    DEV --> ALLOW
+    TEST --> ALLOW
+    
+    API_KEY -->|Valid| ALLOW
+    API_KEY -->|Invalid| DENY
 ```
 
-### Advanced Auth (Upgrade Path)
-```
-API Request → Token Validation → User Context → Permission Check → Rate Limit → Allow/Deny
+### Future Enterprise Auth (Upgrade Path)
+```mermaid
+graph TB
+    subgraph "Future Enterprise Authentication"
+        REQ[API Request]
+        TOKEN[JWT Token Validation]
+        USER[User Context Resolution]
+        PERM[Permission Check]
+        RATE[Rate Limit Check]
+        AUDIT[Audit Logging]
+        
+        ALLOW[Allow Request]
+        DENY[Deny Request]
+    end
+    
+    REQ --> TOKEN
+    TOKEN --> USER
+    USER --> PERM
+    PERM --> RATE
+    RATE --> AUDIT
+    AUDIT --> ALLOW
+    
+    TOKEN -.->|Invalid| DENY
+    USER -.->|Not Found| DENY
+    PERM -.->|Forbidden| DENY
+    RATE -.->|Rate Limited| DENY
 ```
 
 ## 📋 **Migration Strategy**
 
-### Phase 1: Extend Models (Non-Breaking)
+### Phase 1: Extend Current Infrastructure (Non-Breaking)
 
-Add advanced models to `shared/models.py` alongside existing ones:
+The current authentication system already provides a solid foundation. Build upon the existing infrastructure:
+
+```python
+# Current infrastructure already available
+from app.infrastructure.security.auth import (
+    AuthConfig,           # Configuration management
+    APIKeyAuth,          # Core authentication handler
+    get_auth_status,     # Runtime status checking
+    supports_feature,    # Feature detection
+    verify_api_key_with_metadata  # Advanced mode with user context
+)
+```
+
+Add enhanced models to `shared/models.py` alongside existing ones:
 
 ```python
 # shared/models.py additions
@@ -131,12 +220,13 @@ class TextProcessingRequest(BaseModel):
     priority: Optional[int] = Field(None, ge=1, le=10, description="Processing priority (1-10)")
 ```
 
-### Phase 2: Create Advanced Auth Service
+### Phase 2: Extend Current Auth Service
 
-Create `backend/app/auth/advanced.py`:
+Build upon the existing security infrastructure in `backend/app/infrastructure/security/auth.py`:
 
 ```python
-# backend/app/auth/advanced.py
+# backend/app/infrastructure/security/enterprise.py
+# Extends the existing security infrastructure
 import os
 import jwt
 import bcrypt
@@ -148,13 +238,19 @@ from sqlalchemy.orm import Session
 from redis import Redis
 
 from shared.models import UserContext, UserRole, UserPermission, AuthToken, RateLimitInfo
+from app.infrastructure.cache import get_cache_service  # Use existing cache infrastructure
 from app.database import get_db  # You'll need to add database integration
-from app.cache import get_redis  # You'll need to add Redis integration
 
-class AdvancedAuthService:
-    """Advanced authentication service with user management."""
+class EnterpriseAuthService:
+    """Enterprise authentication service extending current infrastructure."""
     
     def __init__(self):
+        # Initialize with current auth infrastructure
+        from app.infrastructure.security.auth import api_key_auth, auth_config
+        self.base_auth = api_key_auth
+        self.auth_config = auth_config
+        
+        # JWT configuration for enterprise features
         self.jwt_secret = os.getenv("JWT_SECRET_KEY", "your-secret-key")
         self.jwt_algorithm = "HS256"
         self.access_token_expire_minutes = 60
@@ -323,12 +419,13 @@ RequireWrite = Depends(advanced_auth.require_permission(UserPermission.WRITE))
 RequireBatchProcess = Depends(advanced_auth.require_permission(UserPermission.BATCH_PROCESS))
 ```
 
-### Phase 3: Update API Endpoints
+### Phase 3: Add Enterprise API Endpoints
 
-Create `backend/app/routes/advanced.py` with new endpoints:
+Create `backend/app/api/v2/` directory with enterprise endpoints alongside existing `/v1/` and `/internal/` APIs:
 
 ```python
-# backend/app/routes/advanced.py
+# backend/app/api/v2/enterprise_auth.py
+# New enterprise endpoints alongside existing v1 API
 from fastapi import APIRouter, Depends, HTTPException, status
 from shared.models import (
     TextProcessingRequest, 
@@ -338,10 +435,11 @@ from shared.models import (
     AuthToken,
     RateLimitInfo
 )
-from app.auth.advanced import get_current_user, RequireWrite, RequireBatchProcess
+from app.infrastructure.security.enterprise import get_current_user, RequireWrite, RequireBatchProcess
+from app.infrastructure.security import verify_api_key  # Keep existing auth for backward compatibility
 from app.services.text_processor import text_processor
 
-router = APIRouter(prefix="/v2", tags=["Advanced Auth"])
+router = APIRouter(prefix="/v2", tags=["Enterprise Auth"])
 
 @router.post("/auth/login", response_model=AuthToken)
 async def login(request: LoginRequest):
@@ -398,33 +496,33 @@ async def batch_process_advanced(
 
 ### Phase 4: Gradual Migration
 
-Update `backend/app/main.py` to support both auth systems:
+The existing dual-API architecture makes migration seamless. Update `backend/app/main.py` to add the new enterprise endpoints:
 
 ```python
 # backend/app/main.py additions
-from app.routes import advanced
+from app.api.v2 import enterprise_auth
 
-# Add advanced routes alongside existing ones
-app.include_router(advanced.router)
+# Add enterprise routes alongside existing v1 and internal APIs
+app.include_router(enterprise_auth.router)
 
-# Existing simple auth endpoints remain unchanged
-@app.post("/process", response_model=TextProcessingResponse)
-async def process_text_simple(
+# Existing v1 endpoints remain unchanged
+@app.post("/v1/text_processing/process", response_model=TextProcessingResponse)
+async def process_text_v1(
     request: TextProcessingRequest,
-    api_key: str = Depends(verify_api_key)  # Keep existing simple auth
+    api_key: str = Depends(verify_api_key)  # Keep existing multi-mode auth
 ):
-    """Process text with simple authentication (legacy)."""
+    """Process text with current multi-mode authentication."""
     result = await text_processor.process_text(request)
     return result
 
-# New advanced auth endpoint
-@app.post("/v2/process", response_model=TextProcessingResponse)
-async def process_text_advanced(
+# New enterprise auth endpoint
+@app.post("/v2/text_processing/process", response_model=TextProcessingResponse)
+async def process_text_enterprise(
     request: TextProcessingRequest,
-    user: UserContext = Depends(get_current_user)  # New advanced auth
+    user: UserContext = Depends(get_current_user)  # New enterprise auth
 ):
-    """Process text with advanced authentication."""
-    # Enhanced processing with user context
+    """Process text with enterprise authentication and user management."""
+    # Enhanced processing with full user context and permissions
     pass
 ```
 
@@ -477,10 +575,19 @@ CREATE INDEX idx_usage_logs_created_at ON usage_logs(created_at);
 
 ## 🔧 **Configuration Management**
 
-### Advanced Environment Variables
+### Building on Current Configuration
+
+The current system already provides comprehensive configuration through `app/core/config.py`. Extend it for enterprise features:
 
 ```bash
-# .env additions for advanced auth
+# Current authentication configuration (already available)
+AUTH_MODE=advanced                    # Current: simple or advanced
+API_KEY=your-secure-api-key          # Current: primary API key
+ADDITIONAL_API_KEYS=key1,key2,key3   # Current: additional keys
+ENABLE_USER_TRACKING=true            # Current: user context tracking
+ENABLE_REQUEST_LOGGING=true          # Current: security event logging
+
+# New enterprise extensions
 # JWT Configuration
 JWT_SECRET_KEY=your-super-secret-jwt-key-here
 JWT_ALGORITHM=HS256
@@ -489,24 +596,37 @@ REFRESH_TOKEN_EXPIRE_DAYS=30
 
 # Database Configuration
 DATABASE_URL=postgresql://user:password@localhost/ai_processor
-REDIS_URL=redis://localhost:6379
+# Redis already supported via REDIS_URL=redis://localhost:6379
 
-# Rate Limiting
+# Enterprise Rate Limiting (extends current system)
 ADMIN_RATE_LIMIT=10000
 USER_RATE_LIMIT=1000
 READONLY_RATE_LIMIT=100
 
-# Security Settings
+# Enterprise Security Settings
 BCRYPT_ROUNDS=12
 PASSWORD_MIN_LENGTH=8
 MAX_LOGIN_ATTEMPTS=5
 LOCKOUT_DURATION_MINUTES=30
 
-# Features
+# Enterprise Features
 ENABLE_USER_REGISTRATION=true
 ENABLE_PASSWORD_RESET=true
 ENABLE_EMAIL_VERIFICATION=false
+ENABLE_ENTERPRISE_AUTH=false         # Feature flag for enterprise mode
 ```
+
+### Current vs Enterprise Configuration Comparison
+
+| Feature | Current System | Enterprise Extension |
+|---------|---------------|----------------------|
+| **API Key Auth** | ✅ Multi-key with metadata | ✅ Maintained + JWT tokens |
+| **User Context** | ✅ Basic tracking (advanced mode) | ✅ Full user management |
+| **Rate Limiting** | ⚠️ Basic (via resilience system) | ✅ Role-based limits |
+| **Permissions** | ⚠️ API key based | ✅ Role-based access control |
+| **Audit Logging** | ✅ Security events | ✅ Enhanced with user tracking |
+| **Development Mode** | ✅ Automatic detection | ✅ Maintained |
+| **Production Ready** | ✅ Multi-mode system | ✅ Enterprise features |
 
 ## 🧪 **Testing Advanced Auth**
 
@@ -592,19 +712,25 @@ def test_permission_denied(client: TestClient, readonly_auth_headers):
 - [ ] Configure production secrets
 - [ ] Monitor and adjust rate limits
 
-## 🚀 **Benefits of Advanced Auth**
+## 🚀 **Benefits of Enterprise Auth Extension**
 
-### For Users
-- **🔒 Enhanced Security**: Role-based permissions and JWT tokens
-- **📊 Usage Tracking**: Detailed analytics and billing data
-- **⚡ Fair Usage**: Rate limiting prevents abuse
-- **👥 Team Management**: Multiple users with different access levels
+### Current System Benefits (Already Available)
+- **🔒 Production Security**: Multi-mode authentication with RFC 6750 compliance
+- **📊 Basic Usage Tracking**: Security event logging and user context tracking
+- **⚡ Resilience Integration**: Built-in circuit breakers and retry mechanisms
+- **👥 Multi-Key Support**: Primary + additional API keys with metadata
 
-### For Developers
-- **🛡️ Enterprise Ready**: Meets compliance requirements
-- **📈 Scalable**: Handles thousands of users
-- **🔍 Auditable**: Complete request logging
-- **🔌 Extensible**: Easy to add new permissions and roles
+### Additional Enterprise Benefits
+- **🔐 Enhanced Security**: Role-based permissions and JWT tokens
+- **📈 Advanced Analytics**: Detailed user analytics and billing data
+- **⚡ Sophisticated Rate Limiting**: Role-based limits beyond current resilience patterns
+- **👥 Full User Management**: Individual accounts, teams, and organizations
+
+### For Developers (Building on Current Foundation)
+- **🛡️ Enterprise Ready**: Extends current production-ready system
+- **📈 Highly Scalable**: Built on proven infrastructure services
+- **🔍 Comprehensive Auditing**: Enhances existing security event logging
+- **🔌 Seamless Extension**: Builds on existing dual-API architecture
 
 ## 🎯 **Next Steps**
 
@@ -616,6 +742,15 @@ def test_permission_denied(client: TestClient, readonly_auth_headers):
 
 ---
 
-**Remember**: The current simple authentication system works great for many use cases. Only upgrade to advanced auth when you actually need the additional features. The architecture supports both approaches simultaneously during migration.
+**Important**: The current multi-mode authentication system is production-ready and comprehensive. It includes:
+- Multi-key authentication with Bearer token support
+- User context tracking and security event logging (advanced mode)  
+- Automatic development and test mode detection
+- Integration with the resilience and monitoring infrastructure
 
-For questions or help with implementation, refer to the existing codebase patterns and test suites for guidance.
+Only extend to enterprise authentication when you need user management, role-based permissions, or advanced rate limiting. The existing dual-API architecture (`/v1/`, `/internal/`, and future `/v2/`) supports gradual migration without breaking existing functionality.
+
+For implementation guidance, refer to:
+- `backend/app/infrastructure/security/` - Current authentication infrastructure
+- `docs/developer-guide/AUTHENTICATION.md` - Comprehensive authentication guide
+- `docs/developer-guide/CODE_STANDARDS.md` - Infrastructure vs domain service patterns

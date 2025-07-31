@@ -38,7 +38,17 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-# API Configuration
+# Authentication Configuration
+AUTH_MODE=simple                      # "simple" or "advanced"
+API_KEY=your-secure-api-key-here      # Primary API key
+ADDITIONAL_API_KEYS=key1,key2,key3    # Optional additional keys
+ENABLE_USER_TRACKING=false            # Enable user context tracking (advanced mode)
+ENABLE_REQUEST_LOGGING=false          # Enable security event logging (advanced mode)
+
+# Resilience Configuration
+RESILIENCE_PRESET=development         # "simple", "development", or "production"
+
+# AI Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
 AI_MODEL=gemini-2.0-flash-exp
 AI_TEMPERATURE=0.7
@@ -49,11 +59,12 @@ LOG_LEVEL=INFO
 SHOW_DEBUG_INFO=false
 MAX_TEXT_LENGTH=10000
 
-# Redis Configuration
+# Infrastructure Configuration
 REDIS_URL=redis://redis:6379
+CORS_ORIGINS=["http://localhost:8501", "http://frontend:8501"]
 
-# Network Configuration
-ALLOWED_ORIGINS=["http://localhost:8501", "http://frontend:8501"]
+# Security Configuration (Production)
+DISABLE_INTERNAL_DOCS=false          # Set to true in production
 ```
 
 ## Available Commands
@@ -100,28 +111,41 @@ make restore BACKUP=filename  # Restore Redis data
 
 - **Port**: 8000
 - **Health Check**: `http://localhost:8000/health`
+- **API Documentation**:
+  - Public API: `http://localhost:8000/docs`
+  - Internal API: `http://localhost:8000/internal/docs` (dev only)
 - **Features**:
-  - Multi-stage Docker build (development/production)
-  - Hot reloading in development
-  - Non-root user in production
-  - Comprehensive health checks
+  - **Dual-API Architecture**: Public (`/v1/`) and Internal (`/internal/`) endpoints
+  - **Multi-mode Authentication**: Simple and advanced modes with security features
+  - **Resilience Patterns**: Circuit breakers, retry logic, graceful degradation
+  - **Comprehensive Monitoring**: 38 resilience endpoints across 8 modules
+  - **Multi-stage Docker build** (development/production)
+  - **Hot reloading** in development
+  - **Non-root user** in production
 
 ### Frontend (Streamlit)
 
 - **Port**: 8501
 - **Health Check**: `http://localhost:8501/_stcore/health`
 - **Features**:
-  - Multi-stage Docker build
-  - Auto-reload on file changes in development
-  - WebSocket support for real-time updates
+  - **Production-ready UI**: Modern interface patterns for AI applications
+  - **Authentication Integration**: Support for both simple and advanced auth modes
+  - **Real-time Monitoring**: API health checks with visual indicators
+  - **Async API Communication**: Proper timeout and error handling for backend calls
+  - **Multi-stage Docker build**
+  - **Auto-reload** on file changes in development
+  - **WebSocket support** for real-time updates
 
 ### Redis
 
 - **Port**: 6379
 - **Features**:
-  - Persistent data storage
-  - Health monitoring
-  - Backup/restore capabilities
+  - **AI Response Caching**: Optimized cache with compression and graceful degradation
+  - **Fallback Support**: System automatically falls back to in-memory cache if Redis unavailable  
+  - **Performance Monitoring**: Built-in cache metrics and performance tracking
+  - **Persistent data storage**
+  - **Health monitoring**
+  - **Backup/restore capabilities**
 
 ### Nginx (Production Only)
 
@@ -202,6 +226,19 @@ make frontend-shell      # Frontend container
 make redis-cli          # Redis CLI
 ```
 
+### Test API endpoints:
+```bash
+# Test health endpoints
+curl http://localhost:8000/health
+curl http://localhost:8000/internal/monitoring/overview
+
+# Test authentication (replace with your API key)
+curl -H "Authorization: Bearer your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{"text":"Test","operation":"summarize"}' \
+     http://localhost:8000/v1/text_processing/process
+```
+
 ### Clean up issues:
 ```bash
 make clean              # Remove containers and volumes
@@ -218,10 +255,19 @@ To enable HTTPS in production:
 
 ## Monitoring and Logging
 
-- All services include structured logging
-- Health checks provide service status
-- Redis data is persisted across restarts
-- Backup/restore functionality for Redis data
+### Built-in Monitoring Endpoints
+- **System Health**: `http://localhost:8000/health`
+- **Comprehensive Monitoring**: `http://localhost:8000/internal/monitoring/overview`
+- **Resilience Status**: `http://localhost:8000/internal/resilience/health`
+- **Cache Performance**: `http://localhost:8000/internal/monitoring/cache-stats`
+
+### Features
+- **Structured logging** across all services
+- **Health checks** provide real-time service status
+- **Performance metrics** for cache and resilience patterns
+- **Redis data persistence** across container restarts
+- **Backup/restore functionality** for Redis data
+- **Circuit breaker monitoring** with automatic recovery
 
 ## Performance Optimization
 

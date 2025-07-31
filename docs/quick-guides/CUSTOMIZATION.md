@@ -31,11 +31,13 @@ Our architecture is organized into functional layers that clearly separate conce
 
 * **Definition**: These are the stable, reusable, business-agnostic technical capabilities that support your domain logic. They answer the question, **"HOW does my application do things?"**  
 * **Location**: app/infrastructure/  
-* **Purpose**: To provide a reliable, battle-tested library of tools like caching, resilience patterns, and security utilities.  
+* **Purpose**: To provide a reliable, battle-tested library of tools like caching, resilience patterns, multi-mode authentication, and comprehensive monitoring.  
 * **Key Characteristics**:  
-  * **Stable**: You should rarely need to change the code in this directory. It's designed to be a solid foundation.  
-  * **Business-Agnostic**: A caching service works the same way whether you're building a chatbot or a document analysis tool.  
-  * **Low Customization**: You will configure these services (via core/config.py), but you won't often edit their code.
+  * **Production-Ready**: These services include comprehensive error handling, performance monitoring, and graceful degradation patterns.
+  * **Stable API**: Designed to maintain backward compatibility with >90% test coverage requirements.
+  * **Business-Agnostic**: A caching service or authentication system works the same way whether you're building a chatbot or a document analysis tool.  
+  * **Configuration-Driven**: Behavior is controlled through environment variables and preset configurations.
+  * **Low Customization**: You will configure these services (via core/config.py and environment variables), but you won't often edit their code.
 
 ### **Core Application Setup ⚙️**
 
@@ -62,16 +64,16 @@ backend/app/
 ├── main.py                  \# FastAPI app setup, middleware, top-level routers  
 ├── dependencies.py          \# Global dependency injection functions  
 │  
-├── api/                     \# API Layer: Request/Response handling (thin layer)  
-│   ├── v1/  
-│   │   ├── text\_processing.py      \# Endpoints for the main business logic  
-│   │   ├── health.py                \# /health, /operations, system endpoints  
-│   │   ├── auth.py                  \# Authentication endpoints (/auth/*)
-│   │   └── deps.py                  \# API-specific dependencies  
-│   └── internal/            \# Internal/admin endpoints  
-│       ├── monitoring.py          \# /monitoring/\* endpoints  
-│       ├── cache.py               \# /cache/\* and admin endpoints
-│       └── resilience/           \# Resilience management endpoints
+├── api/                     \# Dual-API Layer: Public and Internal endpoints
+│   ├── v1/                  \# Public API (external-facing)
+│   │   ├── text\_processing.py      \# Business logic endpoints (/v1/text_processing/*)
+│   │   ├── health.py                \# Public health and operations endpoints
+│   │   ├── auth.py                  \# Authentication status endpoints (/v1/auth/*)
+│   │   └── deps.py                  \# Public API dependencies
+│   └── internal/            \# Internal API (admin/monitoring)
+│       ├── monitoring.py            \# System monitoring endpoints (/internal/monitoring/*)
+│       ├── cache.py                 \# Cache management endpoints (/internal/cache/*)
+│       └── resilience/              \# Resilience management (38 endpoints across 8 modules)
 │  
 ├── core/                    \# Application-wide setup & cross-cutting concerns  
 │   ├── config.py              \# Centralized Pydantic settings  
@@ -81,12 +83,12 @@ backend/app/
 │   ├── text\_processor.py         \# Main text processing service (composes infrastructure)
 │   └── response\_validator.py     \# AI response validation and security service
 │  
-├── infrastructure/          \# Reusable, business-agnostic technical services  
-│   ├── ai/                    \# AI provider abstractions, prompt building  
-│   ├── cache/                 \# Caching logic and implementation  
-│   ├── resilience/            \# Circuit breakers, retries, presets  
-│   ├── security/              \# Auth, input/output validation logic  
-│   └── monitoring/            \# Monitoring logic and metrics collection  
+├── infrastructure/          \# Production-ready, business-agnostic technical services (>90% test coverage)
+│   ├── ai/                    \# AI provider abstractions, prompt security, input sanitization
+│   ├── cache/                 \# Redis + memory cache with compression, performance monitoring
+│   ├── resilience/            \# Circuit breakers, retry patterns, preset configurations
+│   ├── security/              \# Multi-mode authentication, API key management, security utilities
+│   └── monitoring/            \# System monitoring, performance metrics, health checks  
 │  
 └── schemas/                 \# Pydantic models (data contracts)  
     ├── text\_processing.py       \# Request/Response models for text processing  
@@ -98,13 +100,23 @@ backend/app/
 
 This section provides a clear, step-by-step guide on where to make changes to adapt this template for your own project.
 
-### **Step 1: Configure Your Project (core/config.py)**
+### **Step 1: Configure Your Project (core/config.py and Environment Variables)**
 
-This is the first place you should go.
+This is the first place you should go for initial setup.
 
-* **Add Your Settings**: Add new fields to the Settings class for any API keys, feature flags, or other environment variables your application needs.  
-* **Adjust Defaults**: Change default values for AI\_MODEL, RESILIENCE\_PRESET, etc., to match your project's requirements.  
-* **Remove Unused Settings**: If you aren't using Redis, for example, you can remove the cache\_\* configuration fields to keep things clean.
+#### **Authentication Configuration**
+* **Set Authentication Mode**: Choose between `AUTH_MODE=simple` (basic API key auth) or `AUTH_MODE=advanced` (enhanced features with user tracking)
+* **Configure API Keys**: Set `API_KEY` for the primary key and `ADDITIONAL_API_KEYS` for multiple clients
+* **Advanced Features**: Enable `ENABLE_USER_TRACKING=true` and `ENABLE_REQUEST_LOGGING=true` for enhanced security features
+
+#### **Resilience Configuration**
+* **Choose Resilience Preset**: Set `RESILIENCE_PRESET` to `simple`, `development`, or `production` based on your environment
+* **Custom Configuration**: For advanced setups, use `RESILIENCE_CUSTOM_CONFIG` with JSON configuration
+
+#### **Core Application Settings**
+* **Add Your Settings**: Add new fields to the Settings class for any API keys, feature flags, or other environment variables your application needs
+* **AI Provider Setup**: Configure `GEMINI_API_KEY` and adjust `AI_MODEL` settings
+* **Infrastructure Settings**: Configure Redis (`REDIS_URL`) or rely on automatic memory cache fallback
 
 ### **Step 2: Define Your Business Logic (services/)**
 
@@ -128,21 +140,33 @@ Define the shape of your API's inputs and outputs.
   - **Extend**: Keep it as an example and add new schema files alongside it
 * **Maintain Health Schemas**: The `health.py` file provides system health check models - typically keep this unchanged.
 
-### **Step 4: Expose Your Services via API (api/)**
+### **Step 4: Expose Your Services via Dual-API Structure (api/)**
 
-Make your domain services accessible over HTTP.
+Make your domain services accessible over HTTP using the dual-API architecture.
 
-* **Understand the Structure**: The API is organized into:
-  - `api/v1/`: Public API endpoints for your core business functionality
-  - `api/internal/`: Internal/admin endpoints for monitoring, caching, and system management
-* **Replace or Extend v1 Endpoints**: In the `api/v1/` directory:
+#### **Dual-API Architecture Overview**
+The template provides two distinct API interfaces:
+* **Public API (`/v1/`)**: External-facing business endpoints with authentication
+* **Internal API (`/internal/`)**: Administrative endpoints for monitoring and system management
+
+#### **Public API Customization (`api/v1/`)**
+* **Replace or Extend Business Endpoints**: 
   - **Replace**: Delete `text_processing.py` and create new routers for your domain (e.g., `invoicing.py`, `document_analysis.py`)
   - **Extend**: Keep the text processing router as an example and add new routers alongside it
-* **Keep System Routers**: These routers provide essential functionality and should typically be kept:
-  - `auth.py`: Authentication endpoints
-  - `health.py`: Health check endpoints
-  - `deps.py`: API-specific dependencies
-* **Internal Endpoints**: The `api/internal/` directory contains infrastructure management endpoints (monitoring, cache, resilience) - these are typically kept unchanged.
+* **Authentication Integration**: Use the provided authentication patterns:
+  - `Depends(verify_api_key)` for required authentication
+  - `Depends(optional_verify_api_key)` for optional authentication
+  - `Depends(verify_api_key_with_metadata)` for advanced mode with user context
+
+#### **Internal API (Keep Unchanged)**
+* **Monitoring Endpoints** (`/internal/monitoring/*`): System health and performance metrics
+* **Resilience Management** (`/internal/resilience/*`): 38 endpoints across 8 modules for resilience pattern management
+* **Cache Management** (`/internal/cache/*`): Cache performance and administration
+
+#### **System Routers (Keep These)**
+* `auth.py`: Authentication status and validation endpoints
+* `health.py`: Public health check endpoints
+* `deps.py`: API-specific dependencies and security
 
 ### **Step 5: Define Custom Errors (core/exceptions.py)**
 
@@ -156,27 +180,35 @@ Give your application a clear error contract.
 Before extending the infrastructure, it's important to understand what services are already available. The template includes several production-ready infrastructure services that you can leverage:
 
 ### **AI Services (`infrastructure/ai/`)**
-* **PromptBuilder & Input Sanitization**: Safe prompt construction and input validation for AI operations
-* **AI Client Abstractions**: Clean interfaces for working with different AI providers
+* **Input Sanitizer**: Prompt injection protection and comprehensive input validation for AI operations
+* **Prompt Builder**: Safe prompt construction utilities with security-aware patterns
+* **AI Provider Abstractions**: Clean interfaces for working with different AI providers (currently optimized for Gemini)
 
 ### **Caching (`infrastructure/cache/`)**
-* **Multi-Implementation Cache**: Both Redis-based and in-memory cache implementations
-* **AI Response Caching**: Specialized caching optimized for AI responses with compression
-* **Performance Monitoring**: Built-in cache performance tracking and analytics
+* **AIResponseCache**: Redis-based cache with automatic fallback to in-memory cache when Redis unavailable
+* **Performance Optimization**: Built-in compression, memory management, and performance monitoring
+* **Multiple Backends**: Seamless switching between Redis and memory cache based on availability
+* **Cache Analytics**: Comprehensive hit/miss ratios, memory usage tracking, and performance metrics
 
-### **Resilience (`infrastructure/resilience/`)**
-* **Circuit Breakers**: Prevent cascading failures in AI service calls
-* **Retry Logic**: Intelligent retry mechanisms with exponential backoff
-* **Configuration Presets**: Pre-configured resilience strategies (aggressive, balanced, conservative)
-* **Performance Monitoring**: Comprehensive metrics and monitoring for resilience patterns
+### **Resilience (`infrastructure/resilience/`)**  
+* **Circuit Breakers**: Prevent cascading failures with automatic recovery and state management
+* **Retry Logic**: Intelligent retry mechanisms with exponential backoff and jitter
+* **Preset Configuration System**: Three built-in presets (simple, development, production) reducing configuration complexity
+* **Comprehensive API**: 38 endpoints across 8 modules for complete resilience pattern management
+* **Performance Benchmarks**: Built-in benchmarking and performance validation capabilities
 
 ### **Security (`infrastructure/security/`)**
-* **API Key Authentication**: Flexible API key authentication with multiple operation modes
-* **Request Validation**: Input sanitization and validation utilities
+* **Multi-Mode Authentication**: Support for simple and advanced authentication modes with user context tracking
+* **API Key Management**: Primary and additional API key support with secure key verification
+* **RFC 6750 Compliance**: Bearer token authentication following web standards
+* **Security Event Logging**: Comprehensive audit trails with secure key information handling
+* **Development Integration**: Automatic development mode detection for seamless testing
 
 ### **Monitoring (`infrastructure/monitoring/`)**
-* **Health Checks**: System health monitoring and status reporting
-* **Metrics Collection**: Application performance metrics and analytics
+* **Centralized Monitoring**: Unified access to performance metrics from cache and resilience systems
+* **Real-time Metrics**: Live system monitoring with configurable retention and alerting
+* **Health Status Reporting**: Comprehensive system health checks and component status monitoring
+* **Performance Analytics**: Detailed performance analysis and trend monitoring
 
 These services are designed to be composed together in your domain services. For example, the `TextProcessorService` combines AI, caching, resilience, and security services to provide robust text processing functionality.
 

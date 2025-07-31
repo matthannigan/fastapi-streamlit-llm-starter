@@ -240,15 +240,75 @@ A well-structured documentation hierarchy should enable:
 This project demonstrates several best practices:
 
 - **Root README.md**: Focuses on Docker Compose orchestration, system-wide deployment, and complete user journey
-- **Backend README.md**: Deep dive into API endpoints, testing strategies, and backend-specific configuration  
-- **Frontend README.md**: UI features, user experience flow, and frontend development workflow
+- **Backend README.md**: Deep dive into dual-API endpoints, infrastructure vs domain architecture, testing strategies, and backend-specific configuration  
+- **Frontend README.md**: UI features, authentication integration, user experience flow, and frontend development workflow
 - **Backend/Tests README.md**: Specialized documentation for comprehensive testing workflows, test organization, and QA practices
 - **Examples README.md**: Usage-focused documentation with practical integration examples, custom operation guides, and API reference patterns
+- **Infrastructure Service READMEs**: Focused documentation for production-ready infrastructure components (security, cache, resilience, monitoring)
 - **Cross-References**: Each level appropriately links to others without duplication
 
-This **four-tier hierarchy** ensures that documentation serves its users effectively while remaining maintainable and avoiding the common pitfalls of documentation decay:
+This **multi-tier hierarchy** ensures that documentation serves its users effectively while remaining maintainable and avoiding the common pitfalls of documentation decay:
 
 1. **Project Gateway** (Root README) → System overview and quick start
 2. **Service Manuals** (Service READMEs) → Technical deep dives for specific services  
 3. **Specialized Guides** (Tests, Examples READMEs) → Focused expertise areas
-4. **Advanced Topics** (Docs/ folder) → Architectural decisions and complex configurations 
+4. **Infrastructure Documentation** (Service-specific READMEs) → Production-ready component guides
+5. **Advanced Topics** (Docs/ folder) → Architectural decisions and complex configurations
+
+## Documenting Architectural Patterns
+
+### Infrastructure vs Domain Service Documentation
+
+When documenting the architectural separation between infrastructure and domain services:
+
+#### Infrastructure Services Documentation (app/infrastructure/*/README.md)
+**Purpose**: Document production-ready, business-agnostic technical capabilities  
+**Key Elements:**
+- **API Stability Guarantees**: Backward compatibility commitments
+- **Configuration Options**: Environment-based configuration patterns
+- **Integration Patterns**: How domain services should consume these services
+- **Performance Characteristics**: SLAs and performance expectations
+- **Error Handling**: Comprehensive error scenarios and recovery patterns
+- **Extension Points**: How to extend without breaking changes
+
+**Template Structure:**
+```markdown
+1. Service Purpose & Production Readiness Statement
+2. Core Features & Stability Guarantees  
+3. Usage Patterns & Integration Examples
+4. Configuration Reference
+5. Performance & Monitoring
+6. Error Handling & Resilience
+7. Extension Guidelines
+```
+
+#### Domain Services Documentation
+**Purpose**: Document educational examples meant to be replaced  
+**Key Elements:**
+- **Educational Context**: Clear statement that these are examples
+- **Replacement Guidance**: How to customize for specific business needs
+- **Pattern Demonstration**: Best practices for using infrastructure services
+- **Integration Examples**: Proper dependency injection patterns
+
+**Template Structure:**
+```markdown
+1. Educational Purpose Statement
+2. Business Logic Examples
+3. Infrastructure Service Usage Patterns
+4. Customization Guidelines
+5. Replacement Instructions
+```
+
+### Dual-API Documentation Patterns
+
+When documenting the dual-API architecture:
+
+#### Public API Documentation (/v1/ endpoints)
+- **External Consumer Focus**: Documentation for frontend and external integrations
+- **Authentication Examples**: How to use Bearer token authentication
+- **Business Logic Emphasis**: Focus on business value and functionality
+
+#### Internal API Documentation (/internal/ endpoints)  
+- **Administrative Focus**: Documentation for system monitoring and management
+- **Infrastructure Emphasis**: Focus on system health, metrics, and configuration
+- **Operations Guidance**: How to monitor and maintain the system 

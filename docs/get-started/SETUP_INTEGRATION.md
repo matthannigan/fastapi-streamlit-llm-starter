@@ -27,43 +27,60 @@ cp .env.example .env
 # Edit .env with your API keys
 ```
 
-### 2. Start Backend
+### 2. Configure Authentication
+```bash
+# Edit .env file with your configuration
+API_KEY=your-secure-api-key-here
+GEMINI_API_KEY=your-gemini-api-key
+AUTH_MODE=simple  # or 'advanced' for enhanced features
+RESILIENCE_PRESET=development  # or 'simple', 'production'
+```
+
+### 3. Start Backend
 ```bash
 # Using Makefile (recommended)
-make install  # Creates virtual environment and installs dependencies
+make install                # Creates virtual environment and installs dependencies
+make run-backend           # Starts FastAPI with auto-reload
 
 # Or manually
+source .venv/bin/activate   # Activate virtual environment
 cd backend
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Start Frontend
+### 4. Start Frontend
 ```bash
-# If using Makefile, dependencies are already installed
+# Using Makefile (recommended)
+make install-frontend-local  # Install frontend dependencies in current venv
+make run-frontend           # Start Streamlit app
+
 # Or manually
+source .venv/bin/activate
 cd frontend
-pip install -r requirements.txt
-streamlit run app/app.py
+streamlit run app/app.py --server.port 8501
 ```
 
-### 4. Test the System
+### 5. Test the System
 ```bash
-# Using the enhanced Makefile (recommended)
-make install  # Setup virtual environment and dependencies
-make test-local  # Run tests without Docker
+# Using Makefile (recommended)
+make test-backend          # Run backend tests
+make test-frontend         # Run frontend tests via Docker
 
-# Or manually
-cd examples
-python basic_usage.py
+# Test API directly
+curl -H "Authorization: Bearer your-secure-api-key-here" \
+     -H "Content-Type: application/json" \
+     -d '{"text":"Hello world","operation":"summarize"}' \
+     http://localhost:8000/v1/text_processing/process
 ```
 
 **🎉 You're ready to go!**
-- Backend Public API: http://localhost:8000/v1/
-- Backend Internal API: http://localhost:8000/internal/
-- Frontend UI: http://localhost:8501
-- Public API Docs: http://localhost:8000/docs
-- Internal API Docs: http://localhost:8000/internal/docs
+- **Backend Public API**: http://localhost:8000/v1/ (external-facing endpoints)
+- **Backend Internal API**: http://localhost:8000/internal/ (admin/monitoring)
+- **Frontend UI**: http://localhost:8501
+- **Public API Docs**: http://localhost:8000/docs (Swagger UI for public API)
+- **Internal API Docs**: http://localhost:8000/internal/docs (admin endpoints)
+- **Health Check**: http://localhost:8000/health
+- **System Monitoring**: http://localhost:8000/internal/monitoring/overview
 
 ## 🏗️ System Architecture
 
@@ -142,12 +159,20 @@ graph TB
    
    Edit `.env`:
    ```env
-   # Essential Configuration
-   RESILIENCE_PRESET=development  # Choose: simple, development, production
-   GEMINI_API_KEY=your_api_key_here
-   API_KEY=dev-test-key-12345
+   # Authentication Configuration
+   AUTH_MODE=simple                # Choose: simple or advanced
+   API_KEY=dev-test-key-12345     # Primary API key for authentication
+   ADDITIONAL_API_KEYS=key1,key2   # Optional additional keys
+   
+   # Advanced Auth Features (AUTH_MODE=advanced only)
+   ENABLE_USER_TRACKING=false      # Enable user context tracking
+   ENABLE_REQUEST_LOGGING=false    # Enable security event logging
+   
+   # Resilience Configuration
+   RESILIENCE_PRESET=development   # Choose: simple, development, production
    
    # AI Configuration
+   GEMINI_API_KEY=your_api_key_here
    AI_MODEL=gemini-2.0-flash-exp
    
    # Development Settings
@@ -157,12 +182,9 @@ graph TB
    PORT=8000
    
    # Infrastructure Settings
-   REDIS_URL=redis://localhost:6379  # Optional - falls back to memory cache
+   REDIS_URL=redis://localhost:6379       # Optional - falls back to memory cache
    CORS_ORIGINS=["http://localhost:8501"]
-   DISABLE_INTERNAL_DOCS=false  # Enable internal API docs in development
-   
-   # Additional API Keys (optional)
-   ADDITIONAL_API_KEYS=additional-key-1,additional-key-2
+   DISABLE_INTERNAL_DOCS=false           # Enable internal API docs in development
    ```
 
 2. **Install Dependencies:**
@@ -206,7 +228,7 @@ graph TB
 
 ```python
 #!/usr/bin/env python3
-"""Basic API usage example with standardized patterns."""
+"""Basic API usage example with authentication and dual-API structure."""
 
 # Standard library imports
 import asyncio
@@ -216,28 +238,37 @@ from typing import Dict, Any, Optional
 # Third-party imports
 import httpx
 
-# Local application imports
-from shared.sample_data import get_sample_text
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+API_KEY = "dev-test-key-12345"  # Use your actual API key
+BASE_URL = "http://localhost:8000"
+
 async def basic_example():
-    """Demonstrate basic API usage with error handling."""
+    """Demonstrate basic API usage with authentication and error handling."""
+    headers = {"Authorization": f"Bearer {API_KEY}"}
+    
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Health check
-            response = await client.get("http://localhost:8000/health")
+            # Health check (no auth required)
+            response = await client.get(f"{BASE_URL}/health")
             response.raise_for_status()
             health = response.json()
             print(f"API Status: {health['status']}")
             
-            # Process text using standardized sample data
+            # Check authentication status
+            response = await client.get(f"{BASE_URL}/v1/auth/status", headers=headers)
+            response.raise_for_status()
+            auth_status = response.json()
+            print(f"Auth Status: {auth_status}")
+            
+            # Process text using public API with authentication
             response = await client.post(
-                "http://localhost:8000/process",
+                f"{BASE_URL}/v1/text_processing/process",
+                headers=headers,
                 json={
-                    "text": get_sample_text("ai_technology"),
+                    "text": "Artificial intelligence is revolutionizing industries across the globe...",
                     "operation": "summarize",
                     "options": {"max_length": 50}
                 }
@@ -246,12 +277,19 @@ async def basic_example():
             result = response.json()
             print(f"Summary: {result['result']}")
             
+            # Check system monitoring (internal API)
+            response = await client.get(f"{BASE_URL}/internal/monitoring/overview", headers=headers)
+            response.raise_for_status()
+            monitoring = response.json()
+            print(f"System Status: {monitoring.get('status', 'unknown')}")
+            
     except httpx.TimeoutException:
         logger.error("Request timeout")
         print("Request timed out. Please try again.")
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error: {e.response.status_code}")
-        print(f"API Error: {e.response.status_code}")
+        error_detail = e.response.json().get('detail', 'Unknown error')
+        print(f"API Error ({e.response.status_code}): {error_detail}")
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         print(f"Error: {str(e)}")
@@ -265,10 +303,10 @@ if __name__ == "__main__":
 
 ```python
 async def demonstrate_all_operations():
-    """Demonstrate all available text processing operations."""
+    """Demonstrate all available text processing operations with authentication."""
     
-    # Use standardized sample data
-    sample_text = get_sample_text("climate_change")
+    headers = {"Authorization": f"Bearer {API_KEY}"}
+    sample_text = "Climate change represents one of the most significant challenges facing humanity today..."
     
     operations = [
         {
@@ -312,29 +350,35 @@ async def demonstrate_all_operations():
             if "question" in op:
                 payload["question"] = op["question"]
             
-            response = await client.post(
-                "http://localhost:8000/process",
-                json=payload
-            )
-            
-            result = response.json()
-            
-            if op["operation"] == "sentiment":
-                sentiment = result["sentiment"]
-                print(f"   Sentiment: {sentiment['sentiment']} ({sentiment['confidence']:.1%})")
-            elif op["operation"] == "key_points":
-                print("   Key Points:")
-                for i, point in enumerate(result["key_points"], 1):
-                    print(f"     {i}. {point}")
-            elif op["operation"] == "questions":
-                print("   Questions:")
-                for i, question in enumerate(result["questions"], 1):
-                    print(f"     {i}. {question}")
-            else:
-                print(f"   Result: {result['result']}")
+            try:
+                response = await client.post(
+                    f"{BASE_URL}/v1/text_processing/process",
+                    headers=headers,
+                    json=payload
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                if op["operation"] == "sentiment":
+                    sentiment = result["sentiment"]
+                    print(f"   Sentiment: {sentiment['sentiment']} ({sentiment['confidence']:.1%})")
+                elif op["operation"] == "key_points":
+                    print("   Key Points:")
+                    for i, point in enumerate(result["key_points"], 1):
+                        print(f"     {i}. {point}")
+                elif op["operation"] == "questions":
+                    print("   Questions:")
+                    for i, question in enumerate(result["questions"], 1):
+                        print(f"     {i}. {question}")
+                else:
+                    print(f"   Result: {result['result']}")
+                    
+            except httpx.HTTPStatusError as e:
+                print(f"   Error: {e.response.status_code} - {e.response.text}")
 
 # Run the demonstration
-asyncio.run(demonstrate_all_operations())
+if __name__ == "__main__":
+    asyncio.run(demonstrate_all_operations())
 ```
 
 ## 🔌 API Integration
@@ -346,9 +390,9 @@ The template provides two distinct API interfaces:
 #### Public API (`/v1/`) - External Business Logic
 For external applications and frontend integration:
 
-**Health Check**
+**Health Check** (No authentication required)
 ```http
-GET /v1/health
+GET /health
 ```
 **Response:**
 ```json
@@ -359,73 +403,107 @@ GET /v1/health
 }
 ```
 
-**Process Text**
+**Authentication Status**
 ```http
-POST /v1/text-processing/{operation}
+GET /v1/auth/status
+Authorization: Bearer your-api-key
+```
+**Response:**
+```json
+{
+  "authenticated": true,
+  "mode": "simple",
+  "features": ["multi_key_support"]
+}
+```
+
+**Process Text** (Authentication required)
+```http
+POST /v1/text_processing/process
 Content-Type: application/json
-X-API-Key: your-api-key
+Authorization: Bearer your-api-key
 
 {
   "text": "Your text here",
+  "operation": "summarize",
   "options": {"max_length": 100},
   "question": "Optional question for Q&A operations"
 }
 ```
 
-**Available Operations**
+**Available Operations** (Optional authentication)
 ```http
 GET /v1/operations
-X-API-Key: your-api-key
+Authorization: Bearer your-api-key  # Optional
+```
+**Response:**
+```json
+{
+  "operations": ["summarize", "sentiment", "key_points", "questions", "qa"],
+  "authenticated": true
+}
 ```
 
 #### Internal API (`/internal/`) - Infrastructure Management
 For administrative and monitoring tasks (requires API key authentication):
 
-**System Health**
+**System Monitoring**
 ```http
-GET /internal/health
-X-API-Key: your-api-key
+GET /internal/monitoring/overview
+Authorization: Bearer your-api-key
 ```
 **Response:**
 ```json
 {
   "status": "healthy",
   "timestamp": "2024-01-15T10:30:00Z",
-  "components": {
-    "cache": "healthy",
-    "ai_service": "healthy",
-    "resilience": "healthy"
+  "cache_performance": {
+    "hit_ratio": 85.3,
+    "avg_operation_time": 0.012,
+    "memory_usage_mb": 45.2
   },
-  "metrics": {
-    "uptime": "2d 5h 30m",
-    "total_requests": 15420,
-    "cache_hit_rate": 0.85
+  "resilience_status": {
+    "circuit_breakers": {"text_processing": "closed"},
+    "retry_statistics": {"success_rate": 98.7}
   }
 }
 ```
 
-**Resilience Management (38 endpoints across 8 modules)**
+**Resilience Management** (38 endpoints across 8 focused modules)
 ```http
-# Configuration Management
-GET /internal/resilience/config
-GET /internal/resilience/presets
-POST /internal/resilience/validate
+# Configuration Management (4 endpoints)
+GET /internal/resilience/config/presets
+POST /internal/resilience/config/validate
+GET /internal/resilience/config/recommend-preset/{environment}
+GET /internal/resilience/config/templates
 
-# Circuit Breaker Management  
+# Circuit Breaker Management (3 endpoints)
 GET /internal/resilience/circuit-breakers
+GET /internal/resilience/circuit-breakers/{name}
 POST /internal/resilience/circuit-breakers/{name}/reset
 
-# Performance Monitoring
-GET /internal/resilience/metrics
+# Performance Monitoring (4 endpoints)
+GET /internal/resilience/health
+GET /internal/resilience/metrics  
 POST /internal/resilience/benchmark
+GET /internal/resilience/performance-metrics
 
-# Cache Management
-GET /internal/cache/stats
-POST /internal/cache/clear
+# Cache Management (via monitoring)
+GET /internal/monitoring/cache-stats
+GET /internal/monitoring/cache-health
 
-# System Monitoring
-GET /internal/monitoring/metrics
-GET /internal/monitoring/alerts
+# System Analytics (4 endpoints)
+GET /internal/resilience/usage-statistics
+GET /internal/resilience/preset-trends/{preset}
+GET /internal/resilience/alerts
+GET /internal/resilience/performance-analysis
+```
+
+**Authentication required for all internal endpoints:**
+```bash
+# Set authentication header
+curl -H "Authorization: Bearer your-api-key" \
+     http://localhost:8000/internal/monitoring/overview
 ```
 
 ### Example API Usage
