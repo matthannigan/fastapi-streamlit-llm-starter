@@ -23,6 +23,7 @@ const config: Config = {
 
   markdown: {
     format: 'detect', // Use CommonMark for .md and MDX for .mdx
+    mermaid: true,
   },
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -46,6 +47,7 @@ const config: Config = {
       'classic',
       {
         docs: {
+          path: '../docs',
           sidebarPath: './sidebars.ts',
           // This sets the /docs path as the default route
           routeBasePath: '/',
@@ -66,29 +68,14 @@ const config: Config = {
           ],
           // --- End of Added Section ---
         },
-        blog: {
-          showReadingTime: false,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/matthannigan/fastapi-streamlit-llm-starter/tree/main/docs-website/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'ignore',
-          // You could add an 'exclude' array here too if you have blog templates
-          // exclude: ['**/blog-templates/**'],
-        },
         theme: {
           customCss: './src/css/custom.css',
         },
       } satisfies Preset.Options,
     ],
   ],
+
+  themes: ['@docusaurus/theme-mermaid'],
 
   themeConfig: {
     // Replace with your project's social card
@@ -125,9 +112,9 @@ const config: Config = {
         },
       ],
     },
-    footer: {
+    /*footer: {
       style: 'dark',
-      /*links: [
+      links: [
         {
           title: 'Docs',
           items: [
@@ -167,15 +154,18 @@ const config: Config = {
             },
           ],
         },
-      ],*/
+      ],
       //copyright: `Copyright © ${new Date().getFullYear()} FastAPI + Streamlit LLM Starter Template. Built with Docusaurus.`,
       copyright: `Built with <a href="https://docusaurus.io/" target="_blank">Docusaurus</a>.`,
-    },
+    },*/
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
       additionalLanguages: ['bash', 'diff', 'json', 'python'],
     },
+    mermaid: {
+      theme: {light: 'neutral', dark: 'dark'},
+    },    
   } satisfies Preset.ThemeConfig,
 };
 
