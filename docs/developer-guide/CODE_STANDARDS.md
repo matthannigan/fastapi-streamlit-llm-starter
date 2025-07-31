@@ -1,4 +1,4 @@
-# Code Standards and Examples Guide
+# Code Standards & Examples
 
 This document defines the standardized patterns for code examples, imports, error handling, and sample data across the FastAPI-Streamlit-LLM Starter Template.
 

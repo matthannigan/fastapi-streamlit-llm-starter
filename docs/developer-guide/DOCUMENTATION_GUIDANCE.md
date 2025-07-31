@@ -1,4 +1,4 @@
-# Documentation Guidance and Philosophy
+# Docs Guidance & Philosophy
 
 This document outlines the documentation philosophy and best practices used in this project, based on the hierarchical structure observed across the root README.md, backend/README.md, and frontend/README.md files.
 

@@ -1,4 +1,4 @@
-# Virtual Environment Management Guide
+# Virtual Environment Management
 
 This document explains the enhanced virtual environment management implemented in the FastAPI-Streamlit-LLM starter template.
 

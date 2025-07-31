@@ -1,4 +1,8 @@
-# Advanced Authentication Guide
+---
+sidebar_label: Advanced Authentication
+---
+
+# Advanced Authentication Roadmap
 
 This guide explains how to extend the FastAPI-Streamlit-LLM Starter Template's simple authentication system to support advanced features like user management, role-based permissions, and rate limiting.
 
