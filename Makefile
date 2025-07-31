@@ -598,18 +598,20 @@ restore:
 ##################################################################################################
 
 # Copy all READMEs saved within the codebase to docs/quick-guides
-copy-readmes:
-	@cp README.md docs/README.md
-	@mkdir -p docs/quick-guides
-	@find backend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find frontend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find shared -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find examples -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@find scripts -name "README.md" -type f -exec sh -c 'mkdir -p "docs/quick-guides/$$(dirname "$$1")" && cp "$$1" "docs/quick-guides/$$1"' _ {} \;
-	@echo "✅ READMEs copied to docs/quick-guides/"
+#copy-readmes:
+#	@cp README.md docs/README.md
+#	@mkdir -p docs/READMEs
+#	@find backend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/READMEs/$$(dirname "$$1")" && cp "$$1" "docs/READMEs/$$1"' _ {} \;
+#	@find frontend -name "README.md" -type f -exec sh -c 'mkdir -p "docs/READMEs/$$(dirname "$$1")" && cp "$$1" "docs/READMEs/$$1"' _ {} \;
+#	@find shared -name "README.md" -type f -exec sh -c 'mkdir -p "docs/READMEs/$$(dirname "$$1")" && cp "$$1" "docs/READMEs/$$1"' _ {} \;
+#	@find examples -name "README.md" -type f -exec sh -c 'mkdir -p "docs/READMEs/$$(dirname "$$1")" && cp "$$1" "docs/READMEs/$$1"' _ {} \;
+#	@find scripts -name "README.md" -type f -exec sh -c 'mkdir -p "docs/READMEs/$$(dirname "$$1")" && cp "$$1" "docs/READMEs/$$1"' _ {} \;
+#	@echo "✅ READMEs copied to docs/READMEs/"
 
 # Export docstrings from codebase to docs/code_ref
 code_ref:
+	@cp README.md docs/README.md
+	@echo "✅ Repository README copied to docs/README"
 	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
 	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
 	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
@@ -621,12 +623,12 @@ code_ref:
 # Documentation Website (via Docusaurus)
 ##################################################################################################
 
-docusaurus: copy-readmes code_ref
+docusaurus: code_ref
 	@echo "📖 Serving documentation locally..."
 	@echo "⏹️  Press Ctrl+C to stop"
 	cd docs-website && npm run start
 
-docusaurus-build: copy-readmes code_ref
+docusaurus-build: code_ref
 	@echo "📖 Building static documentation site..."
 	cd docs-website && npm run build
 	@echo "✅ Documentation built in docs-website/build/"
@@ -696,7 +698,7 @@ repomix-frontend-tests:
 	@npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
 # Generate documentation for code_ref, READMEs and docs/
-repomix-docs: copy-readmes code_ref
+repomix-docs: code_ref
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
 	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
