@@ -661,7 +661,7 @@ mkdocs-build:
 ##################################################################################################
 
 # Generate complete repository documentation
-repomix:
+repomix: code_ref
 	@echo "📄 Generating comprehensive repository documentation..."
 	@mkdir -p repomix-output
 	@echo "📝 Creating uncompressed documentation..."
