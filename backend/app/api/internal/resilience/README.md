@@ -1,3 +1,7 @@
+---
+sidebar_label: resilience
+---
+
 # Resilience API Documentation
 
 The Resilience API provides comprehensive endpoints for managing, configuring, and monitoring resilience infrastructure in your FastAPI application. This API enables you to configure circuit breakers, retry mechanisms, performance benchmarks, and advanced monitoring capabilities.

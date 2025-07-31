@@ -1,3 +1,7 @@
+---
+sidebar_label: tests
+---
+
 # Backend Test Suite
 
 This directory contains comprehensive tests for the FastAPI backend application, organized into clear categories for better maintainability and discoverability. The test suite includes **23,162 lines** across **59 test files**, providing extensive coverage of all application components.

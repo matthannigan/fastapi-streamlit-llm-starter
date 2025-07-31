@@ -1,3 +1,7 @@
+---
+sidebar_label: core
+---
+
 # Core Application Module
 
 This directory provides the foundational components of the FastAPI backend application, serving as the central nervous system that ties together infrastructure services, configuration management, exception handling, and middleware to create a cohesive application architecture.

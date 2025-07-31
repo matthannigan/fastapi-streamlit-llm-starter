@@ -1,3 +1,7 @@
+---
+sidebar_label: cache
+---
+
 # Cache Infrastructure Module
 
 This directory provides a comprehensive caching infrastructure with multiple implementations, performance monitoring, and advanced features specifically designed for AI response caching.

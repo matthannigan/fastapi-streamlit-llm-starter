@@ -1,3 +1,7 @@
+---
+sidebar_label: monitoring
+---
+
 # Monitoring Infrastructure Module
 
 This directory provides a comprehensive monitoring and observability infrastructure for FastAPI applications, serving as a centralized access point for performance monitoring, health checks, and metrics collection. It implements a unified monitoring architecture that aggregates capabilities from multiple infrastructure components while providing extensible foundations for future monitoring implementations.

@@ -1,3 +1,7 @@
+---
+sidebar_label: About the Template
+---
+
 # 🚀 FastAPI + Streamlit LLM Starter Template
 
 **A comprehensive starter template for building production-ready LLM-powered APIs with FastAPI.** This template showcases industry best practices, robust architecture patterns, and educational examples to help developers quickly bootstrap sophisticated AI applications.
@@ -13,25 +17,25 @@ This starter template demonstrates:
 
 ## 🌟 Key Features
 
-### 🏗️ **Production-Ready Architecture**
+### 🏗️ Production-Ready Architecture
 - **Dual-API Design**: Separate public (`/v1/`) and internal (`/internal/`) endpoints with distinct documentation
 - **Infrastructure vs Domain Separation**: Clear boundaries between reusable components and customizable business logic
 - **Comprehensive Resilience Patterns**: Circuit breakers, retry logic, graceful degradation
 - **Multi-tier Caching System**: Redis-backed with automatic fallback to in-memory cache
 
-### 🤖 **AI Integration Excellence**  
+### 🤖 AI Integration Excellence
 - **PydanticAI Agents**: Built-in security and validation for AI model interactions
 - **Prompt Injection Protection**: Comprehensive security measures against malicious inputs
 - **Multi-Provider Support**: Easy integration with Gemini, OpenAI, Anthropic, and other providers
 - **Response Validation**: AI output sanitization and structured validation
 
-### 🔧 **Developer Experience**
+### 🔧 Developer Experience
 - **Virtual Environment Automation**: All Python scripts automatically use `.venv` from project root
 - **Preset-Based Configuration**: Simplified resilience system reduces 47+ environment variables to single preset choice
 - **Parallel Testing**: Fast feedback cycles with comprehensive coverage requirements
 - **Hot Reload Development**: Docker Compose with file watching for both frontend and backend
 
-### 🛡️ **Production Security**
+### 🛡️ Production Security
 - **Multi-Key Authentication**: Primary + additional API keys for flexibility
 - **Internal API Protection**: Administrative endpoints disabled in production environments
 - **Security Logging**: Comprehensive audit trails for monitoring
@@ -251,7 +255,7 @@ make clean-all             # Complete cleanup (cache + venv)
 - **Resource Limits**: Memory and CPU constraints for stability
 - **Graceful Degradation**: Fallback mechanisms for service failures
 
-## 🎯 Available AI Operations **[Educational Examples]**
+## 🎯 Example AI Operations
 
 The template includes these **educational examples** to demonstrate API patterns:
 

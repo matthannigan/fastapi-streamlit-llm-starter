@@ -1,3 +1,7 @@
+---
+sidebar_label: ai
+---
+
 # AI Infrastructure Module
 
 This directory provides comprehensive AI model interaction utilities with a focus on security, safety, and reliability. The infrastructure implements defense-in-depth security practices specifically designed to protect AI systems from prompt injection attacks while providing flexible, template-based prompt construction.

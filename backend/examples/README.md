@@ -1,3 +1,7 @@
+---
+sidebar_label: examples
+---
+
 # Infrastructure Examples
 
 This directory contains comprehensive examples demonstrating advanced usage of the **backend infrastructure services** available in the FastAPI Streamlit LLM Starter project. These examples serve as both learning materials and practical implementation guides for backend developers and infrastructure engineers.

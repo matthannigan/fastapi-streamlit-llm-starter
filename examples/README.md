@@ -1,3 +1,7 @@
+---
+sidebar_label: Examples
+---
+
 # API Integration Examples
 
 This directory contains comprehensive examples demonstrating **API integration patterns** for the FastAPI-Streamlit-LLM Starter Template. These examples show how to interact with the backend API using HTTP clients and are designed for frontend developers, API consumers, and integration testing.

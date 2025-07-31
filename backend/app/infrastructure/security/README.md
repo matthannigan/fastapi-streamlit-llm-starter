@@ -1,3 +1,7 @@
+---
+sidebar_label: security
+---
+
 # Security Infrastructure Module
 
 This directory provides a comprehensive security infrastructure for FastAPI applications, implementing defense-in-depth security practices with configurable authentication, authorization, and input protection designed to handle both development and production environments.

@@ -1,3 +1,7 @@
+---
+sidebar_label: resilience
+---
+
 # Resilience Infrastructure Module
 
 This directory provides a comprehensive resilience infrastructure for AI service operations, implementing circuit breaker patterns, intelligent retry mechanisms, configuration management, and performance monitoring to handle transient failures and ensure robust service operations.
