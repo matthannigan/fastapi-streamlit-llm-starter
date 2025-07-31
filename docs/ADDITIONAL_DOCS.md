@@ -14,15 +14,17 @@
 
 ### Quick Wins (Low Effort, High Impact) - 1-2 days each
 
-1. **Cross-Reference Links**: Add navigation links between related documentation sections
-   - Link from quick-guides to deeper developer-guide content
-   - Connect infrastructure guides to related API endpoints
-   - Reference CLAUDE.md guidance from relevant sections
+1. **Visual Workflow Diagrams**: Add Mermaid diagrams to key guides to illustrate dynamic processes.
+   - `guides/infrastructure/RESILIENCE.md`: Diagram showing the flow of a request through the retry and circuit breaker logic.
+   - `guides/infrastructure/CACHE.md`: Diagram illustrating the L1 (Memory) -> L2 (Redis) cache check flow.
+   - `guides/CUSTOMIZATION.md`: Visual guide showing which files to modify for a typical customization task.
 
-2. **Documentation Index**: Create a master index in `docs/DOCUMENTATION_INDEX.md` with:
-   - Documentation map by user type (new user, developer, operator)
-   - Quick access to most-requested documentation
-   - Migration guide from older documentation structure
+2. **"Golden Path" Customization Guide**: Create a one-page guide in `docs/guides/developer/` that visually maps the most common customization journey:
+   - 1. Configure `.env`.
+   - 2. Define models in `shared/models.py`.
+   - 3. Implement logic in `backend/app/services/`.
+   - 4. Expose via `backend/app/api/v1/`.
+   - 5. Build UI in `frontend/app/app.py`.
 
 ### Medium Effort Enhancements - 3-5 days each
 
@@ -38,24 +40,23 @@
    - `TROUBLESHOOTING.md`: Common troubleshooting workflows
    - `PERFORMANCE_OPTIMIZATION.md`: Performance tuning/optimization
    - `BACKUP_RECOVERY.md`: Backup and recovery procedures
+   - `LOGGING_STRATEGY.md`: Guide to structured logging and how to interpret logs from different services.
 
 5. **Development Workflows** in `docs/guides/developer/` (new directory):
-   - `CHOOSING_WHAT_TO_KEEP.md`: Infrastructure vs domain decisions
+   - **Consolidate** `CHOOSING_WHAT_TO_KEEP.md`, `REPLACEMENT_STRATEGIES.md`, and `DOMAIN_SERVICE_PATTERNS.md` into a single, comprehensive **`CUSTOMIZATION_HANDBOOK.md`**.
    - `REPLACEMENT_STRATEGIES.md`: How to replace example services
    - `INFRASTRUCTURE_DEVELOPMENT.md`: How to extend infrastructure services
-   - `DOMAIN_SERVICE_PATTERNS.md`: How to build new business logic
    - `SCALING_THE_TEMPLATE.md`: Growing beyond the template with horizontal/vertical scaling
    - `CONTRIBUTING.md`: Contributing back to template
+   - **Architectural Decision Records (ADRs)**: Create a new directory `docs/adr/` to briefly document key architectural decisions (e.g., "Why a Dual-API Architecture?", "Why PydanticAI?", "Choice of Resilience Library"). This centralizes the "why" for future maintainers.
 
 ### High Effort Enhancements - 1-2 weeks each
 
 6. **Tutorial Series**: Develop learning path documentation in `docs/tutorials/` (new directory) that summarizes detailed content elsewhere:
-   - `QUICK_START.md`: 15-minute quick start summarizing `docs/guides/get-started/SETUP_INTEGRATION.md`
-   - Summarize `docs/guides/developer/CHOOSING_WHAT_TO_KEEP.md`, `docs/guides/developer/REPLACEMENT_STRATEGIES.md`, `docs/guides/developer/INFRASTRUCTURE_DEVELOPMENT.md`, and `docs/guides/developer/DOMAIN_SERVICE_PATTERNS.md` to create:
-      - `BUILDING_YOUR_FIRST_SERVICE.md`: Step-by-step service creation
-      - `ADDING_NEW_OPERATIONS.md`: Extending the API
-   - `CUSTOMIZING_RESILIENCE.md`: Overview of resilience configuration summarizing `docs/guides/infrastructure/RESILIENCE.md`
-   - `PRODUCTION_CHECKLIST.md`: Pre-deployment verification and production deployment walkthrough
+   - `01_GETTING_STARTED.md`: A 15-minute summary of the `SETUP_INTEGRATION.md` guide.
+   - `02_BUILDING_YOUR_FIRST_FEATURE.md`: A practical, step-by-step tutorial that applies the concepts from the new `CUSTOMIZATION_HANDBOOK.md`.
+   - `03_CONFIGURING_FOR_PRODUCTION.md`: An actionable tutorial summarizing key infrastructure guides (`RESILIENCE.md`, `CACHE.md`, `SECURITY.md`) and the `DEPLOYMENT.md` guide.
+   - `04_MONITORING_AND_OPERATIONS.md`: A tutorial based on the new operational runbooks.
 
 7. **Examples Enhancement**: Expand `examples/` with new scripts that demonstrate:
    - Real-world/production usage scenarios
@@ -91,12 +92,12 @@
 
 ### Key Gaps Identified
 
-1. **Missing operational guidance** - No comprehensive production operations documentation
-2. **Lack of tutorial progression** - No guided learning path from beginner to advanced usage
-3. **Scattered troubleshooting information** - No centralized troubleshooting and problem-solving guide
-4. **Security documentation fragmentation** - Security practices spread across infrastructure components need consolidation
-5. **Performance optimization guidance missing** - No comprehensive performance tuning documentation
-6. **Template usage patterns unclear** - Limited guidance on what to keep/replace when customizing template
+1. **Missing operational guidance** - No comprehensive production operations documentation.
+2. **Lack of a guided learning path** - The information is present, but there isn't a clear, tutorial-style progression for new users.
+3. **Scattered troubleshooting information** - A centralized troubleshooting guide is needed.
+4. **Fragmented security documentation** - Security practices are spread across infrastructure components and need consolidation.
+5. **Missing centralized architectural rationale** - The "why" behind key design decisions is not explicitly documented in one place (ADRs would solve this).
+6. **Lack of visual aids for dynamic processes** - Complex workflows like caching and resilience logic would benefit from visualization.
 
 ## Success Metrics
 
