@@ -1,6 +1,6 @@
-# Checklist
+# Get Started Checklist
 
-## 🚀 Complete Setup Checklist
+## 🚀 Installation & Setup
 
 ### 1. Initial Setup
 - [ ] Clone the repository
@@ -32,44 +32,37 @@ make prod
 - [ ] API docs: http://localhost:8000/docs
 - [ ] Run example: `python examples/basic_usage.py`
 
-### 5. Customization
-- [ ] Add your custom AI operations
-- [ ] Customize the UI theme and branding
-- [ ] Add authentication if needed
-- [ ] Configure monitoring and logging
-- [ ] Set up CI/CD pipeline
-
 ## 🎯 Next Steps
 
 After setting up the starter template:
 
-1. **Customize for Your Use Case**
-   - Replace the example text operations with your specific AI functionality
-   - Modify the UI to match your application's needs
-   - Add domain-specific prompts and AI configurations
+### 5. Customize for Your Use Case
+- [ ] Replace the example text operations with your specific AI functionality
+- [ ] Modify the UI and theme to match your application's needs and branding
+- [ ] Add domain-specific prompts and AI configurations
 
-2. **Add Production Features**
-   - User authentication and authorization
-   - Rate limiting and usage tracking
-   - Error monitoring and alerting
-   - Database integration for user data
-   - Caching for improved performance
+### 6. Add Production Features
+- [ ] User authentication and authorization
+- [ ] Advanced rate limiting and usage tracking
+- [ ] Error monitoring and alerting
+- [ ] Database integration for user data
+- [ ] Set up CI/CD pipeline
 
-3. **Scale Your Application**
-   - Load balancing with multiple backend instances
-   - Database clustering for high availability
-   - CDN for static assets
-   - Auto-scaling based on demand
+### 7. Scale Your Application
+- [ ] Load balancing with multiple backend instances
+- [ ] Database clustering for high availability
+- [ ] CDN for static assets
+- [ ] Auto-scaling based on demand
 
-4. **Monitor and Optimize**
-   - Application performance monitoring
-   - Cost tracking for AI API usage
-   - User analytics and feedback collection
-   - A/B testing for UI improvements
+### 8. Monitor and Optimize
+- [ ] Application performance monitoring
+- [ ] Cost tracking for AI API usage
+- [ ] User analytics and feedback collection
+- [ ] A/B testing for UI improvements
 
 ## 🔧 Troubleshooting
 
-**Common Issues:**
+### Common Issues
 
 1. **CORS errors in browser**
    - Check `ALLOWED_ORIGINS` in backend configuration
@@ -90,7 +83,8 @@ After setting up the starter template:
    - Optimize AI prompts for faster responses
    - Implement caching for repeated requests
 
-**Debug Commands:**
+### Debug Commands
+
 ```bash
 # View logs
 make logs
