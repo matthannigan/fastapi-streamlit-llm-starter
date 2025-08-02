@@ -705,7 +705,7 @@ repomix-frontend-tests:
 	@npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
 # Generate documentation for code_ref, READMEs and docs/
-repomix-docs: code_ref
+repomix-docs: code_ref generate-doc-views
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
 	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
