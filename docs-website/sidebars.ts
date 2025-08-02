@@ -8,7 +8,11 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
 
   docs: [
-    'README',
+    {
+      type: 'doc',
+      id: 'README',
+      label: 'About the Template',
+    },
     { // Get Started
       type: 'category',
       label: 'Get Started',
@@ -147,13 +151,25 @@ const sidebars: SidebarsConfig = {
     },
     { // Additional Documentation Ideas
       type: 'doc',
-      id: 'ADDITIONAL_DOCS',
+      id: 'DOCS_MORE',
       label: 'Additional Documentation',
     },
-    { // Repo READMEs
-      type: 'doc',
-      id: 'DOCUMENTATION_INDEX',
-      label: 'Index',
+    { // Documentation Indexes
+      type: 'category',
+      label: 'Documentation Index',
+      link: {type: 'doc', id: 'DOCS_INDEX'},
+      items: [
+        {
+          type: 'doc',
+          id: 'DOCS_BY_TOPIC',
+          label: 'By Topic',
+        },
+        {
+          type: 'doc',
+          id: 'DOCS_BY_AUDIENCE',
+          label: 'By Audience',
+        },
+      ],
     },
   ],
   deep_dives: [
