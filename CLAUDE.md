@@ -583,7 +583,7 @@ Refer to `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md` for detailed 
 **All scripts run from project root using `.venv` virtual environment automatically.**
 
 ### 📚 Documentation Structure
-**Comprehensive documentation in `docs/` directory following `docs/DOCUMENTATION_INDEX.md`:**
+**Comprehensive documentation in `docs/` directory following `docs/DOCS_INDEX.md`:**
 
 **📖 Template Documentation:**
 - **`docs/README.md`**: Main project overview and quick start guide
@@ -733,7 +733,7 @@ CACHE_TTL_SECONDS=3600
 ### Documentation Resources
 
 **Essential Reading for Code Assistants:**
-- **`docs/DOCUMENTATION_INDEX.md`**: Complete documentation index with all available guides
+- **`docs/DOCS_INDEX.md`**: Complete documentation index with all available guides
 - **`docs/get-started/SETUP_INTEGRATION.md`**: Complete systems integration guide
 - **`docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`**: Critical architectural distinction
 - **`docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`**: Dual-API design patterns
@@ -845,7 +845,7 @@ When users ask about customizing the template:
 The project documentation has been comprehensively reorganized following a hierarchical, purpose-driven approach:
 
 **New Structure Benefits:**
-- **Clear Navigation**: `docs/DOCUMENTATION_INDEX.md` provides complete guide discovery
+- **Clear Navigation**: `docs/DOCS_INDEX.md` provides complete guide discovery
 - **Purpose-Driven Organization**: Documentation organized by user intent (get-started, guides, reference)  
 - **Educational Focus**: Key concepts section explains critical architectural decisions
 - **Developer-Centric**: Dedicated developer guidance section for code standards and best practices
@@ -857,4 +857,4 @@ The project documentation has been comprehensively reorganized following a hiera
 - Infrastructure service documentation enhanced in `docs/guides/infrastructure/`
 - Developer-specific guidance centralized in `docs/guides/developer/`
 
-**Code Assistants:** Always reference the current documentation structure via `docs/DOCUMENTATION_INDEX.md` for the most up-to-date file locations and organizational hierarchy.
+**Code Assistants:** Always reference the current documentation structure via `docs/DOCS_INDEX.md` for the most up-to-date file locations and organizational hierarchy.

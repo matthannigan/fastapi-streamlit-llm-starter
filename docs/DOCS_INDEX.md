@@ -41,8 +41,10 @@
 ### Miscellaneous
 
 - **[Future Features](./future-features/)**: Roadmaps for planned future features of the template or strategies to extend template for production use.
-- **[Additional Documentation](./ADDITIONAL_DOCS.md)**: Implementation roadmap for improving template documentation with quick wins, operational guides, and tutorial series *(Last updated 2025-07-31)*
-- **[Documentation Index](./DOCUMENTATION_INDEX.md)**: This file.
+- **[Additional Documentation Ideas](./DOCS_MORE.md)**: Implementation roadmap for improving template documentation with quick wins, operational guides, and tutorial series *(Last updated 2025-08-02)*
+- **[Documentation Index](./DOCS_INDEX.md)**: This file. *(Last updated 2025-08-02)*
+- **[Documentation by Topic](./DOCS_BY_TOPIC.md)**: Browse documentation by topic category, helping you find content related to specific domains. *(Last updated 2025-08-02)*
+- **[Documentation by Audience](./DOCS_BY_AUDIENCE.md)**: Browse documentation by target audience level, helping you find content appropriate for your experience level. *(Last updated 2025-08-02)*
 
 ## 📚 Technical Deep Dives
 
