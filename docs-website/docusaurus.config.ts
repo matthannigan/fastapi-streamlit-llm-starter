@@ -52,8 +52,8 @@ const config: Config = {
           // This sets the /docs path as the default route
           routeBasePath: '/',
           // Update this to your repo
-          editUrl:
-            'https://github.com/matthannigan/fastapi-streamlit-llm-starter/tree/main/docs-website/',
+          // editUrl:
+          //   'https://github.com/matthannigan/fastapi-streamlit-llm-starter/tree/main/docs-website/',
           // --- ADDED: Exclude patterns ---
           exclude: [
             // Exclude files/directories starting with an underscore (common for drafts/partials)
@@ -75,6 +75,16 @@ const config: Config = {
     ],
   ],
 
+  // plugins: [
+  //   [
+  //     require.resolve('docusaurus-lunr-search'),
+  //     {
+  //       languages: ['en'],
+  //       indexBaseUrl: true,
+  //     },
+  //   ],
+  // ],
+  
   themes: ['@docusaurus/theme-mermaid'],
 
   themeConfig: {
