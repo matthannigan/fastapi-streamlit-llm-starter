@@ -1,0 +1,327 @@
+{
+  "get-started/SETUP_INTEGRATION.md": {
+    "title": "Setup & Complete Systems Integration Guide",
+    "topic_category": "setup",
+    "audience_level": "introductory",
+    "description": "Comprehensive setup and system integration guide with complete usage examples to get up and running quickly",
+    "dependencies": [],
+    "followups": [
+      "get-started/CHECKLIST.md",
+      "guides/BACKEND.md",
+      "guides/FRONTEND.md",
+      "guides/TESTING.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "get-started/CHECKLIST.md": {
+    "title": "Get Started Checklist",
+    "topic_category": "setup",
+    "audience_level": "introductory", 
+    "description": "Complete installation and setup checklist covering initial setup, API keys, Docker configuration, and development workflows",
+    "dependencies": [],
+    "followups": [
+      "get-started/SETUP_INTEGRATION.md",
+      "guides/CUSTOMIZATION.md",
+      "guides/developer/AUTHENTICATION.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md": {
+    "title": "Infrastructure vs Domain Services",
+    "topic_category": "architecture",
+    "audience_level": "intermediate",
+    "description": "Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability",
+    "dependencies": [
+      "get-started/SETUP_INTEGRATION.md"
+    ],
+    "followups": [
+      "reference/key-concepts/DUAL_API_ARCHITECTURE.md",
+      "guides/CUSTOMIZATION.md",
+      "guides/infrastructure/AI.md",
+      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/RESILIENCE.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "reference/key-concepts/DUAL_API_ARCHITECTURE.md": {
+    "title": "Dual API Architecture",
+    "topic_category": "architecture",
+    "audience_level": "intermediate",
+    "description": "Sophisticated dual-API architecture that separates external business operations from internal infrastructure management with clear boundaries",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md"
+    ],
+    "followups": [
+      "guides/API.md",
+      "guides/BACKEND.md",
+      "guides/developer/AUTHENTICATION.md",
+      "guides/infrastructure/MONITORING.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/BACKEND.md": {
+    "title": "FastAPI Backend - Production-Ready AI Text Processing API",
+    "topic_category": "application",
+    "audience_level": "intermediate",
+    "description": "Backend service documentation with API endpoints, setup instructions, and text processing operations",
+    "dependencies": [
+      "get-started/SETUP_INTEGRATION.md",
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md"
+    ],
+    "followups": [
+      "guides/API.md",
+      "guides/TESTING.md",
+      "guides/infrastructure/AI.md",
+      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/RESILIENCE.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/FRONTEND.md": {
+    "title": "Streamlit Frontend - AI Text Processing Interface",
+    "topic_category": "application",
+    "audience_level": "intermediate",
+    "description": "Streamlit frontend documentation covering UI features, API integration, and development setup",
+    "dependencies": [
+      "get-started/SETUP_INTEGRATION.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/TESTING.md",
+      "guides/SHARED.md",
+      "guides/developer/DOCKER.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/API.md": {
+    "title": "API Documentation",
+    "topic_category": "application",
+    "audience_level": "intermediate",
+    "description": "API documentation covering public endpoints, authentication, and internal infrastructure services",
+    "dependencies": [
+      "guides/BACKEND.md",
+      "reference/key-concepts/DUAL_API_ARCHITECTURE.md"
+    ],
+    "followups": [
+      "guides/developer/AUTHENTICATION.md",
+      "guides/infrastructure/MONITORING.md",
+      "guides/infrastructure/RESILIENCE.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/SHARED.md": {
+    "title": "Shared Module",
+    "topic_category": "application",
+    "audience_level": "intermediate",
+    "description": "Shared module documentation for Pydantic models and sample data used across backend and frontend",
+    "dependencies": [
+      "guides/BACKEND.md",
+      "guides/FRONTEND.md"
+    ],
+    "followups": [
+      "guides/developer/CODE_STANDARDS.md",
+      "guides/TESTING.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/TESTING.md": {
+    "title": "Testing Guide",
+    "topic_category": "developer",
+    "audience_level": "intermediate",
+    "description": "Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend",
+    "dependencies": [
+      "guides/BACKEND.md",
+      "guides/FRONTEND.md"
+    ],
+    "followups": [
+      "guides/DEPLOYMENT.md",
+      "guides/developer/CODE_STANDARDS.md",
+      "guides/developer/DOCKER.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/DEPLOYMENT.md": {
+    "title": "Deployment Guide",
+    "topic_category": "deployment",
+    "audience_level": "advanced",
+    "description": "Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments",
+    "dependencies": [
+      "guides/BACKEND.md",
+      "guides/FRONTEND.md",
+      "guides/TESTING.md"
+    ],
+    "followups": [
+      "guides/developer/DOCKER.md",
+      "guides/infrastructure/MONITORING.md",
+      "guides/infrastructure/SECURITY.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/CUSTOMIZATION.md": {
+    "title": "Template Customization",
+    "topic_category": "customization",
+    "audience_level": "intermediate",
+    "description": "Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "get-started/SETUP_INTEGRATION.md"
+    ],
+    "followups": [
+      "guides/developer/CODE_STANDARDS.md",
+      "guides/infrastructure/AI.md",
+      "guides/infrastructure/CACHE.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/infrastructure/AI.md": {
+    "title": "AI Infrastructure Service",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/SECURITY.md",
+      "guides/infrastructure/RESILIENCE.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/infrastructure/CACHE.md": {
+    "title": "Cache Infrastructure Service",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/infrastructure/MONITORING.md",
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/infrastructure/AI.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/infrastructure/MONITORING.md": {
+    "title": "Monitoring Infrastructure Service",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/infrastructure/RESILIENCE.md": {
+    "title": "Resilience Infrastructure Service",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/infrastructure/MONITORING.md",
+      "guides/infrastructure/CACHE.md",
+      "guides/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/infrastructure/SECURITY.md": {
+    "title": "Security Infrastructure Service",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/developer/AUTHENTICATION.md",
+      "guides/infrastructure/AI.md",
+      "guides/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/developer/AUTHENTICATION.md": {
+    "title": "API Authentication & Authorization",
+    "topic_category": "developer",
+    "audience_level": "intermediate",
+    "description": "Comprehensive authentication and authorization system with multi-key authentication, dual-API architecture protection, and flexible security modes",
+    "dependencies": [
+      "reference/key-concepts/DUAL_API_ARCHITECTURE.md",
+      "guides/BACKEND.md"
+    ],
+    "followups": [
+      "guides/infrastructure/SECURITY.md",
+      "guides/API.md",
+      "guides/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/developer/CODE_STANDARDS.md": {
+    "title": "Code Standards & Examples",
+    "topic_category": "developer",
+    "audience_level": "intermediate",
+    "description": "Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md"
+    ],
+    "followups": [
+      "guides/TESTING.md",
+      "guides/developer/DOCUMENTATION_GUIDANCE.md",
+      "guides/CUSTOMIZATION.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/developer/DOCKER.md": {
+    "title": "Docker Setup & Usage",
+    "topic_category": "developer",
+    "audience_level": "intermediate",
+    "description": "Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services",
+    "dependencies": [
+      "get-started/SETUP_INTEGRATION.md"
+    ],
+    "followups": [
+      "guides/DEPLOYMENT.md",
+      "guides/TESTING.md",
+      "guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/developer/DOCUMENTATION_GUIDANCE.md": {
+    "title": "Documentation Guidance & Philosophy",
+    "topic_category": "developer",
+    "audience_level": "advanced",
+    "description": "Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation",
+    "dependencies": [],
+    "followups": [
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md": {
+    "title": "Virtual Environment Management",
+    "topic_category": "developer",
+    "audience_level": "introductory",
+    "description": "Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation",
+    "dependencies": [
+      "get-started/SETUP_INTEGRATION.md"
+    ],
+    "followups": [
+      "guides/developer/DOCKER.md",
+      "guides/TESTING.md"
+    ],
+    "last_analyzed": "2025-01-31T10:00:00Z"
+  }
+}
