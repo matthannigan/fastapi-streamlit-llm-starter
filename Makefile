@@ -29,7 +29,7 @@
         docker-build docker-up docker-down restart backend-shell frontend-shell \
         backend-logs frontend-logs status health stop \
         dev dev-legacy prod logs redis-cli backup restore \
-				copy-readmes code_ref \
+				copy-readmes code_ref generate-doc-views \
 				docusaurus docusaurus-serve docusaurus-build docusaurus-clear \
         mkdocs-serve mkdocs-build \
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
@@ -159,6 +159,7 @@ help:
 	@echo "  repomix-frontend     Generate frontend-only documentation"
 	@echo "  repomix-frontend-tests Generate frontend tests documentation"
 	@echo "  repomix-docs         Generate README and docs/ documentation"
+	@echo "  generate-doc-views   Generate BY_TOPIC.md and BY_AUDIENCE.md from metadata"
 	@echo ""
 	@echo "🏭 CI/CD AND DEPENDENCIES:"
 	@echo "  ci-test              Run fast CI tests (for pull requests)"
@@ -618,6 +619,12 @@ code_ref:
 	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
 	@$(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
 	@echo "✅ docstrings copied to docs/code_ref/"
+
+# Generate alternative documentation views from metadata
+generate-doc-views:
+	@echo "📄 Generating documentation views from metadata..."
+	@$(PYTHON_CMD) scripts/generate_doc_views.py
+	@echo "✅ Documentation views generated: docs/BY_TOPIC.md and docs/BY_AUDIENCE.md"
 
 ##################################################################################################
 # Documentation Website (via Docusaurus)
