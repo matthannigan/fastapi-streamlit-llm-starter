@@ -1079,3 +1079,19 @@ The Security Infrastructure Service provides enterprise-grade authentication and
 By implementing industry best practices for API authentication, including proper error handling, security event logging, and graceful degradation, this service ensures secure operations while maintaining the flexibility needed for development and testing environments.
 
 For domain-specific security requirements, leverage this infrastructure service through the established patterns while implementing your business logic in separate domain services that maintain the >70% test coverage standard.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that defines this infrastructure service
+- **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture and security integration
+
+### Related Topics
+- **[Authentication Guide](../developer/AUTHENTICATION.md)**: Multi-key authentication system implementation details
+- **[AI Infrastructure](./AI.md)**: AI-specific security patterns including prompt injection protection
+- **[Monitoring Infrastructure](./MONITORING.md)**: Security event monitoring and analytics
+
+### Next Steps
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production security considerations and hardening
+- **[API Documentation](../API.md)**: Security-related endpoints and authentication requirements
+- **[Template Customization](../CUSTOMIZATION.md)**: How to leverage security infrastructure in your domain services

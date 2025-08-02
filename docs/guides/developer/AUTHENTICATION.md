@@ -719,3 +719,17 @@ Potential improvements for production systems:
 6. **OAuth2 Integration**: Support for OAuth2 flows 
 
 See implementation details and recommendations in [ADVANCED_AUTH_GUIDE.md](./ADVANCED_AUTH_GUIDE.md).
+
+## Related Documentation
+
+### Prerequisites
+- **[Dual API Architecture](../../reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Understanding the dual-API design that this authentication system secures
+- **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture
+
+### Related Topics
+- **[Security Infrastructure](../infrastructure/SECURITY.md)**: Infrastructure-level security patterns that complement authentication
+- **[API Documentation](../API.md)**: How authentication is applied across public and internal APIs
+
+### Next Steps
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production authentication configuration and security hardening
+- **[Testing Guide](../TESTING.md)**: Testing strategies for authentication and authorization

@@ -1063,3 +1063,19 @@ The Resilience Infrastructure Service provides enterprise-grade fault tolerance 
 By implementing industry-standard resilience patterns including circuit breakers, intelligent retry logic, and graceful degradation, this service ensures robust operations while maintaining the flexibility needed for different deployment environments and operational requirements.
 
 For domain-specific resilience needs, leverage this infrastructure service through the established patterns while implementing your business logic in separate domain services that maintain the >70% test coverage standard.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that defines this infrastructure service
+- **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture and resilience integration
+
+### Related Topics
+- **[Monitoring Infrastructure](./MONITORING.md)**: Comprehensive monitoring that includes resilience performance analytics
+- **[Cache Infrastructure](./CACHE.md)**: Caching strategies that complement resilience patterns
+- **[AI Infrastructure](./AI.md)**: AI service integration that benefits from resilience protection
+
+### Next Steps
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for resilience infrastructure
+- **[API Documentation](../API.md)**: 38 resilience management endpoints available through the internal API
+- **[Template Customization](../CUSTOMIZATION.md)**: How to leverage resilience infrastructure in your domain services

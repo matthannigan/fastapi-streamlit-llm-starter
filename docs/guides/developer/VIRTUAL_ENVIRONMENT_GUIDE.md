@@ -247,4 +247,17 @@ let g:python3_host_prog = '.venv/bin/python'
 
 The enhanced virtual environment management provides a robust, cross-platform solution for dependency management and testing. It eliminates common setup issues while providing flexibility for both local development and CI/CD environments.
 
-For questions or issues, refer to the main [TESTING.md](TESTING.md) guide or open an issue in the repository. 
+For questions or issues, refer to the main [TESTING.md](TESTING.md) guide or open an issue in the repository.
+
+## Related Documentation
+
+### Prerequisites
+- **[Complete Setup Guide](../../get-started/SETUP_INTEGRATION.md)**: Basic understanding of the template setup process
+
+### Related Topics
+- **[Docker Setup](./DOCKER.md)**: Alternative development environment using Docker containers
+- **[Testing Guide](../TESTING.md)**: How virtual environments support consistent testing
+
+### Next Steps
+- **[Backend Guide](../BACKEND.md)**: Using virtual environments for backend development
+- **[Frontend Guide](../FRONTEND.md)**: Using virtual environments for frontend development 

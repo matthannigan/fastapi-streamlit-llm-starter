@@ -344,3 +344,20 @@ The template now provides you with:
 * **Testability**: Dependency injection makes services easy to test in isolation
 
 By following this guide, you'll be able to build robust, production-ready applications while maintaining clean, maintainable code that can grow with your needs.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Critical architectural distinction for template customization
+- **[Complete Setup Guide](../get-started/SETUP_INTEGRATION.md)**: Basic template setup and understanding
+
+### Related Topics
+- **[Code Standards](./developer/CODE_STANDARDS.md)**: Standardized patterns for infrastructure vs domain service separation
+- **[Backend Guide](./BACKEND.md)**: Understanding the backend architecture you're customizing
+- **[Frontend Guide](./FRONTEND.md)**: Understanding the frontend architecture you're customizing
+
+### Next Steps
+- **[AI Infrastructure](./infrastructure/AI.md)**: Leverage production-ready AI infrastructure in your domain services
+- **[Cache Infrastructure](./infrastructure/CACHE.md)**: Leverage production-ready caching in your domain services
+- **[Resilience Infrastructure](./infrastructure/RESILIENCE.md)**: Leverage production-ready resilience patterns in your domain services
+- **[Authentication Guide](./developer/AUTHENTICATION.md)**: Configure authentication for your customized application

@@ -785,4 +785,20 @@ The test suite tracks the following metrics:
 - **Test Success Rate**: Percentage of tests passing
 - **Code Quality Score**: Results from linting and type checking
 
-These metrics are tracked in CI and can be viewed in the coverage reports and GitHub Actions logs. 
+These metrics are tracked in CI and can be viewed in the coverage reports and GitHub Actions logs.
+
+## Related Documentation
+
+### Prerequisites
+- **[Backend Guide](./BACKEND.md)**: Understanding backend architecture and components being tested
+- **[Frontend Guide](./FRONTEND.md)**: Understanding frontend architecture and testing patterns
+
+### Related Topics
+- **[Code Standards](./developer/CODE_STANDARDS.md)**: Code quality standards that complement testing requirements
+- **[Docker Setup](./developer/DOCKER.md)**: Docker environments used for consistent testing across systems
+- **[Virtual Environment Guide](./developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Environment management for test execution
+
+### Next Steps
+- **[Deployment Guide](./DEPLOYMENT.md)**: Production deployment with comprehensive testing validation
+- **[Infrastructure Testing](./infrastructure/MONITORING.md)**: Advanced monitoring and performance testing patterns
+- **[Authentication Testing](./developer/AUTHENTICATION.md)**: Security and authentication testing approaches 

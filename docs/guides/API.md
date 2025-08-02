@@ -669,3 +669,20 @@ For development setup, testing procedures, and deployment guidelines, see:
 ## Support
 
 For issues, feature requests, or questions about the API implementation, please refer to the project documentation or create an issue in the project repository.
+
+## Related Documentation
+
+### Prerequisites
+- **[Backend Guide](./BACKEND.md)**: Understanding the dual-API backend architecture
+- **[Dual API Architecture](../reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Architectural concepts behind the API design
+
+### Related Topics
+- **[Authentication Guide](./developer/AUTHENTICATION.md)**: Multi-key authentication system used across both APIs
+- **[Frontend Guide](./FRONTEND.md)**: How the frontend consumes these API endpoints
+- **[Shared Module](./SHARED.md)**: Data models used in API requests and responses
+
+### Next Steps
+- **[Monitoring Infrastructure](./infrastructure/MONITORING.md)**: Internal API endpoints for system monitoring
+- **[Resilience Infrastructure](./infrastructure/RESILIENCE.md)**: 38 internal API endpoints for resilience management
+- **[Cache Infrastructure](./infrastructure/CACHE.md)**: Internal API endpoints for cache management
+- **[Deployment Guide](./DEPLOYMENT.md)**: Production API deployment considerations

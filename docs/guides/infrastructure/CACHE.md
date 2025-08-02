@@ -866,3 +866,19 @@ The Cache Infrastructure Service provides enterprise-grade caching capabilities 
 By implementing industry best practices for caching, including graceful degradation, security considerations, and detailed analytics, this service ensures optimal performance while maintaining reliability and scalability for production deployments.
 
 For domain-specific caching needs, leverage this infrastructure service through the established patterns while implementing your business logic in separate domain services that maintain the >70% test coverage standard.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that defines this infrastructure service
+- **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture and caching integration
+
+### Related Topics
+- **[Monitoring Infrastructure](./MONITORING.md)**: Comprehensive monitoring that includes cache performance analytics
+- **[Resilience Infrastructure](./RESILIENCE.md)**: Fault tolerance patterns that complement cache reliability
+- **[AI Infrastructure](./AI.md)**: AI service integration that benefits from intelligent response caching
+
+### Next Steps
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for caching infrastructure
+- **[Template Customization](../CUSTOMIZATION.md)**: How to leverage cache infrastructure in your domain services
+- **[API Documentation](../API.md)**: Cache management endpoints available through the internal API

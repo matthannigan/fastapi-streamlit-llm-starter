@@ -274,4 +274,18 @@ To enable HTTPS in production:
 - Multi-stage builds reduce image size
 - Resource limits prevent resource exhaustion
 - Redis caching improves response times
-- Nginx load balancing distributes traffic 
+- Nginx load balancing distributes traffic
+
+## Related Documentation
+
+### Prerequisites
+- **[Complete Setup Guide](../../get-started/SETUP_INTEGRATION.md)**: Basic understanding of the template structure and components
+
+### Related Topics
+- **[Virtual Environment Guide](./VIRTUAL_ENVIRONMENT_GUIDE.md)**: Alternative local development setup without Docker
+- **[Testing Guide](../TESTING.md)**: Docker-based testing environments and strategies
+
+### Next Steps
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment using Docker and container orchestration
+- **[Backend Guide](../BACKEND.md)**: Understanding the backend services being containerized
+- **[Frontend Guide](../FRONTEND.md)**: Understanding the frontend services being containerized 

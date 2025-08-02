@@ -569,3 +569,19 @@ The AI Infrastructure Service provides enterprise-grade security for AI model in
 By following the security-first design principles and comprehensive testing approach, this service ensures that AI-powered applications can safely handle user input while protecting against prompt injection attacks and other security threats.
 
 For domain-specific AI operations, leverage this infrastructure service through the established patterns while implementing your business logic in separate domain services that maintain the >70% test coverage standard.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that defines this infrastructure service
+- **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture
+
+### Related Topics
+- **[Security Infrastructure](./SECURITY.md)**: Defense-in-depth security patterns that complement AI security
+- **[Cache Infrastructure](./CACHE.md)**: Caching strategies optimized for AI response patterns
+- **[Resilience Infrastructure](./RESILIENCE.md)**: Fault tolerance patterns for AI service reliability
+
+### Next Steps
+- **[Monitoring Infrastructure](./MONITORING.md)**: Comprehensive monitoring for AI service performance and security
+- **[Template Customization](../CUSTOMIZATION.md)**: How to customize domain services while leveraging AI infrastructure
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for AI-powered applications

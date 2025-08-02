@@ -524,14 +524,24 @@ This provides:
 - Auto-reload on code changes
 - Internal API documentation access
 
-## 📚 Additional Documentation
+## Related Documentation
 
-For comprehensive documentation, see:
-- **API Documentation**: `backend/app/api/README.md`
-- **Infrastructure Services**: `backend/app/infrastructure/*/README.md`
-- **Test Suite**: `backend/tests/README.md`
-- **Architecture Design**: `docs/architecture-design/`
-- **Code Reference**: `docs/code_ref/backend/`
+### Prerequisites
+- **[Complete Setup Guide](../get-started/SETUP_INTEGRATION.md)**: Basic template setup and environment configuration
+- **[Infrastructure vs Domain Services](../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural distinction fundamental to backend design
+
+### Related Topics
+- **[API Documentation](./API.md)**: Detailed reference for public and internal API endpoints
+- **[Dual API Architecture](../reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Understanding the dual-API design philosophy
+- **[Testing Guide](./TESTING.md)**: Comprehensive testing strategies for backend components
+
+### Next Steps
+- **[AI Infrastructure](./infrastructure/AI.md)**: Production-ready AI infrastructure service with security-first design
+- **[Cache Infrastructure](./infrastructure/CACHE.md)**: Multi-tiered caching optimized for AI response patterns
+- **[Resilience Infrastructure](./infrastructure/RESILIENCE.md)**: Circuit breakers, retry mechanisms, and performance monitoring
+- **[Security Infrastructure](./infrastructure/SECURITY.md)**: Defense-in-depth security for AI-powered applications
+- **[Monitoring Infrastructure](./infrastructure/MONITORING.md)**: Comprehensive observability and performance analytics
+- **[Authentication Guide](./developer/AUTHENTICATION.md)**: Multi-key authentication system configuration
 
 ## 📄 License
 

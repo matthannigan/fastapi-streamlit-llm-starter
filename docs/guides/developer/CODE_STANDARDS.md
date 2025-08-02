@@ -1004,4 +1004,17 @@ pytest --cov=app/services --cov-fail-under=70        # Domain coverage
 - **Test Organization**: 100% of tests in correct architectural boundaries
 - **Configuration Consistency**: 100% of infrastructure services use configuration patterns
 
-This standardization ensures consistency, maintainability, and reliability across the entire codebase while maintaining clear architectural boundaries between infrastructure and domain concerns. 
+This standardization ensures consistency, maintainability, and reliability across the entire codebase while maintaining clear architectural boundaries between infrastructure and domain concerns.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that drives these standards
+
+### Related Topics
+- **[Testing Guide](../TESTING.md)**: Testing standards and coverage requirements that complement code standards
+- **[Documentation Guidance](./DOCUMENTATION_GUIDANCE.md)**: Documentation standards for maintaining consistent technical communication
+
+### Next Steps
+- **[Template Customization](../CUSTOMIZATION.md)**: How to apply these standards when customizing the template
+- **[Virtual Environment Guide](./VIRTUAL_ENVIRONMENT_GUIDE.md)**: Environment setup that supports consistent code standards 

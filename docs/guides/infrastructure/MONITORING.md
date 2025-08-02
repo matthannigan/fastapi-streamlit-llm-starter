@@ -1968,3 +1968,19 @@ The Monitoring Infrastructure Service provides enterprise-grade observability ca
 By implementing industry best practices for monitoring, including error resilience, performance optimization, and external system integration, this service ensures optimal visibility into system behavior while maintaining reliability and minimal performance impact for production deployments.
 
 For domain-specific monitoring needs, leverage this infrastructure service through the established patterns while implementing your business logic in separate domain services that maintain the >70% test coverage standard.
+
+## Related Documentation
+
+### Prerequisites
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that defines this infrastructure service
+- **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture and monitoring integration
+
+### Related Topics
+- **[Cache Infrastructure](./CACHE.md)**: Cache performance monitoring and analytics
+- **[Resilience Infrastructure](./RESILIENCE.md)**: Resilience patterns monitoring and health checks
+- **[Security Infrastructure](./SECURITY.md)**: Security event monitoring and authentication analytics
+
+### Next Steps
+- **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for monitoring infrastructure
+- **[API Documentation](../API.md)**: Monitoring endpoints available through the internal API
+- **[Template Customization](../CUSTOMIZATION.md)**: How to integrate monitoring into your domain services

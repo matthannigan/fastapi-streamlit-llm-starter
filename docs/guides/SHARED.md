@@ -283,4 +283,18 @@ When customizing this starter template for your project:
 - **Backend Integration**: See `backend/app/schemas/` for backend-specific model extensions
 - **Frontend Examples**: Check `frontend/app.py` for Streamlit integration patterns  
 - **API Documentation**: Auto-generated docs at `/docs` when running the FastAPI server
-- **Testing Examples**: View backend tests for comprehensive usage patterns 
+- **Testing Examples**: View backend tests for comprehensive usage patterns
+
+## Related Documentation
+
+### Prerequisites
+- **[Backend Guide](./BACKEND.md)**: Understanding how backend uses these shared models
+- **[Frontend Guide](./FRONTEND.md)**: Understanding how frontend uses these shared models
+
+### Related Topics
+- **[API Documentation](./API.md)**: API endpoints that use these data models for requests and responses
+- **[Code Standards](./developer/CODE_STANDARDS.md)**: Standards for model definition and validation patterns
+
+### Next Steps
+- **[Testing Guide](./TESTING.md)**: Testing strategies for shared models and cross-service validation
+- **[Template Customization](./CUSTOMIZATION.md)**: How to modify shared models for your specific use case 

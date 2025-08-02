@@ -203,6 +203,20 @@ We welcome contributions! Please see our contributing guidelines:
 3. Make your changes with tests
 4. Submit a pull request
 
+## Related Documentation
+
+### Prerequisites
+*No prerequisites - this checklist can be used independently or alongside other guides.*
+
+### Related Topics
+- **[Complete Setup Guide](./SETUP_INTEGRATION.md)**: Comprehensive setup and system integration guide with detailed examples
+- **[Virtual Environment Guide](../guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management and setup
+
+### Next Steps
+- **[Template Customization](../guides/CUSTOMIZATION.md)**: Understanding architecture for customizing the template for your project
+- **[Authentication Guide](../guides/developer/AUTHENTICATION.md)**: Configure multi-key authentication and security modes
+- **[Docker Setup](../guides/developer/DOCKER.md)**: Development and production environments with Docker
+
 ## 📄 License
 
 This project is licensed under the MIT License - see LICENSE file for details.

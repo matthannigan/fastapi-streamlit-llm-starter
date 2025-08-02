@@ -309,3 +309,19 @@ These examples serve as both learning materials and practical implementation gui
 ## Conclusion
 
 By maintaining this distinction, we create a template that provides immediate value through battle-tested infrastructure while giving developers clear guidance on where to add their business logic. This separation is not just architectural—it's a communication tool that helps all stakeholders understand the stability guarantees and modification expectations for different parts of the codebase.
+
+## Related Documentation
+
+### Prerequisites
+- **[Complete Setup Guide](../../get-started/SETUP_INTEGRATION.md)**: Basic understanding of the template structure and components
+
+### Related Topics
+- **[Dual API Architecture](./DUAL_API_ARCHITECTURE.md)**: How the infrastructure vs domain separation manifests in the API design
+- **[Template Customization](../../guides/CUSTOMIZATION.md)**: Practical guide to customizing the template using this architectural distinction
+
+### Next Steps
+- **[AI Infrastructure](../../guides/infrastructure/AI.md)**: Production-ready AI infrastructure service (keep and extend)
+- **[Cache Infrastructure](../../guides/infrastructure/CACHE.md)**: Multi-tiered caching infrastructure service (keep and extend)
+- **[Resilience Infrastructure](../../guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns infrastructure service (keep and extend)
+- **[Security Infrastructure](../../guides/infrastructure/SECURITY.md)**: Defense-in-depth security infrastructure service (keep and extend)
+- **[Monitoring Infrastructure](../../guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability infrastructure service (keep and extend)

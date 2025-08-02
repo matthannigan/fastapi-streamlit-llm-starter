@@ -478,11 +478,18 @@ This provides:
 - Error stack traces and detailed logging
 - Performance timing information
 
-## 📄 Additional Documentation
+## Related Documentation
 
-For comprehensive documentation, see:
-- **API Integration**: `frontend/app/utils/api_client.py` - async patterns and error handling
-- **Configuration Management**: `frontend/app/config.py` - environment variable handling
-- **Shared Models**: `shared/models.py` - type-safe data structures
-- **Backend Documentation**: `backend/README.md` - API specifications and architecture
-- **Template Architecture**: Root `README.md` - overall project structure and patterns 
+### Prerequisites
+- **[Complete Setup Guide](../get-started/SETUP_INTEGRATION.md)**: Basic template setup and environment configuration
+- **[Backend Guide](./BACKEND.md)**: Understanding the backend API that the frontend connects to
+
+### Related Topics
+- **[Shared Module](./SHARED.md)**: Type-safe data models shared between frontend and backend
+- **[Testing Guide](./TESTING.md)**: Testing strategies including frontend-specific async patterns
+- **[Docker Setup](./developer/DOCKER.md)**: Development and production environments for frontend services
+
+### Next Steps
+- **[API Documentation](./API.md)**: Complete API reference for frontend integration
+- **[Authentication Guide](./developer/AUTHENTICATION.md)**: Understanding API authentication for frontend consumption
+- **[Deployment Guide](./DEPLOYMENT.md)**: Production deployment patterns for Streamlit applications 
