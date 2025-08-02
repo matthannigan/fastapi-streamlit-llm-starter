@@ -1,7 +1,3 @@
----
-sidebar_label: About the Template
----
-
 # 🚀 FastAPI + Streamlit LLM Starter Template
 
 **A comprehensive starter template for building production-ready LLM-powered APIs with FastAPI.** This template showcases industry best practices, robust architecture patterns, and educational examples to help developers quickly bootstrap sophisticated AI applications.
