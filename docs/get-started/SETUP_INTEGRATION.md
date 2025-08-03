@@ -1141,13 +1141,13 @@ This project is licensed under the MIT License. See `LICENSE` file for details.
 
 ### Related Topics
 - **[Installation Checklist](./CHECKLIST.md)**: Step-by-step checklist for quick setup verification and troubleshooting
-- **[Template Customization](../guides/CUSTOMIZATION.md)**: Understanding the architecture for stability and easy customization
+- **[Template Customization](../guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Understanding the architecture for stability and easy customization
 
 ### Next Steps
-- **[FastAPI Backend Guide](../guides/BACKEND.md)**: Deep dive into backend architecture, API endpoints, and development patterns
-- **[Streamlit Frontend Guide](../guides/FRONTEND.md)**: Comprehensive frontend development with modern Streamlit patterns
-- **[Testing Guide](../guides/TESTING.md)**: Complete testing strategies for backend and frontend components
-- **[API Documentation](../guides/API.md)**: Detailed API reference for public and internal endpoints
+- **[FastAPI Backend Guide](../guides/application/BACKEND.md)**: Deep dive into backend architecture, API endpoints, and development patterns
+- **[Streamlit Frontend Guide](../guides/application/FRONTEND.md)**: Comprehensive frontend development with modern Streamlit patterns
+- **[Testing Guide](../guides/developer/TESTING.md)**: Complete testing strategies for backend and frontend components
+- **[API Documentation](../guides/application/API.md)**: Detailed API reference for public and internal endpoints
 - **[Authentication Guide](../guides/developer/AUTHENTICATION.md)**: Multi-key authentication system configuration and usage
 
 ---

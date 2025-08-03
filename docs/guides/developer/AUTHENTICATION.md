@@ -1,4 +1,4 @@
-# API Authentication & Authorization
+# Authentication & Authorization
 
 This document describes the comprehensive authentication and authorization system implemented in the FastAPI-Streamlit-LLM Starter Template, featuring multi-key authentication, dual-API architecture protection, and flexible security modes designed for both development and production environments.
 

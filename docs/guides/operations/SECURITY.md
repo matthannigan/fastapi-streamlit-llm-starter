@@ -1,3 +1,7 @@
+---
+sidebar_label: Security
+---
+
 # Security Guide
 
 This comprehensive security guide consolidates security practices, incident response procedures, and AI-specific security concerns for the FastAPI-Streamlit-LLM Starter Template. It provides operational security guidance for production deployments.

@@ -1,3 +1,7 @@
+---
+sidebar_label: Troubleshooting
+---
+
 # Troubleshooting Guide
 
 This guide provides systematic troubleshooting workflows for common issues in the FastAPI-Streamlit-LLM Starter Template. It includes decision trees, diagnostic procedures, and resolution steps for operational teams.

@@ -317,7 +317,7 @@ By maintaining this distinction, we create a template that provides immediate va
 
 ### Related Topics
 - **[Dual API Architecture](./DUAL_API_ARCHITECTURE.md)**: How the infrastructure vs domain separation manifests in the API design
-- **[Template Customization](../../guides/CUSTOMIZATION.md)**: Practical guide to customizing the template using this architectural distinction
+- **[Template Customization](../../guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Practical guide to customizing the template using this architectural distinction
 
 ### Next Steps
 - **[AI Infrastructure](../../guides/infrastructure/AI.md)**: Production-ready AI infrastructure service (keep and extend)

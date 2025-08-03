@@ -1,3 +1,7 @@
+---
+sidebar_label: Monitoring
+---
+
 # Operational Monitoring Guide
 
 This guide provides operational procedures for monitoring the FastAPI-Streamlit-LLM Starter Template in production environments. It consolidates monitoring practices from infrastructure services into actionable runbooks for operations teams.

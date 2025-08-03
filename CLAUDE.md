@@ -739,7 +739,7 @@ CACHE_TTL_SECONDS=3600
 - **`docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`**: Dual-API design patterns
 - **`docs/guides/developer/CODE_STANDARDS.md`**: Standardized patterns and architectural guidelines
 - **`docs/guides/developer/AUTHENTICATION.md`**: Authentication and authorization system
-- **`docs/guides/CUSTOMIZATION.md`**: Understanding architecture for stability and customization
+- **`docs/guides/get-started/TEMPLATE_CUSTOMIZATION.md`**: Understanding architecture for stability and customization
 
 ### Working with This Template
 

@@ -1,3 +1,7 @@
+---
+sidebar_label: Testing
+---
+
 # Testing Guide
 
 This document provides comprehensive information about the test suite for the FastAPI-Streamlit-LLM starter template.

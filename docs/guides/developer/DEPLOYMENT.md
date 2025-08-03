@@ -1,3 +1,7 @@
+---
+sidebar_label: Deployment
+---
+
 # Deployment Guide
 
 ## Overview

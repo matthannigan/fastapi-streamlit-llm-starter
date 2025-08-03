@@ -1,3 +1,7 @@
+---
+sidebar_label: Logging
+---
+
 # Logging Strategy Guide
 
 This guide provides comprehensive logging strategies, structured logging patterns, and log analysis procedures for the FastAPI-Streamlit-LLM Starter Template. It covers log configuration, monitoring, and operational procedures for effective system observability.

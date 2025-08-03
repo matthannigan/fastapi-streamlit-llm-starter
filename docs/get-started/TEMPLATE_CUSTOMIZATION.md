@@ -1,4 +1,8 @@
-# **Template Customization**
+---
+sidebar_label: Template Customization
+---
+
+# Template Customization Guide
 
 ## **1\. Executive Summary**
 

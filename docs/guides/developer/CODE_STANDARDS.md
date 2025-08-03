@@ -4,15 +4,19 @@ This document defines the standardized patterns for code examples, imports, erro
 
 ## 📋 Table of Contents
 
-1. [Architecture Guidelines](#architecture-guidelines)
-2. [Infrastructure vs Domain Services](#infrastructure-vs-domain-services)
-3. [Test Coverage Standards](#test-coverage-standards)
-4. [Import Patterns](#import-patterns)
-5. [Error Handling](#error-handling)
-6. [Sample Data](#sample-data)
-7. [Code Structure](#code-structure)
-8. [Documentation Examples](#documentation-examples)
-9. [Testing Patterns](#testing-patterns)
+1. [Architecture Guidelines](#-architecture-guidelines)
+2. [Infrastructure vs Domain Services](#-infrastructure-vs-domain-services)
+3. [Test Coverage Standards](#-test-coverage-standards)
+4. [Import Patterns](#-import-patterns)
+5. [Error Handling](#-error-handling)
+6. [Sample Data](#-sample-data)
+7. [Code Structure](#-code-structure)
+8. [Documentation Examples](#-documentation-examples)
+9. [Testing Patterns](#-testing-patterns)
+10. [Code Review Standards](#-code-review-standards)
+11. [Migration Checklist](#-migration-checklist)
+12. [Validation & Compliance](#-validation--compliance)
+13. [Success Metrics](#-success-metrics)
 
 ## 🏗️ Architecture Guidelines
 

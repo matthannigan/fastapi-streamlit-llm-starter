@@ -2,17 +2,17 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-08-02*
+*Last updated on 2025-08-03*
 
 ## Application
 
-- **[API Documentation](guides/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services
+- **[API Documentation](guides/application/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services
 
-- **[FastAPI Backend - Production-Ready AI Text Processing API](guides/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations
+- **[FastAPI Backend - Production-Ready AI Text Processing API](guides/application/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations
 
-- **[Shared Module](guides/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend
+- **[Shared Module](guides/application/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend
 
-- **[Streamlit Frontend - AI Text Processing Interface](guides/FRONTEND.md)**: Streamlit frontend documentation covering UI features, API integration, and development setup
+- **[Streamlit Frontend - AI Text Processing Interface](guides/application/FRONTEND.md)**: Streamlit frontend documentation covering UI features, API integration, and development setup
 
 
 ## Architecture
@@ -24,12 +24,12 @@ This view organizes all documentation by topic category, providing an alternativ
 
 ## Customization
 
-- **[Template Customization](guides/CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic
+- **[Template Customization](/guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic
 
 
 ## Deployment
 
-- **[Deployment Guide](guides/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments
+- **[Deployment Guide](guides/developer/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments
 
 
 ## Developer
@@ -42,7 +42,7 @@ This view organizes all documentation by topic category, providing an alternativ
 
 - **[Documentation Guidance & Philosophy](guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation
 
-- **[Testing Guide](guides/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
+- **[Testing Guide](guides/developer/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
 
 - **[Virtual Environment Management](guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation
 
@@ -62,7 +62,7 @@ This view organizes all documentation by topic category, providing an alternativ
 
 ## Operations
 
-- **[Backup and Recovery Guide](guides/operations/BACKUP_RECOVERY.md)**: Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity
+- **[Backup & Recovery Guide](guides/operations/BACKUP_RECOVERY.md)**: Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity
 
 - **[Logging Strategy Guide](guides/operations/LOGGING_STRATEGY.md)**: Structured logging strategies, log analysis procedures, security event logging, and operational log management for effective system observability
 
@@ -75,7 +75,7 @@ This view organizes all documentation by topic category, providing an alternativ
 
 ## Security
 
-- **[Security Guide](guides/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist
+- **[Security Guide](guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist
 
 
 ## Setup

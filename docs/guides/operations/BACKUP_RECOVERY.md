@@ -1,4 +1,8 @@
-# Backup and Recovery Guide
+---
+sidebar_label: Backup & Recovery
+---
+
+# Backup & Recovery Guide
 
 This guide provides comprehensive backup and recovery procedures for the FastAPI-Streamlit-LLM Starter Template. It covers data backup strategies, configuration preservation, and disaster recovery workflows.
 

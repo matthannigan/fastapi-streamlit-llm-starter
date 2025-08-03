@@ -600,12 +600,12 @@ This architecture enables teams to build production-ready applications quickly w
 - **[Infrastructure vs Domain Services](./INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that drives the dual-API design
 
 ### Related Topics
-- **[API Documentation](../../guides/API.md)**: Detailed reference for both public and internal API endpoints
-- **[Backend Guide](../../guides/BACKEND.md)**: Implementation details of the dual-API backend architecture
+- **[API Documentation](../../guides/application/API.md)**: Detailed reference for both public and internal API endpoints
+- **[Backend Guide](../../guides/application/BACKEND.md)**: Implementation details of the dual-API backend architecture
 - **[Authentication Guide](../../guides/developer/AUTHENTICATION.md)**: Multi-key authentication system that secures both APIs
 
 ### Next Steps
 - **[Monitoring Infrastructure](../../guides/infrastructure/MONITORING.md)**: Comprehensive monitoring accessible through internal API
 - **[Resilience Infrastructure](../../guides/infrastructure/RESILIENCE.md)**: 38 administrative endpoints for resilience management
 - **[Cache Infrastructure](../../guides/infrastructure/CACHE.md)**: Cache management and monitoring via internal API
-- **[Deployment Guide](../../guides/DEPLOYMENT.md)**: Production deployment considerations for dual-API architecture
+- **[Deployment Guide](../../guides/developer/DEPLOYMENT.md)**: Production deployment considerations for dual-API architecture

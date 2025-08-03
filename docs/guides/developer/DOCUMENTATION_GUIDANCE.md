@@ -1,5 +1,5 @@
 ---
-sidebar_label: Docs Guidance & Philosophy
+sidebar_label: Documentation
 ---
 
 # Documentation Guidance & Philosophy
@@ -361,8 +361,8 @@ When adding new documentation files or updating existing ones, first update the 
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md"
     ],
     "followups": [
-      "guides/TESTING.md",
-      "guides/DEPLOYMENT.md"
+      "guides/developer/TESTING.md",
+      "guides/developer/DEPLOYMENT.md"
     ],
     "last_analyzed": "2025-01-31T12:00:00Z"
   }
@@ -433,7 +433,7 @@ When adding new documentation files or updating existing ones, first update the 
 
 ### Example Implementation
 
-**Example: Enhanced `docs/guides/CUSTOMIZATION.md`**
+**Example: Enhanced `docs/guides/get-started/TEMPLATE_CUSTOMIZATION.md`**
 
 ```markdown
 # Customizing the FastAPI+Streamlit Template

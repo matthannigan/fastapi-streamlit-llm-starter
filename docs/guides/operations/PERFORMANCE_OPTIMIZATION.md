@@ -1,3 +1,7 @@
+---
+sidebar_label: Performance Optimization
+---
+
 # Performance Optimization Guide
 
 This guide provides systematic performance optimization procedures for the FastAPI-Streamlit-LLM Starter Template. It includes performance analysis, tuning strategies, and optimization workflows for operational teams.

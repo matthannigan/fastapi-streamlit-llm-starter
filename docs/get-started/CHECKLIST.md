@@ -213,7 +213,7 @@ We welcome contributions! Please see our contributing guidelines:
 - **[Virtual Environment Guide](../guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management and setup
 
 ### Next Steps
-- **[Template Customization](../guides/CUSTOMIZATION.md)**: Understanding architecture for customizing the template for your project
+- **[Template Customization](../guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Understanding architecture for customizing the template for your project
 - **[Authentication Guide](../guides/developer/AUTHENTICATION.md)**: Configure multi-key authentication and security modes
 - **[Docker Setup](../guides/developer/DOCKER.md)**: Development and production environments with Docker
 
