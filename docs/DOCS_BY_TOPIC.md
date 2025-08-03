@@ -38,6 +38,8 @@ This view organizes all documentation by topic category, providing an alternativ
 
 - **[Code Standards & Examples](guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation
 
+- **[Core Module Integration Guide](guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns
+
 - **[Docker Setup & Usage](guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services
 
 - **[Documentation Guidance & Philosophy](guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation

@@ -33,6 +33,18 @@ The backend follows a clear architectural distinction between **Infrastructure S
 
 **Dependency Direction**: `Domain Services → Infrastructure Services → External Dependencies`
 
+### Core Module Integration Layer
+
+The **Core Module** (`app/core/`) serves as the critical integration layer that ties together infrastructure and domain services. It provides:
+
+- **Configuration Management** (`config.py`): Centralized settings with validation, resilience presets, and environment variable support
+- **Exception Handling** (`exceptions.py`): Unified exception hierarchy with intelligent classification for retry logic
+- **Middleware Infrastructure** (`middleware.py`): Production-ready middleware stack with CORS, security, logging, and monitoring
+
+**Key Integration Role**: The core module acts as the central nervous system that enables your domain logic to seamlessly integrate with production-ready infrastructure services without tight coupling.
+
+**For Developers**: See the **[Core Module Integration Guide](../developer/CORE_MODULE_INTEGRATION.md)** for detailed patterns on working with configuration, exceptions, and middleware when customizing the template.
+
 ## 🚀 Quick Start
 
 ### Using Makefile Commands (Recommended)

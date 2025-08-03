@@ -32,6 +32,7 @@
 
 - **[Authentication & Authorization](./guides/developer/AUTHENTICATION.md)**: Comprehensive authentication and authorization system with multi-key authentication, dual-API architecture protection, and flexible security modes *(Last updated 2025-07-31)*
 - **[Code Standards & Examples](./guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation *(Last updated 2025-07-31)*
+- **[Core Module Integration](./guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns *(Last updated 2025-08-03)*
 - **[Deployment](./guides/developer/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments *(Last updated 2025-07-30)*
 - **[Docker Setup & Usage](./guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services *(Last updated 2025-07-31)*
 - **[Documentation Guidance & Philosophy](./guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation *(Last updated 2025-07-31)*

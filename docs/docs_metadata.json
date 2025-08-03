@@ -245,11 +245,31 @@
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md"
     ],
     "followups": [
+      "guides/developer/CORE_MODULE_INTEGRATION.md",
       "guides/developer/TESTING.md",
       "guides/developer/DOCUMENTATION_GUIDANCE.md",
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/developer/CORE_MODULE_INTEGRATION.md": {
+    "title": "Core Module Integration Guide",
+    "topic_category": "developer",
+    "audience_level": "advanced",
+    "description": "Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "reference/key-concepts/DUAL_API_ARCHITECTURE.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "followups": [
+      "guides/get-started/TEMPLATE_CUSTOMIZATION.md",
+      "guides/developer/AUTHENTICATION.md",
+      "guides/infrastructure/AI.md",
+      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/RESILIENCE.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
   },
   "guides/developer/DEPLOYMENT.md": {
     "title": "Deployment Guide",
