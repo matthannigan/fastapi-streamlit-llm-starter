@@ -1134,6 +1134,8 @@ For domain-specific resilience needs, leverage this infrastructure service throu
 - **[AI Infrastructure](./AI.md)**: AI service integration that benefits from resilience protection
 
 ### Next Steps
+- **[Performance Optimization Guide](../operations/PERFORMANCE_OPTIMIZATION.md)**: Operational performance optimization procedures
+- **[Troubleshooting Guide](../operations/TROUBLESHOOTING.md)**: Resilience-focused troubleshooting procedures
 - **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for resilience infrastructure
 - **[API Documentation](../API.md)**: 38 resilience management endpoints available through the internal API
 - **[Template Customization](../CUSTOMIZATION.md)**: How to leverage resilience infrastructure in your domain services

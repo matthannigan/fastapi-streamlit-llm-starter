@@ -4,17 +4,9 @@
 
 ### Quick Wins (Low Effort, High Impact) - 1-2 days each
 
-1. **Visual Workflow Diagrams**: Add Mermaid diagrams to key guides to illustrate dynamic processes.
-   - `guides/infrastructure/RESILIENCE.md`: Diagram showing the flow of a request through the retry and circuit breaker logic.
-   - `guides/infrastructure/CACHE.md`: Diagram illustrating the L1 (Memory) -> L2 (Redis) cache check flow.
-   - `guides/CUSTOMIZATION.md`: Visual guide showing which files to modify for a typical customization task.
+1. ✅ **Visual Workflow Diagrams**: Add Mermaid diagrams to key guides to illustrate dynamic processes.
 
-2. **"Golden Path" Customization Guide**: Create a one-page guide in `docs/guides/developer/` that visually maps the most common customization journey:
-   - [ ] Configure `.env`.
-   - [ ] Define models in `shared/models.py`.
-   - [ ] Implement logic in `backend/app/services/`.
-   - [ ] Expose via `backend/app/api/v1/`.
-   - [ ] Build UI in `frontend/app/app.py`.
+2. ✅ **"Golden Path" Customization Guide**: Create a one-page guide in `docs/guides/developer/` that visually maps the most common customization journey:
 
 ### Medium Effort Enhancements - 3-5 days each
 
@@ -32,7 +24,7 @@
    - `BACKUP_RECOVERY.md`: Backup and recovery procedures
    - `LOGGING_STRATEGY.md`: Guide to structured logging and how to interpret logs from different services.
 
-5. **Development Workflows** in `docs/guides/developer/` (new directory):
+5. **Development Workflows** in `docs/guides/developer/`:
    - **Consolidate** `CHOOSING_WHAT_TO_KEEP.md`, `REPLACEMENT_STRATEGIES.md`, and `DOMAIN_SERVICE_PATTERNS.md` into a single, comprehensive **`CUSTOMIZATION_HANDBOOK.md`**.
    - `REPLACEMENT_STRATEGIES.md`: How to replace example services
    - `INFRASTRUCTURE_DEVELOPMENT.md`: How to extend infrastructure services
@@ -65,7 +57,7 @@
 ### Implementation Roadmap
 
 **Recommended Implementation Order:**
-1. Start with Quick Wins (#1-2) to improve navigation immediately
+1. ~~Start with Quick Wins (#1-2) to improve navigation immediately~~
 2. Focus on operational documentation (#4) for production readiness
 3. Consolidate security documentation (#3) for compliance
 4. Build development workflows (#5) for contributor onboarding
@@ -93,7 +85,7 @@
 3. **Scattered troubleshooting information** - A centralized troubleshooting guide is needed.
 4. **Fragmented security documentation** - Security practices are spread across infrastructure components and need consolidation.
 5. **Missing centralized architectural rationale** - The "why" behind key design decisions is not explicitly documented in one place (ADRs would solve this).
-6. **Lack of visual aids for dynamic processes** - Complex workflows like caching and resilience logic would benefit from visualization.
+6. ~~**Lack of visual aids for dynamic processes** - Complex workflows like caching and resilience logic would benefit from visualization.~~
 
 ## Success Metrics
 

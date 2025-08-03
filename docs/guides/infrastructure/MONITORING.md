@@ -1981,6 +1981,9 @@ For domain-specific monitoring needs, leverage this infrastructure service throu
 - **[Security Infrastructure](./SECURITY.md)**: Security event monitoring and authentication analytics
 
 ### Next Steps
+- **[Operations Monitoring Guide](../operations/MONITORING.md)**: Operational procedures for production monitoring
+- **[Logging Strategy Guide](../operations/LOGGING_STRATEGY.md)**: Comprehensive logging implementation and management
+- **[Troubleshooting Guide](../operations/TROUBLESHOOTING.md)**: Monitoring-based troubleshooting procedures
 - **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for monitoring infrastructure
 - **[API Documentation](../API.md)**: Monitoring endpoints available through the internal API
 - **[Template Customization](../CUSTOMIZATION.md)**: How to integrate monitoring into your domain services

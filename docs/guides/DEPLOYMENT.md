@@ -533,6 +533,11 @@ curl -X POST http://localhost:8000/internal/cache/clear \
 - **[Authentication Guide](./developer/AUTHENTICATION.md)**: Production authentication and security configuration
 
 ### Next Steps
-- **[Monitoring Infrastructure](./infrastructure/MONITORING.md)**: Production monitoring and observability
-- **[Security Infrastructure](./infrastructure/SECURITY.md)**: Production security hardening
+- **[Security Guide](./SECURITY.md)**: Comprehensive security implementation and operational procedures
+- **[Operations Monitoring Guide](./operations/MONITORING.md)**: Production monitoring setup and operational procedures
+- **[Troubleshooting Guide](./operations/TROUBLESHOOTING.md)**: Operational troubleshooting procedures for deployment issues
+- **[Performance Optimization Guide](./operations/PERFORMANCE_OPTIMIZATION.md)**: Production performance tuning and optimization procedures
+- **[Backup & Recovery Guide](./operations/BACKUP_RECOVERY.md)**: Data protection and disaster recovery procedures
+- **[Monitoring Infrastructure](./infrastructure/MONITORING.md)**: Technical monitoring implementation details
+- **[Security Infrastructure](./infrastructure/SECURITY.md)**: Technical security implementation details
 - **[Cache Infrastructure](./infrastructure/CACHE.md)**: Production caching and performance optimization

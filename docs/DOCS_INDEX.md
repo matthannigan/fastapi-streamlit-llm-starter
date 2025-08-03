@@ -18,12 +18,19 @@
 
 - **[FastAPI Backend](./guides/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations *(Last updated 2024-07-27)*
 - **[API Documentation](./guides/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services *(Last updated 2024-07-27)*
+- **[Security Guide](./guides/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist *(Last updated 2025-08-03)*
 - **Infrastructure Services**:
   - **[AI](./guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating *(Last updated 2025-07-30)*
   - **[Cache](./guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation *(Last updated 2025-07-30)*
   - **[Monitoring](./guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection *(Last updated 2025-07-30)*
   - **[Resilience](./guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring *(Last updated 2025-07-30)*
   - **[Security](./guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection *(Last updated 2025-07-30)*
+- **Operations**:
+  - **[Monitoring](./guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments *(Last updated 2025-08-03)*
+  - **[Troubleshooting](./guides/operations/TROUBLESHOOTING.md)**: Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures *(Last updated 2025-08-03)*
+  - **[Performance Optimization](./guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows *(Last updated 2025-08-03)*
+  - **[Backup and Recovery](./guides/operations/BACKUP_RECOVERY.md)**: Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity *(Last updated 2025-08-03)*
+  - **[Logging Strategy](./guides/operations/LOGGING_STRATEGY.md)**: Structured logging strategies, log analysis procedures, security event logging, and operational log management for effective system observability *(Last updated 2025-08-03)*
 - **[Streamlit Frontend](./guides/FRONTEND.md)**: Streamlit frontend documentation covering UI features, API integration, and development setup *(Last updated 2024-07-27)*
 - **[Shared Module](./guides/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend *(Last updated 2024-07-27)*
 - **[Testing](./guides/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-07-30)*

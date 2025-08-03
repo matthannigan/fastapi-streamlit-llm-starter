@@ -323,5 +323,104 @@
       "guides/TESTING.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
+  },
+  "guides/SECURITY.md": {
+    "title": "Security Guide",
+    "topic_category": "security",
+    "audience_level": "advanced",
+    "description": "Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist",
+    "dependencies": [
+      "guides/infrastructure/SECURITY.md",
+      "guides/infrastructure/AI.md",
+      "guides/developer/AUTHENTICATION.md"
+    ],
+    "followups": [
+      "guides/operations/MONITORING.md",
+      "guides/operations/LOGGING_STRATEGY.md",
+      "guides/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/operations/MONITORING.md": {
+    "title": "Operational Monitoring Guide",
+    "topic_category": "operations",
+    "audience_level": "advanced",
+    "description": "Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments",
+    "dependencies": [
+      "guides/infrastructure/MONITORING.md",
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/infrastructure/CACHE.md"
+    ],
+    "followups": [
+      "guides/operations/TROUBLESHOOTING.md",
+      "guides/operations/PERFORMANCE_OPTIMIZATION.md",
+      "guides/operations/LOGGING_STRATEGY.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/operations/TROUBLESHOOTING.md": {
+    "title": "Troubleshooting Guide",
+    "topic_category": "operations",
+    "audience_level": "intermediate",
+    "description": "Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures",
+    "dependencies": [
+      "guides/operations/MONITORING.md",
+      "guides/infrastructure/MONITORING.md"
+    ],
+    "followups": [
+      "guides/operations/PERFORMANCE_OPTIMIZATION.md",
+      "guides/operations/BACKUP_RECOVERY.md",
+      "guides/SECURITY.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/operations/PERFORMANCE_OPTIMIZATION.md": {
+    "title": "Performance Optimization Guide",
+    "topic_category": "operations",
+    "audience_level": "advanced",
+    "description": "Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows",
+    "dependencies": [
+      "guides/operations/MONITORING.md",
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/infrastructure/CACHE.md"
+    ],
+    "followups": [
+      "guides/operations/TROUBLESHOOTING.md",
+      "guides/operations/BACKUP_RECOVERY.md",
+      "guides/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/operations/BACKUP_RECOVERY.md": {
+    "title": "Backup and Recovery Guide",
+    "topic_category": "operations",
+    "audience_level": "advanced",
+    "description": "Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity",
+    "dependencies": [
+      "guides/operations/MONITORING.md",
+      "guides/infrastructure/CACHE.md"
+    ],
+    "followups": [
+      "guides/operations/LOGGING_STRATEGY.md",
+      "guides/DEPLOYMENT.md",
+      "guides/SECURITY.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/operations/LOGGING_STRATEGY.md": {
+    "title": "Logging Strategy Guide",
+    "topic_category": "operations",
+    "audience_level": "intermediate",
+    "description": "Structured logging strategies, log analysis procedures, security event logging, and operational log management for effective system observability",
+    "dependencies": [
+      "guides/operations/MONITORING.md",
+      "guides/SECURITY.md"
+    ],
+    "followups": [
+      "guides/operations/TROUBLESHOOTING.md",
+      "guides/operations/BACKUP_RECOVERY.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
   }
 }

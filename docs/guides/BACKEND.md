@@ -536,6 +536,9 @@ This provides:
 - **[Testing Guide](./TESTING.md)**: Comprehensive testing strategies for backend components
 
 ### Next Steps
+- **[Security Guide](./SECURITY.md)**: Comprehensive security implementation guide
+- **[Operations Monitoring Guide](./operations/MONITORING.md)**: Production monitoring and operational procedures
+- **[Troubleshooting Guide](./operations/TROUBLESHOOTING.md)**: Backend troubleshooting procedures
 - **[AI Infrastructure](./infrastructure/AI.md)**: Production-ready AI infrastructure service with security-first design
 - **[Cache Infrastructure](./infrastructure/CACHE.md)**: Multi-tiered caching optimized for AI response patterns
 - **[Resilience Infrastructure](./infrastructure/RESILIENCE.md)**: Circuit breakers, retry mechanisms, and performance monitoring

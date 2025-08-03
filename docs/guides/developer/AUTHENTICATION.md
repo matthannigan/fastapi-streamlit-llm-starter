@@ -897,5 +897,6 @@ See implementation details and recommendations in [ADVANCED_AUTH_GUIDE.md](./ADV
 - **[API Documentation](../API.md)**: How authentication is applied across public and internal APIs
 
 ### Next Steps
+- **[Security Guide](../SECURITY.md)**: Comprehensive security implementation guide covering authentication and beyond
 - **[Deployment Guide](../DEPLOYMENT.md)**: Production authentication configuration and security hardening
 - **[Testing Guide](../TESTING.md)**: Testing strategies for authentication and authorization

@@ -1092,6 +1092,7 @@ For domain-specific security requirements, leverage this infrastructure service 
 - **[Monitoring Infrastructure](./MONITORING.md)**: Security event monitoring and analytics
 
 ### Next Steps
+- **[Security Guide](../SECURITY.md)**: Comprehensive security implementation guide covering all aspects of application security
 - **[Deployment Guide](../DEPLOYMENT.md)**: Production security considerations and hardening
 - **[API Documentation](../API.md)**: Security-related endpoints and authentication requirements
 - **[Template Customization](../CUSTOMIZATION.md)**: How to leverage security infrastructure in your domain services

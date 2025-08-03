@@ -950,6 +950,8 @@ For domain-specific caching needs, leverage this infrastructure service through 
 - **[AI Infrastructure](./AI.md)**: AI service integration that benefits from intelligent response caching
 
 ### Next Steps
+- **[Performance Optimization Guide](../operations/PERFORMANCE_OPTIMIZATION.md)**: Cache optimization and tuning procedures
+- **[Troubleshooting Guide](../operations/TROUBLESHOOTING.md)**: Cache-related troubleshooting procedures
 - **[Deployment Guide](../DEPLOYMENT.md)**: Production deployment considerations for caching infrastructure
 - **[Template Customization](../CUSTOMIZATION.md)**: How to leverage cache infrastructure in your domain services
 - **[API Documentation](../API.md)**: Cache management endpoints available through the internal API
