@@ -442,5 +442,57 @@
       "guides/operations/SECURITY.md"
     ],
     "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/domain-services/README.md": {
+    "title": "Domain Services Guide",
+    "topic_category": "domain-services",
+    "audience_level": "intermediate",
+    "description": "Overview and principles for building customizable, infrastructure-powered domain services",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/get-started/TEMPLATE_CUSTOMIZATION.md"
+    ],
+    "followups": [
+      "guides/domain-services/TEXT_PROCESSING.md",
+      "guides/domain-services/TEXT_PROCESSING_API.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/domain-services/TEXT_PROCESSING.md": {
+    "title": "Text Processing Domain Service",
+    "topic_category": "domain-services",
+    "audience_level": "advanced",
+    "description": "Comprehensive guide to the educational text processing implementation demonstrating domain service patterns, AI integration, and infrastructure usage",
+    "dependencies": [
+      "guides/domain-services/README.md",
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/infrastructure/AI.md",
+      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/RESILIENCE.md"
+    ],
+    "followups": [
+      "guides/domain-services/TEXT_PROCESSING_API.md",
+      "guides/get-started/TEMPLATE_CUSTOMIZATION.md",
+      "guides/developer/TESTING.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
+  },
+  "guides/domain-services/TEXT_PROCESSING_API.md": {
+    "title": "Text Processing REST API",
+    "topic_category": "api-reference",
+    "audience_level": "intermediate",
+    "description": "Comprehensive REST API reference for AI-powered text processing operations",
+    "dependencies": [
+      "guides/domain-services/TEXT_PROCESSING.md",
+      "reference/key-concepts/DUAL_API_ARCHITECTURE.md",
+      "guides/developer/AUTHENTICATION.md"
+    ],
+    "followups": [
+      "guides/application/API.md",
+      "guides/developer/TESTING.md",
+      "guides/get-started/TEMPLATE_CUSTOMIZATION.md"
+    ],
+    "last_analyzed": "2025-08-03T10:00:00Z"
   }
 }
