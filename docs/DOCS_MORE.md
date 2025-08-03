@@ -6,18 +6,18 @@
 
 1. ✅ **Visual Workflow Diagrams**: Add Mermaid diagrams to key guides to illustrate dynamic processes.
 
-2. ✅ **"Golden Path" Customization Guide**: Create a one-page guide in `docs/guides/developer/` that visually maps the most common customization journey:
+2. ✅ **"Golden Path" Customization Guide**: Create a one-page guide in `docs/guides/developer/` that visually maps the most common customization journey.
 
 ### Medium Effort Enhancements - 3-5 days each
 
-3. **Security Consolidation**: Create unified security documentation at `docs/guides/SECURITY.md` with:
+3. ✅ **Security Consolidation**: Create unified security documentation at `docs/guides/operations/SECURITY.md` with:
    - Consolidated security practices from infrastructure READMEs
    - Production security checklist
    - Security incident response procedures
    - AI-specific security concerns
    - Input sanitization guide
 
-4. **Operational Runbooks**: Document standard operational procedures in `docs/guides/operations/` (new directory):
+4. ✅ **Operational Runbooks**: Document standard operational procedures in `docs/guides/operations/`:
    - `MONITORING.md`: Operational monitoring setup, alerts, and health check procedures
    - `TROUBLESHOOTING.md`: Common troubleshooting workflows
    - `PERFORMANCE_OPTIMIZATION.md`: Performance tuning/optimization
@@ -58,8 +58,8 @@
 
 **Recommended Implementation Order:**
 1. ~~Start with Quick Wins (#1-2) to improve navigation immediately~~
-2. Focus on operational documentation (#4) for production readiness
-3. Consolidate security documentation (#3) for compliance
+2. ~~Focus on operational documentation (#4) for production readiness~~
+3. ~~Consolidate security documentation (#3) for compliance~~
 4. Build development workflows (#5) for contributor onboarding
 5. Create tutorial series (#6) for user experience
 6. Enhance with examples and integrations (#7-8) for ecosystem growth
@@ -82,8 +82,8 @@
 
 1. **Missing operational guidance** - No comprehensive production operations documentation.
 2. **Lack of a guided learning path** - The information is present, but there isn't a clear, tutorial-style progression for new users.
-3. **Scattered troubleshooting information** - A centralized troubleshooting guide is needed.
-4. **Fragmented security documentation** - Security practices are spread across infrastructure components and need consolidation.
+3. ~~**Scattered troubleshooting information** - A centralized troubleshooting guide is needed.~~
+4. ~~**Fragmented security documentation** - Security practices are spread across infrastructure components and need consolidation.~~
 5. **Missing centralized architectural rationale** - The "why" behind key design decisions is not explicitly documented in one place (ADRs would solve this).
 6. ~~**Lack of visual aids for dynamic processes** - Complex workflows like caching and resilience logic would benefit from visualization.~~
 
