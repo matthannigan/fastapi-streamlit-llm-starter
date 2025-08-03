@@ -18,6 +18,8 @@
 ### Application Guides
 
 - **[API Documentation](./guides/application/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services *(Last updated 2024-07-27)*
+- **[Domain Services Guide](./guides/domain-services/README.md)**: Overview and principles for building customizable, infrastructure-powered domain services *(Last updated 2025-08-03)*
+- **[Text Processing API](./guides/domain-services/TEXT_PROCESSING_API.md)**: Comprehensive REST API reference for AI-powered text processing operations *(Last updated 2025-08-03)*
 - **[FastAPI Backend](./guides/application/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations *(Last updated 2024-07-27)*
 - **Infrastructure Services**:
   - **[AI](./guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating *(Last updated 2025-07-30)*
