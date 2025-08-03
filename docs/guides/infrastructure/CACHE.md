@@ -265,36 +265,107 @@ alert_thresholds = {
 
 ## Multi-Tiered Architecture
 
-### Cache Flow Diagram
+### Multi-Tiered Cache Flow
 
 ```mermaid
 graph TD
-    A[Request] --> B[Generate Cache Key]
-    B --> C{Check Memory Cache L1}
-    C -->|Hit| D[Return from Memory]
-    C -->|Miss| E{Check Redis Cache L2}
-    E -->|Hit| F[Decompress if needed]
-    F --> G[Update Memory Cache]
-    G --> H[Return Result]
-    E -->|Miss| I[Call AI Service]
-    I --> J[Process Response]
-    J --> K[Compress if needed]
-    K --> L[Store in Redis]
-    L --> M[Store in Memory]
-    M --> N[Return Result]
+    START[Incoming Request] --> GENERATE[Generate Smart Cache Key]
     
-    subgraph "Performance Monitoring"
-        O[Monitor Key Generation]
-        P[Monitor Cache Operations]
-        Q[Monitor Compression]
-        R[Generate Analytics]
+    GENERATE --> SIZE_CHECK{Text Size<br/>Classification}
+    SIZE_CHECK -->|Small < 500 chars| SMALL_KEY[Full Text Key<br/>For Debugging]
+    SIZE_CHECK -->|Medium 500-5K| HASH_KEY[Optimized Hash Key<br/>For Performance]
+    SIZE_CHECK -->|Large 5K-50K| CONTENT_KEY[Content Hash Key<br/>With Metadata]
+    SIZE_CHECK -->|X-Large > 50K| STREAM_KEY[Streaming Hash<br/>Memory Efficient]
+    
+    SMALL_KEY --> L1_CHECK
+    HASH_KEY --> L1_CHECK
+    CONTENT_KEY --> L1_CHECK
+    STREAM_KEY --> L1_CHECK
+    
+    L1_CHECK{Check Memory Cache<br/>L1 Tier}
+    L1_CHECK -->|Hit| L1_HIT[Memory Cache Hit<br/>~0.1ms response]
+    L1_CHECK -->|Miss| L1_MISS[Memory Cache Miss<br/>Continue to L2]
+    
+    L1_HIT --> UPDATE_ACCESS[Update LRU Access<br/>Time Tracking]
+    UPDATE_ACCESS --> RETURN_L1[Return Cached Result<br/>Record Hit Metrics]
+    
+    L1_MISS --> REDIS_AVAILABLE{Redis<br/>Available?}
+    REDIS_AVAILABLE -->|No| REDIS_UNAVAILABLE[Redis Unavailable<br/>Graceful Degradation]
+    REDIS_AVAILABLE -->|Yes| L2_CHECK{Check Redis Cache<br/>L2 Tier}
+    
+    L2_CHECK -->|Hit| L2_HIT[Redis Cache Hit<br/>~2-5ms response]
+    L2_CHECK -->|Miss| L2_MISS[Redis Cache Miss<br/>Execute AI Service]
+    
+    L2_HIT --> COMPRESSED{Data<br/>Compressed?}
+    COMPRESSED -->|Yes| DECOMPRESS[Decompress Data<br/>zlib decompression]
+    COMPRESSED -->|No| PROMOTE[Promote to L1<br/>Memory Cache]
+    DECOMPRESS --> PROMOTE
+    
+    PROMOTE --> SIZE_L1{L1 Cache<br/>At Capacity?}
+    SIZE_L1 -->|Yes| LRU_EVICT[LRU Eviction<br/>Remove Oldest Entry]
+    SIZE_L1 -->|No| STORE_L1[Store in L1<br/>Memory Cache]
+    LRU_EVICT --> STORE_L1
+    
+    STORE_L1 --> RETURN_L2[Return Cached Result<br/>Record L2 Hit Metrics]
+    
+    L2_MISS --> AI_SERVICE[Call AI Service<br/>Process Request]
+    REDIS_UNAVAILABLE --> AI_SERVICE
+    
+    AI_SERVICE --> AI_SUCCESS{AI Request<br/>Successful?}
+    AI_SUCCESS -->|No| ERROR_RESPONSE[Return Error<br/>No Caching]
+    AI_SUCCESS -->|Yes| PROCESS_RESPONSE[Process AI Response<br/>Prepare for Caching]
+    
+    PROCESS_RESPONSE --> COMPRESSION_CHECK{Response Size ≥<br/>Compression Threshold?}
+    COMPRESSION_CHECK -->|Yes| COMPRESS[Compress Response<br/>zlib compression level 6]
+    COMPRESSION_CHECK -->|No| SKIP_COMPRESS[Skip Compression<br/>Store Raw Data]
+    
+    COMPRESS --> COMPRESSION_RATIO[Calculate Savings<br/>60-80% typical reduction]
+    SKIP_COMPRESS --> STORE_REDIS
+    COMPRESSION_RATIO --> STORE_REDIS
+    
+    STORE_REDIS{Redis<br/>Available?}
+    STORE_REDIS -->|Yes| REDIS_STORE[Store in Redis L2<br/>With TTL Strategy]
+    STORE_REDIS -->|No| REDIS_STORE_FAIL[Redis Store Failed<br/>Continue with Memory]
+    
+    REDIS_STORE --> TTL_STRATEGY{Operation-Specific<br/>TTL Strategy}
+    TTL_STRATEGY -->|summarize| TTL_2H[2 Hours TTL<br/>Stable summaries]
+    TTL_STRATEGY -->|sentiment| TTL_24H[24 Hours TTL<br/>Stable sentiment]
+    TTL_STRATEGY -->|qa| TTL_30M[30 Minutes TTL<br/>Context dependent]
+    TTL_STRATEGY -->|default| TTL_1H[1 Hour TTL<br/>General operations]
+    
+    TTL_2H --> STORE_L1_NEW
+    TTL_24H --> STORE_L1_NEW
+    TTL_30M --> STORE_L1_NEW
+    TTL_1H --> STORE_L1_NEW
+    REDIS_STORE_FAIL --> STORE_L1_NEW
+    
+    STORE_L1_NEW[Store in L1 Memory<br/>Fresh Entry]
+    STORE_L1_NEW --> RETURN_FRESH[Return Fresh Result<br/>Record Miss Metrics]
+    
+    subgraph "Performance Monitoring & Analytics"
+        MONITOR_KEY[Key Generation Timing<br/>Text length correlation]
+        MONITOR_CACHE[Cache Hit/Miss Ratios<br/>Operation breakdown]
+        MONITOR_MEMORY[Memory Usage Tracking<br/>Threshold alerting]
+        MONITOR_COMPRESS[Compression Analytics<br/>Ratio and timing]
+        MONITOR_INVALID[Invalidation Patterns<br/>Frequency analysis]
     end
     
-    B --> O
-    C --> P
-    E --> P
-    K --> Q
-    N --> R
+    GENERATE --> MONITOR_KEY
+    L1_CHECK --> MONITOR_CACHE
+    L2_CHECK --> MONITOR_CACHE
+    STORE_L1 --> MONITOR_MEMORY
+    STORE_L1_NEW --> MONITOR_MEMORY
+    COMPRESS --> MONITOR_COMPRESS
+    DECOMPRESS --> MONITOR_COMPRESS
+    
+    subgraph "Fallback & Error Handling"
+        FALLBACK_MEMORY[Memory-Only Mode<br/>When Redis Unavailable]
+        CIRCUIT_BREAKER[Cache Circuit Breaker<br/>Protection Against Failures]
+        GRACEFUL_DEGRADE[Graceful Degradation<br/>Continue Without Cache]
+    end
+    
+    REDIS_UNAVAILABLE --> FALLBACK_MEMORY
+    ERROR_RESPONSE --> GRACEFUL_DEGRADE
 ```
 
 ### Tier Characteristics

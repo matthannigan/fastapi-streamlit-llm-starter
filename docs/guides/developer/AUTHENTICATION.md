@@ -43,6 +43,172 @@ graph TB
     AUTH_CONFIG --> TEST
 ```
 
+## Multi-Mode Authentication Decision Flow
+
+```mermaid
+graph TD
+    START[Authentication Request] --> STARTUP_CHECK[Application Startup<br/>Configuration Detection]
+    
+    STARTUP_CHECK --> ENV_CHECK{Environment Variables<br/>Configuration Check}
+    
+    ENV_CHECK --> API_KEY_CHECK{API_KEY<br/>Configured?}
+    API_KEY_CHECK -->|No| ADDITIONAL_CHECK{ADDITIONAL_API_KEYS<br/>Configured?}
+    ADDITIONAL_CHECK -->|No| DEVELOPMENT_MODE[Development Mode<br/>AUTO-ENABLED]
+    ADDITIONAL_CHECK -->|Yes| KEYS_ONLY[Keys Only Configuration<br/>Use Simple Mode]
+    
+    API_KEY_CHECK -->|Yes| AUTH_MODE_CHECK{AUTH_MODE<br/>Environment Variable}
+    
+    AUTH_MODE_CHECK -->|simple or unset| SIMPLE_MODE[Simple Mode<br/>Basic API Key Validation]
+    AUTH_MODE_CHECK -->|advanced| ADVANCED_MODE[Advanced Mode<br/>Enhanced Features]
+    AUTH_MODE_CHECK -->|test| TEST_MODE[Test Mode<br/>Automated Testing]
+    AUTH_MODE_CHECK -->|development| DEV_OVERRIDE[Development Override<br/>Enhanced Logging]
+    
+    subgraph "Development Mode Flow"
+        DEVELOPMENT_MODE --> DEV_REQUEST[Incoming Request<br/>Development Environment]
+        DEV_REQUEST --> DEV_KEY_PRESENT{API Key<br/>Present in Request?}
+        
+        DEV_KEY_PRESENT -->|Yes| DEV_VALIDATE[Validate Against<br/>Configured Keys]
+        DEV_KEY_PRESENT -->|No| DEV_ALLOW[Allow Request<br/>Development Access]
+        
+        DEV_VALIDATE --> DEV_VALID{Valid<br/>Key?}
+        DEV_VALID -->|Yes| DEV_AUTHENTICATED[Authenticated Access<br/>Enhanced Context]
+        DEV_VALID -->|No| DEV_ALLOW
+        
+        DEV_AUTHENTICATED --> DEV_RESPONSE[Process Request<br/>with Full Context]
+        DEV_ALLOW --> DEV_LIMITED[Process Request<br/>Limited Context]
+    end
+    
+    subgraph "Simple Mode Flow"
+        SIMPLE_MODE --> SIMPLE_REQUEST[Incoming Request<br/>Production Environment]
+        KEYS_ONLY --> SIMPLE_REQUEST
+        
+        SIMPLE_REQUEST --> SIMPLE_AUTH_CHECK{Authentication<br/>Required?}
+        SIMPLE_AUTH_CHECK -->|Optional| SIMPLE_OPTIONAL[Optional Authentication<br/>verify_api_key_optional]
+        SIMPLE_AUTH_CHECK -->|Required| SIMPLE_REQUIRED[Required Authentication<br/>verify_api_key]
+        
+        SIMPLE_OPTIONAL --> SIMPLE_KEY_CHECK{API Key<br/>Present?}
+        SIMPLE_REQUIRED --> SIMPLE_VALIDATE[Validate API Key<br/>Multi-Key Support]
+        
+        SIMPLE_KEY_CHECK -->|Yes| SIMPLE_VALIDATE
+        SIMPLE_KEY_CHECK -->|No| SIMPLE_ANONYMOUS[Anonymous Access<br/>Basic Response]
+        
+        SIMPLE_VALIDATE --> SIMPLE_MULTI_KEY[Multi-Key Validation<br/>Primary + Additional Keys]
+        SIMPLE_MULTI_KEY --> SIMPLE_RESULT{Validation<br/>Result}
+        
+        SIMPLE_RESULT -->|Success| SIMPLE_SUCCESS[Authentication Success<br/>Basic User Context]
+        SIMPLE_RESULT -->|Failure| SIMPLE_FAILURE[Authentication Failure<br/>401 Unauthorized]
+        
+        SIMPLE_SUCCESS --> SIMPLE_PROCESS[Process Request<br/>Authenticated Context]
+        SIMPLE_ANONYMOUS --> SIMPLE_PROCESS_ANON[Process Request<br/>Anonymous Context]
+    end
+    
+    subgraph "Advanced Mode Flow"
+        ADVANCED_MODE --> ADV_FEATURES{Advanced Features<br/>Configuration}
+        
+        ADV_FEATURES --> USER_TRACKING_CHECK{ENABLE_USER_TRACKING<br/>Enabled?}
+        ADV_FEATURES --> REQUEST_LOGGING_CHECK{ENABLE_REQUEST_LOGGING<br/>Enabled?}
+        
+        USER_TRACKING_CHECK -->|Yes| ENABLE_USER_CTX[Enable User Context<br/>Tracking & Metadata]
+        USER_TRACKING_CHECK -->|No| DISABLE_USER_CTX[Basic User Context<br/>Standard Mode]
+        
+        REQUEST_LOGGING_CHECK -->|Yes| ENABLE_AUDIT[Enable Security Logging<br/>Audit Trail & Events]
+        REQUEST_LOGGING_CHECK -->|No| DISABLE_AUDIT[Basic Logging<br/>Standard Events]
+        
+        ENABLE_USER_CTX --> ADV_REQUEST[Advanced Request<br/>Processing]
+        DISABLE_USER_CTX --> ADV_REQUEST
+        ENABLE_AUDIT --> ADV_REQUEST
+        DISABLE_AUDIT --> ADV_REQUEST
+        
+        ADV_REQUEST --> ADV_AUTH_TYPE{Authentication<br/>Type Required}
+        ADV_AUTH_TYPE -->|Basic| ADV_BASIC[verify_api_key<br/>Standard Validation]
+        ADV_AUTH_TYPE -->|Enhanced| ADV_ENHANCED[verify_api_key_with_metadata<br/>Context + Tracking]
+        
+        ADV_BASIC --> ADV_MULTI_KEY[Multi-Key Validation<br/>with Enhanced Features]
+        ADV_ENHANCED --> ADV_MULTI_KEY
+        
+        ADV_MULTI_KEY --> ADV_VALIDATION{Advanced<br/>Validation}
+        
+        ADV_VALIDATION -->|Success| ADV_CONTEXT[Rich User Context<br/>Metadata + Tracking]
+        ADV_VALIDATION -->|Failure| ADV_FAILURE[Authentication Failure<br/>Detailed Audit Log]
+        
+        ADV_CONTEXT --> ADV_LOGGING{Security Logging<br/>Enabled?}
+        ADV_LOGGING -->|Yes| LOG_EVENT[Log Security Event<br/>User Activity Tracking]
+        ADV_LOGGING -->|No| ADV_PROCESS[Process Request<br/>Enhanced Context]
+        
+        LOG_EVENT --> AUDIT_TRAIL[Update Audit Trail<br/>Request Metadata]
+        AUDIT_TRAIL --> ADV_PROCESS
+    end
+    
+    subgraph "Test Mode Flow"
+        TEST_MODE --> TEST_REQUEST[Test Request<br/>Automated Testing]
+        DEV_OVERRIDE --> TEST_REQUEST
+        
+        TEST_REQUEST --> TEST_KEY_CHECK{Test API Key<br/>Present?}
+        TEST_KEY_CHECK -->|Yes| TEST_VALIDATE[Validate Test Key<br/>test-api-key-12345]
+        TEST_KEY_CHECK -->|No| TEST_MOCK[Mock Authentication<br/>Testing Context]
+        
+        TEST_VALIDATE --> TEST_RESULT{Test Key<br/>Valid?}
+        TEST_RESULT -->|Yes| TEST_SUCCESS[Test Authentication<br/>Success Context]
+        TEST_RESULT -->|No| TEST_FAILURE[Test Authentication<br/>Failure Simulation]
+        
+        TEST_SUCCESS --> TEST_PROCESS[Process Test Request<br/>Controlled Environment]
+        TEST_MOCK --> TEST_PROCESS
+    end
+    
+    subgraph "Multi-Key Authentication Engine"
+        MULTI_KEY_ENGINE[APIKeyAuth Service<br/>Core Validation Engine]
+        
+        MULTI_KEY_ENGINE --> PRIMARY_KEY_CHECK[Check Primary Key<br/>API_KEY environment]
+        MULTI_KEY_ENGINE --> ADDITIONAL_KEY_CHECK[Check Additional Keys<br/>ADDITIONAL_API_KEYS list]
+        
+        PRIMARY_KEY_CHECK --> KEY_COMPARISON[Secure Key Comparison<br/>Constant Time Comparison]
+        ADDITIONAL_KEY_CHECK --> KEY_COMPARISON
+        
+        KEY_COMPARISON --> KEY_MATCH{Key<br/>Match Found?}
+        
+        KEY_MATCH -->|Yes| DETERMINE_CONTEXT[Determine User Context<br/>Key-based Identification]
+        KEY_MATCH -->|No| AUTH_FAILURE[Authentication Failure<br/>Invalid API Key]
+        
+        DETERMINE_CONTEXT --> CONTEXT_MODE{Context Mode<br/>Configuration}
+        CONTEXT_MODE -->|Simple| BASIC_CONTEXT[Basic User Context<br/>Key Identification Only]
+        CONTEXT_MODE -->|Advanced| RICH_CONTEXT[Rich User Context<br/>Metadata + Tracking]
+        
+        BASIC_CONTEXT --> SUCCESS_RESPONSE[Authentication Success<br/>Return User Context]
+        RICH_CONTEXT --> SUCCESS_RESPONSE
+    end
+    
+    SIMPLE_MULTI_KEY --> MULTI_KEY_ENGINE
+    ADV_MULTI_KEY --> MULTI_KEY_ENGINE
+    TEST_VALIDATE --> MULTI_KEY_ENGINE
+    DEV_VALIDATE --> MULTI_KEY_ENGINE
+    
+    subgraph "Security & Monitoring"
+        SECURITY_EVENTS[Security Event<br/>Monitoring]
+        FAILED_ATTEMPTS[Failed Authentication<br/>Attempt Tracking]
+        RATE_LIMIT[Rate Limiting<br/>Protection]
+        
+        AUTH_FAILURE --> FAILED_ATTEMPTS
+        SIMPLE_FAILURE --> FAILED_ATTEMPTS
+        ADV_FAILURE --> FAILED_ATTEMPTS
+        TEST_FAILURE --> FAILED_ATTEMPTS
+        
+        FAILED_ATTEMPTS --> SECURITY_EVENTS
+        SUCCESS_RESPONSE --> SECURITY_EVENTS
+        ENABLE_AUDIT --> RATE_LIMIT
+    end
+    
+    subgraph "Request Processing Outcomes"
+        SIMPLE_PROCESS --> BUSINESS_LOGIC[Execute Business Logic<br/>Domain Services]
+        SIMPLE_PROCESS_ANON --> BUSINESS_LOGIC
+        ADV_PROCESS --> BUSINESS_LOGIC
+        TEST_PROCESS --> BUSINESS_LOGIC
+        DEV_RESPONSE --> BUSINESS_LOGIC
+        DEV_LIMITED --> BUSINESS_LOGIC
+        
+        BUSINESS_LOGIC --> RESPONSE[Generate Response<br/>Return to Client]
+    end
+```
+
 ## Features
 
 - ✅ **Multi-Mode Operation**: Simple, advanced, development, and test modes

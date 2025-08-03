@@ -107,6 +107,64 @@ async def answer_question_prod(question: str, context: str) -> str:
 
 Implements the Circuit Breaker pattern to prevent cascading failures by monitoring service calls and automatically opening circuits when failure rates exceed thresholds.
 
+#### Request Flow Through Resilience System
+
+```mermaid
+graph TD
+    START[Incoming Request] --> CHECK_CIRCUIT{Circuit Breaker<br/>State Check}
+    
+    CHECK_CIRCUIT -->|CLOSED<br/>Normal Operation| EXECUTE[Execute Request]
+    CHECK_CIRCUIT -->|OPEN<br/>Fail Fast| CIRCUIT_FAIL[Circuit Breaker<br/>Exception]
+    CHECK_CIRCUIT -->|HALF-OPEN<br/>Testing| LIMITED_EXECUTE[Limited Execution<br/>Testing Recovery]
+    
+    EXECUTE --> SUCCESS{Request<br/>Successful?}
+    LIMITED_EXECUTE --> SUCCESS
+    
+    SUCCESS -->|Yes| RECORD_SUCCESS[Record Success<br/>Reset Failure Count]
+    SUCCESS -->|No| CLASSIFY{Classify<br/>Exception}
+    
+    CLASSIFY -->|Transient Error<br/>Network timeout, Service unavailable| RETRY_LOGIC[Enter Retry Logic]
+    CLASSIFY -->|Permanent Error<br/>Invalid API key, Bad request| PERMANENT_FAIL[Permanent Failure<br/>No Retry]
+    CLASSIFY -->|Rate Limit Error| EXTENDED_RETRY[Extended Backoff<br/>Retry Logic]
+    
+    RETRY_LOGIC --> RETRY_CHECK{Retry Attempts<br/>Remaining?}
+    EXTENDED_RETRY --> RETRY_CHECK
+    
+    RETRY_CHECK -->|Yes| BACKOFF[Exponential Backoff<br/>with Jitter]
+    RETRY_CHECK -->|No| RECORD_FAILURE[Record Failure<br/>Update Circuit Breaker]
+    
+    BACKOFF --> WAIT[Wait Period<br/>1s → 2s → 4s → 8s]
+    WAIT --> EXECUTE
+    
+    RECORD_SUCCESS --> RETURN_SUCCESS[Return Success<br/>Response]
+    RECORD_FAILURE --> THRESHOLD_CHECK{Failure Count ≥<br/>Circuit Threshold?}
+    PERMANENT_FAIL --> RETURN_ERROR[Return Error<br/>Response]
+    CIRCUIT_FAIL --> FALLBACK{Fallback<br/>Available?}
+    
+    THRESHOLD_CHECK -->|Yes| OPEN_CIRCUIT[Open Circuit<br/>Start Recovery Timer]
+    THRESHOLD_CHECK -->|No| RETURN_ERROR
+    
+    OPEN_CIRCUIT --> RETURN_ERROR
+    
+    FALLBACK -->|Yes| EXECUTE_FALLBACK[Execute Fallback<br/>Function]
+    FALLBACK -->|No| RETURN_ERROR
+    
+    EXECUTE_FALLBACK --> RETURN_SUCCESS
+    
+    subgraph "Circuit Breaker States"
+        CLOSED_STATE[CLOSED<br/>Normal Operation]
+        OPEN_STATE[OPEN<br/>Fail Fast Mode]
+        HALF_OPEN_STATE[HALF-OPEN<br/>Testing Recovery]
+    end
+    
+    subgraph "Retry Strategies"
+        AGGRESSIVE[Aggressive<br/>Fast failures, minimal delays]
+        BALANCED[Balanced<br/>Moderate retries, reasonable delays]
+        CONSERVATIVE[Conservative<br/>Maximum retries, longer delays]
+        CRITICAL[Critical<br/>Extensive retries, highest reliability]
+    end
+```
+
 #### Circuit States & Flow
 
 ```mermaid

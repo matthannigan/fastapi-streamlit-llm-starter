@@ -100,6 +100,98 @@ backend/app/
 
 This section provides a clear, step-by-step guide on where to make changes to adapt this template for your own project.
 
+### **Golden Path Customization Workflow**
+
+```mermaid
+graph TD
+    START[Start Template Customization] --> DECISION{What are you<br/>building?}
+    
+    DECISION -->|AI Text Processing<br/>Extension| EXTEND_PATH[Extend Existing<br/>Text Processing]
+    DECISION -->|Different Domain<br/>e.g., Document Analysis| REPLACE_PATH[Replace Domain<br/>Services]
+    DECISION -->|New Infrastructure<br/>e.g., Database| INFRA_PATH[Add Infrastructure<br/>Service]
+    
+    subgraph "Path 1: Extend Text Processing"
+        EXTEND_PATH --> EXT_CONFIG[Configure Environment<br/>📁 .env, core/config.py]
+        EXT_CONFIG --> EXT_SCHEMAS[Add New Schemas<br/>📁 schemas/text_processing.py]
+        EXT_SCHEMAS --> EXT_SERVICES[Extend Text Processor<br/>📁 services/text_processor.py]
+        EXT_SERVICES --> EXT_API[Add API Endpoints<br/>📁 api/v1/text_processing.py]
+        EXT_API --> EXT_TEST[Add Tests<br/>📁 tests/services/, tests/api/]
+        EXT_TEST --> EXT_DONE[✅ Extended Successfully]
+    end
+    
+    subgraph "Path 2: Replace Domain Services"
+        REPLACE_PATH --> REP_CONFIG[Configure for Your Domain<br/>📁 .env, core/config.py]
+        REP_CONFIG --> REP_MODELS[Define Domain Models<br/>📁 shared/models.py]
+        REP_MODELS --> REP_SCHEMAS[Create Domain Schemas<br/>📁 schemas/your_domain.py]
+        REP_SCHEMAS --> REP_SERVICES[Replace Domain Services<br/>📁 services/your_service.py]
+        REP_SERVICES --> REP_API[Create Domain API<br/>📁 api/v1/your_endpoints.py]
+        REP_API --> REP_MAIN[Update Main Router<br/>📁 main.py]
+        REP_MAIN --> REP_FRONTEND[Customize Frontend<br/>📁 frontend/app/]
+        REP_FRONTEND --> REP_TEST[Create Domain Tests<br/>📁 tests/services/, tests/api/]
+        REP_TEST --> REP_DONE[✅ Domain Replaced Successfully]
+    end
+    
+    subgraph "Path 3: Add Infrastructure Service"
+        INFRA_PATH --> INFRA_DIR[Create Infrastructure Directory<br/>📁 infrastructure/your_service/]
+        INFRA_DIR --> INFRA_SERVICE[Implement Service<br/>📁 infrastructure/your_service/service.py]
+        INFRA_SERVICE --> INFRA_CONFIG[Add Configuration<br/>📁 core/config.py]
+        INFRA_CONFIG --> INFRA_DEPS[Create Dependency Provider<br/>📁 dependencies.py]
+        INFRA_DEPS --> INFRA_USE[Use in Domain Services<br/>📁 services/]
+        INFRA_USE --> INFRA_TEST[Add Infrastructure Tests<br/>📁 tests/infrastructure/]
+        INFRA_TEST --> INFRA_DONE[✅ Infrastructure Added Successfully]
+    end
+    
+    subgraph "Common Steps for All Paths"
+        COMMON_AUTH[Configure Authentication<br/>📁 .env: API_KEY, AUTH_MODE]
+        COMMON_RESILIENCE[Set Resilience Preset<br/>📁 .env: RESILIENCE_PRESET]
+        COMMON_CACHE[Configure Caching<br/>📁 .env: REDIS_URL, CACHE_*]
+        COMMON_AI[Setup AI Provider<br/>📁 .env: GEMINI_API_KEY]
+    end
+    
+    EXT_CONFIG --> COMMON_AUTH
+    REP_CONFIG --> COMMON_AUTH
+    INFRA_CONFIG --> COMMON_AUTH
+    
+    COMMON_AUTH --> COMMON_RESILIENCE
+    COMMON_RESILIENCE --> COMMON_CACHE
+    COMMON_CACHE --> COMMON_AI
+    
+    subgraph "Decision Points"
+        KEEP_INFRA{Keep Infrastructure<br/>Services?}
+        KEEP_DOMAIN{Keep Example<br/>Domain Services?}
+        ADD_FEATURES{Add New<br/>Features?}
+    end
+    
+    COMMON_AI --> KEEP_INFRA
+    KEEP_INFRA -->|Yes ✅| KEEP_DOMAIN
+    KEEP_INFRA -->|No ❌| INFRA_WARNING[⚠️ Not Recommended<br/>Infrastructure is Production-Ready]
+    
+    KEEP_DOMAIN -->|Yes| ADD_FEATURES
+    KEEP_DOMAIN -->|No| REPLACE_PATH
+    
+    ADD_FEATURES -->|Yes| EXTEND_PATH
+    ADD_FEATURES -->|No| VALIDATION[Validate Setup<br/>Run Tests & Linting]
+    
+    EXT_DONE --> VALIDATION
+    REP_DONE --> VALIDATION
+    INFRA_DONE --> VALIDATION
+    
+    VALIDATION --> DEPLOY[Deploy Your Application<br/>🚀 Production Ready!]
+    
+    subgraph "File Impact Legend"
+        HIGH_IMPACT[🔴 High Impact<br/>Core business logic]
+        MEDIUM_IMPACT[🟡 Medium Impact<br/>Configuration & setup]
+        LOW_IMPACT[🟢 Low Impact<br/>Keep existing patterns]
+        NO_CHANGE[⚪ No Change<br/>Production-ready infrastructure]
+    end
+    
+    subgraph "Architecture Boundaries"
+        DOMAIN_BOUNDARY[Domain Services<br/>Expected to change]
+        INFRA_BOUNDARY[Infrastructure Services<br/>Designed to be stable]
+        CORE_BOUNDARY[Core Configuration<br/>Project-specific setup]
+    end
+```
+
 ### **Step 1: Configure Your Project (core/config.py and Environment Variables)**
 
 This is the first place you should go for initial setup.

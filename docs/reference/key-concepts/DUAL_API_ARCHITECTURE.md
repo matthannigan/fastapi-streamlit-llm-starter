@@ -67,6 +67,124 @@ graph TB
     DASH --> INT
 ```
 
+## Request Routing & Authentication Flow
+
+```mermaid
+graph TD
+    INCOMING[Incoming Request] --> ROUTE_CHECK{Request Path<br/>Analysis}
+    
+    ROUTE_CHECK -->|/v1/*| PUBLIC_API[Public API<br/>Business Logic Interface]
+    ROUTE_CHECK -->|/internal/*| INTERNAL_API[Internal API<br/>Infrastructure Management]
+    ROUTE_CHECK -->|/docs| PUBLIC_DOCS[Public API<br/>Documentation]
+    ROUTE_CHECK -->|/internal/docs| INTERNAL_DOCS{Internal Docs<br/>Enabled?}
+    
+    INTERNAL_DOCS -->|Production| DOCS_DISABLED[Documentation Disabled<br/>Security Policy]
+    INTERNAL_DOCS -->|Development| INTERNAL_SWAGGER[Internal API<br/>Documentation]
+    
+    subgraph "Public API Authentication Flow"
+        PUBLIC_API --> PUB_ENDPOINT{Endpoint<br/>Type}
+        PUB_ENDPOINT -->|Health Check| PUB_HEALTH[Health Endpoints<br/>Optional Auth]
+        PUB_ENDPOINT -->|Processing| PUB_PROCESSING[Processing Endpoints<br/>Required Auth]
+        
+        PUB_HEALTH --> PUB_OPTIONAL_AUTH[Optional Authentication<br/>verify_api_key_optional]
+        PUB_PROCESSING --> PUB_REQUIRED_AUTH[Required Authentication<br/>verify_api_key]
+        
+        PUB_OPTIONAL_AUTH --> PUB_AUTH_CHECK{API Key<br/>Present?}
+        PUB_AUTH_CHECK -->|Yes| PUB_VALIDATE[Validate API Key<br/>Multi-key Support]
+        PUB_AUTH_CHECK -->|No| PUB_ANONYMOUS[Anonymous Access<br/>Limited Response]
+        
+        PUB_REQUIRED_AUTH --> PUB_VALIDATE
+        PUB_VALIDATE --> PUB_AUTH_RESULT{Authentication<br/>Result}
+        
+        PUB_AUTH_RESULT -->|Success| PUB_CONTEXT[Set User Context<br/>Optional Metadata]
+        PUB_AUTH_RESULT -->|Failure| AUTH_ERROR[Authentication Error<br/>401 Unauthorized]
+        
+        PUB_CONTEXT --> PUB_DOMAIN[Execute Domain<br/>Service Logic]
+        PUB_ANONYMOUS --> PUB_DOMAIN
+    end
+    
+    subgraph "Internal API Authentication Flow"
+        INTERNAL_API --> INT_ENDPOINT{Administrative<br/>Operation Type}
+        INT_ENDPOINT -->|Monitoring| INT_MONITORING[System Monitoring<br/>Optional Auth]
+        INT_ENDPOINT -->|Configuration| INT_CONFIG[Configuration Changes<br/>Required Auth]
+        INT_ENDPOINT -->|Management| INT_MGMT[Resource Management<br/>Required Auth]
+        
+        INT_MONITORING --> INT_OPTIONAL_AUTH[Optional Authentication<br/>Enhanced Data with Auth]
+        INT_CONFIG --> INT_REQUIRED_AUTH[Required Authentication<br/>Administrative Operations]
+        INT_MGMT --> INT_REQUIRED_AUTH
+        
+        INT_OPTIONAL_AUTH --> INT_AUTH_CHECK{API Key<br/>Present?}
+        INT_AUTH_CHECK -->|Yes| INT_VALIDATE[Validate Administrative<br/>API Key]
+        INT_AUTH_CHECK -->|No| INT_LIMITED[Limited Monitoring<br/>Basic Data Only]
+        
+        INT_REQUIRED_AUTH --> INT_VALIDATE
+        INT_VALIDATE --> INT_AUTH_RESULT{Administrative<br/>Authentication}
+        
+        INT_AUTH_RESULT -->|Success| INT_ADMIN_CONTEXT[Administrative Context<br/>Full Access Rights]
+        INT_AUTH_RESULT -->|Failure| AUTH_ERROR
+        
+        INT_ADMIN_CONTEXT --> INT_INFRA[Execute Infrastructure<br/>Service Operations]
+        INT_LIMITED --> INT_INFRA
+    end
+    
+    subgraph "Multi-Key Authentication System"
+        MULTI_KEY[Multi-Key Validation<br/>APIKeyAuth Service]
+        MULTI_KEY --> PRIMARY_KEY[Primary API Key<br/>API_KEY environment]
+        MULTI_KEY --> ADDITIONAL_KEYS[Additional API Keys<br/>ADDITIONAL_API_KEYS]
+        MULTI_KEY --> AUTH_MODE[Authentication Mode<br/>Simple vs Advanced]
+        
+        PRIMARY_KEY --> KEY_MATCH{Key<br/>Match?}
+        ADDITIONAL_KEYS --> KEY_MATCH
+        
+        KEY_MATCH -->|Match| AUTH_SUCCESS[Authentication Success<br/>User Context Set]
+        KEY_MATCH -->|No Match| AUTH_FAIL[Authentication Failure<br/>Invalid API Key]
+        
+        AUTH_MODE -->|Simple| BASIC_AUTH[Basic Key Validation<br/>Standard Features]
+        AUTH_MODE -->|Advanced| ENHANCED_AUTH[Enhanced Authentication<br/>User Tracking + Logging]
+        
+        ENHANCED_AUTH --> USER_TRACKING[User Context Tracking<br/>Request Metadata]
+        ENHANCED_AUTH --> SECURITY_LOGGING[Security Event Logging<br/>Audit Trail]
+    end
+    
+    PUB_VALIDATE --> MULTI_KEY
+    INT_VALIDATE --> MULTI_KEY
+    
+    subgraph "Service Execution Layer"
+        PUB_DOMAIN --> DOMAIN_SERVICES[Domain Services<br/>Text Processing, Validation]
+        INT_INFRA --> INFRASTRUCTURE[Infrastructure Services<br/>Cache, Resilience, Monitoring]
+        
+        DOMAIN_SERVICES --> USE_INFRA[Compose Infrastructure<br/>Services for Business Logic]
+        USE_INFRA --> INFRASTRUCTURE
+        
+        INFRASTRUCTURE --> SHARED_RESOURCES[Shared Resources<br/>Redis, AI Services, Metrics]
+        DOMAIN_SERVICES --> SHARED_RESOURCES
+    end
+    
+    subgraph "Response Flow"
+        SHARED_RESOURCES --> RESPONSE_PROCESSING[Process Response<br/>Format and Validate]
+        RESPONSE_PROCESSING --> RESPONSE_TYPE{Response<br/>Type}
+        
+        RESPONSE_TYPE -->|Business Logic| BUSINESS_RESPONSE[Business Response<br/>User-Friendly Format]
+        RESPONSE_TYPE -->|Infrastructure| ADMIN_RESPONSE[Administrative Response<br/>Technical Details]
+        RESPONSE_TYPE -->|Error| ERROR_RESPONSE[Error Response<br/>Appropriate Error Level]
+        
+        BUSINESS_RESPONSE --> CLIENT_RESPONSE[Return to Client<br/>Public API Response]
+        ADMIN_RESPONSE --> ADMIN_CLIENT[Return to Admin<br/>Internal API Response]
+        ERROR_RESPONSE --> ERROR_CLIENT[Return Error<br/>Formatted Error Response]
+    end
+    
+    subgraph "Security & Monitoring"
+        SECURITY_MONITOR[Security Event<br/>Monitoring]
+        RATE_LIMITING[Rate Limiting<br/>Per-Endpoint Limits]
+        AUDIT_LOGGING[Audit Logging<br/>Request Tracking]
+        
+        PUB_VALIDATE --> SECURITY_MONITOR
+        INT_VALIDATE --> SECURITY_MONITOR
+        MULTI_KEY --> AUDIT_LOGGING
+        INT_REQUIRED_AUTH --> RATE_LIMITING
+    end
+```
+
 ## API Separation Philosophy
 
 ### Public API (`/v1/`) - Business Logic Interface
