@@ -8,25 +8,25 @@
 
 - **[Setup & Complete Systems Integration Guide](./get-started/SETUP_INTEGRATION.md)**: Ties together all components and provides complete usage examples to get up and running quickly *(Last updated 2025-07-31)*
 - **[Checklist](./get-started/CHECKLIST.md)**: Complete installation and setup checklist covering initial setup, API keys, Docker configuration, testing, and development workflows *(Last updated 2025-07-31)*
-- **[Template Customization](./guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic *(Last updated 2025-07-31)*
 
-### Key Concepts
+### Template Explainer
 
-- **[Infrastructure vs Domain Services](./reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability *(Last updated 2025-07-30)*
 - **[Dual API Architecture](./reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Sophisticated dual-API architecture that separates external business operations from internal infrastructure management with clear boundaries *(Last updated 2025-07-30)*
-
-### Application Guides
-
-- **[API Documentation](./guides/application/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services *(Last updated 2024-07-27)*
-- **[Domain Services Guide](./guides/domain-services/README.md)**: Overview and principles for building customizable, infrastructure-powered domain services *(Last updated 2025-08-03)*
-- **[Text Processing API](./guides/domain-services/TEXT_PROCESSING_API.md)**: Comprehensive REST API reference for AI-powered text processing operations *(Last updated 2025-08-03)*
-- **[FastAPI Backend](./guides/application/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations *(Last updated 2024-07-27)*
+- **[Infrastructure vs Domain Services](./reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability *(Last updated 2025-07-30)*
 - **Infrastructure Services**:
   - **[AI](./guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating *(Last updated 2025-07-30)*
   - **[Cache](./guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation *(Last updated 2025-07-30)*
   - **[Monitoring](./guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection *(Last updated 2025-07-30)*
   - **[Resilience](./guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring *(Last updated 2025-07-30)*
   - **[Security](./guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection *(Last updated 2025-07-30)*
+- **[Domain Services Guide](./guides/domain-services/README.md)**: Overview and principles for building customizable, infrastructure-powered domain services *(Last updated 2025-08-03)*
+  - **[Text Processing](./guides/domain-services/TEXT_PROCESSING.md)**: Comprehensive guide to the educational text processing implementation demonstrating domain service patterns, AI integration, and infrastructure usage *(Last updated 2025-08-03)*
+- **[Template Customization Guide](./guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic *(Last updated 2025-07-31)*
+
+### Application Guides
+
+- **[API Documentation](./guides/application/API.md)**: API documentation covering public endpoints, authentication, and internal infrastructure services *(Last updated 2024-07-27)*
+- **[FastAPI Backend](./guides/application/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations *(Last updated 2024-07-27)*
 - **[Streamlit Frontend](./guides/application/FRONTEND.md)**: Streamlit frontend documentation covering UI features, API integration, and development setup *(Last updated 2024-07-27)*
 - **[Shared Module](./guides/application/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend *(Last updated 2024-07-27)*
 
