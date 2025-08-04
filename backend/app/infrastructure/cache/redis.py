@@ -151,6 +151,7 @@ except ImportError:
 
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+from app.core.exceptions import InfrastructureError
 
 logger = logging.getLogger(__name__)
 
@@ -423,7 +424,16 @@ class AIResponseCache(CacheInterface):
         """
         if not REDIS_AVAILABLE:
             logger.warning("Redis not available - caching disabled")
-            return False
+            raise InfrastructureError(
+                "Redis client library not available",
+                context={
+                    "operation": "redis_connect",
+                    "cache_type": "redis_cache",
+                    "error_type": "ImportError",
+                    "error_details": "Redis asyncio client not installed",
+                    "redis_url": self.redis_url
+                }
+            )
             
         if not self.redis:
             try:
@@ -441,7 +451,17 @@ class AIResponseCache(CacheInterface):
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e} - caching disabled")
                 self.redis = None
-                return False
+                raise InfrastructureError(
+                    f"Redis connection failed: {str(e)}",
+                    context={
+                        "operation": "redis_connect",
+                        "cache_type": "redis_cache", 
+                        "error_type": type(e).__name__,
+                        "error_details": str(e),
+                        "redis_url": self.redis_url,
+                        "connection_timeout_seconds": 5
+                    }
+                )
         return True
     
     def _generate_cache_key(self, text: str, operation: str, options: Dict[str, Any], question: Optional[str] = None) -> str:
@@ -510,8 +530,10 @@ class AIResponseCache(CacheInterface):
             
             return self.memory_cache[cache_key]
         
-        # Check Redis cache
-        if not await self.connect():
+        # Check Redis cache with exception handling
+        try:
+            await self.connect()
+        except InfrastructureError as e:
             duration = time.time() - start_time
             
             # Record cache miss due to Redis unavailability
@@ -524,7 +546,8 @@ class AIResponseCache(CacheInterface):
                     "cache_tier": "redis_unavailable",
                     "text_tier": tier,
                     "operation_type": operation,
-                    "reason": "redis_connection_failed"
+                    "reason": "redis_connection_failed",
+                    "connection_error": str(e)
                 }
             )
             
@@ -601,6 +624,21 @@ class AIResponseCache(CacheInterface):
                     "error": str(e)
                 }
             )
+            
+            raise InfrastructureError(
+                f"Redis cache retrieval failed: {str(e)}",
+                context={
+                    "operation": "redis_get_cached_response",
+                    "cache_type": "redis_cache",
+                    "cache_key": cache_key,
+                    "text_length": len(text),
+                    "text_tier": tier,
+                    "operation_type": operation,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e),
+                    "operation_duration_ms": int(duration * 1000)
+                }
+            )
         
         return None
     
@@ -642,7 +680,9 @@ class AIResponseCache(CacheInterface):
         # Start timing the cache response generation
         start_time = time.time()
         
-        if not await self.connect():
+        try:
+            await self.connect()
+        except InfrastructureError as e:
             # Record failed cache operation timing
             duration = time.time() - start_time
             self.performance_monitor.record_cache_operation_time(
@@ -653,7 +693,8 @@ class AIResponseCache(CacheInterface):
                 additional_data={
                     "operation_type": operation,
                     "reason": "redis_connection_failed",
-                    "status": "failed"
+                    "status": "failed",
+                    "connection_error": str(e)
                 }
             )
             return
@@ -730,6 +771,21 @@ class AIResponseCache(CacheInterface):
                 }
             )
             logger.warning(f"Cache storage error: {e}")
+            
+            raise InfrastructureError(
+                f"Redis cache storage failed: {str(e)}",
+                context={
+                    "operation": "redis_cache_response", 
+                    "cache_type": "redis_cache",
+                    "text_length": len(text),
+                    "operation_type": operation,
+                    "response_size": len(str(response)),
+                    "ttl": ttl,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e),
+                    "operation_duration_ms": int(duration * 1000)
+                }
+            )
     
     async def invalidate_pattern(self, pattern: str, operation_context: str = ""):
         """
@@ -765,7 +821,9 @@ class AIResponseCache(CacheInterface):
         """
         start_time = time.time()
         
-        if not await self.connect():
+        try:
+            await self.connect()
+        except InfrastructureError as e:
             # Record failed invalidation attempt
             duration = time.time() - start_time
             self.performance_monitor.record_invalidation_event(
@@ -776,7 +834,8 @@ class AIResponseCache(CacheInterface):
                 operation_context=operation_context,
                 additional_data={
                     "status": "failed",
-                    "reason": "redis_connection_failed"
+                    "reason": "redis_connection_failed",
+                    "connection_error": str(e)
                 }
             )
             return
@@ -822,6 +881,20 @@ class AIResponseCache(CacheInterface):
                 }
             )
             logger.warning(f"Cache invalidation error: {e}")
+            
+            raise InfrastructureError(
+                f"Redis cache invalidation failed for pattern '{pattern}': {str(e)}",
+                context={
+                    "operation": "redis_invalidate_pattern",
+                    "cache_type": "redis_cache",
+                    "invalidation_pattern": pattern,
+                    "operation_context": operation_context,
+                    "search_pattern": f"ai_cache:*{pattern}*",
+                    "error_type": type(e).__name__,
+                    "error_details": str(e),
+                    "operation_duration_ms": int(duration * 1000)
+                }
+            )
     
     async def get_cache_stats(self) -> Dict[str, Any]:
         """
@@ -848,21 +921,33 @@ class AIResponseCache(CacheInterface):
         """
         redis_stats = {"status": "unavailable", "keys": 0}
         
-        if await self.connect():
-            try:
-                assert self.redis is not None  # Type checker hint: redis is available after successful connect()
-                keys = await self.redis.keys(b"ai_cache:*")
-                info = await self.redis.info()
-                redis_stats = {
-                    "status": "connected",
-                    "keys": len(keys),
-                    "memory_used": info.get("used_memory_human", "unknown"),
-                    "memory_used_bytes": info.get("used_memory", 0),
-                    "connected_clients": info.get("connected_clients", 0)
+        try:
+            await self.connect()
+            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
+            keys = await self.redis.keys(b"ai_cache:*")
+            info = await self.redis.info()
+            redis_stats = {
+                "status": "connected",
+                "keys": len(keys),
+                "memory_used": info.get("used_memory_human", "unknown"),
+                "memory_used_bytes": info.get("used_memory", 0),
+                "connected_clients": info.get("connected_clients", 0)
+            }
+        except InfrastructureError as e:
+            # Redis connection failed - set unavailable status
+            redis_stats = {"status": "unavailable", "keys": 0}
+        except Exception as e:
+            logger.warning(f"Cache stats error: {e}")
+            raise InfrastructureError(
+                f"Redis cache statistics retrieval failed: {str(e)}",
+                context={
+                    "operation": "redis_get_cache_stats",
+                    "cache_type": "redis_cache",
+                    "error_type": type(e).__name__,
+                    "error_details": str(e),
+                    "stats_operation": "redis_info_and_keys"
                 }
-            except Exception as e:
-                logger.warning(f"Cache stats error: {e}")
-                redis_stats = {"status": "error", "error": str(e)}
+            )
         
         # Record current memory usage for monitoring
         self.record_memory_usage(redis_stats)
@@ -1259,7 +1344,9 @@ class AIResponseCache(CacheInterface):
         Returns:
             Cached value if found, None otherwise
         """
-        if not await self.connect():
+        try:
+            await self.connect()
+        except InfrastructureError:
             return None
             
         try:
@@ -1284,7 +1371,16 @@ class AIResponseCache(CacheInterface):
             return None
         except Exception as e:
             logger.warning(f"Cache get error for key {key}: {e}")
-            return None
+            raise InfrastructureError(
+                f"Redis cache get operation failed for key '{key}': {str(e)}",
+                context={
+                    "operation": "redis_get",
+                    "cache_type": "redis_cache",
+                    "cache_key": key,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e)
+                }
+            )
     
     async def set(self, key: str, value, ttl: Optional[int] = None):
         """
@@ -1295,7 +1391,9 @@ class AIResponseCache(CacheInterface):
             value: Value to cache
             ttl: Time-to-live in seconds (optional)
         """
-        if not await self.connect():
+        try:
+            await self.connect()
+        except InfrastructureError:
             return
             
         try:
@@ -1315,6 +1413,17 @@ class AIResponseCache(CacheInterface):
             logger.debug(f"Set cache key {key} with TTL {expiry}s")
         except Exception as e:
             logger.warning(f"Cache set error for key {key}: {e}")
+            raise InfrastructureError(
+                f"Redis cache set operation failed for key '{key}': {str(e)}",
+                context={
+                    "operation": "redis_set",
+                    "cache_type": "redis_cache",
+                    "cache_key": key,
+                    "ttl": ttl or self.default_ttl,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e)
+                }
+            )
     
     async def delete(self, key: str):
         """
@@ -1323,7 +1432,9 @@ class AIResponseCache(CacheInterface):
         Args:
             key: Cache key to delete
         """
-        if not await self.connect():
+        try:
+            await self.connect()
+        except InfrastructureError:
             return
             
         try:
@@ -1332,3 +1443,13 @@ class AIResponseCache(CacheInterface):
             logger.debug(f"Deleted cache key {key} (existed: {bool(result)})")
         except Exception as e:
             logger.warning(f"Cache delete error for key {key}: {e}")
+            raise InfrastructureError(
+                f"Redis cache delete operation failed for key '{key}': {str(e)}",
+                context={
+                    "operation": "redis_delete",
+                    "cache_type": "redis_cache",
+                    "cache_key": key,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e)
+                }
+            )
