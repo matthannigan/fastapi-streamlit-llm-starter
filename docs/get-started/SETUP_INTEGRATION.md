@@ -433,7 +433,7 @@ Authorization: Bearer your-api-key
 
 **Available Operations** (Optional authentication)
 ```http
-GET /v1/operations
+GET /v1/text_processing/operations
 Authorization: Bearer your-api-key  # Optional
 ```
 **Response:**
@@ -607,7 +607,7 @@ class LLMClient:
     async def get_operations(self) -> dict:
         """Get available operations from public API."""
         response = await self.session.get(
-            f"{self.base_url}/v1/operations",
+            f"{self.base_url}/v1/text_processing/operations",
             headers=self.headers
         )
         response.raise_for_status()

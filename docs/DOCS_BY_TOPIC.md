@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-08-03*
+*Last updated on 2025-08-04*
 
 ## Application
 
@@ -47,6 +47,13 @@ This view organizes all documentation by topic category, providing an alternativ
 - **[Testing Guide](guides/developer/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
 
 - **[Virtual Environment Management](guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation
+
+
+## Domain Services
+
+- **[Domain Services Guide](guides/domain-services/README.md)**: Overview and principles for building customizable, infrastructure-powered domain services
+
+- **[Text Processing Domain Service](guides/domain-services/TEXT_PROCESSING.md)**: Comprehensive guide to the educational text processing implementation demonstrating domain service patterns, AI integration, and infrastructure usage
 
 
 ## Infrastructure

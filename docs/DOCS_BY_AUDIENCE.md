@@ -2,7 +2,7 @@
 
 This view organizes all documentation by target audience level, helping you find content appropriate for your experience level.
 
-*Last updated on 2025-08-03*
+*Last updated on 2025-08-04*
 
 ## Introductory
 
@@ -11,8 +11,6 @@ This view organizes all documentation by target audience level, helping you find
 - **[Get Started Checklist](get-started/CHECKLIST.md)**: Complete installation and setup checklist covering initial setup, API keys, Docker configuration, and development workflows
 
 - **[Setup & Complete Systems Integration Guide](get-started/SETUP_INTEGRATION.md)**: Comprehensive setup and system integration guide with complete usage examples to get up and running quickly
-
-- **[Virtual Environment Management](guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation
 
 
 ## Intermediate
@@ -26,6 +24,8 @@ This view organizes all documentation by target audience level, helping you find
 - **[Code Standards & Examples](guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation
 
 - **[Docker Setup & Usage](guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services
+
+- **[Domain Services Guide](guides/domain-services/README.md)**: Overview and principles for building customizable, infrastructure-powered domain services
 
 - **[Dual API Architecture](reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Sophisticated dual-API architecture that separates external business operations from internal infrastructure management with clear boundaries
 
@@ -44,6 +44,8 @@ This view organizes all documentation by target audience level, helping you find
 - **[Testing Guide](guides/developer/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
 
 - **[Troubleshooting Guide](guides/operations/TROUBLESHOOTING.md)**: Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures
+
+- **[Virtual Environment Management](guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation
 
 
 ## Advanced
@@ -73,4 +75,6 @@ This view organizes all documentation by target audience level, helping you find
 - **[Security Guide](guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist
 
 - **[Security Infrastructure Service](guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection
+
+- **[Text Processing Domain Service](guides/domain-services/TEXT_PROCESSING.md)**: Comprehensive guide to the educational text processing implementation demonstrating domain service patterns, AI integration, and infrastructure usage
 

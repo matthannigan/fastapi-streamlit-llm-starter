@@ -24,14 +24,14 @@ async def process_text(
     # Process text with required authentication
 
 # Optional authentication
-@app.get("/v1/operations")
+@app.get("/v1/text_processing/operations")
 async def get_operations(
     api_key: Optional[str] = Depends(optional_verify_api_key)
 ):
     # Process with optional authentication
 
 # Advanced mode with metadata
-@app.post("/v1/advanced-process")
+@app.post("/v1/text_processing/advanced-process")
 async def advanced_process(
     request: ProcessRequest,
     auth_data: dict = Depends(verify_api_key_with_metadata)
