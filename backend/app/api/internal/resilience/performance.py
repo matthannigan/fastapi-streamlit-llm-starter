@@ -89,7 +89,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -138,7 +139,7 @@ async def run_performance_benchmark(
                 - performance_target_met: Boolean indicating 80% pass rate threshold
                 
     Raises:
-        HTTPException: 500 Internal Server Error if benchmark execution fails
+        InfrastructureError: If benchmark execution fails due to system issues
         
     Example:
         >>> response = await run_performance_benchmark(iterations=100)
@@ -171,9 +172,15 @@ async def run_performance_benchmark(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to run performance benchmark: {str(e)}"
+        raise InfrastructureError(
+            "Failed to run performance benchmark",
+            context={
+                "endpoint": "run_performance_benchmark",
+                "iterations": iterations,
+                "include_slow": include_slow,
+                "error_details": str(e),
+                "operation": "comprehensive_benchmark"
+            }
         )
 
 
@@ -210,8 +217,8 @@ async def run_custom_performance_benchmark(
             - summary: Overall benchmark summary with performance analysis
                 
     Raises:
-        HTTPException: 400 Bad Request if unknown operation specified
-        HTTPException: 500 Internal Server Error if benchmark execution fails
+        ValidationError: If unknown operation is specified
+        InfrastructureError: If benchmark execution fails due to system issues
         
     Example:
         >>> request = BenchmarkRunRequest(
@@ -252,9 +259,14 @@ async def run_custom_performance_benchmark(
                     result = benchmark_methods[operation](iterations=request.iterations)
                     results.append(result)
                 else:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Unknown benchmark operation: {operation}"
+                    raise ValidationError(
+                        f"Unknown benchmark operation: {operation}",
+                        context={
+                            "endpoint": "run_custom_performance_benchmark",
+                            "unknown_operation": operation,
+                            "available_operations": list(benchmark_methods.keys()),
+                            "requested_operations": request.operations
+                        }
                     )
         else:
             # Run all benchmarks
@@ -289,12 +301,19 @@ async def run_custom_performance_benchmark(
                 "performance_target_met": avg_duration < 100.0  # <100ms target
             }
         }
-    except HTTPException:
+    except (ValidationError, InfrastructureError, BusinessLogicError):
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to run custom benchmark: {str(e)}"
+        raise InfrastructureError(
+            "Failed to run custom benchmark",
+            context={
+                "endpoint": "run_custom_performance_benchmark",
+                "iterations": request.iterations,
+                "operations": request.operations,
+                "include_slow": getattr(request, 'include_slow', False),
+                "error_details": str(e),
+                "operation": "custom_benchmark"
+            }
         )
 
 
@@ -325,7 +344,7 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
                 - timing_precision: Timing measurement precision details
                 
     Raises:
-        HTTPException: 500 Internal Server Error if threshold retrieval fails
+        InfrastructureError: If threshold retrieval fails due to system issues
         
     Note:
         This endpoint supports optional authentication for monitoring system
@@ -370,9 +389,13 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get performance thresholds: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get performance thresholds",
+            context={
+                "endpoint": "get_performance_thresholds",
+                "error_details": str(e),
+                "operation": "threshold_retrieval"
+            }
         )
 
 
@@ -404,7 +427,7 @@ async def get_performance_report(
                 - recommendations: List of optimization recommendations
                 
     Raises:
-        HTTPException: 500 Internal Server Error if report generation fails
+        InfrastructureError: If report generation fails due to system issues
         
     Example:
         >>> response = await get_performance_report("json")
@@ -475,9 +498,14 @@ async def get_performance_report(
                 }
             }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate performance report: {str(e)}"
+        raise InfrastructureError(
+            "Failed to generate performance report",
+            context={
+                "endpoint": "get_performance_report",
+                "format": format,
+                "error_details": str(e),
+                "operation": "report_generation"
+            }
         )
 
 
@@ -508,7 +536,7 @@ async def get_performance_history(
             - current_results: Current benchmark results for reference
             
     Raises:
-        HTTPException: 500 Internal Server Error if history retrieval fails
+        InfrastructureError: If history retrieval fails due to system issues
         
     Note:
         This endpoint is currently under development. Future implementation
@@ -550,8 +578,13 @@ async def get_performance_history(
             ]
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get performance history: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get performance history",
+            context={
+                "endpoint": "get_performance_history",
+                "limit": limit,
+                "error_details": str(e),
+                "operation": "history_retrieval"
+            }
         )
 

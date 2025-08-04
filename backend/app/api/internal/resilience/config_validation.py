@@ -108,7 +108,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -157,7 +158,7 @@ async def validate_custom_config(
             - suggestions: List of suggestions for improvement
             
     Raises:
-        HTTPException: 500 Internal Server Error if validation process fails
+        InfrastructureError: If validation process fails due to system issues
         
     Example:
         >>> request = CustomConfigRequest(
@@ -224,7 +225,7 @@ async def validate_custom_config_with_security(
                 - validation_timestamp: Security validation timestamp
             
     Raises:
-        HTTPException: 500 Internal Server Error if security validation fails
+        InfrastructureError: If security validation fails due to system issues
         
     Example:
         >>> request = CustomConfigRequest(
@@ -298,7 +299,7 @@ async def validate_json_config(
             - suggestions: List of suggestions for configuration improvement
             
     Raises:
-        HTTPException: 500 Internal Server Error if validation process fails
+        InfrastructureError: If validation process fails due to system issues
         
     Example:
         >>> json_config = '{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
@@ -368,8 +369,8 @@ async def validate_against_field_whitelist(
             - validation_timestamp: Validation timestamp
             
     Raises:
-        HTTPException: 400 Bad Request if configuration is not a JSON object
-        HTTPException: 500 Internal Server Error if field validation fails
+        ValidationError: If configuration is not a valid JSON object
+        InfrastructureError: If field validation fails due to system issues
         
     Example:
         >>> request = ValidationRequest(
@@ -391,9 +392,13 @@ async def validate_against_field_whitelist(
     """
     try:
         if not isinstance(request.configuration, dict):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Configuration must be a JSON object for field validation"
+            raise ValidationError(
+                "Configuration must be a JSON object for field validation",
+                context={
+                    "endpoint": "validate_against_field_whitelist",
+                    "configuration_type": type(request.configuration).__name__,
+                    "expected_type": "dict"
+                }
             )
         
         # Perform only field whitelist validation
@@ -428,12 +433,16 @@ async def validate_against_field_whitelist(
             "allowed_fields": list(whitelist.keys()),
             "validation_timestamp": datetime.now().isoformat()
         }
-    except HTTPException:
+    except (ValidationError, InfrastructureError, BusinessLogicError):
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate field whitelist: {str(e)}"
+        raise InfrastructureError(
+            "Failed to validate field whitelist",
+            context={
+                "endpoint": "validate_against_field_whitelist",
+                "error_details": str(e),
+                "operation": "field_whitelist_validation"
+            }
         )
     
 
@@ -465,7 +474,7 @@ async def get_security_configuration(
             - validation_features: List of enabled security features
             
     Raises:
-        HTTPException: 500 Internal Server Error if security configuration retrieval fails
+        InfrastructureError: If security configuration retrieval fails due to system issues
         
     Example:
         >>> response = await get_security_configuration()
@@ -505,9 +514,13 @@ async def get_security_configuration(
             ]
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get security configuration: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get security configuration",
+            context={
+                "endpoint": "get_security_configuration",
+                "error_details": str(e),
+                "operation": "security_config_retrieval"
+            }
         )
 
 
@@ -537,7 +550,7 @@ async def get_validation_rate_limit_status(
             - check_timestamp: Current timestamp of the status check
             
     Raises:
-        HTTPException: 500 Internal Server Error if rate limit status retrieval fails
+        InfrastructureError: If rate limit status retrieval fails due to system issues
         
     Example:
         >>> response = await get_validation_rate_limit_status("192.168.1.1")
@@ -571,7 +584,12 @@ async def get_validation_rate_limit_status(
             "check_timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get rate limit status: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get rate limit status",
+            context={
+                "endpoint": "get_validation_rate_limit_status",
+                "client_ip": client_ip,
+                "error_details": str(e),
+                "operation": "rate_limit_status_retrieval"
+            }
         )

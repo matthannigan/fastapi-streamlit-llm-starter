@@ -92,7 +92,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -144,7 +145,7 @@ async def get_configuration_usage_statistics(
                 - preset_adoption: Rate of non-legacy configuration usage
             
     Raises:
-        HTTPException: 500 Internal Server Error if statistics retrieval fails
+        InfrastructureError: If statistics retrieval fails due to system issues
         
     Example:
         >>> response = await get_configuration_usage_statistics(48)
@@ -187,9 +188,14 @@ async def get_configuration_usage_statistics(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration usage statistics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get configuration usage statistics",
+            context={
+                "endpoint": "get_configuration_usage_statistics",
+                "time_window_hours": time_window_hours,
+                "error_details": str(e),
+                "operation": "usage_statistics_retrieval"
+            }
         )
 
 
@@ -221,7 +227,7 @@ async def get_preset_usage_trend(
                 - avg_hourly_usage: Average usage per hour
                 
     Raises:
-        HTTPException: 500 Internal Server Error if trend analysis fails
+        InfrastructureError: If trend analysis fails due to system issues
         
     Example:
         >>> response = await get_preset_usage_trend("production", 48)
@@ -255,9 +261,15 @@ async def get_preset_usage_trend(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get preset usage trend: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get preset usage trend",
+            context={
+                "endpoint": "get_preset_usage_trend",
+                "preset_name": preset_name,
+                "hours": hours,
+                "error_details": str(e),
+                "operation": "preset_trend_retrieval"
+            }
         )
 
 
@@ -290,7 +302,7 @@ async def get_configuration_performance_metrics(
                 - p95_within_threshold: Boolean indicating P95 under 200ms
                 
     Raises:
-        HTTPException: 500 Internal Server Error if performance metrics retrieval fails
+        InfrastructureError: If performance metrics retrieval fails due to system issues
         
     Example:
         >>> response = await get_configuration_performance_metrics(24)
@@ -324,9 +336,14 @@ async def get_configuration_performance_metrics(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration performance metrics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get configuration performance metrics",
+            context={
+                "endpoint": "get_configuration_performance_metrics",
+                "hours": hours,
+                "error_details": str(e),
+                "operation": "performance_metrics_retrieval"
+            }
         )
 
 
@@ -357,7 +374,7 @@ async def get_configuration_alerts(
                 - has_errors: Boolean indicating presence of error alerts
                 
     Raises:
-        HTTPException: 500 Internal Server Error if alert retrieval fails
+        InfrastructureError: If alert retrieval fails due to system issues
         
     Example:
         >>> response = await get_configuration_alerts(max_alerts=25, level="error")
@@ -401,9 +418,15 @@ async def get_configuration_alerts(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration alerts: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get configuration alerts",
+            context={
+                "endpoint": "get_configuration_alerts",
+                "max_alerts": max_alerts,
+                "level": level,
+                "error_details": str(e),
+                "operation": "alerts_retrieval"
+            }
         )
 
 
@@ -434,7 +457,7 @@ async def get_session_configuration_metrics(
                 - avg_load_time_ms: Average configuration load time
                 
     Raises:
-        HTTPException: 500 Internal Server Error if session metrics retrieval fails
+        InfrastructureError: If session metrics retrieval fails due to system issues
         
     Example:
         >>> response = await get_session_configuration_metrics("session_abc123")
@@ -482,9 +505,14 @@ async def get_session_configuration_metrics(
             }
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get session configuration metrics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get session configuration metrics",
+            context={
+                "endpoint": "get_session_configuration_metrics",
+                "session_id": session_id,
+                "error_details": str(e),
+                "operation": "session_metrics_retrieval"
+            }
         )
 
 
@@ -514,8 +542,8 @@ async def export_configuration_metrics(
             - export_timestamp: Timestamp of the export operation
             
     Raises:
-        HTTPException: 400 Bad Request if format is not supported
-        HTTPException: 500 Internal Server Error if export operation fails
+        ValidationError: If export format is not supported
+        InfrastructureError: If export operation fails due to system issues
         
     Example:
         >>> response = await export_configuration_metrics("json", 24)
@@ -530,9 +558,13 @@ async def export_configuration_metrics(
         from app.infrastructure.resilience.config_monitoring import config_metrics_collector
         
         if format.lower() not in ['json', 'csv']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format must be 'json' or 'csv'"
+            raise ValidationError(
+                "Format must be 'json' or 'csv'",
+                context={
+                    "endpoint": "export_configuration_metrics",
+                    "invalid_format": format,
+                    "supported_formats": ["json", "csv"]
+                }
             )
         
         exported_data = config_metrics_collector.export_metrics(format, time_window_hours)
@@ -543,18 +575,29 @@ async def export_configuration_metrics(
             "data": exported_data,
             "export_timestamp": datetime.now().isoformat()
         }
-    except HTTPException:
-        # Re-raise HTTP exceptions (like the 400 error above)
+    except (ValidationError, InfrastructureError, BusinessLogicError):
+        # Re-raise custom exceptions (like the validation error above)
         raise
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+        raise ValidationError(
+            str(e),
+            context={
+                "endpoint": "export_configuration_metrics",
+                "format": format,
+                "time_window_hours": time_window_hours,
+                "operation": "metrics_export"
+            }
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export configuration metrics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to export configuration metrics",
+            context={
+                "endpoint": "export_configuration_metrics",
+                "format": format,
+                "time_window_hours": time_window_hours,
+                "error_details": str(e),
+                "operation": "metrics_export"
+            }
         )
 
 
@@ -583,7 +626,7 @@ async def cleanup_old_metrics(
             - cleanup_timestamp: Timestamp of the cleanup operation
             
     Raises:
-        HTTPException: 500 Internal Server Error if cleanup operation fails
+        InfrastructureError: If cleanup operation fails due to system issues
         
     Example:
         >>> response = await cleanup_old_metrics(48)
@@ -618,7 +661,12 @@ async def cleanup_old_metrics(
             "cleanup_timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cleanup old metrics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to cleanup old metrics",
+            context={
+                "endpoint": "cleanup_old_metrics",
+                "hours": hours,
+                "error_details": str(e),
+                "operation": "metrics_cleanup"
+            }
         )

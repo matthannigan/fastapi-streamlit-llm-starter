@@ -145,9 +145,10 @@ for any modifications.
 import logging
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
@@ -393,7 +394,7 @@ async def invalidate_cache(
             - message: Success or failure message with pattern details
     
     Raises:
-        HTTPException: May raise authentication errors if API key is invalid.
+        AuthenticationError: May raise authentication errors if API key is invalid.
             Cache operation errors are handled gracefully and returned in
             the response message rather than raising exceptions.
     
@@ -567,38 +568,49 @@ async def get_invalidation_recommendations(
             }
         },
         500: {
-            "description": "Internal server error - Performance monitor unavailable or failed",
+            "description": "Infrastructure error - Performance monitor unavailable, statistics computation failed, or cache service error",
             "content": {
                 "application/json": {
                     "examples": {
                         "monitor_not_initialized": {
                             "summary": "Performance monitor not initialized",
                             "value": {
-                                "detail": "Failed to retrieve cache performance metrics: Performance monitor not available"
-                            }
-                        },
-                        "cache_service_error": {
-                            "summary": "Cache service dependency failure",
-                            "value": {
-                                "detail": "Failed to retrieve cache performance metrics: Cache service not available"
+                                "detail": "Cache performance monitor unavailable"
                             }
                         },
                         "stats_computation_error": {
                             "summary": "Error computing statistics",
                             "value": {
-                                "detail": "Failed to retrieve cache performance metrics: Statistics computation failed"
+                                "detail": "Cache statistics computation failed"
+                            }
+                        },
+                        "monitor_method_unavailable": {
+                            "summary": "Performance monitor methods unavailable",
+                            "value": {
+                                "detail": "Cache performance monitoring temporarily disabled"
                             }
                         }
                     }
                 }
             }
         },
-        503: {
-            "description": "Service temporarily unavailable - Cache monitoring disabled",
+        400: {
+            "description": "Validation error - Invalid statistics format or response validation failed",
             "content": {
                 "application/json": {
-                    "example": {
-                        "detail": "Cache performance monitoring is temporarily disabled"
+                    "examples": {
+                        "invalid_stats_format": {
+                            "summary": "Invalid statistics format",
+                            "value": {
+                                "detail": "Invalid cache statistics format returned by performance monitor"
+                            }
+                        },
+                        "response_validation_failed": {
+                            "summary": "Response model validation failed",
+                            "value": {
+                                "detail": "Cache performance response validation failed"
+                            }
+                        }
                     }
                 }
             }
@@ -642,12 +654,11 @@ async def get_cache_performance_metrics(
             - invalidation: Cache invalidation frequency and patterns
     
     Raises:
-        HTTPException: 
-            - 500 Internal Server Error: When performance monitor is unavailable,
-              cache service errors occur, statistics computation fails, or response
-              validation fails.
-            - 503 Service Unavailable: When cache monitoring is temporarily disabled
-              or performance monitor methods are not available.
+        InfrastructureError: 
+            - When performance monitor is unavailable, cache service errors occur, 
+              statistics computation fails, or performance monitor methods are not available.
+        ValidationError:
+            - When response format validation fails or statistics format is invalid.
     
     Example:
         >>> # GET /internal/cache/metrics
@@ -690,9 +701,16 @@ async def get_cache_performance_metrics(
         # Check if performance monitor is available
         if performance_monitor is None:
             logger.error("Performance monitor dependency is None")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Performance monitor not available"
+            raise InfrastructureError(
+                "Cache performance monitor unavailable",
+                context={
+                    "endpoint": "get_cache_performance_metrics",
+                    "cache_operation": "metrics_collection",
+                    "cache_type": "performance_monitor",
+                    "performance_metrics": {"monitor_status": "not_initialized"},
+                    "redis_status": "unknown_due_to_monitor_failure",
+                    "operation_duration_ms": 0
+                }
             )
         
         logger.debug("Retrieving cache performance statistics")
@@ -703,31 +721,67 @@ async def get_cache_performance_metrics(
         except (ValueError, ZeroDivisionError) as e:
             # Handle specific mathematical errors that might occur during stats computation
             logger.error(f"Statistics computation error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Statistics computation failed"
+            raise InfrastructureError(
+                "Cache statistics computation failed",
+                context={
+                    "endpoint": "get_cache_performance_metrics",
+                    "cache_operation": "statistics_computation",
+                    "cache_type": "performance_monitor",
+                    "performance_metrics": {"computation_error": str(e)},
+                    "redis_status": "unknown_due_to_computation_failure",
+                    "operation_duration_ms": 0,
+                    "error_type": type(e).__name__
+                }
             )
         except AttributeError as e:
             # Handle cases where performance monitor methods are not available
             logger.error(f"Performance monitor method unavailable: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Cache performance monitoring is temporarily disabled"
+            raise InfrastructureError(
+                "Cache performance monitoring temporarily disabled",
+                context={
+                    "endpoint": "get_cache_performance_metrics",
+                    "cache_operation": "monitor_method_access",
+                    "cache_type": "performance_monitor",
+                    "performance_metrics": {"method_error": str(e)},
+                    "redis_status": "unknown_due_to_monitor_method_failure",
+                    "operation_duration_ms": 0,
+                    "missing_method": str(e),
+                    "service_status": "temporarily_disabled"
+                }
             )
         except Exception as e:
             # Handle any other unexpected errors during stats retrieval
             logger.error(f"Unexpected error retrieving performance stats: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve cache performance metrics: {str(e)}"
+            raise InfrastructureError(
+                "Cache statistics retrieval failed unexpectedly",
+                context={
+                    "endpoint": "get_cache_performance_metrics",
+                    "cache_operation": "stats_retrieval",
+                    "cache_type": "performance_monitor",
+                    "performance_metrics": {"unexpected_error": str(e)},
+                    "redis_status": "unknown_due_to_retrieval_failure",
+                    "operation_duration_ms": 0,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e)
+                }
             )
         
         # Validate that we received stats data
         if not isinstance(stats, dict):
             logger.error(f"Invalid stats format received: {type(stats)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Invalid statistics format"
+            raise ValidationError(
+                "Invalid cache statistics format returned by performance monitor",
+                context={
+                    "endpoint": "get_cache_performance_metrics",
+                    "cache_operation": "stats_format_validation",
+                    "cache_type": "performance_monitor",
+                    "performance_metrics": {"invalid_format": str(type(stats))},
+                    "redis_status": "unknown_due_to_format_validation_failure",
+                    "operation_duration_ms": 0,
+                    "expected_format": "dict",
+                    "received_format": str(type(stats)),
+                    "stats_content": str(stats)[:200] if stats else "None"
+                }
             )
         
         logger.debug(f"Successfully retrieved {len(stats)} performance metrics")
@@ -738,18 +792,38 @@ async def get_cache_performance_metrics(
         except (ValueError, TypeError) as e:
             # Handle Pydantic validation errors
             logger.error(f"Response model validation error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Response format validation failed"
+            raise ValidationError(
+                "Cache performance response validation failed",
+                context={
+                    "endpoint": "get_cache_performance_metrics",
+                    "cache_operation": "response_model_validation",
+                    "cache_type": "performance_monitor",
+                    "performance_metrics": {"validation_error": str(e)},
+                    "redis_status": "unknown_due_to_validation_failure",
+                    "operation_duration_ms": 0,
+                    "validation_error": str(e),
+                    "stats_keys": list(stats.keys()) if isinstance(stats, dict) else [],
+                    "model_class": "CachePerformanceResponse"
+                }
             )
         
-    except HTTPException:
-        # Re-raise HTTP exceptions without modification
+    except (ValidationError, InfrastructureError, BusinessLogicError):
+        # Re-raise custom exceptions without modification
         raise
     except Exception as e:
         # Catch-all for any other unexpected errors
         logger.error(f"Unexpected error in cache metrics endpoint: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve cache performance metrics: Internal server error"
+        raise InfrastructureError(
+            "Cache metrics endpoint encountered unexpected error",
+            context={
+                "endpoint": "get_cache_performance_metrics",
+                "cache_operation": "endpoint_execution",
+                "cache_type": "api_endpoint",
+                "performance_metrics": {"endpoint_error": str(e)},
+                "redis_status": "unknown_due_to_endpoint_failure",
+                "operation_duration_ms": 0,
+                "error_type": type(e).__name__,
+                "error_details": str(e),
+                "stack_trace": True
+            }
         )

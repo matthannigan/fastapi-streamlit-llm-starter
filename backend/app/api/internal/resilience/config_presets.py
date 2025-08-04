@@ -68,7 +68,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -124,7 +125,7 @@ async def list_presets(
             - environment_contexts: List of suitable deployment environments
             
     Raises:
-        HTTPException: 500 Internal Server Error if preset listing fails
+        InfrastructureError: If preset listing fails due to system issues
         
     Example:
         >>> response = await list_presets()
@@ -157,7 +158,14 @@ async def list_presets(
         
     except Exception as e:
         logger.error(f"Error listing presets: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to list presets: {str(e)}")
+        raise InfrastructureError(
+            "Failed to list presets",
+            context={
+                "endpoint": "list_presets",
+                "error_details": str(e),
+                "operation": "preset_listing"
+            }
+        )
 
 
 @router.get("/presets/{preset_name}", response_model=PresetDetails)
@@ -187,8 +195,8 @@ async def get_preset_details(
             - Usage recommendations
             
     Raises:
-        HTTPException: 404 Not Found if preset doesn't exist
-        HTTPException: 500 Internal Server Error if preset details retrieval fails
+        BusinessLogicError: If preset doesn't exist
+        InfrastructureError: If preset details retrieval fails due to system issues
         
     Example:
         >>> response = await get_preset_details("production")
@@ -205,10 +213,25 @@ async def get_preset_details(
         return PresetDetails(**details)
         
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise BusinessLogicError(
+            str(e),
+            context={
+                "endpoint": "get_preset_details",
+                "preset_name": preset_name,
+                "operation": "preset_lookup"
+            }
+        )
     except Exception as e:
         logger.error(f"Error getting preset details for '{preset_name}': {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get preset details: {str(e)}")
+        raise InfrastructureError(
+            "Failed to get preset details",
+            context={
+                "endpoint": "get_preset_details",
+                "preset_name": preset_name,
+                "error_details": str(e),
+                "operation": "preset_details_retrieval"
+            }
+        )
 
 
 @router.get("/presets-summary", response_model=Dict[str, PresetDetails])
@@ -234,7 +257,7 @@ async def get_all_presets_summary(
               strategies, and environment suitability information
             
     Raises:
-        HTTPException: 500 Internal Server Error if presets summary retrieval fails
+        InfrastructureError: If presets summary retrieval fails due to system issues
         
     Example:
         >>> response = await get_all_presets_summary()
@@ -261,7 +284,14 @@ async def get_all_presets_summary(
         
     except Exception as e:
         logger.error(f"Error getting presets summary: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get presets summary: {str(e)}")
+        raise InfrastructureError(
+            "Failed to get presets summary",
+            context={
+                "endpoint": "get_all_presets_summary",
+                "error_details": str(e),
+                "operation": "presets_summary_retrieval"
+            }
+        )
 
 
 @router.get("/recommend-preset/{environment}", response_model=DetailedRecommendationResponse)
@@ -292,7 +322,7 @@ async def recommend_preset(
             - configuration_highlights: Key configuration aspects
             
     Raises:
-        HTTPException: 500 Internal Server Error if recommendation generation fails
+        InfrastructureError: If recommendation generation fails due to system issues
         
     Example:
         >>> response = await recommend_preset("production")
@@ -319,7 +349,15 @@ async def recommend_preset(
         
     except Exception as e:
         logger.error(f"Error recommending preset for environment '{environment}': {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to recommend preset: {str(e)}")
+        raise InfrastructureError(
+            "Failed to recommend preset",
+            context={
+                "endpoint": "recommend_preset",
+                "environment": environment,
+                "error_details": str(e),
+                "operation": "preset_recommendation"
+            }
+        )
 
 
 @router.get("/recommend-preset-auto", response_model=AutoDetectResponse)
@@ -346,7 +384,7 @@ async def auto_recommend_preset(
             - detection_method: Method used for environment detection
             
     Raises:
-        HTTPException: 500 Internal Server Error if auto-detection or recommendation fails
+        InfrastructureError: If auto-detection or recommendation fails due to system issues
         
     Note:
         The auto-detection analyzes environment variables, system properties,
@@ -382,4 +420,11 @@ async def auto_recommend_preset(
         
     except Exception as e:
         logger.error(f"Error auto-detecting environment for preset recommendation: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to auto-detect and recommend preset: {str(e)}")
+        raise InfrastructureError(
+            "Failed to auto-detect and recommend preset",
+            context={
+                "endpoint": "auto_recommend_preset",
+                "error_details": str(e),
+                "operation": "auto_preset_recommendation"
+            }
+        )

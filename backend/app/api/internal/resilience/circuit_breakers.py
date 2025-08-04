@@ -81,7 +81,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -122,7 +123,7 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
                 - Performance metrics and statistics
             
     Raises:
-        HTTPException: 500 Internal Server Error if circuit breaker status retrieval fails
+        InfrastructureError: If circuit breaker status retrieval fails due to system issues
         
     Example:
         >>> response = await get_circuit_breaker_status()
@@ -144,9 +145,13 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
         all_metrics = ai_resilience.get_all_metrics()
         return all_metrics.get("circuit_breakers", {})
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get circuit breaker status: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get circuit breaker status",
+            context={
+                "endpoint": "get_circuit_breaker_status",
+                "error_details": str(e),
+                "operation": "circuit_breaker_status_retrieval"
+            }
         )
 
 @router.get("/circuit-breakers/{breaker_name}")
@@ -175,8 +180,8 @@ async def get_circuit_breaker_details(
             - metrics: Additional performance and operational metrics
             
     Raises:
-        HTTPException: 404 Not Found if circuit breaker doesn't exist
-        HTTPException: 500 Internal Server Error if details retrieval fails
+        BusinessLogicError: If circuit breaker doesn't exist
+        InfrastructureError: If details retrieval fails due to system issues
         
     Example:
         >>> response = await get_circuit_breaker_details("text_processing_service")
@@ -192,9 +197,14 @@ async def get_circuit_breaker_details(
     """
     try:
         if breaker_name not in ai_resilience.circuit_breakers:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Circuit breaker '{breaker_name}' not found"
+            raise BusinessLogicError(
+                f"Circuit breaker '{breaker_name}' not found",
+                context={
+                    "endpoint": "get_circuit_breaker_details",
+                    "breaker_name": breaker_name,
+                    "available_breakers": list(ai_resilience.circuit_breakers.keys()),
+                    "operation": "circuit_breaker_lookup"
+                }
             )
         
         breaker = ai_resilience.circuit_breakers[breaker_name]
@@ -207,12 +217,17 @@ async def get_circuit_breaker_details(
             "last_failure_time": breaker.last_failure_time,
             "metrics": breaker.metrics.to_dict() if hasattr(breaker, 'metrics') else {}
         }
-    except HTTPException:
+    except (ValidationError, InfrastructureError, BusinessLogicError):
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get circuit breaker details: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get circuit breaker details",
+            context={
+                "endpoint": "get_circuit_breaker_details",
+                "breaker_name": breaker_name,
+                "error_details": str(e),
+                "operation": "circuit_breaker_details_retrieval"
+            }
         )
 
 @router.post("/circuit-breakers/{breaker_name}/reset")
@@ -237,8 +252,8 @@ async def reset_circuit_breaker(
             - new_state: New state of the circuit breaker (should be "closed")
             
     Raises:
-        HTTPException: 404 Not Found if circuit breaker doesn't exist
-        HTTPException: 500 Internal Server Error if reset operation fails
+        BusinessLogicError: If circuit breaker doesn't exist
+        InfrastructureError: If reset operation fails due to system issues
         
     Warning:
         Circuit breakers are critical safety components that protect against
@@ -256,9 +271,14 @@ async def reset_circuit_breaker(
     """
     try:
         if breaker_name not in ai_resilience.circuit_breakers:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Circuit breaker '{breaker_name}' not found"
+            raise BusinessLogicError(
+                f"Circuit breaker '{breaker_name}' not found",
+                context={
+                    "endpoint": "reset_circuit_breaker",
+                    "breaker_name": breaker_name,
+                    "available_breakers": list(ai_resilience.circuit_breakers.keys()),
+                    "operation": "circuit_breaker_reset"
+                }
             )
         
         breaker = ai_resilience.circuit_breakers[breaker_name]
@@ -274,10 +294,15 @@ async def reset_circuit_breaker(
             "name": breaker_name,
             "new_state": breaker.state
         }
-    except HTTPException:
+    except (ValidationError, InfrastructureError, BusinessLogicError):
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset circuit breaker: {str(e)}"
+        raise InfrastructureError(
+            "Failed to reset circuit breaker",
+            context={
+                "endpoint": "reset_circuit_breaker",
+                "breaker_name": breaker_name,
+                "error_details": str(e),
+                "operation": "circuit_breaker_reset"
+            }
         )

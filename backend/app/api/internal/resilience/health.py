@@ -73,7 +73,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, Query
+from app.core.exceptions import InfrastructureError
 from typing import Optional
 from datetime import datetime
 
@@ -107,7 +108,7 @@ async def get_resilience_health():
             - details (Dict): Detailed health information including circuit breaker states
             
     Raises:
-        HTTPException: 500 Internal Server Error if health status retrieval fails
+        InfrastructureError: If health status retrieval fails due to system issues
         
     Example:
         >>> response = await get_resilience_health()
@@ -132,7 +133,14 @@ async def get_resilience_health():
         
     except Exception as e:
         logger.error(f"Error getting health status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get health status: {str(e)}")
+        raise InfrastructureError(
+            "Failed to get health status",
+            context={
+                "endpoint": "get_resilience_health",
+                "error_details": str(e),
+                "operation": "health_status_retrieval"
+            }
+        )
 
 
 @config_router.get("", response_model=CurrentConfigResponse)
@@ -158,7 +166,7 @@ async def get_current_config(
             - Available strategies mapping
             
     Raises:
-        HTTPException: 500 Internal Server Error if configuration retrieval fails
+        InfrastructureError: If configuration retrieval fails due to system issues
         
     Example:
         >>> response = await get_current_config()
@@ -266,7 +274,14 @@ async def get_current_config(
         
     except Exception as e:
         logger.error(f"Error getting current configuration: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get current configuration: {str(e)}")
+        raise InfrastructureError(
+            "Failed to get current configuration",
+            context={
+                "endpoint": "get_current_config",
+                "error_details": str(e),
+                "operation": "configuration_retrieval"
+            }
+        )
 
 
 @main_router.get("/metrics", response_model=ResilienceMetricsResponse)
@@ -289,7 +304,7 @@ async def get_resilience_metrics(
             - Performance metrics and response times
             
     Raises:
-        HTTPException: 500 Internal Server Error if metrics retrieval fails
+        InfrastructureError: If metrics retrieval fails due to system issues
         
     Example:
         >>> response = await get_resilience_metrics()
@@ -305,9 +320,13 @@ async def get_resilience_metrics(
 
     except Exception as e:
         logger.error(f"Error getting resilience metrics: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get resilience metrics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get resilience metrics",
+            context={
+                "endpoint": "get_resilience_metrics",
+                "error_details": str(e),
+                "operation": "metrics_retrieval"
+            }
         )
 
 
@@ -337,7 +356,7 @@ async def get_operation_metrics(
                 - Error patterns and trends
             
     Raises:
-        HTTPException: 500 Internal Server Error if metrics retrieval fails
+        InfrastructureError: If metrics retrieval fails due to system issues
         
     Example:
         >>> response = await get_operation_metrics("summarize")
@@ -357,9 +376,14 @@ async def get_operation_metrics(
             "metrics": metrics.to_dict()
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get metrics for operation {operation_name}: {str(e)}"
+        raise InfrastructureError(
+            f"Failed to get metrics for operation {operation_name}",
+            context={
+                "endpoint": "get_operation_metrics",
+                "operation_name": operation_name,
+                "error_details": str(e),
+                "operation": "operation_metrics_retrieval"
+            }
         )
 
 
@@ -384,7 +408,7 @@ async def reset_resilience_metrics(
                       which operations were reset
             
     Raises:
-        HTTPException: 500 Internal Server Error if reset operation fails
+        InfrastructureError: If reset operation fails due to system issues
         
     Example:
         >>> response = await reset_resilience_metrics("summarize")
@@ -406,9 +430,14 @@ async def reset_resilience_metrics(
         
     except Exception as e:
         logger.error(f"Error resetting metrics: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset metrics: {str(e)}"
+        raise InfrastructureError(
+            "Failed to reset metrics",
+            context={
+                "endpoint": "reset_resilience_metrics",
+                "operation_name": operation_name,
+                "error_details": str(e),
+                "operation": "metrics_reset"
+            }
         )
 
 
@@ -440,7 +469,7 @@ async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_ke
             - summary: Additional summary metrics
             
     Raises:
-        HTTPException: 500 Internal Server Error if dashboard data retrieval fails
+        InfrastructureError: If dashboard data retrieval fails due to system issues
         
     Note:
         This endpoint supports optional authentication for flexibility in
@@ -511,7 +540,11 @@ async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_ke
             "summary": all_metrics.get("summary", {})
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get resilience dashboard: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get resilience dashboard",
+            context={
+                "endpoint": "get_resilience_dashboard",
+                "error_details": str(e),
+                "operation": "dashboard_retrieval"
+            }
         )

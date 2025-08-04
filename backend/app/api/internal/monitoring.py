@@ -162,7 +162,8 @@ APIs used across the application. Ensure backward compatibility and comprehensiv
 testing for any modifications.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
+from app.core.exceptions import InfrastructureError
 from app.infrastructure.security.auth import optional_verify_api_key
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
@@ -204,9 +205,8 @@ async def get_monitoring_health(
             - available_endpoints (list): List of available monitoring endpoints
     
     Raises:
-        HTTPException: 500 Internal Server Error if the monitoring health check
-            fails catastrophically or if critical monitoring components are
-            completely unavailable.
+        InfrastructureError: If the monitoring health check fails catastrophically 
+            or if critical monitoring components are completely unavailable.
     
     Examples:
         Successful response:
@@ -337,9 +337,15 @@ async def get_monitoring_health(
         
     except Exception as e:
         logger.error(f"Monitoring health check failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get monitoring health: {str(e)}"
+        raise InfrastructureError(
+            "Monitoring health check failed",
+            context={
+                "endpoint": "get_monitoring_health",
+                "operation": "monitoring_health_check",
+                "service_status": "monitoring_system",
+                "error_details": str(e),
+                "monitoring_components": ["cache_performance_monitor", "cache_service_monitoring", "resilience_monitoring"]
+            }
         )
 
 

@@ -75,7 +75,8 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
+from app.core.exceptions import ValidationError, InfrastructureError, BusinessLogicError
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -121,7 +122,7 @@ async def get_configuration_templates(
             - Template metadata including version and compatibility information
             
     Raises:
-        HTTPException: 500 Internal Server Error if template listing fails
+        InfrastructureError: If template listing fails due to system issues
         
     Example:
         >>> response = await get_configuration_templates()
@@ -142,9 +143,13 @@ async def get_configuration_templates(
         
     except Exception as e:
         logger.error(f"Error getting configuration templates: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration templates: {str(e)}"
+        raise InfrastructureError(
+            "Failed to get configuration templates",
+            context={
+                "endpoint": "get_configuration_templates",
+                "error_details": str(e),
+                "operation": "template_listing"
+            }
         )
 
 
@@ -173,8 +178,8 @@ async def get_configuration_template(
             - customization_options: Available override and customization points
             
     Raises:
-        HTTPException: 404 Not Found if template doesn't exist
-        HTTPException: 500 Internal Server Error if template retrieval fails
+        BusinessLogicError: If template doesn't exist
+        InfrastructureError: If template retrieval fails due to system issues
         
     Example:
         >>> response = await get_configuration_template("production")
@@ -192,15 +197,30 @@ async def get_configuration_template(
     try:
         template = config_validator.get_template(template_name)
         if not template:
-            raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
+            raise BusinessLogicError(
+                f"Template '{template_name}' not found",
+                context={
+                    "endpoint": "get_configuration_template",
+                    "template_name": template_name,
+                    "operation": "template_lookup"
+                }
+            )
         
         return template
         
-    except HTTPException:
+    except (ValidationError, InfrastructureError, BusinessLogicError):
         raise
     except Exception as e:
         logger.error(f"Error getting template '{template_name}': {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get template: {str(e)}")
+        raise InfrastructureError(
+            "Failed to get template",
+            context={
+                "endpoint": "get_configuration_template",
+                "template_name": template_name,
+                "error_details": str(e),
+                "operation": "template_retrieval"
+            }
+        )
 
 
 @router.post("/validate-template", response_model=ValidationResponse)
@@ -228,7 +248,7 @@ async def validate_template_based_config(
             - suggestions: List of suggestions for improvement
             
     Raises:
-        HTTPException: 500 Internal Server Error if validation process fails
+        InfrastructureError: If validation process fails due to system issues
         
     Example:
         >>> request = TemplateBasedConfigRequest(
@@ -290,7 +310,7 @@ async def suggest_template_for_config(
             - available_templates: List of all available template names
             
     Raises:
-        HTTPException: 500 Internal Server Error if template suggestion fails
+        InfrastructureError: If template suggestion fails due to system issues
         
     Example:
         >>> request = CustomConfigRequest(
@@ -346,4 +366,12 @@ async def suggest_template_for_config(
         
     except Exception as e:
         logger.error(f"Error suggesting template for configuration: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to suggest template: {str(e)}")
+        raise InfrastructureError(
+            "Failed to suggest template",
+            context={
+                "endpoint": "suggest_template_for_config",
+                "configuration_keys": list(request.configuration.keys()) if hasattr(request, 'configuration') else [],
+                "error_details": str(e),
+                "operation": "template_suggestion"
+            }
+        )
