@@ -91,12 +91,15 @@ based on your specific infrastructure components and monitoring requirements.
 
 from fastapi import APIRouter
 import logging
+import uuid
+from datetime import datetime
 
 from app.schemas.health import (
     HealthResponse,
 )
 
 from app.core.config import settings
+from app.core.exceptions import InfrastructureError
 
 # Create a router for health endpoints
 health_router = APIRouter(prefix="/health", tags=["Health"])
@@ -139,9 +142,9 @@ async def health_check():
             - version (str): Current API version identifier
     
     Raises:
-        Exception: Internal errors are caught and handled gracefully. Component
-            failures result in None values rather than endpoint failures, ensuring
-            the health check remains available even when subsystems are down.
+        InfrastructureError: Only raised for critical system failures that prevent
+            basic health checking functionality. Component failures result in None
+            values rather than endpoint failures, ensuring health check availability.
     
     Example:
         >>> # GET /health
@@ -159,59 +162,83 @@ async def health_check():
         systems, load balancers, and operational tools. Cache health checks create
         temporary connections that are automatically cleaned up.
     """
-    ai_healthy = bool(settings.gemini_api_key)
-    resilience_healthy = None
-    cache_healthy = None
+    # Generate request ID for tracing
+    request_id = str(uuid.uuid4())[:8]
+    logger.info(f"Health check started - Request ID: {request_id}")
     
-    # Check resilience health
     try:
-        from app.infrastructure.resilience import ai_resilience
-        resilience_healthy = ai_resilience.is_healthy()
-    except Exception:
-        logger.warning("Resilience service is not available")
+        ai_healthy = bool(settings.gemini_api_key)
         resilience_healthy = None
-    
-    # Check cache health
-    try:
-        from app.infrastructure.cache import AIResponseCache
-        
-        # Create cache service instance manually (not using dependency injection)
-        cache_service = AIResponseCache(
-            redis_url=settings.redis_url,
-            default_ttl=settings.cache_default_ttl,
-            text_hash_threshold=settings.cache_text_hash_threshold,
-            compression_threshold=settings.cache_compression_threshold,
-            compression_level=settings.cache_compression_level,
-            text_size_tiers=settings.cache_text_size_tiers,
-            memory_cache_size=settings.cache_memory_cache_size
-        )
-        
-        # Try to connect and get stats
-        await cache_service.connect()
-        cache_stats = await cache_service.get_cache_stats()
-        
-        # Determine cache health based on status indicators
-        cache_healthy = (
-            cache_stats.get("redis", {}).get("status") != "error" and
-            cache_stats.get("memory", {}).get("status") != "unavailable" and
-            cache_stats.get("performance", {}).get("status") != "unavailable" and
-            "error" not in cache_stats
-        )
-                
-    except Exception as e:
-        logger.warning(f"Cache service is not available: {e}")
         cache_healthy = None
     
-    # Overall health determination
-    # Consider healthy if AI is available and no critical components are explicitly unhealthy
-    # Allow for optional components (resilience, cache) to be None without affecting overall health
-    overall_healthy = ai_healthy and (
-        resilience_healthy is not False and cache_healthy is not False
-    )
+        # Check resilience health
+        try:
+            from app.infrastructure.resilience import ai_resilience
+            resilience_healthy = ai_resilience.is_healthy()
+            logger.debug(f"Resilience health check completed - Status: {resilience_healthy}")
+        except Exception as e:
+            logger.warning(f"Resilience service is not available - Request ID: {request_id}, Error: {str(e)}")
+            resilience_healthy = None
     
-    return HealthResponse(
-        status="healthy" if overall_healthy else "degraded",
-        ai_model_available=ai_healthy,
-        resilience_healthy=resilience_healthy,
-        cache_healthy=cache_healthy
-    )
+        # Check cache health
+        try:
+            from app.infrastructure.cache import AIResponseCache
+            
+            # Create cache service instance manually (not using dependency injection)
+            cache_service = AIResponseCache(
+                redis_url=settings.redis_url,
+                default_ttl=settings.cache_default_ttl,
+                text_hash_threshold=settings.cache_text_hash_threshold,
+                compression_threshold=settings.cache_compression_threshold,
+                compression_level=settings.cache_compression_level,
+                text_size_tiers=settings.cache_text_size_tiers,
+                memory_cache_size=settings.cache_memory_cache_size
+            )
+            
+            # Try to connect and get stats
+            await cache_service.connect()
+            cache_stats = await cache_service.get_cache_stats()
+            
+            # Determine cache health based on status indicators
+            cache_healthy = (
+                cache_stats.get("redis", {}).get("status") != "error" and
+                cache_stats.get("memory", {}).get("status") != "unavailable" and
+                cache_stats.get("performance", {}).get("status") != "unavailable" and
+                "error" not in cache_stats
+            )
+            logger.debug(f"Cache health check completed - Status: {cache_healthy}")
+                    
+        except Exception as e:
+            logger.warning(f"Cache service is not available - Request ID: {request_id}, Error: {str(e)}")
+            cache_healthy = None
+    
+        # Overall health determination
+        # Consider healthy if AI is available and no critical components are explicitly unhealthy
+        # Allow for optional components (resilience, cache) to be None without affecting overall health
+        overall_healthy = ai_healthy and (
+            resilience_healthy is not False and cache_healthy is not False
+        )
+        
+        status = "healthy" if overall_healthy else "degraded"
+        logger.info(f"Health check completed - Request ID: {request_id}, Status: {status}, "
+                   f"AI: {ai_healthy}, Resilience: {resilience_healthy}, Cache: {cache_healthy}")
+        
+        return HealthResponse(
+            status=status,
+            ai_model_available=ai_healthy,
+            resilience_healthy=resilience_healthy,
+            cache_healthy=cache_healthy
+        )
+        
+    except Exception as e:
+        # Critical failure in health check itself
+        logger.error(f"Critical health check failure - Request ID: {request_id}, Error: {str(e)}")
+        raise InfrastructureError(
+            "Health check system failure",
+            context={
+                "request_id": request_id,
+                "endpoint": "health_check",
+                "error_details": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
