@@ -184,7 +184,7 @@ GET /health
 
 ### Process Text
 ```http
-POST /process
+POST /v1/text_processing/process
 ```
 
 **Request:**
@@ -209,7 +209,7 @@ POST /process
 
 ### Available Operations
 ```http
-GET /operations
+GET /v1/text_processing/operations
 ```
 
 **Response:**

@@ -184,7 +184,7 @@ GET /health
 
 ### Process Text
 ```http
-POST /process
+POST /v1/text_processing/process
 ```
 
 **Request:**
