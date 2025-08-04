@@ -35,7 +35,7 @@ The Text Processing Service serves as a comprehensive example of a domain servic
 - **Error Handling**: Provides structured error management
 - **Validation**: Implements input sanitization and business rule enforcement
 
-📖 **Detailed Reference**: [Text Processing API Documentation](/docs/guides/domain-services/TEXT_PROCESSING_API.md)
+📖 **Detailed Reference**: [Text Processing API Documentation](guides/application/API#text-processing-operations)
 
 ## Customization Guidelines
 
