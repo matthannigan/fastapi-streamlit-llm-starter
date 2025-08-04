@@ -226,7 +226,7 @@ class SecurityPolicyTemplate:
 The security system integrates seamlessly with FastAPI's dependency injection system.
 
 ```python
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends
 from app.infrastructure.security import verify_api_key, get_auth_status
 
 app = FastAPI()
@@ -622,7 +622,7 @@ Comprehensive error handling with proper security considerations.
 
 ```python
 from app.core.exceptions import AuthenticationError
-from fastapi import HTTPException, status
+from fastapi import status
 import logging
 
 logger = logging.getLogger(__name__)
@@ -640,11 +640,7 @@ class SecurityExceptionHandler:
         )
         
         # Return generic error to prevent information leakage
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        raise AuthenticationError("Authentication required")
     
     @staticmethod
     def handle_authorization_error(e: Exception, request_info: dict = None):
@@ -654,10 +650,8 @@ class SecurityExceptionHandler:
             f"path: {request_info.get('path', 'unknown') if request_info else 'unknown'}"
         )
         
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
-        )
+        from app.core.exceptions import AuthorizationError
+        raise AuthorizationError("Insufficient permissions")
 
 # Exception handling middleware
 @app.middleware("http")
@@ -698,11 +692,8 @@ async def auth_fallback_middleware(request: Request, call_next):
             return await call_next(request)
         
         # For protected endpoints, return proper authentication error
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+        from app.core.exceptions import AuthenticationError
+        raise AuthenticationError("Authentication required")
 ```
 
 ## Performance Characteristics
@@ -1087,6 +1078,7 @@ For domain-specific security requirements, leverage this infrastructure service 
 - **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture and security integration
 
 ### Related Topics
+- **[Exception Handling Guide](../developer/EXCEPTION_HANDLING.md)**: Understanding the custom exception system used in security implementations
 - **[Authentication Guide](../developer/AUTHENTICATION.md)**: Multi-key authentication system implementation details
 - **[AI Infrastructure](./AI.md)**: AI-specific security patterns including prompt injection protection
 - **[Monitoring Infrastructure](./MONITORING.md)**: Security event monitoring and analytics

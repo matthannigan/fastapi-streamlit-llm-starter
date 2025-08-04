@@ -238,7 +238,8 @@ class TextProcessorService:
 ### FastAPI Endpoint Integration
 
 ```python
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from app.core.exceptions import ValidationError, InternalServerError
 from app.infrastructure.ai import sanitize_input_advanced, create_safe_prompt
 
 @app.post("/v1/text_processing/process")
@@ -250,10 +251,7 @@ async def process_text(request: TextProcessingRequest):
         safe_text = sanitize_input_advanced(request.text)
         
         if not safe_text.strip():
-            raise HTTPException(
-                status_code=400, 
-                detail="Input text is empty after sanitization"
-            )
+            raise ValidationError("Input text is empty after sanitization")
         
         # Safe prompt construction
         prompt = create_safe_prompt(
@@ -272,9 +270,9 @@ async def process_text(request: TextProcessingRequest):
         }
         
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationError(str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Processing failed")
+        raise InternalServerError("Processing failed")
 ```
 
 ### Middleware Integration
@@ -577,6 +575,7 @@ For domain-specific AI operations, leverage this infrastructure service through 
 - **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture
 
 ### Related Topics
+- **[Exception Handling Guide](../developer/EXCEPTION_HANDLING.md)**: Understanding the custom exception system used in security integration examples
 - **[Security Infrastructure](./SECURITY.md)**: Defense-in-depth security patterns that complement AI security
 - **[Cache Infrastructure](./CACHE.md)**: Caching strategies optimized for AI response patterns
 - **[Resilience Infrastructure](./RESILIENCE.md)**: Fault tolerance patterns for AI service reliability

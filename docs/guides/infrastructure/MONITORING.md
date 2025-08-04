@@ -1778,7 +1778,8 @@ async def get_service_monitoring(service_name: str):
     elif service_name == "new_service":
         return new_service.get_monitoring_stats()
     else:
-        raise HTTPException(status_code=404, detail="Service not found")
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError("Service not found")
 ```
 
 ## Troubleshooting

@@ -62,6 +62,9 @@ Comprehensive health check endpoint that evaluates:
 - Resilience infrastructure health (circuit breakers, failure detection)  
 - Cache system status (Redis connectivity, cache operations)
 
+**Raises:**
+- `InfrastructureError`: If critical system components are unavailable
+
 **Response:**
 ```json
 {
@@ -79,6 +82,9 @@ Comprehensive health check endpoint that evaluates:
 
 Verify API key authentication and return validation information.
 
+**Raises:**
+- `AuthenticationError`: If API key authentication fails
+
 **Response:**
 ```json
 {
@@ -93,6 +99,9 @@ Verify API key authentication and return validation information.
 **GET `/v1/text_processing/operations`** - Optional authentication
 
 Get available AI text processing operations and their configurations.
+
+**Raises:**
+- `AuthenticationError`: If API key is provided but invalid
 
 **Response:**
 ```json
@@ -137,6 +146,13 @@ Get available AI text processing operations and their configurations.
 
 Process a single text request using specified AI operations with request tracing and comprehensive error handling.
 
+**Raises:**
+- `ValidationError`: If request data validation fails (missing text, invalid operation)
+- `BusinessLogicError`: If business rules are violated (question required for Q&A)
+- `InfrastructureError`: If system services fail (cache, resilience, monitoring)
+- `TransientAIError`: If AI service is temporarily unavailable (should retry)
+- `PermanentAIError`: If AI service permanently fails (don't retry)
+
 **Request:**
 ```json
 {
@@ -159,6 +175,13 @@ Process a single text request using specified AI operations with request tracing
 **POST `/v1/text_processing/batch_process`** - Requires authentication
 
 Process multiple text requests in a single batch operation with configurable limits.
+
+**Raises:**
+- `ValidationError`: If batch request validation fails (empty requests, invalid format)
+- `BusinessLogicError`: If batch constraints violated (too many requests, invalid operations)
+- `InfrastructureError`: If system services fail during batch processing
+- `TransientAIError`: If AI service fails for some requests (partial success possible)
+- `PermanentAIError`: If AI service configuration is invalid
 
 **Request:**
 ```json
@@ -189,17 +212,34 @@ Process multiple text requests in a single batch operation with configurable lim
 
 Get the status of a batch processing job (synchronous implementation).
 
+**Raises:**
+- `AuthenticationError`: If API key authentication fails
+- `BusinessLogicError`: If batch ID is not found or invalid
+
 **GET `/v1/text_processing/health`** - Optional authentication
 
 Get comprehensive health status for the text processing service including domain service and underlying resilience infrastructure.
 
+**Raises:**
+- `AuthenticationError`: If API key is provided but invalid
+- `InfrastructureError`: If health checks fail or monitoring systems are unavailable
+
 ### Internal API (`/internal/`)
+
+Internal API endpoints use the same structured exception handling system. All endpoints may raise:
+- `AuthenticationError` (401): For authentication failures when required
+- `InfrastructureError` (500): For system service failures
+- `BusinessLogicError` (422): For resource not found or invalid operations
+- `ValidationError` (400): For parameter validation failures
 
 #### System Monitoring
 
 **GET `/internal/monitoring/health`** - Optional authentication
 
 Comprehensive health check of all monitoring subsystems including cache performance monitoring, cache service monitoring, and resilience monitoring.
+
+**Raises:**
+- `InfrastructureError`: If monitoring systems are unavailable or failing
 
 **Response:**
 ```json
@@ -239,6 +279,9 @@ Comprehensive health check of all monitoring subsystems including cache performa
 
 Retrieve current cache status and basic statistics including Redis connection status, memory usage, and performance metrics.
 
+**Raises:**
+- `InfrastructureError`: If cache system status cannot be determined
+
 **POST `/internal/cache/invalidate`** - Requires authentication
 
 Invalidate cache entries matching a specified pattern.
@@ -246,6 +289,11 @@ Invalidate cache entries matching a specified pattern.
 **Query Parameters:**
 - `pattern` (string): Glob-style pattern to match cache keys (empty string matches all)
 - `operation_context` (string): Context identifier for tracking invalidation operations
+
+**Raises:**
+- `AuthenticationError`: If API key authentication fails
+- `ValidationError`: If invalidation pattern is invalid
+- `InfrastructureError`: If cache invalidation operation fails
 
 **GET `/internal/cache/invalidation-stats`** - Optional authentication
 
@@ -288,6 +336,9 @@ Get comprehensive cache performance metrics including key generation times, cach
 
 Get resilience service health status, configuration, and performance metrics.
 
+**Raises:**
+- `InfrastructureError`: If resilience service health cannot be determined
+
 **GET `/internal/resilience/config`** - Optional authentication
 
 Retrieve current resilience configuration and operation strategies.
@@ -322,6 +373,11 @@ Get detailed information about a specific circuit breaker.
 
 Reset a specific circuit breaker to closed state for emergency recovery.
 
+**Raises:**
+- `AuthenticationError`: If API key authentication fails
+- `BusinessLogicError`: If circuit breaker name doesn't exist
+- `InfrastructureError`: If circuit breaker reset operation fails
+
 #### Configuration Management
 
 **GET `/internal/resilience/config/presets`** - Requires authentication
@@ -349,6 +405,11 @@ Auto-detect environment and recommend optimal preset.
 **POST `/internal/resilience/config/validate`** - Requires authentication
 
 Standard custom configuration validation.
+
+**Raises:**
+- `AuthenticationError`: If API key authentication fails
+- `ValidationError`: If configuration format is invalid or contains errors
+- `InfrastructureError`: If validation process fails due to system issues
 
 **POST `/internal/resilience/config/validate-secure`** - Requires authentication
 
@@ -393,6 +454,11 @@ Get template suggestions based on configuration.
 **POST `/internal/resilience/performance/benchmark`** - Requires authentication
 
 Run comprehensive performance benchmarks.
+
+**Raises:**
+- `AuthenticationError`: If API key authentication fails
+- `ValidationError`: If benchmark parameters are invalid
+- `InfrastructureError`: If benchmark execution fails or times out
 
 **GET `/internal/resilience/performance/benchmark/results`** - Requires authentication
 
@@ -442,54 +508,97 @@ Get operational insights and recommendations.
 
 ## Error Handling
 
+The API uses a comprehensive custom exception handling system that provides consistent error responses, enhanced debugging information, and improved resilience integration. For detailed information about the exception handling architecture, see the [Exception Handling Guide](../developer/EXCEPTION_HANDLING.md).
+
 ### HTTP Status Codes
 
 - **200 OK**: Successful operations
-- **400 Bad Request**: Validation errors, invalid requests
+- **400 Bad Request**: Input validation errors, configuration format issues
 - **401 Unauthorized**: Authentication failures, missing/invalid API key
-- **404 Not Found**: Resource not found, invalid endpoints
-- **422 Unprocessable Entity**: Request validation errors
-- **500 Internal Server Error**: Infrastructure failures, AI service errors
+- **403 Forbidden**: Authorization failures, insufficient permissions
+- **422 Unprocessable Entity**: Business logic errors, resource not found
+- **429 Too Many Requests**: Rate limiting exceeded
+- **500 Internal Server Error**: Infrastructure failures, system errors
 - **502 Bad Gateway**: AI service errors, external service failures
 - **503 Service Unavailable**: Service temporarily unavailable
 
-### Error Response Format
+### Structured Error Response Format
 
-**Validation Error (400/422):**
+All API endpoints return structured error responses using the standardized `ErrorResponse` format:
+
+**Validation Error (400):**
 ```json
 {
-    "detail": [
-        {
-            "type": "string_too_short",
-            "loc": ["body", "text"],
-            "msg": "String should have at least 10 characters",
-            "input": "short",
-            "ctx": {"min_length": 10}
-        }
-    ]
+    "success": false,
+    "error": "Invalid configuration format",
+    "error_code": "VALIDATION_ERROR",
+    "details": {
+        "endpoint": "config_validation",
+        "config_type": "resilience_config",
+        "validation_errors": ["missing field: retry_attempts"]
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
 }
 ```
 
 **Authentication Error (401):**
 ```json
 {
-    "detail": "Authentication Error"
+    "success": false,
+    "error": "Authentication failed",
+    "error_code": "AUTHENTICATION_ERROR",
+    "details": {
+        "endpoint": "process_text",
+        "auth_method": "api_key"
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
 }
 ```
 
-**Business Logic Error (400):**
+**Business Logic Error (422):**
 ```json
 {
-    "detail": "Question is required for Q&A operation"
+    "success": false,
+    "error": "Question is required for Q&A operation",
+    "error_code": "BUSINESS_LOGIC_ERROR",
+    "details": {
+        "endpoint": "process_text",
+        "operation": "qa",
+        "missing_fields": ["question"]
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
 }
 ```
 
 **Infrastructure Error (500):**
 ```json
 {
-    "detail": "Failed to process text: Internal server error"
+    "success": false,
+    "error": "Cache operation failed - Redis unavailable",
+    "error_code": "INFRASTRUCTURE_ERROR",
+    "details": {
+        "endpoint": "cache_operation",
+        "cache_operation": "get",
+        "redis_status": "connection_failed",
+        "fallback_used": true,
+        "operation_duration_ms": 150
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
 }
 ```
+
+### Exception Types and HTTP Status Mapping
+
+| Exception Type | HTTP Status | Description | Use Cases |
+|---|---|---|---|
+| `ValidationError` | 400 | Input validation failures | Invalid JSON, missing fields, format errors |
+| `AuthenticationError` | 401 | Authentication failures | Missing/invalid API key, malformed headers |
+| `AuthorizationError` | 403 | Authorization failures | Insufficient permissions, access denied |
+| `BusinessLogicError` | 422 | Business rule violations | Resource not found, operation constraints |
+| `RateLimitError` | 429 | Rate limiting exceeded | Too many requests, quota exceeded |
+| `InfrastructureError` | 500 | System/service failures | Database errors, Redis unavailable, service timeouts |
+| `TransientAIError` | 503 | Temporary AI service issues | Service overload, temporary unavailability |
+| `PermanentAIError` | 502 | Permanent AI service issues | Invalid API keys, service deprecation |
 
 ## Request Examples
 
@@ -554,6 +663,55 @@ curl "http://localhost:8000/internal/resilience/circuit-breakers" \
 }
 ```
 
+### Error Response Examples
+
+**Text Processing Validation Error:**
+```json
+{
+    "success": false,
+    "error": "Question is required for Q&A operation",
+    "error_code": "BUSINESS_LOGIC_ERROR",
+    "details": {
+        "endpoint": "process_text",
+        "operation": "qa",
+        "missing_fields": ["question"]
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
+}
+```
+
+**Infrastructure Service Error:**
+```json
+{
+    "success": false,
+    "error": "AI service temporarily unavailable",
+    "error_code": "TRANSIENT_AI_ERROR",
+    "details": {
+        "endpoint": "process_text",
+        "operation": "summarize",
+        "ai_service_status": "rate_limited",
+        "retry_after_seconds": 60
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
+}
+```
+
+**Cache Management Error:**
+```json
+{
+    "success": false,
+    "error": "Cache invalidation failed - pattern too broad",
+    "error_code": "VALIDATION_ERROR",
+    "details": {
+        "endpoint": "cache_invalidate",
+        "pattern": "*",
+        "max_pattern_length": 50,
+        "suggestion": "Use more specific patterns"
+    },
+    "timestamp": "2025-01-12T10:30:45.123456"
+}
+```
+
 ### Batch Processing Response
 
 ```json
@@ -591,7 +749,9 @@ curl "http://localhost:8000/internal/resilience/circuit-breakers" \
 - **Request Tracing**: Unique IDs for logging and debugging
 - **Resilience Integration**: Circuit breakers, retries, graceful degradation
 - **Input Validation**: Pydantic models with sanitization
-- **Structured Error Handling**: Proper HTTP status codes and error context
+- **Custom Exception System**: Comprehensive exception hierarchy with structured error responses
+- **Rich Error Context**: Detailed debugging information without exposing sensitive data
+- **Resilience Integration**: Exception classification for proper retry logic and circuit breaker behavior
 
 ### Infrastructure Features
 
@@ -673,16 +833,17 @@ For issues, feature requests, or questions about the API implementation, please 
 ## Related Documentation
 
 ### Prerequisites
-- **[Backend Guide](./BACKEND.md)**: Understanding the dual-API backend architecture
+- **[Backend Guide](../application/BACKEND.md)**: Understanding the dual-API backend architecture
 - **[Dual API Architecture](../reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Architectural concepts behind the API design
+- **[Exception Handling Guide](../developer/EXCEPTION_HANDLING.md)**: Comprehensive guide to the custom exception system
 
 ### Related Topics
-- **[Authentication Guide](./developer/AUTHENTICATION.md)**: Multi-key authentication system used across both APIs
-- **[Frontend Guide](./FRONTEND.md)**: How the frontend consumes these API endpoints
-- **[Shared Module](./SHARED.md)**: Data models used in API requests and responses
+- **[Authentication Guide](../developer/AUTHENTICATION.md)**: Multi-key authentication system used across both APIs
+- **[Frontend Guide](../application/FRONTEND.md)**: How the frontend consumes these API endpoints
+- **[Shared Module](../application/SHARED.md)**: Data models used in API requests and responses
 
 ### Next Steps
-- **[Monitoring Infrastructure](./infrastructure/MONITORING.md)**: Internal API endpoints for system monitoring
-- **[Resilience Infrastructure](./infrastructure/RESILIENCE.md)**: 38 internal API endpoints for resilience management
-- **[Cache Infrastructure](./infrastructure/CACHE.md)**: Internal API endpoints for cache management
-- **[Deployment Guide](./DEPLOYMENT.md)**: Production API deployment considerations
+- **[Monitoring Infrastructure](../infrastructure/MONITORING.md)**: Internal API endpoints for system monitoring
+- **[Resilience Infrastructure](../infrastructure/RESILIENCE.md)**: 38 internal API endpoints for resilience management
+- **[Cache Infrastructure](../infrastructure/CACHE.md)**: Internal API endpoints for cache management
+- **[Deployment Guide](../developer/DEPLOYMENT.md)**: Production API deployment considerations

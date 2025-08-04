@@ -31,10 +31,11 @@ This starter template demonstrates:
 - **Parallel Testing**: Fast feedback cycles with comprehensive coverage requirements
 - **Hot Reload Development**: Docker Compose with file watching for both frontend and backend
 
-### 🛡️ Production Security
+### 🛡️ Production Security & Error Handling
+- **Custom Exception Hierarchy**: Structured error handling with specific exception types and consistent JSON responses
 - **Multi-Key Authentication**: Primary + additional API keys for flexibility
 - **Internal API Protection**: Administrative endpoints disabled in production environments
-- **Security Logging**: Comprehensive audit trails for monitoring
+- **Security Logging**: Comprehensive audit trails with structured error context
 - **Rate Limiting**: Built-in request limiting with configurable thresholds
 
 ## 📦 Monorepo Structure
@@ -89,6 +90,38 @@ The backend follows a clear architectural distinction between **Infrastructure S
     │  (8501)     │              │ (Pydantic) │
     └─────────────┘              └─────────────┘
 ```
+
+### Custom Exception Handling System
+
+The backend implements a comprehensive **custom exception hierarchy** that provides structured error handling across all services:
+
+**Exception Types & HTTP Status Codes:**
+- **`ValidationError`** (400): Input validation failures, configuration format issues
+- **`AuthenticationError`** (401): Authentication failures, API key issues  
+- **`AuthorizationError`** (403): Permission and authorization failures
+- **`BusinessLogicError`** (422): Business rule violations, resource not found
+- **`InfrastructureError`** (500): Service failures, Redis issues, AI service problems
+
+**Structured Error Responses:**
+All exceptions are converted to consistent JSON responses with:
+```json
+{
+  "success": false,
+  "error": "Human-readable error message",
+  "error_code": "VALIDATION_ERROR", 
+  "details": {
+    "field": "Additional context for debugging",
+    "operation": "Operation that failed"
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+```
+
+**Global Exception Handler:**
+- Converts custom exceptions to appropriate HTTP responses
+- Maintains consistent error structure across all endpoints
+- Includes structured context data for debugging and monitoring
+- Provides detailed logging with request tracing
 
 ## 🚀 Quick Start
 
@@ -299,33 +332,57 @@ from shared.sample_data import get_sample_text
 async def process_text_example():
     """Demonstrate text processing with the API."""
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Single text processing
-        response = await client.post(
-            "http://localhost:8000/v1/text_processing/process",
-            headers={"X-API-Key": "your-api-key"},
-            json={
-                "text": get_sample_text("ai_technology"),
-                "operation": "summarize",
-                "options": {"max_length": 150}
-            }
-        )
-        result = response.json()
-        print(f"Summary: {result['result']}")
+        try:
+            # Single text processing
+            response = await client.post(
+                "http://localhost:8000/v1/text_processing/process",
+                headers={"X-API-Key": "your-api-key"},
+                json={
+                    "text": get_sample_text("ai_technology"),
+                    "operation": "summarize",
+                    "options": {"max_length": 150}
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Check if the response indicates success
+            if result.get("success", False):
+                print(f"Summary: {result['result']}")
+            else:
+                print(f"Error: {result.get('error', 'Unknown error')}")
+                print(f"Error Code: {result.get('error_code', 'N/A')}")
+                
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.json()
+            print(f"HTTP {e.response.status_code} Error: {error_detail.get('error', 'Unknown error')}")
+            print(f"Error Code: {error_detail.get('error_code', 'N/A')}")
+            print(f"Details: {error_detail.get('details', {})}")
         
-        # Batch processing
-        batch_response = await client.post(
-            "http://localhost:8000/v1/text_processing/batch_process",
-            headers={"X-API-Key": "your-api-key"},
-            json={
-                "requests": [
-                    {"text": get_sample_text("business_report"), "operation": "sentiment"},
-                    {"text": get_sample_text("climate_change"), "operation": "key_points"}
-                ],
-                "batch_id": "example_batch"
-            }
-        )
-        batch_result = batch_response.json()
-        print(f"Batch completed: {batch_result['completed']}/{batch_result['total_requests']}")
+        try:
+            # Batch processing
+            batch_response = await client.post(
+                "http://localhost:8000/v1/text_processing/batch_process",
+                headers={"X-API-Key": "your-api-key"},
+                json={
+                    "requests": [
+                        {"text": get_sample_text("business_report"), "operation": "sentiment"},
+                        {"text": get_sample_text("climate_change"), "operation": "key_points"}
+                    ],
+                    "batch_id": "example_batch"
+                }
+            )
+            batch_response.raise_for_status()
+            batch_result = batch_response.json()
+            
+            if batch_result.get("success", False):
+                print(f"Batch completed: {batch_result['completed']}/{batch_result['total_requests']}")
+            else:
+                print(f"Batch Error: {batch_result.get('error', 'Unknown error')}")
+                
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.json()
+            print(f"Batch processing failed with HTTP {e.response.status_code}: {error_detail.get('error')}")
 
 # Run the example
 if __name__ == "__main__":
@@ -369,7 +426,7 @@ example_options = get_example_options()
 
 ### User Experience Features
 - **Graceful Degradation**: Continues operation when backend is unavailable
-- **Comprehensive Validation**: Input validation with clear error messages
+- **Comprehensive Validation**: Input validation with structured error responses and detailed context
 - **Timeout Management**: Request timeout handling with user feedback
 - **Progressive Disclosure**: Collapsible sections and smart defaults for better UX
 
@@ -502,7 +559,7 @@ The project includes a robust testing framework with **parallel execution by def
 - **Performance Tests**: Load testing and resilience pattern validation
 
 **Frontend Testing** (`frontend/tests/`):
-- **API Client Tests**: Async communication patterns with proper error handling
+- **API Client Tests**: Async communication patterns with custom exception handling and structured error responses
 - **Configuration Tests**: Environment variable validation and settings
 - **Mock Integration**: Isolated testing with httpx mocking
 - **Parallel Execution**: Fast test execution with pytest-xdist
@@ -732,6 +789,28 @@ make logs
 make backend-logs
 ```
 
+**API Error Response Format:**
+All API errors return structured JSON responses:
+```json
+{
+  "success": false,
+  "error": "Human-readable error message",
+  "error_code": "VALIDATION_ERROR",
+  "details": {
+    "field": "Additional context",
+    "operation": "summarize"
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+```
+
+**Common Error Codes:**
+- `VALIDATION_ERROR` (400): Invalid input data or configuration
+- `AUTHENTICATION_ERROR` (401): Missing or invalid API key
+- `AUTHORIZATION_ERROR` (403): Insufficient permissions
+- `BUSINESS_LOGIC_ERROR` (422): Business rule violation or resource not found
+- `INFRASTRUCTURE_ERROR` (500): Internal service failures
+
 **2. AI API Errors**
 ```bash
 # Verify API keys are set correctly
@@ -743,6 +822,21 @@ curl http://localhost:8000/v1/health
 # Check API quota and billing in your AI provider console
 ```
 
+**AI Service Error Responses:**
+```json
+{
+  "success": false,
+  "error": "AI service temporarily unavailable",
+  "error_code": "INFRASTRUCTURE_ERROR",
+  "details": {
+    "service": "gemini",
+    "operation": "summarize",
+    "retry_after": "30s"
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
+```
+
 **3. Redis Connection Errors**
 ```bash
 # Check Redis connectivity
@@ -751,6 +845,21 @@ make redis-cli
 # Application automatically falls back to memory cache
 # Verify cache status
 curl http://localhost:8000/internal/cache/status
+```
+
+**Cache Service Error Handling:**
+```json
+{
+  "success": false,
+  "error": "Redis connection failed, using memory cache fallback",
+  "error_code": "INFRASTRUCTURE_ERROR",
+  "details": {
+    "service": "redis",
+    "fallback_active": true,
+    "performance_impact": "minimal"
+  },
+  "timestamp": "2024-01-01T12:00:00Z"
+}
 ```
 
 **4. Port Conflicts**
@@ -801,10 +910,12 @@ make dev
 ```
 
 This provides:
-- Detailed error messages and stack traces
-- Request/response logging
-- Auto-reload on code changes
-- Internal API documentation access
+- **Enhanced Error Context**: Detailed error messages with structured context data
+- **Custom Exception Stack Traces**: Full debugging information for specific error types
+- **Request/Response Logging**: Complete audit trail with error classification
+- **Auto-reload on Code Changes**: Hot reload for rapid development iteration
+- **Internal API Documentation Access**: Administrative endpoints for monitoring
+- **Error Code Mapping**: Clear mapping between custom exceptions and HTTP status codes
 
 ## 📚 Learning Resources
 
@@ -854,7 +965,7 @@ This starter template provides:
 Developers using this template will learn:
 
 - **Modern FastAPI Architecture**: Dual-API design, dependency injection, and comprehensive configuration management
-- **Production AI Integration**: Secure LLM integration with proper error handling, resilience patterns, and monitoring
+- **Production AI Integration**: Secure LLM integration with custom exception hierarchy, resilience patterns, and comprehensive monitoring
 - **Infrastructure vs Domain Patterns**: Clear architectural boundaries for maintainable, scalable applications
 - **Advanced Streamlit Development**: Production-ready frontend patterns with async integration and comprehensive testing
 - **DevOps Best Practices**: Docker containerization, automated testing, and deployment strategies

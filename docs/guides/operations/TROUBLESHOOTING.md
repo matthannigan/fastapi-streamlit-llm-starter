@@ -4,11 +4,64 @@ sidebar_label: Troubleshooting
 
 # Troubleshooting Guide
 
-This guide provides systematic troubleshooting workflows for common issues in the FastAPI-Streamlit-LLM Starter Template. It includes decision trees, diagnostic procedures, and resolution steps for operational teams.
+This guide provides systematic troubleshooting workflows for diagnosing and resolving issues using the custom exception handling system. It focuses on interpreting structured error responses, analyzing context data, and understanding the different exception types for effective problem resolution.
 
 ## Overview
 
-The troubleshooting procedures are organized by issue category with escalating diagnostic steps. Each section includes symptoms, diagnostic commands, and resolution procedures.
+The troubleshooting procedures leverage the comprehensive custom exception system to provide:
+
+- **Structured Error Analysis**: Interpreting exception context data for root cause identification
+- **Exception Classification**: Understanding different error types and their diagnostic implications
+- **Service-Specific Procedures**: Targeted troubleshooting for cache, resilience, AI, and authentication services
+- **Operational Workflows**: Step-by-step procedures for common issues and escalation
+
+## Understanding the Exception System
+
+### Exception Types and Classification
+
+The system uses custom exceptions instead of generic HTTP errors, providing structured diagnostic information:
+
+- **ValidationError** (400): Input validation failures, configuration format issues
+- **BusinessLogicError** (422): Business rule violations, resource not found
+- **InfrastructureError** (500): Service failures, Redis issues, AI service problems
+- **AuthenticationError** (401): Authentication failures, API key issues
+- **AuthorizationError** (403): Permission and authorization failures
+- **TransientAIError** (502): Temporary AI service issues (retry appropriate)
+- **PermanentAIError** (502): Permanent AI service issues (no retry)
+
+### Structured Error Response Format
+
+All errors follow a consistent JSON structure:
+
+```json
+{
+    "success": false,
+    "error": "Human-readable error message",
+    "error_code": "EXCEPTION_TYPE",
+    "details": {
+        "endpoint": "api_endpoint_name",
+        "operation": "specific_operation",
+        "context_key": "diagnostic_value"
+    },
+    "timestamp": "2025-01-04T12:30:45.123Z"
+}
+```
+
+### Interpreting Exception Context Data
+
+Context data provides structured debugging information:
+
+**Required Fields:**
+- `endpoint`: API endpoint where error occurred
+- `operation`: Specific operation being performed
+- `request_id`: Unique request identifier (when available)
+
+**Common Context Fields:**
+- `error_details`: Detailed error information
+- `resource_id`: Resource identifiers
+- `performance_metrics`: Timing and performance data
+- `service_status`: Service availability information
+- `timestamp`: Error occurrence timestamp
 
 ## Quick Diagnostic Commands
 
@@ -17,35 +70,47 @@ The troubleshooting procedures are organized by issue category with escalating d
 # Immediate health status
 curl -f http://localhost:8000/health
 
-# Comprehensive system status
+# Comprehensive system status with exception context
 curl -s http://localhost:8000/internal/monitoring/overview | jq '.'
 
-# Infrastructure component health
+# Infrastructure component health with error details
 curl -s http://localhost:8000/internal/monitoring/health | jq '.components[]'
 ```
 
-### Service Connectivity
+### Service Connectivity with Error Analysis
 ```bash
-# Backend API connectivity
-curl -f http://localhost:8000/docs
+# Test backend API with error response analysis
+curl -v http://localhost:8000/docs 2>&1 | grep -E "HTTP|error"
 
-# Frontend accessibility
+# Test frontend accessibility
 curl -f http://localhost:8501/
 
-# Internal API accessibility
-curl -f http://localhost:8000/internal/docs
+# Test internal API with authentication
+curl -H "X-API-Key: $API_KEY" http://localhost:8000/internal/docs
 ```
 
-### Component Status
+### Component Status with Exception Context
 ```bash
-# Cache system status
-curl -s http://localhost:8000/internal/cache/stats | jq '.health'
+# Cache system status with error context
+curl -s -H "X-API-Key: $API_KEY" http://localhost:8000/internal/cache/stats | jq '.'
 
-# Resilience system status
-curl -s http://localhost:8000/internal/resilience/health | jq '.'
+# Resilience system status with exception details
+curl -s -H "X-API-Key: $API_KEY" http://localhost:8000/internal/resilience/health | jq '.'
 
-# Circuit breaker states
-curl -s http://localhost:8000/internal/resilience/circuit-breakers | jq '.'
+# Circuit breaker states with failure context
+curl -s -H "X-API-Key: $API_KEY" http://localhost:8000/internal/resilience/circuit-breakers | jq '.'
+```
+
+### Error Response Analysis
+```bash
+# Capture and analyze error responses
+curl -s http://localhost:8000/v1/some-endpoint 2>&1 | jq '.error_code, .details'
+
+# Extract exception context from error response
+curl -s http://localhost:8000/v1/endpoint | jq '.details | keys[]'
+
+# Check recent errors with context
+curl -s -H "X-API-Key: $API_KEY" http://localhost:8000/internal/monitoring/errors/recent | jq '.[] | {error_code: .error_code, context: .details}'
 ```
 
 ## Application Startup Issues
@@ -53,77 +118,82 @@ curl -s http://localhost:8000/internal/resilience/circuit-breakers | jq '.'
 ### Service Won't Start
 
 #### Symptoms
-- Application fails to start
-- Container exits immediately
-- Port binding errors
-- Import/dependency errors
+- Application fails to start with structured error responses
+- Container exits with exception context in logs
+- ConfigurationError or InfrastructureError exceptions
+- Port binding or dependency import failures
 
 #### Diagnostic Steps
 
-**Step 1: Check Basic Requirements**
+**Step 1: Analyze Startup Exception Context**
 ```bash
+# Check application logs for structured exceptions
+docker logs backend_container 2>&1 | grep -E "ConfigurationError|InfrastructureError" | jq '.'
+
+# Check startup error context
+python -c "from app.core.config import get_settings; print(get_settings())" 2>&1 | grep -A 5 -B 5 "ValidationError"
+
 # Verify Python environment
-python --version
-which python
-
-# Check virtual environment
-source .venv/bin/activate || echo "Virtual environment not found"
-
-# Verify dependencies
-pip list | grep -E "(fastapi|streamlit|pydantic|redis)"
+python --version && which python
 ```
 
-**Step 2: Check Configuration**
+**Step 2: Configuration Exception Analysis**
 ```bash
-# Verify environment variables
-echo $GEMINI_API_KEY
-echo $API_KEY
-echo $REDIS_URL
+# Test configuration validity with exception context
+cd backend && python -c "
+try:
+    from app.core.config import get_settings
+    settings = get_settings()
+    print('Configuration valid')
+except Exception as e:
+    print(f'Exception: {type(e).__name__}')
+    if hasattr(e, 'context'):
+        print(f'Context: {e.context}')
+"
 
-# Check configuration validity
-cd backend && python -c "from app.core.config import get_settings; print(get_settings())"
+# Check environment variables
+echo "GEMINI_API_KEY: ${GEMINI_API_KEY:0:10}..."
+echo "API_KEY: ${API_KEY:0:10}..."
+echo "REDIS_URL: $REDIS_URL"
 ```
 
-**Step 3: Check Port Availability**
+**Step 3: Infrastructure Exception Analysis**
 ```bash
-# Check if ports are available
-netstat -tlnp | grep -E ":8000|:8501|:6379"
-lsof -i :8000
-lsof -i :8501
+# Check port availability with context
+netstat -tlnp | grep -E ":8000|:8501|:6379" || echo "Port check failed - analyze InfrastructureError context"
+
+# Test Redis connectivity with exception handling
+redis-cli ping 2>&1 | grep -E "error|Could not connect" && echo "Redis InfrastructureError expected"
 ```
 
 #### Resolution Steps
 
-**Missing Dependencies:**
+**Configuration Exception Resolution:**
 ```bash
-# Reinstall dependencies
-make install
-
-# Or manually:
-cd backend && pip install -r requirements.txt
-cd frontend && pip install -r requirements.txt
-```
-
-**Configuration Issues:**
-```bash
-# Create .env file with required variables
+# Fix ConfigurationError issues
 cat > .env << EOF
-GEMINI_API_KEY=your-api-key-here
-API_KEY=your-api-key-here
+GEMINI_API_KEY=your-gemini-api-key
+API_KEY=your-secure-api-key
 REDIS_URL=redis://localhost:6379
 RESILIENCE_PRESET=development
 EOF
+
+# Validate configuration with exception handling
+cd backend && python -c "from app.core.config import get_settings; print('Config valid:', get_settings().dict())"
 ```
 
-**Port Conflicts:**
+**Infrastructure Exception Resolution:**
 ```bash
-# Kill processes using required ports
-sudo kill $(lsof -t -i:8000)
-sudo kill $(lsof -t -i:8501)
+# Resolve dependency InfrastructureError
+make install || (
+    echo "Dependency installation failed - check pip logs for ValidationError context"
+    cd backend && pip install -r requirements.txt
+    cd ../frontend && pip install -r requirements.txt
+)
 
-# Or use different ports
-export BACKEND_PORT=8001
-export FRONTEND_PORT=8502
+# Resolve port conflict InfrastructureError
+sudo kill $(lsof -t -i:8000 2>/dev/null) 2>/dev/null || echo "Port 8000 available"
+sudo kill $(lsof -t -i:8501 2>/dev/null) 2>/dev/null || echo "Port 8501 available"
 ```
 
 ### Database/Redis Connection Issues

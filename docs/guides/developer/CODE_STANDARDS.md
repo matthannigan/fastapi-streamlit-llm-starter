@@ -397,11 +397,12 @@ from typing import Dict, Any, List, Optional, Union
 # 2. Third-party imports (alphabetical)
 import httpx
 import streamlit as st
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, status
 from pydantic import BaseModel, Field
 
 # 3. Local application imports (alphabetical)
 from app.core.config import settings
+from app.core.exceptions import ValidationError, TimeoutError, InternalServerError
 from app.services.text_processor import text_processor
 from shared.models import (
     TextProcessingOperation,
@@ -446,22 +447,13 @@ async def process_request(request: TextProcessingRequest) -> Optional[TextProces
         
     except ValueError as e:
         logger.warning(f"Validation error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise ValidationError(str(e))
     except httpx.TimeoutException:
         logger.error("Request timeout")
-        raise HTTPException(
-            status_code=status.HTTP_408_REQUEST_TIMEOUT,
-            detail="Request timed out. Please try again."
-        )
+        raise TimeoutError("Request timed out. Please try again.")
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
-        )
+        raise InternalServerError("Processing failed")
 ```
 
 ### Error Handling Guidelines
@@ -489,7 +481,14 @@ async def api_call_with_error_handling(client: httpx.AsyncClient, url: str, data
         return None
     except httpx.HTTPStatusError as e:
         logger.error(f"API error: {e.response.status_code}")
-        error_detail = e.response.json().get('detail', 'Unknown error')
+        try:
+            response_data = e.response.json()
+            if 'error' in response_data:
+                error_detail = response_data['error'].get('message', 'Unknown error')
+            else:
+                error_detail = response_data.get('detail', 'Unknown error')
+        except (ValueError, KeyError):
+            error_detail = 'Unknown error'
         st.error(f"API Error: {error_detail}")
         return None
     except Exception as e:
@@ -584,7 +583,9 @@ async def standard_function_template(
         
     Raises:
         ValueError: When input validation fails
-        HTTPException: When API call fails
+        ValidationError: When input validation fails
+        TimeoutError: When API call times out
+        InternalServerError: When processing fails
     """
     # Initialize variables
     options = options or {}
@@ -1016,6 +1017,7 @@ This standardization ensures consistency, maintainability, and reliability acros
 - **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation that drives these standards
 
 ### Related Topics
+- **[Exception Handling Guide](./EXCEPTION_HANDLING.md)**: Comprehensive guide to the custom exception handling system used in code examples
 - **[Testing Guide](../TESTING.md)**: Testing standards and coverage requirements that complement code standards
 - **[Documentation Guidance](./DOCUMENTATION_GUIDANCE.md)**: Documentation standards for maintaining consistent technical communication
 

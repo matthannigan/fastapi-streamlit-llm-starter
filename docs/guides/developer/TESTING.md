@@ -428,6 +428,209 @@ markers =
 - `sample_request`: Sample processing request
 - `sample_response`: Sample API response
 
+## Custom Exception Testing
+
+### Exception System Overview
+
+The backend uses a comprehensive custom exception hierarchy instead of FastAPI's default `HTTPException`. This provides better error categorization, structured context data, and consistent error responses across the application.
+
+#### Custom Exception Types
+
+The application defines these primary exception types:
+
+- **ValidationError** (400): Input validation failures, configuration format issues
+- **AuthenticationError** (401): Authentication failures, API key issues  
+- **AuthorizationError** (403): Permission and authorization failures
+- **BusinessLogicError** (422): Business rule violations, resource not found
+- **InfrastructureError** (500): Service failures, Redis issues, AI service problems
+
+All exceptions inherit from `ApplicationError` and include structured context data for debugging.
+
+#### Standard Error Response Format
+
+All error responses follow this consistent JSON structure:
+
+```json
+{
+  "success": false,
+  "error": "Human-readable error message",
+  "error_code": "VALIDATION_ERROR",
+  "details": {
+    "field": "email",
+    "issue": "invalid format"
+  },
+  "timestamp": "2025-08-04T12:34:56.789012Z"
+}
+```
+
+### Testing Custom Exceptions
+
+#### Exception Assertion Patterns
+
+```python
+from app.core.exceptions import ValidationError, AuthenticationError, InfrastructureError
+import pytest
+
+def test_service_raises_validation_error():
+    """Test that service raises ValidationError with proper context."""
+    service = MyService()
+    
+    with pytest.raises(ValidationError) as exc_info:
+        await service.process_invalid_input("bad_data")
+    
+    # Verify exception details
+    exception = exc_info.value
+    assert "invalid" in exception.message.lower()
+    assert exception.context["field"] == "input_data"
+    assert exception.context["value"] == "bad_data"
+
+def test_service_raises_infrastructure_error():
+    """Test that service raises InfrastructureError for external failures."""
+    service = MyService()
+    
+    with patch('external_service.call') as mock_call:
+        mock_call.side_effect = ConnectionError("Service unavailable")
+        
+        with pytest.raises(InfrastructureError) as exc_info:
+            await service.call_external_service()
+        
+        exception = exc_info.value
+        assert "external service" in exception.message.lower()
+        assert exception.context["service"] == "external_api"
+```
+
+#### API Response Testing Patterns
+
+```python
+def test_api_endpoint_validation_error(client: TestClient):
+    """Test API endpoint returns proper validation error response."""
+    response = client.post("/api/process", json={"invalid": "data"})
+    
+    assert response.status_code == 400
+    data = response.json()
+    
+    # Verify standard error response format
+    assert data["success"] is False
+    assert "error" in data
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "timestamp" in data
+    
+    # Verify error details (optional)
+    if "details" in data:
+        assert isinstance(data["details"], dict)
+        assert "field" in data["details"] or "validation" in data["details"]
+
+def test_api_endpoint_authentication_error(client: TestClient):
+    """Test API endpoint returns proper authentication error."""
+    response = client.get("/protected-endpoint")  # No auth header
+    
+    assert response.status_code == 401
+    data = response.json()
+    
+    assert data["success"] is False
+    assert data["error_code"] == "AUTHENTICATION_ERROR"
+    assert "api key" in data["error"].lower()
+
+def test_api_endpoint_infrastructure_error(authenticated_client: TestClient):
+    """Test API endpoint returns proper infrastructure error."""
+    with patch('app.services.external_service') as mock_service:
+        mock_service.side_effect = InfrastructureError(
+            "Database connection failed",
+            {"database": "postgres", "status": "unreachable"}
+        )
+        
+        response = authenticated_client.post("/api/process", json={"text": "test"})
+        
+        assert response.status_code == 500
+        data = response.json()
+        
+        assert data["success"] is False
+        assert data["error_code"] == "INFRASTRUCTURE_ERROR"
+        assert "database" in data["error"].lower()
+```
+
+#### Global Exception Handler Testing
+
+```python
+def test_global_exception_handler_unhandled_exception(client: TestClient):
+    """Test that unhandled exceptions are properly caught and formatted."""
+    with patch('app.services.some_service.method') as mock_method:
+        # Simulate an unhandled exception
+        mock_method.side_effect = RuntimeError("Unexpected error")
+        
+        response = client.get("/api/endpoint-that-uses-service")
+        
+        assert response.status_code == 500
+        data = response.json()
+        
+        # Verify global handler response format
+        assert data["success"] is False
+        assert data["error"] == "Internal server error"  # Generic message for security
+        assert data["error_code"] == "INTERNAL_ERROR"
+        assert "timestamp" in data
+        # No details exposed for unhandled exceptions in production
+```
+
+#### Exception Context Testing
+
+```python
+def test_exception_context_data():
+    """Test that exceptions include proper context data."""
+    try:
+        raise ValidationError(
+            "Invalid email format",
+            {
+                "field": "email",
+                "value": "invalid-email",
+                "expected_format": "user@domain.com"
+            }
+        )
+    except ValidationError as e:
+        assert e.message == "Invalid email format"
+        assert e.context["field"] == "email"
+        assert e.context["value"] == "invalid-email"
+        assert e.context["expected_format"] == "user@domain.com"
+        
+        # Test string representation includes context
+        assert "Invalid email format" in str(e)
+        assert "Context:" in str(e)
+```
+
+### AI Service Exception Testing
+
+#### Testing AI Exception Classification
+
+```python
+from app.core.exceptions import classify_ai_exception, TransientAIError, PermanentAIError
+
+def test_ai_exception_classification():
+    """Test AI exception classification logic."""
+    # Test transient error classification
+    rate_limit_error = Exception("Rate limit exceeded")
+    classified = classify_ai_exception(rate_limit_error)
+    assert isinstance(classified, TransientAIError)
+    assert "rate limit" in classified.message.lower()
+    
+    # Test permanent error classification  
+    auth_error = Exception("Invalid API key")
+    classified = classify_ai_exception(auth_error)
+    assert isinstance(classified, PermanentAIError)
+    assert "api key" in classified.message.lower()
+
+def test_ai_service_error_handling(text_processor):
+    """Test AI service handles and classifies errors properly."""
+    with patch('app.infrastructure.ai.agent') as mock_agent:
+        # Simulate API rate limit
+        mock_agent.run.side_effect = Exception("Rate limit exceeded")
+        
+        with pytest.raises(TransientAIError) as exc_info:
+            await text_processor.process_text(sample_request)
+        
+        exception = exc_info.value
+        assert "rate limit" in exception.message.lower()
+        assert exception.context["retryable"] is True
+```
+
 ## Mocking Strategy
 
 ### AI Service Mocking
@@ -438,6 +641,7 @@ The test suite uses comprehensive mocking for AI services to:
 - Ensure consistent test results
 - Speed up test execution
 - Test error scenarios and resilience patterns
+- Test custom exception handling and classification
 
 ```python
 @pytest.fixture(autouse=True)
@@ -448,28 +652,87 @@ def mock_ai_agent():
         mock_instance.run = AsyncMock(return_value=AsyncMock(data="Mock AI response"))
         mock.return_value = mock_instance
         yield mock_instance
+
+@pytest.fixture
+def mock_ai_agent_with_errors():
+    """Mock AI agent that raises custom exceptions for error testing."""
+    from app.core.exceptions import TransientAIError, PermanentAIError
+    
+    with patch('app.services.text_processor.Agent') as mock:
+        mock_instance = AsyncMock()
+        
+        # Configure different error scenarios
+        mock_instance.transient_error = AsyncMock(
+            side_effect=TransientAIError(
+                "AI service temporarily unavailable",
+                {"service": "gemini", "retry_after": 60}
+            )
+        )
+        mock_instance.permanent_error = AsyncMock(
+            side_effect=PermanentAIError(
+                "Invalid API configuration", 
+                {"api_key": "invalid", "model": "gemini-1.5-flash"}
+            )
+        )
+        
+        mock.return_value = mock_instance
+        yield mock_instance
 ```
 
 ### Infrastructure Service Mocking
 
-Infrastructure tests use targeted mocking to test resilience patterns:
+Infrastructure tests use targeted mocking to test resilience patterns and custom exception handling:
 
 ```python
-# Circuit breaker testing
+from app.core.exceptions import InfrastructureError, TransientAIError
+
+# Circuit breaker testing with custom exceptions
 @pytest.fixture
 def failing_service():
-    """Mock service that fails to test circuit breaker behavior."""
+    """Mock service that fails with custom exceptions to test circuit breaker behavior."""
     mock_service = AsyncMock()
-    mock_service.call = AsyncMock(side_effect=Exception("Service unavailable"))
+    mock_service.call = AsyncMock(
+        side_effect=InfrastructureError(
+            "Service unavailable",
+            {"service": "external_api", "status": "down", "retry_after": 30}
+        )
+    )
     return mock_service
 
-# Cache testing with Redis fallback
+# Cache testing with Redis fallback and custom exceptions
 @pytest.fixture
 def redis_unavailable():
     """Mock Redis unavailability to test memory cache fallback."""
     with patch('redis.Redis') as mock_redis:
-        mock_redis.side_effect = ConnectionError("Redis unavailable")
+        mock_redis.side_effect = InfrastructureError(
+            "Redis connection failed",
+            {"host": "localhost", "port": 6379, "fallback": "memory_cache"}
+        )
         yield mock_redis
+
+# AI service exception classification testing
+@pytest.fixture
+def ai_service_with_classified_errors():
+    """Mock AI service that raises different types of classified exceptions."""
+    mock_service = AsyncMock()
+    
+    # Transient errors (should be retried)
+    mock_service.rate_limit_error = AsyncMock(
+        side_effect=TransientAIError(
+            "Rate limit exceeded",
+            {"retry_after": 60, "limit": "1000/hour", "remaining": 0}
+        )
+    )
+    
+    # Permanent errors (should not be retried)
+    mock_service.invalid_key_error = AsyncMock(
+        side_effect=PermanentAIError(
+            "Invalid API key",
+            {"api_key_prefix": "sk-...", "provider": "openai"}
+        )
+    )
+    
+    return mock_service
 ```
 
 ### Environment Isolation
@@ -489,14 +752,48 @@ Frontend tests mock HTTP clients to test different scenarios:
 
 ```python
 async def test_health_check_success(self, api_client):
-    """Test successful health check."""
+    """Test successful health check with new response format."""
     with patch('httpx.AsyncClient') as mock_client:
         mock_response = AsyncMock()
         mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "success": True,
+            "status": "healthy",
+            "timestamp": "2025-08-04T12:00:00Z",
+            "details": {
+                "database": "connected",
+                "redis": "connected",
+                "ai_service": "available"
+            }
+        }
         mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
         
         result = await api_client.health_check()
-        assert result is True
+        assert result["success"] is True
+        assert result["status"] == "healthy"
+
+async def test_health_check_service_error(self, api_client):
+    """Test health check when service returns error."""
+    with patch('httpx.AsyncClient') as mock_client:
+        mock_response = AsyncMock()
+        mock_response.status_code = 503
+        mock_response.json.return_value = {
+            "success": False,
+            "error": "Service unavailable",
+            "error_code": "INFRASTRUCTURE_ERROR",
+            "details": {
+                "database": "connected",
+                "redis": "disconnected",
+                "ai_service": "unavailable"
+            },
+            "timestamp": "2025-08-04T12:00:00Z"
+        }
+        mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+        
+        with pytest.raises(Exception) as exc_info:
+            await api_client.health_check()
+        
+        assert "service unavailable" in str(exc_info.value).lower()
 ```
 
 ## Code Quality Checks
@@ -565,22 +862,60 @@ cd ../frontend
 ### Backend Test Example
 
 ```python
+from app.core.exceptions import ValidationError, AuthenticationError, InfrastructureError
+
 class TestNewFeature:
     """Test new feature functionality."""
     
-    def test_new_endpoint(self, client: TestClient):
-        """Test new API endpoint."""
+    def test_new_endpoint_success(self, client: TestClient):
+        """Test successful API endpoint response."""
         response = client.get("/new-endpoint")
         assert response.status_code == 200
         
         data = response.json()
+        assert data["success"] is True
         assert "expected_field" in data
     
-    async def test_new_service_method(self, service):
-        """Test new service method."""
+    def test_new_endpoint_validation_error(self, client: TestClient):
+        """Test API endpoint with validation error."""
+        response = client.post("/new-endpoint", json={"invalid": "data"})
+        assert response.status_code == 400
+        
+        data = response.json()
+        assert data["success"] is False
+        assert data["error_code"] == "VALIDATION_ERROR"
+        assert "error" in data
+        assert "timestamp" in data
+        # Optional: Check for context details
+        if "details" in data:
+            assert isinstance(data["details"], dict)
+    
+    def test_new_endpoint_authentication_error(self, client: TestClient):
+        """Test API endpoint with authentication error."""
+        response = client.get("/new-endpoint")  # No auth header
+        assert response.status_code == 401
+        
+        data = response.json()
+        assert data["success"] is False
+        assert data["error_code"] == "AUTHENTICATION_ERROR"
+        assert "api key" in data["error"].lower()
+    
+    async def test_new_service_method_success(self, service):
+        """Test successful service method."""
         result = await service.new_method("test_input")
         assert result.success is True
         assert result.data is not None
+    
+    async def test_new_service_method_raises_exception(self, service):
+        """Test service method that raises custom exception."""
+        with pytest.raises(ValidationError) as exc_info:
+            await service.new_method("invalid_input")
+        
+        # Verify exception details
+        exception = exc_info.value
+        assert "invalid" in exception.message.lower()
+        assert exception.context  # Should have context data
+        assert "input" in exception.context  # Context should contain relevant info
 ```
 
 ### Frontend Test Example
@@ -589,16 +924,59 @@ class TestNewFeature:
 class TestNewComponent:
     """Test new frontend component."""
     
-    async def test_new_api_method(self, api_client):
-        """Test new API client method."""
+    async def test_new_api_method_success(self, api_client):
+        """Test successful API client method."""
         with patch('httpx.AsyncClient') as mock_client:
             mock_response = AsyncMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = {"result": "success"}
+            mock_response.json.return_value = {
+                "success": True,
+                "result": "success",
+                "timestamp": "2025-08-04T12:00:00Z"
+            }
             mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
             
             result = await api_client.new_method()
+            assert result["success"] is True
             assert result["result"] == "success"
+    
+    async def test_new_api_method_error_handling(self, api_client):
+        """Test API client error handling with new exception format."""
+        with patch('httpx.AsyncClient') as mock_client:
+            mock_response = AsyncMock()
+            mock_response.status_code = 400
+            mock_response.json.return_value = {
+                "success": False,
+                "error": "Invalid input data",
+                "error_code": "VALIDATION_ERROR",
+                "details": {"field": "email", "issue": "invalid format"},
+                "timestamp": "2025-08-04T12:00:00Z"
+            }
+            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+            
+            with pytest.raises(ValueError) as exc_info:
+                await api_client.new_method()
+            
+            # Verify error details are properly handled
+            assert "Invalid input data" in str(exc_info.value)
+    
+    async def test_new_api_method_server_error(self, api_client):
+        """Test API client handling of server errors."""
+        with patch('httpx.AsyncClient') as mock_client:
+            mock_response = AsyncMock()
+            mock_response.status_code = 500
+            mock_response.json.return_value = {
+                "success": False,
+                "error": "Internal server error",
+                "error_code": "INTERNAL_ERROR",
+                "timestamp": "2025-08-04T12:00:00Z"
+            }
+            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                await api_client.new_method()
+            
+            assert "server error" in str(exc_info.value).lower()
 ```
 
 ### Test Naming Conventions
@@ -699,6 +1077,7 @@ Slow tests (`-m "slow"`) include:
 2. **API Key Issues**: Set `GEMINI_API_KEY` for AI tests (can be dummy value for unit tests)
 3. **Authentication**: Use `API_KEY=test-api-key-12345` for manual authentication tests
 4. **Environment Variables**: Use `monkeypatch.setenv()` in fixtures for test isolation
+5. **Custom Exception Testing**: Import custom exceptions from `app.core.exceptions` for proper exception testing
 
 #### Infrastructure Issues
 5. **Redis Connection**: Tests automatically fall back to memory cache if Redis unavailable
@@ -710,6 +1089,8 @@ Slow tests (`-m "slow"`) include:
 9. **Slow Tests**: Use `--run-slow` flag to enable comprehensive resilience testing
 10. **Manual Tests**: Requires running server - use `--run-manual` flag
 11. **Marker Issues**: Use `--strict-markers` to catch undefined test markers
+12. **Exception Testing**: When testing exception handling, check both raised exceptions and HTTP error responses
+13. **Response Format**: Verify new JSON response format with `success`, `error`, `error_code`, `details`, and `timestamp` fields
 
 #### Development Issues
 12. **Virtual Environment**: Run `make clean-all` and `make install` to reset environment
@@ -772,6 +1153,10 @@ Before submitting a pull request:
 4. **Dependency Issues**: Run `make install` to update dependencies in the virtual environment
 5. **Python Version Issues**: The Makefile automatically detects the correct Python version
 6. **Virtual Environment Issues**: Run `make clean-all` followed by `make install` to reset the environment
+7. **Exception Import Errors**: Ensure custom exceptions are imported from `app.core.exceptions`
+8. **Response Format Mismatches**: Update tests to expect new JSON response format with `success`, `error`, `error_code` fields
+9. **HTTPException References**: Replace `HTTPException` assertions with custom exception types in tests
+10. **Error Context Validation**: When testing exceptions, verify context data is properly populated
 
 ### Getting Help
 
@@ -790,6 +1175,102 @@ The test suite tracks the following metrics:
 - **Code Quality Score**: Results from linting and type checking
 
 These metrics are tracked in CI and can be viewed in the coverage reports and GitHub Actions logs.
+
+## Migration from HTTPException
+
+### Overview
+
+The backend has migrated from using FastAPI's default `HTTPException` to a comprehensive custom exception hierarchy. This migration provides several benefits:
+
+- **Better Error Categorization**: Specific exception types for different error scenarios
+- **Structured Context Data**: Rich debugging information with each exception
+- **Consistent Error Responses**: Standardized JSON format across all endpoints
+- **Improved Monitoring**: Better error tracking and alerting capabilities
+
+### Updating Existing Tests
+
+If you have existing tests that reference `HTTPException`, here's how to migrate them:
+
+#### Before (HTTPException)
+
+```python
+from fastapi import HTTPException
+import pytest
+
+def test_old_style_validation_error():
+    with pytest.raises(HTTPException) as exc_info:
+        service.validate_input("invalid")
+    
+    assert exc_info.value.status_code == 400
+    assert "invalid" in exc_info.value.detail
+
+def test_old_style_api_response():
+    response = client.post("/api/process", json={"bad": "data"})
+    assert response.status_code == 400
+    assert "detail" in response.json()
+```
+
+#### After (Custom Exceptions)
+
+```python
+from app.core.exceptions import ValidationError, AuthenticationError
+import pytest
+
+def test_new_style_validation_error():
+    with pytest.raises(ValidationError) as exc_info:
+        service.validate_input("invalid")
+    
+    exception = exc_info.value
+    assert "invalid" in exception.message.lower()
+    assert exception.context["field"] == "input"
+    assert exception.context["value"] == "invalid"
+
+def test_new_style_api_response():
+    response = client.post("/api/process", json={"bad": "data"})
+    assert response.status_code == 400
+    
+    data = response.json()
+    assert data["success"] is False
+    assert data["error_code"] == "VALIDATION_ERROR"
+    assert "error" in data
+    assert "timestamp" in data
+```
+
+### Key Migration Points
+
+1. **Import Custom Exceptions**: Replace `HTTPException` imports with specific custom exceptions from `app.core.exceptions`
+
+2. **Update Response Assertions**: Change from checking `detail` field to checking the new standardized format with `success`, `error`, `error_code`, and `timestamp`
+
+3. **Test Exception Context**: New custom exceptions include rich context data that should be validated in tests
+
+4. **Check HTTP Status Mapping**: Custom exceptions automatically map to appropriate HTTP status codes via the global exception handler
+
+5. **Update Error Message Checking**: Error messages are now in the `error` field instead of `detail`
+
+### Exception Mapping Reference
+
+| Custom Exception | HTTP Status | Error Code | Use Case |
+|------------------|-------------|------------|----------|
+| ValidationError | 400 | VALIDATION_ERROR | Input validation failures |
+| AuthenticationError | 401 | AUTHENTICATION_ERROR | Missing/invalid API keys |
+| AuthorizationError | 403 | AUTHORIZATION_ERROR | Permission denied |
+| BusinessLogicError | 422 | BUSINESS_LOGIC_ERROR | Business rule violations |
+| InfrastructureError | 500 | INFRASTRUCTURE_ERROR | External service failures |
+| TransientAIError | 500 | TRANSIENT_AI_ERROR | Temporary AI service issues |
+| PermanentAIError | 500 | PERMANENT_AI_ERROR | Permanent AI configuration issues |
+
+### Testing Best Practices
+
+1. **Test Both Exception and HTTP Response**: Test that services raise the correct custom exceptions AND that API endpoints return the proper HTTP responses
+
+2. **Validate Exception Context**: Always check that exception context contains relevant debugging information
+
+3. **Test Error Classification**: For AI services, verify that errors are properly classified as transient or permanent
+
+4. **Check Global Handler**: Test that unhandled exceptions are caught by the global handler and return generic error messages
+
+5. **Verify Security**: Ensure that sensitive information is not exposed in error responses, especially in production mode
 
 ## Related Documentation
 

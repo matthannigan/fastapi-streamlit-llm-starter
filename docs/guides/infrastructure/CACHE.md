@@ -800,6 +800,13 @@ Invalidate cache entries matching a pattern.
   - `pattern` - Pattern to match against cache keys
   - `operation_context` - Optional context for tracking
 - **Returns**: Number of entries invalidated
+- **Raises**: `InfrastructureError` - Pattern invalidation failed (Redis connection, pattern search errors)
+
+#### `connect() -> bool`
+Initialize Redis connection with exception-based error handling.
+- **Returns**: True if connected successfully
+- **Raises**: `InfrastructureError` - Redis connection failed (library unavailable, connection timeout, authentication errors)
+- **Behavior**: Raises exception instead of graceful degradation
 
 ### InMemoryCache Methods
 
@@ -809,22 +816,32 @@ Store value in memory cache with optional TTL.
   - `key` - Cache key
   - `value` - Value to store (must be serializable)
   - `ttl` - Time to live in seconds (optional)
+- **Raises**: `InfrastructureError` - Cache storage failed (Redis write errors)
 - **Behavior**: Triggers LRU eviction if at capacity
 
 #### `get(key: str) -> Optional[Any]`
 Retrieve value from memory cache.
 - **Parameters**: `key` - Cache key
 - **Returns**: Stored value or None if not found/expired
+- **Raises**: `InfrastructureError` - Cache retrieval failed (Redis read errors)
 - **Side Effects**: Updates access time for LRU
 
 #### `exists(key: str) -> bool`
 Check if key exists and is not expired.
 - **Parameters**: `key` - Cache key
 - **Returns**: True if key exists and valid
+- **Raises**: `InfrastructureError` - Cache existence check failed
 
 #### `get_stats() -> dict`
 Get memory cache statistics.
 - **Returns**: Dict with hit/miss ratios, utilization, entry count
+- **Raises**: `InfrastructureError` - Statistics collection failed
+
+#### `delete(key: str) -> None`
+Remove value from cache.
+- **Parameters**: `key` - Cache key to delete
+- **Raises**: `InfrastructureError` - Cache deletion failed (Redis delete errors)
+- **Behavior**: Logs deletion result for monitoring
 
 ## Best Practices
 
