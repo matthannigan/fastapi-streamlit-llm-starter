@@ -26,10 +26,11 @@ from app.schemas import TextProcessingRequest, TextProcessingOperation
 # Test API key for authentication
 TEST_API_KEY = "test-api-key-12345"
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """Create an instance of the default event loop for each test function."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
