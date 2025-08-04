@@ -110,6 +110,8 @@ if strategy == ResilienceStrategy.AGGRESSIVE:
 
 **Purpose:** Provides comprehensive exception hierarchy with intelligent classification for retry logic, HTTP status mapping, and structured error handling across the application.
 
+> **📚 Deep Dive:** For comprehensive information about the exception handling system, including migration patterns, testing strategies, and advanced usage examples, see the [Exception Handling Guide](/docs/guides/backend/EXCEPTION_HANDLING.md).
+
 **Key Features:**
 - ✅ **Structured Exception Hierarchy**: Clear separation between application and infrastructure errors
 - ✅ **Retry Classification**: Automatic detection of transient vs permanent errors
@@ -146,6 +148,8 @@ InfrastructureError                # Base for infrastructure errors
 **Purpose:** Intelligently classifies exceptions for retry logic integration with circuit breakers.
 
 ```python
+from app.core.exceptions import classify_ai_exception, TransientAIError, PermanentAIError
+
 try:
     result = await ai_service.process(text)
 except Exception as e:
@@ -420,8 +424,8 @@ updated_config = fresh_settings.get_resilience_config()
 ### Service Integration with Core Components
 
 ```python
-from fastapi import Depends, HTTPException
-from app.core import settings, ApplicationError, ValidationError
+from fastapi import Depends
+from app.core import settings, ApplicationError, ValidationError, InfrastructureError
 from app.core.exceptions import classify_ai_exception
 
 class CoreIntegratedService:
@@ -501,7 +505,10 @@ async def process_text(
     except Exception as e:
         # Unexpected errors
         logger.error(f"Unexpected error in process_text: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise InfrastructureError(
+            "Internal server error",
+            context={"error_type": type(e).__name__, "original_error": str(e)}
+        )
 ```
 
 ## Configuration Management
@@ -759,6 +766,8 @@ async def comprehensive_health_check():
 ## Error Handling & Resilience
 
 The core module provides comprehensive error handling with integration across all application layers:
+
+> **📖 Complete Guide:** This section provides core patterns and examples. For comprehensive coverage including best practices, migration strategies, and advanced patterns, see the [Exception Handling Guide](/docs/guides/backend/EXCEPTION_HANDLING.md).
 
 ### Exception Classification and Retry Logic
 
@@ -1039,7 +1048,7 @@ except Exception as e:
     return {"error": str(e)}
 
 # After: Structured exception handling
-from app.core.exceptions import classify_ai_exception, ApplicationError
+from app.core.exceptions import classify_ai_exception, ApplicationError, TransientAIError, PermanentAIError
 
 try:
     result = await ai_service.process(text)

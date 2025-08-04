@@ -183,7 +183,8 @@ async def auth_status():
 The security system integrates seamlessly with FastAPI's dependency injection:
 
 ```python
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends
+from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.infrastructure.security import verify_api_key, get_auth_status
 
 app = FastAPI()
@@ -401,27 +402,63 @@ if os.getenv("ENVIRONMENT") == "production":
 
 ## Error Handling & Resilience
 
-The security system provides comprehensive error handling with proper HTTP status codes:
+The security system provides comprehensive error handling using the custom exception hierarchy with automatic HTTP status code mapping and structured security context for audit logging. For complete details on the exception system, see the [Exception Handling Guide](../../../guides/developer/EXCEPTION_HANDLING.md).
+
+### Security-Specific Exception Types
+
+The security infrastructure uses these custom exceptions from `app.core.exceptions`:
+
+- **`AuthenticationError`**: Authentication failures (401 Unauthorized)
+  - Missing API keys, invalid credentials, malformed auth headers
+  - Includes security context for audit logging
+- **`AuthorizationError`**: Authorization failures (403 Forbidden)  
+  - Insufficient permissions, role-based access violations
+  - Includes permission context and resource information
+- **`ValidationError`**: Input validation errors (400 Bad Request)
+  - Invalid API key formats, malformed request data
+- **`ConfigurationError`**: Security configuration errors (500 Internal Server Error)
+  - Missing required security configuration, invalid settings
+
+All security exceptions include structured context data for security monitoring and audit trails.
 
 ### Exception Handling
 
 ```python
-from app.core.exceptions import AuthenticationError
-from fastapi import HTTPException, status
+from app.core.exceptions import AuthenticationError, AuthorizationError
 
 # Authentication exceptions are automatically converted to proper HTTP responses
 try:
     api_key = await verify_api_key(credentials)
 except AuthenticationError as e:
     # Automatically converted to 401 Unauthorized
-    # Error details available in e.context
+    # Error details available in e.context for security auditing
     logger.warning(f"Authentication failed: {e.context}")
-    raise  # Re-raise for FastAPI error handling
+    raise  # Re-raise for FastAPI global exception handler
+
+# Authorization example
+try:
+    # Check user permissions for protected resource
+    if not user_has_permission(api_key, "admin_access"):
+        raise AuthorizationError(
+            "Insufficient privileges for admin operations",
+            context={
+                "api_key": api_key[:8] + "...",  # Truncated for security
+                "required_permission": "admin_access",
+                "endpoint": "/admin/users"
+            }
+        )
+except AuthorizationError as e:
+    # Automatically converted to 403 Forbidden
+    # Security context available for audit logging
+    logger.warning(f"Authorization failed: {e.context}")
+    raise  # Re-raise for FastAPI global exception handler
 ```
 
 ### Graceful Degradation
 
 ```python
+from app.core.exceptions import AuthenticationError, AuthorizationError
+
 @app.middleware("http")
 async def auth_fallback_middleware(request: Request, call_next):
     """Middleware providing graceful authentication fallback."""
@@ -429,12 +466,26 @@ async def auth_fallback_middleware(request: Request, call_next):
     try:
         response = await call_next(request)
         return response
-    except AuthenticationError:
+    except AuthenticationError as e:
         # Check if endpoint supports anonymous access
         if request.url.path in ["/health", "/docs", "/openapi.json"]:
-            # Allow access to public endpoints
+            # Log security event but allow access to public endpoints
+            logger.info(f"Anonymous access to public endpoint: {request.url.path}")
             return await call_next(request)
+        
+        # Log security event for protected endpoints
+        logger.warning(
+            f"Authentication failed for protected endpoint: {request.url.path}", 
+            extra={"security_context": e.context}
+        )
         raise  # Re-raise for protected endpoints
+    except AuthorizationError as e:
+        # Log authorization failures with context
+        logger.warning(
+            f"Authorization failed for endpoint {request.url.path}: {e.message}",
+            extra={"security_context": e.context}
+        )
+        raise  # Re-raise for FastAPI error handling
 ```
 
 ### Security Event Logging
@@ -442,13 +493,14 @@ async def auth_fallback_middleware(request: Request, call_next):
 ```python
 import logging
 from app.infrastructure.security.auth import api_key_auth
+from app.core.exceptions import AuthenticationError, AuthorizationError
 
 # Configure security logging
 security_logger = logging.getLogger("security")
 security_logger.setLevel(logging.INFO)
 
 class SecurityEventHandler:
-    """Handle security events and logging."""
+    """Handle security events and logging with structured exception context."""
     
     @staticmethod
     def log_authentication_attempt(api_key: str, success: bool, request_info: dict):
@@ -463,11 +515,47 @@ class SecurityEventHandler:
                 f"path={request_info.get('path', 'unknown')}"
             )
         else:
-            security_logger.warning(
-                f"Authentication failed: key={truncated_key}, "
-                f"ip={request_info.get('client_ip', 'unknown')}, "
-                f"path={request_info.get('path', 'unknown')}"
+            # Create structured security exception for failed authentication
+            auth_error = AuthenticationError(
+                "Authentication failed",
+                context={
+                    "api_key_hint": truncated_key,
+                    "client_ip": request_info.get('client_ip', 'unknown'),
+                    "request_path": request_info.get('path', 'unknown'),
+                    "timestamp": request_info.get('timestamp'),
+                    "user_agent": request_info.get('user_agent', 'unknown')
+                }
             )
+            
+            security_logger.warning(
+                f"Authentication failed: {auth_error.message}",
+                extra={"security_context": auth_error.context}
+            )
+    
+    @staticmethod 
+    def log_authorization_failure(api_key: str, required_permission: str, resource: str, request_info: dict):
+        """Log authorization failures with structured exception context."""
+        truncated_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "****"
+        
+        auth_error = AuthorizationError(
+            f"Access denied: insufficient privileges for {resource}",
+            context={
+                "api_key_hint": truncated_key,
+                "required_permission": required_permission,
+                "resource": resource,
+                "client_ip": request_info.get('client_ip', 'unknown'),
+                "request_path": request_info.get('path', 'unknown'),
+                "timestamp": request_info.get('timestamp')
+            }
+        )
+        
+        security_logger.warning(
+            f"Authorization failed: {auth_error.message}",
+            extra={"security_context": auth_error.context}
+        )
+        
+        # Re-raise for FastAPI error handling
+        raise auth_error
 ```
 
 ## Advanced Security Features
@@ -476,9 +564,10 @@ class SecurityEventHandler:
 
 ```python
 from app.infrastructure.security.auth import APIKeyAuth, AuthConfig
+from app.core.exceptions import AuthenticationError, AuthorizationError, RateLimitError, ConfigurationError
 
 class CustomAPIKeyAuth(APIKeyAuth):
-    """Extended authentication with custom logic."""
+    """Extended authentication with custom logic and structured exception handling."""
     
     def __init__(self, auth_config: AuthConfig):
         super().__init__(auth_config)
@@ -491,25 +580,74 @@ class CustomAPIKeyAuth(APIKeyAuth):
         }
     
     def verify_api_key(self, api_key: str) -> bool:
-        """Enhanced key verification with custom logic."""
+        """Enhanced key verification with custom logic and proper exception handling."""
         if not super().verify_api_key(api_key):
-            return False
+            raise AuthenticationError(
+                "Invalid API key",
+                context={
+                    "api_key_hint": api_key[:4] + "..." if len(api_key) > 4 else "****",
+                    "validation_stage": "base_verification"
+                }
+            )
         
-        # Custom validation logic
-        return self._check_rate_limit(api_key) and self._check_permissions(api_key)
+        # Custom validation logic with proper exception handling
+        try:
+            if not self._check_rate_limit(api_key):
+                raise RateLimitError(
+                    "Rate limit exceeded for API key",
+                    context={
+                        "api_key_hint": api_key[:4] + "..." if len(api_key) > 4 else "****",
+                        "rate_limit_info": self._custom_metadata["rate_limits"].get(api_key, {})
+                    }
+                )
+            
+            if not self._check_permissions(api_key):
+                raise AuthorizationError(
+                    "API key lacks required permissions",
+                    context={
+                        "api_key_hint": api_key[:4] + "..." if len(api_key) > 4 else "****",
+                        "permissions": self._custom_metadata["permissions"].get(api_key, [])
+                    }
+                )
+            
+            return True
+            
+        except (RateLimitError, AuthorizationError):
+            # Re-raise security exceptions with context intact
+            raise
+        except Exception as e:
+            # Wrap unexpected errors in proper security context
+            raise AuthenticationError(
+                f"Authentication verification failed: {str(e)}",
+                context={
+                    "api_key_hint": api_key[:4] + "..." if len(api_key) > 4 else "****",
+                    "validation_stage": "custom_verification",
+                    "original_error": str(e)
+                }
+            )
     
     def _check_rate_limit(self, api_key: str) -> bool:
         """Check rate limiting for API key."""
-        # Custom rate limiting logic
+        # Custom rate limiting logic - return True if within limits
+        rate_limit_data = self._custom_metadata["rate_limits"].get(api_key, {})
+        # Implement your rate limiting logic here
         return True
     
     def _check_permissions(self, api_key: str) -> bool:
         """Check permissions for API key."""
-        # Custom permission logic
+        # Custom permission logic - return True if permissions are sufficient
+        permissions = self._custom_metadata["permissions"].get(api_key, [])
+        # Implement your permission checking logic here
         return True
 
-# Use custom authentication
-custom_auth = CustomAPIKeyAuth(AuthConfig())
+# Use custom authentication with proper exception handling
+try:
+    custom_auth = CustomAPIKeyAuth(AuthConfig())
+except Exception as e:
+    raise ConfigurationError(
+        "Failed to initialize custom authentication",
+        context={"initialization_error": str(e)}
+    )
 ```
 
 ### Integration with External Authentication
@@ -540,7 +678,10 @@ async def hybrid_verify_auth(
 ) -> dict:
     """Verify either API key or JWT token."""
     if not credentials:
-        raise AuthenticationError("Authentication required")
+        raise AuthenticationError(
+            "Authentication required", 
+            context={"error_type": "missing_credentials"}
+        )
     
     token = credentials.credentials
     
@@ -554,7 +695,15 @@ async def hybrid_verify_auth(
     if jwt_payload:
         return {"type": "jwt", "payload": jwt_payload}
     
-    raise AuthenticationError("Invalid authentication credentials")
+    # Authentication failed - provide security context for auditing
+    raise AuthenticationError(
+        "Invalid authentication credentials", 
+        context={
+            "error_type": "invalid_credentials",
+            "credential_hint": token[:4] + "..." if len(token) > 4 else "****",
+            "attempted_types": ["api_key", "jwt_token"]
+        }
+    )
 ```
 
 ## Performance Characteristics
@@ -685,15 +834,58 @@ async def advanced_endpoint(
     }
 ```
 
+## Exception Handling Integration
+
+### Security Exception Patterns
+
+The security infrastructure is fully integrated with the custom exception system. All security-related errors use structured exceptions that provide:
+
+- **Automatic HTTP Status Mapping**: Custom exceptions are automatically converted to appropriate HTTP status codes by the global exception handler
+- **Security Context**: All exceptions include structured context data for security auditing and monitoring
+- **Audit Trail**: Security events are logged with proper context while protecting sensitive information
+
+For complete details on exception handling patterns, see:
+- [Exception Handling Guide](../../../guides/developer/EXCEPTION_HANDLING.md) - Comprehensive exception system documentation
+- [Exception Handler Configuration](../../core/exceptions.py) - Core exception definitions and HTTP status mapping
+
+### Security Exception Usage Guidelines
+
+```python
+from app.core.exceptions import AuthenticationError, AuthorizationError, ValidationError
+
+# Always include security context for audit trails
+raise AuthenticationError(
+    "Invalid API key format",
+    context={
+        "api_key_hint": key[:4] + "..." if len(key) > 4 else "****",
+        "validation_type": "format_check",
+        "client_ip": request.client.host,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+)
+
+# Use appropriate exception types for different security scenarios
+if not api_key:
+    raise AuthenticationError("API key required")
+elif not valid_format(api_key):
+    raise ValidationError("Invalid API key format")  
+elif not key_exists(api_key):
+    raise AuthenticationError("Invalid API key")
+elif not has_permission(api_key, resource):
+    raise AuthorizationError("Insufficient permissions")
+```
+
 ## Best Practices
 
 ### Security Guidelines
 
 1. **API Key Management**: Store API keys securely in environment variables, never in code
 2. **Key Rotation**: Implement regular API key rotation policies
-3. **Logging Security**: Log authentication events but truncate sensitive information
-4. **Error Messages**: Provide secure error messages that don't leak sensitive information
-5. **Development Mode**: Never run production with development mode enabled
+3. **Exception Context**: Always include structured security context in exceptions for audit trails
+4. **Logging Security**: Log authentication events but truncate sensitive information (API keys, tokens)
+5. **Error Messages**: Provide secure error messages that don't leak sensitive information
+6. **Development Mode**: Never run production with development mode enabled
+7. **Security Monitoring**: Use exception context data for security monitoring and alerting
 
 ### Performance Guidelines
 

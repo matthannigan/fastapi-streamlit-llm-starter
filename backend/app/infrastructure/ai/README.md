@@ -193,17 +193,61 @@ except ValueError as e:
 
 ## Integration Patterns
 
+### Exception Handling
+
+The AI infrastructure uses the custom exception handling system for consistent error responses. See the [Exception Handling Guide](../../guides/developer/EXCEPTION_HANDLING.md) for comprehensive documentation on the exception hierarchy and best practices.
+
+**Key Exception Types for AI Operations:**
+
+- **ValidationError** (400): Input validation failures, empty content after sanitization, invalid operation types
+- **InfrastructureError** (500): AI service failures, processing errors, template loading issues
+- **AuthenticationError** (401): API key validation failures for AI services
+- **AuthorizationError** (403): AI service access restrictions
+
+All exceptions include structured context data for debugging and monitoring:
+
+```python
+from app.core.exceptions import ValidationError, InfrastructureError
+
+# Input validation with context
+if not safe_text.strip():
+    raise ValidationError(
+        message="Input text is empty after sanitization",
+        context={
+            "original_length": len(original_text),
+            "sanitized_length": len(safe_text),
+            "operation": operation_type
+        }
+    )
+
+# Infrastructure failures with context
+try:
+    result = await ai_service.process(prompt)
+except Exception as e:
+    raise InfrastructureError(
+        message="AI processing failed",
+        context={
+            "operation": operation_type,
+            "error_type": type(e).__name__,
+            "error_details": str(e),
+            "prompt_length": len(prompt)
+        }
+    )
+```
+
 ### Security-First AI Service Integration
 
 ```python
 from app.infrastructure.ai import (
     sanitize_input_advanced,
     create_safe_prompt,
-    get_available_templates
+    get_available_templates,
+    sanitize_options
 )
+from app.core.exceptions import ValidationError, InfrastructureError
 
 class SecureAIService:
-    """AI service with integrated security."""
+    """AI service with integrated security and custom exception handling."""
     
     async def process_text_safely(
         self, 
@@ -211,47 +255,113 @@ class SecureAIService:
         operation: str, 
         options: dict = None
     ) -> dict:
-        """Process text with comprehensive security."""
+        """Process text with comprehensive security and error handling."""
         
-        # Step 1: Sanitize all inputs
-        safe_text = sanitize_input_advanced(text)
-        safe_options = sanitize_options(options or {})
-        
-        # Step 2: Validate operation
-        if operation not in get_available_templates():
-            raise ValueError(f"Unsupported operation: {operation}")
-        
-        # Step 3: Build safe prompt
-        additional_instructions = safe_options.get("instructions", "")
-        
-        if operation == "question_answer":
-            question = safe_options.get("question", "")
-            prompt = create_safe_prompt(
-                operation, 
-                safe_text,
-                user_question=question,
-                additional_instructions=additional_instructions
+        try:
+            # Step 1: Sanitize all inputs
+            safe_text = sanitize_input_advanced(text)
+            safe_options = sanitize_options(options or {})
+            
+            # Step 2: Validate operation
+            if operation not in get_available_templates():
+                raise ValidationError(
+                    message=f"Unsupported operation: {operation}",
+                    context={
+                        "operation": operation,
+                        "available_operations": get_available_templates(),
+                        "input_length": len(text)
+                    }
+                )
+            
+            # Step 3: Validate sanitized input
+            if not safe_text.strip():
+                raise ValidationError(
+                    message="Input text is empty after sanitization",
+                    context={
+                        "original_length": len(text),
+                        "sanitized_length": len(safe_text),
+                        "operation": operation
+                    }
+                )
+            
+            # Step 4: Build safe prompt
+            additional_instructions = safe_options.get("instructions", "")
+            
+            if operation == "question_answer":
+                question = safe_options.get("question", "")
+                if not question.strip():
+                    raise ValidationError(
+                        message="Question is required for question_answer operation",
+                        context={"operation": operation}
+                    )
+                prompt = create_safe_prompt(
+                    operation, 
+                    safe_text,
+                    user_question=question,
+                    additional_instructions=additional_instructions
+                )
+            else:
+                prompt = create_safe_prompt(
+                    operation,
+                    safe_text, 
+                    additional_instructions=additional_instructions
+                )
+            
+            # Step 5: Process with AI service
+            return await self._call_ai_service(prompt, safe_options, operation)
+            
+        except ValidationError:
+            # Re-raise validation errors as-is
+            raise
+        except Exception as e:
+            # Convert unexpected errors to infrastructure errors
+            raise InfrastructureError(
+                message="AI service processing failed",
+                context={
+                    "operation": operation,
+                    "error_type": type(e).__name__,
+                    "error_details": str(e),
+                    "input_length": len(text) if text else 0
+                }
             )
-        else:
-            prompt = create_safe_prompt(
-                operation,
-                safe_text, 
-                additional_instructions=additional_instructions
-            )
-        
-        # Step 4: Process with AI service
-        return await self._call_ai_service(prompt, safe_options)
     
-    async def _call_ai_service(self, prompt: str, options: dict) -> dict:
+    async def _call_ai_service(self, prompt: str, options: dict, operation: str) -> dict:
         """Call AI service with prepared safe prompt."""
-        # Your AI service integration here
+        try:
+            # Your AI service integration here (e.g., OpenAI, Gemini, etc.)
+            # This is where you'd make the actual AI API call
+            result = await self._make_ai_request(prompt, options)
+            
+            return {
+                "result": result,
+                "operation": operation,
+                "prompt_length": len(prompt),
+                "status": "success"
+            }
+            
+        except Exception as e:
+            raise InfrastructureError(
+                message="AI API call failed",
+                context={
+                    "operation": operation,
+                    "prompt_length": len(prompt),
+                    "error_type": type(e).__name__,
+                    "error_details": str(e)
+                }
+            )
+    
+    async def _make_ai_request(self, prompt: str, options: dict) -> str:
+        """Make the actual AI API request - implement with your AI provider."""
+        # Placeholder for actual AI service integration
+        # Replace with your AI provider's API calls
         pass
 ```
 
 ### FastAPI Endpoint Integration
 
 ```python
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from app.core.exceptions import ValidationError, InfrastructureError
 from app.infrastructure.ai import sanitize_input_advanced, create_safe_prompt
 
 app = FastAPI()
@@ -265,9 +375,13 @@ async def process_text(request: TextProcessingRequest):
         safe_text = sanitize_input_advanced(request.text)
         
         if not safe_text.strip():
-            raise HTTPException(
-                status_code=400, 
-                detail="Input text is empty after sanitization"
+            raise ValidationError(
+                message="Input text is empty after sanitization",
+                context={
+                    "original_length": len(request.text),
+                    "sanitized_length": len(safe_text),
+                    "operation": request.operation
+                }
             )
         
         # Safe prompt construction
@@ -287,9 +401,23 @@ async def process_text(request: TextProcessingRequest):
         }
         
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise ValidationError(
+            message=f"Invalid operation or parameters: {str(e)}",
+            context={
+                "operation": request.operation,
+                "error_type": "validation",
+                "original_error": str(e)
+            }
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Processing failed")
+        raise InfrastructureError(
+            message="AI processing failed", 
+            context={
+                "operation": request.operation,
+                "error_type": type(e).__name__,
+                "error_details": str(e)
+            }
+        )
 ```
 
 ### Middleware Integration
@@ -453,8 +581,11 @@ class TestAISecurity:
 ### Integration Testing
 
 ```python
+import pytest
+from app.core.exceptions import ValidationError, InfrastructureError
+
 async def test_secure_ai_service_integration():
-    """Test complete security integration."""
+    """Test complete security integration with custom exceptions."""
     service = SecureAIService()
     
     # Test with malicious input
@@ -467,6 +598,46 @@ async def test_secure_ai_service_integration():
     # Verify processing completed without security bypass
     assert result is not None
     assert "secrets" not in str(result).lower()
+
+async def test_validation_error_handling():
+    """Test validation error handling with custom exceptions."""
+    service = SecureAIService()
+    
+    # Test empty input after sanitization
+    with pytest.raises(ValidationError) as exc_info:
+        await service.process_text_safely(
+            text="",  # Empty input
+            operation="summarize"
+        )
+    
+    assert "empty after sanitization" in str(exc_info.value)
+    assert exc_info.value.context["operation"] == "summarize"
+    
+    # Test invalid operation
+    with pytest.raises(ValidationError) as exc_info:
+        await service.process_text_safely(
+            text="Valid text",
+            operation="invalid_operation"
+        )
+    
+    assert "Unsupported operation" in str(exc_info.value)
+    assert "invalid_operation" in exc_info.value.context["operation"]
+
+async def test_infrastructure_error_handling():
+    """Test infrastructure error handling for AI service failures."""
+    service = SecureAIService()
+    
+    # Mock AI service failure
+    with patch.object(service, '_make_ai_request', side_effect=Exception("AI API down")):
+        with pytest.raises(InfrastructureError) as exc_info:
+            await service.process_text_safely(
+                text="Valid text",
+                operation="summarize"
+            )
+        
+        assert "AI API call failed" in str(exc_info.value)
+        assert exc_info.value.context["error_type"] == "Exception"
+        assert "AI API down" in exc_info.value.context["error_details"]
 ```
 
 ## Migration Guide
@@ -482,16 +653,53 @@ async def test_secure_ai_service_integration():
 ### Before and After Comparison
 
 ```python
-# Before: Unsafe direct string construction
+# Before: Unsafe direct string construction with basic error handling
 def unsafe_ai_call(user_text: str, operation: str) -> str:
-    prompt = f"Please {operation} this text: {user_text}"
-    return ai_service.process(prompt)
+    try:
+        prompt = f"Please {operation} this text: {user_text}"
+        return ai_service.process(prompt)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Processing failed")
 
-# After: Secure infrastructure integration
+# After: Secure infrastructure integration with custom exceptions
 async def safe_ai_call(user_text: str, operation: str) -> str:
-    safe_text = sanitize_input_advanced(user_text)
-    safe_prompt = create_safe_prompt(operation, safe_text)
-    return await ai_service.process(safe_prompt)
+    from app.core.exceptions import ValidationError, InfrastructureError
+    from app.infrastructure.ai import sanitize_input_advanced, create_safe_prompt
+    
+    try:
+        # Input validation and sanitization
+        safe_text = sanitize_input_advanced(user_text)
+        
+        if not safe_text.strip():
+            raise ValidationError(
+                message="Input text is empty after sanitization",
+                context={
+                    "original_length": len(user_text),
+                    "sanitized_length": len(safe_text),
+                    "operation": operation
+                }
+            )
+        
+        # Safe prompt construction
+        safe_prompt = create_safe_prompt(operation, safe_text)
+        result = await ai_service.process(safe_prompt)
+        
+        return result
+        
+    except ValidationError:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        # Convert infrastructure failures
+        raise InfrastructureError(
+            message="AI processing failed",
+            context={
+                "operation": operation,
+                "error_type": type(e).__name__,
+                "error_details": str(e),
+                "input_length": len(user_text)
+            }
+        )
 ```
 
 ## Best Practices
@@ -503,6 +711,7 @@ async def safe_ai_call(user_text: str, operation: str) -> str:
 3. **Validate Operations**: Check operation types against allowed templates
 4. **Monitor Patterns**: Log sanitization events for security analysis
 5. **Test Thoroughly**: Include security testing in your test suite
+6. **Use Custom Exceptions**: Replace HTTPException with structured custom exceptions for better error handling and debugging
 
 ### Performance Guidelines
 
@@ -511,11 +720,20 @@ async def safe_ai_call(user_text: str, operation: str) -> str:
 3. **Monitor Performance**: Track sanitization timing for large inputs
 4. **Cache Templates**: Templates are loaded once and reused efficiently
 
+### Exception Handling Guidelines
+
+1. **Use Appropriate Exception Types**: Choose ValidationError for input issues, InfrastructureError for service failures
+2. **Include Context Data**: Always provide structured context for debugging and monitoring
+3. **Re-raise Validation Errors**: Don't wrap ValidationError in generic exceptions
+4. **Log Exception Context**: Use the structured context data for comprehensive logging
+5. **Test Exception Scenarios**: Include exception handling in your test coverage
+
 ### Development Guidelines
 
 1. **Environment Configuration**: Use environment variables for security thresholds
 2. **Logging Integration**: Include security events in application logging
 3. **Error Handling**: Implement graceful degradation for sanitization failures
 4. **Documentation**: Document custom patterns and templates clearly
+5. **Exception Consistency**: Use the custom exception system throughout AI infrastructure components
 
 This AI infrastructure provides production-ready, security-focused utilities for safe AI model interactions, ensuring protection against prompt injection attacks while maintaining flexibility and performance.
