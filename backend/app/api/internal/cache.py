@@ -337,8 +337,8 @@ async def get_cache_status(
             - error: Error message if status retrieval fails
     
     Raises:
-        None: This endpoint does not raise exceptions but returns error
-            information in the response body if cache status retrieval fails.
+        InfrastructureError: If cache status retrieval fails or cache service
+            encounters errors during status computation.
     
     Example:
         >>> # GET /internal/cache/status
@@ -354,13 +354,19 @@ async def get_cache_status(
         
     except Exception as e:
         logger.error(f"Error getting cache status: {e}")
-        # Return a basic error response 
-        return {
-            "redis": {"status": "error"},
-            "memory": {"status": "unavailable"},
-            "performance": {"status": "unavailable"},
-            "error": str(e)
-        }
+        raise InfrastructureError(
+            "Cache status retrieval failed",
+            context={
+                "endpoint": "get_cache_status",
+                "cache_operation": "status_retrieval",
+                "cache_type": "cache_service",
+                "performance_metrics": {"status_error": str(e)},
+                "redis_status": "unknown_due_to_status_failure",
+                "operation_duration_ms": 0,
+                "error_type": type(e).__name__,
+                "error_details": str(e)
+            }
+        )
 
 
 @router.post("/invalidate")
@@ -394,9 +400,9 @@ async def invalidate_cache(
             - message: Success or failure message with pattern details
     
     Raises:
-        AuthenticationError: May raise authentication errors if API key is invalid.
-            Cache operation errors are handled gracefully and returned in
-            the response message rather than raising exceptions.
+        AuthenticationError: If API key is invalid or authentication fails.
+        InfrastructureError: If cache invalidation operation fails or cache
+            service encounters errors during pattern invalidation.
     
     Example:
         >>> # POST /internal/cache/invalidate?pattern=user:123:*
@@ -412,8 +418,21 @@ async def invalidate_cache(
         
     except Exception as e:
         logger.error(f"Error invalidating cache with pattern '{pattern}': {e}")
-        # Return error message in response rather than raising exception
-        return {"message": f"Failed to invalidate cache for pattern '{pattern}': {str(e)}"}
+        raise InfrastructureError(
+            f"Cache invalidation failed for pattern '{pattern}'",
+            context={
+                "endpoint": "invalidate_cache",
+                "cache_operation": "pattern_invalidation",
+                "cache_type": "cache_service",
+                "performance_metrics": {"invalidation_error": str(e)},
+                "redis_status": "unknown_due_to_invalidation_failure",
+                "operation_duration_ms": 0,
+                "invalidation_pattern": pattern,
+                "operation_context": operation_context,
+                "error_type": type(e).__name__,
+                "error_details": str(e)
+            }
+        )
 
 
 @router.get("/invalidation-stats")
@@ -443,8 +462,8 @@ async def get_invalidation_stats(
             Empty dict returned if statistics are unavailable or on error.
     
     Raises:
-        None: This endpoint does not raise exceptions but returns empty
-            statistics if data retrieval fails.
+        InfrastructureError: If invalidation statistics retrieval fails or
+            cache service encounters errors during statistics computation.
     
     Example:
         >>> # GET /internal/cache/invalidation-stats
@@ -460,8 +479,19 @@ async def get_invalidation_stats(
         
     except Exception as e:
         logger.error(f"Error getting invalidation stats: {e}")
-        # Return empty stats on error rather than raising exception
-        return {}
+        raise InfrastructureError(
+            "Cache invalidation statistics retrieval failed",
+            context={
+                "endpoint": "get_invalidation_stats",
+                "cache_operation": "invalidation_stats_retrieval",
+                "cache_type": "cache_service",
+                "performance_metrics": {"stats_error": str(e)},
+                "redis_status": "unknown_due_to_stats_failure",
+                "operation_duration_ms": 0,
+                "error_type": type(e).__name__,
+                "error_details": str(e)
+            }
+        )
 
 
 @router.get("/invalidation-recommendations")
@@ -489,8 +519,8 @@ async def get_invalidation_recommendations(
               Empty list returned if analysis fails or no recommendations available.
     
     Raises:
-        None: This endpoint does not raise exceptions but returns empty
-            recommendations list if analysis fails.
+        InfrastructureError: If invalidation recommendations generation fails
+            or cache service encounters errors during analysis.
     
     Example:
         >>> # GET /internal/cache/invalidation-recommendations
@@ -508,8 +538,19 @@ async def get_invalidation_recommendations(
         
     except Exception as e:
         logger.error(f"Error getting invalidation recommendations: {e}")
-        # Return empty recommendations on error rather than raising exception
-        return {"recommendations": []}
+        raise InfrastructureError(
+            "Cache invalidation recommendations generation failed",
+            context={
+                "endpoint": "get_invalidation_recommendations",
+                "cache_operation": "recommendations_generation",
+                "cache_type": "cache_service",
+                "performance_metrics": {"recommendations_error": str(e)},
+                "redis_status": "unknown_due_to_recommendations_failure",
+                "operation_duration_ms": 0,
+                "error_type": type(e).__name__,
+                "error_details": str(e)
+            }
+        )
 
 
 @router.get(
