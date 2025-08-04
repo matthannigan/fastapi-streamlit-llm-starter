@@ -209,7 +209,7 @@ POST /process
 
 ### Available Operations
 ```http
-GET /operations
+GET /v1/text_processing/operations
 ```
 
 **Response:**

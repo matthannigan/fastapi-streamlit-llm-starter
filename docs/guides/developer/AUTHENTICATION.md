@@ -326,7 +326,7 @@ node -e "console.log('sk-' + require('crypto').randomBytes(32).toString('hex'))"
 - `GET /auth/status` - Authentication status check
 
 ### Optional Authentication Endpoints
-- `GET /operations` - Available operations (works with or without auth)
+- `GET /v1/text_processing/operations` - Available operations (works with or without auth)
 
 ## Usage Examples
 
@@ -338,7 +338,7 @@ The authentication system provides three main dependency functions for different
 ```python
 from app.infrastructure.security import verify_api_key
 
-@app.post("/v1/process")
+@app.post("/v1/text_processing/process")
 async def process_text(
     request: ProcessRequest,
     api_key: str = Depends(verify_api_key)
@@ -351,7 +351,7 @@ async def process_text(
 ```python
 from app.infrastructure.security import optional_verify_api_key
 
-@app.get("/v1/operations")
+@app.get("/v1/text_processing/operations")
 async def get_operations(
     api_key: Optional[str] = Depends(optional_verify_api_key)
 ):
@@ -362,10 +362,13 @@ async def get_operations(
 ```
 
 #### Authentication with Metadata (Advanced Mode)
+
+**Future Feature** see [Advanced Authentication](../../future-features/ADVANCED_AUTHENTICATION.md)
+
 ```python
 from app.infrastructure.security.auth import verify_api_key_with_metadata
 
-@app.post("/v1/advanced-process")
+@app.post("/v1/text_processing/advanced-process")
 async def advanced_process(
     request: ProcessRequest,
     auth_data: dict = Depends(verify_api_key_with_metadata)
@@ -572,13 +575,13 @@ def test_invalid_authentication():
 def test_optional_authentication():
     """Test optional authentication endpoints."""
     # Test without authentication
-    response = client.get("/v1/operations")
+    response = client.get("/v1/text_processing/operations")
     assert response.status_code == 200
     assert not response.json().get("authenticated", True)
     
     # Test with authentication
     response = client.get(
-        "/v1/operations",
+        "/v1/text_processing/operations",
         headers={"Authorization": "Bearer test-api-key-12345"}
     )
     assert response.status_code == 200
