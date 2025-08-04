@@ -685,6 +685,7 @@ repomix-backend:
 	@echo "📄 Generating backend documentation..."
 	@mkdir -p repomix-output
 	@npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output repomix-output/repomix_backend.md
+	@npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_backend-all_uncompressed.md
 
 # Generate backend tests documentation
 repomix-backend-tests:
@@ -697,6 +698,7 @@ repomix-frontend:
 	@echo "📄 Generating frontend documentation..."
 	@mkdir -p repomix-output
 	@npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*" --output repomix-output/repomix_frontend.md
+	@npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_frontend-all_uncompressed.md
 
 # Generate frontend tests documentation
 repomix-frontend-tests:
