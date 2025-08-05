@@ -226,6 +226,13 @@ Intelligent retry logic with exception classification, exponential backoff, and 
 
 The retry system automatically classifies exceptions to determine retry eligibility:
 
+> **📖 For detailed exception handling patterns**, see the **[Exception Handling Guide](../developer/EXCEPTION_HANDLING.md)** which provides:
+> - Complete exception hierarchy and classification logic
+> - Infrastructure vs Application error boundaries
+> - Global exception handler integration
+> - Testing patterns for exception classification
+> - Best practices for resilience-aware exception handling
+
 ```python
 from app.infrastructure.resilience.retry import (
     classify_exception,

@@ -38,6 +38,7 @@
 - **[Deployment](./guides/developer/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments *(Last updated 2025-07-30)*
 - **[Docker Setup & Usage](./guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services *(Last updated 2025-07-31)*
 - **[Documentation Guidance & Philosophy](./guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation *(Last updated 2025-07-31)*
+- **[Exception Handling](./guides/developer/EXCEPTION_HANDLING.md)**: Comprehensive exception handling system with hierarchical error classification, resilience integration, global error handlers, and testing patterns for robust error management *(Last updated 2025-08-05)*
 - **[Testing](./guides/developer/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-07-30)*
 - **[Virtual Environment Management](./guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation *(Last updated 2025-07-30)*
 

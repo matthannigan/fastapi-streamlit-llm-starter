@@ -29,6 +29,8 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Dual API Architecture](reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Sophisticated dual-API architecture that separates external business operations from internal infrastructure management with clear boundaries
 
+- **[Exception Handling Guide](guides/developer/EXCEPTION_HANDLING.md)**: Comprehensive exception handling system with hierarchical error classification, resilience integration, global error handlers, and testing patterns for robust error management
+
 - **[FastAPI Backend - Production-Ready AI Text Processing API](guides/application/BACKEND.md)**: Backend service documentation with API endpoints, setup instructions, and text processing operations
 
 - **[Infrastructure vs Domain Services](reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability

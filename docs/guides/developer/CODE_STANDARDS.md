@@ -473,6 +473,13 @@ async def process_request(request: TextProcessingRequest) -> Optional[TextProces
 - **Handle timeouts explicitly** for external API calls
 - **Return appropriate HTTP status codes**
 
+> **📖 For comprehensive exception handling patterns**, see the **[Exception Handling Guide](./EXCEPTION_HANDLING.md)** which covers:
+> - Complete exception hierarchy (Application vs Infrastructure errors)
+> - Global exception handler integration
+> - Exception classification for resilience patterns
+> - Testing patterns for exception handling
+> - Best practices and troubleshooting
+
 ### Client-Side Error Handling
 
 ```python

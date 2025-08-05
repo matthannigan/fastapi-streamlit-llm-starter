@@ -195,7 +195,8 @@
     "description": "Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring",
     "dependencies": [
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
-      "guides/application/BACKEND.md"
+      "guides/application/BACKEND.md",
+      "guides/developer/EXCEPTION_HANDLING.md"
     ],
     "followups": [
       "guides/infrastructure/MONITORING.md",
@@ -246,6 +247,7 @@
     ],
     "followups": [
       "guides/developer/CORE_MODULE_INTEGRATION.md",
+      "guides/developer/EXCEPTION_HANDLING.md",
       "guides/developer/TESTING.md",
       "guides/developer/DOCUMENTATION_GUIDANCE.md",
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md"
@@ -263,6 +265,7 @@
       "guides/developer/CODE_STANDARDS.md"
     ],
     "followups": [
+      "guides/developer/EXCEPTION_HANDLING.md",
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md",
       "guides/developer/AUTHENTICATION.md",
       "guides/infrastructure/AI.md",
@@ -314,6 +317,24 @@
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
+  "guides/developer/EXCEPTION_HANDLING.md": {
+    "title": "Exception Handling Guide",
+    "topic_category": "developer",
+    "audience_level": "intermediate",
+    "description": "Comprehensive exception handling system with hierarchical error classification, resilience integration, global error handlers, and testing patterns for robust error management",
+    "dependencies": [
+      "guides/developer/CODE_STANDARDS.md",
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/developer/CORE_MODULE_INTEGRATION.md"
+    ],
+    "followups": [
+      "guides/developer/TESTING.md",
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/infrastructure/MONITORING.md",
+      "guides/developer/AUTHENTICATION.md"
+    ],
+    "last_analyzed": "2025-08-05T10:00:00Z"
+  },
   "guides/developer/TESTING.md": {
     "title": "Testing Guide",
     "topic_category": "developer",
@@ -321,7 +342,8 @@
     "description": "Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend",
     "dependencies": [
       "guides/application/BACKEND.md",
-      "guides/application/FRONTEND.md"
+      "guides/application/FRONTEND.md",
+      "guides/developer/EXCEPTION_HANDLING.md"
     ],
     "followups": [
       "guides/developer/DEPLOYMENT.md",
