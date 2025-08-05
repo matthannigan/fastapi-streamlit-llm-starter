@@ -88,6 +88,13 @@ strategy = settings.get_operation_strategy("your_operation")
 
 **Primary Integration Role**: Provides a unified exception hierarchy that spans infrastructure and domain concerns, with intelligent classification for resilience patterns.
 
+> **📖 For comprehensive exception handling documentation**, see the **[Exception Handling Guide](./EXCEPTION_HANDLING.md)** which provides:
+> - Complete exception hierarchy and usage patterns
+> - Global exception handler middleware integration
+> - HTTP status code mapping and response formatting
+> - Exception classification for resilience patterns
+> - Comprehensive testing strategies for exception handling
+
 #### Exception Architecture Integration
 
 ```python
