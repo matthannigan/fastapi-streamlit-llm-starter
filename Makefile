@@ -613,11 +613,11 @@ restore:
 code_ref:
 	@cp README.md docs/README.md
 	@echo "✅ Repository README copied to docs/README"
-	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
+	@rm -Rf docs/code_ref/backend/  && mkdir docs/code_ref/backend/  && $(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
+	@rm -Rf docs/code_ref/frontend/ && mkdir docs/code_ref/frontend/ && $(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
+	@rm -Rf docs/code_ref/shared/   && mkdir docs/code_ref/shared/   && $(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
+	@rm -Rf docs/code_ref/examples/ && mkdir docs/code_ref/examples/ && $(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
+	@rm -Rf docs/code_ref/scripts/  && mkdir docs/code_ref/scripts/  && $(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
 	@echo "✅ docstrings copied to docs/code_ref/"
 
 # Generate alternative documentation views from metadata
