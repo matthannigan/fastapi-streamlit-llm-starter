@@ -6,6 +6,37 @@ sidebar_label: global_exception_handler
 
   file_path: `backend/app/core/middleware/global_exception_handler.py`
 
-This module provides centralized exception handling for unhandled application errors.
-It ensures consistent, secure error responses while protecting internal implementation
-details and providing comprehensive logging for debugging and monitoring.
+## Overview
+
+Centralized, security-conscious exception handling for the FastAPI application.
+Provides standardized JSON error responses, consistent HTTP status mapping, and
+structured logging with request correlation for observability.
+
+## Responsibilities
+
+- **Consistency**: Uniform error payloads via `app.schemas.common.ErrorResponse`
+- **Security**: Sanitized messages; no internal details leaked to clients
+- **Mapping**: Stable HTTP status codes by exception category
+- **Observability**: Correlated logs using request IDs
+
+## HTTP Status Mapping
+
+- `ApplicationError` → 400
+- `InfrastructureError` → 502
+- `TransientAIError` → 503
+- `PermanentAIError` → 502
+- Other uncaught exceptions → 500
+
+## Special Cases
+
+Maintains compatibility for API versioning errors by returning a specific
+payload and headers (`X-API-Supported-Versions`, `X-API-Current-Version`).
+
+## Usage
+
+```python
+from app.core.middleware.global_exception_handler import setup_global_exception_handler
+from app.core.config import settings
+
+setup_global_exception_handler(app, settings)
+```
