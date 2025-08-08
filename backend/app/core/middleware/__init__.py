@@ -625,15 +625,20 @@ def get_middleware_stats(app: FastAPI) -> Dict[str, Any]:
         Dict containing middleware configuration and runtime stats
     """
     middleware_info = {
-        'total_middleware': len(app.middleware_stack),
+        'total_middleware': len(app.user_middleware),
         'middleware_stack': [],
         'enabled_features': [],
         'configuration': {}
     }
 
     # Analyze middleware stack
-    for middleware in app.middleware_stack:
-        middleware_class = middleware.cls.__name__
+    for middleware in app.user_middleware:
+        # Safely get middleware class name
+        try:
+            middleware_class = getattr(middleware.cls, '__name__', str(middleware.cls))
+        except AttributeError:
+            middleware_class = str(type(middleware.cls).__name__)
+        
         middleware_info['middleware_stack'].append(middleware_class)
 
         # Check for known middleware types
