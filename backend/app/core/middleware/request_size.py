@@ -1,8 +1,35 @@
 """
-Enhanced Request Size Limiting Middleware
+Request Size Limiting Middleware
 
-Provides granular request size limits with streaming validation,
-content-type specific limits, and protection against DoS attacks.
+## Overview
+
+Protects the API by enforcing configurable request body size limits with
+streaming validation. Supports per-endpoint and content-type specific limits
+to mitigate abuse and accidental oversized uploads.
+
+## Features
+
+- **Per-endpoint limits**: Configure strict caps on heavy routes
+- **Content-type limits**: Different ceilings for JSON, multipart, etc.
+- **Streaming enforcement**: Validates as body chunks arrive (no buffering)
+- **Clear errors**: Returns 413 with informative headers and fields
+
+## Configuration
+
+Provided via `app.core.config.Settings`:
+
+- `request_size_limiting_enabled` (bool): Master toggle
+- `request_size_limits` (dict): Map of endpoint or content-type to byte limit
+- `max_request_size` (int): Global default limit
+
+## Usage
+
+```python
+from app.core.middleware.request_size import RequestSizeLimitMiddleware
+from app.core.config import settings
+
+app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
+```
 """
 
 import logging
@@ -13,6 +40,7 @@ from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 
 from app.core.config import Settings
+from app.core.exceptions import RequestTooLargeError
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -35,8 +63,11 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = settings
         
-        # Default size limits (in bytes)
-        self.default_limits = {
+        # Methods that can have request bodies
+        self.body_methods = {'POST', 'PUT', 'PATCH'}
+        
+        # Default size limits (in bytes) - fallback values
+        default_limits = {
             # Global default
             'default': 10 * 1024 * 1024,  # 10MB
             
@@ -52,12 +83,12 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             '/v1/text_processing/upload': 50 * 1024 * 1024,  # 50MB
         }
         
-        # Methods that can have request bodies
-        self.body_methods = {'POST', 'PUT', 'PATCH'}
-        
-        # Override with custom settings
+        # Use custom settings if provided, otherwise use defaults
         custom_limits = getattr(settings, 'request_size_limits', {})
-        self.default_limits.update(custom_limits)
+        if custom_limits:
+            self.default_limits = custom_limits.copy()
+        else:
+            self.default_limits = default_limits.copy()
     
     def _get_size_limit(self, request: Request) -> int:
         """Determine the appropriate size limit for this request."""
@@ -144,8 +175,8 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                 body_size += len(body_chunk)
                 
                 if body_size > size_limit:
-                    # Create a custom exception that can be caught
-                    raise RequestTooLargeException(
+                    # Raise app-level error for uniform handling
+                    raise RequestTooLargeError(
                         f"Request body size {body_size} exceeds limit {size_limit}"
                     )
             
@@ -163,7 +194,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
             
             return response
             
-        except RequestTooLargeException as e:
+        except RequestTooLargeError as e:
             logger.warning(f"Streaming request too large: {e}")
             
             return JSONResponse(
@@ -182,7 +213,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
 
 class RequestTooLargeException(Exception):
-    """Exception raised when request body exceeds size limit during streaming."""
+    """Deprecated. Use RequestTooLargeError from app.core.exceptions instead."""
     pass
 
 
@@ -257,25 +288,33 @@ class ASGIRequestSizeLimitMiddleware:
                 body_size += len(body)
                 
                 if body_size > self.max_size:
-                    # We can't easily send an error response here,
-                    # so we'll let the application handle it
-                    raise Exception("Request too large")
+                    # Let the global handler or upstream middleware handle it
+                    raise RequestTooLargeError("Request too large")
             
             return message
         
+        response_started = False
+        
+        async def intercept_send(message):
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+        
         try:
-            await self.app(scope, size_limiting_receive, send)
-        except Exception:
-            # Send error response for streaming size violations
-            await send({
-                "type": "http.response.start",
-                "status": 413,
-                "headers": [
-                    [b"content-type", b"application/json"],
-                    [b"x-max-request-size", str(self.max_size).encode()],
-                ],
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b'{"error": "Request too large", "error_code": "REQUEST_TOO_LARGE"}',
-            })
+            await self.app(scope, size_limiting_receive, intercept_send)
+        except Exception as e:
+            # Only send error response if we haven't started sending a response yet
+            if not response_started:
+                await send({
+                    "type": "http.response.start",
+                    "status": 413,
+                    "headers": [
+                        [b"content-type", b"application/json"],
+                        [b"x-max-request-size", str(self.max_size).encode()],
+                    ],
+                })
+                await send({
+                    "type": "http.response.body",
+                    "body": b'{"error": "Request too large", "error_code": "REQUEST_TOO_LARGE"}',
+                })

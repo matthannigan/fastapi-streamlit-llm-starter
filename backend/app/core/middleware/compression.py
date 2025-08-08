@@ -1,15 +1,66 @@
 """
-Request/Response Compression Middleware
+Compression Middleware
 
-Handles both incoming compressed requests and outgoing response compression
-with multiple compression algorithms and intelligent compression decisions.
+## Overview
+
+Production-grade middleware for handling compressed HTTP traffic. It supports
+automatic request decompression and intelligent response compression using
+multiple algorithms with content-aware decisions and size thresholds.
+
+## Features
+
+- **Request decompression**: Supports `gzip`, `deflate`, and `br` (Brotli)
+- **Response compression**: Chooses the best algorithm from client
+  `Accept-Encoding` preferences
+- **Content-aware decisions**: Skips images, archives, and already-compressed
+  media; prioritizes text and JSON payloads
+- **Size thresholds**: Only compresses responses larger than a configurable
+  minimum
+- **Streaming support**: Optional ASGI-level streaming compression for large
+  responses
+- **Safety**: Falls back gracefully if a compression backend fails
+
+## Configuration
+
+Configured via `app.core.config.Settings` (see `backend/app/core/config.py`):
+
+- `compression_enabled` (bool): Master toggle
+- `compression_min_size` (int): Minimum size in bytes to compress (default 1024)
+- `compression_level` (int): 1-9 quality/CPU tradeoff (default 6)
+- `compression_algorithms` (list[str]): Preferred order, e.g. `['br','gzip','deflate']`
+- `streaming_compression_enabled` (bool): Enable ASGI streaming middleware
+
+## Headers
+
+- Request: `Content-Encoding` is honored for decompression
+- Response: Sets `Content-Encoding`, `Content-Length`, and adds
+  `X-Original-Size` and `X-Compression-Ratio` for observability
+
+## Usage
+
+```python
+from app.core.middleware.compression import CompressionMiddleware
+from app.core.config import settings
+
+app.add_middleware(CompressionMiddleware, settings=settings)
+```
+
+## Dependencies
+
+- `fastapi`, `starlette`
+- `brotli`, `gzip`, `zlib`
+
+## Notes
+
+Compression is applied only when it reduces payload size. Media types that are
+usually already compressed are excluded to avoid wasted CPU cycles.
 """
 
 import gzip
 import zlib
 import brotli
 import logging
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, cast
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 from fastapi import Request, Response
@@ -17,6 +68,7 @@ from fastapi.responses import JSONResponse
 import io
 
 from app.core.config import Settings
+from app.core.exceptions import ValidationError
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -42,6 +94,7 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         self.min_response_size = getattr(settings, 'compression_min_size', 1024)  # 1KB
         self.compression_level = getattr(settings, 'compression_level', 6)  # 1-9
         self.compression_enabled = getattr(settings, 'compression_enabled', True)
+        
         
         # Compressible content types
         self.compressible_types = {
@@ -112,19 +165,25 @@ class CompressionMiddleware(BaseHTTPMiddleware):
     
     def _should_compress_response(self, response: Response) -> bool:
         """Determine if response should be compressed."""
+        logger.debug(f"Checking if response should be compressed: {type(response)}")
+        
         if not self.compression_enabled:
+            logger.debug("Compression disabled, skipping")
             return False
         
         # Check if already compressed
         if response.headers.get('content-encoding'):
+            logger.debug("Already compressed, skipping")
             return False
         
         # Check content type
         content_type = response.headers.get('content-type', '').lower()
+        logger.debug(f"Content-Type: {content_type}")
         
         # Never compress certain types
         for incompressible in self.incompressible_types:
             if content_type.startswith(incompressible):
+                logger.debug(f"Incompressible content type: {content_type}")
                 return False
         
         # Only compress known compressible types
@@ -134,18 +193,21 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         )
         
         if not compressible:
+            logger.debug(f"Non-compressible content type: {content_type}")
             return False
         
-        # Check size threshold
+        # Check size from content-length header if available
         content_length = response.headers.get('content-length')
         if content_length:
             try:
                 size = int(content_length)
                 if size < self.min_response_size:
+                    logger.debug(f"Response size {size} below threshold {self.min_response_size}")
                     return False
-            except ValueError:
-                pass
+            except (ValueError, TypeError):
+                pass  # Ignore invalid content-length, will check body size later
         
+        logger.debug("Response should be compressed")
         return True
     
     def _compress_gzip(self, data: bytes) -> bytes:
@@ -176,70 +238,83 @@ class CompressionMiddleware(BaseHTTPMiddleware):
         """Decompress brotli data."""
         return brotli.decompress(data)
     
-    async def _decompress_request_body(self, request: Request) -> None:
-        """Decompress request body if compressed."""
-        content_encoding = request.headers.get('content-encoding', '').lower()
-        
-        if not content_encoding or content_encoding not in self.decompression_algorithms:
-            return
-        
-        try:
-            # Read the entire body
-            body = await request.body()
-            
-            if not body:
-                return
-            
-            # Decompress the body
-            decompressor = self.decompression_algorithms[content_encoding]
-            decompressed_body = decompressor(body)
-            
-            # Create a new receive callable with decompressed body
-            async def decompressed_receive():
-                return {
-                    "type": "http.request",
-                    "body": decompressed_body,
-                    "more_body": False
-                }
-            
-            # Replace the request's receive method
-            request._receive = decompressed_receive
-            
-            # Update Content-Length header
-            request.headers.__dict__['_list'] = [
-                (name, value) for name, value in request.headers.items()
-                if name.lower() not in ['content-encoding', 'content-length']
-            ]
-            request.headers.__dict__['_list'].append(
-                ('content-length', str(len(decompressed_body)))
-            )
-            
-            logger.debug(
-                f"Decompressed request body: {content_encoding} "
-                f"{len(body)} -> {len(decompressed_body)} bytes"
-            )
-            
-        except Exception as e:
-            logger.error(f"Failed to decompress request body ({content_encoding}): {e}")
-            raise ValueError(f"Invalid {content_encoding} compressed data")
     
-    def _compress_response_body(self, response: Response, algorithm: str) -> Response:
+    async def _get_response_body(self, response: Response) -> bytes:
+        """Extract body content from different response types."""
+        # Handle JSONResponse and similar response objects
+        if isinstance(response, JSONResponse) and hasattr(response, 'render'):
+            r_any = cast(Any, response)
+            body_content = r_any.render(getattr(r_any, 'content', None))
+            if isinstance(body_content, str):
+                body_content = body_content.encode('utf-8')
+            return body_content
+        
+        # Handle different response types from FastAPI
+        if hasattr(response, 'body') and response.body:
+            return response.body
+        
+        # For streaming responses, we need to read the body iterator
+        r_any = cast(Any, response)
+        if hasattr(r_any, 'body_iterator'):
+            body_parts = []
+            async for chunk in r_any.body_iterator:
+                body_parts.append(chunk)
+            body = b''.join(body_parts)
+            
+            # Create a new iterator for the original body
+            async def new_body_iterator():
+                yield body
+            r_any.body_iterator = new_body_iterator()
+            return body
+        
+        return b''
+    
+    async def _compress_response_body(self, response: Response, algorithm: str) -> Response:
         """Compress response body using specified algorithm."""
-        if not hasattr(response, 'body') or not response.body:
+        logger.debug(f"Attempting to compress response: {type(response)}, algorithm: {algorithm}")
+        
+        # Get the response body
+        try:
+            body_content = await self._get_response_body(response)
+        except Exception as e:
+            logger.warning(f"Failed to get response body: {e}")
             return response
         
+        if not body_content:
+            logger.debug("No body content found, skipping compression")
+            return response
+        
+        # Ensure body_content is bytes
+        if isinstance(body_content, str):
+            body_content = body_content.encode('utf-8')
+        
         try:
+            # Check size threshold first
+            original_size = len(body_content)
+            logger.debug(f"Body size: {original_size}, threshold: {self.min_response_size}")
+            if original_size < self.min_response_size:
+                logger.debug(f"Body size {original_size} below threshold {self.min_response_size}, skipping compression")
+                return response
+            
             # Get the compression function
             compressor = self.compression_algorithms[algorithm]
             
             # Compress the body
-            original_size = len(response.body)
-            compressed_body = compressor(response.body)
+            compressed_body = compressor(body_content)
             compressed_size = len(compressed_body)
             
             # Only use compression if it actually reduces size
             if compressed_size < original_size:
-                response.body = compressed_body
+                # Update the response body based on response type
+                if isinstance(response, JSONResponse):
+                    # For JSONResponse, create a new response with compressed body
+                    response.body = compressed_body
+                elif hasattr(cast(Any, response), 'body_iterator'):
+                    async def compressed_body_iterator():
+                        yield compressed_body
+                    cast(Any, response).body_iterator = compressed_body_iterator()
+                elif hasattr(response, 'body'):
+                    response.body = compressed_body
                 
                 # Update headers
                 response.headers['content-encoding'] = algorithm
@@ -265,24 +340,12 @@ class CompressionMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """Process request with compression handling."""
+        logger.debug(f"CompressionMiddleware dispatch called for {request.method} {request.url.path}")
         
-        # 1. Handle request decompression
-        try:
-            await self._decompress_request_body(request)
-        except ValueError as e:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": "Invalid compressed request body",
-                    "error_code": "INVALID_COMPRESSION",
-                    "detail": str(e)
-                }
-            )
-        
-        # 2. Process the request
+        # Handle response compression
         response = await call_next(request)
+        logger.debug(f"Got response from call_next: {type(response)}, status: {getattr(response, 'status_code', 'unknown')}")
         
-        # 3. Handle response compression
         if self._should_compress_response(response):
             # Parse client's Accept-Encoding header
             accept_encoding = request.headers.get('accept-encoding', '')
@@ -291,10 +354,86 @@ class CompressionMiddleware(BaseHTTPMiddleware):
             # Choose the best compression algorithm
             for algorithm in supported_algorithms:
                 if algorithm in self.compression_algorithms:
-                    response = self._compress_response_body(response, algorithm)
+                    response = await self._compress_response_body(response, algorithm)
                     break
-        
         return response
+    
+    async def __call__(self, scope, receive, send):
+        """ASGI interface for handling request decompression."""
+        if scope["type"] != "http":
+            # For non-HTTP requests, call parent which will eventually call self.app
+            await super().__call__(scope, receive, send)
+            return
+        
+        # Check for request compression
+        headers = dict(scope.get("headers", []))
+        content_encoding = headers.get(b"content-encoding", b"").decode().lower()
+        
+        if content_encoding and content_encoding in self.decompression_algorithms:
+            # Handle compressed requests - call parent with modified receive
+            try:
+                decompressed_receive = await self._create_decompressing_receive(receive, content_encoding, scope)
+                await super().__call__(scope, decompressed_receive, send)
+            except (ValueError, ValidationError):
+                # Send error response for invalid compression
+                await send({
+                    "type": "http.response.start",
+                    "status": 400,
+                    "headers": [[b"content-type", b"application/json"]],
+                })
+                await send({
+                    "type": "http.response.body",
+                    "body": b'{"error": "Invalid compressed request body", "error_code": "INVALID_COMPRESSION"}',
+                })
+        else:
+            # No decompression needed, call parent which will handle dispatch
+            await super().__call__(scope, receive, send)
+    
+    async def _create_decompressing_receive(self, receive, content_encoding, scope):
+        """Create a receive callable that decompresses the request body."""
+        decompressor = self.decompression_algorithms[content_encoding]
+        body_parts = []
+        
+        async def decompressing_receive():
+            while True:
+                message = await receive()
+                if message["type"] == "http.request":
+                    body_parts.append(message.get("body", b""))
+                    if not message.get("more_body", False):
+                        # All body collected, decompress
+                        compressed_body = b"".join(body_parts)
+                        if compressed_body:
+                            try:
+                                decompressed_body = decompressor(compressed_body)
+                                
+                                # Update headers to reflect decompressed content
+                                headers = dict(scope.get("headers", []))
+                                headers.pop(b"content-encoding", None)
+                                headers[b"content-length"] = str(len(decompressed_body)).encode()
+                                scope["headers"] = list(headers.items())
+                                
+                                logger.debug(
+                                    f"Decompressed request body: {content_encoding} "
+                                    f"{len(compressed_body)} -> {len(decompressed_body)} bytes"
+                                )
+                                
+                                return {
+                                    "type": "http.request",
+                                    "body": decompressed_body,
+                                    "more_body": False
+                                }
+                            except Exception as e:
+                                logger.error(f"Failed to decompress request body ({content_encoding}): {e}")
+                                # Raise ValidationError to let global handler map to 400 consistently
+                                raise ValidationError(f"Invalid {content_encoding} compressed data")
+                        else:
+                            return message
+                    else:
+                        continue
+                else:
+                    return message
+        
+        return decompressing_receive
 
 
 class StreamingCompressionMiddleware:

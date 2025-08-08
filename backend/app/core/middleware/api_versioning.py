@@ -1,8 +1,42 @@
 """
 API Versioning Middleware
 
-Handles API versioning through multiple strategies including URL paths,
-headers, and query parameters with backward compatibility support.
+## Overview
+
+Robust API version detection and routing with support for URL prefix, headers,
+query parameters, and Accept media types. Adds response headers with current
+and supported versions, and can perform compatibility transformations.
+
+## Detection Strategies
+
+- **Path**: `/v1/`, `/v2/`, `/v1.5/`
+- **Headers**: `X-API-Version`, `API-Version`, or custom via settings
+- **Query**: `?version=1.0` or `?api_version=1.0`
+- **Accept**: `application/vnd.api+json;version=2.0`
+
+## Behavior
+
+- Writes detected version and method to `request.state`
+- Rejects unsupported versions with a stable JSON payload and
+  `X-API-Supported-Versions`/`X-API-Current-Version` headers
+- Optionally rewrites paths to the expected version prefix
+
+## Configuration
+
+Configured via `app.core.config.Settings` and helper settings in this module:
+
+- `api_versioning_enabled`, `default_api_version`, `current_api_version`
+- `min_api_version`, `max_api_version`, `api_supported_versions`
+- `version_compatibility_enabled`, `api_version_header`
+
+## Usage
+
+```python
+from app.core.middleware.api_versioning import APIVersioningMiddleware
+from app.core.config import settings
+
+app.add_middleware(APIVersioningMiddleware, settings=settings)
+```
 """
 
 import logging
@@ -15,6 +49,7 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 
 from app.core.config import Settings
+from app.core.exceptions import ApplicationError
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -37,34 +72,30 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = settings
         
-        # Version configuration
-        self.default_version = getattr(settings, 'default_api_version', '1.0')
-        self.current_version = getattr(settings, 'current_api_version', '1.0')
-        self.min_supported_version = getattr(settings, 'min_api_version', '1.0')
-        self.max_supported_version = getattr(settings, 'max_api_version', '1.0')
+        # Enable/disable middleware
+        self.enabled = getattr(settings, 'api_versioning_enabled', True)
         
-        # Supported versions with their status
-        self.supported_versions = {
-            # v0.0 and v0.1 are examples of how to configure old versions of the API
-            '0.0': {
-                'status': 'supported',
+        # Version configuration
+        self.default_version = getattr(settings, 'api_default_version', '1.0')
+        self.current_version = getattr(settings, 'api_current_version', '1.0')
+        self.min_supported_version = getattr(settings, 'api_min_version', '1.0')
+        self.max_supported_version = getattr(settings, 'api_max_version', '2.0')
+        self.version_header = getattr(settings, 'api_version_header', 'X-API-Version')
+        
+        # Parse supported versions from settings
+        supported_versions_list = getattr(settings, 'api_supported_versions', ['1.0', '2.0'])
+        self.supported_versions_list = supported_versions_list
+        
+        # Build supported_versions dictionary from list
+        self.supported_versions = {}
+        for ver in self.supported_versions_list:
+            major_version = ver.split('.')[0]
+            self.supported_versions[ver] = {
+                'status': 'current' if ver == self.current_version else 'supported',
                 'deprecated': False,
                 'sunset_date': None,
-                'path_prefix': '/v0'
-            },
-            '0.1': {
-                'status': 'supported',
-                'deprecated': True,
-                'sunset_date': '2024-12-31',
-                'path_prefix': '/v0'  # v0.1 uses same prefix as v0.0
-            },
-            '1.0': {
-                'status': 'current',
-                'deprecated': False,
-                'sunset_date': None,
-                'path_prefix': '/v1'
+                'path_prefix': f'/v{major_version}'
             }
-        }
         
         # Version detection strategies in order of preference
         self.version_strategies = [
@@ -118,12 +149,17 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
     
     def _get_version_from_header(self, request: Request) -> Optional[str]:
         """Extract version from HTTP headers."""
-        # Check dedicated version headers
+        # Check dedicated version headers (case insensitive)
         for header_name in self.version_headers:
             version_str = request.headers.get(header_name)
             if version_str:
                 return self._normalize_version(version_str)
         
+        # Also check the configured version header
+        version_str = request.headers.get(self.version_header)
+        if version_str:
+            return self._normalize_version(version_str)
+            
         # Check Accept header for media type versioning
         accept_header = request.headers.get('accept', '')
         match = self.accept_version_pattern.search(accept_header)
@@ -152,17 +188,18 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         """
         for strategy in self.version_strategies:
             detected_version = strategy(request)
-            if detected_version and detected_version in self.supported_versions:
+            if detected_version:
                 strategy_name = strategy.__name__.replace('_get_version_from_', '')
                 strategy_name = strategy_name.replace('_get_default_version', 'default')
+                # Return the detected version even if unsupported - we'll check support later
                 return detected_version, strategy_name
         
-        # Fallback to default if no valid version detected
+        # Fallback to default if no version detected at all
         return self.default_version, 'default'
     
     def _is_version_supported(self, requested_version: str) -> bool:
         """Check if the requested version is supported."""
-        return requested_version in self.supported_versions
+        return requested_version in self.supported_versions_list
     
     def _get_version_info(self, version_str: str) -> Dict[str, Any]:
         """Get detailed information about a version."""
@@ -173,10 +210,10 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         version_info = self._get_version_info(request_version)
         
         headers = {
-            'API-Version': request_version,
-            'API-Version-Detection': detection_method,
-            'API-Supported-Versions': ', '.join(self.supported_versions.keys()),
-            'API-Current-Version': self.current_version,
+            self.version_header: request_version,  # Use configured header name
+            'X-API-Version-Detection': detection_method,
+            'X-API-Supported-Versions': ', '.join(self.supported_versions_list),
+            'X-API-Current-Version': self.current_version,
         }
         
         # Add deprecation headers if version is deprecated
@@ -225,8 +262,21 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         # Add target version prefix
         return f"{target_prefix}{path_without_version}"
     
+    def _is_health_check_path(self, path: str) -> bool:
+        """Check if the path is a health check endpoint that should bypass versioning."""
+        health_check_paths = {'/health', '/healthz', '/ping', '/status', '/readiness', '/liveness'}
+        return path in health_check_paths or path.startswith('/health/')
+    
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """Process request with API versioning."""
+        
+        # Skip processing if middleware is disabled
+        if not self.enabled:
+            return await call_next(request)
+        
+        # Skip versioning for health check endpoints
+        if self._is_health_check_path(request.url.path):
+            return await call_next(request)
         
         # 1. Detect requested API version
         detected_version, detection_method = self._detect_api_version(request)
@@ -245,19 +295,22 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
                 detected_version = compatible_version
             else:
                 # Version not supported and no compatible version found
+                # Return a JSON error directly for compatibility in apps/tests
+                # that do not configure the global exception handler.
                 return JSONResponse(
                     status_code=400,
                     content={
                         "error": "Unsupported API version",
-                        "error_code": "UNSUPPORTED_API_VERSION",
+                        "error_code": "API_VERSION_NOT_SUPPORTED",
                         "requested_version": detected_version,
-                        "supported_versions": list(self.supported_versions.keys()),
-                        "current_version": self.current_version
+                        "supported_versions": self.supported_versions_list,
+                        "current_version": self.current_version,
+                        "detail": f"API version '{detected_version}' is not supported",
                     },
                     headers={
-                        "API-Supported-Versions": ", ".join(self.supported_versions.keys()),
-                        "API-Current-Version": self.current_version
-                    }
+                        "X-API-Supported-Versions": ", ".join(self.supported_versions_list),
+                        "X-API-Current-Version": self.current_version,
+                    },
                 )
         
         # 3. Add version info to request state
@@ -442,3 +495,103 @@ class APIVersioningSettings:
     
     # Enable version analytics and logging
     version_analytics_enabled: bool = True
+
+
+# Additional utility functions for testing and external use
+def extract_version_from_url(path: str) -> Optional[str]:
+    """Extract version from URL path (e.g., /v1/users -> 1.0)."""
+    if not path:
+        return None
+    
+    # Match patterns like /v1/, /v2/, /v1.5/, etc.
+    version_match = re.match(r'^/v(\d+(?:\.\d+)?)', path)
+    if version_match:
+        version_str = version_match.group(1)
+        # Convert to standard format (e.g., "1" -> "1.0")
+        if '.' not in version_str:
+            version_str += '.0'
+        return version_str
+    
+    return None
+
+
+def extract_version_from_header(request: Request, header_name: str) -> Optional[str]:
+    """Extract version from request header."""
+    # Try exact match first (for real FastAPI headers which are case-insensitive)
+    result = request.headers.get(header_name)
+    if result:
+        return result
+    
+    # For tests with mock headers, also try lowercase versions
+    if hasattr(request.headers, 'get'):
+        # Try lowercase version of requested header
+        result = request.headers.get(header_name.lower())
+        if result:
+            return result
+        
+        # Try searching through all headers case-insensitively
+        for key, value in request.headers.items():
+            if key.lower() == header_name.lower():
+                return value
+    
+    return None
+
+
+def extract_version_from_accept(request: Request) -> Optional[str]:
+    """Extract version from Accept header (e.g., application/vnd.api+json;version=2.0)."""
+    accept_header = request.headers.get('accept', '')
+    if not accept_header:
+        return None
+    
+    # Look for version parameter in Accept header
+    version_match = re.search(r'version=([0-9]+(?:\.[0-9]+)?)', accept_header)
+    if version_match:
+        return version_match.group(1)
+    
+    return None
+
+
+def validate_api_version(version_str: str, supported_versions: list) -> bool:
+    """Validate if the given version is supported."""
+    return version_str in supported_versions if version_str else False
+
+
+def rewrite_path_for_version(path: str, target_version: str) -> str:
+    """Rewrite path to include version prefix."""
+    if not path or not target_version:
+        return path
+    
+    # Convert version to URL format (e.g., "1.0" -> "v1", "1.5" -> "v1.5")
+    if target_version.endswith('.0'):
+        url_version = f"v{target_version[:-2]}"
+    else:
+        url_version = f"v{target_version}"
+    
+    # If path already has version, replace it
+    if re.match(r'^/v\d+(?:\.\d+)?', path):
+        return re.sub(r'^/v\d+(?:\.\d+)?', f'/{url_version}', path)
+    
+    # If path is root, just add version
+    if path == '/':
+        return f'/{url_version}'
+    
+    # Otherwise, prepend version
+    return f'/{url_version}{path}'
+
+
+def add_version_headers(response: Response, current_version: str, supported_versions: list, header_name: str = "X-API-Version") -> None:
+    """Add version information to response headers."""
+    response.headers[header_name] = current_version
+    response.headers["X-API-Supported-Versions"] = ", ".join(sorted(supported_versions))
+
+
+class APIVersionNotSupported(ApplicationError):
+    """Exception raised when an unsupported API version is requested."""
+    def __init__(self, message: str, requested_version: str, supported_versions: list[str], current_version: str):
+        context = {
+            "requested_version": requested_version,
+            "supported_versions": supported_versions,
+            "current_version": current_version,
+            "error_code": "API_VERSION_NOT_SUPPORTED",
+        }
+        super().__init__(message, context)

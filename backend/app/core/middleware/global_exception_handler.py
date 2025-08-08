@@ -1,9 +1,40 @@
 """
 Global Exception Handler
 
-This module provides centralized exception handling for unhandled application errors.
-It ensures consistent, secure error responses while protecting internal implementation
-details and providing comprehensive logging for debugging and monitoring.
+## Overview
+
+Centralized, security-conscious exception handling for the FastAPI application.
+Provides standardized JSON error responses, consistent HTTP status mapping, and
+structured logging with request correlation for observability.
+
+## Responsibilities
+
+- **Consistency**: Uniform error payloads via `app.schemas.common.ErrorResponse`
+- **Security**: Sanitized messages; no internal details leaked to clients
+- **Mapping**: Stable HTTP status codes by exception category
+- **Observability**: Correlated logs using request IDs
+
+## HTTP Status Mapping
+
+- `ApplicationError` → 400
+- `InfrastructureError` → 502
+- `TransientAIError` → 503
+- `PermanentAIError` → 502
+- Other uncaught exceptions → 500
+
+## Special Cases
+
+Maintains compatibility for API versioning errors by returning a specific
+payload and headers (`X-API-Supported-Versions`, `X-API-Current-Version`).
+
+## Usage
+
+```python
+from app.core.middleware.global_exception_handler import setup_global_exception_handler
+from app.core.config import settings
+
+setup_global_exception_handler(app, settings)
+```
 """
 
 import logging
@@ -180,6 +211,25 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         # Determine HTTP status code based on exception type
         http_status = get_http_status_for_exception(exc)
         
+        # Special-case known ApplicationError contexts that require custom payloads
+        if isinstance(exc, ApplicationError):
+            context = getattr(exc, 'context', {}) or {}
+            # Preserve API versioning error response shape used in tests and clients
+            if context.get('error_code') == 'API_VERSION_NOT_SUPPORTED':
+                headers = {
+                    'X-API-Supported-Versions': ', '.join(context.get('supported_versions', [])),
+                    'X-API-Current-Version': context.get('current_version', '')
+                }
+                content = {
+                    'error': 'Unsupported API version',
+                    'error_code': 'API_VERSION_NOT_SUPPORTED',
+                    'requested_version': context.get('requested_version'),
+                    'supported_versions': context.get('supported_versions', []),
+                    'current_version': context.get('current_version'),
+                    'detail': str(exc)
+                }
+                return JSONResponse(status_code=400, content=content, headers=headers)
+
         # Create standardized error response
         error_response = ErrorResponse(
             error="Internal server error",
@@ -208,6 +258,14 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         elif isinstance(exc, InfrastructureError):
             error_response.error = "External service error"
             error_response.error_code = "INFRASTRUCTURE_ERROR"
+        elif isinstance(exc, ApplicationError):
+            # Prefer error_code provided in context when available
+            context = getattr(exc, 'context', {}) or {}
+            if 'error_code' in context:
+                error_response.error_code = str(context['error_code'])
+            error_response.error = str(exc) or "Invalid request data"
+            # Propagate context as details for debugging
+            error_response.details = context if context else None
         
         return JSONResponse(
             status_code=http_status,
