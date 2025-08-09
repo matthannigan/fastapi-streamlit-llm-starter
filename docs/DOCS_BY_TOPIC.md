@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-08-04*
+*Last updated on 2025-08-08*
 
 ## Application
 
@@ -76,6 +76,8 @@ This view organizes all documentation by topic category, providing an alternativ
 - **[Backup & Recovery Guide](guides/operations/BACKUP_RECOVERY.md)**: Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity
 
 - **[Logging Strategy Guide](guides/operations/LOGGING_STRATEGY.md)**: Structured logging strategies, log analysis procedures, security event logging, and operational log management for effective system observability
+
+- **[Middleware Operations Guide](guides/operations/MIDDLEWARE.md)**: Comprehensive middleware stack operations guide covering all 9 production-ready middleware components including CORS, security, rate limiting, compression, API versioning, and performance monitoring with configuration management and operational procedures
 
 - **[Operational Monitoring Guide](guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments
 

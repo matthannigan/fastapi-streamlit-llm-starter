@@ -2,7 +2,7 @@
 
 This view organizes all documentation by target audience level, helping you find content appropriate for your experience level.
 
-*Last updated on 2025-08-04*
+*Last updated on 2025-08-08*
 
 ## Introductory
 
@@ -65,6 +65,8 @@ This view organizes all documentation by target audience level, helping you find
 - **[Deployment Guide](guides/developer/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments
 
 - **[Documentation Guidance & Philosophy](guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation
+
+- **[Middleware Operations Guide](guides/operations/MIDDLEWARE.md)**: Comprehensive middleware stack operations guide covering all 9 production-ready middleware components including CORS, security, rate limiting, compression, API versioning, and performance monitoring with configuration management and operational procedures
 
 - **[Monitoring Infrastructure Service](guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection
 

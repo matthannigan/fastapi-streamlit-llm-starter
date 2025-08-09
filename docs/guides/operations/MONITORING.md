@@ -21,6 +21,7 @@ The starter template includes comprehensive monitoring capabilities through the 
 | `/health` | Basic application health | <100ms | >1000ms |
 | `/internal/monitoring/overview` | Comprehensive system status | <500ms | >2000ms |
 | `/internal/monitoring/health` | Infrastructure health checks | <300ms | >1500ms |
+| `/internal/monitoring/middleware` | Middleware health and metrics | <200ms | >1000ms |
 
 #### Health Check Procedures
 
@@ -46,6 +47,204 @@ curl -s http://localhost:8000/internal/resilience/performance-metrics | jq '.tre
 
 # Review alert history
 curl -s http://localhost:8000/internal/monitoring/alerts | jq '.by_severity'
+```
+
+### Middleware Monitoring
+
+The enhanced middleware stack provides comprehensive monitoring capabilities for rate limiting, compression, security headers, request size limits, and API versioning. Monitoring these components is crucial for maintaining optimal performance and security.
+
+> **📖 For complete middleware monitoring procedures**, see the **[Middleware Operations Guide](./MIDDLEWARE.md)** which provides:
+> - Detailed middleware health check procedures
+> - Performance optimization monitoring workflows
+> - Security monitoring and incident response
+> - Troubleshooting guidance for middleware issues
+
+#### Middleware Health Endpoints
+
+**Core Middleware Monitoring Endpoints:**
+
+| Endpoint | Component | Purpose | Key Metrics |
+|----------|-----------|---------|-------------|
+| `/internal/monitoring/middleware` | All middleware | Overall middleware status | Stack health, execution order |
+| `/internal/monitoring/rate-limiting` | Rate limiting | Rate limit violations and performance | Request rates, blocks, latency |
+| `/internal/monitoring/compression` | Compression | Compression efficiency and performance | Compression ratio, CPU usage |
+| `/internal/monitoring/request-size` | Request size limits | Request size violations and blocking | Size limits, violations, blocked requests |
+| `/internal/monitoring/security-headers` | Security middleware | Security header compliance | Header presence, policy violations |
+| `/internal/monitoring/api-versioning` | API versioning | Version detection and compatibility | Version distribution, detection errors |
+
+#### Daily Middleware Monitoring
+
+**Comprehensive Middleware Health Check:**
+```bash
+#!/bin/bash
+# daily_middleware_monitoring.sh
+
+echo "=== Daily Middleware Monitoring $(date) ==="
+
+# 1. Overall middleware stack health
+echo "=== Middleware Stack Status ==="
+curl -s http://localhost:8000/internal/monitoring/middleware | jq '{
+  status: .overall_status,
+  active_middleware: .active_middleware,
+  execution_time_ms: .total_execution_time,
+  errors_today: .errors.today
+}'
+
+# 2. Rate limiting monitoring
+echo "=== Rate Limiting Status ==="
+curl -s http://localhost:8000/internal/monitoring/rate-limiting | jq '{
+  status: .status,
+  requests_per_minute_avg: .metrics.requests_per_minute.average,
+  violations_today: .violations.today,
+  blocked_clients: .blocked_clients.active_count,
+  redis_health: .redis_connection.status
+}'
+
+# 3. Compression monitoring
+echo "=== Compression Performance ==="
+curl -s http://localhost:8000/internal/monitoring/compression | jq '{
+  status: .status,
+  compression_ratio_avg: .metrics.compression_ratio.average,
+  cpu_overhead_percent: .performance.cpu_overhead,
+  bandwidth_saved_mb: .metrics.bandwidth_saved.total_mb,
+  errors_today: .errors.compression_errors.today
+}'
+
+# 4. Request size monitoring
+echo "=== Request Size Limits ==="
+curl -s http://localhost:8000/internal/monitoring/request-size | jq '{
+  status: .status,
+  violations_today: .violations.today,
+  largest_request_mb: .metrics.largest_request.size_mb,
+  blocked_requests: .blocked_requests.today,
+  average_request_size_kb: .metrics.average_size.kb
+}'
+
+# 5. Security headers monitoring
+echo "=== Security Headers Status ==="
+curl -s http://localhost:8000/internal/monitoring/security-headers | jq '{
+  status: .status,
+  compliance_percentage: .compliance.percentage,
+  missing_headers: .compliance.missing_headers,
+  policy_violations: .violations.today
+}'
+
+# 6. API versioning monitoring
+echo "=== API Versioning Status ==="
+curl -s http://localhost:8000/internal/monitoring/api-versioning | jq '{
+  status: .status,
+  version_distribution: .metrics.version_usage,
+  detection_errors: .errors.detection_errors.today,
+  compatibility_issues: .compatibility.issues_today
+}'
+
+echo "=== Middleware monitoring completed ==="
+```
+
+#### Middleware Performance KPIs
+
+**Key Performance Indicators for Middleware:**
+
+| Metric | Target | Good | Needs Attention |
+|--------|--------|------|-----------------|
+| **Middleware Execution Time** | < 50ms | < 20ms | > 100ms |
+| **Rate Limit Violations** | < 5% of requests | < 1% | > 10% |
+| **Compression Ratio** | > 60% | > 75% | < 40% |
+| **Request Size Violations** | < 1% | < 0.1% | > 2% |
+| **Security Header Compliance** | 100% | 100% | < 95% |
+| **Version Detection Success** | > 99% | > 99.5% | < 98% |
+
+#### Middleware Alerting
+
+**Critical Middleware Alerts:**
+```bash
+# Monitor for critical middleware issues
+curl -s http://localhost:8000/internal/monitoring/middleware-alerts | jq '.'
+
+# Check for high-severity middleware events
+curl -s http://localhost:8000/internal/monitoring/alerts | \
+  jq '.alerts[] | select(.component | startswith("middleware")) | select(.severity == "high" or .severity == "critical")'
+```
+
+**Automated Middleware Alerting Script:**
+```bash
+#!/bin/bash
+# middleware_alerting.sh
+
+ALERT_WEBHOOK="https://alerts.company.com/middleware"
+
+# Check middleware stack health
+MIDDLEWARE_STATUS=$(curl -s http://localhost:8000/internal/monitoring/middleware | jq -r '.overall_status')
+
+if [[ "$MIDDLEWARE_STATUS" != "healthy" ]]; then
+    curl -X POST "$ALERT_WEBHOOK" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"severity\": \"high\",
+        \"component\": \"middleware_stack\",
+        \"message\": \"Middleware stack status: $MIDDLEWARE_STATUS\",
+        \"timestamp\": \"$(date -Iseconds)\"
+      }"
+fi
+
+# Check rate limiting violations
+RATE_VIOLATIONS=$(curl -s http://localhost:8000/internal/monitoring/rate-limiting | jq -r '.violations.last_hour')
+
+if [[ "$RATE_VIOLATIONS" -gt 100 ]]; then
+    curl -X POST "$ALERT_WEBHOOK" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"severity\": \"medium\",
+        \"component\": \"rate_limiting\",
+        \"message\": \"High rate limiting violations: $RATE_VIOLATIONS in last hour\",
+        \"timestamp\": \"$(date -Iseconds)\"
+      }"
+fi
+
+# Check compression performance
+COMPRESSION_RATIO=$(curl -s http://localhost:8000/internal/monitoring/compression | jq -r '.metrics.compression_ratio.last_hour')
+
+if [[ $(echo "$COMPRESSION_RATIO < 0.5" | bc) -eq 1 ]]; then
+    curl -X POST "$ALERT_WEBHOOK" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"severity\": \"low\",
+        \"component\": \"compression\",
+        \"message\": \"Low compression ratio: $COMPRESSION_RATIO\",
+        \"timestamp\": \"$(date -Iseconds)\"
+      }"
+fi
+```
+
+#### Troubleshooting Middleware Issues
+
+**Common Middleware Issues and Monitoring:**
+
+1. **Rate Limiting Issues:**
+```bash
+# Check rate limiting performance
+curl -s http://localhost:8000/internal/monitoring/rate-limiting/diagnostics | jq '.'
+
+# Identify clients hitting rate limits
+curl -s http://localhost:8000/internal/monitoring/rate-limiting/top-violators | jq '.'
+```
+
+2. **Compression Issues:**
+```bash
+# Analyze compression performance problems
+curl -s http://localhost:8000/internal/monitoring/compression/diagnostics | jq '.'
+
+# Check for compression algorithm issues
+curl -s http://localhost:8000/internal/monitoring/compression/algorithm-performance | jq '.'
+```
+
+3. **Request Size Issues:**
+```bash
+# Monitor request size patterns
+curl -s http://localhost:8000/internal/monitoring/request-size/patterns | jq '.'
+
+# Check for DoS attack indicators
+curl -s http://localhost:8000/internal/monitoring/request-size/attack-patterns | jq '.'
 ```
 
 ### Performance Monitoring

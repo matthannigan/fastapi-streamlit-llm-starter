@@ -45,6 +45,7 @@
 ### Operations Guides
 - **[Backup & Recovery](./guides/operations/BACKUP_RECOVERY.md)**: Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity *(Last updated 2025-08-03)*
 - **[Logging Strategy](./guides/operations/LOGGING_STRATEGY.md)**: Structured logging strategies, log analysis procedures, security event logging, and operational log management for effective system observability *(Last updated 2025-08-03)*
+- **[Middleware](./guides/operations/MIDDLEWARE.md)**: Comprehensive middleware stack operations guide covering all 9 production-ready middleware components including CORS, security, rate limiting, compression, API versioning, and performance monitoring with configuration management and operational procedures *(Last updated 2025-08-08)*
 - **[Monitoring](./guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments *(Last updated 2025-08-03)*
 - **[Performance Optimization](./guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows *(Last updated 2025-08-03)*
 - **[Security](./guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist *(Last updated 2025-08-03)*

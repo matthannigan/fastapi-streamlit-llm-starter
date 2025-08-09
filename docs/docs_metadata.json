@@ -258,7 +258,7 @@
     "title": "Core Module Integration Guide",
     "topic_category": "developer",
     "audience_level": "advanced",
-    "description": "Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns",
+    "description": "Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and enhanced middleware patterns",
     "dependencies": [
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
       "reference/key-concepts/DUAL_API_ARCHITECTURE.md",
@@ -270,9 +270,10 @@
       "guides/developer/AUTHENTICATION.md",
       "guides/infrastructure/AI.md",
       "guides/infrastructure/CACHE.md",
-      "guides/infrastructure/RESILIENCE.md"
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/operations/MIDDLEWARE.md"
     ],
-    "last_analyzed": "2025-08-03T10:00:00Z"
+    "last_analyzed": "2025-08-08T10:00:00Z"
   },
   "guides/developer/DEPLOYMENT.md": {
     "title": "Deployment Guide",
@@ -398,11 +399,29 @@
     ],
     "last_analyzed": "2025-08-03T10:00:00Z"
   },
+  "guides/operations/MIDDLEWARE.md": {
+    "title": "Middleware Operations Guide", 
+    "topic_category": "operations",
+    "audience_level": "advanced",
+    "description": "Comprehensive middleware stack operations guide covering all 9 production-ready middleware components including CORS, security, rate limiting, compression, API versioning, and performance monitoring with configuration management and operational procedures",
+    "dependencies": [
+      "guides/infrastructure/MONITORING.md",
+      "guides/operations/SECURITY.md", 
+      "guides/developer/CORE_MODULE_INTEGRATION.md"
+    ],
+    "followups": [
+      "guides/operations/MONITORING.md",
+      "guides/operations/PERFORMANCE_OPTIMIZATION.md", 
+      "guides/operations/SECURITY.md",
+      "guides/operations/TROUBLESHOOTING.md"
+    ],
+    "last_analyzed": "2025-08-08T10:00:00Z"
+  },
   "guides/operations/MONITORING.md": {
     "title": "Operational Monitoring Guide",
     "topic_category": "operations",
     "audience_level": "advanced",
-    "description": "Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments",
+    "description": "Operational monitoring procedures, health checks, performance monitoring, middleware monitoring, alert management, and system health verification for production environments",
     "dependencies": [
       "guides/infrastructure/MONITORING.md",
       "guides/infrastructure/RESILIENCE.md",
@@ -411,15 +430,16 @@
     "followups": [
       "guides/operations/TROUBLESHOOTING.md",
       "guides/operations/PERFORMANCE_OPTIMIZATION.md",
-      "guides/operations/LOGGING_STRATEGY.md"
+      "guides/operations/LOGGING_STRATEGY.md",
+      "guides/operations/MIDDLEWARE.md"
     ],
-    "last_analyzed": "2025-08-03T10:00:00Z"
+    "last_analyzed": "2025-08-08T10:00:00Z"
   },
   "guides/operations/PERFORMANCE_OPTIMIZATION.md": {
     "title": "Performance Optimization Guide",
     "topic_category": "operations",
     "audience_level": "advanced",
-    "description": "Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows",
+    "description": "Performance optimization procedures, tuning strategies, cache optimization, middleware performance optimization, AI service optimization, and performance testing workflows",
     "dependencies": [
       "guides/operations/MONITORING.md",
       "guides/infrastructure/RESILIENCE.md",
@@ -428,15 +448,16 @@
     "followups": [
       "guides/operations/TROUBLESHOOTING.md",
       "guides/operations/BACKUP_RECOVERY.md",
-      "guides/developer/DEPLOYMENT.md"
+      "guides/developer/DEPLOYMENT.md",
+      "guides/operations/MIDDLEWARE.md"
     ],
-    "last_analyzed": "2025-08-03T10:00:00Z"
+    "last_analyzed": "2025-08-08T10:00:00Z"
   },
   "guides/operations/SECURITY.md": {
     "title": "Security Guide",
     "topic_category": "security",
     "audience_level": "advanced",
-    "description": "Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist",
+    "description": "Comprehensive security guide consolidating authentication, middleware security integration, AI-specific security threats, incident response procedures, and production security checklist",
     "dependencies": [
       "guides/infrastructure/SECURITY.md",
       "guides/infrastructure/AI.md",
@@ -445,9 +466,10 @@
     "followups": [
       "guides/operations/MONITORING.md",
       "guides/operations/LOGGING_STRATEGY.md",
-      "guides/developer/DEPLOYMENT.md"
+      "guides/developer/DEPLOYMENT.md",
+      "guides/operations/MIDDLEWARE.md"
     ],
-    "last_analyzed": "2025-08-03T10:00:00Z"
+    "last_analyzed": "2025-08-08T10:00:00Z"
   },
   "guides/operations/TROUBLESHOOTING.md": {
     "title": "Troubleshooting Guide",

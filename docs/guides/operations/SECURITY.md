@@ -63,6 +63,8 @@ graph TB
 | **Input Sanitization** | Infrastructure | Critical | Prompt injection prevention |
 | **Response Validation** | Domain | High | AI output sanitization |
 | **Rate Limiting** | Infrastructure | Medium | DoS protection |
+| **Security Middleware** | Infrastructure | High | Headers, XSS, injection protection |
+| **Request Size Limiting** | Infrastructure | Medium | DoS and resource protection |
 | **Audit Logging** | Infrastructure | High | Security event tracking |
 | **Secret Management** | Infrastructure | Critical | API key protection |
 
@@ -282,6 +284,182 @@ def secure_content_pipeline(input_text: str) -> str:
 - Harmful content detection
 - Bias detection and mitigation
 - Output length validation
+
+## Middleware Security Integration
+
+The template's enhanced middleware stack provides comprehensive security capabilities through 4 dedicated security-focused middleware components. These components work together with the application-level security measures to provide defense-in-depth protection.
+
+> **📖 For complete middleware security configuration**, see the **[Middleware Operations Guide](./MIDDLEWARE.md)** which provides:
+> - Detailed security middleware configuration procedures
+> - Rate limiting and request size protection setup
+> - Security header management and XSS prevention
+> - Performance monitoring for security events
+
+### Security Middleware Components
+
+#### 1. Security Middleware - Headers & XSS Protection
+
+**Purpose**: Provides HTTP security headers and prevents XSS/injection attacks at the middleware level.
+
+**Security Features:**
+- **HSTS (HTTP Strict Transport Security)**: Forces HTTPS connections
+- **Content Security Policy (CSP)**: Prevents script injection attacks
+- **X-Frame-Options**: Prevents clickjacking attacks
+- **X-Content-Type-Options**: Prevents MIME-type sniffing
+- **Referrer-Policy**: Controls referrer information leakage
+
+**Configuration Example:**
+```bash
+# Security middleware environment variables
+export SECURITY_HSTS_MAX_AGE=31536000
+export SECURITY_CSP_POLICY="default-src 'self'; script-src 'self'"
+export SECURITY_FRAME_OPTIONS="DENY"
+export SECURITY_CONTENT_TYPE_OPTIONS="nosniff"
+
+# Verification
+curl -I http://localhost:8000/v1/health | grep -i security
+```
+
+#### 2. Rate Limiting Middleware - DoS Protection
+
+**Purpose**: Prevents denial-of-service attacks and abuse through intelligent rate limiting with Redis backing and local fallback.
+
+**Security Features:**
+- **Per-Client Rate Limiting**: Individual limits per API key or IP
+- **Burst Protection**: Configurable burst size for legitimate traffic spikes
+- **Attack Pattern Detection**: Automated blocking of suspicious request patterns
+- **Graceful Degradation**: Continues protection even if Redis is unavailable
+
+**Security Configuration:**
+```bash
+# Rate limiting security settings
+export RATE_LIMIT_REQUESTS_PER_MINUTE=60
+export RATE_LIMIT_BURST_SIZE=10
+export RATE_LIMIT_BLOCK_THRESHOLD=100    # Block after this many violations
+export RATE_LIMIT_BLOCK_DURATION=3600    # Block duration in seconds
+
+# Monitor rate limiting violations
+curl -s http://localhost:8000/internal/monitoring/rate-limiting | jq '.violations'
+```
+
+#### 3. Request Size Limiting - Resource Protection
+
+**Purpose**: Prevents resource exhaustion attacks and ensures request size compliance for different content types.
+
+**Security Features:**
+- **Content-Type Specific Limits**: Different limits for JSON, form data, file uploads
+- **DoS Prevention**: Blocks excessively large requests before processing
+- **Memory Protection**: Prevents memory exhaustion attacks
+- **Progressive Restrictions**: Stricter limits for sensitive operations
+
+**Security Limits:**
+```bash
+# Request size security limits
+export MAX_REQUEST_SIZE_BYTES=10485760     # 10MB general limit
+export MAX_JSON_SIZE_BYTES=1048576         # 1MB JSON limit
+export MAX_FORM_SIZE_BYTES=5242880         # 5MB form data limit
+export MAX_FILE_SIZE_BYTES=52428800        # 50MB file upload limit
+
+# Monitor request size violations
+curl -s http://localhost:8000/internal/monitoring/request-size | jq '.violations'
+```
+
+#### 4. Performance Monitoring - Security Event Tracking
+
+**Purpose**: Tracks security-relevant performance metrics and detects attack patterns through behavior analysis.
+
+**Security Monitoring Features:**
+- **Anomaly Detection**: Identifies unusual request patterns
+- **Attack Pattern Recognition**: Detects coordinated attacks
+- **Performance Degradation Alerts**: Indicates potential attacks
+- **Security Metrics Collection**: Comprehensive security event tracking
+
+**Security Metrics:**
+```bash
+# Get security-related performance metrics
+curl -s http://localhost:8000/internal/monitoring/security-metrics | jq '.'
+
+# Monitor for attack patterns
+curl -s http://localhost:8000/internal/monitoring/anomalies | jq '.security_anomalies'
+```
+
+### Middleware Security Operations
+
+#### Daily Security Middleware Checks
+
+**Security Middleware Health Check:**
+```bash
+#!/bin/bash
+# daily_middleware_security_check.sh
+
+echo "=== Middleware Security Check $(date) ==="
+
+# 1. Rate limiting status
+echo "Rate Limiting Status:"
+curl -s http://localhost:8000/internal/monitoring/rate-limiting | jq '{
+  status: .status,
+  violations_today: .violations.today,
+  blocked_clients: .blocked_clients.count
+}'
+
+# 2. Request size violations
+echo "Request Size Violations:"
+curl -s http://localhost:8000/internal/monitoring/request-size | jq '{
+  violations_today: .violations.today,
+  largest_request: .stats.largest_request_today,
+  blocked_requests: .blocked.count
+}'
+
+# 3. Security headers validation
+echo "Security Headers Check:"
+HEADERS_RESPONSE=$(curl -I -s http://localhost:8000/v1/health)
+echo "HSTS: $(echo "$HEADERS_RESPONSE" | grep -i strict-transport-security || echo 'MISSING')"
+echo "CSP: $(echo "$HEADERS_RESPONSE" | grep -i content-security-policy || echo 'MISSING')"
+echo "Frame Options: $(echo "$HEADERS_RESPONSE" | grep -i x-frame-options || echo 'MISSING')"
+
+# 4. Performance anomalies
+echo "Security Anomalies:"
+curl -s http://localhost:8000/internal/monitoring/anomalies | jq '{
+  security_anomalies: .security_anomalies.count,
+  suspicious_patterns: .suspicious_patterns.count
+}'
+
+echo "=== Middleware security check completed ==="
+```
+
+#### Emergency Middleware Security Response
+
+**Incident Response Commands:**
+```bash
+# Emergency rate limiting (restrict to critical operations only)
+curl -X POST http://localhost:8000/internal/middleware/rate-limiting/emergency-mode \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"requests_per_minute": 10, "burst_size": 2}'
+
+# Block suspicious IP addresses
+curl -X POST http://localhost:8000/internal/middleware/rate-limiting/block-ip \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"ip": "suspicious.ip.address", "duration": 3600}'
+
+# Reduce request size limits during attack
+curl -X POST http://localhost:8000/internal/middleware/request-size/emergency-limits \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"max_request_size": 1048576, "max_json_size": 102400}'
+
+# Enhanced security headers during incident
+curl -X POST http://localhost:8000/internal/middleware/security/emergency-headers \
+  -H "X-API-Key: $API_KEY" \
+  -d '{"csp_policy": "default-src none", "hsts_max_age": 63072000}'
+```
+
+### Integration with Application Security
+
+The middleware security components integrate seamlessly with application-level security:
+
+- **Authentication**: Middleware rate limiting uses API key information for per-client limits
+- **Input Sanitization**: Request size limiting complements input validation
+- **Logging**: All middleware security events integrate with the centralized security logging
+- **Monitoring**: Security metrics feed into the overall security monitoring system
 
 ## Security Monitoring and Logging
 
