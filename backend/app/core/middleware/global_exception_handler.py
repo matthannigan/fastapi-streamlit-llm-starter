@@ -35,6 +35,23 @@ from app.core.config import settings
 
 setup_global_exception_handler(app, settings)
 ```
+
+## Important Architecture Note
+
+This module implements centralized exception handling using FastAPI's 
+@app.exception_handler() decorator system, NOT Starlette middleware.
+
+While located in the middleware directory and functioning like middleware,
+this uses FastAPI's exception handler system rather than Starlette's 
+BaseHTTPMiddleware. This means:
+
+- It catches exceptions AFTER middleware processing
+- It doesn't appear in app.middleware_stack
+- It's configured via @app.exception_handler() decorators
+- It runs when middleware or application code raises unhandled exceptions
+
+This is architecturally correct for error handling but differs from 
+traditional middleware implementation patterns.
 """
 
 import logging
