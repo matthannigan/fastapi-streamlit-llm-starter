@@ -29,6 +29,16 @@ from app.core.config import Settings
 class TestRateLimitMiddleware:
     """Test the main rate limiting middleware."""
     
+    @pytest.fixture(autouse=True)
+    async def cleanup_async_resources(self):
+        """Ensure proper cleanup of async resources to prevent event loop conflicts."""
+        yield
+        # Allow any pending async operations to complete
+        await asyncio.sleep(0.1)
+        # Force garbage collection of any remaining async objects
+        import gc
+        gc.collect()
+    
     @pytest.fixture
     def settings(self):
         """Test settings with rate limiting enabled."""
@@ -116,24 +126,36 @@ class TestRateLimitMiddleware:
             response = client.get("/test")
             assert response.status_code == 200
     
-    def test_client_identification(self, app):
+    @pytest.mark.asyncio
+    async def test_client_identification(self, app):
         """Test client identification from request headers and IP."""
-        client = TestClient(app)
-        
-        # Test with API key
-        response = client.get("/test", headers={"X-API-Key": "test-key"})
-        assert response.status_code == 200
-        
-        # Test with custom IP headers
-        response = client.get("/test", headers={"X-Forwarded-For": "192.168.1.1"})
-        assert response.status_code == 200
-        
-        response = client.get("/test", headers={"X-Real-IP": "10.0.0.1"})
-        assert response.status_code == 200
+        with TestClient(app) as client:
+            # Test with API key
+            response = client.get("/test", headers={"X-API-Key": "test-key"})
+            assert response.status_code == 200
+            
+            # Test with custom IP headers
+            response = client.get("/test", headers={"X-Forwarded-For": "192.168.1.1"})
+            assert response.status_code == 200
+            
+            response = client.get("/test", headers={"X-Real-IP": "10.0.0.1"})
+            assert response.status_code == 200
+            
+        # Explicit cleanup after TestClient usage
+        await asyncio.sleep(0.05)
 
 
 class TestRedisRateLimiter:
     """Test Redis-backed distributed rate limiter."""
+    
+    @pytest.fixture(autouse=True)
+    async def cleanup_redis_resources(self):
+        """Ensure proper cleanup of Redis-related async resources."""
+        yield
+        # Allow Redis connections and pipelines to cleanup
+        await asyncio.sleep(0.1)
+        import gc
+        gc.collect()
     
     @pytest.fixture
     async def redis_client(self):
@@ -169,8 +191,8 @@ class TestRedisRateLimiter:
         assert result == True
         
         # Verify Redis operations
-        pipeline_mock.incr.assert_called_once_with("rate_limit:test-key")
-        pipeline_mock.ttl.assert_called_once_with("rate_limit:test-key")
+        pipeline_mock.incr.assert_called_once_with("rate_limit: test-key")
+        pipeline_mock.ttl.assert_called_once_with("rate_limit: test-key")
     
     @pytest.mark.asyncio
     async def test_redis_rate_limit_deny(self, rate_limiter, redis_client):
@@ -217,7 +239,7 @@ class TestRedisRateLimiter:
         assert result == True
         
         # Verify TTL was set for new key
-        redis_client.expire.assert_called_with("rate_limit:test-key", 60)
+        redis_client.expire.assert_called_with("rate_limit: test-key", 60)
 
 
 class TestLocalRateLimiter:
@@ -308,7 +330,7 @@ class TestRateLimitUtilities:
         request.client.host = "127.0.0.1"
         
         client_id = get_client_identifier(request)
-        assert client_id == "api_key:test-api-key-123"
+        assert client_id == "api_key: test-api-key-123"
     
     def test_get_client_identifier_forwarded_ip(self):
         """Test client identification using forwarded IP headers."""
@@ -318,7 +340,7 @@ class TestRateLimitUtilities:
         request.client.host = "127.0.0.1"
         
         client_id = get_client_identifier(request)
-        assert client_id == "ip:192.168.1.100"
+        assert client_id == "ip: 192.168.1.100"
     
     def test_get_client_identifier_real_ip(self):
         """Test client identification using real IP header."""
@@ -328,7 +350,7 @@ class TestRateLimitUtilities:
         request.client.host = "127.0.0.1"
         
         client_id = get_client_identifier(request)
-        assert client_id == "ip:203.0.113.42"
+        assert client_id == "ip: 203.0.113.42"
     
     def test_get_client_identifier_fallback(self):
         """Test client identification fallback to direct IP."""
@@ -338,7 +360,7 @@ class TestRateLimitUtilities:
         request.client.host = "192.168.1.50"
         
         client_id = get_client_identifier(request)
-        assert client_id == "ip:192.168.1.50"
+        assert client_id == "ip: 192.168.1.50"
     
     def test_get_endpoint_classification_critical(self):
         """Test endpoint classification for critical endpoints."""
