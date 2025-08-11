@@ -142,53 +142,169 @@ async def handle_application_error(request: Request, exc: ApplicationError):
     return JSONResponse(status_code=status_code, content={"error": str(exc)})
 ```
 
-### Middleware Infrastructure (`app/core/middleware.py`)
+### Enhanced Middleware Infrastructure (`app/core/middleware/`)
 
-**Primary Integration Role**: Sets up a comprehensive, production-ready middleware stack that works seamlessly with both public and internal APIs.
+**Primary Integration Role**: Sets up a comprehensive, **9-component production-ready middleware stack** that provides security, performance monitoring, rate limiting, compression, and operational capabilities for both public and internal APIs.
 
-#### Production Middleware Integration
+> **📖 For complete middleware operational procedures**, see the **[Middleware Operations Guide](../operations/MIDDLEWARE.md)** which provides:
+> - Complete middleware stack architecture and execution order
+> - Production deployment and configuration procedures
+> - Performance optimization and troubleshooting workflows
+> - Daily operational procedures for middleware monitoring
+
+#### Enhanced Middleware Stack Architecture
+
+The core module now orchestrates a sophisticated **9-component middleware stack** in strategic execution order:
 
 ```python
 from fastapi import FastAPI
-from app.core.middleware import setup_middleware
+from app.core.middleware import setup_enhanced_middleware
 from app.core import settings
 
 # Your application setup
 app = FastAPI(title="Your Application")
 
-# Core module sets up complete middleware stack
-setup_middleware(app, settings)
+# Core module sets up complete enhanced middleware stack
+setup_enhanced_middleware(app, settings)
 
-# Now your endpoints automatically get:
-# - CORS configuration
-# - Security headers
-# - Request logging with performance metrics
-# - Global exception handling
-# - Performance monitoring
+# Your endpoints now automatically benefit from:
+# 1. Rate Limiting - Redis-backed with local fallback
+# 2. Request Size Limiting - DoS protection per content-type
+# 3. Security Headers - XSS and injection attack prevention
+# 4. CORS - Cross-origin resource sharing with security optimization
+# 5. Compression - Algorithm selection with streaming support
+# 6. Request Logging - Structured logging with performance metrics
+# 7. Performance Monitoring - Real-time metrics collection
+# 8. API Versioning - Version detection and compatibility layers
+# 9. Global Exception Handling - Unified error responses
 ```
 
-#### Custom Middleware Integration
+#### Middleware Configuration Integration
 
-When you need to add custom middleware, integrate with the core patterns:
+The enhanced middleware integrates with the core configuration system:
 
 ```python
-from app.core.middleware import RequestLoggingMiddleware
+from app.core import settings
+
+# Environment-based middleware configuration
+class Settings(BaseSettings):
+    # Rate limiting configuration
+    rate_limit_requests_per_minute: int = 60
+    rate_limit_burst_size: int = 10
+    
+    # Compression configuration  
+    compression_minimum_size: int = 1024
+    compression_level: int = 6
+    
+    # Request size limits
+    max_request_size_bytes: int = 10 * 1024 * 1024  # 10MB
+    max_json_size_bytes: int = 1024 * 1024  # 1MB
+    
+    # Security headers
+    security_hsts_max_age: int = 31536000
+    security_csp_policy: str = "default-src 'self'"
+    
+    # API versioning
+    api_version_header: str = "X-API-Version"
+    api_default_version: str = "v1"
+
+# Access middleware configuration in your services
+middleware_config = {
+    "rate_limiting": settings.rate_limit_requests_per_minute,
+    "compression": settings.compression_minimum_size,
+    "security": settings.security_hsts_max_age
+}
+```
+
+#### Custom Middleware Integration Patterns
+
+When adding custom middleware, integrate with the enhanced patterns:
+
+```python
+from app.core.middleware import (
+    RequestLoggingMiddleware, 
+    PerformanceMonitoringMiddleware,
+    get_client_id_for_rate_limiting
+)
+from app.core.exceptions import MiddlewareError, ValidationError
 
 class YourCustomMiddleware:
-    def __init__(self):
-        # Access core configuration
-        self.config = settings
+    """Example custom middleware following core integration patterns."""
+    
+    def __init__(self, config: Settings):
+        # Access enhanced core configuration
+        self.config = config
+        self.performance_monitor = PerformanceMonitoringMiddleware.get_metrics()
         
     async def __call__(self, request: Request, call_next):
-        # Use core logging patterns
+        # Use enhanced request identification
+        client_id = get_client_id_for_rate_limiting(request)
         request_id = getattr(request.state, 'request_id', 'unknown')
         
-        # Your custom logic here
-        response = await call_next(request)
+        # Integration with performance monitoring
+        start_time = time.time()
         
-        # Follow core logging patterns
-        logger.info(f"Custom processing for request {request_id}")
-        return response
+        try:
+            # Your custom logic here
+            if not self._validate_custom_requirements(request):
+                raise ValidationError("Custom validation failed")
+                
+            response = await call_next(request)
+            
+            # Integration with core logging patterns
+            processing_time = time.time() - start_time
+            logger.info(
+                f"Custom processing completed",
+                extra={
+                    "request_id": request_id,
+                    "client_id": client_id,
+                    "processing_time_ms": processing_time * 1000,
+                    "custom_metric": "your_value"
+                }
+            )
+            
+            return response
+            
+        except Exception as e:
+            # Follow core exception handling patterns
+            logger.error(
+                f"Custom middleware error: {e}",
+                extra={"request_id": request_id, "client_id": client_id}
+            )
+            raise MiddlewareError(f"Custom processing failed: {e}")
+    
+    def _validate_custom_requirements(self, request: Request) -> bool:
+        # Your custom validation logic
+        return True
+```
+
+#### Middleware Order and Dependencies
+
+The core module handles middleware ordering automatically, but you can customize:
+
+```python
+from app.core.middleware import (
+    setup_enhanced_middleware,
+    RateLimitingMiddleware,
+    CompressionMiddleware,
+    SecurityMiddleware
+)
+
+def setup_custom_middleware_stack(app: FastAPI, settings: Settings):
+    """Custom middleware setup with specific ordering requirements."""
+    
+    # Critical early middleware (executed first)
+    app.add_middleware(RateLimitingMiddleware, config=settings)
+    app.add_middleware(SecurityMiddleware, config=settings)
+    
+    # Your custom middleware in the appropriate position
+    app.add_middleware(YourCustomMiddleware, config=settings)
+    
+    # Performance and response modification middleware (executed last)
+    app.add_middleware(CompressionMiddleware, config=settings)
+    
+    # Complete the setup with remaining standard middleware
+    setup_enhanced_middleware(app, settings, skip_custom=True)
 ```
 
 ## 🔧 Common Integration Patterns
@@ -353,12 +469,41 @@ def get_http_status_for_exception(exc: Exception) -> int:
 
 ### When You Add New Middleware
 
-1. **Follow Core Patterns** (`app/core/middleware.py`):
+1. **Follow Enhanced Core Patterns** (`app/core/middleware/__init__.py`):
 ```python
-def setup_middleware(app: FastAPI, settings: Settings):
-    # Add your middleware to the setup function
+from app.core.middleware import setup_enhanced_middleware
+
+def setup_custom_middleware(app: FastAPI, settings: Settings):
+    """Add custom middleware following enhanced patterns."""
+    
+    # Option 1: Add to the standard enhanced setup
     app.add_middleware(YourCustomMiddleware, config=settings)
-    # ... existing middleware
+    setup_enhanced_middleware(app, settings)
+    
+    # Option 2: Custom ordering with enhanced middleware
+    from app.core.middleware import (
+        RateLimitingMiddleware,
+        SecurityMiddleware,
+        CompressionMiddleware
+    )
+    
+    # Add in strategic order
+    app.add_middleware(RateLimitingMiddleware, config=settings)
+    app.add_middleware(YourCustomMiddleware, config=settings)  # Your position
+    app.add_middleware(CompressionMiddleware, config=settings)
+```
+
+2. **Integrate with Enhanced Configuration**:
+```python
+class Settings(BaseSettings):
+    # Your middleware configuration
+    your_middleware_enabled: bool = True
+    your_middleware_parameter: int = 100
+
+class YourCustomMiddleware:
+    def __init__(self, config: Settings):
+        self.enabled = config.your_middleware_enabled
+        self.parameter = config.your_middleware_parameter
 ```
 
 ## 🔍 Debugging and Monitoring Integration
