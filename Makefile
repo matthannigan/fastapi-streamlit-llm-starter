@@ -193,14 +193,14 @@ venv:
 	fi
 
 # Install backend dependencies (auto-creates venv)
-install: venv
+install: venv docusaurus-install
 	@echo "📦 Installing backend dependencies..."
 	@cd backend && source ../$(VENV_DIR)/bin/activate && pip install -r requirements.lock -r requirements-dev.lock
 	@echo "✅ Backend dependencies installed successfully!"
-	@echo "💡 To activate venv: source $(VENV_DIR)/bin/activate"
+	@echo "✅ project venv activated via: source $(VENV_DIR)/bin/activate"
 	@echo "💡 Next steps:"
 	@echo "   - make run-backend    # Start backend server"
-	@echo "   - make dev           # Start full development environment"
+	@echo "   - make dev            # Start full development environment"
 
 # Install frontend dependencies via Docker (recommended)
 install-frontend:
@@ -645,6 +645,10 @@ docusaurus-serve: docusaurus-build
 
 docusaurus-clear:
 	cd docs-website && npm run clear
+
+docusaurus-install:
+	@echo "📦 Installing Docusaurus at docs-website/..."
+	cd docs-website && npm install
 
 ##################################################################################################
 # Documentation Website (via Mkdocs)
