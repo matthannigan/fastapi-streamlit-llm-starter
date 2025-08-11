@@ -26,3 +26,5 @@ from app.core.config import settings
 
 setup_cors_middleware(app, settings)
 ```
+
+**Important Note:** CORS IS true middleware. It uses FastAPI's standard `app.add_middleware(CORSMiddleware, ...)` function which integrates with Starlette's middleware system and follows the LIFO (Last-In, First-Out) execution order like all other middleware components. CORS middleware is added last in the setup process, which means it processes requests early and responses late in the middleware stack, allowing it to properly handle preflight requests and add appropriate CORS headers to all responses. We store it in `/backend/app/core/middleware/` along with other middleware for architectural consistency and unified middleware management.

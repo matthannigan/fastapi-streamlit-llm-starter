@@ -82,24 +82,25 @@ component can be individually configured through the application settings.
 
 ## Architecture
 
-The enhanced middleware stack follows FastAPI's middleware execution order, with
-rate limiting and security middleware running first, followed by versioning,
-compression, logging, and monitoring middleware, and finally CORS middleware
-for response processing.
+The enhanced middleware stack follows FastAPI's LIFO (Last-In, First-Out) middleware
+execution order. Middleware added last executes first during request processing.
+This means performance monitoring and logging middleware run first to establish
+timing context, followed by compression, versioning, security, and finally
+rate limiting middleware for final request validation.
 
-### Enhanced Execution Order (Request Processing)
+### Enhanced Execution Order (Request Processing - LIFO)
 
-1. Rate Limiting Middleware (protect against abuse early)
-2. Request Size Limiting (prevent large request DoS attacks)
-3. Security Middleware (security headers and validation)
-4. API Versioning Middleware (handle version detection and routing)
-5. Version Compatibility Middleware (transform between versions)
-6. Compression Middleware (handle request/response compression)
-7. Request Logging Middleware (log requests with correlation IDs)
-8. Performance Monitoring (track performance metrics)
-9. Application Logic (routers, endpoints)
-10. CORS Middleware (handle cross-origin responses)
-11. Global Exception Handler (catch any unhandled exceptions)
+1. CORS Middleware (handle preflight requests - added last, runs first)
+2. Performance Monitoring (track performance metrics)
+3. Request Logging Middleware (log requests with correlation IDs)
+4. Compression Middleware (handle request/response compression)
+5. API Version Compatibility Middleware (transform between versions, if enabled)
+6. API Versioning Middleware (handle version detection and routing)
+7. Security Middleware (security headers and validation)
+8. Request Size Limiting (prevent large request DoS attacks)
+9. Rate Limiting Middleware (protect against abuse - added first, runs last)
+10. Application Logic (routers, endpoints)
+11. Global Exception Handler (catch any unhandled exceptions - not true middleware)
 
 ## Configuration
 

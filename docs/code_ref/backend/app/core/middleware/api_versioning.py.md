@@ -32,7 +32,7 @@ Configured via `app.core.config.Settings` and helper settings in this module:
 
 - `api_versioning_enabled`, `default_api_version`, `current_api_version`
 - `min_api_version`, `max_api_version`, `api_supported_versions`
-- `version_compatibility_enabled`, `api_version_header`
+- `api_version_compatibility_enabled`, `api_version_header`
 
 ## Usage
 
