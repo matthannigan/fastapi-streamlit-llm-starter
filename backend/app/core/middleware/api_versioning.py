@@ -7,6 +7,9 @@ Robust API version detection and routing with support for URL prefix, headers,
 query parameters, and Accept media types. Adds response headers with current
 and supported versions, and can perform compatibility transformations.
 
+Now includes a safe-by-default exemption for internal routes mounted at `/internal/*`
+so that administrative endpoints are not rewritten with public API version prefixes.
+
 ## Detection Strategies
 
 - **Path**: `/v1/`, `/v2/`, `/v1.5/`
@@ -20,6 +23,9 @@ and supported versions, and can perform compatibility transformations.
 - Rejects unsupported versions with a stable JSON payload and
   `X-API-Supported-Versions`/`X-API-Current-Version` headers
 - Optionally rewrites paths to the expected version prefix
+- Skips versioning for health-check paths (e.g., `/health`, `/readiness`)
+- Skips versioning for internal API paths (e.g., `/internal/resilience/health`) to
+  prevent unintended rewrites like `/v1/internal/resilience/health`
 
 ## Configuration
 
@@ -28,6 +34,17 @@ Configured via `app.core.config.Settings` and helper settings in this module:
 - `api_versioning_enabled`, `default_api_version`, `current_api_version`
 - `min_api_version`, `max_api_version`, `api_supported_versions`
 - `api_version_compatibility_enabled`, `api_version_header`
+- `api_versioning_skip_internal` (bool, default: True)
+  - When True, requests whose path is `/internal` or starts with `/internal/`
+    bypass version detection and path rewriting
+
+## Examples
+
+```text
+Request:  GET /internal/resilience/health
+Before:   (could be rewritten to /v1/internal/resilience/health)
+After:    Versioning bypassed; remains /internal/resilience/health
+```
 
 ## Usage
 
@@ -74,6 +91,8 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         
         # Enable/disable middleware
         self.enabled = getattr(settings, 'api_versioning_enabled', True)
+        # Exempt internal routes from versioning by default
+        self.skip_internal_paths = getattr(settings, 'api_versioning_skip_internal', True)
         
         # Version configuration
         self.default_version = getattr(settings, 'api_default_version', '1.0')
@@ -267,6 +286,17 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         health_check_paths = {'/health', '/healthz', '/ping', '/status', '/readiness', '/liveness'}
         return path in health_check_paths or path.startswith('/health/')
     
+    def _is_internal_path(self, path: str) -> bool:
+        """Check if the path targets the internal API and should bypass public versioning.
+
+        Internal API is mounted at /internal and should not be rewritten with
+        public version prefixes like /v1. This prevents paths such as
+        /internal/resilience/health from becoming /v1/internal/resilience/health.
+        """
+        if not self.skip_internal_paths:
+            return False
+        return path == '/internal' or path.startswith('/internal/')
+    
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """Process request with API versioning."""
         
@@ -276,6 +306,10 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         
         # Skip versioning for health check endpoints
         if self._is_health_check_path(request.url.path):
+            return await call_next(request)
+        
+        # Skip versioning for internal API endpoints
+        if self._is_internal_path(request.url.path):
             return await call_next(request)
         
         # 1. Detect requested API version
@@ -495,6 +529,9 @@ class APIVersioningSettings:
     
     # Enable version analytics and logging
     version_analytics_enabled: bool = True
+    
+    # Skip applying versioning to internal API routes mounted at /internal
+    api_versioning_skip_internal: bool = True
 
 
 # Additional utility functions for testing and external use
