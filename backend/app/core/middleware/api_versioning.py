@@ -27,7 +27,7 @@ Configured via `app.core.config.Settings` and helper settings in this module:
 
 - `api_versioning_enabled`, `default_api_version`, `current_api_version`
 - `min_api_version`, `max_api_version`, `api_supported_versions`
-- `version_compatibility_enabled`, `api_version_header`
+- `api_version_compatibility_enabled`, `api_version_header`
 
 ## Usage
 
@@ -78,8 +78,8 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         # Version configuration
         self.default_version = getattr(settings, 'api_default_version', '1.0')
         self.current_version = getattr(settings, 'api_current_version', '1.0')
-        self.min_supported_version = getattr(settings, 'api_min_version', '1.0')
-        self.max_supported_version = getattr(settings, 'api_max_version', '2.0')
+        self.min_api_version = getattr(settings, 'api_min_version', '1.0')
+        self.max_api_version = getattr(settings, 'api_max_version', '2.0')
         self.version_header = getattr(settings, 'api_version_header', 'X-API-Version')
         
         # Parse supported versions from settings
@@ -491,7 +491,7 @@ class APIVersioningSettings:
     max_api_version: str = "2.0"
     
     # Enable version compatibility transformations
-    version_compatibility_enabled: bool = True
+    api_version_compatibility_enabled: bool = True
     
     # Enable version analytics and logging
     version_analytics_enabled: bool = True

@@ -95,10 +95,10 @@ class EnvironmentConfigurationValidator:
                 'expected_middleware_count': 3  # Security, logging, CORS (global exception handler is not middleware)
             },
             {
-                'name': 'version_compatibility_enabled',
+                'name': 'api_version_compatibility_enabled',
                 'env_vars': {
                     'API_VERSIONING_ENABLED': 'true',
-                    'VERSION_COMPATIBILITY_ENABLED': 'true',
+                    'API_VERSION_COMPATIBILITY_ENABLED': 'true',
                     'DEFAULT_API_VERSION': '1.0',
                     'CURRENT_API_VERSION': '2.0',
                     'MIN_API_VERSION': '1.0',
@@ -202,7 +202,7 @@ class EnvironmentConfigurationValidator:
                     'SECURITY_HEADERS_ENABLED': 'true',
                     'LOG_LEVEL': 'WARNING',
                     'MEMORY_MONITORING_ENABLED': 'false',
-                    'VERSION_COMPATIBILITY_ENABLED': 'false'
+                    'API_VERSION_COMPATIBILITY_ENABLED': 'false'
                 },
                 'expected_middleware_count': 8
             }
@@ -248,7 +248,7 @@ class EnvironmentConfigurationValidator:
                 'performance_monitoring_enabled': getattr(settings, 'performance_monitoring_enabled', True),
                 'request_logging_enabled': getattr(settings, 'request_logging_enabled', True),
                 'request_size_limiting_enabled': getattr(settings, 'request_size_limiting_enabled', True),
-                'version_compatibility_enabled': getattr(settings, 'version_compatibility_enabled', False),
+                'api_version_compatibility_enabled': getattr(settings, 'api_version_compatibility_enabled', False),
             }
             
             # Test advanced configuration

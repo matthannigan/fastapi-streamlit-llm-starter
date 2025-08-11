@@ -182,22 +182,6 @@ class Settings(BaseSettings):
         le=65535,
         description="Backend port number for server binding"
     )
-    current_api_version: str = Field(
-        default="1.0",
-        description="Current API version"
-    )
-    default_api_version: str = Field(
-        default="1.0",
-        description="Default API version"
-    )
-    min_supported_version: str = Field(
-        default="1.0",
-        description="Minimum supported API version"
-    )
-    max_supported_version: str = Field(
-        default="1.0",
-        description="Maximum supported API version"
-    )
 
     # ========================================
     # AUTHENTICATION & CORS
@@ -466,7 +450,7 @@ class Settings(BaseSettings):
         default="1.0",
         description="Maximum supported API version"
     )
-    version_compatibility_enabled: bool = Field(
+    api_version_compatibility_enabled: bool = Field(
         default=False,
         description="Enable version compatibility transformations"
     )
