@@ -50,6 +50,10 @@ VENV_PIP := $(VENV_DIR)/bin/pip
 GIT_BRANCH := $(shell git branch --show-current 2>/dev/null | tr '/' '-' | tr '[:upper:]' '[:lower:]' || echo "main")
 export GIT_BRANCH
 
+# Assure unique container names
+COMPOSE_PROJECT_NAME := ai-text-processor-$(GIT_BRANCH)
+export COMPOSE_PROJECT_NAME
+
 # Environment detection for smart Python command selection
 IN_VENV := $(shell $(PYTHON) -c "import sys; print('1' if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else '0')" 2>/dev/null || echo "0")
 IN_DOCKER := $(shell [ -f /.dockerenv ] && echo "1" || echo "0")

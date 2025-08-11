@@ -62,7 +62,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data_${GIT_BRANCH:-main}:/data
+      - redis_data:/data
     networks:
       - ai-processor-network
     restart: unless-stopped
@@ -89,7 +89,7 @@ services:
       - frontend
 
 volumes:
-  redis_data_${GIT_BRANCH:-main}:
+  redis_data:
 
 networks:
   ai-processor-network:
