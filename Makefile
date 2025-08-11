@@ -310,7 +310,7 @@ test-backend-api:
 # Run backend core functionality tests
 test-backend-core:
 	@echo "🧪 Running backend core functionality tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/core/ -v
+	@cd backend && $(PYTHON_CMD) -m pytest tests/core/ --tb=no -v
 
 # Run infrastructure service tests
 test-backend-infrastructure:
@@ -341,13 +341,13 @@ test-backend-schemas:
 test-backend-slow:
 	@echo "🧪 Running slow backend tests (comprehensive)..."
 	@echo "⏳ This may take several minutes..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow" --run-slow
+	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow" --run-slow --timeout=60
 
 # Run all backend tests including slow ones
 test-backend-all:
 	@echo "🧪 Running ALL backend tests (including slow tests)..."
 	@echo "⏳ This may take several minutes..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "not manual" --run-slow
+	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "not manual" --run-slow --timeout=60
 
 # Run manual tests (require running server)
 test-backend-manual:
@@ -360,7 +360,7 @@ test-backend-manual:
 	@echo ""
 	@echo "💡 Start server first: make run-backend"
 	@echo ""
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "manual" --run-manual
+	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "manual" --run-manual --timeout=60
 
 ##################################################################################################
 # Frontend and Integration Testing
@@ -613,11 +613,11 @@ restore:
 code_ref:
 	@cp README.md docs/README.md
 	@echo "✅ Repository README copied to docs/README"
-	@$(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
-	@$(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
+	@rm -Rf docs/code_ref/backend/  && mkdir docs/code_ref/backend/  && $(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
+	@rm -Rf docs/code_ref/frontend/ && mkdir docs/code_ref/frontend/ && $(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
+	@rm -Rf docs/code_ref/shared/   && mkdir docs/code_ref/shared/   && $(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
+	@rm -Rf docs/code_ref/examples/ && mkdir docs/code_ref/examples/ && $(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
+	@rm -Rf docs/code_ref/scripts/  && mkdir docs/code_ref/scripts/  && $(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
 	@echo "✅ docstrings copied to docs/code_ref/"
 
 # Generate alternative documentation views from metadata

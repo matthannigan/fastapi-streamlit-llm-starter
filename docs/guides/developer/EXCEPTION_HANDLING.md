@@ -606,6 +606,62 @@ raise ValidationError(
 raise Exception("Something went wrong")
 ```
 
+### Infrastructure Resilience Exception Patterns
+
+**Broad Exception Handling for Infrastructure Resilience:**
+
+The cache infrastructure demonstrates a resilience-first approach where `except Exception:` is appropriate for graceful degradation:
+
+```python
+# ✅ Infrastructure Pattern: Broad handling for resilience
+class CacheFactory:
+    @staticmethod
+    async def create_ai_cache() -> CacheInterface:
+        try:
+            ai_cache = AIResponseCache(redis_url=settings.REDIS_URL)
+            if await ai_cache.connect():
+                return ai_cache
+        except Exception:
+            # Infrastructure failures shouldn't break the application
+            logger.warning("Redis unavailable, falling back to memory cache")
+            
+        return InMemoryCache(default_ttl=300)
+```
+
+**Key Principles for Infrastructure Exception Handling:**
+
+1. **Resilience Over Precision**: Infrastructure failures should not cascade to application failures
+2. **Graceful Degradation**: Always provide fallback mechanisms when possible
+3. **Comprehensive Logging**: Log all details server-side for debugging while continuing operation
+4. **Operational Awareness**: Use monitoring to track infrastructure exception patterns
+
+**When NOT to use broad exception handling:**
+
+```python
+# ❌ Bad: Broad handling in business logic
+async def transfer_money(from_account: str, to_account: str, amount: float):
+    try:
+        # Complex business logic
+        result = await banking_service.transfer(from_account, to_account, amount)
+        return result
+    except Exception:
+        # This hides important business logic errors!
+        logger.error("Transfer failed")
+        return {"status": "error"}
+
+# ✅ Good: Specific handling in business logic
+async def transfer_money(from_account: str, to_account: str, amount: float):
+    try:
+        result = await banking_service.transfer(from_account, to_account, amount)
+        return result
+    except InsufficientFundsError as e:
+        raise BusinessLogicError(f"Insufficient funds: {e}")
+    except AccountNotFoundError as e:
+        raise ValidationError(f"Invalid account: {e}")
+    except BankingServiceError as e:
+        raise InfrastructureError(f"Banking service unavailable: {e}")
+```
+
 ### Error Handling Patterns
 
 1. **Fail Fast**: Validate inputs early and raise appropriate exceptions
@@ -677,22 +733,133 @@ async def ai_text_analysis(text: str) -> AnalysisResult:
 
 ### Cache Service Integration
 
-```python
-from app.core.exceptions import InfrastructureError
+The cache infrastructure uses a specific exception handling pattern that prioritizes **graceful degradation** over strict exception typing. This approach ensures the application continues operating even when Redis becomes unavailable.
 
-class CacheService:
-    async def get(self, key: str) -> Optional[Any]:
-        """Get value from cache with error handling."""
+#### Cache Fallback Pattern
+
+```python
+class CacheFactory:
+    @staticmethod
+    async def create_ai_cache() -> CacheInterface:
+        """Create AI cache with graceful fallback to memory cache."""
         try:
-            return await self.redis_client.get(key)
-        except ConnectionError:
-            # Cache failure shouldn't break the application
-            logger.warning("Cache connection failed, continuing without cache")
+            ai_cache = AIResponseCache(redis_url=settings.REDIS_URL)
+            if await ai_cache.connect():
+                return ai_cache
+        except Exception:
+            # Broad exception handling for maximum resilience
+            logger.warning("Redis unavailable, falling back to memory cache")
+            
+        return InMemoryCache(default_ttl=300)  # 5-minute fallback TTL
+```
+
+#### Infrastructure Exception Handling Guidelines
+
+**When to use broad `except Exception:` handling:**
+
+1. **Graceful Degradation**: When system should continue operating despite infrastructure failures
+2. **Fallback Scenarios**: When alternative implementations are available
+3. **Non-Critical Operations**: When failure doesn't impact core functionality
+
+```python
+# ✅ Appropriate: Graceful degradation in cache operations
+async def get_cached_value(self, key: str) -> Optional[Any]:
+    """Get value from cache with graceful degradation."""
+    try:
+        return await self.redis.get(key)
+    except Exception:
+        # Redis errors shouldn't break the application
+        logger.warning("Cache unavailable, operation continuing without cache")
+        return None
+
+# ✅ Appropriate: Connection establishment with fallback
+async def connect_to_redis(self) -> bool:
+    """Connect to Redis with fallback handling."""
+    try:
+        await self.redis.ping()
+        logger.info("Connected to Redis successfully")
+        return True
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e} - caching disabled")
+        self.redis = None
+        return False
+```
+
+**When to use specific exception handling:**
+
+1. **Business Logic**: When different error types require different responses
+2. **User-Facing Operations**: When users need specific error information
+3. **Critical Paths**: When errors indicate serious system problems
+
+```python
+# ✅ Appropriate: Specific handling for business operations
+async def process_user_data(self, user_id: str) -> UserData:
+    """Process user data with specific error handling."""
+    try:
+        user = await self.database.get_user(user_id)
+        return self.transform_user_data(user)
+    except UserNotFoundError:
+        raise ValidationError(f"User {user_id} not found")
+    except DatabaseConnectionError:
+        raise InfrastructureError("Database temporarily unavailable")
+    except ValidationError:
+        # Re-raise validation errors as-is
+        raise
+```
+
+#### Cache Infrastructure Exception Patterns
+
+The cache infrastructure implements the following exception handling strategy:
+
+```python
+class AIResponseCache:
+    async def get(self, key: str) -> Optional[Any]:
+        """Get cache value with comprehensive error handling."""
+        try:
+            # Attempt Redis operation
+            cached_data = await self.redis.get(key)
+            if cached_data:
+                return json.loads(cached_data.decode('utf-8'))
             return None
         except Exception as e:
-            # Unexpected cache errors
-            logger.error(f"Unexpected cache error: {e}")
-            raise InfrastructureError("Cache service error")
+            # Log the specific error but don't expose details
+            logger.warning(f"Cache get error for key {key}: {e}")
+            return None  # Graceful degradation - act as cache miss
+    
+    async def set(self, key: str, value: Any, ttl: int = None) -> None:
+        """Set cache value with error resilience."""
+        try:
+            cache_data = json.dumps(value).encode('utf-8')
+            await self.redis.setex(key, ttl or self.default_ttl, cache_data)
+        except Exception as e:
+            # Cache write failures are non-critical
+            logger.warning(f"Cache set error for key {key}: {e}")
+            # Continue execution - cache miss on next read
+```
+
+#### Monitoring Infrastructure Exceptions
+
+When using broad exception handling, implement comprehensive monitoring:
+
+```python
+class MonitoringMiddleware:
+    def track_infrastructure_exceptions(self, operation: str, exception: Exception):
+        """Track infrastructure exceptions for operational awareness."""
+        
+        # Log detailed error information
+        logger.warning(
+            f"Infrastructure exception in {operation}",
+            extra={
+                "operation": operation,
+                "exception_type": type(exception).__name__,
+                "exception_message": str(exception),
+                "stack_trace": traceback.format_exc()
+            }
+        )
+        
+        # Update metrics for monitoring
+        self.metrics.increment(f'infrastructure.exceptions.{operation}')
+        self.metrics.increment(f'infrastructure.exceptions.type.{type(exception).__name__}')
 ```
 
 ### Resilience Service Integration
@@ -816,6 +983,29 @@ should_retry = classify_ai_exception(exception)
 assert should_retry is True
 ```
 
+### Infrastructure Exception Debugging
+
+**When broad `except Exception:` is used in infrastructure (like cache operations):**
+
+1. **Check Application Logs**: Infrastructure exceptions are logged with full context
+2. **Monitor Fallback Behavior**: Verify fallback mechanisms activate correctly
+3. **Track Exception Patterns**: Use monitoring to identify recurring infrastructure issues
+4. **Test Graceful Degradation**: Ensure application continues operating despite infrastructure failures
+
+```python
+# Debug infrastructure exceptions
+import logging
+logging.basicConfig(level=logging.WARNING)
+
+# Test cache fallback behavior
+cache_factory = CacheFactory()
+cache = await cache_factory.create_ai_cache()
+# Check logs for "Redis unavailable, falling back to memory cache"
+
+# Verify cache operations work with fallback
+result = await cache.get("test_key")  # Should work with memory cache
+```
+
 ### Debugging Exception Flow
 
 1. **Check Exception Type**: Verify the exception inherits from the correct base class
@@ -823,6 +1013,7 @@ assert should_retry is True
 3. **Check Status Mapping**: Test with `get_http_status_for_exception` for HTTP codes
 4. **Review Logs**: Check both application logs and middleware logs for complete context
 5. **Test Error Responses**: Verify client receives expected error format
+6. **Test Infrastructure Fallbacks**: Ensure graceful degradation works as expected
 
 ### Performance Considerations
 
@@ -830,6 +1021,7 @@ assert should_retry is True
 2. **Logging Performance**: Structured logging with context is efficient
 3. **Global Handler Impact**: Global exception handler adds minimal latency
 4. **Classification Efficiency**: Exception classification is fast for common types
+5. **Infrastructure Resilience**: Broad exception handling in infrastructure has negligible performance impact
 
 ## 📚 Related Documentation
 

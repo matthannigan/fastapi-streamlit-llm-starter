@@ -142,6 +142,14 @@ class AuthorizationError(ApplicationError):
     pass
 
 
+# Specific application errors
+class RequestTooLargeError(ApplicationError):
+    """
+    Raised when the incoming request exceeds configured size limits.
+    """
+    pass
+
+
 # ============================================================================
 # Infrastructure Exceptions
 # ============================================================================
@@ -209,7 +217,12 @@ class RateLimitError(TransientAIError):
     exceeded. This is a transient error that should be retried with
     appropriate backoff.
     """
-    pass
+    def __init__(self, message: str, retry_after: int = 60, context: Optional[Dict[str, Any]] = None):
+        context = context or {}
+        # Preserve retry_after for middleware/handlers to use as a header
+        context.setdefault("retry_after", retry_after)
+        super().__init__(message, context)
+        self.retry_after = retry_after
 
 
 class ServiceUnavailableError(TransientAIError):
@@ -291,6 +304,8 @@ def get_http_status_for_exception(exc: Exception) -> int:
         return 401  # Unauthorized
     elif isinstance(exc, AuthorizationError):
         return 403  # Forbidden
+    elif isinstance(exc, RequestTooLargeError):
+        return 413  # Request Entity Too Large
     elif isinstance(exc, ConfigurationError):
         return 500  # Internal Server Error
     elif isinstance(exc, BusinessLogicError):

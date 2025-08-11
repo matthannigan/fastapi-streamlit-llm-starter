@@ -19,3 +19,5 @@ dev/
 docs-website/
 .claude/
 CLAUDE.md
+docs.old/
+.github/

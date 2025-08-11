@@ -4,7 +4,7 @@ sidebar_label: validate_resilience_config
 
 # Resilience Configuration Validation Script
 
-  file_path: `scripts/validate_resilience_config.py`
+  file_path: `backend/scripts/old/validate_resilience_config.py`
 
 Provides validation, inspection, and recommendation capabilities for the
 resilience configuration preset system.

@@ -417,6 +417,7 @@ class TestConfigurationMetricsCollector:
         metrics_collector.record_preset_usage("production", "load")
         assert metrics_collector._stats_cache is None
     
+    @pytest.mark.slow
     def test_concurrent_access_thread_safety(self, metrics_collector):
         """Test thread safety of metrics collector."""
         import threading

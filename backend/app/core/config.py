@@ -125,7 +125,7 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     """
     Application settings with environment variable support and validation.
-    
+
     Configuration is organized into logical sections for maintainability:
     - AI Configuration: AI model settings and batch processing
     - API Configuration: Host, port, and basic API settings
@@ -133,116 +133,117 @@ class Settings(BaseSettings):
     - Application Settings: Debug, logging, and general app settings
     - Cache Configuration: Redis, compression, and tiering settings
     - Resilience Configuration: Circuit breaker, retry, and strategy settings
+    - Middleware Configuration: Enhanced middleware settings for production deployment
     - Monitoring Configuration: Metrics and health check settings
     """
 
     # ========================================
     # AI CONFIGURATION
     # ========================================
-    
+
     gemini_api_key: str = Field(
-        default="", 
+        default="",
         description="Google Gemini API key for AI service integration"
     )
     ai_model: str = Field(
-        default="gemini-2.0-flash-exp", 
+        default="gemini-2.0-flash-exp",
         description="Default AI model to use for processing requests"
     )
     ai_temperature: float = Field(
-        default=0.7, 
-        ge=0.0, 
-        le=2.0, 
+        default=0.7,
+        ge=0.0,
+        le=2.0,
         description="AI model temperature for controlling response creativity"
     )
-    
+
     # Batch Processing Configuration
     MAX_BATCH_REQUESTS_PER_CALL: int = Field(
-        default=50, 
-        gt=0, 
+        default=50,
+        gt=0,
         description="Maximum number of requests allowed per batch call"
     )
     BATCH_AI_CONCURRENCY_LIMIT: int = Field(
-        default=5, 
-        gt=0, 
+        default=5,
+        gt=0,
         description="Maximum concurrent AI requests in batch processing"
     )
-    
+
     # ========================================
     # API CONFIGURATION
     # ========================================
-    
+
     host: str = Field(
-        default="0.0.0.0", 
+        default="0.0.0.0",
         description="Backend host address for server binding"
     )
     port: int = Field(
-        default=8000, 
-        gt=0, 
-        le=65535, 
+        default=8000,
+        gt=0,
+        le=65535,
         description="Backend port number for server binding"
     )
-    
+
     # ========================================
     # AUTHENTICATION & CORS
     # ========================================
-    
+
     api_key: str = Field(
-        default="", 
+        default="",
         description="Primary API key for authentication"
     )
     additional_api_keys: str = Field(
-        default="", 
+        default="",
         description="Additional API keys (comma-separated) for multi-client access"
     )
-    
+
     allowed_origins: List[str] = Field(
         default=["http://localhost:8501", "http://frontend:8501"],
         description="Allowed CORS origins for cross-origin requests"
     )
-    
+
     # ========================================
     # APPLICATION SETTINGS
     # ========================================
-    
+
     debug: bool = Field(
-        default=False, 
+        default=False,
         description="Enable debug mode for development"
     )
     log_level: str = Field(
-        default="INFO", 
+        default="INFO",
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
 
     # ========================================
     # CACHE CONFIGURATION
     # ========================================
-    
+
     # Redis Connection
     redis_url: str = Field(
-        default="redis://redis:6379", 
+        default="redis://redis:6379",
         description="Redis connection URL for caching"
     )
-    
+
     # Cache Key Generation
     cache_text_hash_threshold: int = Field(
-        default=1000, 
-        gt=0, 
+        default=1000,
+        gt=0,
         description="Character count threshold for cache key text hashing"
     )
-    
+
     # Cache Compression Settings
     cache_compression_threshold: int = Field(
-        default=1000, 
-        gt=0, 
+        default=1000,
+        gt=0,
         description="Size threshold in bytes for compressing cache data"
     )
     cache_compression_level: int = Field(
-        default=6, 
-        ge=1, 
-        le=9, 
+        default=6,
+        ge=1,
+        le=9,
         description="Compression level (1-9, where 9 is highest compression)"
     )
-    
+
     # Cache Text Size Tiers - Controls how different text sizes are cached
     # for optimal performance with varying strategies
     cache_text_size_tiers: dict = Field(
@@ -253,25 +254,25 @@ class Settings(BaseSettings):
         },
         description="Text size tiers for caching strategy optimization"
     )
-    
+
     # Memory Cache Settings
     cache_memory_cache_size: int = Field(
-        default=100, 
-        gt=0, 
+        default=100,
+        gt=0,
         description="Maximum items in memory cache for small texts"
     )
-    
+
     # Cache TTL (Time To Live) Settings
     cache_default_ttl: int = Field(
-        default=3600, 
-        gt=0, 
+        default=3600,
+        gt=0,
         description="Default cache TTL in seconds (1 hour)"
     )
-    
+
     # ========================================
     # RESILIENCE CONFIGURATION
     # ========================================
-    
+
     # Preset System Configuration
     resilience_preset: str = Field(
         default="simple",
@@ -281,78 +282,78 @@ class Settings(BaseSettings):
         default=None,
         description="Custom resilience configuration as JSON string (overrides preset)"
     )
-    
+
     # Legacy Resilience Configuration (for backward compatibility)
     # These settings are maintained for applications migrating from manual configuration
-    
+
     # Feature Toggles
     resilience_enabled: bool = Field(
-        default=True, 
+        default=True,
         description="Master toggle for resilience features"
     )
     circuit_breaker_enabled: bool = Field(
-        default=True, 
+        default=True,
         description="Enable circuit breaker pattern for failure protection"
     )
     retry_enabled: bool = Field(
-        default=True, 
+        default=True,
         description="Enable retry mechanism for transient failures"
     )
-    
+
     # Default Strategy
     default_resilience_strategy: str = Field(
-        default="balanced", 
+        default="balanced",
         description="Default resilience strategy for operations"
     )
-    
+
     # Circuit Breaker Settings
     circuit_breaker_failure_threshold: int = Field(
-        default=5, 
-        gt=0, 
+        default=5,
+        gt=0,
         description="Number of failures before circuit breaker opens"
     )
     circuit_breaker_recovery_timeout: int = Field(
-        default=60, 
-        gt=0, 
+        default=60,
+        gt=0,
         description="Seconds to wait before attempting circuit breaker recovery"
     )
-    
+
     # Retry Mechanism Settings
     retry_max_attempts: int = Field(
-        default=3, 
-        gt=0, 
+        default=3,
+        gt=0,
         description="Maximum number of retry attempts for failed operations"
     )
     retry_max_delay: int = Field(
-        default=30, 
-        gt=0, 
+        default=30,
+        gt=0,
         description="Maximum delay between retries in seconds"
     )
     retry_exponential_multiplier: float = Field(
-        default=1.0, 
-        gt=0.0, 
+        default=1.0,
+        gt=0.0,
         description="Multiplier for exponential backoff calculations"
     )
     retry_exponential_min: float = Field(
-        default=2.0, 
-        gt=0.0, 
+        default=2.0,
+        gt=0.0,
         description="Minimum delay for exponential backoff in seconds"
     )
     retry_exponential_max: float = Field(
-        default=10.0, 
-        gt=0.0, 
+        default=10.0,
+        gt=0.0,
         description="Maximum delay for exponential backoff in seconds"
     )
     retry_jitter_enabled: bool = Field(
-        default=True, 
+        default=True,
         description="Enable random jitter to prevent thundering herd"
     )
     retry_jitter_max: float = Field(
-        default=2.0, 
-        gt=0.0, 
+        default=2.0,
+        gt=0.0,
         description="Maximum jitter value in seconds"
     )
-    
+
     # Operation-Specific Resilience Strategies
     # These allow fine-tuning resilience behavior per operation type
     summarize_resilience_strategy: str = Field(
@@ -375,24 +376,125 @@ class Settings(BaseSettings):
         default="conservative",
         description="Resilience strategy for question answering operations"
     )
-    
+
     # ========================================
     # MONITORING CONFIGURATION
     # ========================================
-    
+
     resilience_metrics_enabled: bool = Field(
-        default=True, 
+        default=True,
         description="Enable collection of resilience metrics"
     )
     resilience_health_check_enabled: bool = Field(
-        default=True, 
+        default=True,
         description="Enable resilience health check endpoints"
     )
-    
+
+    # ========================================
+    # MIDDLEWARE CONFIGURATION
+    # ========================================
+
+    # Core Middleware Settings
+    security_headers_enabled: bool = Field(
+        default=True,
+        description="Enable security headers middleware"
+    )
+    request_logging_enabled: bool = Field(
+        default=True,
+        description="Enable request logging middleware"
+    )
+    performance_monitoring_enabled: bool = Field(
+        default=True,
+        description="Enable performance monitoring middleware"
+    )
+
+    # Rate Limiting Middleware
+    rate_limiting_enabled: bool = Field(
+        default=True,
+        description="Enable rate limiting middleware"
+    )
+    rate_limiting_skip_health: bool = Field(
+        default=True,
+        description="Skip rate limiting for health check endpoints"
+    )
+
+    # Request Size Limiting Middleware
+    request_size_limiting_enabled: bool = Field(
+        default=True,
+        description="Enable request size limiting middleware"
+    )
+    max_request_size: int = Field(
+        default=10 * 1024 * 1024,  # 10MB
+        gt=0,
+        description="Default maximum request size in bytes"
+    )
+
+    # API Versioning Middleware
+    api_versioning_enabled: bool = Field(
+        default=True,
+        description="Enable API versioning middleware"
+    )
+    default_api_version: str = Field(
+        default="1.0",
+        description="Default API version when none specified"
+    )
+    current_api_version: str = Field(
+        default="1.0",
+        description="Current/latest API version"
+    )
+    min_api_version: str = Field(
+        default="1.0",
+        description="Minimum supported API version"
+    )
+    max_api_version: str = Field(
+        default="1.0",
+        description="Maximum supported API version"
+    )
+    api_version_compatibility_enabled: bool = Field(
+        default=False,
+        description="Enable version compatibility transformations"
+    )
+    version_analytics_enabled: bool = Field(
+        default=True,
+        description="Enable version analytics and logging"
+    )
+
+    # Compression Middleware
+    compression_enabled: bool = Field(
+        default=True,
+        description="Enable compression middleware"
+    )
+    compression_min_size: int = Field(
+        default=1024,  # 1KB
+        gt=0,
+        description="Minimum response size to compress in bytes"
+    )
+    compression_level: int = Field(
+        default=6,
+        ge=1,
+        le=9,
+        description="Compression level (1-9, higher = better compression but slower)"
+    )
+
+    # Performance and Monitoring Settings
+    slow_request_threshold: int = Field(
+        default=1000,  # milliseconds
+        gt=0,
+        description="Threshold for slow request warnings in milliseconds"
+    )
+    memory_monitoring_enabled: bool = Field(
+        default=True,
+        description="Enable memory usage monitoring"
+    )
+    middleware_monitoring_enabled: bool = Field(
+        default=False,
+        description="Enable periodic middleware health monitoring"
+    )
+
     # ========================================
     # PYDANTIC CONFIGURATION
     # ========================================
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -455,8 +557,11 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator('default_resilience_strategy', 'summarize_resilience_strategy', 'sentiment_resilience_strategy', 
-                     'key_points_resilience_strategy', 'questions_resilience_strategy', 'qa_resilience_strategy', mode='before')
+    @field_validator(
+        'default_resilience_strategy', 'summarize_resilience_strategy', 'sentiment_resilience_strategy',
+        'key_points_resilience_strategy', 'questions_resilience_strategy', 'qa_resilience_strategy',
+        mode='before'
+    )
     @classmethod
     def validate_resilience_strategy(cls, v, info) -> str:
         """Validate resilience strategy with graceful fallback for environment variables."""
@@ -470,15 +575,15 @@ class Settings(BaseSettings):
             'qa_resilience_strategy': 'conservative'
         }
         default_value = defaults.get(info.field_name, 'balanced')
-        
+
         # Handle None or empty values
         if v is None or v == "":
             return default_value
-            
+
         # Convert to string if needed
         if not isinstance(v, str):
             v = str(v)
-            
+
         allowed_strategies = {"conservative", "balanced", "aggressive"}
         if v not in allowed_strategies:
             # Check if we're in a context where we should be graceful
@@ -490,13 +595,16 @@ class Settings(BaseSettings):
                 'questions_resilience_strategy': 'QUESTIONS_RESILIENCE_STRATEGY',
                 'qa_resilience_strategy': 'QA_RESILIENCE_STRATEGY'
             }
-            
+
             env_var = strategy_env_vars.get(info.field_name)
             env_value = os.getenv(env_var) if env_var else None
-            
+
             # If the invalid value matches what's in the environment, be graceful
             if env_value == v:
-                logger.warning(f"Invalid resilience strategy '{v}' from environment variable {env_var}, falling back to '{default_value}'")
+                logger.warning(
+                    f"Invalid resilience strategy '{v}' from environment variable {env_var}, "
+                    f"falling back to '{default_value}'"
+                )
                 return default_value
             else:
                 # Value was passed directly - strict validation
@@ -512,7 +620,10 @@ class Settings(BaseSettings):
                 )
         return v
 
-    @field_validator('circuit_breaker_failure_threshold', 'circuit_breaker_recovery_timeout', 'retry_max_attempts', 'retry_max_delay', mode='before')
+    @field_validator(
+        'circuit_breaker_failure_threshold', 'circuit_breaker_recovery_timeout',
+        'retry_max_attempts', 'retry_max_delay', mode='before'
+    )
     @classmethod
     def validate_positive_integers(cls, v, info) -> int:
         """Validate positive integers with strict validation for completely invalid values."""
@@ -524,7 +635,7 @@ class Settings(BaseSettings):
             'retry_max_delay': 30
         }
         default_value = defaults.get(info.field_name, 1)
-        
+
         # Handle string conversion
         if isinstance(v, str):
             # Empty strings should always fail validation
@@ -539,15 +650,17 @@ class Settings(BaseSettings):
                         "error_type": "empty_string"
                     }
                 )
-            
+
             try:
                 v = int(v)
             except (ValueError, TypeError):
                 # Check if we're in a context with legacy environment variables
-                legacy_vars = ["RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD", 
-                              "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"]
+                legacy_vars = [
+                    "RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+                    "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"
+                ]
                 has_any_legacy = any(var in os.environ for var in legacy_vars)
-                
+
                 if has_any_legacy:
                     # Be graceful in legacy mode for non-empty invalid values
                     logger.warning(f"Invalid value for {info.field_name}: '{v}', using default: {default_value}")
@@ -565,15 +678,18 @@ class Settings(BaseSettings):
                             "validation_mode": "strict"
                         }
                     )
-        
+
         # Handle negative/zero values - be graceful for these
         if isinstance(v, (int, float)) and v <= 0:
             logger.warning(f"Invalid value for {info.field_name}: {v}, using default: {default_value}")
             return default_value
-            
+
         return int(v) if isinstance(v, (int, float)) else default_value
 
-    @field_validator('retry_exponential_multiplier', 'retry_exponential_min', 'retry_exponential_max', 'retry_jitter_max')
+    @field_validator(
+        'retry_exponential_multiplier', 'retry_exponential_min',
+        'retry_exponential_max', 'retry_jitter_max'
+    )
     @classmethod
     def validate_positive_floats(cls, v: float, info) -> float:
         """Validate positive floats with fallback for invalid values."""
@@ -598,42 +714,42 @@ class Settings(BaseSettings):
         """Clear the legacy configuration cache."""
         if hasattr(self, '_legacy_config_cache'):
             delattr(self, '_legacy_config_cache')
-    
+
     def _has_legacy_resilience_config(self) -> bool:
         """
         Check if legacy resilience configuration variables are present.
-        
+
         This method detects whether the application is using legacy environment
         variables for resilience configuration, which triggers backward compatibility mode.
         """
         # Cache the result to avoid repeated expensive checks
         if hasattr(self, '_legacy_config_cache'):
             return self._legacy_config_cache
-        
+
         # Check the most common legacy environment variables first for faster detection
         env = os.environ
-        
+
         # Check most common legacy vars first (ordered by usage frequency)
-        if ("RETRY_MAX_ATTEMPTS" in env or 
-            "CIRCUIT_BREAKER_FAILURE_THRESHOLD" in env or 
-            "DEFAULT_RESILIENCE_STRATEGY" in env):
+        if ("RETRY_MAX_ATTEMPTS" in env or
+                "CIRCUIT_BREAKER_FAILURE_THRESHOLD" in env or
+                "DEFAULT_RESILIENCE_STRATEGY" in env):
             self._legacy_config_cache = True
             return True
-        
+
         # Check remaining legacy environment variables
         other_legacy_vars = [
             "SUMMARIZE_RESILIENCE_STRATEGY",
-            "SENTIMENT_RESILIENCE_STRATEGY", 
+            "SENTIMENT_RESILIENCE_STRATEGY",
             "KEY_POINTS_RESILIENCE_STRATEGY",
             "QUESTIONS_RESILIENCE_STRATEGY",
             "QA_RESILIENCE_STRATEGY"
         ]
-        
+
         for var in other_legacy_vars:
             if var in env:
                 self._legacy_config_cache = True
                 return True
-        
+
         # Only check field values if no environment variables are set
         default_values = {
             'circuit_breaker_failure_threshold': 5,
@@ -651,48 +767,48 @@ class Settings(BaseSettings):
             'questions_resilience_strategy': 'balanced',
             'qa_resilience_strategy': 'conservative',
         }
-        
+
         for field_name, default_value in default_values.items():
             current_value = getattr(self, field_name)
             if current_value != default_value:
                 self._legacy_config_cache = True
                 return True
-        
+
         self._legacy_config_cache = False
         return False
 
     def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
         """
         Get resilience configuration from preset or legacy settings.
-        
+
         This is the main entry point for resilience configuration. It automatically
         determines the appropriate configuration source and returns a complete
         ResilienceConfig object.
-        
+
         Returns appropriate resilience configuration based on:
         1. Legacy environment variables (if present) - for backward compatibility
         2. Custom configuration JSON (if provided)
         3. Preset configuration (default)
-        
+
         Args:
             session_id: Optional session identifier for monitoring
             user_context: Optional user context for monitoring
-            
+
         Returns:
             ResilienceConfig object with complete configuration
         """
         # Import here to avoid circular imports
-        from app.infrastructure.resilience import preset_manager, ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        from app.infrastructure.resilience import preset_manager
         from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+
         # Determine configuration type for monitoring
         config_type = "legacy" if self._has_legacy_resilience_config() else "preset"
         if self.resilience_custom_config:
             config_type = "custom"
-        
+
         # Track configuration loading with monitoring
         with config_metrics_collector.track_config_operation(
-            operation="load_config", 
+            operation="load_config",
             preset_name=self.resilience_preset,
             session_id=session_id,
             user_context=user_context
@@ -708,11 +824,14 @@ class Settings(BaseSettings):
                     metadata={"config_type": "legacy"}
                 )
                 resilience_config = self._load_legacy_resilience_config()
-                
+
                 # In legacy mode, environment variables take highest priority
                 if self.resilience_custom_config:
-                    logger.info("Legacy environment variables detected - custom config will be ignored to maintain backward compatibility")
-                    
+                    logger.info(
+                        "Legacy environment variables detected - custom config will be ignored "
+                        "to maintain backward compatibility"
+                    )
+
                     config_metrics_collector.record_preset_usage(
                         preset_name="legacy",
                         operation="ignore_custom_config",
@@ -723,17 +842,17 @@ class Settings(BaseSettings):
                             "reason": "legacy_environment_variables_take_precedence"
                         }
                     )
-                
+
                 return resilience_config
-            
+
             # Load preset configuration
             try:
                 env_preset = os.getenv("RESILIENCE_PRESET")
                 preset_name = env_preset if env_preset else self.resilience_preset
-                
+
                 preset = preset_manager.get_preset(preset_name)
                 resilience_config = preset.to_resilience_config()
-                
+
                 # Record preset usage
                 config_metrics_collector.record_preset_usage(
                     preset_name=preset_name,
@@ -742,16 +861,16 @@ class Settings(BaseSettings):
                     user_context=user_context,
                     metadata={"config_type": config_type}
                 )
-                
+
                 # Apply custom overrides if provided
                 env_custom_config = os.getenv("RESILIENCE_CUSTOM_CONFIG")
                 custom_config_json = env_custom_config if env_custom_config else self.resilience_custom_config
-                
+
                 if custom_config_json:
                     try:
                         custom_config = json.loads(custom_config_json)
                         resilience_config = self._apply_custom_overrides(resilience_config, custom_config)
-                        
+
                         config_metrics_collector.record_preset_usage(
                             preset_name=preset_name,
                             operation="apply_custom_config",
@@ -762,10 +881,10 @@ class Settings(BaseSettings):
                                 "custom_keys": list(custom_config.keys())
                             }
                         )
-                        
+
                     except json.JSONDecodeError as e:
                         logger.error(f"Invalid JSON in resilience_custom_config: {e}")
-                        
+
                         config_metrics_collector.record_config_error(
                             preset_name=preset_name,
                             operation="parse_custom_config",
@@ -773,12 +892,12 @@ class Settings(BaseSettings):
                             session_id=session_id,
                             user_context=user_context
                         )
-                
+
                 return resilience_config
-                
+
             except Exception as e:
                 logger.error(f"Error loading resilience preset '{self.resilience_preset}': {e}")
-                
+
                 config_metrics_collector.record_config_error(
                     preset_name=preset_name,
                     operation="load_preset",
@@ -786,7 +905,7 @@ class Settings(BaseSettings):
                     session_id=session_id,
                     user_context=user_context
                 )
-                
+
                 # Fall back to simple preset
                 try:
                     fallback_preset = preset_manager.get_preset("simple")
@@ -811,13 +930,15 @@ class Settings(BaseSettings):
     def _load_legacy_resilience_config(self):
         """
         Load resilience configuration from legacy environment variables.
-        
+
         This method provides backward compatibility for applications that were
         using individual environment variables for resilience configuration
         before the preset system was introduced.
         """
-        from app.infrastructure.resilience import ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
-        
+        from app.infrastructure.resilience import (
+            ResilienceConfig, RetryConfig, CircuitBreakerConfig, ResilienceStrategy
+        )
+
         # Map legacy strategy strings to enum values
         strategy_mapping = {
             "aggressive": ResilienceStrategy.AGGRESSIVE,
@@ -825,10 +946,12 @@ class Settings(BaseSettings):
             "conservative": ResilienceStrategy.CONSERVATIVE,
             "critical": ResilienceStrategy.CRITICAL
         }
-        
-        default_strategy_str = os.getenv("DEFAULT_RESILIENCE_STRATEGY", self.default_resilience_strategy)
+
+        default_strategy_str = os.getenv(
+            "DEFAULT_RESILIENCE_STRATEGY", self.default_resilience_strategy
+        )
         default_strategy = strategy_mapping.get(default_strategy_str, ResilienceStrategy.BALANCED)
-        
+
         # Helper functions for safe environment variable conversion
         def safe_int(env_var: str, fallback: int) -> int:
             try:
@@ -836,28 +959,39 @@ class Settings(BaseSettings):
                 if value is None:
                     return fallback
                 result = int(value)
-                if env_var in ["RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD", "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"] and result <= 0:
+                if (env_var in ["RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+                                "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"] and result <= 0):
                     logger.warning(f"Invalid negative/zero value for {env_var}: {result}, using fallback: {fallback}")
                     return fallback
                 return result
             except (ValueError, TypeError):
-                logger.warning(f"Invalid value for {env_var}: {os.getenv(env_var)}, using fallback: {fallback}")
+                logger.warning(
+                    f"Invalid value for {env_var}: {os.getenv(env_var)}, "
+                    f"using fallback: {fallback}"
+                )
                 return fallback
-        
+
         def safe_float(env_var: str, fallback: float) -> float:
             try:
                 value = os.getenv(env_var)
                 if value is None:
                     return fallback
                 result = float(value)
-                if env_var in ["RETRY_EXPONENTIAL_MULTIPLIER", "RETRY_EXPONENTIAL_MIN", "RETRY_EXPONENTIAL_MAX", "RETRY_JITTER_MAX"] and result <= 0:
-                    logger.warning(f"Invalid negative/zero value for {env_var}: {result}, using fallback: {fallback}")
+                if (env_var in ["RETRY_EXPONENTIAL_MULTIPLIER", "RETRY_EXPONENTIAL_MIN",
+                                "RETRY_EXPONENTIAL_MAX", "RETRY_JITTER_MAX"] and result <= 0):
+                    logger.warning(
+                        f"Invalid negative/zero value for {env_var}: {result}, "
+                        f"using fallback: {fallback}"
+                    )
                     return fallback
                 return result
             except (ValueError, TypeError):
-                logger.warning(f"Invalid value for {env_var}: {os.getenv(env_var)}, using fallback: {fallback}")
+                logger.warning(
+                    f"Invalid value for {env_var}: {os.getenv(env_var)}, "
+                    f"using fallback: {fallback}"
+                )
                 return fallback
-        
+
         # Load configuration from environment variables with safe conversion
         retry_max_attempts = safe_int("RETRY_MAX_ATTEMPTS", self.retry_max_attempts)
         retry_max_delay = safe_int("RETRY_MAX_DELAY", self.retry_max_delay)
@@ -866,13 +1000,13 @@ class Settings(BaseSettings):
         retry_exponential_max = safe_float("RETRY_EXPONENTIAL_MAX", self.retry_exponential_max)
         retry_jitter_enabled = os.getenv("RETRY_JITTER_ENABLED", str(self.retry_jitter_enabled)).lower() in ("true", "1", "yes")
         retry_jitter_max = safe_float("RETRY_JITTER_MAX", self.retry_jitter_max)
-        
+
         circuit_breaker_failure_threshold = safe_int("CIRCUIT_BREAKER_FAILURE_THRESHOLD", self.circuit_breaker_failure_threshold)
         circuit_breaker_recovery_timeout = safe_int("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", self.circuit_breaker_recovery_timeout)
-        
+
         circuit_breaker_enabled = os.getenv("CIRCUIT_BREAKER_ENABLED", str(self.circuit_breaker_enabled)).lower() in ("true", "1", "yes")
         retry_enabled = os.getenv("RETRY_ENABLED", str(self.retry_enabled)).lower() in ("true", "1", "yes")
-        
+
         return ResilienceConfig(
             strategy=default_strategy,
             retry_config=RetryConfig(
@@ -895,20 +1029,20 @@ class Settings(BaseSettings):
     def _apply_custom_overrides(self, base_config, custom_config: dict):
         """
         Apply custom configuration overrides to base preset config.
-        
+
         This method allows fine-tuning of preset configurations through
         JSON configuration overrides while maintaining validation.
-        
+
         Args:
             base_config: Base ResilienceConfig from preset
             custom_config: Dictionary of configuration overrides
-            
+
         Returns:
             ResilienceConfig with custom overrides applied
         """
         from app.infrastructure.resilience import ResilienceStrategy, ResilienceConfig, RetryConfig, CircuitBreakerConfig
         from app.infrastructure.resilience.config_validator import config_validator
-        
+
         # Validate custom configuration
         validation_result = config_validator.validate_custom_config(custom_config)
         if not validation_result.is_valid:
@@ -918,12 +1052,12 @@ class Settings(BaseSettings):
                 logger.warning(f"Custom configuration warning: {warning}")
             # Return base config without applying invalid overrides
             return base_config
-        
+
         # Log any warnings
         if validation_result.warnings:
             for warning in validation_result.warnings:
                 logger.warning(f"Custom configuration warning: {warning}")
-        
+
         # Create new configuration objects with overrides applied
         new_retry_config = RetryConfig(
             max_attempts=custom_config.get("retry_attempts", base_config.retry_config.max_attempts),
@@ -934,13 +1068,13 @@ class Settings(BaseSettings):
             jitter=custom_config.get("jitter_enabled", base_config.retry_config.jitter),
             jitter_max=custom_config.get("jitter_max", base_config.retry_config.jitter_max)
         )
-        
+
         new_circuit_breaker_config = CircuitBreakerConfig(
             failure_threshold=custom_config.get("circuit_breaker_threshold", base_config.circuit_breaker_config.failure_threshold),
             recovery_timeout=custom_config.get("recovery_timeout", base_config.circuit_breaker_config.recovery_timeout),
             half_open_max_calls=base_config.circuit_breaker_config.half_open_max_calls  # Not configurable via custom config
         )
-        
+
         # Apply strategy overrides
         strategy = base_config.strategy
         if "default_strategy" in custom_config:
@@ -948,17 +1082,18 @@ class Settings(BaseSettings):
                 strategy = ResilienceStrategy(custom_config["default_strategy"])
             except ValueError:
                 logger.warning(f"Invalid default strategy '{custom_config['default_strategy']}', keeping original")
-        
+
         # Apply operation-specific strategy overrides
         if "operation_overrides" in custom_config:
             for operation, strategy_str in custom_config["operation_overrides"].items():
                 try:
-                    strategy_enum = ResilienceStrategy(strategy_str)
+                    # Validate the strategy is valid
+                    ResilienceStrategy(strategy_str)
                     # Note: Operation-specific strategies would be handled by AIServiceResilience
                     # For now, we just validate the strategy is valid
                 except ValueError:
                     logger.warning(f"Invalid strategy '{strategy_str}' for operation '{operation}'")
-        
+
         # Create new resilience config with all overrides applied
         return ResilienceConfig(
             strategy=strategy,
@@ -975,19 +1110,19 @@ class Settings(BaseSettings):
     def validate_custom_config(self, json_string: Optional[str] = None) -> dict:
         """
         Validate custom resilience configuration.
-        
+
         Args:
             json_string: JSON string to validate (if None, uses current resilience_custom_config)
-            
+
         Returns:
             Dictionary with validation results
         """
         from app.infrastructure.resilience.config_validator import config_validator
-        
+
         config_to_validate = json_string or self.resilience_custom_config
         if not config_to_validate:
             return {"is_valid": True, "errors": [], "warnings": ["No custom configuration to validate"]}
-        
+
         try:
             validation_result = config_validator.validate_json_string(config_to_validate)
             return validation_result.to_dict()
@@ -1001,10 +1136,10 @@ class Settings(BaseSettings):
     def get_operation_strategy(self, operation_name: str) -> str:
         """
         Get resilience strategy for a specific operation.
-        
+
         Args:
             operation_name: Name of the operation
-            
+
         Returns:
             Strategy name for the operation
         """
@@ -1021,43 +1156,43 @@ class Settings(BaseSettings):
             "qa": getattr(self, 'qa_resilience_strategy', 'balanced'),
             "answer_question": getattr(self, 'qa_resilience_strategy', 'balanced'),
         }
-        
+
         return operation_strategies.get(operation_name, 'balanced')
-    
+
     # ========================================
     # BACKWARD COMPATIBILITY METHODS
     # ========================================
     # These methods maintain compatibility with existing code and tests
-    
+
     def get_registered_operations(self) -> List[str]:
         """Get list of operations that should be registered with resilience service."""
         return [
             "summarize_text",
-            "analyze_sentiment", 
+            "analyze_sentiment",
             "extract_key_points",
             "generate_questions",
             "answer_question"
         ]
-    
+
     def register_operation(self, operation_name: str, strategy: str):
         """Register an operation with a strategy (for compatibility with tests)."""
         # This is a no-op for compatibility - actual registration happens in resilience service
         pass
-    
+
     @property
     def is_legacy_config(self) -> bool:
         """Check if using legacy configuration (for test compatibility)."""
         return self._has_legacy_resilience_config()
-    
+
     def get_operation_configs(self) -> dict:
         """Get all operation configurations (for test compatibility)."""
         operations = self.get_registered_operations()
         return {op: self.get_operation_strategy(op) for op in operations}
-    
+
     def get_preset_operations(self, preset_name: Optional[str] = None) -> List[str]:
         """Get operations for a specific preset (for test compatibility)."""
         return self.get_registered_operations()
-    
+
     def get_all_operation_strategies(self) -> dict:
         """Get all operation strategy mappings (for test compatibility)."""
         return {

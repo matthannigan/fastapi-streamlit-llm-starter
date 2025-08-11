@@ -387,6 +387,194 @@ redis-cli info persistence | grep -E "rdb_last_save_time|aof_last_rewrite_time"
 redis-cli slowlog get 10
 ```
 
+### Middleware Performance Optimization
+
+The enhanced middleware stack provides multiple optimization opportunities through intelligent caching, compression, and request handling. Proper middleware tuning can significantly improve application performance.
+
+> **📖 For complete middleware configuration details**, see the **[Middleware Operations Guide](./MIDDLEWARE.md)** which provides:
+> - Detailed middleware performance configuration procedures
+> - Compression algorithm selection and tuning
+> - Rate limiting optimization for performance
+> - Request size optimization strategies
+
+#### Compression Middleware Optimization
+
+**Performance Impact**: Compression can reduce response sizes by 60-90% but increases CPU usage by 10-30%.
+
+**Compression Tuning:**
+```bash
+# Optimize compression for performance
+export COMPRESSION_MINIMUM_SIZE=1024      # Only compress responses larger than 1KB
+export COMPRESSION_LEVEL=6                # Balanced compression level (1-9)
+export COMPRESSION_ALGORITHM=gzip         # Fast compression algorithm
+
+# Performance-optimized compression
+curl -X POST http://localhost:8000/internal/middleware/compression/optimize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "algorithm": "gzip",
+    "level": 4,
+    "minimum_size": 2048,
+    "exclude_content_types": ["image/*", "video/*", "application/zip"]
+  }'
+```
+
+**Compression Performance Monitoring:**
+```bash
+# Monitor compression performance impact
+curl -s http://localhost:8000/internal/monitoring/compression-metrics | jq '.'
+
+# Analyze compression efficiency
+curl -s http://localhost:8000/internal/middleware/compression/stats | jq '{
+  compression_ratio: .average_compression_ratio,
+  cpu_overhead: .cpu_overhead_percentage,
+  bandwidth_savings: .bandwidth_savings_bytes
+}'
+```
+
+#### Rate Limiting Optimization
+
+**Performance Considerations**: Redis-backed rate limiting with local fallback provides optimal performance while maintaining protection.
+
+**Rate Limiting Tuning:**
+```bash
+# Performance-optimized rate limiting
+export RATE_LIMIT_REQUESTS_PER_MINUTE=120   # Higher limit for better UX
+export RATE_LIMIT_BURST_SIZE=20              # Allow traffic bursts
+export RATE_LIMIT_REDIS_POOL_SIZE=10         # Optimize Redis connections
+export RATE_LIMIT_LOCAL_CACHE_SIZE=10000     # Larger local cache for fallback
+
+# Configure adaptive rate limiting
+curl -X POST http://localhost:8000/internal/middleware/rate-limiting/optimize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adaptive_limits": true,
+    "peak_multiplier": 2.0,
+    "off_peak_multiplier": 0.5,
+    "client_tier_limits": {
+      "premium": 200,
+      "standard": 100,
+      "basic": 50
+    }
+  }'
+```
+
+**Rate Limiting Performance Monitoring:**
+```bash
+# Monitor rate limiting performance
+curl -s http://localhost:8000/internal/monitoring/rate-limiting-performance | jq '.'
+
+# Check for performance bottlenecks
+curl -s http://localhost:8000/internal/middleware/rate-limiting/performance | jq '{
+  redis_latency_ms: .redis_average_latency,
+  local_cache_hit_ratio: .local_cache_stats.hit_ratio,
+  request_processing_time_ms: .average_processing_time
+}'
+```
+
+#### Request Size Optimization
+
+**Performance Strategy**: Smart request size limits prevent resource exhaustion while allowing legitimate large requests.
+
+**Request Size Tuning:**
+```bash
+# Performance-balanced request size limits
+export MAX_REQUEST_SIZE_BYTES=50485760      # 48MB for file uploads
+export MAX_JSON_SIZE_BYTES=2097152          # 2MB for JSON payloads
+export MAX_STREAMING_SIZE_BYTES=104857600   # 100MB for streaming
+export REQUEST_SIZE_CHECK_ASYNC=true        # Async size checking
+
+# Configure streaming request handling
+curl -X POST http://localhost:8000/internal/middleware/request-size/optimize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enable_streaming": true,
+    "chunk_size": 65536,
+    "async_validation": true,
+    "progressive_limits": {
+      "json": 2097152,
+      "form": 10485760,
+      "file": 52428800
+    }
+  }'
+```
+
+#### API Versioning Performance
+
+**Optimization Focus**: Minimize version detection overhead while maintaining compatibility.
+
+**Version Detection Tuning:**
+```bash
+# Optimize API versioning performance
+export API_VERSION_CACHE_SIZE=1000
+export API_VERSION_DEFAULT_STRATEGY=header    # Fastest detection method
+export API_VERSION_FALLBACK_ENABLED=true
+export API_VERSION_METRICS_ENABLED=true
+
+# Performance-optimized versioning
+curl -X POST http://localhost:8000/internal/middleware/versioning/optimize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "detection_strategy": "header_first",
+    "enable_caching": true,
+    "cache_ttl": 3600,
+    "fast_path_versions": ["v1", "v2"]
+  }'
+```
+
+#### Middleware Stack Performance
+
+**Overall Performance Monitoring:**
+```bash
+# Monitor complete middleware stack performance
+curl -s http://localhost:8000/internal/monitoring/middleware-performance | jq '.'
+
+# Middleware execution order impact
+curl -s http://localhost:8000/internal/middleware/stack/performance | jq '{
+  total_overhead_ms: .middleware_overhead.total,
+  per_middleware: .middleware_overhead.breakdown,
+  optimization_recommendations: .recommendations
+}'
+```
+
+**Performance Optimization Script:**
+```bash
+#!/bin/bash
+# optimize_middleware_performance.sh
+
+echo "=== Middleware Performance Optimization $(date) ==="
+
+# 1. Compression optimization
+echo "Optimizing compression middleware..."
+curl -X POST http://localhost:8000/internal/middleware/compression/auto-optimize \
+  -H "X-API-Key: $API_KEY" | jq '.optimization_applied'
+
+# 2. Rate limiting optimization
+echo "Optimizing rate limiting..."
+curl -X POST http://localhost:8000/internal/middleware/rate-limiting/auto-optimize \
+  -H "X-API-Key: $API_KEY" | jq '.optimization_applied'
+
+# 3. Request size optimization
+echo "Optimizing request size limits..."
+curl -X POST http://localhost:8000/internal/middleware/request-size/auto-optimize \
+  -H "X-API-Key: $API_KEY" | jq '.optimization_applied'
+
+# 4. Version detection optimization
+echo "Optimizing API versioning..."
+curl -X POST http://localhost:8000/internal/middleware/versioning/auto-optimize \
+  -H "X-API-Key: $API_KEY" | jq '.optimization_applied'
+
+# 5. Overall performance check
+echo "Final performance check:"
+curl -s http://localhost:8000/internal/monitoring/middleware-performance | jq '{
+  total_overhead: .total_overhead_ms,
+  status: .performance_status,
+  recommendations: .active_recommendations
+}'
+
+echo "=== Middleware optimization completed ==="
+```
+
 ### Application Server Optimization
 
 #### Uvicorn Configuration

@@ -171,7 +171,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.core.config import settings
-from app.core.middleware import setup_middleware
+from app.core.middleware import setup_middleware, setup_enhanced_middleware
 from app.infrastructure.security import verify_api_key
 from app.api.v1.health import health_router
 from app.api.v1.auth import auth_router
@@ -428,7 +428,7 @@ def create_public_app() -> FastAPI:
     )
     
     # Setup middleware for public app
-    setup_middleware(public_app, settings)
+    setup_enhanced_middleware(public_app, settings)
     
     @public_app.get("/docs", include_in_schema=False)
     async def custom_swagger_ui_html():
