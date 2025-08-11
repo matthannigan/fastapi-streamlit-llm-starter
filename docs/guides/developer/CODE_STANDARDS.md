@@ -939,7 +939,7 @@ When updating existing code to follow these architectural standards:
 - [ ] Verify example completeness
 
 ### 7. Code Structure Alignment
-- [ ] Add comprehensive docstrings
+- [ ] Add comprehensive Google-style docstrings with Markdown for formatting and readability
 - [ ] Follow standard function/class structure
 - [ ] Include type hints consistently
 - [ ] Add appropriate metadata to responses

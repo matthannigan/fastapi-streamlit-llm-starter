@@ -2,7 +2,7 @@
 
 This view organizes all documentation by target audience level, helping you find content appropriate for your experience level.
 
-*Last updated on 2025-08-08*
+*Last updated on 2025-08-11*
 
 ## Introductory
 
@@ -60,7 +60,7 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Cache Infrastructure Service](guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation
 
-- **[Core Module Integration Guide](guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns
+- **[Core Module Integration Guide](guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and enhanced middleware patterns
 
 - **[Deployment Guide](guides/developer/DEPLOYMENT.md)**: Deployment guide for the dual-API architecture with resilience patterns and infrastructure services across various environments
 
@@ -70,13 +70,13 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Monitoring Infrastructure Service](guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection
 
-- **[Operational Monitoring Guide](guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments
+- **[Operational Monitoring Guide](guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, middleware monitoring, alert management, and system health verification for production environments
 
-- **[Performance Optimization Guide](guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows
+- **[Performance Optimization Guide](guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, middleware performance optimization, AI service optimization, and performance testing workflows
 
 - **[Resilience Infrastructure Service](guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring
 
-- **[Security Guide](guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist
+- **[Security Guide](guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, middleware security integration, AI-specific security threats, incident response procedures, and production security checklist
 
 - **[Security Infrastructure Service](guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection
 
