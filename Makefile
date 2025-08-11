@@ -46,6 +46,10 @@ VENV_DIR := .venv
 VENV_PYTHON := $(VENV_DIR)/bin/python
 VENV_PIP := $(VENV_DIR)/bin/pip
 
+# Git branch detection for branch-specific container naming
+GIT_BRANCH := $(shell git branch --show-current 2>/dev/null | tr '/' '-' | tr '[:upper:]' '[:lower:]' || echo "main")
+export GIT_BRANCH
+
 # Environment detection for smart Python command selection
 IN_VENV := $(shell $(PYTHON) -c "import sys; print('1' if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else '0')" 2>/dev/null || echo "0")
 IN_DOCKER := $(shell [ -f /.dockerenv ] && echo "1" || echo "0")
@@ -577,7 +581,7 @@ backup:
 	@echo "💾 Creating Redis backup..."
 	@docker-compose exec redis redis-cli BGSAVE
 	@mkdir -p ./backups
-	@docker cp ai-text-processor-redis:/data/dump.rdb ./backups/redis-$(shell date +%Y%m%d-%H%M%S).rdb
+	@docker cp ai-text-processor-redis-$${GIT_BRANCH:-main}:/data/dump.rdb ./backups/redis-$(shell date +%Y%m%d-%H%M%S).rdb
 	@echo "✅ Backup created in ./backups/"
 
 # Restore Redis data from backup
@@ -590,7 +594,7 @@ restore:
 		exit 1; \
 	fi
 	@echo "🔄 Restoring Redis data from $(BACKUP)..."
-	@docker cp ./backups/$(BACKUP) ai-text-processor-redis:/data/dump.rdb
+	@docker cp ./backups/$(BACKUP) ai-text-processor-redis-$${GIT_BRANCH:-main}:/data/dump.rdb
 	@docker-compose restart redis
 	@echo "✅ Redis data restored from $(BACKUP)!"
 
