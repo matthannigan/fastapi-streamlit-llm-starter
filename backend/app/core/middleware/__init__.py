@@ -66,23 +66,24 @@ Enhanced Middleware Components:
         * Detailed error responses
 
 Architecture:
-    The enhanced middleware stack follows FastAPI's middleware execution order, with
-    rate limiting and security middleware running first, followed by versioning,
-    compression, logging, and monitoring middleware, and finally CORS middleware
-    for response processing.
+    The enhanced middleware stack follows FastAPI's LIFO (Last-In, First-Out) middleware 
+    execution order. Middleware added last executes first during request processing.
+    This means performance monitoring and logging middleware run first to establish
+    timing context, followed by compression, versioning, security, and finally 
+    rate limiting middleware for final request validation.
 
-    Enhanced Execution Order (Request Processing):
-    1. Rate Limiting Middleware (protect against abuse early)
-    2. Request Size Limiting (prevent large request DoS attacks)
-    3. Security Middleware (security headers and validation)
-    4. API Versioning Middleware (handle version detection and routing)
-    5. Version Compatibility Middleware (transform between versions)
-    6. Compression Middleware (handle request/response compression)
-    7. Request Logging Middleware (log requests with correlation IDs)
-    8. Performance Monitoring (track performance metrics)
-    9. Application Logic (routers, endpoints)
-    10. CORS Middleware (handle cross-origin responses)
-    11. Global Exception Handler (catch any unhandled exceptions)
+    Enhanced Execution Order (Request Processing - LIFO):
+    1. CORS Middleware (handle preflight requests - added last, runs first)
+    2. Performance Monitoring (track performance metrics)
+    3. Request Logging Middleware (log requests with correlation IDs)
+    4. Compression Middleware (handle request/response compression)
+    5. API Version Compatibility Middleware (transform between versions, if enabled)
+    6. API Versioning Middleware (handle version detection and routing)
+    7. Security Middleware (security headers and validation)
+    8. Request Size Limiting (prevent large request DoS attacks)
+    9. Rate Limiting Middleware (protect against abuse - added first, runs last)
+    10. Application Logic (routers, endpoints)
+    11. Global Exception Handler (catch any unhandled exceptions - not true middleware)
 
 Configuration:
     All middleware can be configured through the Settings class in app.core.config:
@@ -310,18 +311,23 @@ def setup_enhanced_middleware(app: FastAPI, settings: Settings) -> None:
     """
     Configure enhanced middleware stack with all available components.
 
-    Enhanced Middleware Stack Order:
-    1. **Rate Limiting Middleware**: Protect against abuse early
-    2. **Request Size Limiting**: Prevent large request DoS attacks
-    3. **Security Middleware**: Security headers and validation
-    4. **API Versioning Middleware**: Handle version detection and routing
-    5. **Version Compatibility Middleware**: Transform between versions
-    6. **Compression Middleware**: Handle request/response compression
-    7. **Request Logging Middleware**: Log requests with correlation IDs
-    8. **Performance Monitoring**: Track performance metrics
-    9. **Application Logic**: Your route handlers
-    10. **CORS Middleware**: Handle cross-origin responses
-    11. **Global Exception Handler**: Catch any unhandled exceptions
+    Enhanced Middleware Execution Order (LIFO - Last-In, First-Out):
+    The middleware added last executes first. Here's the actual execution order:
+    
+    1. **CORS Middleware**: Handle preflight requests (added last, runs first)
+    2. **Performance Monitoring**: Track performance metrics
+    3. **Request Logging Middleware**: Log requests with correlation IDs
+    4. **Compression Middleware**: Handle request/response compression
+    5. **Version Compatibility Middleware**: Transform between versions (if enabled)
+    6. **API Versioning Middleware**: Handle version detection and routing
+    7. **Security Middleware**: Security headers and validation
+    8. **Request Size Limiting**: Prevent large request DoS attacks
+    9. **Rate Limiting Middleware**: Protect against abuse (added first, runs last)
+    10. **Application Logic**: Your route handlers
+    11. **Global Exception Handler**: Catch any unhandled exceptions (not true middleware)
+
+    Note: Due to FastAPI's LIFO middleware execution, the order above reflects
+    the actual request processing order, not the setup order in this function.
 
     Args:
         app (FastAPI): The FastAPI application instance
@@ -354,7 +360,7 @@ def setup_enhanced_middleware(app: FastAPI, settings: Settings) -> None:
         logger.info("API versioning middleware enabled")
 
     # 5. Version Compatibility Middleware (transform between versions)
-    compatibility_enabled = getattr(settings, 'version_compatibility_enabled', False)
+    compatibility_enabled = getattr(settings, 'api_version_compatibility_enabled', False)
     if compatibility_enabled:
         app.add_middleware(VersionCompatibilityMiddleware, settings=settings)
         logger.info("Version compatibility middleware enabled")
@@ -425,7 +431,7 @@ class EnhancedMiddlewareSettings:
     current_api_version: str = "1.0"
     min_api_version: str = "1.0"
     max_api_version: str = "1.0"
-    version_compatibility_enabled: bool = False
+    api_version_compatibility_enabled: bool = False
     version_analytics_enabled: bool = True
 
     # === Enhanced Security Settings ===

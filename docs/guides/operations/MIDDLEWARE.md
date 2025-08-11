@@ -8,97 +8,61 @@ This guide provides operational procedures for managing the middleware stack in 
 
 ## Overview
 
-The starter template implements a sophisticated middleware stack comprising **9 production-ready components** that handle cross-cutting concerns including security, performance, monitoring, and operational intelligence. This operational guide focuses on deployment procedures, configuration management, performance optimization, and troubleshooting workflows for production environments.
+The starter template implements a sophisticated middleware stack comprising production-ready components that handle cross-cutting concerns including security, performance, monitoring, and operational intelligence. This operational guide focuses on deployment procedures, configuration management, performance optimization, and troubleshooting workflows for production environments.
 
-## Middleware Stack Architecture
+## Execution Order 
 
-The middleware components are applied in a carefully orchestrated order to optimize security, performance, and operational visibility:
+The middleware components are applied in a carefully orchestrated order to optimize security, performance, and operational visibility. **FastAPI middleware follows LIFO (Last-In, First-Out) execution order.** The middleware registered last executes first.
 
-**Execution Order (Request Processing):**
-1. **[CORS](#cors)** - Handle cross-origin response processing
+1. **[CORS](#cors)** - Handle cross-origin response processing (registered last, runs first)
 2. **[Performance Monitoring](#performance-monitoring)** - Track metrics and resource usage
 3. **[Request Logging](#request-logging)** - Structured logging with correlation IDs
 4. **[Compression](#compression)** - Handle request/response compression
-5. **[Version Compatibility](#version-compatibility)** (*when enabled*) - Transform between API versions
-6. **[API Versioning](#api-versioning)** - Version detection, routing, compatibility
-7. **[Security](#security)** - Security headers, XSS protection, input validation
-8. **[Request Size Limiting](#request-size-limiting)** - Prevent large request DoS attacks
-9. **[Rate Limiting](#rate-limiting)** - Protect against abuse and DoS attacks early
-10. **Application Logic** - Your business logic and endpoints
-11. **[Global Exception Handler](#global-exception-handler)** (*not true middleware*) - Catch and format unhandled exceptions
+5. **[API Versioning](#api-versioning)** - Version detection, routing, compatibility transforms
+6. **[Security](#security)** - Security headers, XSS protection, input validation
+7. **[Request Size Limiting](#request-size-limiting)** - Prevent large request DoS attacks
+8. **[Rate Limiting](#rate-limiting)** - Protect against abuse and DoS attacks (registered first, runs last)
+9. **Application Logic** - App-specific business logic and endpoints
+10. **[Global Exception Handler](#global-exception-handler)** - Catch and format unhandled exceptions (*not true middleware*)
 
-FastAPI middleware works in reverse order, so the last middleware registered is the first to process requests.
+Due to FastAPI's LIFO execution order, CORS middleware runs first to handle preflight requests and cross-origin validation, followed by performance monitoring and logging middleware to establish timing context, while rate limiting runs last to provide final request validation.
 
-### CORS
+## Middleware Components
 
-**Purpose**: Cross-origin resource sharing with security optimizations
+### API Versioning
 
-**Location**: `/backend/app/core/middleware/cors.py`
+**Purpose**: Version detection, path rewriting, compatibility layers
 
-**Configuration Key**: `allowed_origins`, `cors_credentials`, `cors_methods`
+**Location**: `/backend/app/core/middleware/api_versioning.py`
 
-**Operational Procedures:**
-```bash
-# Verify CORS configuration
-curl -s http://localhost:8000/internal/middleware/stats | jq '.enabled_features[] | select(. == "cors")'
-
-# Test CORS preflight request
-curl -X OPTIONS -H "Origin: https://example.com" \
-  -H "Access-Control-Request-Method: POST" \
-  http://localhost:8000/v1/text/summarize
-
-# Production CORS validation
-curl -I -H "Origin: https://your-frontend-domain.com" http://localhost:8000/health
-```
-
-### Performance Monitoring
-
-**Purpose**: Metrics collection, slow request detection, resource tracking
-
-**Location**: `/backend/app/core/middleware/performance_monitoring.py`
-
-**Configuration Key**: `performance_monitoring_enabled`, `slow_request_threshold`, `memory_monitoring_enabled`
+**Configuration Key**: `api_versioning_enabled`, `default_api_version`, `current_api_version`, `api_version_compatibility_enabled` (defaults to False)
 
 **Operational Procedures:**
 ```bash
-# Monitor performance metrics in real-time
-curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.performance_monitoring'
+# Test version detection methods
+curl -H "X-API-Version: 1.0" http://localhost:8000/health
+curl "http://localhost:8000/v1/health?version=1.0"
+curl -H "Accept: application/vnd.api+json;version=1.0" http://localhost:8000/health
 
-# Check slow request detection
-curl -s http://localhost:8000/internal/monitoring/performance | jq '.slow_requests'
+# Check version compatibility status
+curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.api_versioning'
 
-# Memory usage monitoring
-curl -s http://localhost:8000/internal/monitoring/overview | jq '.cache_performance.memory_usage'
+# Monitor version usage analytics
+curl -s http://localhost:8000/internal/api-versioning/analytics
+
+# Get supported versions information
+curl -s http://localhost:8000/internal/api-versioning/versions
 ```
 
-**Rate Limiting Configuration:**
+**API Versioning Configuration:**
 ```bash
-# Production rate limiting settings
-export RATE_LIMITING_ENABLED=true
-export REDIS_URL=redis://localhost:6379
-export CUSTOM_RATE_LIMITS='{"auth": {"requests": 100, "window": 60}, "api_heavy": {"requests": 10, "window": 60}}'
-export RATE_LIMITING_SKIP_HEALTH=true
-```
-
-### Request Logging
-
-**Purpose**: Structured logging with performance monitoring and correlation
-
-**Location**: `/backend/app/core/middleware/request_logging.py`
-
-**Configuration Key**: `request_logging_enabled`, `log_level`, `log_sensitive_data`
-
-**Operational Procedures:**
-```bash
-# Verify logging middleware status
-curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.request_logging'
-
-# Test request ID generation
-REQUEST_ID=$(curl -s -D headers.txt http://localhost:8000/health && grep -i "x-request-id" headers.txt)
-echo "Generated Request ID: $REQUEST_ID"
-
-# Monitor log volume and performance
-curl -s http://localhost:8000/internal/monitoring/performance | jq '.logging_performance'
+# Production versioning settings
+export API_VERSIONING_ENABLED=true
+export DEFAULT_API_VERSION=1.0
+export CURRENT_API_VERSION=1.0
+export MIN_API_VERSION=1.0
+export MAX_API_VERSION=2.0
+export VERSION_ANALYTICS_ENABLED=true
 ```
 
 ### Compression
@@ -137,68 +101,125 @@ export COMPRESSION_ALGORITHMS='["br", "gzip", "deflate"]'
 export STREAMING_COMPRESSION_ENABLED=true
 ```
 
-### Version Compatibility
+### CORS
 
-**Purpose**: Transform between API versions
+**Purpose**: Cross-origin resource sharing with security optimizations
 
-**Location**: part of `/backend/app/core/middleware/api_versioning.py`
+**Location**: `/backend/app/core/middleware/cors.py`
 
-**Configuration Key**: `version_compatibility_enabled` (defaults to False)
-
-### API Versioning
-
-**Purpose**: Version detection, path rewriting, compatibility layers
-
-**Location**: `/backend/app/core/middleware/api_versioning.py`
-
-**Configuration Key**: `api_versioning_enabled`, `default_api_version`, `current_api_version`
+**Configuration Key**: `allowed_origins`, `cors_credentials`, `cors_methods`
 
 **Operational Procedures:**
 ```bash
-# Test version detection methods
-curl -H "X-API-Version: 1.0" http://localhost:8000/health
-curl "http://localhost:8000/v1/health?version=1.0"
-curl -H "Accept: application/vnd.api+json;version=1.0" http://localhost:8000/health
+# Verify CORS configuration
+curl -s http://localhost:8000/internal/middleware/stats | jq '.enabled_features[] | select(. == "cors")'
 
-# Check version compatibility status
-curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.api_versioning'
+# Test CORS preflight request
+curl -X OPTIONS -H "Origin: https://example.com" \
+  -H "Access-Control-Request-Method: POST" \
+  http://localhost:8000/v1/text/summarize
 
-# Monitor version usage analytics
-curl -s http://localhost:8000/internal/api-versioning/analytics
-
-# Get supported versions information
-curl -s http://localhost:8000/internal/api-versioning/versions
+# Production CORS validation
+curl -I -H "Origin: https://your-frontend-domain.com" http://localhost:8000/health
 ```
 
-**API Versioning Configuration:**
-```bash
-# Production versioning settings
-export API_VERSIONING_ENABLED=true
-export DEFAULT_API_VERSION=1.0
-export CURRENT_API_VERSION=1.0
-export MIN_API_VERSION=1.0
-export MAX_API_VERSION=2.0
-export VERSION_ANALYTICS_ENABLED=true
-```
+### Global Exception Handler
 
-### Security
+**Purpose**: Comprehensive error handling with infrastructure integration
 
-**Purpose**: XSS prevention, header injection protection, security headers
+**Location**: `/backend/app/core/middleware/global_exception_handler.py`
 
-**Location**: `/backend/app/core/middleware/security.py`
-
-**Configuration Key**: `security_headers_enabled`, `max_headers_count`
+**Configuration Key**: Global exception handling is always enabled
 
 **Operational Procedures:**
 ```bash
-# Verify security headers are applied
-curl -I http://localhost:8000/health | grep -E "(X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)"
+# Test exception handling response format
+curl -s http://localhost:8000/v1/nonexistent-endpoint | jq '.error'
 
-# Test security header injection
-curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.security'
+# Monitor exception rates
+curl -s http://localhost:8000/internal/monitoring/overview | jq '.system_health.error_rate'
 
-# Monitor security events
-curl -s http://localhost:8000/internal/monitoring/alerts | jq '.alerts[] | select(.category == "security")'
+# Check recent exceptions
+curl -s http://localhost:8000/internal/monitoring/alerts | jq '.alerts[] | select(.type == "exception")'
+```
+
+**Important Note:** The Global Exception Handler is not true middleware. It uses FastAPI's `@app.exception_handler()` decorator system, NOT Starlette's `app.add_middleware()`. However, it acts like middleware in that it processes all requests/responses and handles concerns across the entire application. Even though it uses different FastAPI mechanisms, it serves the same architectural purpose as middleware. We store it in `/backend/app/core/middleware/` for setup consistency and document it here with other middleware.
+
+### Performance Monitoring
+
+**Purpose**: Metrics collection, slow request detection, resource tracking
+
+**Location**: `/backend/app/core/middleware/performance_monitoring.py`
+
+**Configuration Key**: `performance_monitoring_enabled`, `slow_request_threshold`, `memory_monitoring_enabled`
+
+**Operational Procedures:**
+```bash
+# Monitor performance metrics in real-time
+curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.performance_monitoring'
+
+# Check slow request detection
+curl -s http://localhost:8000/internal/monitoring/performance | jq '.slow_requests'
+
+# Memory usage monitoring
+curl -s http://localhost:8000/internal/monitoring/overview | jq '.cache_performance.memory_usage'
+```
+
+**Rate Limiting Configuration:**
+```bash
+# Production rate limiting settings
+export RATE_LIMITING_ENABLED=true
+export REDIS_URL=redis://localhost:6379
+export CUSTOM_RATE_LIMITS='{"auth": {"requests": 100, "window": 60}, "api_heavy": {"requests": 10, "window": 60}}'
+export RATE_LIMITING_SKIP_HEALTH=true
+```
+
+### Rate Limiting
+
+**Purpose**: Redis-backed rate limiting with local cache fallback
+
+**Location**: `/backend/app/core/middleware/rate_limiting.py`
+
+**Configuration Key**: `rate_limiting_enabled`, `redis_url`, `custom_rate_limits`
+
+**Operational Procedures:**
+```bash
+# Check rate limiting status and Redis connection
+curl -s http://localhost:8000/internal/middleware/stats | jq '.enabled_features[] | select(. == "rate_limiting")'
+
+# Test rate limit enforcement
+for i in {1..10}; do
+  curl -w "%{http_code}\n" -o /dev/null -s http://localhost:8000/health
+done
+
+# Monitor rate limit statistics
+curl -s http://localhost:8000/internal/monitoring/rate-limits
+
+# Reset rate limits for specific client (emergency)
+curl -X POST "http://localhost:8000/internal/rate-limits/reset" \
+  -H "Content-Type: application/json" \
+  -d '{"client_id": "api-key-12345"}'
+```
+
+### Request Logging
+
+**Purpose**: Structured logging with performance monitoring and correlation
+
+**Location**: `/backend/app/core/middleware/request_logging.py`
+
+**Configuration Key**: `request_logging_enabled`, `log_level`, `log_sensitive_data`
+
+**Operational Procedures:**
+```bash
+# Verify logging middleware status
+curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.request_logging'
+
+# Test request ID generation
+REQUEST_ID=$(curl -s -D headers.txt http://localhost:8000/health && grep -i "x-request-id" headers.txt)
+echo "Generated Request ID: $REQUEST_ID"
+
+# Monitor log volume and performance
+curl -s http://localhost:8000/internal/monitoring/performance | jq '.logging_performance'
 ```
 
 ### Request Size Limiting
@@ -234,54 +255,25 @@ export REQUEST_SIZE_LIMITS='{
 }'
 ```
 
-### Rate Limiting
+### Security
 
-**Purpose**: Redis-backed rate limiting with local cache fallback
+**Purpose**: XSS prevention, header injection protection, security headers
 
-**Location**: `/backend/app/core/middleware/rate_limiting.py`
+**Location**: `/backend/app/core/middleware/security.py`
 
-**Configuration Key**: `rate_limiting_enabled`, `redis_url`, `custom_rate_limits`
-
-**Operational Procedures:**
-```bash
-# Check rate limiting status and Redis connection
-curl -s http://localhost:8000/internal/middleware/stats | jq '.enabled_features[] | select(. == "rate_limiting")'
-
-# Test rate limit enforcement
-for i in {1..10}; do
-  curl -w "%{http_code}\n" -o /dev/null -s http://localhost:8000/health
-done
-
-# Monitor rate limit statistics
-curl -s http://localhost:8000/internal/monitoring/rate-limits
-
-# Reset rate limits for specific client (emergency)
-curl -X POST "http://localhost:8000/internal/rate-limits/reset" \
-  -H "Content-Type: application/json" \
-  -d '{"client_id": "api-key-12345"}'
-```
-
-### Global Exception Handler
-
-**Purpose**: Comprehensive error handling with infrastructure integration
-
-**Location**: `/backend/app/core/middleware/global_exception_handler.py`
-
-**Configuration Key**: Global exception handling is always enabled
+**Configuration Key**: `security_headers_enabled`, `max_headers_count`
 
 **Operational Procedures:**
 ```bash
-# Test exception handling response format
-curl -s http://localhost:8000/v1/nonexistent-endpoint | jq '.error'
+# Verify security headers are applied
+curl -I http://localhost:8000/health | grep -E "(X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)"
 
-# Monitor exception rates
-curl -s http://localhost:8000/internal/monitoring/overview | jq '.system_health.error_rate'
+# Test security header injection
+curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.security'
 
-# Check recent exceptions
-curl -s http://localhost:8000/internal/monitoring/alerts | jq '.alerts[] | select(.type == "exception")'
+# Monitor security events
+curl -s http://localhost:8000/internal/monitoring/alerts | jq '.alerts[] | select(.category == "security")'
 ```
-
-**Important Note:** The Global Exception Handler is not true middleware. It uses FastAPI's `@app.exception_handler()` decorator system, NOT Starlette's `app.add_middleware()`. However, it acts like middleware in that it processes all requests/responses and handles concerns across the entire application. Even though it uses different FastAPI mechanisms, it serves the same architectural purpose as middleware. We store it in `/backend/app/core/middleware/` for setup consistency and document it here with other middleware.
 
 ## Configuration Management
 
