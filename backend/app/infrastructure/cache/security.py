@@ -53,6 +53,8 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
 
+from app.core.exceptions import ConfigurationError
+
 # Optional Redis import for graceful degradation
 try:
     import aioredis  # type: ignore
@@ -154,30 +156,54 @@ class SecurityConfig:
         """Validate security configuration parameters.
         
         Raises:
-            ValueError: If configuration is invalid
+            ConfigurationError: If configuration is invalid
         """
         # Validate TLS configuration
         if self.use_tls:
             if self.tls_cert_path and not Path(self.tls_cert_path).exists():
-                raise ValueError(f"TLS certificate file not found: {self.tls_cert_path}")
+                raise ConfigurationError(
+                    f"TLS certificate file not found: {self.tls_cert_path}",
+                    context={"cert_path": self.tls_cert_path, "validation_type": "tls_cert"}
+                )
             if self.tls_key_path and not Path(self.tls_key_path).exists():
-                raise ValueError(f"TLS key file not found: {self.tls_key_path}")
+                raise ConfigurationError(
+                    f"TLS key file not found: {self.tls_key_path}",
+                    context={"key_path": self.tls_key_path, "validation_type": "tls_key"}
+                )
             if self.tls_ca_path and not Path(self.tls_ca_path).exists():
-                raise ValueError(f"TLS CA file not found: {self.tls_ca_path}")
+                raise ConfigurationError(
+                    f"TLS CA file not found: {self.tls_ca_path}",
+                    context={"ca_path": self.tls_ca_path, "validation_type": "tls_ca"}
+                )
         
         # Validate ACL configuration
         if self.acl_username and not self.acl_password:
-            raise ValueError("ACL password is required when ACL username is provided")
+            raise ConfigurationError(
+                "ACL password is required when ACL username is provided",
+                context={"acl_username": self.acl_username, "validation_type": "acl_config"}
+            )
         
         # Validate timeout settings
         if self.connection_timeout <= 0:
-            raise ValueError("Connection timeout must be positive")
+            raise ConfigurationError(
+                "Connection timeout must be positive",
+                context={"connection_timeout": self.connection_timeout, "validation_type": "timeout"}
+            )
         if self.socket_timeout <= 0:
-            raise ValueError("Socket timeout must be positive")
+            raise ConfigurationError(
+                "Socket timeout must be positive",
+                context={"socket_timeout": self.socket_timeout, "validation_type": "timeout"}
+            )
         if self.max_retries < 0:
-            raise ValueError("Max retries cannot be negative")
+            raise ConfigurationError(
+                "Max retries cannot be negative",
+                context={"max_retries": self.max_retries, "validation_type": "retry_config"}
+            )
         if self.retry_delay < 0:
-            raise ValueError("Retry delay cannot be negative")
+            raise ConfigurationError(
+                "Retry delay cannot be negative",
+                context={"retry_delay": self.retry_delay, "validation_type": "retry_config"}
+            )
     
     @property
     def has_authentication(self) -> bool:
@@ -425,7 +451,7 @@ class RedisCacheSecurityManager:
             
         Raises:
             RedisError: If connection cannot be established
-            ValueError: If security configuration is invalid
+            ConfigurationError: If security configuration is invalid
         """
         start_time = time.perf_counter()
         

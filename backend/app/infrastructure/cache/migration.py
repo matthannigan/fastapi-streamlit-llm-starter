@@ -46,6 +46,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Protocol, runtime_checkable
 
+from app.core.exceptions import ValidationError
+
 if TYPE_CHECKING:
     from app.infrastructure.cache.redis import AIResponseCache
     from app.infrastructure.cache.redis_generic import GenericRedisCache
@@ -762,7 +764,10 @@ class CacheMigrationManager:
 
             # Validate backup structure
             if "keys" not in backup_data:
-                raise ValueError("Invalid backup file: missing 'keys' section")
+                raise ValidationError(
+                    "Invalid backup file: missing 'keys' section",
+                    context={"backup_file": str(backup_file), "available_sections": list(backup_data.keys())}
+                )
 
             keys_to_restore = backup_data["keys"]
             logger.info(f"Found {len(keys_to_restore)} keys to restore")

@@ -28,6 +28,7 @@ from app.infrastructure.cache.security import (
     RedisCacheSecurityManager,
     create_security_config_from_env
 )
+from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 
@@ -112,23 +113,23 @@ class TestSecurityConfig:
     
     def test_config_validation_acl_missing_password(self):
         """Test configuration validation with ACL username but no password."""
-        with pytest.raises(ValueError, match="ACL password is required"):
+        with pytest.raises(ConfigurationError, match="ACL password is required"):
             SecurityConfig(acl_username="user")
     
     def test_config_validation_invalid_timeouts(self):
         """Test configuration validation with invalid timeout values."""
-        with pytest.raises(ValueError, match="Connection timeout must be positive"):
+        with pytest.raises(ConfigurationError, match="Connection timeout must be positive"):
             SecurityConfig(connection_timeout=-1)
         
-        with pytest.raises(ValueError, match="Socket timeout must be positive"):
+        with pytest.raises(ConfigurationError, match="Socket timeout must be positive"):
             SecurityConfig(socket_timeout=0)
     
     def test_config_validation_invalid_retries(self):
         """Test configuration validation with invalid retry values."""
-        with pytest.raises(ValueError, match="Max retries cannot be negative"):
+        with pytest.raises(ConfigurationError, match="Max retries cannot be negative"):
             SecurityConfig(max_retries=-1)
         
-        with pytest.raises(ValueError, match="Retry delay cannot be negative"):
+        with pytest.raises(ConfigurationError, match="Retry delay cannot be negative"):
             SecurityConfig(retry_delay=-0.5)
     
     @patch('pathlib.Path.exists')
@@ -136,13 +137,13 @@ class TestSecurityConfig:
         """Test configuration validation with missing TLS certificate files."""
         mock_exists.return_value = False
         
-        with pytest.raises(ValueError, match="TLS certificate file not found"):
+        with pytest.raises(ConfigurationError, match="TLS certificate file not found"):
             SecurityConfig(use_tls=True, tls_cert_path="/nonexistent/cert.pem")
         
-        with pytest.raises(ValueError, match="TLS key file not found"):
+        with pytest.raises(ConfigurationError, match="TLS key file not found"):
             SecurityConfig(use_tls=True, tls_key_path="/nonexistent/key.pem")
         
-        with pytest.raises(ValueError, match="TLS CA file not found"):
+        with pytest.raises(ConfigurationError, match="TLS CA file not found"):
             SecurityConfig(use_tls=True, tls_ca_path="/nonexistent/ca.pem")
 
 

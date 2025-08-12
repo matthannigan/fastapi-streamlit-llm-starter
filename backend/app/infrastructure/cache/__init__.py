@@ -60,6 +60,11 @@ Configuration:
 
 # Base interface
 from .base import CacheInterface
+# Performance benchmarking
+from .benchmarks import (BenchmarkResult, BenchmarkSuite,
+                         CacheBenchmarkDataGenerator, CachePerformanceBenchmark,
+                         CachePerformanceThresholds, ComparisonResult,
+                         PerformanceRegressionDetector)
 # Compatibility wrapper
 from .compatibility import CacheCompatibilityWrapper
 # Memory implementation
@@ -87,6 +92,14 @@ __all__ = [
     "aioredis",
     # Generic Redis implementation
     "GenericRedisCache",
+    # Performance benchmarking
+    "CachePerformanceBenchmark",
+    "BenchmarkResult",
+    "BenchmarkSuite",
+    "ComparisonResult",
+    "CacheBenchmarkDataGenerator",
+    "PerformanceRegressionDetector",
+    "CachePerformanceThresholds",
     # Migration utilities
     "CacheMigrationManager",
     # Compatibility wrapper

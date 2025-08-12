@@ -145,9 +145,15 @@ for any modifications.
 import logging
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 
+from app.core.exceptions import (
+    ConfigurationError,
+    InfrastructureError,
+    ValidationError,
+    get_http_status_for_exception,
+)
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
@@ -458,7 +464,7 @@ async def invalidate_cache(
             - message: Success or failure message with pattern details
 
     Raises:
-        HTTPException: May raise authentication errors if API key is invalid.
+        AuthenticationError: May raise authentication errors if API key is invalid.
             Cache operation errors are handled gracefully and returned in
             the response message rather than raising exceptions.
 
@@ -719,12 +725,12 @@ async def get_cache_performance_metrics(
             - invalidation: Cache invalidation frequency and patterns
 
     Raises:
-        HTTPException:
-            - 500 Internal Server Error: When performance monitor is unavailable,
-              cache service errors occur, statistics computation fails, or response
-              validation fails.
-            - 503 Service Unavailable: When cache monitoring is temporarily disabled
-              or performance monitor methods are not available.
+        InfrastructureError:
+            - When performance monitor is unavailable, cache service errors occur,
+              statistics computation fails, or response validation fails.
+        ConfigurationError:
+            - When cache monitoring is temporarily disabled or performance monitor
+              methods are not available.
 
     Example:
         >>> # GET /internal/cache/metrics
@@ -767,9 +773,8 @@ async def get_cache_performance_metrics(
         # Check if performance monitor is available
         if performance_monitor is None:
             logger.error("Performance monitor dependency is None")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Performance monitor not available",
+            raise InfrastructureError(
+                "Failed to retrieve cache performance metrics: Performance monitor not available"
             )
 
         logger.debug("Retrieving cache performance statistics")
@@ -780,31 +785,31 @@ async def get_cache_performance_metrics(
         except (ValueError, ZeroDivisionError) as e:
             # Handle specific mathematical errors that might occur during stats computation
             logger.error(f"Statistics computation error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Statistics computation failed",
+            raise InfrastructureError(
+                "Failed to retrieve cache performance metrics: Statistics computation failed",
+                context={"error_type": type(e).__name__, "error_message": str(e)}
             )
         except AttributeError as e:
             # Handle cases where performance monitor methods are not available
             logger.error(f"Performance monitor method unavailable: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Cache performance monitoring is temporarily disabled",
+            raise ConfigurationError(
+                "Cache performance monitoring is temporarily disabled",
+                context={"error_type": type(e).__name__, "error_message": str(e)}
             )
         except Exception as e:
             # Handle any other unexpected errors during stats retrieval
             logger.error(f"Unexpected error retrieving performance stats: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve cache performance metrics: {str(e)}",
+            raise InfrastructureError(
+                f"Failed to retrieve cache performance metrics: {str(e)}",
+                context={"error_type": type(e).__name__, "error_message": str(e)}
             )
 
         # Validate that we received stats data
         if not isinstance(stats, dict):
             logger.error(f"Invalid stats format received: {type(stats)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Invalid statistics format",
+            raise InfrastructureError(
+                "Failed to retrieve cache performance metrics: Invalid statistics format",
+                context={"received_type": type(stats).__name__}
             )
 
         logger.debug(f"Successfully retrieved {len(stats)} performance metrics")
@@ -815,18 +820,372 @@ async def get_cache_performance_metrics(
         except (ValueError, TypeError) as e:
             # Handle Pydantic validation errors
             logger.error(f"Response model validation error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Response format validation failed",
+            raise InfrastructureError(
+                "Failed to retrieve cache performance metrics: Response format validation failed",
+                context={"validation_error": str(e), "error_type": type(e).__name__}
             )
 
-    except HTTPException:
-        # Re-raise HTTP exceptions without modification
+    except (InfrastructureError, ConfigurationError):
+        # Re-raise custom exceptions without modification
         raise
     except Exception as e:
         # Catch-all for any other unexpected errors
         logger.error(f"Unexpected error in cache metrics endpoint: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve cache performance metrics: Internal server error",
+        raise InfrastructureError(
+            "Failed to retrieve cache performance metrics: Internal server error",
+            context={"error_type": type(e).__name__, "error_message": str(e)}
+        )
+
+
+# ==========================================
+# Cache Performance Benchmarking Endpoints
+# ==========================================
+
+@router.post(
+    "/benchmark/basic-operations",
+    summary="Run Basic Cache Operations Benchmark",
+    description="Execute comprehensive benchmarking of basic cache operations (get/set/delete) with detailed timing analysis.",
+    dependencies=[Depends(verify_api_key)],
+    responses={
+        200: {
+            "description": "Benchmark completed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "operation_type": "basic_operations",
+                        "avg_duration_ms": 25.5,
+                        "p95_duration_ms": 45.2,
+                        "p99_duration_ms": 52.1,
+                        "operations_per_second": 39.2,
+                        "success_rate": 0.98,
+                        "memory_usage_mb": 5.2,
+                        "iterations": 100,
+                        "performance_grade": "Good"
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid benchmark parameters (ValidationError)"},
+        401: {"description": "Authentication required"},
+        500: {"description": "Benchmark execution failed (InfrastructureError)"}
+    }
+)
+async def run_basic_operations_benchmark(
+    iterations: int = 100,
+    cache_service=Depends(get_cache_service)
+):
+    """
+    Run comprehensive benchmark of basic cache operations.
+    
+    This endpoint executes a detailed performance benchmark testing get/set/delete
+    operations with timing analysis, memory usage tracking, and success rate monitoring.
+    
+    Args:
+        iterations: Number of benchmark iterations to run (default: 100, max: 1000)
+        cache_service: Injected cache service dependency
+    
+    Returns:
+        dict: Comprehensive benchmark results including timing, throughput, and memory metrics
+    
+    Raises:
+        ValidationError: For invalid parameters (iterations out of range)
+        InfrastructureError: For benchmark execution failures
+    """
+    from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
+    
+    try:
+        # Validate parameters
+        if iterations < 1 or iterations > 1000:
+            raise ValidationError(
+                "Iterations must be between 1 and 1000",
+                context={"provided_iterations": iterations}
+            )
+        
+        logger.info(f"Starting basic operations benchmark with {iterations} iterations")
+        
+        # Initialize benchmark
+        benchmark = CachePerformanceBenchmark()
+        
+        # Run benchmark
+        result = await benchmark.benchmark_basic_operations(cache_service, iterations=iterations)
+        
+        logger.info(f"Benchmark completed: {result.avg_duration_ms:.2f}ms avg, {result.operations_per_second:.0f} ops/sec")
+        
+        return result.to_dict()
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"Basic operations benchmark failed: {e}", exc_info=True)
+        raise InfrastructureError(
+            f"Benchmark execution failed: {str(e)}",
+            context={"error_type": type(e).__name__, "benchmark_type": "basic_operations"}
+        )
+
+
+@router.post(
+    "/benchmark/memory-cache",
+    summary="Run Memory Cache Performance Benchmark",
+    description="Execute memory cache specific benchmarking including L1 cache hit rates and eviction behavior.",
+    dependencies=[Depends(verify_api_key)],
+    responses={
+        200: {
+            "description": "Memory cache benchmark completed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "operation_type": "memory_cache_performance",
+                        "avg_duration_ms": 2.1,
+                        "cache_hit_rate": 85.5,
+                        "memory_hit_rate": 65.2,
+                        "operations_per_second": 476.0,
+                        "success_rate": 1.0,
+                        "performance_grade": "Excellent"
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid benchmark parameters"},
+        401: {"description": "Authentication required"},
+        500: {"description": "Benchmark execution failed"}
+    }
+)
+async def run_memory_cache_benchmark(
+    iterations: int = 200,
+    cache_service=Depends(get_cache_service)
+):
+    """
+    Run memory cache performance benchmark.
+    
+    This endpoint specifically tests memory cache performance including L1 cache
+    hit rates, eviction behavior, and memory efficiency metrics.
+    
+    Args:
+        iterations: Number of benchmark iterations (default: 200, max: 1000)
+        cache_service: Injected cache service dependency
+    
+    Returns:
+        dict: Memory cache specific benchmark results
+    """
+    from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
+    
+    try:
+        if iterations < 1 or iterations > 1000:
+            raise ValidationError(
+                "Iterations must be between 1 and 1000",
+                context={"provided_iterations": iterations}
+            )
+        
+        logger.info(f"Starting memory cache benchmark with {iterations} iterations")
+        
+        benchmark = CachePerformanceBenchmark()
+        result = await benchmark.benchmark_memory_cache_performance(cache_service, iterations=iterations)
+        
+        logger.info(f"Memory cache benchmark completed: {result.avg_duration_ms:.2f}ms avg, {result.cache_hit_rate:.1f}% hit rate")
+        
+        return result.to_dict()
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"Memory cache benchmark failed: {e}", exc_info=True)
+        raise InfrastructureError(
+            f"Memory cache benchmark failed: {str(e)}",
+            context={"error_type": type(e).__name__, "benchmark_type": "memory_cache"}
+        )
+
+
+@router.post(
+    "/benchmark/compression",
+    summary="Run Compression Efficiency Benchmark",
+    description="Execute compression performance testing with different data types and efficiency analysis.",
+    dependencies=[Depends(verify_api_key)],
+    responses={
+        200: {
+            "description": "Compression benchmark completed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "operation_type": "compression_efficiency",
+                        "avg_duration_ms": 45.3,
+                        "compression_ratio": 0.42,
+                        "compression_savings_mb": 2.8,
+                        "operations_per_second": 22.1,
+                        "success_rate": 0.98
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid benchmark parameters"},
+        401: {"description": "Authentication required"},
+        500: {"description": "Benchmark execution failed"}
+    }
+)
+async def run_compression_benchmark(
+    iterations: int = 50,
+    cache_service=Depends(get_cache_service)
+):
+    """
+    Run compression efficiency benchmark.
+    
+    Tests compression performance across different data types including timing,
+    compression ratios, and memory savings analysis.
+    
+    Args:
+        iterations: Number of compression test cycles (default: 50, max: 500)
+        cache_service: Injected cache service dependency
+    
+    Returns:
+        dict: Compression efficiency metrics and performance results
+    """
+    from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
+    
+    try:
+        if iterations < 1 or iterations > 500:
+            raise ValidationError(
+                "Iterations must be between 1 and 500",
+                context={"provided_iterations": iterations}
+            )
+        
+        logger.info(f"Starting compression benchmark with {iterations} iterations")
+        
+        benchmark = CachePerformanceBenchmark()
+        result = await benchmark.benchmark_compression_efficiency(cache_service, iterations=iterations)
+        
+        logger.info(f"Compression benchmark completed: {result.compression_ratio:.2f} ratio, {result.compression_savings_mb:.1f}MB saved")
+        
+        return result.to_dict()
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"Compression benchmark failed: {e}", exc_info=True)
+        raise InfrastructureError(
+            f"Compression benchmark failed: {str(e)}",
+            context={"error_type": type(e).__name__, "benchmark_type": "compression"}
+        )
+
+
+@router.post(
+    "/benchmark/comprehensive",
+    summary="Run Comprehensive Benchmark Suite",
+    description="Execute complete benchmark suite covering all cache performance aspects with detailed analysis.",
+    dependencies=[Depends(verify_api_key)],
+    responses={
+        200: {
+            "description": "Comprehensive benchmark suite completed successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "name": "Comprehensive Cache Performance Benchmark",
+                        "pass_rate": 1.0,
+                        "performance_grade": "Good",
+                        "memory_efficiency_grade": "Excellent",
+                        "total_duration_ms": 5432.1,
+                        "results": [
+                            {"operation_type": "basic_operations", "avg_duration_ms": 25.5},
+                            {"operation_type": "memory_cache_performance", "avg_duration_ms": 2.1}
+                        ],
+                        "failed_benchmarks": []
+                    }
+                }
+            }
+        },
+        401: {"description": "Authentication required"},
+        500: {"description": "Benchmark suite execution failed"}
+    }
+)
+async def run_comprehensive_benchmark_suite(
+    include_compression: bool = True,
+    cache_service=Depends(get_cache_service)
+):
+    """
+    Run comprehensive benchmark suite.
+    
+    Executes all available benchmarks and provides complete performance analysis
+    with grades, recommendations, and detailed results.
+    
+    Args:
+        include_compression: Whether to include compression benchmarks (default: True)
+        cache_service: Injected cache service dependency
+    
+    Returns:
+        dict: Complete benchmark suite results with analysis
+    """
+    from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
+    
+    try:
+        logger.info(f"Starting comprehensive benchmark suite (compression: {include_compression})")
+        
+        benchmark = CachePerformanceBenchmark()
+        suite = await benchmark.run_comprehensive_benchmark_suite(
+            cache_service, 
+            include_compression=include_compression
+        )
+        
+        logger.info(f"Benchmark suite completed: {suite.pass_rate:.1%} pass rate, grade: {suite.performance_grade}")
+        
+        return suite.to_dict()
+        
+    except Exception as e:
+        logger.error(f"Comprehensive benchmark suite failed: {e}", exc_info=True)
+        raise InfrastructureError(
+            f"Benchmark suite execution failed: {str(e)}",
+            context={"error_type": type(e).__name__, "benchmark_type": "comprehensive"}
+        )
+
+
+@router.get(
+    "/benchmark/results/{benchmark_id}",
+    summary="Get Benchmark Results",
+    description="Retrieve stored benchmark results by ID with optional report generation.",
+    dependencies=[Depends(verify_api_key)],
+    responses={
+        200: {"description": "Benchmark results retrieved successfully"},
+        404: {"description": "Benchmark results not found"},
+        401: {"description": "Authentication required"}
+    }
+)
+async def get_benchmark_results(
+    benchmark_id: str,
+    format: str = "json",  # json, report
+    cache_service=Depends(get_cache_service)
+):
+    """
+    Get stored benchmark results.
+    
+    Retrieves previously executed benchmark results with optional formatting
+    as JSON data or human-readable report.
+    
+    Args:
+        benchmark_id: Unique identifier for the benchmark results
+        format: Output format - 'json' for raw data, 'report' for formatted report
+        cache_service: Injected cache service dependency
+    
+    Returns:
+        dict or str: Benchmark results in requested format
+    """
+    from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
+    
+    try:
+        if format not in ["json", "report"]:
+            raise ValidationError(
+                "Format must be 'json' or 'report'",
+                context={"provided_format": format, "valid_formats": ["json", "report"]}
+            )
+        
+        # For now, return a placeholder response since we haven't implemented result storage
+        # In a full implementation, this would retrieve results from persistent storage
+        raise ConfigurationError(
+            "Benchmark result storage not yet implemented",
+            context={"benchmark_id": benchmark_id, "requested_format": format}
+        )
+        
+    except (ValidationError, ConfigurationError):
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve benchmark results: {e}", exc_info=True)
+        raise InfrastructureError(
+            f"Failed to retrieve benchmark results: {str(e)}",
+            context={"error_type": type(e).__name__, "benchmark_id": benchmark_id}
         )
