@@ -819,10 +819,17 @@ When suggesting API changes, maintain this separation and update both sets of do
 
 ### Error Handling Patterns
 
+**Custom Exception Usage - CRITICAL:**
+- **Always use custom exceptions** (`ConfigurationError`, `ValidationError`, `InfrastructureError`) instead of generic exceptions like `ValueError`, `HTTPException`
+- **Reference**: See `docs/guides/developer/EXCEPTION_HANDLING.md` for comprehensive exception handling guidelines
+- **Context required**: All custom exceptions should include contextual information for debugging
+- **HTTP mapping**: Custom exceptions automatically map to appropriate HTTP status codes via `get_http_status_for_exception`
+
 Follow established patterns:
-- **Infrastructure**: Use structured exceptions with proper classification
-- **Domain**: Use business-specific error messages with infrastructure error handling
-- **API**: Return appropriate HTTP status codes with structured error responses
+- **Infrastructure**: Use structured exceptions with proper classification (`ConfigurationError` for config issues, `InfrastructureError` for service failures)
+- **Domain**: Use business-specific error messages with infrastructure error handling (`ValidationError` for input validation)
+- **API**: Custom exceptions automatically return appropriate HTTP status codes with structured error responses
+- **Import pattern**: `from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError, get_http_status_for_exception`
 
 ### Performance Considerations
 
