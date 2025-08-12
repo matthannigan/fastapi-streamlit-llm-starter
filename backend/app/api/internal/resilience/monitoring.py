@@ -104,28 +104,31 @@ from app.services.text_processor import TextProcessorService
 from app.api.v1.deps import get_text_processor
 from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
 from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
+from app.infrastructure.resilience.config_validator import (
+    config_validator,
+    ValidationResult,
+)
 
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/resilience/monitoring", tags=["Resilience Monitoring"])
 
+
 @router.get("/usage-statistics")
 async def get_configuration_usage_statistics(
-    time_window_hours: int = 24,
-    api_key: str = Depends(verify_api_key)
+    time_window_hours: int = 24, api_key: str = Depends(verify_api_key)
 ):
     """Get comprehensive configuration usage statistics and trends.
 
     This endpoint provides detailed analytics on resilience configuration usage
     patterns, including preset adoption rates, error statistics, and performance
     metrics over a specified time window.
-    
+
     Args:
         time_window_hours: Time window for statistics collection in hours (default: 24)
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Usage statistics containing:
             - time_window_hours: Requested time window
@@ -142,10 +145,10 @@ async def get_configuration_usage_statistics(
                 - healthy: Boolean indicating healthy error rate (<5%)
                 - performance_good: Boolean indicating good performance (<100ms)
                 - preset_adoption: Rate of non-legacy configuration usage
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if statistics retrieval fails
-        
+
     Example:
         >>> response = await get_configuration_usage_statistics(48)
         >>> {
@@ -164,10 +167,12 @@ async def get_configuration_usage_statistics(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
         stats = config_metrics_collector.get_usage_statistics(time_window_hours)
-        
+
         return {
             "time_window_hours": time_window_hours,
             "statistics": {
@@ -178,38 +183,37 @@ async def get_configuration_usage_statistics(
                 "most_used_preset": stats.most_used_preset,
                 "least_used_preset": stats.least_used_preset,
                 "custom_config_usage_rate": stats.custom_config_usage_rate,
-                "legacy_config_usage_rate": stats.legacy_config_usage_rate
+                "legacy_config_usage_rate": stats.legacy_config_usage_rate,
             },
             "summary": {
                 "healthy": stats.error_rate < 0.05,  # Less than 5% error rate
                 "performance_good": stats.avg_load_time_ms < 100.0,  # Less than 100ms
-                "preset_adoption": 1.0 - stats.legacy_config_usage_rate  # Non-legacy usage
-            }
+                "preset_adoption": 1.0
+                - stats.legacy_config_usage_rate,  # Non-legacy usage
+            },
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration usage statistics: {str(e)}"
+            detail=f"Failed to get configuration usage statistics: {str(e)}",
         )
 
 
 @router.get("/preset-trends/{preset_name}")
 async def get_preset_usage_trend(
-    preset_name: str,
-    hours: int = 24,
-    api_key: str = Depends(verify_api_key)
+    preset_name: str, hours: int = 24, api_key: str = Depends(verify_api_key)
 ):
     """Get detailed usage trend analysis for a specific resilience preset.
 
     This endpoint provides time-series analysis of preset usage patterns,
     including hourly usage statistics, trend analysis, and comprehensive
     usage metrics for monitoring preset adoption and performance patterns.
-    
+
     Args:
         preset_name: Name of the specific preset to analyze usage trends for
         hours: Number of hours to analyze for trend data (default: 24)
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Preset usage trend analysis containing:
             - preset_name: Name of the analyzed preset
@@ -219,10 +223,10 @@ async def get_preset_usage_trend(
                 - total_usage: Total usage count across time window
                 - peak_usage: Maximum usage in any single hour
                 - avg_hourly_usage: Average usage per hour
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if trend analysis fails
-        
+
     Example:
         >>> response = await get_preset_usage_trend("production", 48)
         >>> {
@@ -240,42 +244,46 @@ async def get_preset_usage_trend(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
         trend_data = config_metrics_collector.get_preset_usage_trend(preset_name, hours)
-        
+
         return {
             "preset_name": preset_name,
             "time_window_hours": hours,
             "trend_data": trend_data,
             "summary": {
-                "total_usage": sum(point['usage_count'] for point in trend_data),
-                "peak_usage": max(point['usage_count'] for point in trend_data) if trend_data else 0,
-                "avg_hourly_usage": sum(point['usage_count'] for point in trend_data) / max(len(trend_data), 1)
-            }
+                "total_usage": sum(point["usage_count"] for point in trend_data),
+                "peak_usage": max(point["usage_count"] for point in trend_data)
+                if trend_data
+                else 0,
+                "avg_hourly_usage": sum(point["usage_count"] for point in trend_data)
+                / max(len(trend_data), 1),
+            },
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get preset usage trend: {str(e)}"
+            detail=f"Failed to get preset usage trend: {str(e)}",
         )
 
 
 @router.get("/performance-metrics")
 async def get_configuration_performance_metrics(
-    hours: int = 24,
-    api_key: str = Depends(verify_api_key)
+    hours: int = 24, api_key: str = Depends(verify_api_key)
 ):
     """Get comprehensive performance metrics for resilience configuration operations.
 
     This endpoint provides detailed performance analysis of configuration operations,
     including load times, error rates, and performance health assessments with
     threshold-based evaluation for monitoring and alerting purposes.
-    
+
     Args:
         hours: Number of hours to analyze for performance metrics (default: 24)
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Performance metrics analysis containing:
             - time_window_hours: Analysis time window in hours
@@ -288,10 +296,10 @@ async def get_configuration_performance_metrics(
                 - performance_good: Boolean indicating load times under 100ms
                 - error_rate_acceptable: Boolean indicating error rate under 5%
                 - p95_within_threshold: Boolean indicating P95 under 200ms
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if performance metrics retrieval fails
-        
+
     Example:
         >>> response = await get_configuration_performance_metrics(24)
         >>> {
@@ -310,23 +318,27 @@ async def get_configuration_performance_metrics(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
         metrics = config_metrics_collector.get_performance_metrics(hours)
-        
+
         return {
             "time_window_hours": hours,
             "performance_metrics": metrics,
             "health_check": {
-                "performance_good": metrics['avg_load_time_ms'] < 100.0,
-                "error_rate_acceptable": metrics['error_count'] / max(metrics['total_samples'], 1) < 0.05,
-                "p95_within_threshold": metrics['p95_load_time_ms'] < 200.0
-            }
+                "performance_good": metrics["avg_load_time_ms"] < 100.0,
+                "error_rate_acceptable": metrics["error_count"]
+                / max(metrics["total_samples"], 1)
+                < 0.05,
+                "p95_within_threshold": metrics["p95_load_time_ms"] < 200.0,
+            },
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration performance metrics: {str(e)}"
+            detail=f"Failed to get configuration performance metrics: {str(e)}",
         )
 
 
@@ -334,19 +346,19 @@ async def get_configuration_performance_metrics(
 async def get_configuration_alerts(
     max_alerts: int = 50,
     level: Optional[str] = None,
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ):
     """Get active configuration alerts and notifications for monitoring systems.
 
     This endpoint provides comprehensive alert information including active alerts,
     alert categorization by severity level, and summary statistics for monitoring
     dashboards and notification systems.
-    
+
     Args:
         max_alerts: Maximum number of alerts to return (default: 50)
         level: Optional filter by alert level ("info", "warning", "error", "critical")
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Active alerts information containing:
             - alerts: List of active alert objects with details
@@ -355,10 +367,10 @@ async def get_configuration_alerts(
                 - alert_counts: Count by level (info, warning, error, critical)
                 - has_critical: Boolean indicating presence of critical alerts
                 - has_errors: Boolean indicating presence of error alerts
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if alert retrieval fails
-        
+
     Example:
         >>> response = await get_configuration_alerts(max_alerts=25, level="error")
         >>> {
@@ -378,50 +390,51 @@ async def get_configuration_alerts(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
         alerts = config_metrics_collector.get_active_alerts(max_alerts)
-        
+
         # Filter by level if specified
         if level:
-            alerts = [alert for alert in alerts if alert['level'] == level.lower()]
-        
+            alerts = [alert for alert in alerts if alert["level"] == level.lower()]
+
         # Categorize alerts
         alert_counts = {"info": 0, "warning": 0, "error": 0, "critical": 0}
         for alert in alerts:
-            alert_counts[alert['level']] += 1
-        
+            alert_counts[alert["level"]] += 1
+
         return {
             "alerts": alerts,
             "summary": {
                 "total_alerts": len(alerts),
                 "alert_counts": alert_counts,
-                "has_critical": alert_counts['critical'] > 0,
-                "has_errors": alert_counts['error'] > 0
-            }
+                "has_critical": alert_counts["critical"] > 0,
+                "has_errors": alert_counts["error"] > 0,
+            },
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get configuration alerts: {str(e)}"
+            detail=f"Failed to get configuration alerts: {str(e)}",
         )
 
 
 @router.get("/session/{session_id}")
 async def get_session_configuration_metrics(
-    session_id: str,
-    api_key: str = Depends(verify_api_key)
+    session_id: str, api_key: str = Depends(verify_api_key)
 ):
     """Get comprehensive configuration metrics for a specific user session.
 
     This endpoint provides detailed session-specific metrics including preset usage,
     error tracking, performance data, and operational statistics for session-based
     monitoring and analysis of configuration behavior patterns.
-    
+
     Args:
         session_id: Unique session identifier to retrieve metrics for
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Session configuration metrics containing:
             - session_id: Session identifier
@@ -432,10 +445,10 @@ async def get_session_configuration_metrics(
                 - error_count: Number of configuration errors
                 - error_rate: Calculated error rate (0.0-1.0)
                 - avg_load_time_ms: Average configuration load time
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if session metrics retrieval fails
-        
+
     Example:
         >>> response = await get_session_configuration_metrics("session_abc123")
         >>> {
@@ -451,25 +464,27 @@ async def get_session_configuration_metrics(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
         session_metrics = config_metrics_collector.get_session_metrics(session_id)
-        
+
         # Calculate session statistics
         preset_usage = {}
         total_operations = len(session_metrics)
         error_count = 0
         load_times = []
-        
+
         for metric in session_metrics:
-            if metric['metric_type'] == 'preset_usage':
-                preset_name = metric['preset_name']
+            if metric["metric_type"] == "preset_usage":
+                preset_name = metric["preset_name"]
                 preset_usage[preset_name] = preset_usage.get(preset_name, 0) + 1
-            elif metric['metric_type'] == 'config_error':
+            elif metric["metric_type"] == "config_error":
                 error_count += 1
-            elif metric['metric_type'] == 'config_load':
-                load_times.append(metric['value'])
-        
+            elif metric["metric_type"] == "config_load":
+                load_times.append(metric["value"])
+
         return {
             "session_id": session_id,
             "metrics": session_metrics,
@@ -478,13 +493,13 @@ async def get_session_configuration_metrics(
                 "preset_usage": preset_usage,
                 "error_count": error_count,
                 "error_rate": error_count / max(total_operations, 1),
-                "avg_load_time_ms": sum(load_times) / max(len(load_times), 1)
-            }
+                "avg_load_time_ms": sum(load_times) / max(len(load_times), 1),
+            },
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get session configuration metrics: {str(e)}"
+            detail=f"Failed to get session configuration metrics: {str(e)}",
         )
 
 
@@ -492,31 +507,31 @@ async def get_session_configuration_metrics(
 async def export_configuration_metrics(
     format: str = "json",
     time_window_hours: Optional[int] = None,
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ):
     """Export configuration metrics data in multiple formats for external analysis.
 
     This endpoint provides data export capabilities for configuration metrics,
     supporting multiple output formats and configurable time windows for
     integration with external monitoring and analytics systems.
-    
+
     Args:
         format: Export format specification ("json" or "csv")
         time_window_hours: Optional time window in hours for data export.
                           If None, exports all available data
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Export response containing:
             - format: Requested export format
             - time_window_hours: Time window used for export
             - data: Exported metrics data in the requested format
             - export_timestamp: Timestamp of the export operation
-            
+
     Raises:
         HTTPException: 400 Bad Request if format is not supported
         HTTPException: 500 Internal Server Error if export operation fails
-        
+
     Example:
         >>> response = await export_configuration_metrics("json", 24)
         >>> {
@@ -527,52 +542,50 @@ async def export_configuration_metrics(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
-        if format.lower() not in ['json', 'csv']:
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
+        if format.lower() not in ["json", "csv"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format must be 'json' or 'csv'"
+                detail="Format must be 'json' or 'csv'",
             )
-        
-        exported_data = config_metrics_collector.export_metrics(format, time_window_hours)
-        
+
+        exported_data = config_metrics_collector.export_metrics(
+            format, time_window_hours
+        )
+
         return {
             "format": format,
             "time_window_hours": time_window_hours,
             "data": exported_data,
-            "export_timestamp": datetime.now().isoformat()
+            "export_timestamp": datetime.now().isoformat(),
         }
     except HTTPException:
         # Re-raise HTTP exceptions (like the 400 error above)
         raise
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export configuration metrics: {str(e)}"
+            detail=f"Failed to export configuration metrics: {str(e)}",
         )
 
 
 @router.post("/cleanup")
-async def cleanup_old_metrics(
-    hours: int = 24,
-    api_key: str = Depends(verify_api_key)
-):
+async def cleanup_old_metrics(hours: int = 24, api_key: str = Depends(verify_api_key)):
     """Clean up old configuration metrics and alerts to manage storage and performance.
 
     This endpoint removes metrics and alerts older than the specified threshold
     to maintain system performance and implement data retention policies. Provides
     detailed cleanup statistics for monitoring and auditing purposes.
-    
+
     Args:
         hours: Time threshold in hours - remove metrics older than this (default: 24)
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Cleanup operation results containing:
             - cleanup_threshold_hours: Time threshold used for cleanup
@@ -581,10 +594,10 @@ async def cleanup_old_metrics(
             - metrics_remaining: Number of metric records remaining
             - alerts_remaining: Number of alert records remaining
             - cleanup_timestamp: Timestamp of the cleanup operation
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if cleanup operation fails
-        
+
     Example:
         >>> response = await cleanup_old_metrics(48)
         >>> {
@@ -597,28 +610,30 @@ async def cleanup_old_metrics(
         ... }
     """
     try:
-        from app.infrastructure.resilience.config_monitoring import config_metrics_collector
-        
+        from app.infrastructure.resilience.config_monitoring import (
+            config_metrics_collector,
+        )
+
         # Get counts before cleanup
         total_metrics_before = len(config_metrics_collector.metrics)
         total_alerts_before = len(config_metrics_collector.alerts)
-        
+
         config_metrics_collector.clear_old_metrics(hours)
-        
+
         # Get counts after cleanup
         total_metrics_after = len(config_metrics_collector.metrics)
         total_alerts_after = len(config_metrics_collector.alerts)
-        
+
         return {
             "cleanup_threshold_hours": hours,
             "metrics_removed": total_metrics_before - total_metrics_after,
             "alerts_removed": total_alerts_before - total_alerts_after,
             "metrics_remaining": total_metrics_after,
             "alerts_remaining": total_alerts_after,
-            "cleanup_timestamp": datetime.now().isoformat()
+            "cleanup_timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to cleanup old metrics: {str(e)}"
+            detail=f"Failed to cleanup old metrics: {str(e)}",
         )

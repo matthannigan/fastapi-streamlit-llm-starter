@@ -22,7 +22,4 @@ Note: These are example domain services expected to be replaced per project requ
 from .text_processor import TextProcessorService
 from .response_validator import ResponseValidator
 
-__all__ = [
-    "TextProcessorService",
-    "ResponseValidator"
-]
+__all__ = ["TextProcessorService", "ResponseValidator"]

@@ -63,7 +63,7 @@ The actual health check logic should be implemented based on specific system req
 #
 # class HealthStatus(Enum):
 #     HEALTHY = "healthy"
-#     DEGRADED = "degraded" 
+#     DEGRADED = "degraded"
 #     UNHEALTHY = "unhealthy"
 #
 # @dataclass
@@ -76,10 +76,10 @@ The actual health check logic should be implemented based on specific system req
 # class HealthChecker:
 #     def __init__(self):
 #         self.checks: Dict[str, Callable] = {}
-#     
+#
 #     def register_check(self, name: str, check_func: Callable):
 #         self.checks[name] = check_func
-#     
+#
 #     async def check_health(self) -> SystemHealthStatus:
 #         # Implementation for comprehensive health checking
 #         pass

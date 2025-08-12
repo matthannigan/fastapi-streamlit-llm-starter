@@ -80,13 +80,16 @@ from app.services.text_processor import TextProcessorService
 from app.api.v1.deps import get_text_processor
 from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
 from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
+from app.infrastructure.resilience.config_validator import (
+    config_validator,
+    ValidationResult,
+)
 
 from app.api.internal.resilience.models import (
     PresetSummary,
     PresetDetails,
     DetailedRecommendationResponse,
-    AutoDetectResponse
+    AutoDetectResponse,
 )
 
 
@@ -94,25 +97,27 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/resilience/config", tags=["Resilience Configuration"])
 
+
 # Dependency for getting preset manager
 def get_preset_manager() -> PresetManager:
     """Get the global preset manager instance."""
     return preset_manager
 
+
 @router.get("/presets", response_model=List[PresetSummary])
 async def list_presets(
     preset_mgr: PresetManager = Depends(get_preset_manager),
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ) -> List[PresetSummary]:
     """List all available resilience configuration presets with summary information.
 
     This endpoint provides a comprehensive list of all available resilience presets,
     including basic configuration parameters and environment contexts for each preset.
-    
+
     Args:
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         List[PresetSummary]: List of preset summaries, each containing:
             - name: Preset name identifier
@@ -122,10 +127,10 @@ async def list_presets(
             - recovery_timeout: Circuit breaker recovery timeout
             - default_strategy: Default resilience strategy
             - environment_contexts: List of suitable deployment environments
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if preset listing fails
-        
+
     Example:
         >>> response = await list_presets()
         >>> [
@@ -143,18 +148,20 @@ async def list_presets(
         preset_summaries = []
         for preset_name in preset_mgr.list_presets():
             preset = preset_mgr.get_preset(preset_name)
-            preset_summaries.append(PresetSummary(
-                name=preset.name,
-                description=preset.description,
-                retry_attempts=preset.retry_attempts,
-                circuit_breaker_threshold=preset.circuit_breaker_threshold,
-                recovery_timeout=preset.recovery_timeout,
-                default_strategy=preset.default_strategy.value,
-                environment_contexts=preset.environment_contexts
-            ))
-        
+            preset_summaries.append(
+                PresetSummary(
+                    name=preset.name,
+                    description=preset.description,
+                    retry_attempts=preset.retry_attempts,
+                    circuit_breaker_threshold=preset.circuit_breaker_threshold,
+                    recovery_timeout=preset.recovery_timeout,
+                    default_strategy=preset.default_strategy.value,
+                    environment_contexts=preset.environment_contexts,
+                )
+            )
+
         return preset_summaries
-        
+
     except Exception as e:
         logger.error(f"Error listing presets: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to list presets: {str(e)}")
@@ -164,19 +171,19 @@ async def list_presets(
 async def get_preset_details(
     preset_name: str,
     preset_mgr: PresetManager = Depends(get_preset_manager),
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ) -> PresetDetails:
     """Get comprehensive detailed information about a specific resilience preset.
 
     This endpoint provides complete configuration details for a specific preset,
     including all parameters, strategies, and configuration values needed for
     implementation and decision-making.
-    
+
     Args:
         preset_name: Name of the specific preset to retrieve details for
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         PresetDetails: Comprehensive preset information containing:
             - Complete configuration parameters
@@ -185,11 +192,11 @@ async def get_preset_details(
             - Environment suitability information
             - Performance characteristics
             - Usage recommendations
-            
+
     Raises:
         HTTPException: 404 Not Found if preset doesn't exist
         HTTPException: 500 Internal Server Error if preset details retrieval fails
-        
+
     Example:
         >>> response = await get_preset_details("production")
         >>> PresetDetails(
@@ -203,39 +210,41 @@ async def get_preset_details(
     try:
         details = preset_mgr.get_preset_details(preset_name)
         return PresetDetails(**details)
-        
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error getting preset details for '{preset_name}': {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get preset details: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get preset details: {str(e)}"
+        )
 
 
 @router.get("/presets-summary", response_model=Dict[str, PresetDetails])
 async def get_all_presets_summary(
     preset_mgr: PresetManager = Depends(get_preset_manager),
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ) -> Dict[str, PresetDetails]:
     """Get comprehensive summary of all presets with detailed configuration information.
 
     This endpoint provides a complete overview of all available presets with
     detailed configuration information, useful for comparison and selection
     of appropriate resilience configurations.
-    
+
     Args:
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, PresetDetails]: Dictionary mapping preset names to detailed information:
             - Keys: Preset names (e.g., "production", "development", "testing")
             - Values: PresetDetails objects containing complete configuration
             - Each preset includes retry configs, circuit breaker settings,
               strategies, and environment suitability information
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if presets summary retrieval fails
-        
+
     Example:
         >>> response = await get_all_presets_summary()
         >>> {
@@ -251,37 +260,41 @@ async def get_all_presets_summary(
     """
     try:
         summary = preset_mgr.get_all_presets_summary()
-        
+
         # Convert to PresetDetails format
         result = {}
         for preset_name, details in summary.items():
             result[preset_name] = PresetDetails(**details)
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Error getting presets summary: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get presets summary: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get presets summary: {str(e)}"
+        )
 
 
-@router.get("/recommend-preset/{environment}", response_model=DetailedRecommendationResponse)
+@router.get(
+    "/recommend-preset/{environment}", response_model=DetailedRecommendationResponse
+)
 async def recommend_preset(
     environment: str,
     preset_mgr: PresetManager = Depends(get_preset_manager),
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ) -> DetailedRecommendationResponse:
     """Get intelligent preset recommendation for a specific deployment environment.
 
     This endpoint analyzes the specified environment and provides a detailed
     recommendation for the most suitable resilience preset, including confidence
     scoring and comprehensive reasoning for the recommendation decision.
-    
+
     Args:
-        environment: Target deployment environment name 
+        environment: Target deployment environment name
                     (e.g., "dev", "test", "staging", "prod", "production")
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         DetailedRecommendationResponse: Comprehensive recommendation containing:
             - recommended_preset: Name of the recommended preset
@@ -290,10 +303,10 @@ async def recommend_preset(
             - alternative_presets: List of alternative preset options
             - environment_analysis: Analysis of environment characteristics
             - configuration_highlights: Key configuration aspects
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if recommendation generation fails
-        
+
     Example:
         >>> response = await recommend_preset("production")
         >>> DetailedRecommendationResponse(
@@ -307,36 +320,38 @@ async def recommend_preset(
     try:
         recommendation = preset_mgr.recommend_preset_with_details(environment)
         available = preset_mgr.list_presets()
-        
+
         return DetailedRecommendationResponse(
             environment_detected=recommendation.environment_detected,
             recommended_preset=recommendation.preset_name,
             confidence=recommendation.confidence,
             reasoning=recommendation.reasoning,
             available_presets=available,
-            auto_detected=False
+            auto_detected=False,
         )
-        
+
     except Exception as e:
         logger.error(f"Error recommending preset for environment '{environment}': {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to recommend preset: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to recommend preset: {str(e)}"
+        )
 
 
 @router.get("/recommend-preset-auto", response_model=AutoDetectResponse)
 async def auto_recommend_preset(
     preset_mgr: PresetManager = Depends(get_preset_manager),
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ) -> AutoDetectResponse:
     """Auto-detect deployment environment and recommend appropriate resilience preset.
 
     This endpoint intelligently analyzes environment variables and system context
     to automatically determine the deployment environment and recommend the most
     suitable resilience preset without requiring explicit environment specification.
-    
+
     Args:
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         AutoDetectResponse: Auto-detection results containing:
             - environment_detected: Detected environment name with detection method
@@ -344,15 +359,15 @@ async def auto_recommend_preset(
             - confidence: Confidence score (0.0-1.0) in the recommendation
             - reasoning: Detailed explanation for the recommendation decision
             - detection_method: Method used for environment detection
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if auto-detection or recommendation fails
-        
+
     Note:
         The auto-detection analyzes environment variables, system properties,
         and deployment context to intelligently determine the appropriate
         environment and corresponding resilience configuration.
-        
+
     Example:
         >>> response = await auto_recommend_preset()
         >>> AutoDetectResponse(
@@ -364,22 +379,27 @@ async def auto_recommend_preset(
         ... )
     """
     try:
-        recommendation = preset_mgr.recommend_preset_with_details(None)  # None triggers auto-detection
-        
+        recommendation = preset_mgr.recommend_preset_with_details(
+            None
+        )  # None triggers auto-detection
+
         # Determine detection method based on environment detected
         if "(auto-detected)" in recommendation.environment_detected:
             detection_method = "environment_variables_and_context"
         else:
             detection_method = "environment_variable"
-        
+
         return AutoDetectResponse(
             environment_detected=recommendation.environment_detected,
             recommended_preset=recommendation.preset_name,
             confidence=recommendation.confidence,
             reasoning=recommendation.reasoning,
-            detection_method=detection_method
+            detection_method=detection_method,
         )
-        
+
     except Exception as e:
         logger.error(f"Error auto-detecting environment for preset recommendation: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to auto-detect and recommend preset: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to auto-detect and recommend preset: {str(e)}",
+        )

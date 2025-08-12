@@ -186,29 +186,29 @@ from app.api.internal.resilience import (
     resilience_health_router,
     resilience_config_router,
     resilience_monitoring_router,
-    resilience_performance_router
+    resilience_performance_router,
 )
 
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 # Suppress INFO messages from middleware module
-middleware_logger = logging.getLogger('app.core.middleware')
+middleware_logger = logging.getLogger("app.core.middleware")
 middleware_logger.setLevel(logging.WARNING)  # Only show WARNING and above
+
 
 # Custom Swagger UI HTML with navigation between public and internal APIs
 def get_custom_swagger_ui_html(
-    openapi_url: str,
-    title: str,
-    api_type: str = "public"
+    openapi_url: str, title: str, api_type: str = "public"
 ) -> str:
     """Generate custom Swagger UI HTML with navigation between APIs."""
-    
-    navigation_buttons = """
+
+    navigation_buttons = (
+        """
     <div style="
         position: fixed; 
         top: 10px; 
@@ -223,7 +223,9 @@ def get_custom_swagger_ui_html(
     ">
         <a href="/docs" style="
             padding: 8px 16px; 
-            background: """ + ("#4CAF50" if api_type == "public" else "#2196F3") + """; 
+            background: """
+        + ("#4CAF50" if api_type == "public" else "#2196F3")
+        + """; 
             color: white; 
             text-decoration: none; 
             border-radius: 4px;
@@ -232,7 +234,9 @@ def get_custom_swagger_ui_html(
         ">🌐 Public API</a>
         <a href="/internal/docs" style="
             padding: 8px 16px; 
-            background: """ + ("#4CAF50" if api_type == "internal" else "#2196F3") + """; 
+            background: """
+        + ("#4CAF50" if api_type == "internal" else "#2196F3")
+        + """; 
             color: white; 
             text-decoration: none; 
             border-radius: 4px;
@@ -241,7 +245,8 @@ def get_custom_swagger_ui_html(
         ">🔧 Internal API</a>
     </div>
     """
-    
+    )
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -296,33 +301,33 @@ def get_custom_swagger_ui_html(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown operations.
-    
+
     Manages the complete lifecycle of the FastAPI application, handling both
     startup initialization and graceful shutdown procedures. This context manager
     ensures proper resource allocation and cleanup throughout the application's
     runtime.
-    
+
     During startup, the manager logs essential configuration information including
     debug mode status and AI model configuration for operational visibility.
     During shutdown, it ensures graceful termination with appropriate logging.
-    
+
     Args:
         app (FastAPI): The FastAPI application instance being managed
-    
+
     Yields:
         None: Control is yielded to the application runtime after startup
             initialization is complete
-    
+
     Example:
         The lifespan manager automatically handles:
         >>> # Startup logs:
         >>> "Starting FastAPI application"
         >>> "Debug mode: True"
         >>> "AI Model: gemini-pro"
-        >>> 
+        >>>
         >>> # Shutdown logs:
         >>> "Shutting down FastAPI application"
-    
+
     Note:
         This lifespan manager is automatically registered with the FastAPI
         application and does not require manual invocation. It provides
@@ -341,9 +346,10 @@ def custom_openapi_schema(app: FastAPI):
     """Generate custom OpenAPI schema without default validation error schemas."""
     if app.openapi_schema:
         return app.openapi_schema
-    
+
     # Generate the default schema
     from fastapi.openapi.utils import get_openapi
+
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
@@ -351,43 +357,50 @@ def custom_openapi_schema(app: FastAPI):
         routes=app.routes,
         tags=app.openapi_tags,
     )
-    
+
     # Remove unwanted schemas from components
     if "components" in openapi_schema and "schemas" in openapi_schema["components"]:
         schemas_to_remove = [
             "HTTPValidationError",
-            "ValidationError", 
+            "ValidationError",
             "ValidationErrorElement",
-            "ErrorDetails"  # Sometimes FastAPI generates this
+            "ErrorDetails",  # Sometimes FastAPI generates this
         ]
-        
+
         # Find any other validation-related schemas
         all_schemas = list(openapi_schema["components"]["schemas"].keys())
         for schema_name in all_schemas:
             if "validation" in schema_name.lower() or "http" in schema_name.lower():
-                if schema_name not in ["ErrorResponse"]:  # Keep our custom error response
+                if schema_name not in [
+                    "ErrorResponse"
+                ]:  # Keep our custom error response
                     schemas_to_remove.append(schema_name)
-        
+
         # Remove the schemas
         removed_count = 0
         for schema_name in schemas_to_remove:
-            if openapi_schema["components"]["schemas"].pop(schema_name, None) is not None:
+            if (
+                openapi_schema["components"]["schemas"].pop(schema_name, None)
+                is not None
+            ):
                 removed_count += 1
-        
+
         # Log what was removed (only in debug mode)
         if settings.debug and removed_count > 0:
-            logger.info(f"Removed {removed_count} default validation schemas from OpenAPI spec")
-    
+            logger.info(
+                f"Removed {removed_count} default validation schemas from OpenAPI spec"
+            )
+
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 
 def create_public_app() -> FastAPI:
     """Create the public-facing FastAPI application.
-    
+
     This application contains only the public API endpoints that should be
     accessible to external users and documented in the main API documentation.
-    
+
     Returns:
         FastAPI: Configured public API application
     """
@@ -395,26 +408,26 @@ def create_public_app() -> FastAPI:
     public_tags_metadata = [
         {
             "name": "Core",
-            "description": "Essential API endpoints including root information and basic functionality."
+            "description": "Essential API endpoints including root information and basic functionality.",
         },
         {
             "name": "Health",
-            "description": "System health monitoring endpoints for availability and dependency status checks."
+            "description": "System health monitoring endpoints for availability and dependency status checks.",
         },
         {
-            "name": "Authentication", 
+            "name": "Authentication",
             "description": "Authentication and authorization endpoints for API key validation and access control.",
             "externalDocs": {
                 "description": "FastAPI Security Guide",
-                "url": "https://fastapi.tiangolo.com/tutorial/security/"
-            }
+                "url": "https://fastapi.tiangolo.com/tutorial/security/",
+            },
         },
         {
             "name": "Text Processing",
-            "description": "AI-powered text processing operations including summarization, sentiment analysis, and Q&A."
-        }
+            "description": "AI-powered text processing operations including summarization, sentiment analysis, and Q&A.",
+        },
     ]
-    
+
     public_app = FastAPI(
         title="AI Text Processor API",
         description="Public API for processing text using AI models",
@@ -424,12 +437,12 @@ def create_public_app() -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json",
         openapi_tags=public_tags_metadata,
-        lifespan=lifespan
+        lifespan=lifespan,
     )
-    
+
     # Setup middleware for public app
     setup_enhanced_middleware(public_app, settings)
-    
+
     @public_app.get("/docs", include_in_schema=False)
     async def custom_swagger_ui_html():
         """Custom Swagger UI with navigation between APIs."""
@@ -437,25 +450,25 @@ def create_public_app() -> FastAPI:
             get_custom_swagger_ui_html(
                 openapi_url="/openapi.json",
                 title="AI Text Processor API - Public Documentation",
-                api_type="public"
+                api_type="public",
             )
         )
-    
+
     @public_app.get("/", tags=["Core"])
     async def root():
         """Root endpoint providing basic API information and version details.
-        
+
         This endpoint serves as the main entry point for the API, providing basic
         identification information about the service. It can be used to verify
         that the API is running and accessible.
-        
+
         Returns:
             dict: A dictionary containing:
                 - message (str): The API name and description
                 - version (str): Current API version identifier
                 - docs (str): Link to API documentation
                 - internal_docs (str): Link to internal API documentation
-        
+
         Example:
             >>> # GET /
             >>> {
@@ -474,60 +487,62 @@ def create_public_app() -> FastAPI:
             "endpoints": {
                 "health": "/v1/health",
                 "auth": "/v1/auth/status",
-                "text_processing": "/v1/text_processing/process"
-            }
+                "text_processing": "/v1/text_processing/process",
+            },
         }
-    
+
     # Include public API routers
     public_app.include_router(health_router, prefix="/v1")
     public_app.include_router(auth_router, prefix="/v1")
     public_app.include_router(text_processing_router, prefix="/v1")
-    
-    # Utility endpoint compatibility - redirect to current version  
+
+    # Utility endpoint compatibility - redirect to current version
     # These are stable utility endpoints that rarely have breaking changes
     # and are commonly expected to be available without version prefixes
     @public_app.get("/health", include_in_schema=False)
     async def health_redirect():
         """Utility redirect - monitoring systems often expect unversioned health endpoints."""
         from fastapi import Response
+
         return Response(
             status_code=301,
             headers={
                 "Location": "/v1/health",
-                "X-API-Version": "v1", 
-                "X-Endpoint-Type": "utility"
-            }
+                "X-API-Version": "v1",
+                "X-Endpoint-Type": "utility",
+            },
         )
 
-    @public_app.get("/auth/status", include_in_schema=False) 
+    @public_app.get("/auth/status", include_in_schema=False)
     async def auth_status_redirect():
         """Utility redirect - auth validation is typically stable across versions."""
         from fastapi import Response
+
         return Response(
             status_code=301,
             headers={
                 "Location": "/v1/auth/status",
                 "X-API-Version": "v1",
-                "X-Endpoint-Type": "utility" 
-            }
+                "X-Endpoint-Type": "utility",
+            },
         )
 
     # Note: Text processing endpoints require explicit versioning as they
     # contain core business logic that may have breaking changes between versions
-    
+
     # Apply custom OpenAPI schema generation
     public_app.openapi = lambda: custom_openapi_schema(public_app)
-    
+
     return public_app
 
 
 def create_internal_app() -> FastAPI:
     """Create the internal/administrative FastAPI application.
-    
+
     This application contains only the internal API endpoints for monitoring,
     administration, and system management. These endpoints are typically used
     by operations teams, monitoring systems, and administrative tools.
-    
+
     Returns:
         FastAPI: Configured internal API application
     """
@@ -535,68 +550,74 @@ def create_internal_app() -> FastAPI:
     internal_tags_metadata = [
         {
             "name": "Internal",
-            "description": "Internal administrative endpoints providing system information and operational data."
+            "description": "Internal administrative endpoints providing system information and operational data.",
         },
         {
             "name": "System Monitoring",
-            "description": "Comprehensive system monitoring including health checks, performance metrics, and component status."
+            "description": "Comprehensive system monitoring including health checks, performance metrics, and component status.",
         },
         {
             "name": "Cache Management",
-            "description": "Cache infrastructure management including status monitoring, invalidation, and performance optimization."
+            "description": "Cache infrastructure management including status monitoring, invalidation, and performance optimization.",
         },
         {
             "name": "Resilience Core",
-            "description": "Core resilience infrastructure endpoints for health monitoring and circuit breaker management."
+            "description": "Core resilience infrastructure endpoints for health monitoring and circuit breaker management.",
         },
         {
             "name": "Resilience Configuration",
-            "description": "Resilience configuration management including presets, templates, and validation tools."
+            "description": "Resilience configuration management including presets, templates, and validation tools.",
         },
         {
             "name": "Resilience Monitoring",
-            "description": "Advanced resilience monitoring and analytics for performance tracking and failure analysis."
+            "description": "Advanced resilience monitoring and analytics for performance tracking and failure analysis.",
         },
         {
             "name": "Resilience Performance",
-            "description": "Performance benchmarking and testing tools for resilience infrastructure optimization."
-        }
+            "description": "Performance benchmarking and testing tools for resilience infrastructure optimization.",
+        },
     ]
-    
+
     internal_app = FastAPI(
         title="AI Text Processor - Internal API",
         description="Internal API for monitoring, administration, and system management.",
         version="1.0.0",
         openapi_version="3.0.3",  # Use 3.0.3 for better Swagger UI compatibility
         docs_url=None,  # Disable default docs to use custom
-        redoc_url="/redoc" if settings.debug else None, # Available at /internal/redoc; disabled in production
-        openapi_url="/openapi.json" if settings.debug else None,  # Available at /internal/openapi.json disabled in production
+        redoc_url="/redoc"
+        if settings.debug
+        else None,  # Available at /internal/redoc; disabled in production
+        openapi_url="/openapi.json"
+        if settings.debug
+        else None,  # Available at /internal/openapi.json disabled in production
         openapi_tags=internal_tags_metadata,
     )
-    
+
     # Note: Internal app doesn't need CORS middleware as it's for internal use
     # But we may want to add specific security middleware for internal endpoints
-    
+
     @internal_app.get("/docs", include_in_schema=False)
     async def custom_internal_swagger_ui_html():
         """Custom Swagger UI with navigation between APIs."""
         if not settings.debug:
-            raise HTTPException(status_code=404, detail="Documentation not available in production")
+            raise HTTPException(
+                status_code=404, detail="Documentation not available in production"
+            )
         return HTMLResponse(
             get_custom_swagger_ui_html(
                 openapi_url="/internal/openapi.json",  # Use absolute path to internal API schema
                 title="AI Text Processor - Internal API Documentation",
-                api_type="internal"
+                api_type="internal",
             )
         )
-    
+
     @internal_app.get("/", tags=["Internal"])
     async def internal_root():
         """Internal API root endpoint.
-        
+
         Provides information about the internal API and available administrative
         endpoints for system monitoring and management.
-        
+
         Returns:
             dict: Information about the internal API including available endpoints
         """
@@ -604,17 +625,13 @@ def create_internal_app() -> FastAPI:
             "message": "AI Text Processor - Internal API",
             "version": "1.0.0",
             "description": "Administrative and monitoring endpoints",
-            "available_endpoints": [
-                "/monitoring/*",
-                "/cache/*",
-                "/resilience/*"
-            ]
+            "available_endpoints": ["/monitoring/*", "/cache/*", "/resilience/*"],
         }
-    
+
     # Include internal API routers
     internal_app.include_router(monitoring_router)
     internal_app.include_router(cache_router)
-    
+
     # Include all resilience routers
     internal_app.include_router(resilience_health_router)
     internal_app.include_router(resilience_circuit_breakers_router)
@@ -624,10 +641,10 @@ def create_internal_app() -> FastAPI:
     internal_app.include_router(resilience_config_validation_router)
     internal_app.include_router(resilience_monitoring_router)
     internal_app.include_router(resilience_performance_router)
-    
+
     # Apply custom OpenAPI schema generation
     internal_app.openapi = lambda: custom_openapi_schema(internal_app)
-    
+
     return internal_app
 
 
@@ -643,9 +660,7 @@ app.mount("/internal", internal_app)
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
-        "main:app",
-        host=settings.host,
-        port=settings.port,
-        reload=settings.debug
+        "main:app", host=settings.host, port=settings.port, reload=settings.debug
     )

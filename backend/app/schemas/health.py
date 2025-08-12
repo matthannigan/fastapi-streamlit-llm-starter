@@ -33,13 +33,14 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
 
+
 class HealthResponse(BaseModel):
     """
     System health check response model.
-    
+
     Provides comprehensive health information about the application and its dependencies,
     including AI model availability, resilience patterns status, and cache system health.
-    
+
     Attributes:
         status (str): Overall system health status ("healthy", "degraded", "unhealthy").
         timestamp (datetime): When the health check was performed.
@@ -47,7 +48,7 @@ class HealthResponse(BaseModel):
         ai_model_available (bool): Whether AI models are accessible and functional.
         resilience_healthy (bool, optional): Health status of resilience patterns.
         cache_healthy (bool, optional): Health status of caching system.
-    
+
     Example:
         ```json
         {
@@ -60,14 +61,23 @@ class HealthResponse(BaseModel):
         }
         ```
     """
-    status: str = Field(default="healthy", description="Overall system health status")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Health check timestamp")
-    version: str = Field(default="1.0.0", description="Application version")
-    ai_model_available: bool = Field(default=True, description="AI model accessibility status")
-    resilience_healthy: Optional[bool] = Field(default=None, description="Resilience patterns health")
-    cache_healthy: Optional[bool] = Field(default=None, description="Cache system health")
 
-    @field_serializer('timestamp')
+    status: str = Field(default="healthy", description="Overall system health status")
+    timestamp: datetime = Field(
+        default_factory=datetime.now, description="Health check timestamp"
+    )
+    version: str = Field(default="1.0.0", description="Application version")
+    ai_model_available: bool = Field(
+        default=True, description="AI model accessibility status"
+    )
+    resilience_healthy: Optional[bool] = Field(
+        default=None, description="Resilience patterns health"
+    )
+    cache_healthy: Optional[bool] = Field(
+        default=None, description="Cache system health"
+    )
+
+    @field_serializer("timestamp")
     def serialize_timestamp(self, dt: datetime, _info):
         """Serialize datetime to ISO format string."""
         return dt.isoformat()

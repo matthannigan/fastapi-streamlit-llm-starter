@@ -168,11 +168,11 @@ logger = logging.getLogger(__name__)
 def get_settings() -> Settings:
     """
     Dependency provider for application settings.
-    
+
     Uses lru_cache to ensure the same Settings instance is returned
     across all dependency injections, improving performance and
     ensuring consistent configuration throughout the application.
-    
+
     Returns:
         Settings: The application settings instance
     """
@@ -184,28 +184,30 @@ def get_settings() -> Settings:
 def get_fresh_settings() -> Settings:
     """
     Dependency provider that creates a fresh Settings instance.
-    
+
     This is useful for testing scenarios where you might want to
     override environment variables or provide different configurations.
-    
+
     Returns:
         Settings: A fresh Settings instance
     """
     return Settings()
 
 
-async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIResponseCache:
+async def get_cache_service(
+    settings: Settings = Depends(get_settings),
+) -> AIResponseCache:
     """
     Dependency provider for AI response cache service.
-    
+
     Creates and returns a configured AIResponseCache instance using
     settings from the application configuration. Initializes the
     cache connection asynchronously with graceful degradation when
     Redis is unavailable.
-    
+
     Args:
         settings: Application settings dependency
-        
+
     Returns:
         AIResponseCache: Configured cache service instance (with or without Redis connection)
     """
@@ -216,13 +218,15 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         compression_threshold=settings.cache_compression_threshold,
         compression_level=settings.cache_compression_level,
         text_size_tiers=settings.cache_text_size_tiers,
-        memory_cache_size=settings.cache_memory_cache_size
+        memory_cache_size=settings.cache_memory_cache_size,
     )
-    
+
     try:
         await cache.connect()
     except Exception as e:
         # Log the error but continue gracefully - cache will operate without Redis
-        logger.warning(f"Failed to connect to Redis: {e}. Cache will operate without persistence.")
-    
+        logger.warning(
+            f"Failed to connect to Redis: {e}. Cache will operate without persistence."
+        )
+
     return cache

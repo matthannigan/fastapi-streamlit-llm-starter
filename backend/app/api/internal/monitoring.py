@@ -178,21 +178,21 @@ logger = logging.getLogger(__name__)
 @monitoring_router.get("/health")
 async def get_monitoring_health(
     api_key: str = Depends(optional_verify_api_key),
-    cache_service: AIResponseCache = Depends(get_cache_service)
+    cache_service: AIResponseCache = Depends(get_cache_service),
 ):
     """Get comprehensive health status of all monitoring subsystems.
-    
+
     This endpoint performs health checks on monitoring infrastructure components
     including cache performance monitoring, metrics collection, and resilience
     systems. It provides detailed component-level status information for
     operational monitoring and diagnostics.
-    
+
     Args:
         api_key (str): Optional API key for authentication. Obtained via dependency
             injection from optional_verify_api_key function.
         cache_service (AIResponseCache): Cache service instance for monitoring
             cache performance metrics. Obtained via dependency injection.
-    
+
     Returns:
         dict: Comprehensive monitoring health report containing:
             - status (str): Overall health status ("healthy", "degraded", "unhealthy")
@@ -202,12 +202,12 @@ async def get_monitoring_health(
                 - cache_service_monitoring: Cache service health and capabilities
                 - resilience_monitoring: Circuit breaker and retry metrics status
             - available_endpoints (list): List of available monitoring endpoints
-    
+
     Raises:
         HTTPException: 500 Internal Server Error if the monitoring health check
             fails catastrophically or if critical monitoring components are
             completely unavailable.
-    
+
     Examples:
         Successful response:
         ```json
@@ -221,7 +221,7 @@ async def get_monitoring_health(
                     "has_recent_data": true
                 },
                 "cache_service_monitoring": {
-                    "status": "healthy", 
+                    "status": "healthy",
                     "redis_monitoring": "connected",
                     "memory_monitoring": "available"
                 },
@@ -234,13 +234,13 @@ async def get_monitoring_health(
             "available_endpoints": [
                 "GET /internal/monitoring/health",
                 "GET /internal/cache/status",
-                "GET /internal/cache/metrics", 
+                "GET /internal/cache/metrics",
                 "GET /internal/cache/invalidation-stats",
                 "GET /internal/resilience/health"
             ]
         }
         ```
-        
+
         Degraded response (partial failures):
         ```json
         {
@@ -254,12 +254,12 @@ async def get_monitoring_health(
             }
         }
         ```
-    
+
     Note:
         This endpoint specifically monitors the health of monitoring infrastructure,
         not the main application components. For overall application health,
         use the versioned public `/health` endpoint instead.
-        
+
         The endpoint uses optional API key authentication, making it accessible
         for internal monitoring while maintaining security for production
         environments.
@@ -269,16 +269,21 @@ async def get_monitoring_health(
         monitoring_health = {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-            "components": {}
+            "components": {},
         }
-        
+
         # Check cache performance monitoring
         try:
             cache_stats = cache_service.performance_monitor.get_performance_stats()
             monitoring_health["components"]["cache_performance_monitor"] = {
                 "status": "healthy",
-                "total_operations_tracked": cache_stats.get("total_cache_operations", 0),
-                "has_recent_data": len(cache_service.performance_monitor.cache_operation_times) > 0
+                "total_operations_tracked": cache_stats.get(
+                    "total_cache_operations", 0
+                ),
+                "has_recent_data": len(
+                    cache_service.performance_monitor.cache_operation_times
+                )
+                > 0,
             }
             # Update timestamp from performance stats if available
             if "timestamp" in cache_stats:
@@ -287,60 +292,66 @@ async def get_monitoring_health(
             logger.warning(f"Cache performance monitor check failed: {e}")
             monitoring_health["components"]["cache_performance_monitor"] = {
                 "status": "degraded",
-                "error": str(e)
+                "error": str(e),
             }
             monitoring_health["status"] = "degraded"
-        
+
         # Check cache service monitoring capabilities
         try:
             cache_service_stats = await cache_service.get_cache_stats()
             monitoring_health["components"]["cache_service_monitoring"] = {
                 "status": "healthy",
-                "redis_monitoring": cache_service_stats.get("redis", {}).get("status", "unknown"),
-                "memory_monitoring": "available" if "memory" in cache_service_stats else "unavailable"
+                "redis_monitoring": cache_service_stats.get("redis", {}).get(
+                    "status", "unknown"
+                ),
+                "memory_monitoring": "available"
+                if "memory" in cache_service_stats
+                else "unavailable",
             }
         except Exception as e:
             logger.warning(f"Cache service monitoring check failed: {e}")
             monitoring_health["components"]["cache_service_monitoring"] = {
-                "status": "degraded", 
-                "error": str(e)
+                "status": "degraded",
+                "error": str(e),
             }
             monitoring_health["status"] = "degraded"
-        
+
         # Check resilience metrics collection
         try:
             from app.infrastructure.resilience import ai_resilience
+
             resilience_stats = ai_resilience.get_all_metrics()
             monitoring_health["components"]["resilience_monitoring"] = {
                 "status": "healthy",
-                "circuit_breaker_tracked": len(resilience_stats.get("circuit_breakers", {})) > 0,
-                "retry_metrics_available": len(resilience_stats.get("operations", {})) > 0
+                "circuit_breaker_tracked": len(
+                    resilience_stats.get("circuit_breakers", {})
+                )
+                > 0,
+                "retry_metrics_available": len(resilience_stats.get("operations", {}))
+                > 0,
             }
         except Exception as e:
             logger.warning(f"Resilience monitoring check failed: {e}")
             monitoring_health["components"]["resilience_monitoring"] = {
                 "status": "degraded",
-                "error": str(e)
+                "error": str(e),
             }
             monitoring_health["status"] = "degraded"
-        
+
         # Add available monitoring endpoints
         monitoring_health["available_endpoints"] = [
             "GET /internal/monitoring/health",
-            "GET /internal/cache/status", 
+            "GET /internal/cache/status",
             "GET /internal/cache/metrics",
             "GET /internal/cache/invalidation-stats",
-            "GET /internal/resilience/health"
+            "GET /internal/resilience/health",
         ]
-        
+
         return monitoring_health
-        
+
     except Exception as e:
         logger.error(f"Monitoring health check failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get monitoring health: {str(e)}"
+            detail=f"Failed to get monitoring health: {str(e)}",
         )
-
-
- 

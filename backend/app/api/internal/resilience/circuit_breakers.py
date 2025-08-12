@@ -93,12 +93,16 @@ from app.services.text_processor import TextProcessorService
 from app.api.v1.deps import get_text_processor
 from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
 from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
+from app.infrastructure.resilience.config_validator import (
+    config_validator,
+    ValidationResult,
+)
 
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/resilience", tags=["Resilience Core"])
+
 
 @router.get("/circuit-breakers")
 async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
@@ -107,10 +111,10 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
     This endpoint provides detailed monitoring information for all circuit breakers
     in the resilience system, including current states, failure statistics, and
     operational metrics for each circuit breaker instance.
-    
+
     Args:
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Circuit breaker status data containing:
             - Dictionary mapping circuit breaker names to their status information
@@ -120,10 +124,10 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
                 - Last failure timestamps
                 - Recovery timeout configuration
                 - Performance metrics and statistics
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if circuit breaker status retrieval fails
-        
+
     Example:
         >>> response = await get_circuit_breaker_status()
         >>> {
@@ -146,24 +150,24 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get circuit breaker status: {str(e)}"
+            detail=f"Failed to get circuit breaker status: {str(e)}",
         )
+
 
 @router.get("/circuit-breakers/{breaker_name}")
 async def get_circuit_breaker_details(
-    breaker_name: str,
-    api_key: str = Depends(verify_api_key)
+    breaker_name: str, api_key: str = Depends(verify_api_key)
 ):
     """Get detailed information about a specific circuit breaker.
 
     This endpoint provides comprehensive details for a single circuit breaker,
     including its current state, configuration parameters, failure statistics,
     and operational metrics for detailed monitoring and diagnostics.
-    
+
     Args:
         breaker_name: Name of the specific circuit breaker to retrieve details for
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Detailed circuit breaker information containing:
             - name: Circuit breaker name
@@ -173,11 +177,11 @@ async def get_circuit_breaker_details(
             - recovery_timeout: Time before attempting half-open state
             - last_failure_time: Timestamp of most recent failure
             - metrics: Additional performance and operational metrics
-            
+
     Raises:
         HTTPException: 404 Not Found if circuit breaker doesn't exist
         HTTPException: 500 Internal Server Error if details retrieval fails
-        
+
     Example:
         >>> response = await get_circuit_breaker_details("text_processing_service")
         >>> {
@@ -194,9 +198,9 @@ async def get_circuit_breaker_details(
         if breaker_name not in ai_resilience.circuit_breakers:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Circuit breaker '{breaker_name}' not found"
+                detail=f"Circuit breaker '{breaker_name}' not found",
             )
-        
+
         breaker = ai_resilience.circuit_breakers[breaker_name]
         return {
             "name": breaker_name,
@@ -205,47 +209,47 @@ async def get_circuit_breaker_details(
             "failure_threshold": breaker.failure_threshold,
             "recovery_timeout": breaker.recovery_timeout,
             "last_failure_time": breaker.last_failure_time,
-            "metrics": breaker.metrics.to_dict() if hasattr(breaker, 'metrics') else {}
+            "metrics": breaker.metrics.to_dict() if hasattr(breaker, "metrics") else {},
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get circuit breaker details: {str(e)}"
+            detail=f"Failed to get circuit breaker details: {str(e)}",
         )
+
 
 @router.post("/circuit-breakers/{breaker_name}/reset")
 async def reset_circuit_breaker(
-    breaker_name: str,
-    api_key: str = Depends(verify_api_key)
+    breaker_name: str, api_key: str = Depends(verify_api_key)
 ):
     """Reset a specific circuit breaker to closed state for emergency recovery.
 
     This administrative endpoint resets a circuit breaker to its closed state,
     clearing failure counts and allowing normal operation to resume. Use with
     caution and only after resolving underlying issues that caused the failures.
-    
+
     Args:
         breaker_name: Name of the specific circuit breaker to reset
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, str]: Reset confirmation containing:
             - message: Human-readable confirmation message
             - name: Name of the circuit breaker that was reset
             - new_state: New state of the circuit breaker (should be "closed")
-            
+
     Raises:
         HTTPException: 404 Not Found if circuit breaker doesn't exist
         HTTPException: 500 Internal Server Error if reset operation fails
-        
+
     Warning:
         Circuit breakers are critical safety components that protect against
         cascading failures. Manual resets should be used carefully and only
         when the underlying issues have been resolved to prevent immediate
         re-opening of the circuit breaker.
-        
+
     Example:
         >>> response = await reset_circuit_breaker("text_processing_service")
         >>> {
@@ -258,26 +262,26 @@ async def reset_circuit_breaker(
         if breaker_name not in ai_resilience.circuit_breakers:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Circuit breaker '{breaker_name}' not found"
+                detail=f"Circuit breaker '{breaker_name}' not found",
             )
-        
+
         breaker = ai_resilience.circuit_breakers[breaker_name]
         # Reset the circuit breaker
         breaker._failure_count = 0
         breaker._last_failure = None
-        breaker._state = 'closed'
+        breaker._state = "closed"
         # Also reset the enhanced circuit breaker's last_failure_time
         breaker.last_failure_time = None
-        
+
         return {
             "message": f"Circuit breaker '{breaker_name}' has been reset",
             "name": breaker_name,
-            "new_state": breaker.state
+            "new_state": breaker.state,
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset circuit breaker: {str(e)}"
+            detail=f"Failed to reset circuit breaker: {str(e)}",
         )

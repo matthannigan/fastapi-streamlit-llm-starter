@@ -82,6 +82,7 @@ import httpx
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     max_attempts: int = 3
     max_delay_seconds: int = 60
     exponential_multiplier: float = 1.0
@@ -107,7 +108,7 @@ def classify_exception(exc: Exception) -> bool:
     Classify whether an exception should trigger retries.
 
     Returns True if the exception is transient and should be retried.
-    
+
     Note: This function is now a wrapper around the centralized
     classify_ai_exception function in core.exceptions.
     """
@@ -124,7 +125,7 @@ def should_retry_on_exception(retry_state) -> bool:
     Returns:
         True if the exception should trigger a retry
     """
-    if hasattr(retry_state, 'outcome') and retry_state.outcome.failed:
+    if hasattr(retry_state, "outcome") and retry_state.outcome.failed:
         exception = retry_state.outcome.exception()
         return classify_exception(exception)
     return False

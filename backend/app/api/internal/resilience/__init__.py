@@ -16,7 +16,10 @@ from .config_presets import router as resilience_config_presets_router
 from .config_templates import router as resilience_config_templates_router
 from .config_validation import router as resilience_config_validation_router
 from .circuit_breakers import router as resilience_circuit_breakers_router
-from .health import main_router as resilience_health_router, config_router as resilience_config_router
+from .health import (
+    main_router as resilience_health_router,
+    config_router as resilience_config_router,
+)
 from .monitoring import router as resilience_monitoring_router
 from .performance import router as resilience_performance_router
 
@@ -29,5 +32,5 @@ __all__ = [
     "resilience_config_templates_router",
     "resilience_config_validation_router",
     "resilience_monitoring_router",
-    "resilience_performance_router"
+    "resilience_performance_router",
 ]

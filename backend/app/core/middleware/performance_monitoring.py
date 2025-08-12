@@ -122,10 +122,16 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.settings = settings
-        self.slow_request_threshold = getattr(settings, 'slow_request_threshold', 1000)  # ms
-        self.memory_monitoring_enabled = getattr(settings, 'memory_monitoring_enabled', True)
+        self.slow_request_threshold = getattr(
+            settings, "slow_request_threshold", 1000
+        )  # ms
+        self.memory_monitoring_enabled = getattr(
+            settings, "memory_monitoring_enabled", True
+        )
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Any]
+    ) -> Response:
         """
         Process HTTP request with performance monitoring.
 
@@ -140,7 +146,7 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
         import os
 
         # Get request ID for correlation
-        request_id = getattr(request.state, 'request_id', 'unknown')
+        request_id = getattr(request.state, "request_id", "unknown")
 
         # Record performance baseline
         start_time = time.perf_counter()
@@ -173,34 +179,34 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                     pass
 
             # Add performance headers
-            response.headers['X-Response-Time'] = f"{duration_ms:.2f}ms"
+            response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
             if memory_delta is not None:
-                response.headers['X-Memory-Delta'] = f"{memory_delta}B"
+                response.headers["X-Memory-Delta"] = f"{memory_delta}B"
 
             # Log performance metrics
             perf_extra = {
-                'request_id': request_id,
-                'method': request.method,
-                'path': request.url.path,
-                'duration_ms': duration_ms,
-                'status_code': response.status_code
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "duration_ms": duration_ms,
+                "status_code": response.status_code,
             }
 
             if memory_delta is not None:
-                perf_extra['memory_delta_bytes'] = memory_delta
+                perf_extra["memory_delta_bytes"] = memory_delta
 
             # Slow request detection
             if duration_ms > self.slow_request_threshold:
                 logger.warning(
                     f"Slow request detected: {request.method} {request.url.path} "
                     f"{duration_ms:.1f}ms [req_id: {request_id}]",
-                    extra=perf_extra
+                    extra=perf_extra,
                 )
             else:
                 logger.debug(
                     f"Performance: {request.method} {request.url.path} "
                     f"{duration_ms:.1f}ms [req_id: {request_id}]",
-                    extra=perf_extra
+                    extra=perf_extra,
                 )
 
             return response
@@ -214,11 +220,11 @@ class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
                 f"Performance (failed): {request.method} {request.url.path} "
                 f"{duration_ms:.1f}ms {type(exc).__name__} [req_id: {request_id}]",
                 extra={
-                    'request_id': request_id,
-                    'method': request.method,
-                    'path': request.url.path,
-                    'duration_ms': duration_ms,
-                    'exception_type': type(exc).__name__
-                }
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "duration_ms": duration_ms,
+                    "exception_type": type(exc).__name__,
+                },
             )
             raise

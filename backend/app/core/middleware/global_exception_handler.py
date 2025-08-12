@@ -71,7 +71,7 @@ from app.core.exceptions import (
     AIServiceException,
     TransientAIError,
     PermanentAIError,
-    get_http_status_for_exception
+    get_http_status_for_exception,
 )
 from app.schemas.common import ErrorResponse
 
@@ -79,18 +79,18 @@ from app.schemas.common import ErrorResponse
 logger = logging.getLogger(__name__)
 
 # Context variables for request tracking (imported from main middleware module)
-request_id_context: ContextVar[str] = ContextVar('request_id', default='')
+request_id_context: ContextVar[str] = ContextVar("request_id", default="")
 
 
 def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
     """
     Configure global exception handling for unhandled application errors.
-    
+
     Provides a centralized error handling mechanism that catches all unhandled
     exceptions across the application and returns consistent, secure error responses.
     The handler ensures clients receive predictable error responses while protecting
     internal implementation details and sensitive information.
-    
+
     Exception Handling Features:
         * Comprehensive logging of all unhandled exceptions with full context
         * Standardized error response format using shared.models.ErrorResponse
@@ -98,11 +98,11 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         * Security-conscious error messages that don't expose internal details
         * Request context preservation for debugging and monitoring
         * Integration with the custom exception hierarchy
-    
+
     Args:
         app (FastAPI): The FastAPI application instance to configure
         settings (Settings): Application settings for error handling configuration
-    
+
     Exception Processing:
         The handler processes exceptions in the following order:
         1. Log the full exception with context for debugging
@@ -110,20 +110,20 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         3. Generate secure, user-friendly error message
         4. Create standardized ErrorResponse model
         5. Return JSONResponse with appropriate status code
-    
+
     HTTP Status Code Mapping:
         * ApplicationError -> 400 Bad Request (validation, business logic errors)
         * InfrastructureError -> 502 Bad Gateway (external service failures)
         * TransientAIError -> 503 Service Unavailable (temporary AI issues)
         * PermanentAIError -> 502 Bad Gateway (permanent AI issues)
         * All other exceptions -> 500 Internal Server Error
-    
+
     Security Features:
         * Generic error messages prevent information disclosure
         * Full exception details logged server-side only
         * No stack traces or internal paths exposed to clients
         * Request correlation IDs for secure debugging
-    
+
     Example Response:
         ```json
         {
@@ -133,126 +133,134 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
             "timestamp": "2025-07-12T12:34:56.789012"
         }
         ```
-    
+
     Note:
         This handler is the last resort for exception handling and will catch
         any exception not handled by more specific exception handlers. It ensures
         the application never returns unhandled exceptions to clients.
     """
-    
+
     @app.exception_handler(RequestValidationError)
-    async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def request_validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         """
         Handle FastAPI request validation errors with consistent formatting.
-        
+
         This handler catches Pydantic validation errors that occur during request
         parsing and converts them to the standardized ErrorResponse format. This
         ensures all validation errors (both automatic and custom) follow the same
         response structure.
-        
+
         Args:
             request (Request): The FastAPI request object that failed validation
             exc (RequestValidationError): The Pydantic validation error
-        
+
         Returns:
             JSONResponse: Standardized error response with validation details
         """
         # Get request ID for correlation (if available)
-        request_id = getattr(request.state, 'request_id', request_id_context.get('unknown'))
-        
+        request_id = getattr(
+            request.state, "request_id", request_id_context.get("unknown")
+        )
+
         # Extract validation error details
         error_details = []
         for error in exc.errors():
             field_name = " -> ".join(str(loc) for loc in error["loc"])
             error_details.append(f"{field_name}: {error['msg']}")
-        
+
         error_message = "Invalid request data"
         if error_details:
             # Include first error for user feedback, log all details
             error_message = f"Invalid request data: {error_details[0]}"
-        
+
         # Log the validation error with context
         logger.warning(
             f"Request validation error in request {request_id}: {'; '.join(error_details)}",
             extra={
-                'request_id': request_id,
-                'method': request.method,
-                'url': str(request.url),
-                'validation_errors': exc.errors()
-            }
+                "request_id": request_id,
+                "method": request.method,
+                "url": str(request.url),
+                "validation_errors": exc.errors(),
+            },
         )
-        
+
         # Create standardized error response
         error_response = ErrorResponse(
-            error=error_message,
-            error_code="VALIDATION_ERROR"
+            error=error_message, error_code="VALIDATION_ERROR"
         )
-        
+
         return JSONResponse(
             status_code=422,  # Unprocessable Entity (standard for validation errors)
-            content=error_response.dict()
+            content=error_response.dict(),
         )
-    
+
     @app.exception_handler(Exception)
-    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def global_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """
         Global exception handler for unhandled application errors.
-        
+
         Catches all unhandled exceptions, logs them appropriately, and returns
         a standardized error response to protect internal implementation details
         while providing useful information for debugging and monitoring.
-        
+
         Args:
             request (Request): The FastAPI request object that triggered the exception
             exc (Exception): The unhandled exception that was raised during processing
-        
+
         Returns:
             JSONResponse: A standardized error response with appropriate HTTP status
         """
         # Get request ID for correlation (if available)
-        request_id = getattr(request.state, 'request_id', request_id_context.get('unknown'))
-        
+        request_id = getattr(
+            request.state, "request_id", request_id_context.get("unknown")
+        )
+
         # Log the full exception with context
         logger.error(
             f"Unhandled exception in request {request_id}: {str(exc)}",
             extra={
-                'request_id': request_id,
-                'method': request.method,
-                'url': str(request.url),
-                'exception_type': type(exc).__name__,
-                'exception_module': type(exc).__module__
+                "request_id": request_id,
+                "method": request.method,
+                "url": str(request.url),
+                "exception_type": type(exc).__name__,
+                "exception_module": type(exc).__module__,
             },
-            exc_info=True
+            exc_info=True,
         )
-        
+
         # Determine HTTP status code based on exception type
         http_status = get_http_status_for_exception(exc)
-        
+
         # Special-case known ApplicationError contexts that require custom payloads
         if isinstance(exc, ApplicationError):
-            context = getattr(exc, 'context', {}) or {}
+            context = getattr(exc, "context", {}) or {}
             # Preserve API versioning error response shape used in tests and clients
-            if context.get('error_code') == 'API_VERSION_NOT_SUPPORTED':
+            if context.get("error_code") == "API_VERSION_NOT_SUPPORTED":
                 headers = {
-                    'X-API-Supported-Versions': ', '.join(context.get('supported_versions', [])),
-                    'X-API-Current-Version': context.get('current_version', '')
+                    "X-API-Supported-Versions": ", ".join(
+                        context.get("supported_versions", [])
+                    ),
+                    "X-API-Current-Version": context.get("current_version", ""),
                 }
                 content = {
-                    'error': 'Unsupported API version',
-                    'error_code': 'API_VERSION_NOT_SUPPORTED',
-                    'requested_version': context.get('requested_version'),
-                    'supported_versions': context.get('supported_versions', []),
-                    'current_version': context.get('current_version'),
-                    'detail': str(exc)
+                    "error": "Unsupported API version",
+                    "error_code": "API_VERSION_NOT_SUPPORTED",
+                    "requested_version": context.get("requested_version"),
+                    "supported_versions": context.get("supported_versions", []),
+                    "current_version": context.get("current_version"),
+                    "detail": str(exc),
                 }
                 return JSONResponse(status_code=400, content=content, headers=headers)
 
         # Create standardized error response
         error_response = ErrorResponse(
-            error="Internal server error",
-            error_code="INTERNAL_ERROR"
+            error="Internal server error", error_code="INTERNAL_ERROR"
         )
-        
+
         # Customize error message based on exception type for better UX
         if isinstance(exc, (ValidationError, BusinessLogicError)):
             error_response.error = "Invalid request data"
@@ -277,14 +285,11 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
             error_response.error_code = "INFRASTRUCTURE_ERROR"
         elif isinstance(exc, ApplicationError):
             # Prefer error_code provided in context when available
-            context = getattr(exc, 'context', {}) or {}
-            if 'error_code' in context:
-                error_response.error_code = str(context['error_code'])
+            context = getattr(exc, "context", {}) or {}
+            if "error_code" in context:
+                error_response.error_code = str(context["error_code"])
             error_response.error = str(exc) or "Invalid request data"
             # Propagate context as details for debugging
             error_response.details = context if context else None
-        
-        return JSONResponse(
-            status_code=http_status,
-            content=error_response.dict()
-        )
+
+        return JSONResponse(status_code=http_status, content=error_response.dict())

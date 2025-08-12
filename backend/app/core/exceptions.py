@@ -67,14 +67,15 @@ import httpx
 # Base Application Exceptions
 # ============================================================================
 
+
 class ApplicationError(Exception):
     """
     Base exception for all application-specific errors.
-    
+
     This should be used for errors that originate from business logic,
     validation, or other application-level concerns.
     """
-    
+
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
         super().__init__(message)
         self.message = message
@@ -89,56 +90,61 @@ class ApplicationError(Exception):
 class ValidationError(ApplicationError):
     """
     Raised when input validation fails.
-    
+
     Use this for user input validation, schema validation,
     or any data format/content validation errors.
     """
+
     pass
 
 
 class ConfigurationError(ApplicationError):
     """
     Raised when there are configuration-related errors.
-    
+
     Use this for missing environment variables, invalid configuration
     values, or configuration parsing errors.
     """
+
     pass
 
 
 class BusinessLogicError(ApplicationError):
     """
     Raised when business rules or domain logic constraints are violated.
-    
+
     Use this for domain-specific errors that represent violations of
     business rules rather than technical failures.
     """
+
     pass
 
 
 class AuthenticationError(ApplicationError):
     """
     Raised when authentication fails.
-    
+
     Use this when a user fails to provide valid credentials, such as:
     - Missing API key
     - Invalid API key
     - Malformed authentication headers
     - Expired tokens
     """
+
     pass
 
 
 class AuthorizationError(ApplicationError):
     """
     Raised when authorization fails.
-    
+
     Use this when an authenticated user lacks permission for a resource:
     - Insufficient privileges for an endpoint
     - Access denied to specific resources
     - Role-based access control violations
     - Resource ownership violations
     """
+
     pass
 
 
@@ -147,6 +153,7 @@ class RequestTooLargeError(ApplicationError):
     """
     Raised when the incoming request exceeds configured size limits.
     """
+
     pass
 
 
@@ -154,14 +161,15 @@ class RequestTooLargeError(ApplicationError):
 # Infrastructure Exceptions
 # ============================================================================
 
+
 class InfrastructureError(Exception):
     """
     Base exception for infrastructure-related errors.
-    
+
     This should be used for errors that originate from external systems,
     network issues, database problems, or other infrastructure concerns.
     """
-    
+
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
         super().__init__(message)
         self.message = message
@@ -177,47 +185,57 @@ class InfrastructureError(Exception):
 # AI Service Exception Hierarchy
 # ============================================================================
 
+
 class AIServiceException(InfrastructureError):
     """
     Base exception for AI service errors.
-    
+
     This is the root of the AI service exception hierarchy and should be
     used for any errors related to AI service interactions.
     """
+
     pass
 
 
 class TransientAIError(AIServiceException):
     """
     Transient AI service error that should be retried.
-    
+
     Use this for temporary failures that are likely to resolve themselves
     with retry attempts, such as network hiccups, temporary service overload,
     or rate limiting that will reset.
     """
+
     pass
 
 
 class PermanentAIError(AIServiceException):
     """
     Permanent AI service error that should not be retried.
-    
+
     Use this for errors that indicate a fundamental problem that won't
     be resolved by retrying, such as invalid API keys, malformed requests,
     or service deprecation.
     """
+
     pass
 
 
 class RateLimitError(TransientAIError):
     """
     Rate limit exceeded error.
-    
+
     Raised when the AI service indicates that the rate limit has been
     exceeded. This is a transient error that should be retried with
     appropriate backoff.
     """
-    def __init__(self, message: str, retry_after: int = 60, context: Optional[Dict[str, Any]] = None):
+
+    def __init__(
+        self,
+        message: str,
+        retry_after: int = 60,
+        context: Optional[Dict[str, Any]] = None,
+    ):
         context = context or {}
         # Preserve retry_after for middleware/handlers to use as a header
         context.setdefault("retry_after", retry_after)
@@ -228,10 +246,11 @@ class RateLimitError(TransientAIError):
 class ServiceUnavailableError(TransientAIError):
     """
     AI service temporarily unavailable.
-    
+
     Raised when the AI service is temporarily down or unreachable.
     This is a transient error that should be retried.
     """
+
     pass
 
 
@@ -239,28 +258,32 @@ class ServiceUnavailableError(TransientAIError):
 # Exception Classification Utilities
 # ============================================================================
 
+
 def classify_ai_exception(exc: Exception) -> bool:
     """
     Classify whether an AI-related exception should trigger retries.
-    
+
     Args:
         exc: The exception to classify
-        
+
     Returns:
         True if the exception is transient and should be retried,
         False if it's permanent and should not be retried
     """
     # Network and connection errors (should retry)
-    if isinstance(exc, (
-        httpx.ConnectError,
-        httpx.TimeoutException,
-        httpx.NetworkError,
-        ConnectionError,
-        TimeoutError,
-        TransientAIError,
-        RateLimitError,
-        ServiceUnavailableError
-    )):
+    if isinstance(
+        exc,
+        (
+            httpx.ConnectError,
+            httpx.TimeoutException,
+            httpx.NetworkError,
+            ConnectionError,
+            TimeoutError,
+            TransientAIError,
+            RateLimitError,
+            ServiceUnavailableError,
+        ),
+    ):
         return True
 
     # HTTP errors that should be retried
@@ -274,14 +297,17 @@ def classify_ai_exception(exc: Exception) -> bool:
             return False
 
     # Permanent errors (should not retry)
-    if isinstance(exc, (
-        PermanentAIError,
-        ValidationError,
-        ConfigurationError,
-        ValueError,
-        TypeError,
-        AttributeError
-    )):
+    if isinstance(
+        exc,
+        (
+            PermanentAIError,
+            ValidationError,
+            ConfigurationError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ),
+    ):
         return False
 
     # Default: retry on unknown exceptions (conservative approach)
@@ -291,10 +317,10 @@ def classify_ai_exception(exc: Exception) -> bool:
 def get_http_status_for_exception(exc: Exception) -> int:
     """
     Map exceptions to appropriate HTTP status codes for API responses.
-    
+
     Args:
         exc: The exception to map
-        
+
     Returns:
         Appropriate HTTP status code
     """
@@ -338,20 +364,18 @@ def get_http_status_for_exception(exc: Exception) -> int:
 __all__ = [
     # Base exceptions
     "ApplicationError",
-    "ValidationError", 
+    "ValidationError",
     "AuthenticationError",
     "AuthorizationError",
     "ConfigurationError",
     "BusinessLogicError",
     "InfrastructureError",
-    
     # AI service exceptions
     "AIServiceException",
     "TransientAIError",
-    "PermanentAIError", 
+    "PermanentAIError",
     "RateLimitError",
     "ServiceUnavailableError",
-    
     # Utility functions
     "classify_ai_exception",
     "get_http_status_for_exception",

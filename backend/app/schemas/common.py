@@ -88,13 +88,13 @@ from pydantic import BaseModel, Field, field_serializer
 class ErrorResponse(BaseModel):
     """
     Standardized error response model for all API endpoints.
-    
+
     This model provides a consistent error response format across the entire API,
     ensuring clients receive predictable error information regardless of the
     specific endpoint or error type.
-    
+
     Attributes:
-        success (bool): Always False for error responses. Allows clients to 
+        success (bool): Always False for error responses. Allows clients to
             easily distinguish success from error responses.
         error (str): Human-readable error message describing what went wrong.
             Should be safe to display to end users.
@@ -104,7 +104,7 @@ class ErrorResponse(BaseModel):
             Should not contain sensitive information as it may be logged.
         timestamp (datetime): ISO formatted timestamp when the error occurred.
             Useful for debugging and log correlation.
-    
+
     Example:
         ```json
         {
@@ -119,45 +119,35 @@ class ErrorResponse(BaseModel):
         }
         ```
     """
-    success: bool = Field(
-        default=False, 
-        description="Always false for error responses"
-    )
-    error: str = Field(
-        ..., 
-        description="Human-readable error message",
-        min_length=1
-    )
+
+    success: bool = Field(default=False, description="Always false for error responses")
+    error: str = Field(..., description="Human-readable error message", min_length=1)
     error_code: Optional[str] = Field(
         default=None,
-        description="Machine-readable error code for programmatic handling"
+        description="Machine-readable error code for programmatic handling",
     )
     details: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Additional error context (no sensitive data)"
+        default=None, description="Additional error context (no sensitive data)"
     )
     timestamp: datetime = Field(
-        default_factory=datetime.now,
-        description="When the error occurred"
+        default_factory=datetime.now, description="When the error occurred"
     )
 
-    @field_serializer('timestamp')
+    @field_serializer("timestamp")
     def serialize_timestamp(self, dt: datetime, _info) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
 
     class Config:
         """Pydantic model configuration."""
+
         json_schema_extra = {
             "example": {
                 "success": False,
                 "error": "Invalid request data: text field is required",
                 "error_code": "VALIDATION_ERROR",
-                "details": {
-                    "field": "text",
-                    "request_id": "req_12345"
-                },
-                "timestamp": "2025-01-12T10:30:45.123456"
+                "details": {"field": "text", "request_id": "req_12345"},
+                "timestamp": "2025-01-12T10:30:45.123456",
             }
         }
 
@@ -165,16 +155,16 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     """
     Standardized success response wrapper for simple operations.
-    
+
     For operations that don't return complex data, this provides a consistent
     success response format. More complex operations should define their own
     response models that inherit from this or include these fields.
-    
+
     Attributes:
         success (bool): Always True for success responses.
         message (str, optional): Human-readable success message.
         timestamp (datetime): When the operation completed successfully.
-    
+
     Example:
         ```json
         {
@@ -184,20 +174,14 @@ class SuccessResponse(BaseModel):
         }
         ```
     """
-    success: bool = Field(
-        default=True,
-        description="Always true for success responses"  
-    )
-    message: Optional[str] = Field(
-        default=None,
-        description="Optional success message"
-    )
+
+    success: bool = Field(default=True, description="Always true for success responses")
+    message: Optional[str] = Field(default=None, description="Optional success message")
     timestamp: datetime = Field(
-        default_factory=datetime.now,
-        description="When the operation completed"
+        default_factory=datetime.now, description="When the operation completed"
     )
 
-    @field_serializer('timestamp') 
+    @field_serializer("timestamp")
     def serialize_timestamp(self, dt: datetime, _info) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
@@ -206,10 +190,10 @@ class SuccessResponse(BaseModel):
 class PaginationInfo(BaseModel):
     """
     Pagination metadata for list endpoints.
-    
+
     Provides standardized pagination information for endpoints that return
     lists of items. Helps clients implement proper pagination controls.
-    
+
     Attributes:
         page (int): Current page number (1-based).
         page_size (int): Number of items per page.
@@ -218,6 +202,7 @@ class PaginationInfo(BaseModel):
         has_next (bool): Whether there are more pages available.
         has_previous (bool): Whether there are previous pages available.
     """
+
     page: int = Field(..., ge=1, description="Current page number (1-based)")
     page_size: int = Field(..., ge=1, le=1000, description="Items per page")
     total_items: int = Field(..., ge=0, description="Total items across all pages")
@@ -227,6 +212,7 @@ class PaginationInfo(BaseModel):
 
     class Config:
         """Pydantic model configuration."""
+
         json_schema_extra = {
             "example": {
                 "page": 1,
@@ -234,6 +220,6 @@ class PaginationInfo(BaseModel):
                 "total_items": 150,
                 "total_pages": 8,
                 "has_next": True,
-                "has_previous": False
+                "has_previous": False,
             }
-        } 
+        }

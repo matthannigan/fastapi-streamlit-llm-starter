@@ -228,19 +228,23 @@ from pydantic import BaseModel, Field
 
 # Request models
 
+
 class TemplateValidationRequest(BaseModel):
     """Request model for template-based validation."""
+
     template_name: str
     overrides: Dict[str, Any] = {}
 
 
 class CustomConfigRequest(BaseModel):
     """Request model for custom configuration validation."""
+
     configuration: Dict[str, Any]
 
 
 class BenchmarkRunRequest(BaseModel):
     """Request model for running performance benchmarks."""
+
     iterations: int = 50
     include_slow: bool = False
     operations: Optional[List[str]] = None  # Specific operations to benchmark
@@ -248,19 +252,23 @@ class BenchmarkRunRequest(BaseModel):
 
 class ValidationRequest(BaseModel):
     """Request model for configuration validation."""
+
     configuration: Dict[str, Any]
 
 
 class TemplateBasedConfigRequest(BaseModel):
     """Request model for template-based configuration."""
+
     template_name: str
     overrides: Optional[Dict[str, Any]] = None
 
 
 # Response models
 
+
 class ResilienceMetricsResponse(BaseModel):
     """Resilience service metrics response."""
+
     operations: Dict[str, Dict[str, Any]]
     circuit_breakers: Dict[str, Dict[str, Any]]
     summary: Dict[str, Any]
@@ -268,6 +276,7 @@ class ResilienceMetricsResponse(BaseModel):
 
 class PresetSummary(BaseModel):
     """Summary information about a resilience preset."""
+
     name: str
     description: str
     retry_attempts: int
@@ -279,6 +288,7 @@ class PresetSummary(BaseModel):
 
 class PresetDetails(BaseModel):
     """Detailed information about a resilience preset."""
+
     name: str
     description: str
     configuration: Dict[str, Any]
@@ -287,6 +297,7 @@ class PresetDetails(BaseModel):
 
 class RecommendationResponse(BaseModel):
     """Preset recommendation response."""
+
     environment: str
     recommended_preset: str
     reason: str
@@ -295,6 +306,7 @@ class RecommendationResponse(BaseModel):
 
 class DetailedRecommendationResponse(BaseModel):
     """Enhanced preset recommendation response with confidence and reasoning."""
+
     environment_detected: str
     recommended_preset: str
     confidence: float
@@ -305,6 +317,7 @@ class DetailedRecommendationResponse(BaseModel):
 
 class AutoDetectResponse(BaseModel):
     """Auto-detection response for environment-aware recommendations."""
+
     environment_detected: str
     recommended_preset: str
     confidence: float
@@ -314,11 +327,13 @@ class AutoDetectResponse(BaseModel):
 
 class TemplateListResponse(BaseModel):
     """Response model for configuration templates."""
+
     templates: Dict[str, Dict[str, Any]]
 
 
 class TemplateSuggestionResponse(BaseModel):
     """Response model for template suggestions."""
+
     suggested_template: Optional[str]
     confidence: float
     reasoning: str
@@ -327,19 +342,24 @@ class TemplateSuggestionResponse(BaseModel):
 
 class ValidationResponse(BaseModel):
     """Response model for configuration validation."""
+
     is_valid: bool
     errors: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     suggestions: List[str] = Field(default_factory=list)
-    security_info: Optional[Dict[str, Any]] = Field(default=None, description="Additional security validation metadata")
+    security_info: Optional[Dict[str, Any]] = Field(
+        default=None, description="Additional security validation metadata"
+    )
 
 
 class CurrentConfigResponse(BaseModel):
     """Current resilience configuration response."""
+
     preset_name: str
     is_legacy_config: bool
     configuration: Dict[str, Any]
     operation_strategies: Dict[str, str]
     custom_overrides: Optional[Dict[str, Any]] = None
-    strategies: Optional[Dict[str, Dict[str, Any]]] = None  # Complete strategies mapping for backward compatibility
-
+    strategies: Optional[
+        Dict[str, Dict[str, Any]]
+    ] = None  # Complete strategies mapping for backward compatibility
