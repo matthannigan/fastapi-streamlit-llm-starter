@@ -54,6 +54,17 @@ from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
+# Optional security imports for production environments
+try:
+    from app.infrastructure.cache.security import (
+        SecurityConfig,
+        RedisCacheSecurityManager,
+        create_security_config_from_env
+    )
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -103,6 +114,7 @@ class GenericRedisCache(CacheInterface):
         compression_threshold: int = 1000,
         compression_level: int = 6,
         performance_monitor: Optional[CachePerformanceMonitor] = None,
+        security_config: Optional["SecurityConfig"] = None,
     ):
         self.redis_url = redis_url
         self.default_ttl = default_ttl
@@ -119,6 +131,20 @@ class GenericRedisCache(CacheInterface):
 
         self.performance_monitor = performance_monitor or CachePerformanceMonitor()
         self._callbacks: Dict[str, List[Callable]] = defaultdict(list)
+        
+        # Security configuration
+        self.security_config = security_config
+        self.security_manager = None
+        if security_config and SECURITY_AVAILABLE:
+            self.security_manager = RedisCacheSecurityManager(
+                config=security_config,
+                performance_monitor=self.performance_monitor
+            )
+        elif security_config and not SECURITY_AVAILABLE:
+            logger.warning(
+                "Security configuration provided but security module not available. "
+                "Operating without security features."
+            )
 
     def _fire_callback(self, event: str, *args, **kwargs):
         """Fires all registered callbacks for a given event."""
@@ -211,21 +237,29 @@ class GenericRedisCache(CacheInterface):
         return pickle.loads(pickled_data)
 
     async def connect(self) -> bool:
-        """Initialize Redis connection with graceful degradation.
+        """Initialize Redis connection with security features and graceful degradation.
 
         ### Overview
-        Attempts to establish a connection to Redis. If Redis is unavailable
-        or the connection fails, the cache operates in memory-only mode.
+        Attempts to establish a connection to Redis. If a security manager is configured,
+        it uses secure connection features including authentication, TLS encryption, and
+        security validation. If Redis is unavailable or the connection fails, the cache
+        operates in memory-only mode.
 
         ### Returns
         True if connected to Redis successfully, False otherwise.
 
         ### Examples
         ```python
+        # Basic connection
         cache = GenericRedisCache()
         connected = await cache.connect()
         if not connected:
             print("Using memory-only mode")
+        
+        # Secure connection
+        security_config = SecurityConfig(redis_auth="password", use_tls=True)
+        cache = GenericRedisCache(security_config=security_config)
+        connected = await cache.connect()
         ```
         """
         if not REDIS_AVAILABLE:
@@ -234,17 +268,24 @@ class GenericRedisCache(CacheInterface):
 
         if not self.redis:
             try:
-                assert aioredis is not None  # Type checker hint
-                self.redis = await aioredis.from_url(
-                    self.redis_url,
-                    decode_responses=False,  # Handle binary data
-                    socket_connect_timeout=5,
-                    socket_timeout=5,
-                )
-                assert self.redis is not None
-                await self.redis.ping()
-                logger.info(f"Connected to Redis at {self.redis_url}")
-                return True
+                # Use security manager for secure connections if available
+                if self.security_manager:
+                    self.redis = await self.security_manager.create_secure_connection(self.redis_url)
+                    logger.info(f"Secure Redis connection established at {self.redis_url}")
+                    return True
+                else:
+                    # Fall back to basic connection
+                    assert aioredis is not None  # Type checker hint
+                    self.redis = await aioredis.from_url(
+                        self.redis_url,
+                        decode_responses=False,  # Handle binary data
+                        socket_connect_timeout=5,
+                        socket_timeout=5,
+                    )
+                    assert self.redis is not None
+                    await self.redis.ping()
+                    logger.info(f"Basic Redis connection established at {self.redis_url}")
+                    return True
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e} - using memory-only mode")
                 self.redis = None
@@ -543,3 +584,152 @@ class GenericRedisCache(CacheInterface):
                 logger.warning(f"Cache exists error for key {key}: {e}")
 
         return False
+    
+    async def validate_security(self):
+        """Validate Redis connection security if security manager is available.
+        
+        ### Overview
+        Performs comprehensive security validation of the Redis connection
+        including authentication, encryption, and certificate checks.
+        
+        ### Returns
+        SecurityValidationResult if security manager is available, None otherwise.
+        
+        ### Examples
+        ```python
+        cache = GenericRedisCache(security_config=security_config)
+        await cache.connect()
+        validation = await cache.validate_security()
+        if validation and not validation.is_secure:
+            print(f"Security issues: {validation.vulnerabilities}")
+        ```
+        """
+        if not self.security_manager or not self.redis:
+            logger.debug("Security validation skipped - no security manager or Redis connection")
+            return None
+        
+        return await self.security_manager.validate_connection_security(self.redis)
+    
+    def get_security_status(self) -> Dict[str, Any]:
+        """Get current security configuration and status.
+        
+        ### Overview
+        Returns information about the current security configuration,
+        connection status, and any recent security validations.
+        
+        ### Returns
+        Dictionary containing security status information.
+        
+        ### Examples
+        ```python
+        cache = GenericRedisCache(security_config=security_config)
+        status = cache.get_security_status()
+        print(f"Security level: {status['security_level']}")
+        ```
+        """
+        if not self.security_manager:
+            return {
+                "security_enabled": False,
+                "security_level": "NONE",
+                "message": "No security configuration provided"
+            }
+        
+        return self.security_manager.get_security_status()
+    
+    def get_security_recommendations(self) -> List[str]:
+        """Get security recommendations for the current configuration.
+        
+        ### Overview
+        Returns a list of security recommendations based on the current
+        configuration and any security validations performed.
+        
+        ### Returns
+        List of security recommendations.
+        
+        ### Examples
+        ```python
+        cache = GenericRedisCache(security_config=security_config)
+        recommendations = cache.get_security_recommendations()
+        for rec in recommendations:
+            print(f"💡 {rec}")
+        ```
+        """
+        if not self.security_manager:
+            return [
+                "🔐 Configure Redis security with SecurityConfig",
+                "🔒 Enable TLS encryption for production environments", 
+                "🚨 Set up authentication (AUTH or ACL)"
+            ]
+        
+        return self.security_manager.get_security_recommendations()
+    
+    async def generate_security_report(self) -> str:
+        """Generate comprehensive security assessment report.
+        
+        ### Overview
+        Creates a detailed security report including configuration status,
+        validation results, vulnerabilities, and recommendations.
+        
+        ### Returns
+        Formatted security report string.
+        
+        ### Examples
+        ```python
+        cache = GenericRedisCache(security_config=security_config)
+        await cache.connect()
+        await cache.validate_security()
+        report = await cache.generate_security_report()
+        print(report)
+        ```
+        """
+        if not self.security_manager:
+            return (
+                "REDIS CACHE SECURITY REPORT\n"
+                "============================\n\n"
+                "❌ Security Status: NOT CONFIGURED\n"
+                "Security Level: NONE\n\n"
+                "RECOMMENDATIONS:\n"
+                "1. 🔐 Configure SecurityConfig with authentication\n"
+                "2. 🔒 Enable TLS encryption\n"
+                "3. 🚨 Set up Redis ACL or AUTH password\n\n"
+                "To enable security, pass a SecurityConfig to GenericRedisCache:\n"
+                "  config = SecurityConfig(redis_auth='password', use_tls=True)\n"
+                "  cache = GenericRedisCache(security_config=config)\n"
+            )
+        
+        # Validate security if connected
+        if self.redis:
+            await self.security_manager.validate_connection_security(self.redis)
+        
+        return self.security_manager.generate_security_report()
+    
+    async def test_security_configuration(self) -> Dict[str, Any]:
+        """Test the security configuration comprehensively.
+        
+        ### Overview
+        Performs comprehensive testing of the security configuration
+        including connection tests, authentication validation, and encryption checks.
+        
+        ### Returns
+        Dictionary with detailed test results.
+        
+        ### Examples
+        ```python
+        cache = GenericRedisCache(security_config=security_config)
+        results = await cache.test_security_configuration()
+        print(f"Overall secure: {results['overall_secure']}")
+        if results['errors']:
+            for error in results['errors']:
+                print(f"❌ {error}")
+        ```
+        """
+        if not self.security_manager:
+            return {
+                "timestamp": time.time(),
+                "security_configured": False,
+                "overall_secure": False,
+                "message": "No security configuration provided",
+                "recommendations": self.get_security_recommendations()
+            }
+        
+        return await self.security_manager.test_security_configuration(self.redis_url)

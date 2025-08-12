@@ -1176,6 +1176,23 @@ class CachePerformanceMonitor:
 
         return stats
 
+    async def record_operation(self, name: str, duration_ms: float, success: bool) -> None:
+        """Record a generic operation timing for integration points.
+
+        This lightweight async API is used by other components (e.g., security
+        manager) to record durations without coupling to specific operation types.
+        """
+        try:
+            # Map into cache operation metrics as a generic entry
+            self.record_cache_operation_time(
+                operation=name,
+                duration=duration_ms / 1000.0,
+                cache_hit=success,
+                additional_data={"source": "integration"},
+            )
+        except Exception as e:
+            logger.debug(f"record_operation failed for {name}: {e}")
+
     def _calculate_hit_rate(self) -> float:
         """
         Calculate cache hit rate as a percentage.
