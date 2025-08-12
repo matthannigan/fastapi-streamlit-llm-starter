@@ -72,6 +72,15 @@ from .redis import (
 # Memory implementation
 from .memory import InMemoryCache
 
+# Generic Redis implementation
+from .redis_generic import GenericRedisCache
+
+# Migration utilities
+from .migration import CacheMigrationManager
+
+# Compatibility wrapper
+from .compatibility import CacheCompatibilityWrapper
+
 # Monitoring and metrics
 from .monitoring import (
     CachePerformanceMonitor,
@@ -91,6 +100,15 @@ __all__ = [
     "CacheKeyGenerator",
     "REDIS_AVAILABLE",
     "aioredis",
+    
+    # Generic Redis implementation
+    "GenericRedisCache",
+    
+    # Migration utilities
+    "CacheMigrationManager",
+    
+    # Compatibility wrapper
+    "CacheCompatibilityWrapper",
     
     # Memory implementation
     "InMemoryCache",

@@ -152,11 +152,13 @@ except ImportError:
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
+# Temporary import for inheritance shim during migration
+from .redis_generic import GenericRedisCache as _BaseRedis
 
 logger = logging.getLogger(__name__)
 
 
-class AIResponseCache(CacheInterface):
+class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
     def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600, 
                  text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256,
                  compression_threshold: int = 1000, compression_level: int = 6,
@@ -164,6 +166,9 @@ class AIResponseCache(CacheInterface):
                  performance_monitor: Optional[CachePerformanceMonitor] = None):
         """
         Initialize AIResponseCache with injectable configuration.
+        
+        **DEPRECATED**: Direct usage of AIResponseCache is deprecated. Use GenericRedisCache 
+        with CacheCompatibilityWrapper for new implementations, or migrate to the new cache interfaces.
         
         Args:
             redis_url: Redis connection URL
@@ -176,6 +181,28 @@ class AIResponseCache(CacheInterface):
             memory_cache_size: Maximum number of items in the in-memory cache
             performance_monitor: Optional performance monitor for tracking cache metrics
         """
+        # Emit deprecation warning when used directly (not as subclass)
+        import warnings
+        import inspect
+        
+        # Check if this is direct instantiation vs subclass instantiation
+        frame = inspect.currentframe()
+        if frame and frame.f_back:
+            caller_locals = frame.f_back.f_locals
+            # If 'self' is not in caller's locals or self.__class__ is AIResponseCache, it's direct usage
+            if ('self' not in caller_locals or 
+                caller_locals.get('self').__class__.__name__ == 'AIResponseCache'):
+                warnings.warn(
+                    "AIResponseCache direct usage is deprecated. Use GenericRedisCache with "
+                    "CacheCompatibilityWrapper for new implementations. This class will be "
+                    "refactored in future versions.",
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+                logger.warning(
+                    "AIResponseCache used directly. Consider migrating to GenericRedisCache "
+                    "with CacheCompatibilityWrapper for better forward compatibility."
+                )
         self.redis = None
         self.redis_url = redis_url
         self.default_ttl = default_ttl
