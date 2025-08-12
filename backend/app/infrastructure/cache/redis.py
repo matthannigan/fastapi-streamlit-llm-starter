@@ -152,13 +152,13 @@ except ImportError:
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
-# Temporary import for inheritance shim during migration
-from .redis_generic import GenericRedisCache as _BaseRedis
+# Import for delegation to GenericRedisCache
+from .redis_generic import GenericRedisCache
 
 logger = logging.getLogger(__name__)
 
 
-class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
+class AIResponseCache(GenericRedisCache):
     def __init__(self, redis_url: str = "redis://redis:6379", default_ttl: int = 3600, 
                  text_hash_threshold: int = 1000, hash_algorithm=hashlib.sha256,
                  compression_threshold: int = 1000, compression_level: int = 6,
@@ -203,11 +203,19 @@ class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
                     "AIResponseCache used directly. Consider migrating to GenericRedisCache "
                     "with CacheCompatibilityWrapper for better forward compatibility."
                 )
-        self.redis = None
-        self.redis_url = redis_url
-        self.default_ttl = default_ttl
-        self.compression_threshold = compression_threshold
-        self.compression_level = compression_level
+        
+        # Initialize parent GenericRedisCache with delegated parameters
+        super().__init__(
+            redis_url=redis_url,
+            default_ttl=default_ttl,
+            enable_l1_cache=True,
+            l1_cache_size=memory_cache_size,
+            compression_threshold=compression_threshold,
+            compression_level=compression_level,
+            performance_monitor=performance_monitor
+        )
+        
+        # AI-specific operation TTL configuration
         self.operation_ttls = {
             "summarize": 7200,    # 2 hours - summaries are stable
             "sentiment": 86400,   # 24 hours - sentiment rarely changes
@@ -216,10 +224,7 @@ class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
             "qa": 1800           # 30 minutes - context-dependent
         }
         
-        # Initialize performance monitor (create default if not provided)
-        self.performance_monitor = performance_monitor or CachePerformanceMonitor()
-        
-        # Initialize optimized cache key generator with performance monitoring
+        # Initialize AI-specific cache key generator with performance monitoring
         self.key_generator = CacheKeyGenerator(
             text_hash_threshold=text_hash_threshold,
             hash_algorithm=hash_algorithm,
@@ -233,10 +238,10 @@ class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
             'large': 50000,    # 5000-50000 chars - cache with content hash + metadata
         }
         
-        # In-memory cache for frequently accessed small items
-        self.memory_cache = {}  # Cache storage: {key: value}
-        self.memory_cache_size = memory_cache_size  # Maximum number of items in memory cache
-        self.memory_cache_order = []  # Track access order for FIFO eviction
+        # Legacy attributes for backward compatibility
+        self.memory_cache = self.l1_cache._cache if self.l1_cache else {}
+        self.memory_cache_size = memory_cache_size
+        self.memory_cache_order = []  # Maintained for compatibility but not used
     
     def _get_text_tier(self, text: str) -> str:
         """
@@ -282,88 +287,7 @@ class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
         self.memory_cache_order.append(key)
         logger.debug(f"Added to memory cache: {key}")
     
-    def _compress_data(self, data: Dict[str, Any]) -> bytes:
-        """
-        Compress cache data for large responses using pickle and zlib.
-        
-        Args:
-            data: Cache data to compress
-            
-        Returns:
-            Compressed bytes with appropriate prefix
-        """
-        # Use pickle for Python objects, then compress
-        pickled_data = pickle.dumps(data)
-        
-        if len(pickled_data) > self.compression_threshold:
-            compressed = zlib.compress(pickled_data, self.compression_level)
-            logger.debug(f"Compressed cache data: {len(pickled_data)} -> {len(compressed)} bytes")
-            return b"compressed:" + compressed
-        
-        return b"raw:" + pickled_data
-    
-    def _decompress_data(self, data: bytes) -> Dict[str, Any]:
-        """
-        Decompress cache data using zlib and pickle.
-        
-        Args:
-            data: Compressed bytes to decompress
-            
-        Returns:
-            Decompressed cache data dictionary
-        """
-        if data.startswith(b"compressed:"):
-            compressed_data = data[11:]  # Remove "compressed:" prefix
-            pickled_data = zlib.decompress(compressed_data)
-        else:
-            pickled_data = data[4:]  # Remove "raw:" prefix
-        
-        return pickle.loads(pickled_data)
-    
-    async def connect(self):
-        """
-        Initialize Redis connection with graceful degradation.
-        
-        Attempts to establish a connection to Redis using the configured URL.
-        If Redis is not available or connection fails, the cache will operate
-        without persistence (graceful degradation).
-        
-        Returns:
-            bool: True if successfully connected to Redis, False otherwise.
-            
-        Raises:
-            None: All exceptions are caught and logged as warnings.
-            
-        Example:
-            >>> cache = AIResponseCache()
-            >>> connected = await cache.connect()
-            >>> if connected:
-            ...     print("Redis connected successfully")
-            ... else:
-            ...     print("Operating without Redis persistence")
-        """
-        if not REDIS_AVAILABLE:
-            logger.warning("Redis not available - caching disabled")
-            return False
-            
-        if not self.redis:
-            try:
-                assert aioredis is not None  # Type checker hint: aioredis is available when REDIS_AVAILABLE is True
-                self.redis = await aioredis.from_url(
-                    self.redis_url,
-                    decode_responses=False,  # Handle binary data for compression
-                    socket_connect_timeout=5,
-                    socket_timeout=5
-                )
-                # Test connection
-                await self.redis.ping()  # Type assertion above ensures redis is not None
-                logger.info(f"Connected to Redis at {self.redis_url}")
-                return True
-            except Exception as e:
-                logger.warning(f"Redis connection failed: {e} - caching disabled")
-                self.redis = None
-                return False
-        return True
+    # _compress_data, _decompress_data, and connect methods are now inherited from GenericRedisCache
     
     def _generate_cache_key(self, text: str, operation: str, options: Dict[str, Any], question: Optional[str] = None) -> str:
         """
@@ -1169,87 +1093,4 @@ class AIResponseCache(_BaseRedis):  # temporary inheritance during migration
         
         logger.info(f"Cleared {entries_cleared} entries from memory cache")
 
-    # CacheInterface implementation
-    async def get(self, key: str):
-        """
-        Get a value from cache by key (implements CacheInterface).
-        
-        Args:
-            key: Cache key to retrieve
-            
-        Returns:
-            Cached value if found, None otherwise
-        """
-        if not await self.connect():
-            return None
-            
-        try:
-            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
-            cached_data = await self.redis.get(key)
-            if cached_data:
-                # Handle both string and bytes data
-                if isinstance(cached_data, bytes):
-                    # Try to decode as JSON first
-                    try:
-                        return json.loads(cached_data.decode('utf-8'))
-                    except (json.JSONDecodeError, UnicodeDecodeError):
-                        # Return raw bytes if not JSON
-                        return cached_data
-                else:
-                    # Try to parse as JSON if it's a string
-                    try:
-                        return json.loads(cached_data)
-                    except json.JSONDecodeError:
-                        # Return raw string if not JSON
-                        return cached_data
-            return None
-        except Exception as e:
-            logger.warning(f"Cache get error for key {key}: {e}")
-            return None
-    
-    async def set(self, key: str, value, ttl: Optional[int] = None):
-        """
-        Set a value in cache with optional TTL (implements CacheInterface).
-        
-        Args:
-            key: Cache key
-            value: Value to cache
-            ttl: Time-to-live in seconds (optional)
-        """
-        if not await self.connect():
-            return
-            
-        try:
-            # Use provided TTL or default
-            expiry = ttl or self.default_ttl
-            
-            # Serialize value appropriately
-            if isinstance(value, (dict, list)):
-                cache_data = json.dumps(value)
-            elif isinstance(value, str):
-                cache_data = value
-            else:
-                cache_data = json.dumps(value)
-            
-            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
-            await self.redis.setex(key, expiry, cache_data)
-            logger.debug(f"Set cache key {key} with TTL {expiry}s")
-        except Exception as e:
-            logger.warning(f"Cache set error for key {key}: {e}")
-    
-    async def delete(self, key: str):
-        """
-        Delete a key from cache (implements CacheInterface).
-        
-        Args:
-            key: Cache key to delete
-        """
-        if not await self.connect():
-            return
-            
-        try:
-            assert self.redis is not None  # Type checker hint: redis is available after successful connect()
-            result = await self.redis.delete(key)
-            logger.debug(f"Deleted cache key {key} (existed: {bool(result)})")
-        except Exception as e:
-            logger.warning(f"Cache delete error for key {key}: {e}")
+    # CacheInterface methods (get, set, delete, exists) are inherited from GenericRedisCache
