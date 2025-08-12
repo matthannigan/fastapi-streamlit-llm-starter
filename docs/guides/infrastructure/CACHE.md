@@ -11,34 +11,79 @@ The Cache Infrastructure Service is a **production-ready infrastructure componen
 
 ### Architecture Position
 
+**Phase 1 Cache Infrastructure Architecture**
+
 ```mermaid
 graph TB
-    subgraph "Domain Services Layer"
-        DS[Text Processor Service] --> CACHE_INFRA[Cache Infrastructure Service]
-        VAL[Response Validator] --> CACHE_INFRA
+    subgraph "Application Layer"
+        WEB_APP[Web Application]
+        AI_APP[AI Application]
     end
     
-    subgraph "Cache Infrastructure Service"
+    subgraph "Domain Services Layer"
+        USER_SERVICE[User Service] --> CACHE_INFRA[Cache Infrastructure Service]
+        TEXT_PROCESSOR[Text Processor Service] --> CACHE_INFRA
+        API_SERVICE[API Service] --> CACHE_INFRA
+    end
+    
+    subgraph "Cache Infrastructure Service - Phase 1"
         CACHE_INFRA --> INTERFACE[Cache Interface]
-        INTERFACE --> MEMORY[InMemoryCache]
-        INTERFACE --> REDIS[AIResponseCache]
+        
+        subgraph "Cache Implementations"
+            INTERFACE --> MEMORY[InMemoryCache]
+            INTERFACE --> GENERIC[GenericRedisCache]
+            INTERFACE --> AI_CACHE[AIResponseCache]
+        end
+        
+        subgraph "GenericRedisCache Components"
+            GENERIC --> L1_GENERIC[L1 Memory Cache]
+            GENERIC --> COMPRESS_GENERIC[Compression Engine]
+            GENERIC --> CALLBACK_SYSTEM[Callback System]
+            GENERIC --> MONITOR_GENERIC[Performance Monitor]
+        end
         
         subgraph "AIResponseCache Components"
-            REDIS --> KEYGEN[Key Generator]
-            REDIS --> COMPRESS[Compression Engine]
-            REDIS --> MONITOR[Performance Monitor]
-            REDIS --> TIERED[Tiered Storage]
+            AI_CACHE --> L1_AI[L1 Memory Cache]
+            AI_CACHE --> KEYGEN[AI Key Generator]
+            AI_CACHE --> COMPRESS_AI[Smart Compression]
+            AI_CACHE --> MONITOR_AI[AI Performance Monitor]
+            AI_CACHE --> TEXT_TIERS[Text Tier System]
+        end
+        
+        subgraph "Extracted Components"
+            KEYGEN_STANDALONE[CacheKeyGenerator]
+            MIGRATION_MGR[CacheMigrationManager]
+            SECURITY_MGR[Security Manager]
         end
         
         subgraph "Storage Backends"
-            TIERED --> REDIS_STORE[Redis Store]
-            TIERED --> MEM_CACHE[Memory Cache L1]
+            L1_GENERIC --> MEMORY_STORE[Memory Store]
+            L1_AI --> MEMORY_STORE
+            COMPRESS_GENERIC --> REDIS_STORE[Redis Store]
+            COMPRESS_AI --> REDIS_STORE
         end
     end
     
     subgraph "External Dependencies"
         REDIS_STORE --> REDIS_SERVER[Redis Server]
     end
+    
+    subgraph "Development & Operations"
+        MIGRATION_MGR --> BACKUP_TOOLS[Backup & Restore]
+        SECURITY_MGR --> AUTH_SYSTEM[Authentication & TLS]
+        MONITOR_GENERIC --> METRICS_API[Metrics API]
+        MONITOR_AI --> METRICS_API
+    end
+    
+    WEB_APP --> USER_SERVICE
+    WEB_APP --> API_SERVICE
+    AI_APP --> TEXT_PROCESSOR
+    
+    style GENERIC fill:#e6ffe6
+    style AI_CACHE fill:#e6f3ff
+    style MEMORY fill:#fff2e6
+    style KEYGEN_STANDALONE fill:#ffe6e6
+    style MIGRATION_MGR fill:#f0e6ff
 ```
 
 ### Key Features
@@ -141,6 +186,108 @@ print(f"Hit ratio: {stats['hit_ratio']:.2f}")
 - **Memory Usage**: ~100-200 bytes per entry
 - **Startup Time**: Instant
 - **Best For**: Development, testing, fallback scenarios
+
+### GenericRedisCache (`redis_generic.py`)
+
+A clean, generic Redis-backed cache implementation that provides flexible caching capabilities without AI-specific features. Perfect for general-purpose FastAPI applications that need Redis persistence.
+
+#### Key Features
+
+| Feature | Description | Benefits |
+|---------|-------------|----------|
+| **L1 Memory Cache** | Optional in-memory cache tier for hot data | Sub-millisecond access times |
+| **Auto Compression** | Zlib compression for large values | 60-80% storage savings |
+| **Callback System** | Extensible event system for custom logic | Composition over inheritance |
+| **Performance Monitoring** | Built-in metrics and timing | Production observability |
+| **Graceful Degradation** | Memory-only mode when Redis unavailable | High availability |
+| **Pipeline Support** | Batch operations for efficiency | Reduced network overhead |
+
+#### Quick-Start Guide
+
+**Basic Setup**:
+```python
+from app.infrastructure.cache import GenericRedisCache
+
+# Initialize with defaults
+cache = GenericRedisCache(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,                   # 1 hour default TTL
+    enable_l1_cache=True,               # Enable memory tier
+    l1_cache_size=100,                  # 100 items in memory
+    compression_threshold=1000          # Compress data > 1KB
+)
+
+# Connect to Redis
+connected = await cache.connect()
+if connected:
+    print("Connected to Redis successfully")
+else:
+    print("Using memory-only mode")
+```
+
+**Basic Operations**:
+```python
+# Store data with automatic compression
+user_data = {"id": 123, "name": "John Doe", "preferences": {"theme": "dark"}}
+await cache.set("user:123", user_data, ttl=1800)  # 30 minutes
+
+# Retrieve data (checks L1 cache first, then Redis)
+stored_data = await cache.get("user:123")
+if stored_data:
+    print(f"Welcome back, {stored_data['name']}!")
+
+# Check if key exists
+if await cache.exists("user:123"):
+    print("User session is active")
+
+# Delete data from both tiers
+await cache.delete("user:123")
+```
+
+**Advanced Usage**:
+```python
+# Register callbacks for custom behavior
+def on_cache_hit(key, value):
+    print(f"Cache hit for {key}")
+
+def on_cache_miss(key):
+    print(f"Cache miss for {key}")
+
+cache.register_callback('get_success', on_cache_hit)
+cache.register_callback('get_miss', on_cache_miss)
+
+# Bulk operations
+data_batch = {
+    "config:feature_flags": {"new_ui": True, "beta_features": False},
+    "config:rate_limits": {"api_calls_per_minute": 1000},
+    "config:maintenance": {"scheduled_downtime": "2024-01-15T02:00:00Z"}
+}
+
+for key, value in data_batch.items():
+    await cache.set(key, value, ttl=7200)  # 2 hours for config data
+```
+
+**Production Configuration**:
+```python
+from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+
+# Production-ready setup with monitoring
+monitor = CachePerformanceMonitor()
+cache = GenericRedisCache(
+    redis_url="redis://redis-cluster:6379",
+    default_ttl=3600,
+    enable_l1_cache=True,
+    l1_cache_size=500,                  # Larger L1 for production
+    compression_threshold=500,          # More aggressive compression
+    compression_level=8,                # Higher compression ratio
+    performance_monitor=monitor
+)
+
+# Monitor performance
+await cache.set("large_dataset", complex_data)
+stats = monitor.get_performance_summary()
+print(f"Compression ratio: {stats.get('avg_compression_ratio', 0):.2f}")
+```
 
 ### AIResponseCache (`redis.py`)
 
@@ -929,6 +1076,666 @@ curl http://localhost:8000/internal/cache/metrics
 - Enable/increase compression
 - Reduce memory cache size
 - Implement more aggressive TTL policies
+
+## GenericRedisCache Quick-Start
+
+### For Simple Web Applications
+
+If you're building a standard FastAPI web application and need reliable caching without AI-specific features, `GenericRedisCache` is your best choice.
+
+**5-Minute Setup**:
+```python
+from app.infrastructure.cache import GenericRedisCache
+from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+
+# Step 1: Initialize with monitoring
+monitor = CachePerformanceMonitor()
+cache = GenericRedisCache(
+    redis_url="redis://localhost:6379",
+    default_ttl=1800,                   # 30 minutes
+    enable_l1_cache=True,               # Fast memory tier
+    compression_threshold=2000,         # Compress large responses
+    performance_monitor=monitor
+)
+
+# Step 2: Connect (handles Redis unavailable gracefully)
+connected = await cache.connect()
+
+# Step 3: Use immediately
+await cache.set("user:profile:123", user_data)
+profile = await cache.get("user:profile:123")
+```
+
+**Common Usage Patterns**:
+
+```python
+# Session management
+async def store_session(session_id: str, user_data: dict):
+    await cache.set(f"session:{session_id}", user_data, ttl=3600)
+    
+async def get_session(session_id: str) -> Optional[dict]:
+    return await cache.get(f"session:{session_id}")
+
+# API response caching
+async def get_expensive_data(query: str):
+    cache_key = f"api:expensive_query:{hashlib.md5(query.encode()).hexdigest()[:8]}"
+    
+    # Check cache first
+    cached_result = await cache.get(cache_key)
+    if cached_result:
+        return cached_result
+    
+    # Compute and cache
+    result = await expensive_api_call(query)
+    await cache.set(cache_key, result, ttl=7200)  # 2 hours
+    return result
+
+# Configuration caching
+async def get_feature_flags():
+    flags = await cache.get("config:feature_flags")
+    if not flags:
+        flags = await load_feature_flags_from_db()
+        await cache.set("config:feature_flags", flags, ttl=600)  # 10 minutes
+    return flags
+```
+
+### FastAPI Integration Example
+
+```python
+from fastapi import FastAPI, Depends
+from app.infrastructure.cache import GenericRedisCache
+
+app = FastAPI()
+
+# Dependency
+async def get_cache() -> GenericRedisCache:
+    cache = GenericRedisCache(redis_url="redis://redis:6379")
+    await cache.connect()
+    return cache
+
+# Endpoint with caching
+@app.get("/users/{user_id}")
+async def get_user(
+    user_id: int, 
+    cache: GenericRedisCache = Depends(get_cache)
+):
+    # Try cache first
+    cached_user = await cache.get(f"user:{user_id}")
+    if cached_user:
+        return {**cached_user, "from_cache": True}
+    
+    # Load from database
+    user = await load_user_from_db(user_id)
+    
+    # Cache for 1 hour
+    await cache.set(f"user:{user_id}", user, ttl=3600)
+    
+    return {**user, "from_cache": False}
+```
+
+## Key Generation Best Practices
+
+### Consistent Key Strategies
+
+Proper cache key generation is critical for cache effectiveness. Follow these patterns:
+
+**1. Hierarchical Namespace Pattern**
+```python
+# Good: Clear hierarchy
+user_key = f"user:profile:{user_id}"
+session_key = f"session:active:{session_id}"
+api_key = f"api:weather:{city}:{date}"
+
+# Bad: Flat namespace
+user_key = f"user_profile_{user_id}"
+session_key = f"session_{session_id}"
+api_key = f"weather_{city}_{date}"
+```
+
+**2. Parameter Normalization**
+```python
+def generate_query_cache_key(params: dict) -> str:
+    """Generate consistent cache key from query parameters."""
+    # Sort parameters for consistency
+    sorted_params = sorted(params.items())
+    
+    # Create parameter string
+    param_str = "&".join(f"{k}={v}" for k, v in sorted_params)
+    
+    # Hash long parameter strings
+    if len(param_str) > 100:
+        param_hash = hashlib.md5(param_str.encode()).hexdigest()[:8]
+        return f"query:hash:{param_hash}"
+    
+    return f"query:params:{param_str.replace('&', '|')}"
+
+# Example usage
+params = {"filter": "active", "sort": "name", "limit": 50}
+key = generate_query_cache_key(params)
+# Result: "query:params:filter=active|limit=50|sort=name"
+```
+
+**3. Time-Based Keys for Temporal Data**
+```python
+from datetime import datetime, timedelta
+
+def get_hourly_stats_key(metric: str, hour: datetime) -> str:
+    """Cache key for hourly aggregated data."""
+    hour_str = hour.strftime("%Y%m%d_%H")
+    return f"stats:hourly:{metric}:{hour_str}"
+
+def get_daily_summary_key(date: datetime) -> str:
+    """Cache key for daily summaries."""
+    date_str = date.strftime("%Y%m%d")
+    return f"summary:daily:{date_str}"
+
+# Usage
+current_hour = datetime.now().replace(minute=0, second=0, microsecond=0)
+key = get_hourly_stats_key("api_calls", current_hour)
+# Result: "stats:hourly:api_calls:20240115_14"
+```
+
+### AI-Specific Key Generation
+
+For AI operations, use the built-in `CacheKeyGenerator`:
+
+```python
+from app.infrastructure.cache import CacheKeyGenerator
+
+# Initialize with performance monitoring
+key_generator = CacheKeyGenerator(
+    text_hash_threshold=1000,  # Hash texts over 1000 chars
+    performance_monitor=monitor
+)
+
+# Generate optimized keys for different text sizes
+def cache_ai_response(text: str, operation: str, options: dict):
+    # Small text: preserves readability
+    small_text = "Analyze this short sentence"
+    small_key = key_generator.generate_cache_key(small_text, "sentiment", {})
+    # Result: "ai_cache:op:sentiment|txt:Analyze this short sentence|opts:d41d8cd9"
+    
+    # Large text: uses efficient hashing
+    large_text = "A" * 5000  # 5KB text
+    large_key = key_generator.generate_cache_key(large_text, "summarize", options)
+    # Result: "ai_cache:op:summarize|txt:hash:a1b2c3d4e5f6|opts:abc12345"
+```
+
+### Key Generation Performance Tips
+
+**1. Pre-compute Static Parts**
+```python
+class CacheKeyBuilder:
+    def __init__(self, service_name: str):
+        self.prefix = f"{service_name}:cache:"
+    
+    def user_profile_key(self, user_id: int) -> str:
+        return f"{self.prefix}user:{user_id}"
+    
+    def api_response_key(self, endpoint: str, params_hash: str) -> str:
+        return f"{self.prefix}api:{endpoint}:{params_hash}"
+
+# Usage
+builder = CacheKeyBuilder("user_service")
+key = builder.user_profile_key(123)
+# Result: "user_service:cache:user:123"
+```
+
+**2. Efficient Parameter Hashing**
+```python
+import hashlib
+import json
+from functools import lru_cache
+
+@lru_cache(maxsize=1000)
+def hash_params(params_json: str) -> str:
+    """Cache parameter hashes to avoid recomputation."""
+    return hashlib.md5(params_json.encode()).hexdigest()[:8]
+
+def generate_api_cache_key(endpoint: str, params: dict) -> str:
+    # Sort and serialize parameters consistently
+    params_json = json.dumps(params, sort_keys=True, separators=(',', ':'))
+    params_hash = hash_params(params_json)
+    return f"api:{endpoint}:{params_hash}"
+```
+
+## Data Migration Workflow
+
+### Overview
+
+The cache infrastructure provides comprehensive migration tools for safe transitions between cache implementations or Redis upgrades.
+
+### Migration Manager Usage
+
+```python
+from app.infrastructure.cache import CacheMigrationManager
+from app.infrastructure.cache import AIResponseCache, GenericRedisCache
+
+# Initialize migration manager
+manager = CacheMigrationManager(
+    chunk_size=500,      # Process 500 keys per batch
+    scan_count=1000      # Scan 1000 keys per Redis SCAN operation
+)
+
+# Source and target caches
+source_cache = AIResponseCache(redis_url="redis://old-redis:6379")
+target_cache = GenericRedisCache(redis_url="redis://new-redis:6379")
+
+# Connect both caches
+await source_cache.connect()
+await target_cache.connect()
+```
+
+### Step-by-Step Migration Process
+
+**Step 1: Create Backup**
+```python
+# Create compressed backup of current cache
+backup_result = await manager.create_backup(
+    source_cache=source_cache,
+    backup_file="/backups/cache_backup_20240115.json.gz",
+    pattern="ai_cache:*"  # Only backup AI cache keys
+)
+
+if backup_result.success:
+    print(f"Backup created: {backup_result.keys_backed_up} keys")
+    print(f"Backup size: {backup_result.total_size_bytes / 1024 / 1024:.1f}MB")
+    print(f"Compression ratio: {backup_result.compression_ratio:.2f}")
+else:
+    print(f"Backup failed: {backup_result.errors}")
+```
+
+**Step 2: Perform Migration**
+```python
+# Migrate data between cache implementations
+migration_result = await manager.migrate_cache(
+    source_cache=source_cache,
+    target_cache=target_cache,
+    pattern="*",  # Migrate all keys
+    preserve_ttl=True,  # Maintain TTL values
+    dry_run=False  # Set to True for testing
+)
+
+if migration_result.success:
+    print(f"Migration completed: {migration_result.keys_migrated}/{migration_result.keys_processed} keys")
+    print(f"Success rate: {migration_result.success_rate:.1f}%")
+    print(f"Migration time: {migration_result.migration_time:.2f}s")
+else:
+    print(f"Migration failed: {migration_result.errors}")
+```
+
+**Step 3: Validate Migration**
+```python
+# Comprehensive validation of migrated data
+validation_result = await manager.validate_migration(
+    source_cache=source_cache,
+    target_cache=target_cache,
+    sample_size=1000,  # Validate 1000 random keys
+    check_ttl=True,    # Validate TTL preservation
+    tolerance=0.95     # 95% match rate required
+)
+
+if validation_result.success:
+    print(f"Validation passed: {validation_result.match_percentage:.1f}% match rate")
+    print(f"Keys matched: {validation_result.keys_matched}")
+    print(f"Keys mismatched: {validation_result.keys_mismatched}")
+else:
+    print(f"Validation failed: {validation_result.errors}")
+    print(f"Mismatches found: {validation_result.total_mismatches}")
+```
+
+### Sample CLI Migration Script
+
+Create `scripts/migrate_cache.py`:
+
+```python
+#!/usr/bin/env python3
+"""
+Cache Migration CLI Script
+
+Usage:
+    python scripts/migrate_cache.py --source redis://old:6379 --target redis://new:6379
+    python scripts/migrate_cache.py --backup-only --source redis://prod:6379
+    python scripts/migrate_cache.py --restore --backup-file /backups/cache.json.gz
+"""
+
+import argparse
+import asyncio
+import logging
+from datetime import datetime
+from pathlib import Path
+
+from app.infrastructure.cache import (
+    CacheMigrationManager, 
+    AIResponseCache, 
+    GenericRedisCache
+)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+async def backup_cache(source_url: str, backup_file: str):
+    """Create cache backup."""
+    manager = CacheMigrationManager()
+    source_cache = AIResponseCache(redis_url=source_url)
+    
+    try:
+        await source_cache.connect()
+        
+        logger.info(f"Creating backup from {source_url}...")
+        result = await manager.create_backup(
+            source_cache=source_cache,
+            backup_file=backup_file
+        )
+        
+        if result.success:
+            logger.info(f"✅ Backup successful!")
+            logger.info(f"   Keys backed up: {result.keys_backed_up:,}")
+            logger.info(f"   File size: {result.total_size_bytes / 1024 / 1024:.1f}MB")
+            logger.info(f"   Compression: {result.compression_ratio:.2f}")
+            logger.info(f"   Time taken: {result.backup_time:.1f}s")
+        else:
+            logger.error(f"❌ Backup failed: {result.errors}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Backup error: {e}")
+        return False
+    finally:
+        await source_cache.disconnect()
+    
+    return True
+
+
+async def migrate_cache(source_url: str, target_url: str, dry_run: bool = False):
+    """Migrate cache data between Redis instances."""
+    manager = CacheMigrationManager(chunk_size=1000)
+    
+    source_cache = AIResponseCache(redis_url=source_url)
+    target_cache = GenericRedisCache(redis_url=target_url)
+    
+    try:
+        # Connect to both caches
+        logger.info("Connecting to source and target caches...")
+        await source_cache.connect()
+        await target_cache.connect()
+        
+        if dry_run:
+            logger.info("🧪 DRY RUN MODE - No data will be modified")
+        
+        # Perform migration
+        logger.info(f"Starting migration: {source_url} → {target_url}")
+        result = await manager.migrate_cache(
+            source_cache=source_cache,
+            target_cache=target_cache,
+            preserve_ttl=True,
+            dry_run=dry_run
+        )
+        
+        if result.success:
+            logger.info(f"✅ Migration successful!")
+            logger.info(f"   Keys processed: {result.keys_processed:,}")
+            logger.info(f"   Keys migrated: {result.keys_migrated:,}")
+            logger.info(f"   Success rate: {result.success_rate:.1f}%")
+            logger.info(f"   Time taken: {result.migration_time:.1f}s")
+            
+            if not dry_run:
+                # Validate migration
+                logger.info("Validating migration...")
+                validation = await manager.validate_migration(
+                    source_cache=source_cache,
+                    target_cache=target_cache,
+                    sample_size=min(1000, result.keys_migrated)
+                )
+                
+                if validation.success:
+                    logger.info(f"✅ Validation passed: {validation.match_percentage:.1f}% match")
+                else:
+                    logger.error(f"❌ Validation failed: {validation.total_mismatches} mismatches")
+                    return False
+        else:
+            logger.error(f"❌ Migration failed: {result.errors}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Migration error: {e}")
+        return False
+    finally:
+        await source_cache.disconnect()
+        await target_cache.disconnect()
+    
+    return True
+
+
+async def restore_cache(backup_file: str, target_url: str):
+    """Restore cache from backup file."""
+    manager = CacheMigrationManager()
+    target_cache = GenericRedisCache(redis_url=target_url)
+    
+    try:
+        await target_cache.connect()
+        
+        logger.info(f"Restoring from backup: {backup_file}")
+        result = await manager.restore_from_backup(
+            target_cache=target_cache,
+            backup_file=backup_file
+        )
+        
+        if result.success:
+            logger.info(f"✅ Restore successful!")
+            logger.info(f"   Keys restored: {result.keys_restored:,}")
+            logger.info(f"   Success rate: {result.success_rate:.1f}%")
+            logger.info(f"   Time taken: {result.restore_time:.1f}s")
+        else:
+            logger.error(f"❌ Restore failed: {result.errors}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"❌ Restore error: {e}")
+        return False
+    finally:
+        await target_cache.disconnect()
+    
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Cache Migration Tool")
+    parser.add_argument("--source", help="Source Redis URL")
+    parser.add_argument("--target", help="Target Redis URL")
+    parser.add_argument("--backup-file", help="Backup file path")
+    parser.add_argument("--backup-only", action="store_true", help="Only create backup")
+    parser.add_argument("--restore", action="store_true", help="Restore from backup")
+    parser.add_argument("--dry-run", action="store_true", help="Dry run mode")
+    
+    args = parser.parse_args()
+    
+    # Generate default backup filename if not provided
+    if not args.backup_file:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        args.backup_file = f"cache_backup_{timestamp}.json.gz"
+    
+    if args.restore:
+        if not args.target or not Path(args.backup_file).exists():
+            parser.error("--restore requires --target and existing --backup-file")
+        
+        success = asyncio.run(restore_cache(args.backup_file, args.target))
+        
+    elif args.backup_only:
+        if not args.source:
+            parser.error("--backup-only requires --source")
+        
+        success = asyncio.run(backup_cache(args.source, args.backup_file))
+        
+    else:
+        if not args.source or not args.target:
+            parser.error("Migration requires both --source and --target")
+        
+        success = asyncio.run(migrate_cache(args.source, args.target, args.dry_run))
+    
+    exit(0 if success else 1)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Make the script executable**:
+```bash
+chmod +x scripts/migrate_cache.py
+```
+
+**Usage examples**:
+```bash
+# Create backup only
+python scripts/migrate_cache.py --backup-only --source redis://prod:6379
+
+# Dry run migration
+python scripts/migrate_cache.py --source redis://old:6379 --target redis://new:6379 --dry-run
+
+# Full migration
+python scripts/migrate_cache.py --source redis://old:6379 --target redis://new:6379
+
+# Restore from backup
+python scripts/migrate_cache.py --restore --backup-file cache_backup_20240115.json.gz --target redis://new:6379
+```
+
+## Deprecation & Compatibility Matrix
+
+### Phase 1 Compatibility Status
+
+| Component | Status | Compatibility | Migration Path |
+|-----------|--------|---------------|----------------|
+| **InMemoryCache** | ✅ **Stable** | Full backward compatibility | No migration needed |
+| **GenericRedisCache** | ✅ **New in Phase 1** | N/A (new component) | Direct adoption |
+| **AIResponseCache** | ✅ **Enhanced** | Full backward compatibility | No breaking changes |
+| **CacheKeyGenerator** | ✅ **Extracted** | Full backward compatibility | Used internally |
+| **CachePerformanceMonitor** | ✅ **Enhanced** | Full backward compatibility | Additional metrics available |
+| **CacheMigrationManager** | ✅ **New in Phase 1** | N/A (new component) | Migration utility |
+
+### API Compatibility
+
+**✅ Fully Compatible APIs** (No Changes Required):
+```python
+# These APIs remain unchanged and fully compatible
+await cache.get(key)
+await cache.set(key, value, ttl=ttl)
+await cache.delete(key)
+await cache.exists(key)
+
+# AI-specific methods (AIResponseCache)
+await cache.cache_response(text, operation, options, response)
+await cache.get_cached_response(text, operation, options)
+await cache.invalidate_by_operation(operation)
+```
+
+**✅ Enhanced APIs** (Backward Compatible with New Features):
+```python
+# Enhanced but backward compatible
+stats = await cache.get_cache_stats()
+# Old format still supported, new nested format available
+
+# Performance monitoring enhanced
+monitor.get_performance_summary()
+# Old metrics still available, new metrics added
+```
+
+**🆕 New APIs** (Phase 1 Additions):
+```python
+# GenericRedisCache specific
+cache.register_callback('get_success', callback_function)
+await cache.disconnect()
+
+# Migration utilities
+manager = CacheMigrationManager()
+await manager.create_backup(source_cache, backup_file)
+await manager.migrate_cache(source_cache, target_cache)
+```
+
+### Configuration Compatibility
+
+**✅ Existing Configuration Keys** (No Changes):
+```python
+# All existing configuration options remain valid
+AIResponseCache(
+    redis_url="redis://localhost:6379",      # ✅ Same
+    default_ttl=3600,                        # ✅ Same
+    compression_threshold=1000,              # ✅ Same
+    compression_level=6,                     # ✅ Same
+    text_hash_threshold=1000,                # ✅ Same
+    memory_cache_size=100                    # ✅ Same
+)
+```
+
+**🆕 New Configuration Options** (Optional):
+```python
+# GenericRedisCache new options
+GenericRedisCache(
+    enable_l1_cache=True,        # 🆕 New (default: True)
+    l1_cache_size=100,          # 🆕 New (default: 100)
+    performance_monitor=monitor  # 🆕 New (optional)
+)
+```
+
+### Migration Paths by Use Case
+
+**1. Pure Memory Cache Users** (No changes needed):
+```python
+# Before and after Phase 1 - identical
+cache = InMemoryCache(default_ttl=3600, max_size=1000)
+# ✅ No migration required
+```
+
+**2. AI Cache Users** (No changes needed):
+```python
+# Before and after Phase 1 - identical interface
+cache = AIResponseCache(redis_url="redis://localhost:6379")
+# ✅ No migration required, enhanced features available automatically
+```
+
+**3. Generic Web App Users** (New option available):
+```python
+# Before Phase 1: Limited options
+cache = InMemoryCache()  # Only option for non-AI
+
+# After Phase 1: Better option available
+cache = GenericRedisCache()  # 🆕 Redis-backed without AI complexity
+```
+
+### Deprecation Timeline
+
+**Phase 1 (Current)**: No deprecations
+- All existing APIs remain supported
+- All configuration options remain valid
+- Full backward compatibility maintained
+
+**Future Phases**: Planned deprecations
+- No breaking changes planned for Phase 2
+- Phase 3 may deprecate some internal implementation details
+- Public APIs will maintain stability
+
+### Version Compatibility Matrix
+
+| Version | InMemoryCache | AIResponseCache | GenericRedisCache | Notes |
+|---------|---------------|-----------------|-------------------|-------|
+| **v0.9.x** (Pre-refactor) | ✅ Supported | ✅ Supported | ❌ Not available | Legacy version |
+| **v1.0.x** (Phase 1) | ✅ Enhanced | ✅ Enhanced | ✅ Available | Current version |
+| **v1.1.x** (Phase 2) | ✅ Maintained | ✅ Refactored | ✅ Enhanced | Planned |
+| **v1.2.x** (Phase 3) | ✅ Maintained | ✅ Maintained | ✅ Factory Support | Planned |
+
+### Upgrade Recommendations
+
+**For New Projects**:
+- Use `GenericRedisCache` for general-purpose web applications
+- Use `AIResponseCache` for AI/LLM applications
+- Use `InMemoryCache` for development/testing only
+
+**For Existing Projects**:
+- Continue using current cache implementations
+- Consider `GenericRedisCache` for non-AI components
+- Upgrade gradually using the migration tools
+- Test thoroughly in development environment
 
 ## Conclusion
 
