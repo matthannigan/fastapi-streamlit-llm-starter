@@ -702,7 +702,18 @@ class TestMigrationWithRedis:
         assert validation_result.keys_matched >= 3
         
         # Test restore to new cache
-        new_cache = GenericRedisCache(redis_url=f"redis://localhost:{redis_cache.redis._address[1]}")
+        # Obtain port from redis client's connection pool (no private attrs),
+        # fallback to parsing from redis_url if needed.
+        try:
+            port = redis_cache.redis.connection_pool.connection_kwargs.get("port")  # type: ignore[attr-defined]
+        except Exception:
+            port = None
+        if not port:
+            try:
+                port = int(str(redis_cache.redis_url).rsplit(":", 1)[1])  # type: ignore[attr-defined]
+            except Exception:
+                port = 6379
+        new_cache = GenericRedisCache(redis_url=f"redis://localhost:{port}")
         await new_cache.connect()
         
         try:

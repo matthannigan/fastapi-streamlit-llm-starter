@@ -161,61 +161,122 @@ router = APIRouter(prefix="/cache", tags=["Cache Management"])
 # Pydantic models for cache performance metrics
 class CacheKeyGenerationStats(BaseModel):
     """Statistics for cache key generation operations."""
-    total_operations: int = Field(..., description="Total number of key generation operations")
-    avg_duration: float = Field(..., description="Average key generation time in seconds")
-    median_duration: float = Field(..., description="Median key generation time in seconds")
-    max_duration: float = Field(..., description="Maximum key generation time in seconds")
-    min_duration: float = Field(..., description="Minimum key generation time in seconds")
+
+    total_operations: int = Field(
+        ..., description="Total number of key generation operations"
+    )
+    avg_duration: float = Field(
+        ..., description="Average key generation time in seconds"
+    )
+    median_duration: float = Field(
+        ..., description="Median key generation time in seconds"
+    )
+    max_duration: float = Field(
+        ..., description="Maximum key generation time in seconds"
+    )
+    min_duration: float = Field(
+        ..., description="Minimum key generation time in seconds"
+    )
     avg_text_length: float = Field(..., description="Average text length processed")
     max_text_length: int = Field(..., description="Maximum text length processed")
-    slow_operations: int = Field(..., description="Number of operations exceeding threshold")
+    slow_operations: int = Field(
+        ..., description="Number of operations exceeding threshold"
+    )
 
 
 class CacheOperationTypeStats(BaseModel):
     """Statistics for a specific cache operation type."""
+
     count: int = Field(..., description="Number of operations of this type")
-    avg_duration: float = Field(..., description="Average duration for this operation type")
-    max_duration: float = Field(..., description="Maximum duration for this operation type")
+    avg_duration: float = Field(
+        ..., description="Average duration for this operation type"
+    )
+    max_duration: float = Field(
+        ..., description="Maximum duration for this operation type"
+    )
 
 
 class CacheOperationStats(BaseModel):
     """Statistics for cache operations."""
+
     total_operations: int = Field(..., description="Total number of cache operations")
-    avg_duration: float = Field(..., description="Average operation duration in seconds")
-    median_duration: float = Field(..., description="Median operation duration in seconds")
-    max_duration: float = Field(..., description="Maximum operation duration in seconds")
-    min_duration: float = Field(..., description="Minimum operation duration in seconds")
-    slow_operations: int = Field(..., description="Number of operations exceeding threshold")
-    by_operation_type: Dict[str, CacheOperationTypeStats] = Field(..., description="Stats grouped by operation type")
+    avg_duration: float = Field(
+        ..., description="Average operation duration in seconds"
+    )
+    median_duration: float = Field(
+        ..., description="Median operation duration in seconds"
+    )
+    max_duration: float = Field(
+        ..., description="Maximum operation duration in seconds"
+    )
+    min_duration: float = Field(
+        ..., description="Minimum operation duration in seconds"
+    )
+    slow_operations: int = Field(
+        ..., description="Number of operations exceeding threshold"
+    )
+    by_operation_type: Dict[str, CacheOperationTypeStats] = Field(
+        ..., description="Stats grouped by operation type"
+    )
 
 
 class CompressionStats(BaseModel):
     """Statistics for compression operations."""
-    total_operations: int = Field(..., description="Total number of compression operations")
+
+    total_operations: int = Field(
+        ..., description="Total number of compression operations"
+    )
     avg_compression_ratio: float = Field(..., description="Average compression ratio")
     median_compression_ratio: float = Field(..., description="Median compression ratio")
-    best_compression_ratio: float = Field(..., description="Best (lowest) compression ratio")
-    worst_compression_ratio: float = Field(..., description="Worst (highest) compression ratio")
-    avg_compression_time: float = Field(..., description="Average compression time in seconds")
-    max_compression_time: float = Field(..., description="Maximum compression time in seconds")
-    total_bytes_processed: int = Field(..., description="Total bytes processed for compression")
-    total_bytes_saved: int = Field(..., description="Total bytes saved through compression")
-    overall_savings_percent: float = Field(..., description="Overall storage savings percentage")
+    best_compression_ratio: float = Field(
+        ..., description="Best (lowest) compression ratio"
+    )
+    worst_compression_ratio: float = Field(
+        ..., description="Worst (highest) compression ratio"
+    )
+    avg_compression_time: float = Field(
+        ..., description="Average compression time in seconds"
+    )
+    max_compression_time: float = Field(
+        ..., description="Maximum compression time in seconds"
+    )
+    total_bytes_processed: int = Field(
+        ..., description="Total bytes processed for compression"
+    )
+    total_bytes_saved: int = Field(
+        ..., description="Total bytes saved through compression"
+    )
+    overall_savings_percent: float = Field(
+        ..., description="Overall storage savings percentage"
+    )
 
 
 class CachePerformanceResponse(BaseModel):
     """Comprehensive cache performance metrics response."""
+
     timestamp: str = Field(..., description="Timestamp when metrics were collected")
     retention_hours: int = Field(..., description="Data retention period in hours")
     cache_hit_rate: float = Field(..., description="Cache hit rate percentage")
-    total_cache_operations: int = Field(..., description="Total cache operations performed")
+    total_cache_operations: int = Field(
+        ..., description="Total cache operations performed"
+    )
     cache_hits: int = Field(..., description="Number of cache hits")
     cache_misses: int = Field(..., description="Number of cache misses")
-    key_generation: Optional[CacheKeyGenerationStats] = Field(None, description="Key generation statistics")
-    cache_operations: Optional[CacheOperationStats] = Field(None, description="Cache operation statistics")
-    compression: Optional[CompressionStats] = Field(None, description="Compression statistics")
-    memory_usage: Optional[Dict[str, Any]] = Field(None, description="Memory usage statistics")
-    invalidation: Optional[Dict[str, Any]] = Field(None, description="Cache invalidation statistics")
+    key_generation: Optional[CacheKeyGenerationStats] = Field(
+        None, description="Key generation statistics"
+    )
+    cache_operations: Optional[CacheOperationStats] = Field(
+        None, description="Cache operation statistics"
+    )
+    compression: Optional[CompressionStats] = Field(
+        None, description="Compression statistics"
+    )
+    memory_usage: Optional[Dict[str, Any]] = Field(
+        None, description="Memory usage statistics"
+    )
+    invalidation: Optional[Dict[str, Any]] = Field(
+        None, description="Cache invalidation statistics"
+    )
 
     class Config:
         json_schema_extra = {
@@ -234,7 +295,7 @@ class CachePerformanceResponse(BaseModel):
                     "min_duration": 0.0008,
                     "avg_text_length": 1250,
                     "max_text_length": 5000,
-                    "slow_operations": 2
+                    "slow_operations": 2,
                 },
                 "cache_operations": {
                     "total_operations": 150,
@@ -247,14 +308,14 @@ class CachePerformanceResponse(BaseModel):
                         "get": {
                             "count": 100,
                             "avg_duration": 0.003,
-                            "max_duration": 0.015
+                            "max_duration": 0.015,
                         },
                         "set": {
                             "count": 50,
                             "avg_duration": 0.007,
-                            "max_duration": 0.025
-                        }
-                    }
+                            "max_duration": 0.025,
+                        },
+                    },
                 },
                 "compression": {
                     "total_operations": 25,
@@ -266,8 +327,8 @@ class CachePerformanceResponse(BaseModel):
                     "max_compression_time": 0.015,
                     "total_bytes_processed": 524288,
                     "total_bytes_saved": 183500,
-                    "overall_savings_percent": 35.0
-                }
+                    "overall_savings_percent": 35.0,
+                },
             }
         }
 
@@ -282,26 +343,26 @@ class CachePerformanceResponse(BaseModel):
 
 # Dependency functions
 async def get_performance_monitor(
-    cache_service: AIResponseCache = Depends(get_cache_service)
+    cache_service: AIResponseCache = Depends(get_cache_service),
 ) -> CachePerformanceMonitor:
     """Get the cache performance monitor from the cache service.
-    
+
     FastAPI dependency function that extracts the performance monitor component
     from the injected cache service. This monitor provides access to cache
     performance metrics, statistics computation, and monitoring capabilities.
-    
+
     Args:
         cache_service (AIResponseCache): Injected cache service dependency
             containing the performance monitor component.
-    
+
     Returns:
         CachePerformanceMonitor: The performance monitor instance for collecting
             and computing cache performance statistics and metrics.
-    
+
     Raises:
         AttributeError: If the cache service does not have a performance_monitor
             attribute or if the monitor is not properly initialized.
-    
+
     Example:
         Used as a FastAPI dependency:
         >>> @router.get("/metrics")
@@ -314,31 +375,31 @@ async def get_performance_monitor(
 @router.get("/status")
 async def get_cache_status(
     cache_service: AIResponseCache = Depends(get_cache_service),
-    api_key: str = Depends(optional_verify_api_key)
+    api_key: str = Depends(optional_verify_api_key),
 ):
     """Get current cache status and basic statistics.
-    
+
     Retrieves comprehensive cache status information including Redis connection
     status, memory usage statistics, and performance metrics. This endpoint
     provides a health check for the cache system and basic operational data.
-    
+
     Args:
         cache_service (AIResponseCache): Injected cache service dependency
             for accessing cache operations and statistics.
         api_key (str, optional): Optional API key for authentication. If provided,
             must be valid for access to detailed cache statistics.
-    
+
     Returns:
         Dict[str, Any]: Cache status information including:
             - redis: Redis connection status and basic info
             - memory: Memory usage statistics and thresholds
             - performance: Basic performance metrics if available
             - error: Error message if status retrieval fails
-    
+
     Raises:
         None: This endpoint does not raise exceptions but returns error
             information in the response body if cache status retrieval fails.
-    
+
     Example:
         >>> # GET /internal/cache/status
         >>> {
@@ -350,32 +411,36 @@ async def get_cache_status(
     try:
         stats = await cache_service.get_cache_stats()
         return stats
-        
+
     except Exception as e:
         logger.error(f"Error getting cache status: {e}")
-        # Return a basic error response 
+        # Return a basic error response
         return {
             "redis": {"status": "error"},
             "memory": {"status": "unavailable"},
             "performance": {"status": "unavailable"},
-            "error": str(e)
+            "error": str(e),
         }
 
 
 @router.post("/invalidate")
 async def invalidate_cache(
-    pattern: str = Query(default="", description="Pattern to match for cache invalidation"),
-    operation_context: str = Query(default="api_endpoint", description="Context for the invalidation operation"),
+    pattern: str = Query(
+        default="", description="Pattern to match for cache invalidation"
+    ),
+    operation_context: str = Query(
+        default="api_endpoint", description="Context for the invalidation operation"
+    ),
     cache_service: AIResponseCache = Depends(get_cache_service),
-    api_key: str = Depends(verify_api_key)
+    api_key: str = Depends(verify_api_key),
 ):
     """Invalidate cache entries matching the specified pattern.
-    
+
     Removes cache entries that match the provided pattern from the cache storage.
     This operation is useful for clearing stale or outdated cache data, forcing
     fresh data retrieval on subsequent requests. An empty pattern will invalidate
     all cache entries.
-    
+
     Args:
         pattern (str, optional): Glob-style pattern to match cache keys for
             invalidation. Defaults to empty string which matches all entries.
@@ -387,52 +452,56 @@ async def invalidate_cache(
             for performing cache invalidation operations.
         api_key (str): Required API key for authentication. Must be valid
             to perform cache invalidation operations.
-    
+
     Returns:
         Dict[str, str]: Confirmation message containing:
             - message: Success or failure message with pattern details
-    
+
     Raises:
         HTTPException: May raise authentication errors if API key is invalid.
             Cache operation errors are handled gracefully and returned in
             the response message rather than raising exceptions.
-    
+
     Example:
         >>> # POST /internal/cache/invalidate?pattern=user:123:*
         >>> {"message": "Cache invalidated for pattern: user:123:*"}
-        
+
         >>> # POST /internal/cache/invalidate (invalidate all)
         >>> {"message": "Cache invalidated for pattern: "}
     """
     try:
-        await cache_service.invalidate_pattern(pattern, operation_context=operation_context)
-        
+        await cache_service.invalidate_pattern(
+            pattern, operation_context=operation_context
+        )
+
         return {"message": f"Cache invalidated for pattern: {pattern}"}
-        
+
     except Exception as e:
         logger.error(f"Error invalidating cache with pattern '{pattern}': {e}")
         # Return error message in response rather than raising exception
-        return {"message": f"Failed to invalidate cache for pattern '{pattern}': {str(e)}"}
+        return {
+            "message": f"Failed to invalidate cache for pattern '{pattern}': {str(e)}"
+        }
 
 
 @router.get("/invalidation-stats")
 async def get_invalidation_stats(
     cache_service: AIResponseCache = Depends(get_cache_service),
-    api_key: str = Depends(optional_verify_api_key)
+    api_key: str = Depends(optional_verify_api_key),
 ):
     """Get cache invalidation frequency and pattern statistics.
-    
+
     Retrieves comprehensive statistics about cache invalidation operations
     including frequency analysis, pattern identification, and performance
     metrics. This data helps understand cache usage patterns and optimize
     invalidation strategies.
-    
+
     Args:
         cache_service (AIResponseCache): Injected cache service dependency
             for accessing invalidation statistics and metrics.
         api_key (str, optional): Optional API key for authentication. If provided,
             must be valid for access to detailed invalidation statistics.
-    
+
     Returns:
         Dict[str, Any]: Invalidation statistics including:
             - frequency: Invalidation frequency by time period
@@ -440,11 +509,11 @@ async def get_invalidation_stats(
             - performance: Timing statistics for invalidation operations
             - trends: Temporal trends in invalidation behavior
             Empty dict returned if statistics are unavailable or on error.
-    
+
     Raises:
         None: This endpoint does not raise exceptions but returns empty
             statistics if data retrieval fails.
-    
+
     Example:
         >>> # GET /internal/cache/invalidation-stats
         >>> {
@@ -456,7 +525,7 @@ async def get_invalidation_stats(
     try:
         stats = cache_service.get_invalidation_frequency_stats()
         return stats
-        
+
     except Exception as e:
         logger.error(f"Error getting invalidation stats: {e}")
         # Return empty stats on error rather than raising exception
@@ -466,31 +535,31 @@ async def get_invalidation_stats(
 @router.get("/invalidation-recommendations")
 async def get_invalidation_recommendations(
     cache_service: AIResponseCache = Depends(get_cache_service),
-    api_key: str = Depends(optional_verify_api_key)
+    api_key: str = Depends(optional_verify_api_key),
 ):
     """Get optimization recommendations based on cache invalidation patterns.
-    
+
     Analyzes cache invalidation patterns and usage statistics to provide
     actionable recommendations for improving cache efficiency. Recommendations
     may include pattern optimization, timing adjustments, and configuration
     changes to reduce unnecessary invalidations.
-    
+
     Args:
         cache_service (AIResponseCache): Injected cache service dependency
             for accessing invalidation data and generating recommendations.
         api_key (str, optional): Optional API key for authentication. If provided,
             must be valid for access to invalidation recommendations.
-    
+
     Returns:
         Dict[str, List[str]]: Response containing:
             - recommendations: List of optimization suggestions based on
               analysis of invalidation patterns, frequency, and performance.
               Empty list returned if analysis fails or no recommendations available.
-    
+
     Raises:
         None: This endpoint does not raise exceptions but returns empty
             recommendations list if analysis fails.
-    
+
     Example:
         >>> # GET /internal/cache/invalidation-recommendations
         >>> {
@@ -504,7 +573,7 @@ async def get_invalidation_recommendations(
     try:
         recommendations = cache_service.get_invalidation_recommendations()
         return {"recommendations": recommendations}
-        
+
     except Exception as e:
         logger.error(f"Error getting invalidation recommendations: {e}")
         # Return empty recommendations on error rather than raising exception
@@ -536,7 +605,7 @@ async def get_invalidation_recommendations(
                             "min_duration": 0.0008,
                             "avg_text_length": 1250,
                             "max_text_length": 5000,
-                            "slow_operations": 2
+                            "slow_operations": 2,
                         },
                         "cache_operations": {
                             "total_operations": 150,
@@ -546,9 +615,17 @@ async def get_invalidation_recommendations(
                             "min_duration": 0.001,
                             "slow_operations": 5,
                             "by_operation_type": {
-                                "get": {"count": 100, "avg_duration": 0.003, "max_duration": 0.015},
-                                "set": {"count": 50, "avg_duration": 0.007, "max_duration": 0.025}
-                            }
+                                "get": {
+                                    "count": 100,
+                                    "avg_duration": 0.003,
+                                    "max_duration": 0.015,
+                                },
+                                "set": {
+                                    "count": 50,
+                                    "avg_duration": 0.007,
+                                    "max_duration": 0.025,
+                                },
+                            },
                         },
                         "compression": {
                             "total_operations": 25,
@@ -560,11 +637,11 @@ async def get_invalidation_recommendations(
                             "max_compression_time": 0.015,
                             "total_bytes_processed": 524288,
                             "total_bytes_saved": 183500,
-                            "overall_savings_percent": 35.0
-                        }
+                            "overall_savings_percent": 35.0,
+                        },
                     }
                 }
-            }
+            },
         },
         500: {
             "description": "Internal server error - Performance monitor unavailable or failed",
@@ -575,23 +652,23 @@ async def get_invalidation_recommendations(
                             "summary": "Performance monitor not initialized",
                             "value": {
                                 "detail": "Failed to retrieve cache performance metrics: Performance monitor not available"
-                            }
+                            },
                         },
                         "cache_service_error": {
                             "summary": "Cache service dependency failure",
                             "value": {
                                 "detail": "Failed to retrieve cache performance metrics: Cache service not available"
-                            }
+                            },
                         },
                         "stats_computation_error": {
                             "summary": "Error computing statistics",
                             "value": {
                                 "detail": "Failed to retrieve cache performance metrics: Statistics computation failed"
-                            }
-                        }
+                            },
+                        },
                     }
                 }
-            }
+            },
         },
         503: {
             "description": "Service temporarily unavailable - Cache monitoring disabled",
@@ -601,32 +678,32 @@ async def get_invalidation_recommendations(
                         "detail": "Cache performance monitoring is temporarily disabled"
                     }
                 }
-            }
-        }
-    }
+            },
+        },
+    },
 )
 async def get_cache_performance_metrics(
     api_key: str = Depends(optional_verify_api_key),
-    performance_monitor: CachePerformanceMonitor = Depends(get_performance_monitor)
+    performance_monitor: CachePerformanceMonitor = Depends(get_performance_monitor),
 ) -> CachePerformanceResponse:
     """Get comprehensive cache performance metrics and statistics.
-    
+
     Retrieves detailed performance statistics from the cache system including
     key generation metrics, cache operation performance, compression statistics,
     memory usage information, and invalidation analytics. This endpoint provides
     deep insights into cache efficiency and performance characteristics over the
     configured retention period.
-    
+
     The metrics are collected over the configured retention period (default: 1 hour)
     and are computed on-demand, which may cause brief CPU spikes during statistics
     calculation. All metrics are automatically cleaned up to maintain system performance.
-    
+
     Args:
         api_key (str, optional): Optional API key for authentication. If provided,
             must be valid for access to detailed performance metrics.
         performance_monitor (CachePerformanceMonitor): Injected performance monitor
             dependency for accessing cache performance data and statistics computation.
-    
+
     Returns:
         CachePerformanceResponse: Comprehensive performance metrics including:
             - timestamp: When metrics were collected (ISO format string)
@@ -640,15 +717,15 @@ async def get_cache_performance_metrics(
             - compression: Compression efficiency and storage savings metrics
             - memory_usage: Cache memory utilization and entry counts
             - invalidation: Cache invalidation frequency and patterns
-    
+
     Raises:
-        HTTPException: 
+        HTTPException:
             - 500 Internal Server Error: When performance monitor is unavailable,
               cache service errors occur, statistics computation fails, or response
               validation fails.
             - 503 Service Unavailable: When cache monitoring is temporarily disabled
               or performance monitor methods are not available.
-    
+
     Example:
         >>> # GET /internal/cache/metrics
         >>> {
@@ -680,7 +757,7 @@ async def get_cache_performance_metrics(
         ...         "overall_savings_percent": 35.0
         ...     }
         ... }
-        
+
     Note:
         This endpoint may take longer to respond when computing statistics for
         large datasets. Memory usage reporting includes process-level metrics.
@@ -692,11 +769,11 @@ async def get_cache_performance_metrics(
             logger.error("Performance monitor dependency is None")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Performance monitor not available"
+                detail="Failed to retrieve cache performance metrics: Performance monitor not available",
             )
-        
+
         logger.debug("Retrieving cache performance statistics")
-        
+
         # Get performance stats from the monitor with error handling for computation issues
         try:
             stats = performance_monitor.get_performance_stats()
@@ -705,33 +782,33 @@ async def get_cache_performance_metrics(
             logger.error(f"Statistics computation error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Statistics computation failed"
+                detail="Failed to retrieve cache performance metrics: Statistics computation failed",
             )
         except AttributeError as e:
             # Handle cases where performance monitor methods are not available
             logger.error(f"Performance monitor method unavailable: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Cache performance monitoring is temporarily disabled"
+                detail="Cache performance monitoring is temporarily disabled",
             )
         except Exception as e:
             # Handle any other unexpected errors during stats retrieval
             logger.error(f"Unexpected error retrieving performance stats: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve cache performance metrics: {str(e)}"
+                detail=f"Failed to retrieve cache performance metrics: {str(e)}",
             )
-        
+
         # Validate that we received stats data
         if not isinstance(stats, dict):
             logger.error(f"Invalid stats format received: {type(stats)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Invalid statistics format"
+                detail="Failed to retrieve cache performance metrics: Invalid statistics format",
             )
-        
+
         logger.debug(f"Successfully retrieved {len(stats)} performance metrics")
-        
+
         # Convert to Pydantic model for validation and documentation
         try:
             return CachePerformanceResponse(**stats)
@@ -740,9 +817,9 @@ async def get_cache_performance_metrics(
             logger.error(f"Response model validation error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve cache performance metrics: Response format validation failed"
+                detail="Failed to retrieve cache performance metrics: Response format validation failed",
             )
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions without modification
         raise
@@ -751,5 +828,5 @@ async def get_cache_performance_metrics(
         logger.error(f"Unexpected error in cache metrics endpoint: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve cache performance metrics: Internal server error"
+            detail=f"Failed to retrieve cache performance metrics: Internal server error",
         )

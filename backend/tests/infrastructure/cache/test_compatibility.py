@@ -44,6 +44,8 @@ class TestCacheCompatibilityWrapper:
         cache.get_cache_hit_ratio = Mock(return_value=75.5)
         cache._generate_cache_key = Mock(return_value="test_key")
         cache.operation_ttls = {"summarize": 3600}
+        # Non-legacy method expected to be proxied without warnings
+        cache.connect = Mock()
         return cache
     
     @pytest.fixture
@@ -342,4 +344,3 @@ class TestCacheCompatibilityErrorHandling:
             wrapper.some_method()
         
         assert "Inner cache error" in str(exc_info.value)
-"""
