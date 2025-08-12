@@ -308,67 +308,67 @@ test-local: venv
 # Run backend tests (fast tests only, default)
 test-backend:
 	@echo "🧪 Running backend tests (fast tests only)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v
 
 # Run backend API endpoint tests
 test-backend-api:
 	@echo "🧪 Running backend API endpoint tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/api/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/api/ -v
 
 # Run backend core functionality tests
 test-backend-core:
 	@echo "🧪 Running backend core functionality tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/core/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/core/ -v
 
 # Run infrastructure service tests
 test-backend-infra:
 	@echo "🧪 Running backend infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ -v
 
 # Run infrastructure service tests
 test-backend-infra-ai:
 	@echo "🧪 Running backend AI infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ai/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ai/ -v
 
 # Run infrastructure service tests
 test-backend-infra-cache:
 	@echo "🧪 Running backend cache infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -v
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
 	@echo "🧪 Running backend monitoring infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/monitoring/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/monitoring/ -v
 
 # Run infrastructure service tests
 test-backend-infra-resilience:
 	@echo "🧪 Running backend resilience infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/resilience/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/resilience/ -v
 
 # Run infrastructure service tests
 	test-backend-infra-security:
 	@echo "🧪 Running backend security infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/security/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/security/ -v
 
 # Run backend integration tests
 test-backend-integration:
 	@echo "🧪 Running backend integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -v
 
 # Run backend performance tests
 test-backend-performance:
 	@echo "🧪 Running backend performance tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/performance/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/performance/ -v
 
 # Run domain services tests
 test-backend-services:
 	@echo "🧪 Running backend domain services tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/services/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/services/ -v
 
 # Run shared schema tests
 test-backend-schemas:
 	@echo "🧪 Running backend shared schema tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/shared_schemas/ -v --tb=no --timeout=60
+	@cd backend && $(PYTHON_CMD) -m pytest tests/shared_schemas/ -v
 
 # Run slow/comprehensive backend tests
 test-backend-slow:
