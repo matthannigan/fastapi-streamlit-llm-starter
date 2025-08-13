@@ -3,7 +3,7 @@
 ## Task Lists
 
 ```
-Thoroughly review `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_phase2_plan.md` and create a highly detailed task list with all of the sequential steps needed to achieve deliverables 6-10. Do not include time estimates. Save a copy of the task list to `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_phase2_tasks6-10.md`
+We're preparing to begin Phase 3 of the PRD located at '/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_PRD.md' following the plan located at '/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_phase3_plan.md'. Create a highly detailed task list with all of the sequential steps needed to achieve all 6 deliverables. Do not include time estimates. Save a copy of the task list to `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_phase3_tasks.md`
 ```
 
 ## Agents Analysis
