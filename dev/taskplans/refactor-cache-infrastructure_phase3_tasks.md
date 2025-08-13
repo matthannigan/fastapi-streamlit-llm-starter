@@ -9,102 +9,149 @@
 
 ## Task List
 
-### 1. CacheFactory with Application Type Detection
+### 1. CacheFactory for Explicit Cache Instantiation
 
-#### 1.1 Core Factory Implementation
+#### 1.1 Factory Module Setup
 - [ ] Create `backend/app/infrastructure/cache/factory.py` file
-- [ ] Import required dependencies (os, importlib.util, typing modules)
-- [ ] Implement `CacheFactory` class structure with static methods
-- [ ] Add `@lru_cache` decorator for performance optimization on detection methods
+- [ ] Add file header docstring explaining explicit instantiation approach
+- [ ] Import os and logging modules
+- [ ] Import typing (Optional, Dict, Any)
+- [ ] Import CacheInterface from base module
+- [ ] Import GenericRedisCache from redis_generic module
+- [ ] Import AIResponseCache from redis_ai module
+- [ ] Import InMemoryCache from memory module
+- [ ] Set up module-level logger
 
-#### 1.2 Application Type Detection Logic
-- [ ] Implement `_detect_app_type()` method with detection signals dictionary
-- [ ] Create AI detection signals:
-  - [ ] Check for AI-related module imports (pydantic_ai, openai, anthropic, transformers)
-  - [ ] Check for AI-related environment variables (GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY)
-  - [ ] Check for AI-related service files (text_processor.py, ai_service.py)
-- [ ] Create web detection signals:
-  - [ ] Check for web framework imports (fastapi, django, flask)
-  - [ ] Check for typical web service files (user_service.py, auth_service.py)
-- [ ] Implement scoring logic with thresholds (AI >= 2 signals, Web >= 1 signal)
-- [ ] Add default fallback to 'web' for unknown scenarios
+#### 1.2 CacheFactory Class Structure
+- [ ] Create `CacheFactory` class with comprehensive docstring
+- [ ] Explain explicit selection philosophy in docstring
+- [ ] Describe support for hybrid applications in docstring
+- [ ] Document pre-configured cache methods in docstring
+- [ ] Declare all methods as @staticmethod
 
-#### 1.3 Helper Methods
-- [ ] Implement `_check_module_exists()` method using importlib.util.find_spec
-- [ ] Implement `_check_file_exists()` method using os.path.exists
-- [ ] Add exception handling for detection errors
+#### 1.3 Input Validation Helper
+- [ ] Implement `_validate_factory_inputs()` static method
+- [ ] Add redis_url parameter validation (Optional[str])
+- [ ] Validate redis_url is string type when provided
+- [ ] Validate redis_url starts with 'redis://' or 'rediss://'
+- [ ] Add memory_cache_size validation (positive integer)
+- [ ] Add default_ttl validation (positive integer)
+- [ ] Raise ValueError with descriptive messages for invalid inputs
+- [ ] Add **kwargs parameter for extensibility
 
-#### 1.4 Input Validation
-- [ ] Implement `_validate_factory_inputs()` method
-- [ ] Validate redis_url format (must start with redis:// or rediss://)
-- [ ] Validate memory_cache_size (positive integer)
-- [ ] Validate default_ttl (positive integer)
-- [ ] Add appropriate error messages for validation failures
-
-#### 1.5 Factory Methods - Web Applications
+#### 1.4 Web Application Factory Method
 - [ ] Implement `for_web_app()` static method
-- [ ] Set web-optimized defaults:
+- [ ] Add redis_url parameter (Optional[str])
+- [ ] Add fail_on_connection_error parameter (bool, default False)
+- [ ] Add **kwargs for additional GenericRedisCache parameters
+- [ ] Call _validate_factory_inputs() for validation
+- [ ] Define web-optimized defaults dictionary:
   - [ ] default_ttl: 1800 (30 minutes)
-  - [ ] memory_cache_size: 200 (larger for web)
-  - [ ] compression_threshold: 2000 (less aggressive)
-  - [ ] compression_level: 4 (faster)
-- [ ] Add Redis connection attempt with error handling
-- [ ] Implement fallback to InMemoryCache on connection failure
-- [ ] Add logging for connection failures
+  - [ ] memory_cache_size: 200
+  - [ ] compression_threshold: 2000
+  - [ ] compression_level: 4
+- [ ] Merge kwargs with web_defaults (kwargs override defaults)
 
-#### 1.6 Factory Methods - AI Applications
+#### 1.5 Web App Redis Connection Handling
+- [ ] Add try-except block for Redis connection
+- [ ] Create GenericRedisCache instance with redis_url if provided
+- [ ] Pass merged parameters to GenericRedisCache constructor
+- [ ] Add comment about connect method being called by dependency manager
+- [ ] Catch connection exceptions
+- [ ] If fail_on_connection_error is True, raise ConnectionError
+- [ ] If False, log warning with exception details
+- [ ] Return cache instance on success
+
+#### 1.6 Web App Fallback Logic
+- [ ] Implement fallback to InMemoryCache when Redis unavailable
+- [ ] Use web_defaults['default_ttl'] for fallback TTL
+- [ ] Use web_defaults['memory_cache_size'] for max_size
+- [ ] Log fallback decision at warning level
+- [ ] Return InMemoryCache instance
+
+#### 1.7 AI Application Factory Method
 - [ ] Implement `for_ai_app()` static method
-- [ ] Set AI-optimized defaults:
+- [ ] Add redis_url parameter (Optional[str])
+- [ ] Add fail_on_connection_error parameter (bool, default False)
+- [ ] Add **ai_options for additional AIResponseCache parameters
+- [ ] Call _validate_factory_inputs() for validation
+- [ ] Define AI-optimized defaults dictionary:
   - [ ] default_ttl: 3600 (1 hour)
-  - [ ] memory_cache_size: 100 (moderate)
-  - [ ] compression_threshold: 1000 (aggressive)
-  - [ ] compression_level: 6 (balanced)
+  - [ ] memory_cache_size: 100
+  - [ ] compression_threshold: 1000
+  - [ ] compression_level: 6
   - [ ] text_hash_threshold: 1000
-  - [ ] operation_ttls dictionary with default values
-- [ ] Add Redis connection attempt with error handling
-- [ ] Implement fallback to InMemoryCache with AI-specific settings
-- [ ] Add logging for connection failures
+  - [ ] operation_ttls dictionary with 5 operations
+- [ ] Merge ai_options with ai_defaults (ai_options override defaults)
 
-#### 1.7 Advanced Factory Methods
-- [ ] Implement `create_with_fallback()` async method
-- [ ] Add primary cache validation using CacheConfig.validate()
-- [ ] Determine cache type based on configuration (AI vs Web)
-- [ ] Test connection for Redis-based caches
-- [ ] Implement fallback cache creation on failure
-- [ ] Add lifecycle management support
+#### 1.8 AI App Redis Connection Handling
+- [ ] Add try-except block for Redis connection
+- [ ] Create AIResponseCache instance with redis_url if provided
+- [ ] Pass merged parameters to AIResponseCache constructor
+- [ ] Catch connection exceptions
+- [ ] If fail_on_connection_error is True, raise ConnectionError
+- [ ] If False, log warning with exception details
+- [ ] Return cache instance on success
 
-#### 1.8 Environment-Based Factory
-- [ ] Implement `from_environment()` static method
-- [ ] Add auto-detection logic when app_type="auto"
-- [ ] Check for testing environment (TESTING, CI, PYTEST_CURRENT_TEST)
-- [ ] Parse environment variables:
-  - [ ] REDIS_URL
-  - [ ] CACHE_DEFAULT_TTL
-  - [ ] CACHE_MEMORY_SIZE
-  - [ ] CACHE_COMPRESSION_THRESHOLD
-  - [ ] CACHE_COMPRESSION_LEVEL
-  - [ ] REDIS_AUTH
-  - [ ] REDIS_USE_TLS
-- [ ] Add AI-specific environment variable parsing:
-  - [ ] CACHE_TEXT_HASH_THRESHOLD
-  - [ ] CACHE_OPERATION_TTLS (JSON parsing)
-- [ ] Return appropriate cache instance based on app_type
+#### 1.9 AI App Fallback Logic
+- [ ] Implement fallback to InMemoryCache when Redis unavailable
+- [ ] Use shorter TTL for AI fallback (300 seconds / 5 minutes)
+- [ ] Use smaller max_size for AI fallback (50)
+- [ ] Add comment explaining faster TTL for AI operations
+- [ ] Log fallback decision at warning level
+- [ ] Return InMemoryCache instance
 
-#### 1.9 Testing Support
+#### 1.10 Testing Factory Method
 - [ ] Implement `for_testing()` static method
-- [ ] Support "memory" and "redis" cache types
-- [ ] Set testing-optimized defaults:
-  - [ ] default_ttl: 60 (1 minute)
-  - [ ] max_size: 25 (small)
-  - [ ] Use DB 15 for Redis testing
-- [ ] Add error handling for unsupported cache types
+- [ ] Add cache_type parameter (str, default "memory")
+- [ ] Handle "memory" cache type:
+  - [ ] Return InMemoryCache with ttl=60, max_size=25
+- [ ] Handle "redis" cache type:
+  - [ ] Get TEST_REDIS_URL from environment (default 'redis://localhost:6379/15')
+  - [ ] Return GenericRedisCache with ttl=60, memory_cache_size=10
+- [ ] Raise ValueError for unsupported cache_type
+- [ ] Add descriptive error message with supported types
 
-#### 1.10 Configuration-Based Factory
+#### 1.11 Configuration-Based Factory Method
 - [ ] Implement `create_cache_from_config()` static method
-- [ ] Validate configuration object instance type
-- [ ] Run configuration validation
-- [ ] Determine cache type from ai_config presence
-- [ ] Return appropriate cache instance
+- [ ] Add config parameter (CacheConfig type)
+- [ ] Add fail_on_connection_error parameter (bool, default False)
+- [ ] Import CacheConfig inside method to avoid circular import
+- [ ] Add isinstance check for CacheConfig
+- [ ] Raise ValueError if not CacheConfig instance
+
+#### 1.12 Configuration Validation and Conversion
+- [ ] Call config.validate() method
+- [ ] Check validation_result.is_valid
+- [ ] Raise ValueError with validation errors if invalid
+- [ ] Convert config to dictionary using to_dict()
+- [ ] Store config_dict for parameter passing
+
+#### 1.13 Configuration-Based Cache Selection
+- [ ] Check if config.ai_config exists
+- [ ] If AI config present:
+  - [ ] Call for_ai_app() with config_dict parameters
+  - [ ] Pass fail_on_connection_error flag
+- [ ] If no AI config:
+  - [ ] Call for_web_app() with config_dict parameters
+  - [ ] Pass fail_on_connection_error flag
+- [ ] Return created cache instance
+
+#### 1.14 Factory Documentation
+- [ ] Add detailed docstrings for each factory method
+- [ ] Document all parameters with types and defaults
+- [ ] Add usage examples in docstrings
+- [ ] Document return types
+- [ ] Add raises sections for exceptions
+- [ ] Include notes about connection handling
+- [ ] Document fallback behavior
+
+#### 1.15 Factory Error Messages
+- [ ] Create descriptive error messages for validation failures
+- [ ] Include parameter name and expected format in errors
+- [ ] Add suggestions for fixing common errors
+- [ ] Differentiate between connection and configuration errors
+- [ ] Include context in log messages (which factory method, what failed)
 
 ### 2. Enhanced Configuration Management with Builder Pattern
 
@@ -147,6 +194,7 @@
 - [ ] Validate operation_ttls values are positive integers
 - [ ] Check text size tier progression (ascending order)
 - [ ] Warn for very long operation TTLs (>1 week)
+- [ ] Check if hash_algorithm is a valid algorithm in the hashlib module
 - [ ] Return ValidationResult with errors and warnings
 
 #### 2.6 CacheConfigBuilder Implementation
@@ -192,7 +240,6 @@
 - [ ] Implement `from_environment()` method
 - [ ] Set _from_env flag for environment loading
 - [ ] Call _load_from_environment()
-- [ ] Check ENABLE_AI_CACHE environment variable
 - [ ] Load AI-specific environment variables when enabled
 - [ ] Parse CACHE_OPERATION_TTLS as JSON
 
@@ -203,7 +250,8 @@
 - [ ] Validate memory cache size is positive
 - [ ] Validate compression level (1-9)
 - [ ] Validate compression threshold is non-negative
-- [ ] Check TLS file existence and add warnings
+- [ ] Check TLS file existence and add warnings for non-production
+- [ ] Raise FileNotFoundError for missing TLS files if environment is "production"
 - [ ] Validate AI configuration if present
 - [ ] Implement `build()` method with final validation
 
@@ -270,47 +318,41 @@
 - [ ] Configure AI features if enabled
 - [ ] Handle configuration build failures
 - [ ] Fallback to environment preset on error
+- [ ] Check ENABLE_AI_CACHE environment variable
+   - The dependency can call .with_ai_features() on the builder if the environment variable is set. This makes the builder's from_environment() method responsible only for loading the declared variables
 
 #### 3.7 Main Cache Service Dependency
 - [ ] Implement `get_cache_service()` async function
 - [ ] Accept CacheConfig dependency
-- [ ] Create cache from configuration
+- [ ] Use CacheFactory.create_cache_from_config() for explicit creation
+- [ ] Pass fail_on_connection_error=False for graceful degradation
 - [ ] Ensure cache is connected
-- [ ] Handle creation failures with fallback
+- [ ] Handle creation failures with fallback to InMemoryCache
 - [ ] Use cache registry for lifecycle management
-- [ ] Log all operations
+- [ ] Log all operations including factory method used
 
-#### 3.8 Environment-Based Dependency
-- [ ] Implement `get_cache_service_from_environment()` async function
-- [ ] Accept app_type parameter with "auto" default
-- [ ] Create cache using factory from_environment
-- [ ] Ensure connection with error handling
-- [ ] Fallback to InMemoryCache on failure
-- [ ] Use cache registry with unique key
+#### 3.8 Environment-Based Dependency (REMOVED - No auto-detection)
+- [ ] Remove `get_cache_service_from_environment()` function
+- [ ] Update documentation to explain removal of auto-detection
+- [ ] Redirect users to explicit factory methods instead
+- [ ] Add deprecation notice if this was previously used
 
 #### 3.9 Web Cache Dependency
-- [ ] Implement `get_web_cache_service()` async function
-- [ ] Accept Settings dependency
-- [ ] Extract web-specific settings
-- [ ] Create web cache using factory
-- [ ] Ensure connection
-- [ ] Use cache registry
+- [ ] Modify get_web_cache_service to depend on get_cache_config.
+- [ ] Use CacheFactory.create_cache_from_config(config) within get_web_cache_service.
+- [ ] Ensure config.ai_config is None for the web service.
 
 #### 3.10 AI Cache Dependency
-- [ ] Implement `get_ai_cache_service()` async function
-- [ ] Accept Settings dependency
-- [ ] Extract AI-specific settings
-- [ ] Parse operation TTLs if configured
-- [ ] Create AI cache using factory
-- [ ] Ensure connection
-- [ ] Use cache registry
+- [ ] Modify get_ai_cache_service to depend on get_cache_config.
+- [ ] Use CacheFactory.create_cache_from_config(config) within get_ai_cache_service.
+- [ ] Ensure config.ai_config is present for the AI service.
 
 #### 3.11 Testing Dependencies
 - [ ] Implement `get_test_cache()` function
-- [ ] Return memory cache for testing
+- [ ] Use CacheFactory.for_testing("memory") for test cache
 - [ ] Implement `get_test_redis_cache()` function
-- [ ] Return Redis cache for integration testing
-- [ ] Use test database (DB 15)
+- [ ] Use CacheFactory.for_testing("redis") for integration testing
+- [ ] Verify test database (DB 15) is used
 
 #### 3.12 Fallback Cache Dependency
 - [ ] Implement `get_fallback_cache_service()` async function
@@ -348,8 +390,9 @@
 - [ ] Implement `get_cache_health_status()` async function
 - [ ] Accept CacheInterface dependency
 - [ ] Create health status dictionary
-- [ ] Test basic cache operations
-- [ ] Set/get/delete test data
+- [ ] Check for cache.ping() method availability
+- [ ] Use ping() for lightweight health check if available
+- [ ] Fall back to set/get/delete test data only if ping() unavailable
 - [ ] Verify data integrity
 - [ ] Clean up test data
 - [ ] Add cache statistics if available
@@ -387,6 +430,9 @@
 - [ ] Create medium data set (100x repetitions)
 - [ ] Create large data set (1000x repetitions with lists)
 - [ ] Create JSON data set (complex objects)
+- [ ] Add 'realistic' data generation mode using Faker library
+- [ ] Generate varied, sentence-like text for compression testing
+- [ ] Create complex object structures for serialization testing
 - [ ] Parameterize by test_operations count
 
 #### 4.5 Basic Operations Benchmark
@@ -426,11 +472,12 @@
 
 #### 4.9 Factory Integration Benchmarks
 - [ ] Implement `benchmark_factory_creation()` method
-- [ ] Test web app factory performance
-- [ ] Test AI app factory performance
-- [ ] Test environment-based factory
-- [ ] Test configuration-based factory
-- [ ] Measure creation overhead
+- [ ] Test for_web_app() factory performance
+- [ ] Test for_ai_app() factory performance
+- [ ] Test for_testing() factory performance
+- [ ] Test create_cache_from_config() factory performance
+- [ ] Measure creation overhead for each explicit method
+- [ ] Compare fallback vs direct instantiation performance
 
 #### 4.10 Environment Benchmark Suite
 - [ ] Implement `run_environment_benchmarks()` method
@@ -468,23 +515,26 @@
 
 #### 5.2 Usage Guide Documentation
 - [ ] Create `docs/guides/infrastructure/CACHE_USAGE.md` file
-- [ ] Document choosing the right cache type for applications
-- [ ] Explain configuration with CacheConfigBuilder for different environments
-- [ ] Document using CacheFactory for one-line cache setup
-- [ ] Add callback composition patterns for custom behavior
+- [ ] Document explicit cache selection philosophy
+- [ ] Explain when to use for_web_app() vs for_ai_app()
+- [ ] Document configuration with CacheConfigBuilder for different environments
+- [ ] Document using CacheFactory explicit methods for clear cache instantiation
+- [ ] Add fail_on_connection_error parameter usage guidance
+- [ ] Add section explaining per-process cache registry in multi-worker deployments
+- [ ] Document implications for memory usage and connection pooling
 - [ ] Include code examples for web apps, AI applications, and testing scenarios
 
 #### 5.3 Comprehensive Usage Examples
 - [ ] Create `backend/examples/cache/comprehensive_usage_examples.py`
-- [ ] Implement example_1_simple_web_app_setup() with callback composition
-- [ ] Implement example_2_ai_app_setup() with intelligent defaults
-- [ ] Implement example_3_environment_based_setup()
+- [ ] Implement example_1_simple_web_app_setup() using for_web_app()
+- [ ] Implement example_2_ai_app_setup() using for_ai_app()
+- [ ] Implement example_3_hybrid_app_setup() using both cache types
 - [ ] Implement example_4_configuration_builder_pattern()
-- [ ] Implement example_5_fallback_and_resilience()
-- [ ] Implement example_6_testing_patterns()
+- [ ] Implement example_5_fallback_and_resilience() with fail_on_connection_error
+- [ ] Implement example_6_testing_patterns() using for_testing()
 - [ ] Implement example_7_performance_benchmarking()
 - [ ] Implement example_8_monitoring_and_analytics()
-- [ ] Implement example_9_migration_from_existing_cache()
+- [ ] Implement example_9_migration_from_auto_detection()
 - [ ] Implement example_10_advanced_configuration_patterns()
 
 #### 5.4 Callback Composition Examples
@@ -515,11 +565,11 @@
 - [ ] Document callback signatures and composition patterns
 
 #### 5.7 Migration Code Examples
-- [ ] Create before/after examples for direct cache instantiation to factory
-- [ ] Show settings-based configuration to CacheConfig migration
-- [ ] Document FastAPI dependency injection updates
+- [ ] Create before/after examples for auto-detection to explicit factory methods
+- [ ] Show migration from from_environment() to explicit factory calls
+- [ ] Document FastAPI dependency injection updates for explicit selection
 - [ ] Include environment variable migration examples
-- [ ] Add test fixture migration patterns
+- [ ] Add test fixture migration to for_testing() method
 - [ ] Show health check endpoint conversion examples
 
 #### 5.8 Environment Configuration Guide
@@ -626,10 +676,10 @@
 
 ### Unit Tests
 - [ ] Create test file `test_factory.py`
-- [ ] Test all factory methods
-- [ ] Test application type detection
-- [ ] Test input validation
-- [ ] Test fallback scenarios
+- [ ] Test all explicit factory methods (for_web_app, for_ai_app, for_testing)
+- [ ] Test create_cache_from_config method
+- [ ] Test input validation (_validate_factory_inputs)
+- [ ] Test fallback scenarios with fail_on_connection_error parameter
 - [ ] Create test file `test_config.py`
 - [ ] Test CacheConfig validation
 - [ ] Test AICacheConfig validation
@@ -655,6 +705,8 @@
 - [ ] Test factory creation performance
 - [ ] Test configuration parsing performance
 - [ ] Test dependency resolution performance
+- [ ] Add AI hashing benchmark with text exceeding text_hash_threshold
+- [ ] Measure performance impact of CacheKeyGenerator hashing
 - [ ] Compare with Phase 2 performance
 - [ ] Generate performance report
 
@@ -678,12 +730,30 @@
 ---
 
 ## Success Criteria
-- ✅ CacheFactory provides intelligent cache creation
+- ✅ CacheFactory provides explicit, deterministic cache creation
 - ✅ Configuration management is comprehensive and flexible
-- ✅ FastAPI integration is seamless
-- ✅ Documentation enables easy adoption
-- ✅ Migration from Phase 2 is straightforward
+- ✅ FastAPI integration is seamless with clear cache selection
+- ✅ Documentation enables easy adoption with explicit choices
+- ✅ Migration from auto-detection to explicit methods is straightforward
 - ✅ Performance meets or exceeds Phase 2 benchmarks
+
+## Additional Implementation Tasks (From Critique)
+
+### GenericRedisCache Enhancements
+- [ ] Implement `async def ping(self) -> bool` method in GenericRedisCache
+- [ ] Execute Redis PING command for lightweight health checks
+- [ ] Return True if Redis responds with PONG
+- [ ] Handle connection errors gracefully
+- [ ] Add docstring explaining health check usage
+
+### AIResponseCache Hash Algorithm Resolution
+- [ ] Implement hash algorithm resolution in AIResponseCache.__init__
+- [ ] Import hashlib module
+- [ ] Resolve hash_algorithm string from config to callable function
+- [ ] Support common algorithms (sha256, sha512, md5, etc.)
+- [ ] Raise ValueError for unsupported hash algorithms
+- [ ] Store resolved hash function for use by CacheKeyGenerator
+- [ ] Add unit tests for hash algorithm resolution
 
 ## Notes
 - Maintain backward compatibility where possible

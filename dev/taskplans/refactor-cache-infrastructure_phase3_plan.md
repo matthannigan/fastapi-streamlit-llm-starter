@@ -19,146 +19,117 @@ After Phase 2 completion, we will have:
 
 ## Phase 3 Deliverables
 
-### 1. CacheFactory with Application Type Detection
+### 1. CacheFactory for Explicit Cache Instantiation
+
 **New file**: `backend/app/infrastructure/cache/factory.py`
 
-**Enhanced Test Requirement**: Add comprehensive testing for application type detection under various conditions to prevent brittleness.
+**Goal**: Provide a clear, explicit, and maintainable factory for creating opinionated cache instances. This approach favors clarity over "magic" auto-detection, empowering developers to choose the precise cache implementation needed for different parts of their application (e.g., using `GenericRedisCache` for user sessions and `AIResponseCache` for LLM responses within the same application).
 
-**Factory Implementation with Smart Detection:
+**Factory Implementation for Explicit Instantiation:**
+
 ```python
 import os
-import importlib.util
-from typing import Optional, Dict, Any, Union
-from functools import lru_cache
+import logging
+from typing import Optional, Dict, Any
+
+# Note: No longer importing importlib or lru_cache as auto-detection is removed.
 
 class CacheFactory:
-    """Factory for creating appropriate cache instances with smart defaults and validation."""
-    
-    @staticmethod
-    @lru_cache(maxsize=1)
-    def _detect_app_type() -> str:
-        """Detect application type based on dependencies and environment."""
-        detection_signals = {
-            'ai': [
-                # Check for AI-related imports
-                lambda: CacheFactory._check_module_exists('pydantic_ai'),
-                lambda: CacheFactory._check_module_exists('openai'),
-                lambda: CacheFactory._check_module_exists('anthropic'),
-                lambda: CacheFactory._check_module_exists('transformers'),
-                # Check for AI-related environment variables
-                lambda: any(var in os.environ for var in ['GEMINI_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY']),
-                # Check for AI-related service files
-                lambda: CacheFactory._check_file_exists('app/services/text_processor.py'),
-                lambda: CacheFactory._check_file_exists('app/services/ai_service.py'),
-            ],
-            'web': [
-                # Default signals for web applications
-                lambda: CacheFactory._check_module_exists('fastapi'),
-                lambda: CacheFactory._check_module_exists('django'),
-                lambda: CacheFactory._check_module_exists('flask'),
-                # Check for typical web service patterns
-                lambda: CacheFactory._check_file_exists('app/services/user_service.py'),
-                lambda: CacheFactory._check_file_exists('app/services/auth_service.py'),
-            ]
-        }
-        
-        scores = {'ai': 0, 'web': 0}
-        
-        for app_type, signals in detection_signals.items():
-            for signal in signals:
-                try:
-                    if signal():
-                        scores[app_type] += 1
-                except Exception:
-                    continue  # Ignore detection errors
-        
-        # Determine app type based on scores
-        if scores['ai'] >= 2:  # Require at least 2 AI signals
-            return 'ai'
-        elif scores['web'] >= 1:  # Web is more permissive
-            return 'web'
-        else:
-            return 'web'  # Default to web for unknown scenarios
-    
-    @staticmethod
-    def _check_module_exists(module_name: str) -> bool:
-        """Check if a module exists in the current environment."""
-        return importlib.util.find_spec(module_name) is not None
-    
-    @staticmethod
-    def _check_file_exists(file_path: str) -> bool:
-        """Check if a file exists relative to the current working directory."""
-        return os.path.exists(file_path)
-    
+    """
+    Factory for creating specific, opinionated cache instances.
+
+    This factory promotes explicit selection of cache types to support hybrid applications
+    where different services may require different caching strategies. It provides methods
+    to create pre-configured caches for common use cases like web and AI applications.
+    """
+
     @staticmethod
     def _validate_factory_inputs(redis_url: Optional[str] = None, **kwargs) -> None:
         """Validate factory method inputs."""
         if redis_url and not isinstance(redis_url, str):
             raise ValueError("redis_url must be a string")
-        
+
         if redis_url and not redis_url.startswith(('redis://', 'rediss://')):
             raise ValueError("redis_url must start with 'redis://' or 'rediss://'")
-        
+
         # Validate common parameters
         if 'memory_cache_size' in kwargs:
             size = kwargs['memory_cache_size']
             if not isinstance(size, int) or size <= 0:
                 raise ValueError("memory_cache_size must be a positive integer")
-        
+
         if 'default_ttl' in kwargs:
             ttl = kwargs['default_ttl']
             if not isinstance(ttl, int) or ttl <= 0:
                 raise ValueError("default_ttl must be a positive integer")
-    
+
     @staticmethod
-    def for_web_app(redis_url: Optional[str] = None, **kwargs) -> CacheInterface:
-        """Create optimized cache for web applications with validation."""
+    def for_web_app(redis_url: Optional[str] = None, fail_on_connection_error: bool = False, **kwargs) -> CacheInterface:
+        """
+        Create an optimized cache for generic web applications.
+
+        Args:
+            redis_url: The URL for the Redis instance.
+            fail_on_connection_error: If True, raises a ConnectionError on failure.
+                                      If False, logs a warning and returns an InMemoryCache fallback.
+            **kwargs: Additional parameters for GenericRedisCache.
+        """
         CacheFactory._validate_factory_inputs(redis_url, **kwargs)
-        
+
         # Web app optimized defaults
         web_defaults = {
             'default_ttl': kwargs.get('default_ttl', 1800),  # 30 minutes
-            'memory_cache_size': kwargs.get('memory_cache_size', 200),  # Larger memory cache for web
-            'compression_threshold': kwargs.get('compression_threshold', 2000),  # Less aggressive compression
-            'compression_level': kwargs.get('compression_level', 4),  # Faster compression
+            'memory_cache_size': kwargs.get('memory_cache_size', 200),
+            'compression_threshold': kwargs.get('compression_threshold', 2000),
+            'compression_level': kwargs.get('compression_level', 4),
         }
-        
+
         if redis_url:
             try:
+                # Attempt to create and connect to the Redis cache
                 cache = GenericRedisCache(
                     redis_url=redis_url,
                     **{**web_defaults, **kwargs}
                 )
+                # A connect method should be called by the dependency manager to verify connection
                 return cache
             except Exception as e:
-                # Log error but continue with fallback
-                import logging
-                logging.warning(f"Redis connection failed for web app, using memory cache: {e}")
-        
+                if fail_on_connection_error:
+                    raise ConnectionError(f"Failed to connect to Redis for web app: {e}") from e
+                logging.warning(f"Redis connection failed for web app, using InMemoryCache fallback: {e}")
+
         # Fallback to memory cache with web-optimized settings
         return InMemoryCache(
             default_ttl=web_defaults['default_ttl'],
             max_size=web_defaults['memory_cache_size']
         )
-    
-    @staticmethod  
-    def for_ai_app(redis_url: Optional[str] = None, **ai_options) -> CacheInterface:
-        """Create optimized cache for AI applications with validation."""
+
+    @staticmethod
+    def for_ai_app(redis_url: Optional[str] = None, fail_on_connection_error: bool = False, **ai_options) -> CacheInterface:
+        """
+        Create an optimized cache for AI applications.
+
+        Args:
+            redis_url: The URL for the Redis instance.
+            fail_on_connection_error: If True, raises a ConnectionError on failure.
+                                      If False, logs a warning and returns an InMemoryCache fallback.
+            **ai_options: Additional parameters for AIResponseCache.
+        """
         CacheFactory._validate_factory_inputs(redis_url, **ai_options)
-        
+
         # AI app optimized defaults
         ai_defaults = {
             'default_ttl': ai_options.get('default_ttl', 3600),  # 1 hour
-            'memory_cache_size': ai_options.get('memory_cache_size', 100),  # Moderate memory cache
-            'compression_threshold': ai_options.get('compression_threshold', 1000),  # Aggressive compression
-            'compression_level': ai_options.get('compression_level', 6),  # Balanced compression
+            'memory_cache_size': ai_options.get('memory_cache_size', 100),
+            'compression_threshold': ai_options.get('compression_threshold', 1000),
+            'compression_level': ai_options.get('compression_level', 6),
             'text_hash_threshold': ai_options.get('text_hash_threshold', 1000),
             'operation_ttls': ai_options.get('operation_ttls', {
                 "summarize": 7200, "sentiment": 86400, "key_points": 7200,
                 "questions": 3600, "qa": 1800
             })
         }
-        
+
         if redis_url:
             try:
                 cache = AIResponseCache(
@@ -167,146 +138,52 @@ class CacheFactory:
                 )
                 return cache
             except Exception as e:
-                # Log error but continue with fallback
-                import logging
-                logging.warning(f"Redis connection failed for AI app, using memory cache: {e}")
-        
+                if fail_on_connection_error:
+                    raise ConnectionError(f"Failed to connect to Redis for AI app: {e}") from e
+                logging.warning(f"Redis connection failed for AI app, using InMemoryCache fallback: {e}")
+
         # Fallback to memory cache with AI-optimized settings (smaller, faster TTL)
         return InMemoryCache(
             default_ttl=300,  # 5 minutes for AI fallback
-            max_size=50       # Smaller cache for AI fallback
+            max_size=50
         )
-    
-    @staticmethod
-    async def create_with_fallback(primary_config: 'CacheConfig', 
-                                 fallback_type: str = "memory") -> CacheInterface:
-        """Create cache with automatic fallback on connection failure and lifecycle management."""
-        from .config import CacheConfig  # Avoid circular import
-        
-        if not isinstance(primary_config, CacheConfig):
-            raise ValueError("primary_config must be a CacheConfig instance")
-        
-        # Validate and create primary cache
-        try:
-            validation_result = primary_config.validate()
-            if not validation_result.is_valid:
-                raise ValueError(f"Invalid primary config: {validation_result.errors}")
-            
-            # Determine cache type based on configuration
-            if primary_config.ai_config:
-                primary_cache = CacheFactory.for_ai_app(
-                    redis_url=primary_config.redis_url,
-                    **primary_config.to_dict()
-                )
-            else:
-                primary_cache = CacheFactory.for_web_app(
-                    redis_url=primary_config.redis_url,
-                    **primary_config.to_dict()
-                )
-            
-            # Test connection for Redis-based caches
-            if hasattr(primary_cache, 'connect'):
-                connection_success = await primary_cache.connect()
-                if connection_success:
-                    return primary_cache
-                else:
-                    raise ConnectionError("Primary cache connection failed")
-            
-            return primary_cache
-            
-        except Exception as e:
-            import logging
-            logging.warning(f"Primary cache creation failed, using {fallback_type} fallback: {e}")
-            
-            # Create fallback cache
-            if fallback_type == "memory":
-                return InMemoryCache(
-                    default_ttl=primary_config.default_ttl // 4,  # Shorter TTL for fallback
-                    max_size=50
-                )
-            else:
-                raise ValueError(f"Unsupported fallback type: {fallback_type}")
-    
-    @staticmethod
-    def from_environment(app_type: str = "auto") -> CacheInterface:
-        """Create cache based on environment variables with smart detection."""
-        if app_type == "auto":
-            app_type = CacheFactory._detect_app_type()
-        
-        if app_type not in ["ai", "web"]:
-            raise ValueError(f"Unsupported app_type: {app_type}. Must be 'auto', 'ai', or 'web'")
-        
-        # Check for testing environment
-        if os.getenv("TESTING") or os.getenv("CI") or os.getenv("PYTEST_CURRENT_TEST"):
-            return CacheFactory.for_testing()
-        
-        redis_url = os.getenv("REDIS_URL")
-        
-        # Environment-specific configuration
-        env_config = {
-            'default_ttl': int(os.getenv('CACHE_DEFAULT_TTL', '3600')),
-            'memory_cache_size': int(os.getenv('CACHE_MEMORY_SIZE', '100')),
-            'compression_threshold': int(os.getenv('CACHE_COMPRESSION_THRESHOLD', '1000')),
-            'compression_level': int(os.getenv('CACHE_COMPRESSION_LEVEL', '6')),
-            'redis_auth': os.getenv('REDIS_AUTH'),
-            'use_tls': os.getenv('REDIS_USE_TLS', '').lower() in ('true', '1', 'yes')
-        }
-        
-        if app_type == "ai":
-            # Add AI-specific environment variables
-            ai_config = {
-                **env_config,
-                'text_hash_threshold': int(os.getenv('CACHE_TEXT_HASH_THRESHOLD', '1000')),
-            }
-            
-            # Parse operation TTLs from environment if provided
-            operation_ttls_env = os.getenv('CACHE_OPERATION_TTLS')
-            if operation_ttls_env:
-                import json
-                try:
-                    ai_config['operation_ttls'] = json.loads(operation_ttls_env)
-                except json.JSONDecodeError:
-                    pass  # Use defaults
-            
-            return CacheFactory.for_ai_app(redis_url=redis_url, **ai_config)
-        else:
-            return CacheFactory.for_web_app(redis_url=redis_url, **env_config)
-    
+
     @staticmethod
     def for_testing(cache_type: str = "memory") -> CacheInterface:
-        """Create cache optimized for testing scenarios with fast cleanup."""
+        """Create a cache optimized for testing scenarios with fast cleanup."""
         if cache_type == "memory":
-            return InMemoryCache(
-                default_ttl=60,   # 1 minute for fast test cycles
-                max_size=25       # Small cache for testing
-            )
+            return InMemoryCache(default_ttl=60, max_size=25)
         elif cache_type == "redis":
-            # Use test Redis with fast settings
             return GenericRedisCache(
-                redis_url=os.getenv('TEST_REDIS_URL', 'redis://localhost:6379/15'),  # Use DB 15 for testing
+                redis_url=os.getenv('TEST_REDIS_URL', 'redis://localhost:6379/15'),
                 default_ttl=60,
-                memory_cache_size=10,
-                compression_threshold=5000  # Minimal compression for testing
+                memory_cache_size=10
             )
         else:
             raise ValueError(f"Unsupported testing cache_type: {cache_type}")
-    
+
     @staticmethod
-    def create_cache_from_config(config: 'CacheConfig') -> CacheInterface:
-        """Create cache instance from configuration object."""
+    def create_cache_from_config(config: 'CacheConfig', fail_on_connection_error: bool = False) -> CacheInterface:
+        """
+        Create a cache instance from a CacheConfig object. This is the primary
+        bridge between the configuration system and cache instantiation.
+        """
         from .config import CacheConfig  # Avoid circular import
-        
+
         if not isinstance(config, CacheConfig):
             raise ValueError("config must be a CacheConfig instance")
-        
+
         validation_result = config.validate()
         if not validation_result.is_valid:
             raise ValueError(f"Invalid configuration: {validation_result.errors}")
-        
+
+        # Convert config to dict and pass to the appropriate factory method
+        config_dict = config.to_dict()
+
         if config.ai_config:
-            return CacheFactory.for_ai_app(**config.to_dict())
+            return CacheFactory.for_ai_app(fail_on_connection_error=fail_on_connection_error, **config_dict)
         else:
-            return CacheFactory.for_web_app(**config.to_dict())
+            return CacheFactory.for_web_app(fail_on_connection_error=fail_on_connection_error, **config_dict)
 ```
 
 ### 2. Enhanced Configuration Management with Builder Pattern
