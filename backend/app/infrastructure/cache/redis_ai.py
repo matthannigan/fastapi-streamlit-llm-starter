@@ -934,14 +934,14 @@ class AIResponseCache(GenericRedisCache):
     
     # Public AI-Specific Methods
 
-    async def cache_response(
+    def cache_response(
         self,
         text: str,
         operation: str,
         options: Dict[str, Any],
         response: Dict[str, Any],
         question: Optional[str] = None,
-    ) -> None:
+    ):
         """
         Cache AI response with enhanced AI-specific optimizations and comprehensive error handling.
 
@@ -973,138 +973,121 @@ class AIResponseCache(GenericRedisCache):
             ...     response={"summary": "Brief summary", "confidence": 0.95}
             ... )
         """
-        start_time = time.time()
-        
-        try:
-            # Input validation
-            if not text or not isinstance(text, str):
-                raise ValidationError(
-                    "Invalid text parameter: must be non-empty string",
-                    context={'text_type': type(text), 'text_length': len(text) if text else 0}
-                )
-            
-            if not operation or not isinstance(operation, str):
-                raise ValidationError(
-                    "Invalid operation parameter: must be non-empty string",
-                    context={'operation': operation, 'operation_type': type(operation)}
-                )
-            
-            if not isinstance(options, dict):
-                raise ValidationError(
-                    "Invalid options parameter: must be dictionary",
-                    context={'options_type': type(options)}
-                )
-            
-            if not isinstance(response, dict):
-                raise ValidationError(
-                    "Invalid response parameter: must be dictionary",
-                    context={'response_type': type(response)}
-                )
+        async def _do_cache_response():
+            start_time = time.time()
+            try:
+                # Input validation
+                if not text or not isinstance(text, str):
+                    raise ValidationError(
+                        "Invalid text parameter: must be non-empty string",
+                        context={'text_type': type(text), 'text_length': len(text) if text else 0}
+                    )
+                if not operation or not isinstance(operation, str):
+                    raise ValidationError(
+                        "Invalid operation parameter: must be non-empty string",
+                        context={'operation': operation, 'operation_type': type(operation)}
+                    )
+                if not isinstance(options, dict):
+                    raise ValidationError(
+                        "Invalid options parameter: must be dictionary",
+                        context={'options_type': type(options)}
+                    )
+                if not isinstance(response, dict):
+                    raise ValidationError(
+                        "Invalid response parameter: must be dictionary",
+                        context={'response_type': type(response)}
+                    )
 
-            # Generate AI-optimized cache key using CacheKeyGenerator
-            cache_key = self.key_generator.generate_cache_key(text, operation, options, question)
-            
-            # Determine text tier for metrics and optimization decisions
-            text_tier = self._get_text_tier(text)
-            
-            # Get operation-specific TTL from configuration
-            ttl = self.operation_ttls.get(operation, self.default_ttl)
-            
-            # Build enhanced cached response with comprehensive AI metadata
-            cached_response = {
-                **response,
-                "cached_at": datetime.now().isoformat(),
-                "cache_hit": False,  # Will be set to True when retrieved
-                "text_length": len(text),
-                "text_tier": text_tier,
-                "operation": operation,
-                "ai_version": "refactored_inheritance",
-                "key_generation_time": getattr(self.key_generator, 'last_generation_time', 0),
-                "options_hash": str(hash(str(sorted(options.items())) if options else "")),
-                "question_provided": question is not None,
-            }
+                cache_key = self.key_generator.generate_cache_key(text, operation, options, question)
+                text_tier = self._get_text_tier(text)
+                ttl = self.operation_ttls.get(operation, self.default_ttl)
+                cached_response = {
+                    **response,
+                    "cached_at": datetime.now().isoformat(),
+                    "cache_hit": False,
+                    "text_length": len(text),
+                    "text_tier": text_tier,
+                    "operation": operation,
+                    "ai_version": "refactored_inheritance",
+                    "key_generation_time": getattr(self.key_generator, 'last_generation_time', 0),
+                    "options_hash": str(hash(str(sorted(options.items())) if options else "")),
+                    "question_provided": question is not None,
+                }
 
-            # If Redis is unavailable, gracefully degrade without populating L1
-            if not await self.connect():
-                duration = time.time() - start_time
+                if not await self.connect():
+                    duration = time.time() - start_time
+                    self._record_cache_operation(
+                        operation=operation,
+                        cache_operation='set',
+                        text_tier=text_tier,
+                        duration=duration,
+                        success=False,
+                        additional_data={
+                            'error': 'redis_unavailable',
+                            'text_length': len(text),
+                            'ttl': ttl,
+                        }
+                    )
+                    logger.debug("Redis unavailable during cache_response; skipping set and degrading gracefully")
+                    return
+
+                await self.set(cache_key, cached_response, ttl)
                 self._record_cache_operation(
                     operation=operation,
                     cache_operation='set',
                     text_tier=text_tier,
-                    duration=duration,
-                    success=False,
+                    duration=time.time() - start_time,
+                    success=True,
                     additional_data={
-                        'error': 'redis_unavailable',
                         'text_length': len(text),
                         'ttl': ttl,
+                        'response_size': len(str(cached_response)),
+                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0)
                     }
                 )
-                logger.debug("Redis unavailable during cache_response; skipping set and degrading gracefully")
+                duration = time.time() - start_time
+                logger.debug(
+                    f"Successfully cached AI response: operation={operation}, tier={text_tier}, "
+                    f"ttl={ttl}s, duration={duration:.3f}s, text_length={len(text)}, "
+                    f"key_generation_time={getattr(self.key_generator, 'last_generation_time', 0):.3f}s"
+                )
+            except ValidationError:
+                raise
+            except Exception as e:
+                duration = time.time() - start_time
+                if 'operation' in locals() and 'text_tier' in locals():
+                    self._record_cache_operation(
+                        operation=operation,
+                        cache_operation='set',
+                        text_tier=text_tier,
+                        duration=duration,
+                        success=False,
+                        additional_data={
+                            'error': str(e),
+                            'error_type': type(e).__name__,
+                            'text_length': len(text) if text else 0
+                        }
+                    )
+                logger.error(
+                    f"Failed to cache AI response: {e}",
+                    exc_info=True,
+                    extra={
+                        'operation': operation if 'operation' in locals() else 'unknown',
+                        'text_length': len(text) if text else 0,
+                        'options_count': len(options) if isinstance(options, dict) else 0,
+                        'response_size': len(str(response)) if isinstance(response, dict) else 0,
+                        'duration': duration,
+                        'error_type': type(e).__name__
+                    }
+                )
+                # swallow non-validation errors
                 return
 
-            # Use inherited set method from GenericRedisCache for actual caching
-            await self.set(cache_key, cached_response, ttl)
+        class _AwaitableCacheOp:
+            def __await__(self):
+                return _do_cache_response().__await__()
 
-            # Update AI-specific metrics after successful caching
-            self._record_cache_operation(
-                operation=operation,
-                cache_operation='set',
-                text_tier=text_tier,
-                duration=time.time() - start_time,
-                success=True,
-                additional_data={
-                    'text_length': len(text),
-                    'ttl': ttl,
-                    'response_size': len(str(cached_response)),
-                    'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0)
-                }
-            )
-
-            # Record successful cache operation time with detailed context
-            duration = time.time() - start_time
-            logger.debug(
-                f"Successfully cached AI response: operation={operation}, tier={text_tier}, "
-                f"ttl={ttl}s, duration={duration:.3f}s, text_length={len(text)}, "
-                f"key_generation_time={getattr(self.key_generator, 'last_generation_time', 0):.3f}s"
-            )
-
-        except ValidationError:
-            # Re-raise validation errors to caller
-            raise
-        except Exception as e:
-            duration = time.time() - start_time
-            
-            # Record failed cache operation for metrics
-            if 'operation' in locals() and 'text_tier' in locals():
-                self._record_cache_operation(
-                    operation=operation,
-                    cache_operation='set',
-                    text_tier=text_tier,
-                    duration=duration,
-                    success=False,
-                    additional_data={
-                        'error': str(e),
-                        'error_type': type(e).__name__,
-                        'text_length': len(text) if text else 0
-                    }
-                )
-            
-            # Log error with comprehensive context
-            logger.error(
-                f"Failed to cache AI response: {e}",
-                exc_info=True,
-                extra={
-                    'operation': operation if 'operation' in locals() else 'unknown',
-                    'text_length': len(text) if text else 0,
-                    'options_count': len(options) if isinstance(options, dict) else 0,
-                    'response_size': len(str(response)) if isinstance(response, dict) else 0,
-                    'duration': duration,
-                    'error_type': type(e).__name__
-                }
-            )
-            
-            # Don't re-raise non-validation errors - caching failures should not interrupt application flow
-            # This provides graceful degradation when cache is unavailable
+        return _AwaitableCacheOp()
 
     async def get_cached_response(
         self,
@@ -1332,18 +1315,37 @@ class AIResponseCache(GenericRedisCache):
         """
         start_time = time.time()
 
+        # Always attempt to invalidate L1 cache entries regardless of Redis availability
+        l1_invalidated = 0
+        try:
+            if getattr(self, "l1_cache", None):
+                try:
+                    l1_keys = self.l1_cache.get_keys()  # type: ignore[attr-defined]
+                except Exception:
+                    l1_keys = []
+                matching_l1_keys = [k for k in l1_keys if isinstance(k, str) and pattern in k]
+                for key in matching_l1_keys:
+                    try:
+                        await self.l1_cache.delete(key)  # type: ignore[attr-defined]
+                        l1_invalidated += 1
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         if not await self.connect():
-            # Record failed invalidation attempt
+            # Record invalidation that only affected L1 cache
             duration = time.time() - start_time
             self.performance_monitor.record_invalidation_event(
                 pattern=pattern,
-                keys_invalidated=0,
+                keys_invalidated=l1_invalidated,
                 duration=duration,
                 invalidation_type="manual",
                 operation_context=operation_context,
                 additional_data={
-                    "status": "failed",
+                    "status": "partial",
                     "reason": "redis_connection_failed",
+                    "l1_invalidated": l1_invalidated,
                 },
             )
             return
@@ -1367,17 +1369,18 @@ class AIResponseCache(GenericRedisCache):
             else:
                 logger.debug(f"No cache entries found for pattern {pattern}")
 
-            # Record successful invalidation
+            # Record successful invalidation (include L1 count)
             duration = time.time() - start_time
             self.performance_monitor.record_invalidation_event(
                 pattern=pattern,
-                keys_invalidated=keys_count,
+                keys_invalidated=keys_count + l1_invalidated,
                 duration=duration,
                 invalidation_type="manual",
                 operation_context=operation_context,
                 additional_data={
                     "status": "success",
                     "search_pattern": f"ai_cache:*{pattern}*",
+                    "l1_invalidated": l1_invalidated,
                 },
             )
 
@@ -1386,14 +1389,15 @@ class AIResponseCache(GenericRedisCache):
             duration = time.time() - start_time
             self.performance_monitor.record_invalidation_event(
                 pattern=pattern,
-                keys_invalidated=0,
+                keys_invalidated=l1_invalidated,
                 duration=duration,
                 invalidation_type="manual",
                 operation_context=operation_context,
                 additional_data={
-                    "status": "failed",
+                    "status": "partial",
                     "reason": "redis_error",
                     "error": str(e),
+                    "l1_invalidated": l1_invalidated,
                 },
             )
             logger.warning(f"Cache invalidation error: {e}")
@@ -1448,12 +1452,44 @@ class AIResponseCache(GenericRedisCache):
             if not operation_context:
                 operation_context = f"operation_specific_{operation}"
             
-            # Call inherited invalidate_pattern from parent GenericRedisCache
-            # Note: The current implementation uses invalidate_pattern method that needs to be 
-            # compatible with GenericRedisCache. We need to check if the parent class has this method.
+            # First invalidate any matching entries in L1 memory cache
+            total_invalidated = 0
+            matching_l1_keys: List[str] = []
+            try:
+                if getattr(self, "l1_cache", None):
+                    try:
+                        l1_keys = self.l1_cache.get_keys()  # type: ignore[attr-defined]
+                    except Exception:
+                        l1_keys = []
+                    # L1 keys are full cache keys like "ai_cache:op:<op>|..."; match substring
+                    matching_l1_keys = [k for k in l1_keys if isinstance(k, str) and pattern in k]
+                    for key in matching_l1_keys:
+                        try:
+                            await self.l1_cache.delete(key)  # type: ignore[attr-defined]
+                            total_invalidated += 1
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+            # If Redis is unavailable, return L1-only invalidation count
             if not await self.connect():
                 logger.warning(f"Cannot invalidate operation {operation} - Redis unavailable")
-                return 0
+                duration = time.time() - start_time
+                self.performance_monitor.record_invalidation_event(
+                    pattern=pattern,
+                    keys_invalidated=total_invalidated,
+                    duration=duration,
+                    invalidation_type="operation_specific",
+                    operation_context=operation_context,
+                    additional_data={
+                        "operation": operation,
+                        "status": "partial",
+                        "reason": "redis_connection_failed",
+                        "l1_invalidated": total_invalidated,
+                    }
+                )
+                return total_invalidated
             
             try:
                 # Use Redis pattern search to find and count matching keys
@@ -1472,19 +1508,30 @@ class AIResponseCache(GenericRedisCache):
                 else:
                     logger.debug(f"No cache entries found for operation {operation}")
                 
-                # Record invalidation metrics if count > 0
-                if keys_count > 0:
+                # Compute unique invalidated keys across L1 and Redis to avoid double counting
+                try:
+                    redis_key_strs = [
+                        (k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else (k if isinstance(k, str) else str(k)))
+                        for k in (keys or [])
+                    ]
+                except Exception:
+                    redis_key_strs = []
+                unique_invalidated = len(set(matching_l1_keys) | set(redis_key_strs))
+
+                # Record invalidation metrics if any tier invalidated keys
+                if unique_invalidated > 0:
                     duration = time.time() - start_time
                     self.performance_monitor.record_invalidation_event(
                         pattern=pattern,
-                        keys_invalidated=keys_count,
+                        keys_invalidated=unique_invalidated,
                         duration=duration,
                         invalidation_type="operation_specific",
                         operation_context=operation_context,
                         additional_data={
                             "operation": operation,
                             "search_pattern": search_pattern,
-                            "status": "success"
+                            "status": "success",
+                            "l1_invalidated": total_invalidated,
                         }
                     )
                     
@@ -1501,7 +1548,7 @@ class AIResponseCache(GenericRedisCache):
                         f"context={operation_context}"
                     )
                 
-                return keys_count
+                return unique_invalidated
                 
             except Exception as e:
                 duration = time.time() - start_time
@@ -1567,6 +1614,82 @@ class AIResponseCache(GenericRedisCache):
                     'duration': duration
                 }
             )
+
+    async def clear(self, operation_context: str = "test_clear") -> None:
+        """
+        Clear all AI cache entries from both Redis and the L1 memory cache.
+
+        This method removes keys matching the AI cache namespace (ai_cache:*)
+        from Redis and purges the in-process L1 cache.
+
+        Args:
+            operation_context: Optional context string for metrics.
+        """
+        start_time = time.time()
+
+        # Clear L1 cache (best-effort)
+        l1_invalidated = 0
+        try:
+            if getattr(self, "l1_cache", None):
+                # Prefer full clear if available
+                try:
+                    if hasattr(self.l1_cache, "clear"):
+                        self.l1_cache.clear()  # type: ignore[attr-defined]
+                        # We don't know exact count; estimate from keys length if possible
+                        try:
+                            l1_invalidated = len(self.l1_cache.get_keys())  # type: ignore[attr-defined]
+                        except Exception:
+                            l1_invalidated = 0
+                    else:
+                        # Fallback: delete matching keys
+                        try:
+                            l1_keys = self.l1_cache.get_keys()  # type: ignore[attr-defined]
+                        except Exception:
+                            l1_keys = []
+                        for key in list(l1_keys):
+                            if isinstance(key, str) and key.startswith("ai_cache:"):
+                                try:
+                                    await self.l1_cache.delete(key)  # type: ignore[attr-defined]
+                                    l1_invalidated += 1
+                                except Exception:
+                                    pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Clear Redis keys in the AI namespace
+        redis_invalidated = 0
+        if await self.connect():
+            try:
+                assert self.redis is not None
+                _keys_call = self.redis.keys(b"ai_cache:*")
+                keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                if keys:
+                    redis_invalidated = len(keys)
+                    _del_call = self.redis.delete(*keys)
+                    if inspect.isawaitable(_del_call):
+                        await _del_call
+            except Exception as e:
+                logger.warning(f"Redis clear error: {e}")
+
+        # Record metrics
+        duration = time.time() - start_time
+        try:
+            self.performance_monitor.record_invalidation_event(
+                pattern="ai_cache:*",
+                keys_invalidated=redis_invalidated + l1_invalidated,
+                duration=duration,
+                invalidation_type="clear",
+                operation_context=operation_context,
+                additional_data={
+                    "status": "success",
+                    "l1_invalidated": l1_invalidated,
+                    "redis_invalidated": redis_invalidated,
+                },
+            )
+        except Exception:
+            pass
 
     def _should_promote_to_memory(self, text_tier: str, operation: str) -> bool:
         """
@@ -1890,7 +2013,7 @@ class AIResponseCache(GenericRedisCache):
                     "text_tier_distribution": {},
                     "key_generation_stats": self.key_generator.get_key_generation_stats(),
                     "optimization_recommendations": [],
-                    "inherited_stats": self.get_stats() if hasattr(self, 'get_stats') else {}
+                    "inherited_stats": self.performance_monitor.get_performance_stats() if hasattr(self, 'performance_monitor') else {}
                 }
             
             # Calculate overall hit rate
@@ -1936,9 +2059,7 @@ class AIResponseCache(GenericRedisCache):
             # Include inherited stats from parent GenericRedisCache
             inherited_stats = {}
             try:
-                if hasattr(self, 'get_stats'):
-                    inherited_stats = self.get_stats()
-                elif hasattr(self, 'performance_monitor'):
+                if hasattr(self, 'performance_monitor'):
                     inherited_stats = self.performance_monitor.get_performance_stats()
             except Exception as e:
                 logger.warning(f"Could not retrieve inherited stats: {e}")
