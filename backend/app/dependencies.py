@@ -252,3 +252,19 @@ def get_health_checker() -> HealthChecker:
     checker.register_check("cache", check_cache_health)
     checker.register_check("resilience", check_resilience_health)
     return checker
+
+
+async def initialize_health_infrastructure() -> None:
+    """Initialize and validate health checker during application startup.
+
+    Ensures the singleton health checker is created and required checks are registered.
+    Avoids running external calls at startup to keep boot fast and non-blocking.
+    """
+    checker = get_health_checker()
+    required = {"ai_model", "cache", "resilience"}
+    missing = [name for name in required if name not in getattr(checker, "_checks", {})]
+    if missing:
+        logger.error(f"Health checker missing required checks: {missing}")
+        # Do not raise to avoid blocking startup; rely on endpoint to degrade gracefully
+    else:
+        logger.info("Health checker initialized with standard checks: ai_model, cache, resilience")

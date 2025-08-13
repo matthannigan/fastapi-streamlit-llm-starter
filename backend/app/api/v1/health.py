@@ -161,22 +161,35 @@ async def health_check(health_checker = Depends(get_health_checker)):
         systems, load balancers, and operational tools. Cache health checks create
         temporary connections that are automatically cleaned up.
     """
-    # Use infrastructure health checker
-    system_status: SystemHealthStatus = await health_checker.check_all_components()
+    try:
+        # Use infrastructure health checker
+        system_status: SystemHealthStatus = await health_checker.check_all_components()
 
-    # Map to existing HealthResponse format for backward compatibility
-    ai_healthy = any(c.name == "ai_model" and c.status.value == "healthy" for c in system_status.components)
-    cache_comp = next((c for c in system_status.components if c.name == "cache"), None)
-    resilience_comp = next((c for c in system_status.components if c.name == "resilience"), None)
+        # Map to existing HealthResponse format for backward compatibility
+        ai_healthy = any(
+            c.name == "ai_model" and c.status.value == "healthy" for c in system_status.components
+        )
+        cache_comp = next((c for c in system_status.components if c.name == "cache"), None)
+        resilience_comp = next((c for c in system_status.components if c.name == "resilience"), None)
 
-    cache_healthy = None if cache_comp is None else (cache_comp.status.value == "healthy")
-    resilience_healthy = None if resilience_comp is None else (resilience_comp.status.value == "healthy")
+        cache_healthy = None if cache_comp is None else (cache_comp.status.value == "healthy")
+        resilience_healthy = None if resilience_comp is None else (resilience_comp.status.value == "healthy")
 
-    overall_status = "healthy" if system_status.overall_status.value == "healthy" else "degraded"
+        overall_status = "healthy" if system_status.overall_status.value == "healthy" else "degraded"
 
-    return HealthResponse(
-        status=overall_status,
-        ai_model_available=ai_healthy,
-        resilience_healthy=resilience_healthy,
-        cache_healthy=cache_healthy,
-    )
+        return HealthResponse(
+            status=overall_status,
+            ai_model_available=ai_healthy,
+            resilience_healthy=resilience_healthy,
+            cache_healthy=cache_healthy,
+        )
+    except Exception as e:
+        # Graceful degradation: never fail the health endpoint due to infra issues
+        logger.warning(f"Health checker failed; returning degraded status: {e}")
+        ai_healthy = bool(settings.gemini_api_key)
+        return HealthResponse(
+            status="degraded",
+            ai_model_available=ai_healthy,
+            resilience_healthy=None,
+            cache_healthy=None,
+        )
