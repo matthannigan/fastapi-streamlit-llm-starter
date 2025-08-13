@@ -805,7 +805,7 @@ class AIResponseCache(GenericRedisCache):
 
     async def invalidate_by_operation(
         self, operation: str, operation_context: str = ""
-    ) -> int:
+    ) -> None:
         """
         Invalidate cache entries for a specific operation type.
 
