@@ -51,7 +51,7 @@ GIT_BRANCH := $(shell git branch --show-current 2>/dev/null | tr '/' '-' | tr '[
 export GIT_BRANCH
 
 # Assure unique container names
-COMPOSE_PROJECT_NAME := ai-text-processor-$(GIT_BRANCH)
+COMPOSE_PROJECT_NAME := llm-starter-$(GIT_BRANCH)
 export COMPOSE_PROJECT_NAME
 
 # Environment detection for smart Python command selection
@@ -610,7 +610,7 @@ backup:
 	@echo "💾 Creating Redis backup..."
 	@docker-compose exec redis redis-cli BGSAVE
 	@mkdir -p ./backups
-	@docker cp ai-text-processor-redis-$${GIT_BRANCH:-main}:/data/dump.rdb ./backups/redis-$(shell date +%Y%m%d-%H%M%S).rdb
+	@docker cp llm-starter-redis-$${GIT_BRANCH:-main}:/data/dump.rdb ./backups/redis-$(shell date +%Y%m%d-%H%M%S).rdb
 	@echo "✅ Backup created in ./backups/"
 
 # Restore Redis data from backup
@@ -623,7 +623,7 @@ restore:
 		exit 1; \
 	fi
 	@echo "🔄 Restoring Redis data from $(BACKUP)..."
-	@docker cp ./backups/$(BACKUP) ai-text-processor-redis-$${GIT_BRANCH:-main}:/data/dump.rdb
+	@docker cp ./backups/$(BACKUP) llm-starter-redis-$${GIT_BRANCH:-main}:/data/dump.rdb
 	@docker-compose restart redis
 	@echo "✅ Redis data restored from $(BACKUP)!"
 
