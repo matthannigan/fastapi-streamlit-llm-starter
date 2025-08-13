@@ -4,63 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 FastAPI + Streamlit LLM Starter Template
 
-**This repository is a comprehensive starter template for building production-ready LLM-powered APIs with FastAPI.** It showcases industry best practices, robust architecture patterns, and educational examples to help developers quickly bootstrap sophisticated AI applications.
-
-### Template Purpose & Educational Goals
-
-This starter template demonstrates:
-- **Production-ready FastAPI architecture** with dual-API design (public + internal endpoints)
-- **Enterprise-grade infrastructure services** (resilience patterns, caching, monitoring, security)
-- **Clean separation** between reusable infrastructure and customizable domain logic
-- **Comprehensive testing strategies** with high coverage requirements
-- **Modern development practices** (preset-based configuration, automated tooling, containerization)
+**A comprehensive starter template for building production-ready LLM-powered APIs** showcasing industry best practices, robust architecture patterns, and educational examples.
 
 ### 📦 Monorepo Structure
 
-This template includes three main components designed as learning examples:
+- **Backend** (`backend/`): Production-ready FastAPI with infrastructure services and domain examples
+- **Frontend** (`frontend/`): Production-ready Streamlit with async patterns and comprehensive testing  
+- **Shared** (`shared/`): Common Pydantic models for type safety
 
-- **Backend** (`backend/`): **Production-ready FastAPI application** with robust infrastructure services and a text processing domain example
-- **Frontend** (`frontend/`): **Production-ready Streamlit application** demonstrating modern development patterns for AI interfaces with comprehensive async integration and testing
-- **Shared** (`shared/`): **Common Pydantic models** for type safety across components
-
-**The backend infrastructure and frontend patterns are production-ready and reusable, while the text processing domain services serve as educational examples meant to be replaced with your specific business logic.**
+**Infrastructure and frontend patterns are production-ready. Domain services are educational examples to be replaced with your business logic.**
 
 ## 📖 Key Architectural Concepts
 
-### Infrastructure vs Domain Services Architecture
+### Infrastructure vs Domain Services
 
-The template demonstrates a critical architectural distinction documented in `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`:
+| Type | Infrastructure Services 🏗️ | Domain Services 💼 |
+|------|---------------------------|--------------------|
+| **Status** | Production-Ready - Keep & Extend | Educational Examples - Replace |
+| **Purpose** | Business-agnostic technical capabilities | Business-specific implementations |
+| **Coverage** | >90% test coverage required | >70% test coverage required |
+| **Location** | `app/infrastructure/` | `app/services/` |
+| **Examples** | Cache, Resilience, Security, Monitoring | Text processing, validation |
 
-**Infrastructure Services** 🏗️ **[Production-Ready - Keep & Extend]**
-- Business-agnostic, reusable technical capabilities (>90% test coverage)
-- Stable APIs designed for cross-project reuse
-- Location: `app/infrastructure/` (AI, Cache, Resilience, Security, Monitoring)
-
-**Domain Services** 💼 **[Educational Examples - Replace with Your Logic]**  
-- Business-specific implementations serving as learning examples (>70% test coverage)
-- Expected to be replaced per project with your business logic
-- Location: `app/services/` (text processing workflows, validation examples)
+Detailed documentation: `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`
 
 ### Dual-API Architecture
 
-The backend implements a sophisticated dual-API design documented in `docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`:
+- **Public API** (`/v1/`): External business endpoints with authentication → `http://localhost:8000/docs`
+- **Internal API** (`/internal/`): Administrative infrastructure endpoints → `http://localhost:8000/internal/docs`
 
-**Public API** (`/v1/`): External-facing business endpoints with authentication
-- Text processing operations, health checks, business functionality
-- Swagger documentation at `http://localhost:8000/docs`
-
-**Internal API** (`/internal/`): Administrative infrastructure endpoints  
-- Cache management, system monitoring, resilience configuration
-- Swagger documentation at `http://localhost:8000/internal/docs`
-
-This separation provides clear boundaries between external business operations and internal infrastructure management.
-
-### 🐳 **Docker & Containerization**
-The template includes comprehensive Docker support for both development and production:
-- **Development**: Hot-reload containers with file watching (`make dev`)
-- **Production**: Optimized multi-stage builds (`make prod`)
-- **Services**: Backend (FastAPI), Frontend (Streamlit), Redis cache
-- **Docker Compose**: Full orchestration with health checks and dependency management
+Detailed documentation: `docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`
 
 ## Development Commands
 
@@ -105,75 +78,111 @@ streamlit run app/app.py --server.runOnSave=true
 
 ### Testing
 
-#### Backend Testing
+#### Navigation Guide for Claude Code
+
+##### Monorepo Structure:
+- **Root directory**: Contains `.venv/` virtual environment and `Makefile`
+- **Backend code**: Located in `backend/` subdirectory
+- **Python commands**: Must account for virtual environment location
+
+##### Recommended Testing Commands:
+
+###### 1. Use Makefile (Preferred):
 ```bash
-# Recommended: Use Makefile commands (handles venv automatically)
-make test-backend                       # Run fast tests (default)
-make test-backend-all                   # Run all tests including slow ones
-make test-backend-manual                # Run manual tests (requires running server)
-make test-coverage                      # Run tests with coverage reporting
+# Run specific test categories:
+make test-backend-infra                # All infrastructure tests
+make test-backend-infra-cache          # Cache infrastructure tests
+make test-backend-infra-ai             # AI infrastructure tests  
+make test-backend-infra-monitoring     # Monitoring infrastructure tests
+make test-backend-infra-resilience     # Resilience infrastructure tests
+make test-backend-infra-security       # Security infrastructure tests
 
-# Specific test categories
-make test-backend-api                   # API endpoint tests
-make test-backend-core                  # Core functionality tests
-make test-backend-infrastructure        # Infrastructure service tests
-make test-backend-services              # Domain service tests
-make test-backend-integration           # Integration tests
-make test-backend-performance           # Performance tests
+# Run all backend tests:
+make test-backend                      # Fast tests only
+make test-backend-all                  # All tests including slow
 
-# Manual commands (activate virtual environment first)
-source .venv/bin/activate
-cd backend/
-
-# Default: Run fast tests in parallel (excludes slow and manual tests)
-pytest -v
-
-# Run specific test directories
-pytest tests/api/ -v                        # API endpoint tests
-pytest tests/core/ -v                       # Core functionality tests
-pytest tests/infrastructure/ -v             # Infrastructure service tests
-pytest tests/services/ -v                   # Domain service tests
-pytest tests/integration/ -v                # Integration tests
-pytest tests/performance/ -v                # Performance tests
-
-# Run all tests including slow ones (excluding manual)
-pytest -v -m "not manual" --run-slow
-
-# Run only slow tests (requires --run-slow flag)
-pytest -v -m "slow" --run-slow
-
-# Run manual tests (requires running server and --run-manual flag)
-pytest -v -m "manual" --run-manual
-
-# Run with coverage
-pytest --cov=app --cov-report=html --cov-report=term -v
-
-# Run tests sequentially (for debugging)
-pytest -v -n 0
-
-# Run specific test markers
-pytest -v -m "retry" --run-slow             # Retry logic tests
-pytest -v -m "circuit_breaker" --run-slow   # Circuit breaker tests
-pytest -v -m "no_parallel"                  # Tests that must run sequentially
+# Run with specific pytest args:
+make test-backend PYTEST_ARGS="tests/infrastructure/cache/test_parameter_mapping.py -v \
+    --cov=app.infrastructure.cache.parameter_mapping --cov-report=term"
 ```
 
-#### Frontend Testing
+###### 2. Direct Python Commands (Fallback):
 ```bash
-# Recommended: Use Makefile commands for consistent environment
-make test-frontend            # Run frontend tests via Docker
+# From monorepo root:
+.venv/bin/python -c "import os; os.chdir('backend'); import pytest; pytest.main(['-v', 
+'tests/infrastructure/cache/test_parameter_mapping.py'])"
 
-# Manual testing (requires active virtual environment)
-cd frontend/
+# Or with explicit path navigation:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/test_parameter_mapping.py -v
+```
 
-# Run frontend tests with async support
-pytest tests/ -v
+###### 3. Environment Verification:
+```bash
+# Check if virtual environment exists:
+ls -la .venv/bin/python
 
-# Run with coverage reporting
-pytest tests/ --cov=app --cov-report=html --cov-report=term
+# Check current working directory:
+pwd
 
-# Run specific test types
-pytest tests/test_api_client.py -v    # API communication tests
-pytest tests/test_config.py -v       # Configuration tests
+# List backend directory contents:
+ls -la backend/
+```
+
+##### Common Issues & Solutions:
+
+**Issue**: `(eval):cd:1: no such file or directory: backend`
+**Solution**: Use absolute paths or verify current directory with `pwd`. You may already be in the `backend` directory.
+
+**Issue**: `(eval):source:1: no such file or directory: .venv/bin/activate`
+**Solution**: Virtual environment is in root, use `../.venv/bin/activate` from `backend` directory
+
+**Issue**: `make: *** No rule to make target 'test-backend-xyz'. Stop.`
+**Solution**: Use `make help` to see available targets, check for typos in target names
+
+**Issue**: `make: *** No rule to make target `help'.  Stop.`
+**Solution**: The `Makefile` is located in the project root directory. You may be in a subdirectory. Verify current directory with `pwd`. 
+
+**Issue**: `command not found: python`
+**Solution**: Use `python3` or the full path to virtual environment Python
+
+##### Testing Best Practices for Claude:
+
+1. **Always use Makefile commands first** - they handle environment setup automatically
+2. **Verify directory structure** with `ls` before running commands
+3. **Check working directory** with `pwd` when commands fail
+4. **Use relative paths** appropriately based on current directory
+5. **Fall back to absolute paths** when relative paths fail
+
+##### Quick Environment Check:
+```bash
+# Verify you're in the right place before running tests:
+pwd                                    # Should show monorepo root
+ls -la .venv/bin/python               # Should exist if venv is set up
+ls -la backend/pytest.ini             # Should exist if backend is there
+make help | head -10                   # Should show available Makefile targets
+```
+
+#### Testing Commands
+
+**Use `make help` for complete list of test commands. Key testing targets:**
+
+```bash
+# Backend testing (recommended approach)
+make test-backend              # Fast tests only
+make test-backend-all          # All tests including slow
+make test-backend-manual       # Manual tests (requires server)
+make test-coverage            # With coverage reporting
+
+# Infrastructure-specific tests  
+make test-backend-infra-*      # Replace * with: cache, ai, monitoring, resilience, security
+
+# Frontend testing
+make test-frontend            # Run via Docker for consistency
+
+# Direct pytest (when needed - from backend/ directory)
+pytest -v -m "slow" --run-slow        # Slow tests
+pytest -v -m "manual" --run-manual    # Manual tests
+pytest --cov=app --cov-report=term    # With coverage
 ```
 
 
@@ -184,75 +193,18 @@ pytest tests/test_config.py -v       # Configuration tests
 
 ### Code Quality
 
-#### Code Quality (Backend)
 ```bash
-# Recommended: Use Makefile commands (handles venv automatically)
-make lint-backend                       # Run all code quality checks
-make format                             # Format code with black and isort
+# Recommended: Use Makefile commands
+make lint-backend              # All backend quality checks
+make lint-frontend            # All frontend quality checks  
+make format                   # Format all code
 
-# Manual commands (activate virtual environment first)
-source .venv/bin/activate
-cd backend/
-
-# Linting and formatting (from requirements-dev.txt)
-flake8 app/ tests/
-black app/ tests/
-isort app/ tests/
-mypy app/
+# See `make help` for complete list of quality commands
 ```
 
-#### Code Quality (Frontend)
-```bash
-# Recommended: Use Makefile commands (handles Docker environment)
-make lint-frontend            # Run all frontend code quality checks
-make format                   # Format frontend code via Docker
+## 🏗️ Architecture Details
 
-# Manual commands via Docker (consistent environment)
-docker-compose run frontend flake8 app/ tests/
-docker-compose run frontend black app/ tests/
-docker-compose run frontend isort app/ tests/
-docker-compose run frontend mypy app/ --ignore-missing-imports
-
-# Local commands (requires active virtual environment)
-cd frontend/
-flake8 app/ tests/
-black app/ tests/
-isort app/ tests/
-```
-
-## 🏗️ Architecture Overview
-
-**This starter template showcases a production-ready FastAPI architecture designed for educational purposes and real-world deployment.** The template demonstrates modern software engineering practices for building scalable, maintainable LLM-powered APIs.
-
-### 🎯 What You'll Learn
-
-This template teaches developers how to build:
-- **Dual-API architectures** separating public business logic from internal administrative endpoints
-- **Infrastructure vs Domain service patterns** for maintainable, reusable code
-- **Comprehensive resilience strategies** (circuit breakers, retry logic, graceful degradation)
-- **Production-grade security** (prompt injection protection, multi-key authentication)
-- **Advanced testing patterns** with high coverage requirements and parallel execution
-- **Modern configuration management** using preset-based systems
-
-### Infrastructure vs Domain Services Architecture
-
-The backend follows a clear architectural distinction between **Infrastructure Services** and **Domain Services**:
-
-#### Infrastructure Services 🏗️ **[Production-Ready - Keep & Extend]**
-- **Purpose**: Business-agnostic, reusable technical capabilities that form the backbone of any LLM API
-- **Characteristics**: Stable APIs, high test coverage (>90%), configuration-driven behavior
-- **Examples**: Cache management, resilience patterns, AI provider integrations, monitoring, security utilities
-- **Usage in Template**: **Production-ready foundation** - use as-is or extend for your needs
-- **Location**: `app/infrastructure/` - core modules designed to remain stable across projects
-
-#### Domain Services 💼 **[Educational Examples - Replace with Your Logic]**
-- **Purpose**: Business-specific implementations serving as **educational examples**
-- **Characteristics**: Designed to be replaced per project, moderate test coverage (>70%), feature-driven
-- **Examples**: Text processing workflows (summarization, sentiment analysis), document analysis pipelines
-- **Usage in Template**: **Learning examples** - study the patterns, then replace with your business logic
-- **Location**: `app/services/` - customizable modules that demonstrate best practices
-
-**Dependency Direction**: `Domain Services → Infrastructure Services → External Dependencies`
+### Backend Services Organization
 
 ### Frontend Architecture
 

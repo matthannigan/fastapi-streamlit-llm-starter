@@ -1,5 +1,11 @@
 # Development Process with AI Coding Assistants
 
+## Task Lists
+
+```
+Thoroughly review `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_phase2_plan.md` and create a highly detailed task list with all of the sequential steps needed to achieve deliverables 6-10. Do not include time estimates. Save a copy of the task list to `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter.worktrees/refactor-cache/dev/taskplans/refactor-cache-infrastructure_phase2_tasks6-10.md`
+```
+
 ## Agents Analysis
 ```
 We're preparing to begin Phase X of the PRD located at 'PRD.md' following the plan located at 'phaseX_plan.md'. The following detailed task lists have been established for Phase X: 'phaseX_tasks1-5.md' and 'phaseX_tasks6-10.md'.
@@ -19,135 +25,11 @@ Please recommend any new Claude agents that should be created that would improve
 This prompt will consistently apply the Hybrid Strategy while preserving all your detailed task planning work and ensuring
 optimal agent utilization for phased execution.
 
-```
-# Task List Agent Integration Prompt
 
-You are tasked with enhancing deliverable task lists for execution by Claude agents.
-
-## Instructions
-
-1. **Read the current project PRD and Phase X plan files**:
-    - `/path/to/PRD.md`
-    - `/path/to/plan.md`
-    - Any additional project context files
-
-2. **Read the current task list files**:
-    - `/path/to/phase2_tasks1-5.md`
-    - `/path/to/phase2_tasks6-10.md`
-    - Any additional task list files
-
-3. **Analyze each deliverable** and determine:
-    - Primary technical requirements and complexity patterns
-    - Which specialized agents best match those requirements
-    - Sequential dependencies between deliverables
-    - Quality gate requirements (validation, security, compatibility)
-
-4. **Add Agent Utilization Guide** at the top of each task list file with:
-    - Sequential Development Path showing deliverable order and agent assignments
-    - Parallel Development Opportunities where deliverables can run concurrently
-    - Quality Gates showing validation checkpoints and responsible agents
-    - Agent Handoff Points where deliverables transition between agents
-
-5. **For each deliverable, add**:
-    - **🤖 Recommended Agents**: Primary agent (required), Secondary agents (optional/specific subtasks)
-    - **🎯 Rationale**: 1-2 sentence explanation of why these agents are optimal
-    - **🔄 Dependencies**: Which deliverables must complete before this one begins
-    - **✅ Quality Gate**: Which validation agent should review completion
-
-6. **Preserve all existing content**:
-    - Keep all original task numbers and descriptions unchanged
-    - Maintain all technical specifications and acceptance criteria
-    - Keep all completion checklists and notes
-
-7. **Use this template structure**:
-
-```markdown
-# Phase X Task List: Deliverables Y-Z
-
----
-
-## 🔧 Agent Utilization Guide
-
-### Sequential Development Path:
-1. **Deliverable X**: [primary-agent] + [secondary-agent] (duration estimate)
-2. **Deliverable Y**: [primary-agent] (depends on: Deliverable X)
-[continue for all deliverables]
-
-### Parallel Development Opportunities:
-- **Deliverables X & Y**: Can run concurrently using [agent-1] and [agent-2]
-- **Deliverables Z**: Requires completion of both X & Y
-
-### Quality Gates:
-- **After Deliverable X**: [validation-agent] for [specific validation type]
-- **After Deliverable Y**: [validation-agent] for [specific validation type]
-- **Before Phase Completion**: [security-agent] for security review
-
-### Agent Handoff Points:
-- **X → Y**: [primary-agent] completes foundation, [secondary-agent] handles integration
-- **Y → Z**: [validation-agent] validates before [next-agent] begins
-
----
-
-## Deliverable X: [Original Title]
-**🤖 Recommended Agents**: [primary-agent] (primary), [secondary-agent] (secondary)
-**🎯 Rationale**: [1-2 sentence explanation of why these agents are optimal]
-**🔄 Dependencies**: [List prerequisite deliverables or "None"]
-**✅ Quality Gate**: [validation-agent] for [validation type]
-
-### Location: [original location]
-[All original content preserved exactly]
-
-Available Agents for Assignment
-
-Base your recommendations on these available specialized agents:
-
-Existing Agents:
-
-- cache-refactoring-specialist: Complex inheritance refactoring, parameter mapping, method override strategies
-- monitoring-integration-specialist: Performance monitoring, metrics collection, analytics systems
-- config-architecture-specialist: Configuration systems, validation frameworks, environment management
-- integration-testing-architect: Comprehensive testing for inheritance hierarchies, migration validation
-- module-architecture-specialist: Python module organization, import management, dependency resolution
-- async-patterns-specialist: Python async/await patterns, concurrent programming, error handling
-- compatibility-validation-specialist: Backwards compatibility, behavioral equivalence validation
-- security-review-specialist: Security analysis for architecture changes, parameter handling
-
-Standard Agents:
-
-- general-purpose: For simple tasks not requiring specialization
-- docs-writer: For documentation creation following project standards
-
-Agent Selection Criteria
-
-When recommending agents, consider:
-
-1. Technical Complexity: More complex deliverables need specialized agents
-2. Domain Expertise: Match agent expertise to deliverable requirements
-3. Dependencies: Ensure agents can handle prerequisite knowledge
-4. Quality Requirements: Include validation agents for critical deliverables
-5. Performance Impact: Consider if monitoring specialists are needed
-6. Security Implications: Include security review for architecture changes
-
-Output Requirements
-
-1. Update each task list file with the Agent Utilization Guide and deliverable agent recommendations
-2. Maintain all original content exactly as written
-3. Ensure consistent formatting using the template structure
-4. Verify agent assignments align with sequential development path
-5. Document any assumptions made about deliverable dependencies
-
-Validation
-
-After completing the updates:
-1. Verify no original content was modified
-2. Confirm all deliverables have appropriate agent assignments
-3. Check that quality gates cover all critical validation points
-4. Ensure the sequential development path is logical and efficient
-```
 
 ## Task Execution via Claude with Agents
 ```
-I'm ready to execute Phase X Deliverable Y. Based on the agent recommendations in the task plan:
+I'm ready to execute Phase X Deliverable Y as detailed in `tasks.md`. Based on the agent recommendations in the task plan:
 
 1. Please review the recommended agents for this deliverable
 2. Determine if the primary recommended agent should handle this work
@@ -155,4 +37,8 @@ I'm ready to execute Phase X Deliverable Y. Based on the agent recommendations i
 4. Use the appropriate agent(s) to execute the deliverable efficiently
 
 Focus on maintaining the sequential development path and quality gates outlined in the Agent Utilization Guide.
+
+As each task and subtask are completed, mark them [X] complete in the original tasks file.
+
+After all tasks for this deliverable are complete, create a local commit with a detailed commit message to save our work and prepare for the next deliverable.
 ```
