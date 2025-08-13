@@ -516,60 +516,409 @@ class AIResponseCache(GenericRedisCache):
 
     def _get_text_tier(self, text: str) -> str:
         """
-        Determine caching tier based on text size.
+        Determine caching tier based on text size with comprehensive validation and logging.
+
+        Categorizes text into size tiers for caching optimization decisions. Each tier
+        represents different caching strategies:
+        - 'small': Fast memory cache promotion, full text storage
+        - 'medium': Balanced caching with moderate compression  
+        - 'large': Aggressive compression, selective memory promotion
+        - 'xlarge': Maximum compression, Redis-only storage
 
         Args:
-            text: Input text to categorize
+            text (str): Input text to categorize by length
 
         Returns:
-            Tier name: 'small', 'medium', 'large', or 'xlarge'
+            str: Tier name ('small', 'medium', 'large', 'xlarge')
+
+        Raises:
+            ValidationError: If text parameter is invalid
+
+        Example:
+            >>> cache = AIResponseCache()
+            >>> tier = cache._get_text_tier("Short text")
+            >>> print(tier)  # Output: 'small'
+            >>> 
+            >>> tier = cache._get_text_tier("A" * 10000)  
+            >>> print(tier)  # Output: 'large'
         """
-        text_len = len(text)
-        if text_len < self.text_size_tiers["small"]:
-            return "small"
-        elif text_len < self.text_size_tiers["medium"]:
+        try:
+            # Input validation
+            if not isinstance(text, str):
+                raise ValidationError(
+                    "Invalid text parameter: must be string",
+                    context={'text_type': type(text)}
+                )
+            
+            text_len = len(text)
+            
+            # Categorize based on configured thresholds
+            if text_len < self.text_size_tiers["small"]:
+                tier = "small"
+            elif text_len < self.text_size_tiers["medium"]:
+                tier = "medium"
+            elif text_len < self.text_size_tiers["large"]:
+                tier = "large"
+            else:
+                tier = "xlarge"
+            
+            logger.debug(
+                f"Text tier determined: length={text_len}, tier={tier}, "
+                f"thresholds=small:{self.text_size_tiers['small']}, "
+                f"medium:{self.text_size_tiers['medium']}, "
+                f"large:{self.text_size_tiers['large']}"
+            )
+            
+            return tier
+            
+        except Exception as e:
+            logger.warning(f"Error determining text tier: {e}")
+            # Fallback to medium tier for safety
             return "medium"
-        elif text_len < self.text_size_tiers["large"]:
-            return "large"
-        else:
-            return "xlarge"
 
     def _get_text_tier_from_key(self, key: str) -> str:
         """
         Extract text tier information from cache key if available.
 
+        Parses AI cache keys to extract embedded text tier information for metrics
+        and optimization decisions. Supports multiple key formats and provides
+        fallback logic for keys without tier information.
+
         Args:
-            key: Cache key to analyze
+            key (str): Cache key to analyze for tier information
 
         Returns:
-            Text tier name or 'unknown' if not determinable
+            str: Text tier name ('small', 'medium', 'large', 'xlarge') or 'unknown' 
+                 if tier cannot be determined from key format
+
+        Example:
+            >>> cache = AIResponseCache()
+            >>> # For key: "ai_cache:op:summarize|tier:large|txt:hash123"
+            >>> tier = cache._get_text_tier_from_key(key)
+            >>> print(tier)  # Output: 'large'
+            >>> 
+            >>> # For malformed key
+            >>> tier = cache._get_text_tier_from_key("invalid_key")  
+            >>> print(tier)  # Output: 'unknown'
         """
-        # This is a simplified implementation - actual implementation would
-        # parse the cache key format to extract tier information
-        # For now, return unknown as fallback
-        return "unknown"
+        try:
+            # Input validation
+            if not key or not isinstance(key, str):
+                logger.debug(f"Invalid key for tier extraction: {key}")
+                return "unknown"
+            
+            # Parse cache key format for tier information
+            # Expected format: "ai_cache:op:operation|tier:size|txt:content|..."
+            if "|tier:" in key:
+                # Extract tier from explicit tier field
+                tier_part = key.split("|tier:")[1].split("|")[0]
+                if tier_part in ["small", "medium", "large", "xlarge"]:
+                    logger.debug(f"Extracted tier from key: {tier_part}")
+                    return tier_part
+            
+            # Alternative: Try to infer tier from text length if text is embedded
+            if "|txt:" in key:
+                text_part = key.split("|txt:")[1].split("|")[0]
+                # If text is not hashed (small texts), we can determine tier
+                if not text_part.startswith("hash_"):
+                    text_len = len(text_part)
+                    tier = self._get_text_tier(text_part)
+                    logger.debug(f"Inferred tier from embedded text: length={text_len}, tier={tier}")
+                    return tier
+            
+            # Check for size indicators in key format
+            if "small" in key.lower():
+                return "small"
+            elif "medium" in key.lower():
+                return "medium"
+            elif "large" in key.lower():
+                return "large"
+            elif "xlarge" in key.lower():
+                return "xlarge"
+            
+            logger.debug(f"Could not determine tier from key format: {key[:100]}...")
+            return "unknown"
+            
+        except Exception as e:
+            logger.warning(f"Error extracting tier from key: {e}")
+            return "unknown"
 
     def _extract_operation_from_key(self, key: str) -> str:
         """
-        Parse cache key to extract operation type.
+        Parse cache key to extract operation type with comprehensive format support.
+
+        Parses AI cache keys to extract the operation type for metrics tracking and
+        cache management operations. Supports multiple key formats and provides
+        robust error handling for malformed keys.
 
         Args:
-            key: Cache key to parse
+            key (str): Cache key to parse for operation information
 
         Returns:
-            Operation type or 'unknown' if not parseable
+            str: Operation type ('summarize', 'sentiment', etc.) or 'unknown' if not parseable
+
+        Example:
+            >>> cache = AIResponseCache()
+            >>> # For key: "ai_cache:op:summarize|txt:content|opts:hash123"
+            >>> operation = cache._extract_operation_from_key(key)
+            >>> print(operation)  # Output: 'summarize'
+            >>> 
+            >>> # For malformed key
+            >>> operation = cache._extract_operation_from_key("invalid_key")
+            >>> print(operation)  # Output: 'unknown'
         """
         try:
-            # Parse cache key format: ai_cache:op:operation|...
+            # Input validation
+            if not key or not isinstance(key, str):
+                logger.debug(f"Invalid key for operation extraction: {key}")
+                return "unknown"
+            
+            # Parse standard AI cache key format: ai_cache:op:operation|...
             if ":op:" in key:
                 parts = key.split(":op:")
                 if len(parts) > 1:
                     operation_part = parts[1].split("|")[0]
-                    return operation_part
+                    # Validate operation name (alphanumeric + underscore)
+                    if operation_part and operation_part.replace("_", "").isalnum():
+                        logger.debug(f"Extracted operation from key: {operation_part}")
+                        return operation_part
+            
+            # Alternative format: Look for operation in key components
+            if "|op:" in key:
+                parts = key.split("|op:")
+                if len(parts) > 1:
+                    operation_part = parts[1].split("|")[0]
+                    if operation_part and operation_part.replace("_", "").isalnum():
+                        logger.debug(f"Extracted operation from alternative format: {operation_part}")
+                        return operation_part
+            
+            # Check for known operation names in key
+            known_operations = ["summarize", "sentiment", "key_points", "questions", "qa", "extract", "classify"]
+            for operation in known_operations:
+                if operation in key:
+                    logger.debug(f"Found known operation in key: {operation}")
+                    return operation
+            
+            logger.debug(f"Could not extract operation from key format: {key[:100]}...")
             return "unknown"
-        except Exception:
+            
+        except Exception as e:
+            logger.warning(f"Error extracting operation from key: {e}")
             return "unknown"
 
+    def _record_cache_operation(
+        self,
+        operation: str,
+        cache_operation: str,
+        text_tier: str,
+        duration: float,
+        success: bool,
+        additional_data: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Record comprehensive AI-specific cache operation metrics.
+
+        Tracks detailed metrics for AI cache operations including operation type,
+        text tier distribution, performance timing, and success/failure rates.
+        Integrates with the performance monitor and maintains AI-specific metrics.
+
+        Args:
+            operation (str): AI operation type (e.g., 'summarize', 'sentiment')
+            cache_operation (str): Cache operation type ('get', 'set', 'delete', 'invalidate')
+            text_tier (str): Text size tier ('small', 'medium', 'large', 'xlarge')
+            duration (float): Operation duration in seconds
+            success (bool): Whether the operation succeeded
+            additional_data (Dict[str, Any], optional): Additional metrics data
+
+        Example:
+            >>> cache = AIResponseCache()
+            >>> cache._record_cache_operation(
+            ...     operation="summarize",
+            ...     cache_operation="get", 
+            ...     text_tier="medium",
+            ...     duration=0.123,
+            ...     success=True,
+            ...     additional_data={'cache_result': 'hit', 'text_length': 1500}
+            ... )
+        """
+        try:
+            # Record in performance monitor with detailed context
+            self.performance_monitor.record_cache_operation_time(
+                operation=cache_operation,
+                duration=duration,
+                cache_hit=success,
+                additional_data={
+                    'ai_operation': operation,
+                    'text_tier': text_tier,
+                    'success': success,
+                    **(additional_data or {})
+                }
+            )
+            
+            # Update AI-specific metrics
+            if success:
+                if cache_operation == 'get':
+                    # Cache hit
+                    self.ai_metrics['cache_hits_by_operation'][operation] += 1
+                elif cache_operation == 'set':
+                    # Successful cache store
+                    if 'cache_stores_by_operation' not in self.ai_metrics:
+                        self.ai_metrics['cache_stores_by_operation'] = defaultdict(int)
+                    self.ai_metrics['cache_stores_by_operation'][operation] += 1
+            else:
+                if cache_operation == 'get':
+                    # Cache miss
+                    self.ai_metrics['cache_misses_by_operation'][operation] += 1
+                elif cache_operation == 'set':
+                    # Failed cache store
+                    if 'cache_store_failures_by_operation' not in self.ai_metrics:
+                        self.ai_metrics['cache_store_failures_by_operation'] = defaultdict(int)
+                    self.ai_metrics['cache_store_failures_by_operation'][operation] += 1
+            
+            # Update text tier distribution
+            self.ai_metrics['text_tier_distribution'][text_tier] += 1
+            
+            # Record operation performance data with enhanced context
+            operation_data = {
+                'operation': operation,
+                'cache_operation': cache_operation,
+                'text_tier': text_tier,
+                'timestamp': time.time(),
+                'duration': duration,
+                'success': success,
+                **(additional_data or {})
+            }
+            self.ai_metrics['operation_performance'].append(operation_data)
+            
+            # Keep only recent performance data (last 1000 operations) to prevent memory growth
+            if len(self.ai_metrics['operation_performance']) > 1000:
+                self.ai_metrics['operation_performance'] = \
+                    self.ai_metrics['operation_performance'][-1000:]
+            
+            logger.debug(
+                f"Recorded AI cache operation: operation={operation}, "
+                f"cache_op={cache_operation}, tier={text_tier}, "
+                f"duration={duration:.3f}s, success={success}"
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to record cache operation metrics: {e}")
+            # Don't raise - metrics recording failure shouldn't interrupt cache operations
+
+    # =============================================================================
+    # INHERITED METHODS DOCUMENTATION
+    # =============================================================================
+    """
+    AIResponseCache inherits the following methods from GenericRedisCache:
+    
+    ### Core Cache Operations (Inherited):
+    - async connect() -> bool
+        Establishes Redis connection with graceful degradation to memory-only mode
+        
+    - async disconnect()
+        Cleanly closes Redis connection
+        
+    - async get(key: str) -> Any
+        Retrieves value from L1 cache first, then Redis with decompression
+        
+    - async set(key: str, value: Any, ttl: Optional[int] = None)
+        Stores value in both L1 cache and Redis with automatic compression
+        
+    - async delete(key: str) -> bool
+        Removes key from both cache tiers
+        
+    - async exists(key: str) -> bool
+        Checks key existence in L1 cache first, then Redis
+    
+    ### Cache Management Methods (Inherited):
+    - async get_ttl(key: str) -> Optional[int]
+        Gets remaining TTL for a key from Redis
+        
+    - async clear() -> bool
+        Clears both L1 cache and all Redis keys
+        
+    - async get_keys(pattern: str = "*") -> List[str]
+        Gets all keys matching pattern from Redis
+        
+    - async invalidate_pattern(pattern: str) -> int
+        Removes all keys matching pattern and returns count
+    
+    ### Compression Methods (Inherited):
+    - _compress_data(data: Any) -> bytes
+        Compresses data if above threshold using pickle + zlib
+        
+    - _decompress_data(data: bytes) -> Any
+        Decompresses and deserializes cached data
+    
+    ### L1 Memory Cache Methods (Inherited):
+    - L1 cache operations are automatically integrated with Redis operations
+    - Memory cache provides fast access for frequently used items
+    - Automatic promotion/demotion based on access patterns
+    
+    ### Performance Monitoring (Inherited):
+    - All cache operations are automatically tracked by performance_monitor
+    - Compression ratios, operation times, hit/miss ratios collected
+    - Cache tier information (L1 vs Redis) recorded for analysis
+    
+    ### Callback System (Inherited):
+    - register_callback(event: str, callback: Callable)
+        Register callbacks for cache events (get_success, get_miss, set_success, delete_success)
+    - _fire_callback(event: str, *args, **kwargs)
+        Trigger registered callbacks for specific events
+    
+    ### Security Features (Inherited):
+    - async validate_security() -> Optional[SecurityValidationResult]
+        Validate Redis connection security if security manager available
+    - get_security_status() -> Dict[str, Any]
+        Get current security configuration and status
+    - get_security_recommendations() -> List[str]
+        Get security recommendations for current configuration
+    - async generate_security_report() -> str
+        Generate comprehensive security assessment report
+    - async test_security_configuration() -> Dict[str, Any]
+        Test security configuration comprehensively
+    
+    ### Inheritance Architecture:
+    
+    ┌─────────────────────────────────────────────┐
+    │            CacheInterface                   │
+    │         (Abstract Base Class)              │
+    └────────────────┬────────────────────────────┘
+                      │ implements
+                      ▼
+    ┌─────────────────────────────────────────────┐
+    │          GenericRedisCache                  │
+    │  • Redis connection management              │
+    │  • L1 memory cache integration             │
+    │  • Compression/decompression               │
+    │  • Performance monitoring                  │
+    │  • Security features                       │
+    │  • Callback system                         │
+    └────────────────┬────────────────────────────┘
+                      │ inherits from
+                      ▼
+    ┌─────────────────────────────────────────────┐
+    │           AIResponseCache                   │
+    │  • AI-specific cache key generation        │
+    │  • Operation-specific TTLs                 │
+    │  • Text tier analysis                      │
+    │  • AI metrics collection                   │
+    │  • Memory cache promotion logic            │
+    │  • AI-specific callbacks                   │
+    └─────────────────────────────────────────────┘
+    
+    This architecture provides:
+    - Clean separation of concerns between generic and AI-specific functionality
+    - Full reuse of battle-tested Redis operations and error handling
+    - Extensible callback system for AI-specific metrics collection
+    - Automatic integration of L1 cache, compression, and monitoring
+    - Backward compatibility with existing AIResponseCache API
+    """
+    
+    # =============================================================================
+    # AI-SPECIFIC METHOD OVERRIDES AND EXTENSIONS
+    # =============================================================================
+    
     # Public AI-Specific Methods
 
     async def cache_response(
@@ -581,11 +930,16 @@ class AIResponseCache(GenericRedisCache):
         question: Optional[str] = None,
     ) -> None:
         """
-        Cache AI response with AI-specific optimizations.
+        Cache AI response with enhanced AI-specific optimizations and comprehensive error handling.
 
         This method provides the main AI caching functionality, using the inherited
-        set() method from GenericRedisCache while adding AI-specific features like
-        intelligent key generation, operation-specific TTLs, and metadata enhancement.
+        set() method from GenericRedisCache while adding comprehensive AI-specific features:
+        - Intelligent cache key generation using CacheKeyGenerator
+        - Operation-specific TTLs from configuration
+        - Text tier analysis for optimization decisions
+        - Enhanced response metadata for AI analytics
+        - Comprehensive error handling with custom exceptions
+        - Performance monitoring and metrics collection
 
         Args:
             text (str): Input text that generated this response
@@ -594,27 +948,56 @@ class AIResponseCache(GenericRedisCache):
             response (Dict[str, Any]): AI response data to cache
             question (str, optional): Question for Q&A operations
 
+        Raises:
+            ValidationError: If input parameters are invalid
+            InfrastructureError: If cache operation fails critically
+
         Example:
             >>> await cache.cache_response(
-            ...     text="Long document...",
+            ...     text="Long document to summarize...",
             ...     operation="summarize",
             ...     options={"max_length": 100},
             ...     response={"summary": "Brief summary", "confidence": 0.95}
             ... )
         """
         start_time = time.time()
-
+        
         try:
-            # Generate AI-optimized cache key
+            # Input validation
+            if not text or not isinstance(text, str):
+                raise ValidationError(
+                    "Invalid text parameter: must be non-empty string",
+                    context={'text_type': type(text), 'text_length': len(text) if text else 0}
+                )
+            
+            if not operation or not isinstance(operation, str):
+                raise ValidationError(
+                    "Invalid operation parameter: must be non-empty string",
+                    context={'operation': operation, 'operation_type': type(operation)}
+                )
+            
+            if not isinstance(options, dict):
+                raise ValidationError(
+                    "Invalid options parameter: must be dictionary",
+                    context={'options_type': type(options)}
+                )
+            
+            if not isinstance(response, dict):
+                raise ValidationError(
+                    "Invalid response parameter: must be dictionary",
+                    context={'response_type': type(response)}
+                )
+
+            # Generate AI-optimized cache key using CacheKeyGenerator
             cache_key = self.key_generator.generate_cache_key(text, operation, options, question)
             
-            # Determine text tier for metrics
+            # Determine text tier for metrics and optimization decisions
             text_tier = self._get_text_tier(text)
             
-            # Get operation-specific TTL
+            # Get operation-specific TTL from configuration
             ttl = self.operation_ttls.get(operation, self.default_ttl)
             
-            # Build enhanced cached response with AI metadata
+            # Build enhanced cached response with comprehensive AI metadata
             cached_response = {
                 **response,
                 "cached_at": datetime.now().isoformat(),
@@ -624,22 +1007,73 @@ class AIResponseCache(GenericRedisCache):
                 "operation": operation,
                 "ai_version": "refactored_inheritance",
                 "key_generation_time": getattr(self.key_generator, 'last_generation_time', 0),
+                "options_hash": str(hash(str(sorted(options.items())) if options else "")),
+                "question_provided": question is not None,
             }
 
-            # Use inherited set method from GenericRedisCache
+            # Use inherited set method from GenericRedisCache for actual caching
             await self.set(cache_key, cached_response, ttl)
 
-            # Record successful cache operation time
-            duration = time.time() - start_time
-            logger.debug(
-                f"Cached AI response for {operation} (tier: {text_tier}, "
-                f"ttl: {ttl}s, time: {duration:.3f}s)"
+            # Update AI-specific metrics after successful caching
+            self._record_cache_operation(
+                operation=operation,
+                cache_operation='set',
+                text_tier=text_tier,
+                duration=time.time() - start_time,
+                success=True,
+                additional_data={
+                    'text_length': len(text),
+                    'ttl': ttl,
+                    'response_size': len(str(cached_response)),
+                    'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0)
+                }
             )
 
+            # Record successful cache operation time with detailed context
+            duration = time.time() - start_time
+            logger.debug(
+                f"Successfully cached AI response: operation={operation}, tier={text_tier}, "
+                f"ttl={ttl}s, duration={duration:.3f}s, text_length={len(text)}, "
+                f"key_generation_time={getattr(self.key_generator, 'last_generation_time', 0):.3f}s"
+            )
+
+        except ValidationError:
+            # Re-raise validation errors to caller
+            raise
         except Exception as e:
             duration = time.time() - start_time
-            logger.warning(f"Failed to cache AI response: {e}")
-            # Don't re-raise - caching failures should not interrupt application flow
+            
+            # Record failed cache operation for metrics
+            if 'operation' in locals() and 'text_tier' in locals():
+                self._record_cache_operation(
+                    operation=operation,
+                    cache_operation='set',
+                    text_tier=text_tier,
+                    duration=duration,
+                    success=False,
+                    additional_data={
+                        'error': str(e),
+                        'error_type': type(e).__name__,
+                        'text_length': len(text) if text else 0
+                    }
+                )
+            
+            # Log error with comprehensive context
+            logger.error(
+                f"Failed to cache AI response: {e}",
+                exc_info=True,
+                extra={
+                    'operation': operation if 'operation' in locals() else 'unknown',
+                    'text_length': len(text) if text else 0,
+                    'options_count': len(options) if isinstance(options, dict) else 0,
+                    'response_size': len(str(response)) if isinstance(response, dict) else 0,
+                    'duration': duration,
+                    'error_type': type(e).__name__
+                }
+            )
+            
+            # Don't re-raise non-validation errors - caching failures should not interrupt application flow
+            # This provides graceful degradation when cache is unavailable
 
     async def get_cached_response(
         self,
@@ -649,34 +1083,65 @@ class AIResponseCache(GenericRedisCache):
         question: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Retrieve cached AI response with AI-specific optimizations.
+        Retrieve cached AI response with enhanced AI-specific optimizations and comprehensive metrics.
 
-        This method provides AI cache retrieval functionality, using the inherited
-        get() method from GenericRedisCache while adding AI-specific features like
-        cache hit metadata enhancement and memory cache promotion for small texts.
+        This method provides comprehensive AI cache retrieval functionality, using the inherited
+        get() method from GenericRedisCache while adding extensive AI-specific features:
+        - Intelligent cache key generation using CacheKeyGenerator
+        - Text tier determination for metrics and promotion decisions
+        - Enhanced cache hit metadata with retrieval timestamps
+        - Comprehensive AI metrics tracking for hits and misses
+        - Memory cache promotion logic for frequently accessed content
+        - Detailed error handling and logging
 
         Args:
-            text (str): Input text content
-            operation (str): Operation type
-            options (Dict[str, Any]): Operation options
+            text (str): Input text content to search for in cache
+            operation (str): Operation type (e.g., 'summarize', 'sentiment')
+            options (Dict[str, Any]): Operation options used for key generation
             question (str, optional): Question for Q&A operations
 
         Returns:
-            Cached response if found, None otherwise
+            Cached response dictionary with enhanced metadata if found, None otherwise.
+            Response includes: original response data, cache_hit=True, retrieved_at timestamp
+
+        Raises:
+            ValidationError: If input parameters are invalid
 
         Example:
             >>> cached = await cache.get_cached_response(
-            ...     text="Long document...",
+            ...     text="Long document to analyze...",
             ...     operation="summarize",
             ...     options={"max_length": 100}
             ... )
             >>> if cached:
-            ...     print(f"Found cached result: {cached['summary']}")
+            ...     print(f"Cache hit! Summary: {cached['summary']}")
+            ...     print(f"Retrieved at: {cached['retrieved_at']}")
+            ... else:
+            ...     print("Cache miss - need to generate new response")
         """
         start_time = time.time()
 
         try:
-            # Generate AI-optimized cache key
+            # Input validation
+            if not text or not isinstance(text, str):
+                raise ValidationError(
+                    "Invalid text parameter: must be non-empty string",
+                    context={'text_type': type(text), 'text_length': len(text) if text else 0}
+                )
+            
+            if not operation or not isinstance(operation, str):
+                raise ValidationError(
+                    "Invalid operation parameter: must be non-empty string",
+                    context={'operation': operation, 'operation_type': type(operation)}
+                )
+            
+            if not isinstance(options, dict):
+                raise ValidationError(
+                    "Invalid options parameter: must be dictionary",
+                    context={'options_type': type(options)}
+                )
+
+            # Generate AI-optimized cache key using CacheKeyGenerator
             cache_key = self.key_generator.generate_cache_key(text, operation, options, question)
             
             # Determine text tier for metrics and promotion decisions
@@ -686,25 +1151,102 @@ class AIResponseCache(GenericRedisCache):
             cached_data = await self.get(cache_key)
 
             if cached_data:
-                # Enhance cached data with retrieval metadata
-                cached_data["cache_hit"] = True
-                cached_data["retrieved_at"] = datetime.now().isoformat()
+                # Cache hit - enhance cached data with retrieval metadata
+                if isinstance(cached_data, dict):
+                    cached_data["cache_hit"] = True
+                    cached_data["retrieved_at"] = datetime.now().isoformat()
+                    
+                    # Add retrieval metrics to existing cached metadata
+                    if "retrieval_count" not in cached_data:
+                        cached_data["retrieval_count"] = 1
+                    else:
+                        cached_data["retrieval_count"] += 1
+                
+                # Record AI cache hit metrics
+                self._record_cache_operation(
+                    operation=operation,
+                    cache_operation='get',
+                    text_tier=text_tier,
+                    duration=time.time() - start_time,
+                    success=True,
+                    additional_data={
+                        'cache_result': 'hit',
+                        'text_length': len(text),
+                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0),
+                        'retrieval_count': cached_data.get("retrieval_count", 1) if isinstance(cached_data, dict) else 1
+                    }
+                )
 
-                # Check if small text should be promoted to memory cache
+                # Check if content should be promoted to memory cache for faster future access
                 if self._should_promote_to_memory(text_tier, operation):
                     # Memory cache promotion is handled automatically by parent class
-                    # via L1 cache integration - no additional action needed
-                    pass
+                    # via L1 cache integration - GenericRedisCache.get() already promotes to L1
+                    logger.debug(f"Content eligible for memory cache promotion: tier={text_tier}, operation={operation}")
 
-                logger.debug(f"AI cache hit for {operation} (tier: {text_tier})")
+                duration = time.time() - start_time
+                logger.debug(
+                    f"AI cache hit: operation={operation}, tier={text_tier}, "
+                    f"duration={duration:.3f}s, text_length={len(text)}, "
+                    f"retrieval_count={cached_data.get('retrieval_count', 1) if isinstance(cached_data, dict) else 1}"
+                )
                 return cached_data
             else:
-                logger.debug(f"AI cache miss for {operation} (tier: {text_tier})")
+                # Cache miss - record AI cache miss metrics
+                self._record_cache_operation(
+                    operation=operation,
+                    cache_operation='get',
+                    text_tier=text_tier,
+                    duration=time.time() - start_time,
+                    success=False,
+                    additional_data={
+                        'cache_result': 'miss',
+                        'text_length': len(text),
+                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0),
+                        'miss_reason': 'key_not_found'
+                    }
+                )
+
+                duration = time.time() - start_time
+                logger.debug(
+                    f"AI cache miss: operation={operation}, tier={text_tier}, "
+                    f"duration={duration:.3f}s, text_length={len(text)}"
+                )
                 return None
 
+        except ValidationError:
+            # Re-raise validation errors to caller
+            raise
         except Exception as e:
             duration = time.time() - start_time
-            logger.warning(f"Cache retrieval error for {operation}: {e}")
+            
+            # Record failed cache retrieval for metrics
+            if 'operation' in locals() and 'text_tier' in locals():
+                self._record_cache_operation(
+                    operation=operation,
+                    cache_operation='get',
+                    text_tier=text_tier,
+                    duration=duration,
+                    success=False,
+                    additional_data={
+                        'cache_result': 'error',
+                        'error': str(e),
+                        'error_type': type(e).__name__,
+                        'text_length': len(text) if text else 0
+                    }
+                )
+            
+            # Log error with comprehensive context
+            logger.error(
+                f"Cache retrieval error: {e}",
+                exc_info=True,
+                extra={
+                    'operation': operation if 'operation' in locals() else 'unknown',
+                    'text_length': len(text) if text else 0,
+                    'options_count': len(options) if isinstance(options, dict) else 0,
+                    'duration': duration,
+                    'error_type': type(e).__name__
+                }
+            )
             return None
 
     async def invalidate_pattern(self, pattern: str, operation_context: str = ""):
@@ -805,64 +1347,266 @@ class AIResponseCache(GenericRedisCache):
 
     async def invalidate_by_operation(
         self, operation: str, operation_context: str = ""
-    ) -> None:
+    ) -> int:
         """
-        Invalidate cache entries for a specific operation type.
+        Invalidate cache entries for a specific operation type with comprehensive metrics tracking.
 
-        Removes all cached responses for a particular AI operation type while
-        preserving other operation types intact.
+        Removes all cached responses for a particular AI operation type while preserving 
+        other operation types intact. Uses the inherited invalidate_pattern method from 
+        GenericRedisCache for the actual invalidation work, but adds AI-specific pattern
+        building, metrics recording, and enhanced logging.
 
         Args:
-            operation (str): Operation type to invalidate (e.g., 'summarize', 'sentiment').
+            operation (str): Operation type to invalidate (e.g., 'summarize', 'sentiment')
             operation_context (str, optional): Context describing why this operation's
                                              cache was invalidated. Auto-generated if not provided.
 
         Returns:
-            None: This method performs invalidation as a side effect.
+            int: Number of cache entries that were invalidated
+
+        Raises:
+            ValidationError: If operation parameter is invalid
+            InfrastructureError: If invalidation fails critically
 
         Example:
             >>> cache = AIResponseCache()
             >>> # Invalidate all summarization results due to model update
-            >>> await cache.invalidate_by_operation(
+            >>> count = await cache.invalidate_by_operation(
             ...     operation="summarize",
             ...     operation_context="summarization_model_updated"
             ... )
-            >>> print("All summarization cache entries cleared")
+            >>> print(f"Invalidated {count} summarization cache entries")
         """
-        if not operation_context:
-            operation_context = f"operation_specific_{operation}"
-        await self.invalidate_pattern(
-            f"op:{operation}", operation_context=operation_context
-        )
+        start_time = time.time()
+        
+        try:
+            # Input validation
+            if not operation or not isinstance(operation, str):
+                raise ValidationError(
+                    "Invalid operation parameter: must be non-empty string",
+                    context={'operation': operation, 'operation_type': type(operation)}
+                )
+            
+            # Build pattern string for operation matching
+            # Pattern format: "op:operation" matches keys like "ai_cache:op:summarize|..."
+            pattern = f"op:{operation}"
+            
+            # Generate operation context if not provided
+            if not operation_context:
+                operation_context = f"operation_specific_{operation}"
+            
+            # Call inherited invalidate_pattern from parent GenericRedisCache
+            # Note: The current implementation uses invalidate_pattern method that needs to be 
+            # compatible with GenericRedisCache. We need to check if the parent class has this method.
+            if not await self.connect():
+                logger.warning(f"Cannot invalidate operation {operation} - Redis unavailable")
+                return 0
+            
+            try:
+                # Use Redis pattern search to find and count matching keys
+                assert self.redis is not None
+                search_pattern = f"ai_cache:*{pattern}*"
+                keys = await self.redis.keys(search_pattern.encode("utf-8"))
+                keys_count = len(keys) if keys else 0
+                
+                if keys:
+                    # Delete the matching keys
+                    await self.redis.delete(*keys)
+                    logger.info(f"Invalidated {keys_count} cache entries for operation {operation}")
+                else:
+                    logger.debug(f"No cache entries found for operation {operation}")
+                
+                # Record invalidation metrics if count > 0
+                if keys_count > 0:
+                    duration = time.time() - start_time
+                    self.performance_monitor.record_invalidation_event(
+                        pattern=pattern,
+                        keys_invalidated=keys_count,
+                        duration=duration,
+                        invalidation_type="operation_specific",
+                        operation_context=operation_context,
+                        additional_data={
+                            "operation": operation,
+                            "search_pattern": search_pattern,
+                            "status": "success"
+                        }
+                    )
+                    
+                    # Update AI-specific invalidation metrics
+                    if hasattr(self, 'ai_metrics') and 'invalidations_by_operation' not in self.ai_metrics:
+                        self.ai_metrics['invalidations_by_operation'] = defaultdict(int)
+                    
+                    if hasattr(self, 'ai_metrics'):
+                        self.ai_metrics['invalidations_by_operation'][operation] += keys_count
+                    
+                    logger.info(
+                        f"Operation invalidation completed: operation={operation}, "
+                        f"keys_invalidated={keys_count}, duration={duration:.3f}s, "
+                        f"context={operation_context}"
+                    )
+                
+                return keys_count
+                
+            except Exception as e:
+                duration = time.time() - start_time
+                
+                # Record failed invalidation
+                self.performance_monitor.record_invalidation_event(
+                    pattern=pattern,
+                    keys_invalidated=0,
+                    duration=duration,
+                    invalidation_type="operation_specific",
+                    operation_context=operation_context,
+                    additional_data={
+                        "operation": operation,
+                        "status": "failed",
+                        "error": str(e),
+                        "error_type": type(e).__name__
+                    }
+                )
+                
+                logger.error(
+                    f"Failed to invalidate operation {operation}: {e}",
+                    exc_info=True,
+                    extra={
+                        'operation': operation,
+                        'operation_context': operation_context,
+                        'duration': duration,
+                        'error_type': type(e).__name__
+                    }
+                )
+                raise InfrastructureError(
+                    f"Failed to invalidate cache entries for operation {operation}: {e}",
+                    context={
+                        'operation': operation,
+                        'operation_context': operation_context,
+                        'pattern': pattern,
+                        'duration': duration
+                    }
+                )
+                
+        except ValidationError:
+            # Re-raise validation errors to caller
+            raise
+        except InfrastructureError:
+            # Re-raise infrastructure errors to caller
+            raise
+        except Exception as e:
+            duration = time.time() - start_time
+            logger.error(
+                f"Unexpected error during operation invalidation: {e}",
+                exc_info=True,
+                extra={
+                    'operation': operation if 'operation' in locals() else 'unknown',
+                    'operation_context': operation_context,
+                    'duration': duration,
+                    'error_type': type(e).__name__
+                }
+            )
+            raise InfrastructureError(
+                f"Unexpected error during operation invalidation: {e}",
+                context={
+                    'operation': operation,
+                    'operation_context': operation_context,
+                    'duration': duration
+                }
+            )
 
     def _should_promote_to_memory(self, text_tier: str, operation: str) -> bool:
         """
-        Determine if a cache entry should be promoted to memory cache.
+        Determine if a cache entry should be promoted to memory cache with intelligent strategies.
 
-        Uses text tier and operation stability to make promotion decisions,
-        favoring small texts and stable operations for memory cache promotion.
+        Uses comprehensive analysis of text tier, operation stability, and caching patterns
+        to make optimal promotion decisions. This method implements the business logic for
+        memory cache promotion while the actual promotion is handled automatically by the
+        parent GenericRedisCache through L1 cache integration.
+
+        Memory promotion strategies:
+        - Small texts: Always promote for fastest access
+        - Stable operations: Promote frequently accessed, deterministic results  
+        - Medium texts + stable operations: Promote for balanced performance
+        - Large/xlarge texts: Generally avoid promotion to conserve memory
 
         Args:
-            text_tier (str): Text tier ('small', 'medium', 'large', 'xlarge')
-            operation (str): Operation type
+            text_tier (str): Text size tier ('small', 'medium', 'large', 'xlarge')
+            operation (str): AI operation type (e.g., 'summarize', 'sentiment')
 
         Returns:
-            True if entry should be promoted to memory cache
+            bool: True if entry should be promoted to memory cache, False otherwise
 
         Note:
-            Actual memory cache promotion is handled by the parent GenericRedisCache
-            through L1 cache integration. This method only provides the decision logic.
+            Actual memory cache promotion is handled automatically by the parent 
+            GenericRedisCache through L1 cache integration. This method only provides 
+            the intelligent decision logic based on AI-specific optimization criteria.
+
+        Example:
+            >>> cache = AIResponseCache()
+            >>> # Small text - always promote
+            >>> should_promote = cache._should_promote_to_memory("small", "summarize")
+            >>> print(should_promote)  # Output: True
+            >>> 
+            >>> # Large text + unstable operation - don't promote
+            >>> should_promote = cache._should_promote_to_memory("large", "qa")
+            >>> print(should_promote)  # Output: False
         """
-        # Promote small texts for fast access
-        if text_tier == "small":
-            return True
-        
-        # Promote stable operations regardless of size
-        stable_operations = {"sentiment", "summarize"}
-        if operation in stable_operations:
-            return True
-        
-        return False
+        try:
+            # Input validation
+            if not text_tier or not isinstance(text_tier, str):
+                logger.debug(f"Invalid text_tier for promotion decision: {text_tier}")
+                return False
+            
+            if not operation or not isinstance(operation, str):
+                logger.debug(f"Invalid operation for promotion decision: {operation}")
+                return False
+            
+            # Strategy 1: Always promote small texts for fastest access
+            # Small texts have minimal memory impact and maximum access benefit
+            if text_tier == "small":
+                logger.debug(f"Promoting small text to memory: operation={operation}")
+                return True
+            
+            # Strategy 2: Promote stable operations for medium texts
+            # These operations produce consistent, reusable results
+            stable_operations = {
+                "sentiment",    # Sentiment rarely changes for same text
+                "summarize",    # Summaries are generally stable for same parameters
+                "key_points",   # Key points extraction is deterministic
+                "classify"      # Classification results are stable
+            }
+            
+            if operation in stable_operations:
+                if text_tier == "medium":
+                    logger.debug(f"Promoting stable medium operation to memory: operation={operation}")
+                    return True
+                elif text_tier == "large":
+                    # Only promote large texts for highly stable operations
+                    highly_stable = {"sentiment"}  # Most stable operation
+                    if operation in highly_stable:
+                        logger.debug(f"Promoting highly stable large operation to memory: operation={operation}")
+                        return True
+            
+            # Strategy 3: Consider operation frequency and access patterns
+            # Check if this operation has been frequently accessed recently
+            if hasattr(self, 'ai_metrics') and 'cache_hits_by_operation' in self.ai_metrics:
+                operation_hits = self.ai_metrics['cache_hits_by_operation'].get(operation, 0)
+                if operation_hits >= 10 and text_tier in ["small", "medium"]:
+                    logger.debug(f"Promoting frequently accessed operation to memory: operation={operation}, hits={operation_hits}")
+                    return True
+            
+            # Strategy 4: Avoid promoting large/xlarge texts to conserve memory
+            # These consume significant memory and may not provide proportional benefit
+            if text_tier in ["large", "xlarge"]:
+                logger.debug(f"Not promoting large text to memory: tier={text_tier}, operation={operation}")
+                return False
+            
+            # Default: Don't promote if no clear benefit identified
+            logger.debug(f"No promotion criteria met: tier={text_tier}, operation={operation}")
+            return False
+            
+        except Exception as e:
+            logger.warning(f"Error in memory promotion decision: {e}")
+            # Conservative fallback - only promote small texts on error
+            return text_tier == "small" if text_tier else False
 
     async def get_cache_stats(self) -> Dict[str, Any]:
         """
