@@ -96,9 +96,14 @@ class TestAIPerformanceSummary:
         with patch.object(ai_cache_with_data.key_generator, 'get_key_generation_stats', side_effect=Exception("Test error")):
             summary = ai_cache_with_data.get_ai_performance_summary()
             
-            # Should return error summary instead of raising
-            assert 'error' in summary
-            assert summary['total_operations'] == 0
+            # Should continue returning summary with error in key_generation_stats section
+            assert 'key_generation_stats' in summary
+            assert 'error' in summary['key_generation_stats']
+            assert summary['key_generation_stats']['error'] == "Test error"
+            
+            # Other sections should still be populated
+            assert 'total_operations' in summary
+            assert 'hit_rate_by_operation' in summary
 
 
 class TestTextTierStatistics:
@@ -491,14 +496,22 @@ class TestOptimizationRecommendations:
 
     def test_generate_ai_optimization_recommendations_error_handling(self, ai_cache_with_recommendation_data):
         """Test error handling in recommendation generation."""
-        # Mock an error in metrics access
-        with patch.object(ai_cache_with_recommendation_data.ai_metrics['cache_hits_by_operation'], 'keys', side_effect=Exception("Test error")):
+        # Mock an error in metrics access by replacing the metrics dict with a broken one
+        original_metrics = ai_cache_with_recommendation_data.ai_metrics
+        broken_metrics = MagicMock()
+        broken_metrics.__getitem__.side_effect = Exception("Test error")
+        ai_cache_with_recommendation_data.ai_metrics = broken_metrics
+        
+        try:
             recommendations = ai_cache_with_recommendation_data._generate_ai_optimization_recommendations()
             
             # Should return error recommendation instead of raising
             assert len(recommendations) == 1
             assert recommendations[0]['type'] == 'error'
             assert recommendations[0]['priority'] == 'high'
+        finally:
+            # Restore original metrics
+            ai_cache_with_recommendation_data.ai_metrics = original_metrics
 
 
 class TestTierPerformanceAnalysis:
@@ -610,9 +623,9 @@ class TestTierPerformanceAnalysis:
             assert 'performance_score' in ranking
 
     def test_analyze_tier_performance_error_handling(self, ai_cache_with_tier_performance_data):
-        """Test error handling in tier performance analysis."""
-        # Mock an error in tier distribution access
-        with patch.object(ai_cache_with_tier_performance_data.ai_metrics['text_tier_distribution'], 'keys', side_effect=Exception("Test error")):
+        """Test error handling in tier performance analysis.""" 
+        # Directly patch the dict() conversion to raise an exception
+        with patch('builtins.dict', side_effect=Exception("Test error")) as mock_dict:
             analysis = ai_cache_with_tier_performance_data._analyze_tier_performance()
             
             # Should return error analysis instead of raising
