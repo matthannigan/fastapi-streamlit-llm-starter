@@ -1842,12 +1842,952 @@ class AIResponseCache(GenericRedisCache):
                 return False
         return True
 
+    # =============================================================================
+    # AI-SPECIFIC MONITORING METHODS (Phase 2 Deliverable 6)
+    # =============================================================================
+    
+    def get_ai_performance_summary(self) -> Dict[str, Any]:
+        """
+        Get comprehensive AI-specific performance summary with analytics and optimization recommendations.
+        
+        Provides a detailed overview of AI cache performance including operation-specific metrics,
+        text tier analysis, overall hit rates, and actionable optimization recommendations.
+        This method serves as the primary dashboard for AI cache performance monitoring.
+        
+        Returns:
+            Dict[str, Any]: Comprehensive performance summary containing:
+                - total_operations: Total cache operations performed
+                - overall_hit_rate: Overall cache hit rate percentage
+                - hit_rate_by_operation: Hit rates broken down by AI operation type
+                - text_tier_distribution: Distribution of cached content by text size tiers
+                - key_generation_stats: Statistics from the cache key generator
+                - optimization_recommendations: AI-specific optimization suggestions
+                - inherited_stats: Core cache statistics from parent GenericRedisCache
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> summary = cache.get_ai_performance_summary()
+            >>> print(f"Overall hit rate: {summary['overall_hit_rate']:.1f}%")
+            >>> print(f"Total operations: {summary['total_operations']}")
+            >>> for op, rate in summary['hit_rate_by_operation'].items():
+            ...     print(f"{op}: {rate:.1f}%")
+        """
+        try:
+            logger.debug("Generating AI performance summary")
+            
+            # Calculate total operations from hits and misses
+            total_hits = sum(self.ai_metrics['cache_hits_by_operation'].values())
+            total_misses = sum(self.ai_metrics['cache_misses_by_operation'].values())
+            total_operations = total_hits + total_misses
+            
+            # Early return for zero operations to avoid division by zero
+            if total_operations == 0:
+                logger.debug("No operations recorded yet - returning empty summary")
+                return {
+                    "total_operations": 0,
+                    "overall_hit_rate": 0.0,
+                    "hit_rate_by_operation": {},
+                    "text_tier_distribution": {},
+                    "key_generation_stats": self.key_generator.get_key_generation_stats(),
+                    "optimization_recommendations": [],
+                    "inherited_stats": self.get_stats() if hasattr(self, 'get_stats') else {}
+                }
+            
+            # Calculate overall hit rate
+            overall_hit_rate = (total_hits / total_operations) * 100
+            
+            # Create hit rate by operation dictionary with percentages
+            hit_rate_by_operation = {}
+            all_operations = set(
+                list(self.ai_metrics['cache_hits_by_operation'].keys()) +
+                list(self.ai_metrics['cache_misses_by_operation'].keys())
+            )
+            
+            for operation in all_operations:
+                hits = self.ai_metrics['cache_hits_by_operation'].get(operation, 0)
+                misses = self.ai_metrics['cache_misses_by_operation'].get(operation, 0)
+                operation_total = hits + misses
+                
+                if operation_total > 0:
+                    hit_rate_by_operation[operation] = (hits / operation_total) * 100
+                else:
+                    hit_rate_by_operation[operation] = 0.0
+            
+            # Convert text tier distribution to regular dict for JSON serialization
+            text_tier_distribution = dict(self.ai_metrics['text_tier_distribution'])
+            
+            # Get key generation statistics
+            try:
+                key_generation_stats = self.key_generator.get_key_generation_stats()
+            except Exception as e:
+                logger.warning(f"Could not retrieve key generation stats: {e}")
+                key_generation_stats = {
+                    "total_keys_generated": 0,
+                    "average_generation_time": 0.0,
+                    "text_size_distribution": {},
+                    "operation_distribution": {},
+                    "monitor_available": False,
+                    "error": str(e)
+                }
+            
+            # Generate AI-specific optimization recommendations
+            optimization_recommendations = self._generate_ai_optimization_recommendations()
+            
+            # Include inherited stats from parent GenericRedisCache
+            inherited_stats = {}
+            try:
+                if hasattr(self, 'get_stats'):
+                    inherited_stats = self.get_stats()
+                elif hasattr(self, 'performance_monitor'):
+                    inherited_stats = self.performance_monitor.get_performance_stats()
+            except Exception as e:
+                logger.warning(f"Could not retrieve inherited stats: {e}")
+                inherited_stats = {"error": f"Failed to retrieve inherited stats: {e}"}
+            
+            summary = {
+                "total_operations": total_operations,
+                "overall_hit_rate": round(overall_hit_rate, 2),
+                "hit_rate_by_operation": {k: round(v, 2) for k, v in hit_rate_by_operation.items()},
+                "text_tier_distribution": text_tier_distribution,
+                "key_generation_stats": key_generation_stats,
+                "optimization_recommendations": optimization_recommendations,
+                "inherited_stats": inherited_stats
+            }
+            
+            logger.info(f"AI performance summary generated: {total_operations} operations, {overall_hit_rate:.1f}% hit rate")
+            return summary
+            
+        except Exception as e:
+            error_msg = f"Failed to generate AI performance summary: {e}"
+            logger.error(error_msg, exc_info=True)
+            return {
+                "error": error_msg,
+                "total_operations": 0,
+                "overall_hit_rate": 0.0,
+                "hit_rate_by_operation": {},
+                "text_tier_distribution": {},
+                "key_generation_stats": {},
+                "optimization_recommendations": [],
+                "inherited_stats": {}
+            }
+    
+    def get_text_tier_statistics(self) -> Dict[str, Any]:
+        """
+        Get comprehensive text tier statistics and performance analysis.
+        
+        Provides detailed analysis of how different text size tiers are performing
+        in terms of cache efficiency, distribution, and optimization opportunities.
+        
+        Returns:
+            Dict[str, Any]: Text tier statistics containing:
+                - tier_configuration: Current text size tier thresholds
+                - tier_distribution: Number of operations per tier
+                - tier_performance_analysis: Performance metrics by tier
+                - tier_recommendations: Optimization suggestions per tier
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> stats = cache.get_text_tier_statistics()
+            >>> print("Tier distribution:")
+            >>> for tier, count in stats['tier_distribution'].items():
+            ...     print(f"  {tier}: {count} operations")
+        """
+        try:
+            logger.debug("Generating text tier statistics")
+            
+            # Return tier configuration from text_size_tiers
+            tier_configuration = {}
+            try:
+                # Handle both regular dict and MagicMock objects
+                if hasattr(self.text_size_tiers, '__getitem__'):
+                    tier_configuration = {
+                        "small": self.text_size_tiers["small"],
+                        "medium": self.text_size_tiers["medium"], 
+                        "large": self.text_size_tiers["large"]
+                    }
+                else:
+                    tier_configuration = dict(self.text_size_tiers)
+            except Exception as e:
+                logger.warning(f"Could not retrieve tier configuration: {e}")
+                tier_configuration = {
+                    "small": 500,
+                    "medium": 5000,
+                    "large": 50000
+                }
+            
+            # Convert text_tier_distribution to regular dict
+            tier_distribution = dict(self.ai_metrics['text_tier_distribution'])
+            
+            # Call _analyze_tier_performance helper for detailed analysis
+            tier_performance_analysis = self._analyze_tier_performance()
+            
+            # Validate tier data completeness
+            expected_tiers = set(tier_configuration.keys()).union({"xlarge"})
+            recorded_tiers = set(tier_distribution.keys())
+            missing_tiers = expected_tiers - recorded_tiers
+            
+            if missing_tiers:
+                logger.debug(f"Missing tier data for: {missing_tiers}")
+                # Add missing tiers with zero counts
+                for tier in missing_tiers:
+                    if tier not in tier_distribution:
+                        tier_distribution[tier] = 0
+            
+            statistics = {
+                "tier_configuration": tier_configuration,
+                "tier_distribution": tier_distribution,
+                "tier_performance_analysis": tier_performance_analysis,
+                "data_completeness": {
+                    "expected_tiers": list(expected_tiers),
+                    "recorded_tiers": list(recorded_tiers),
+                    "missing_tiers": list(missing_tiers),
+                    "completeness_percentage": round(
+                        (len(recorded_tiers) / len(expected_tiers)) * 100, 1
+                    ) if expected_tiers else 100.0
+                }
+            }
+            
+            logger.info(f"Text tier statistics generated for {len(tier_distribution)} tiers")
+            return statistics
+            
+        except Exception as e:
+            error_msg = f"Failed to generate text tier statistics: {e}"
+            logger.error(error_msg, exc_info=True)
+            return {
+                "error": error_msg,
+                "tier_configuration": {},
+                "tier_distribution": {},
+                "tier_performance_analysis": {},
+                "data_completeness": {
+                    "expected_tiers": [],
+                    "recorded_tiers": [],
+                    "missing_tiers": [],
+                    "completeness_percentage": 0.0
+                }
+            }
+    
+    def _analyze_tier_performance(self) -> Dict[str, Any]:
+        """
+        Analyze performance metrics by text tier.
+        
+        Examines cache performance characteristics for each text size tier including
+        hit rates, response times, and optimization opportunities.
+        
+        Returns:
+            Dict[str, Any]: Tier performance analysis containing:
+                - tier_hit_rates: Hit rates calculated per tier
+                - average_response_times: Average cache operation times per tier
+                - tier_optimization_opportunities: Specific recommendations per tier
+                - performance_rankings: Tiers ranked by performance metrics
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> analysis = cache._analyze_tier_performance()
+            >>> for tier, hit_rate in analysis['tier_hit_rates'].items():
+            ...     print(f"{tier}: {hit_rate:.1f}% hit rate")
+        """
+        try:
+            logger.debug("Analyzing tier performance")
+            
+            # Initialize analysis structure
+            tier_hit_rates = {}
+            average_response_times = {}
+            tier_optimization_opportunities = {}
+            
+            # Get all unique tiers from various metrics (handle defaultdict properly)
+            try:
+                all_tiers = set(dict(self.ai_metrics['text_tier_distribution']).keys())
+            except Exception:
+                all_tiers = set()
+            
+            # Add tiers from operation performance data
+            for perf_data in self.ai_metrics['operation_performance']:
+                if isinstance(perf_data, dict) and 'text_tier' in perf_data:
+                    all_tiers.add(perf_data['text_tier'])
+            
+            # Analyze each tier
+            for tier in all_tiers:
+                if not tier or tier == 'unknown':
+                    continue
+                
+                # Calculate hit rate for this tier
+                tier_operations = []
+                tier_hits = 0
+                tier_total = 0
+                tier_response_times = []
+                
+                # Collect tier-specific performance data
+                for perf_data in self.ai_metrics['operation_performance']:
+                    if isinstance(perf_data, dict) and perf_data.get('text_tier') == tier:
+                        tier_operations.append(perf_data)
+                        
+                        # Count hits and misses
+                        if perf_data.get('cache_operation') == 'get':
+                            tier_total += 1
+                            if perf_data.get('success', False):
+                                tier_hits += 1
+                        
+                        # Collect response times
+                        if 'duration' in perf_data:
+                            tier_response_times.append(perf_data['duration'])
+                
+                # Calculate hit rate for this tier
+                if tier_total > 0:
+                    tier_hit_rates[tier] = (tier_hits / tier_total) * 100
+                else:
+                    tier_hit_rates[tier] = 0.0
+                
+                # Calculate average response time for this tier
+                if tier_response_times:
+                    average_response_times[tier] = {
+                        "avg_ms": round(sum(tier_response_times) / len(tier_response_times) * 1000, 2),
+                        "min_ms": round(min(tier_response_times) * 1000, 2),
+                        "max_ms": round(max(tier_response_times) * 1000, 2),
+                        "sample_count": len(tier_response_times)
+                    }
+                else:
+                    average_response_times[tier] = {
+                        "avg_ms": 0.0,
+                        "min_ms": 0.0,
+                        "max_ms": 0.0,
+                        "sample_count": 0
+                    }
+                
+                # Generate tier-specific optimization opportunities
+                tier_opportunities = []
+                hit_rate = tier_hit_rates[tier]
+                avg_time = average_response_times[tier]["avg_ms"]
+                
+                if hit_rate < 30:
+                    tier_opportunities.append(f"Low hit rate ({hit_rate:.1f}%) - consider reviewing caching strategy")
+                elif hit_rate > 90:
+                    tier_opportunities.append(f"Excellent hit rate ({hit_rate:.1f}%) - tier is well optimized")
+                
+                if avg_time > 100:  # >100ms is slow
+                    tier_opportunities.append(f"Slow response times ({avg_time:.1f}ms) - consider optimization")
+                elif avg_time < 10:  # <10ms is excellent
+                    tier_opportunities.append(f"Fast response times ({avg_time:.1f}ms) - tier performs well")
+                
+                # Tier-specific recommendations based on characteristics
+                if tier == "small":
+                    if hit_rate < 80:
+                        tier_opportunities.append("Small texts should have high hit rates - check memory cache promotion")
+                elif tier == "xlarge":
+                    if hit_rate > 60:
+                        tier_opportunities.append("Unexpectedly high hit rate for large texts - verify tier thresholds")
+                
+                tier_optimization_opportunities[tier] = tier_opportunities
+            
+            # Rank tiers by performance (hit rate weighted by response time)
+            performance_rankings = []
+            for tier, hit_rate in tier_hit_rates.items():
+                avg_time = average_response_times.get(tier, {}).get("avg_ms", 0)
+                # Performance score: hit rate weighted by inverse of response time
+                performance_score = hit_rate * (1000 / max(avg_time, 1))  # Avoid division by zero
+                performance_rankings.append({
+                    "tier": tier,
+                    "hit_rate": round(hit_rate, 1),
+                    "avg_response_time_ms": round(avg_time, 1),
+                    "performance_score": round(performance_score, 1)
+                })
+            
+            # Sort by performance score descending
+            performance_rankings.sort(key=lambda x: x["performance_score"], reverse=True)
+            
+            analysis = {
+                "tier_hit_rates": {k: round(v, 2) for k, v in tier_hit_rates.items()},
+                "average_response_times": average_response_times,
+                "tier_optimization_opportunities": tier_optimization_opportunities,
+                "performance_rankings": performance_rankings
+            }
+            
+            logger.info(f"Tier performance analysis completed for {len(all_tiers)} tiers")
+            return analysis
+            
+        except Exception as e:
+            error_msg = f"Failed to analyze tier performance: {e}"
+            logger.error(error_msg, exc_info=True)
+            return {
+                "error": error_msg,
+                "tier_hit_rates": {},
+                "average_response_times": {},
+                "tier_optimization_opportunities": {},
+                "performance_rankings": []
+            }
+    
+    def get_operation_performance(self) -> Dict[str, Any]:
+        """
+        Get detailed performance metrics for AI operations.
+        
+        Provides comprehensive performance analysis for each AI operation type including
+        duration statistics, operation counts, TTL configurations, and percentile analysis.
+        
+        Returns:
+            Dict[str, Any]: Operation performance metrics containing:
+                - operations: Performance metrics per operation type with:
+                    - avg_duration_ms: Average operation duration in milliseconds
+                    - min_duration_ms: Minimum operation duration 
+                    - max_duration_ms: Maximum operation duration
+                    - percentiles: p50, p95, p99 percentile durations
+                    - total_operations: Total number of operations performed
+                    - configured_ttl: TTL setting for this operation
+                - summary: Overall performance summary across all operations
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> perf = cache.get_operation_performance()
+            >>> for op, metrics in perf['operations'].items():
+            ...     print(f"{op}: {metrics['avg_duration_ms']:.1f}ms avg, {metrics['total_operations']} ops")
+        """
+        try:
+            logger.debug("Generating operation performance metrics")
+            
+            # Group performance data by operation
+            operation_data = defaultdict(list)
+            operation_counts = defaultdict(int)
+            
+            # Iterate through operation_performance metrics
+            for perf_record in self.ai_metrics['operation_performance']:
+                if isinstance(perf_record, dict) and 'operation' in perf_record:
+                    operation = perf_record['operation']
+                    operation_counts[operation] += 1
+                    
+                    # Collect duration data if available
+                    if 'duration' in perf_record:
+                        # Convert duration to milliseconds
+                        duration_ms = perf_record['duration'] * 1000
+                        operation_data[operation].append(duration_ms)
+            
+            # Calculate metrics for each operation
+            operations_metrics = {}
+            for operation, durations in operation_data.items():
+                if durations:
+                    durations_sorted = sorted(durations)
+                    n = len(durations_sorted)
+                    
+                    # Calculate avg/min/max duration in milliseconds
+                    avg_duration_ms = sum(durations) / len(durations)
+                    min_duration_ms = min(durations)
+                    max_duration_ms = max(durations)
+                    
+                    # Calculate percentiles (p50, p95, p99)
+                    percentiles = {}
+                    if n > 0:
+                        percentiles['p50'] = durations_sorted[int(n * 0.5)]
+                        percentiles['p95'] = durations_sorted[int(n * 0.95)] if n > 1 else durations_sorted[0]
+                        percentiles['p99'] = durations_sorted[int(n * 0.99)] if n > 2 else durations_sorted[-1]
+                    
+                    # Count total operations performed
+                    total_operations = operation_counts[operation]
+                    
+                    # Include configured TTL for each operation
+                    configured_ttl = self.operation_ttls.get(operation, self.default_ttl)
+                    
+                    operations_metrics[operation] = {
+                        "avg_duration_ms": round(avg_duration_ms, 2),
+                        "min_duration_ms": round(min_duration_ms, 2),
+                        "max_duration_ms": round(max_duration_ms, 2),
+                        "percentiles": {k: round(v, 2) for k, v in percentiles.items()},
+                        "total_operations": total_operations,
+                        "configured_ttl": configured_ttl,
+                        "sample_count": len(durations)
+                    }
+                else:
+                    # Operation with no duration data
+                    total_operations = operation_counts.get(operation, 0)
+                    configured_ttl = self.operation_ttls.get(operation, self.default_ttl)
+                    
+                    operations_metrics[operation] = {
+                        "avg_duration_ms": 0.0,
+                        "min_duration_ms": 0.0,
+                        "max_duration_ms": 0.0,
+                        "percentiles": {"p50": 0.0, "p95": 0.0, "p99": 0.0},
+                        "total_operations": total_operations,
+                        "configured_ttl": configured_ttl,
+                        "sample_count": 0
+                    }
+            
+            # Calculate summary statistics across all operations
+            all_durations = []
+            total_ops = 0
+            for durations in operation_data.values():
+                all_durations.extend(durations)
+                total_ops += len(durations)
+            
+            summary = {
+                "total_operations_measured": total_ops,
+                "total_operation_types": len(operations_metrics),
+                "overall_avg_duration_ms": round(sum(all_durations) / len(all_durations), 2) if all_durations else 0.0,
+                "fastest_operation": min(operations_metrics.items(), key=lambda x: x[1]["avg_duration_ms"])[0] if operations_metrics else None,
+                "slowest_operation": max(operations_metrics.items(), key=lambda x: x[1]["avg_duration_ms"])[0] if operations_metrics else None
+            }
+            
+            performance_data = {
+                "operations": operations_metrics,
+                "summary": summary
+            }
+            
+            logger.info(f"Operation performance metrics generated for {len(operations_metrics)} operations")
+            return performance_data
+            
+        except Exception as e:
+            error_msg = f"Failed to generate operation performance metrics: {e}"
+            logger.error(error_msg, exc_info=True)
+            return {
+                "error": error_msg,
+                "operations": {},
+                "summary": {
+                    "total_operations_measured": 0,
+                    "total_operation_types": 0,
+                    "overall_avg_duration_ms": 0.0,
+                    "fastest_operation": None,
+                    "slowest_operation": None
+                }
+            }
+    
+    def _record_ai_cache_hit(self, cache_type: str, text: str, operation: str, text_tier: str) -> None:
+        """
+        Record AI-specific cache hit with detailed context and metrics.
+        
+        Records comprehensive metrics for AI cache hits including operation type,
+        text tier, cache type (L1/Redis), and performance context for analytics.
+        
+        Args:
+            cache_type (str): Type of cache hit ('l1', 'redis', 'memory', 'disk')
+            text (str): Original text that generated the cache hit
+            operation (str): AI operation type that hit cache
+            text_tier (str): Text size tier for the cached content
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> cache._record_ai_cache_hit(
+            ...     cache_type="l1",
+            ...     text="Sample text content",
+            ...     operation="summarize", 
+            ...     text_tier="medium"
+            ... )
+        """
+        try:
+            logger.debug(f"Recording AI cache hit: {cache_type} hit for {operation} operation, tier {text_tier}")
+            
+            # Input validation
+            if not cache_type or not isinstance(cache_type, str):
+                logger.warning(f"Invalid cache_type for AI cache hit: {cache_type}")
+                return
+            
+            if not operation or not isinstance(operation, str):
+                logger.warning(f"Invalid operation for AI cache hit: {operation}")
+                return
+                
+            if not text_tier or not isinstance(text_tier, str):
+                logger.warning(f"Invalid text_tier for AI cache hit: {text_tier}")
+                return
+            
+            # Call performance_monitor.record_cache_operation with "hit"
+            self.performance_monitor.record_cache_operation_time(
+                operation="get",
+                duration=0.001,  # Minimal duration for hit recording
+                cache_hit=True,
+                text_length=len(text) if text else 0,
+                additional_data={
+                    "cache_type": cache_type,
+                    "ai_operation": operation,
+                    "text_tier": text_tier,
+                    "cache_result": "hit",
+                    "hit_source": cache_type
+                }
+            )
+            
+            # Update internal AI hit counters
+            self.ai_metrics['cache_hits_by_operation'][operation] += 1
+            self.ai_metrics['text_tier_distribution'][text_tier] += 1
+            
+            # Add cache type specific metrics if not present
+            if 'cache_hits_by_type' not in self.ai_metrics:
+                self.ai_metrics['cache_hits_by_type'] = defaultdict(int)
+            self.ai_metrics['cache_hits_by_type'][cache_type] += 1
+            
+            # Add debug logging with operation and tier details
+            logger.debug(
+                f"AI cache hit recorded: cache_type={cache_type}, operation={operation}, "
+                f"text_tier={text_tier}, text_length={len(text) if text else 0}"
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to record AI cache hit: {e}")
+            # Don't raise - metrics recording failure shouldn't interrupt cache operations
+    
+    def _record_ai_cache_miss(self, text: str, operation: str, text_tier: str) -> None:
+        """
+        Record AI-specific cache miss with detailed context and analytics.
+        
+        Records comprehensive metrics for AI cache misses including operation type,
+        text characteristics, and miss reasons for performance analysis and optimization.
+        
+        Args:
+            text (str): Original text that resulted in cache miss
+            operation (str): AI operation type that missed cache
+            text_tier (str): Text size tier for the missed content
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> cache._record_ai_cache_miss(
+            ...     text="New content not in cache",
+            ...     operation="sentiment",
+            ...     text_tier="small"
+            ... )
+        """
+        try:
+            logger.debug(f"Recording AI cache miss for {operation} operation, tier {text_tier}")
+            
+            # Input validation
+            if not operation or not isinstance(operation, str):
+                logger.warning(f"Invalid operation for AI cache miss: {operation}")
+                return
+                
+            if not text_tier or not isinstance(text_tier, str):
+                logger.warning(f"Invalid text_tier for AI cache miss: {text_tier}")
+                return
+            
+            # Call performance_monitor.record_cache_operation with "miss"
+            self.performance_monitor.record_cache_operation_time(
+                operation="get",
+                duration=0.001,  # Minimal duration for miss recording
+                cache_hit=False,
+                text_length=len(text) if text else 0,
+                additional_data={
+                    "ai_operation": operation,
+                    "text_tier": text_tier,
+                    "cache_result": "miss",
+                    "miss_reason": "key_not_found"
+                }
+            )
+            
+            # Update internal AI miss counters
+            self.ai_metrics['cache_misses_by_operation'][operation] += 1
+            self.ai_metrics['text_tier_distribution'][text_tier] += 1
+            
+            # Add miss reason tracking if not present
+            if 'cache_miss_reasons' not in self.ai_metrics:
+                self.ai_metrics['cache_miss_reasons'] = defaultdict(int)
+            self.ai_metrics['cache_miss_reasons']['key_not_found'] += 1
+            
+            # Add debug logging with miss details
+            logger.debug(
+                f"AI cache miss recorded: operation={operation}, text_tier={text_tier}, "
+                f"text_length={len(text) if text else 0}, reason=key_not_found"
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to record AI cache miss: {e}")
+            # Don't raise - metrics recording failure shouldn't interrupt cache operations
+    
+    def _record_operation_performance(self, operation_type: str, duration: float) -> None:
+        """
+        Record AI operation performance with duration tracking and memory management.
+        
+        Records detailed performance metrics for AI operations including timing data,
+        operation context, and maintains a bounded list of recent performance records
+        to prevent unbounded memory growth.
+        
+        Args:
+            operation_type (str): Type of AI operation performed
+            duration (float): Operation duration in seconds
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> import time
+            >>> start = time.time()
+            >>> # ... perform operation ...
+            >>> cache._record_operation_performance("summarize", time.time() - start)
+        """
+        try:
+            logger.debug(f"Recording operation performance: {operation_type} took {duration:.3f}s")
+            
+            # Input validation
+            if not operation_type or not isinstance(operation_type, str):
+                logger.warning(f"Invalid operation_type for performance recording: {operation_type}")
+                return
+                
+            if not isinstance(duration, (int, float)) or duration < 0:
+                logger.warning(f"Invalid duration for performance recording: {duration}")
+                return
+            
+            # Convert duration to milliseconds and append to operation_performance
+            duration_ms = duration * 1000
+            timestamp = time.time()
+            
+            # Create performance record with enhanced context
+            performance_record = {
+                'operation': operation_type,
+                'duration': duration,
+                'duration_ms': duration_ms,
+                'timestamp': timestamp,
+                'iso_timestamp': datetime.fromtimestamp(timestamp).isoformat()
+            }
+            
+            # Append to operation_performance list
+            self.ai_metrics['operation_performance'].append(performance_record)
+            
+            # Implement list size limits to prevent memory growth (keep only recent 1000 operations)
+            max_records = 1000
+            if len(self.ai_metrics['operation_performance']) > max_records:
+                # Keep only the most recent records
+                self.ai_metrics['operation_performance'] = \
+                    self.ai_metrics['operation_performance'][-max_records:]
+                
+                logger.debug(f"Trimmed operation_performance list to {max_records} most recent records")
+            
+            # Add operation type specific tracking if not present
+            if 'operation_duration_totals' not in self.ai_metrics:
+                self.ai_metrics['operation_duration_totals'] = defaultdict(float)
+                self.ai_metrics['operation_count_totals'] = defaultdict(int)
+            
+            # Update running totals for quick statistics
+            self.ai_metrics['operation_duration_totals'][operation_type] += duration
+            self.ai_metrics['operation_count_totals'][operation_type] += 1
+            
+            logger.debug(
+                f"Operation performance recorded: operation={operation_type}, "
+                f"duration={duration:.3f}s ({duration_ms:.1f}ms), "
+                f"total_records={len(self.ai_metrics['operation_performance'])}"
+            )
+            
+        except Exception as e:
+            logger.warning(f"Failed to record operation performance: {e}")
+            # Don't raise - metrics recording failure shouldn't interrupt operations
+    
+    def _generate_ai_optimization_recommendations(self) -> List[Dict[str, Any]]:
+        """
+        Generate AI-specific optimization recommendations based on performance analysis.
+        
+        Analyzes cache performance patterns, hit rates, operation characteristics, and
+        system utilization to provide actionable optimization recommendations for
+        improving AI cache performance and efficiency.
+        
+        Returns:
+            List[Dict[str, Any]]: List of optimization recommendations, each containing:
+                - type: Type of recommendation ('hit_rate', 'ttl', 'memory', 'compression')
+                - priority: Priority level ('high', 'medium', 'low')
+                - title: Short description of the recommendation
+                - description: Detailed explanation and rationale
+                - action: Specific action to take
+                - estimated_impact: Expected impact of implementing the recommendation
+        
+        Example:
+            >>> cache = AIResponseCache()
+            >>> recommendations = cache._generate_ai_optimization_recommendations()
+            >>> for rec in recommendations:
+            ...     print(f"{rec['priority']}: {rec['title']}")
+            ...     print(f"  Action: {rec['action']}")
+        """
+        try:
+            logger.debug("Generating AI-specific optimization recommendations")
+            recommendations = []
+            
+            # Analyze hit rates by operation (skip operations with <10 requests for statistical significance)
+            hit_rate_threshold_requests = 10
+            
+            for operation in self.ai_metrics['cache_hits_by_operation'].keys():
+                hits = self.ai_metrics['cache_hits_by_operation'].get(operation, 0)
+                misses = self.ai_metrics['cache_misses_by_operation'].get(operation, 0)
+                total_requests = hits + misses
+                
+                if total_requests < hit_rate_threshold_requests:
+                    continue  # Skip operations with insufficient data
+                
+                hit_rate = (hits / total_requests) * 100 if total_requests > 0 else 0
+                
+                # Generate recommendations for low hit rates (<30%)
+                if hit_rate < 30:
+                    recommendations.append({
+                        "type": "hit_rate",
+                        "priority": "high",
+                        "title": f"Low hit rate for {operation} operation",
+                        "description": f"Operation '{operation}' has a {hit_rate:.1f}% hit rate from {total_requests} requests. This indicates poor cache effectiveness.",
+                        "action": f"Review caching strategy for {operation}. Consider increasing TTL from {self.operation_ttls.get(operation, self.default_ttl)}s or analyzing request patterns.",
+                        "estimated_impact": "20-40% performance improvement",
+                        "metrics": {
+                            "current_hit_rate": round(hit_rate, 1),
+                            "total_requests": total_requests,
+                            "current_ttl": self.operation_ttls.get(operation, self.default_ttl)
+                        }
+                    })
+                
+                # Generate recommendations for excellent hit rates (>90%)
+                elif hit_rate > 90:
+                    recommendations.append({
+                        "type": "hit_rate",
+                        "priority": "low",
+                        "title": f"Excellent hit rate for {operation} operation",
+                        "description": f"Operation '{operation}' has an excellent {hit_rate:.1f}% hit rate. Consider if TTL can be increased further.",
+                        "action": f"Consider increasing TTL beyond {self.operation_ttls.get(operation, self.default_ttl)}s to reduce cache churn, or use as reference for optimizing other operations.",
+                        "estimated_impact": "5-10% efficiency improvement",
+                        "metrics": {
+                            "current_hit_rate": round(hit_rate, 1),
+                            "total_requests": total_requests,
+                            "current_ttl": self.operation_ttls.get(operation, self.default_ttl)
+                        }
+                    })
+            
+            # Analyze text tier distribution and recommend optimizations
+            total_tier_operations = sum(self.ai_metrics['text_tier_distribution'].values())
+            if total_tier_operations > 0:
+                for tier, count in self.ai_metrics['text_tier_distribution'].items():
+                    tier_percentage = (count / total_tier_operations) * 100
+                    
+                    if tier == "xlarge" and tier_percentage > 20:
+                        recommendations.append({
+                            "type": "text_tier",
+                            "priority": "medium",
+                            "title": "High proportion of extra-large texts",
+                            "description": f"Extra-large texts comprise {tier_percentage:.1f}% of operations, which may impact cache efficiency.",
+                            "action": "Consider implementing text chunking, increasing large text threshold, or optimizing xlarge text handling strategies.",
+                            "estimated_impact": "15-25% memory efficiency improvement",
+                            "metrics": {
+                                "tier_percentage": round(tier_percentage, 1),
+                                "tier_count": count,
+                                "current_threshold": getattr(self.text_size_tiers, 'large', 50000) if hasattr(self.text_size_tiers, 'large') else 50000
+                            }
+                        })
+                    
+                    elif tier == "small" and tier_percentage < 10:
+                        recommendations.append({
+                            "type": "text_tier",
+                            "priority": "low",
+                            "title": "Low proportion of small texts",
+                            "description": f"Small texts only comprise {tier_percentage:.1f}% of operations. Memory cache may be underutilized.",
+                            "action": "Review small text threshold or investigate if more content could benefit from aggressive memory caching.",
+                            "estimated_impact": "5-15% response time improvement",
+                            "metrics": {
+                                "tier_percentage": round(tier_percentage, 1),
+                                "tier_count": count,
+                                "current_threshold": getattr(self.text_size_tiers, 'small', 500) if hasattr(self.text_size_tiers, 'small') else 500
+                            }
+                        })
+            
+            # Memory cache size recommendations
+            memory_utilization = len(self.memory_cache) / max(self.memory_cache_size, 1) * 100
+            if memory_utilization > 90:
+                recommendations.append({
+                    "type": "memory",
+                    "priority": "high",
+                    "title": "Memory cache near capacity",
+                    "description": f"Memory cache is {memory_utilization:.1f}% full ({len(self.memory_cache)}/{self.memory_cache_size} entries).",
+                    "action": f"Consider increasing memory_cache_size from {self.memory_cache_size} to {self.memory_cache_size * 2} entries.",
+                    "estimated_impact": "10-20% response time improvement",
+                    "metrics": {
+                        "current_utilization": round(memory_utilization, 1),
+                        "current_size": self.memory_cache_size,
+                        "current_entries": len(self.memory_cache)
+                    }
+                })
+            elif memory_utilization < 30:
+                recommendations.append({
+                    "type": "memory",
+                    "priority": "low",
+                    "title": "Memory cache underutilized",
+                    "description": f"Memory cache is only {memory_utilization:.1f}% utilized. Consider reducing size to free memory.",
+                    "action": f"Consider reducing memory_cache_size from {self.memory_cache_size} to {max(50, int(self.memory_cache_size * 0.7))} entries.",
+                    "estimated_impact": "Memory efficiency improvement",
+                    "metrics": {
+                        "current_utilization": round(memory_utilization, 1),
+                        "current_size": self.memory_cache_size,
+                        "current_entries": len(self.memory_cache)
+                    }
+                })
+            
+            # TTL optimization recommendations based on operation performance
+            avg_operation_times = {}
+            for perf_record in self.ai_metrics['operation_performance'][-100:]:  # Last 100 operations
+                if isinstance(perf_record, dict) and 'operation' in perf_record and 'duration' in perf_record:
+                    op = perf_record['operation']
+                    if op not in avg_operation_times:
+                        avg_operation_times[op] = []
+                    avg_operation_times[op].append(perf_record['duration'])
+            
+            for operation, durations in avg_operation_times.items():
+                if len(durations) >= 5:  # Need sufficient samples
+                    avg_duration = sum(durations) / len(durations)
+                    current_ttl = self.operation_ttls.get(operation, self.default_ttl)
+                    
+                    # If operation is consistently fast but has low TTL, recommend increasing TTL
+                    if avg_duration < 0.1 and current_ttl < 7200:  # Fast operation (<100ms) with TTL < 2hrs
+                        recommendations.append({
+                            "type": "ttl",
+                            "priority": "medium",
+                            "title": f"Consider increasing TTL for fast {operation} operation",
+                            "description": f"Operation '{operation}' completes quickly ({avg_duration*1000:.1f}ms avg) but has moderate TTL ({current_ttl}s).",
+                            "action": f"Consider increasing TTL from {current_ttl}s to {current_ttl * 2}s to reduce cache churn.",
+                            "estimated_impact": "10-15% cache efficiency improvement",
+                            "metrics": {
+                                "avg_duration_ms": round(avg_duration * 1000, 1),
+                                "current_ttl": current_ttl,
+                                "sample_count": len(durations)
+                            }
+                        })
+            
+            # Compression recommendations (if compression stats are available)
+            try:
+                compression_stats = self.performance_monitor.get_performance_stats().get('compression', {})
+                if compression_stats and compression_stats.get('total_compressions', 0) > 10:
+                    avg_ratio = compression_stats.get('avg_compression_ratio', 1.0)
+                    if avg_ratio > 0.8:  # Poor compression ratio
+                        recommendations.append({
+                            "type": "compression",
+                            "priority": "medium",
+                            "title": "Poor compression efficiency detected",
+                            "description": f"Average compression ratio is {avg_ratio:.2f}, indicating limited compression benefits.",
+                            "action": f"Consider increasing compression_threshold from {self.compression_threshold} bytes or review data types being cached.",
+                            "estimated_impact": "Storage efficiency improvement",
+                            "metrics": {
+                                "avg_compression_ratio": round(avg_ratio, 2),
+                                "current_threshold": self.compression_threshold,
+                                "total_compressions": compression_stats.get('total_compressions', 0)
+                            }
+                        })
+            except Exception as e:
+                logger.debug(f"Could not analyze compression stats: {e}")
+            
+            # Sort recommendations by priority (high -> medium -> low)
+            priority_order = {"high": 0, "medium": 1, "low": 2}
+            recommendations.sort(key=lambda x: priority_order.get(x["priority"], 3))
+            
+            logger.info(f"Generated {len(recommendations)} optimization recommendations")
+            return recommendations
+            
+        except Exception as e:
+            error_msg = f"Failed to generate optimization recommendations: {e}"
+            logger.error(error_msg, exc_info=True)
+            return [{
+                "type": "error",
+                "priority": "high",
+                "title": "Failed to generate recommendations",
+                "description": error_msg,
+                "action": "Check logs and system health",
+                "estimated_impact": "Unknown",
+                "metrics": {}
+            }]
+
     # Legacy compatibility methods and properties
     
     @property
     def memory_cache(self) -> Dict[str, Any]:
         """Legacy compatibility property for memory cache access."""
         return self.l1_cache._cache if self.l1_cache else {}
+    
+    @memory_cache.setter
+    def memory_cache(self, value: Dict[str, Any]) -> None:
+        """Legacy compatibility setter for memory cache (not used in new implementation)."""
+        logger.warning("memory_cache setter is deprecated - use L1 cache methods instead")
+        pass  # No-op for backward compatibility
+    
+    @memory_cache.deleter
+    def memory_cache(self) -> None:
+        """Legacy compatibility deleter for memory cache."""
+        if self.l1_cache:
+            self.l1_cache.clear()
+        logger.debug("Memory cache cleared via legacy deleter")
     
     @property
     def memory_cache_size(self) -> int:
