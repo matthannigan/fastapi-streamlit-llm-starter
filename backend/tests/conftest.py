@@ -112,6 +112,25 @@ def mock_ai_response():
     return AsyncMock(return_value=AsyncMock(data="This is a test summary."))
 
 @pytest.fixture
+def sample_response():
+    """Sample AI response for cache tests."""
+    return {
+        "summary": "This is a test summary",
+        "confidence": 0.95,
+        "model": "test-model",
+        "tokens_used": 150,
+    }
+
+@pytest.fixture
+def sample_options():
+    """Sample operation options for cache tests."""
+    return {
+        "max_length": 100,
+        "temperature": 0.7,
+        "model": "gpt-4",
+    }
+
+@pytest.fixture
 def mock_processor():
     """Mock TextProcessorService for testing."""
     mock = AsyncMock(spec=TextProcessorService)
@@ -227,6 +246,38 @@ def mock_performance_monitor():
     }
     
     return mock_monitor
+
+@pytest.fixture
+def performance_monitor():
+    """Create a mock performance monitor (shared fixture name for infra tests)."""
+    return Mock(spec=CachePerformanceMonitor)
+
+@pytest.fixture
+async def ai_cache(performance_monitor):
+    """Provide an AIResponseCache instance for infra tests across modules."""
+    from unittest.mock import MagicMock
+    # Use the refactored inheritance implementation specifically
+    from app.infrastructure.cache.redis_ai import AIResponseCache as InheritedAIResponseCache
+    cache = InheritedAIResponseCache(
+        redis_url="redis://localhost:6379",
+        default_ttl=3600,
+        text_hash_threshold=1000,
+        memory_cache_size=100,
+        performance_monitor=performance_monitor,
+        text_size_tiers={
+            "small": 500,
+            "medium": 5000,
+            "large": 50000,
+        },
+    )
+    try:
+        yield cache
+    finally:
+        if getattr(cache, "redis", None):
+            try:
+                await cache.disconnect()
+            except Exception:
+                pass
 
 @pytest.fixture
 def cache_performance_monitor():
