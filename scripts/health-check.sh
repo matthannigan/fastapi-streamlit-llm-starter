@@ -49,8 +49,8 @@ check_health() {
 
 # Function to check Redis
 check_redis() {
-    if check_service "Redis" "ai-text-processor-redis"; then
-        if docker exec ai-text-processor-redis redis-cli ping | grep -q "PONG"; then
+    if check_service "Redis" "llm-starter-redis"; then
+        if docker exec llm-starter-redis redis-cli ping | grep -q "PONG"; then
             echo -e "${GREEN}✅ Redis health check passed${NC}"
             return 0
         else
@@ -78,12 +78,12 @@ redis_healthy=0
 nginx_healthy=0
 
 # Backend
-if check_health "Backend (FastAPI)" "http://localhost:8000/health" "ai-text-processor-backend"; then
+if check_health "Backend (FastAPI)" "http://localhost:8000/health" "llm-starter-backend"; then
     backend_healthy=1
 fi
 
 # Frontend
-if check_health "Frontend (Streamlit)" "http://localhost:8501/_stcore/health" "ai-text-processor-frontend"; then
+if check_health "Frontend (Streamlit)" "http://localhost:8501/_stcore/health" "llm-starter-frontend"; then
     frontend_healthy=1
 fi
 
@@ -93,8 +93,8 @@ if check_redis; then
 fi
 
 # Nginx (optional - only in production)
-if docker ps --format "table {{.Names}}" | grep -q "^ai-text-processor-nginx$"; then
-    if check_service "Nginx" "ai-text-processor-nginx"; then
+if docker ps --format "table {{.Names}}" | grep -q "^llm-starter-nginx$"; then
+    if check_service "Nginx" "llm-starter-nginx"; then
         nginx_healthy=1
         echo -e "${GREEN}✅ Nginx is running${NC}"
     fi

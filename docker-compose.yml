@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: ai-text-processor-backend-${GIT_BRANCH:-main}
+    container_name: llm-starter-backend-${GIT_BRANCH:-main}
     ports:
       - "8000:8000"
     environment:
@@ -19,7 +19,7 @@ services:
       - ./backend:/app
       - ./shared:/app/shared
     networks:
-      - ai-processor-network
+      - llm-starter-network
     restart: unless-stopped
     depends_on:
       - redis
@@ -34,7 +34,7 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    container_name: ai-text-processor-frontend-${GIT_BRANCH:-main}
+    container_name: llm-starter-frontend-${GIT_BRANCH:-main}
     ports:
       - "8501:8501"
     environment:
@@ -45,7 +45,7 @@ services:
       - ./frontend:/app
       - ./shared:/app/shared
     networks:
-      - ai-processor-network
+      - llm-starter-network
     restart: unless-stopped
     depends_on:
       - backend
@@ -58,13 +58,13 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ai-text-processor-redis-${GIT_BRANCH:-main}
+    container_name: llm-starter-redis-${GIT_BRANCH:-main}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - ai-processor-network
+      - llm-starter-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -74,7 +74,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: ai-text-processor-nginx-${GIT_BRANCH:-main}
+    container_name: llm-starter-nginx-${GIT_BRANCH:-main}
     ports:
       - "80:80"
       - "443:443"
@@ -82,7 +82,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
-      - ai-processor-network
+      - llm-starter-network
     restart: unless-stopped
     depends_on:
       - backend
@@ -92,5 +92,5 @@ volumes:
   redis_data:
 
 networks:
-  ai-processor-network:
+  llm-starter-network:
     driver: bridge 
