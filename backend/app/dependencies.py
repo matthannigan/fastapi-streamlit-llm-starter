@@ -160,6 +160,12 @@ from fastapi import Depends
 
 from app.core.config import Settings, settings
 from app.infrastructure.cache import AIResponseCache
+from app.infrastructure.monitoring import (
+    HealthChecker,
+    check_ai_model_health,
+    check_cache_health,
+    check_resilience_health,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -226,3 +232,23 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         logger.warning(f"Failed to connect to Redis: {e}. Cache will operate without persistence.")
     
     return cache
+
+
+@lru_cache()
+def get_health_checker() -> HealthChecker:
+    """
+    Dependency provider for the HealthChecker with registered standard checks.
+
+    Uses lru_cache to ensure a single instance is reused across requests.
+    """
+    checker = HealthChecker(
+        default_timeout_ms=2000,
+        per_component_timeouts_ms={},
+        retry_count=1,
+        backoff_base_seconds=0.1,
+    )
+    # Register built-in checks
+    checker.register_check("ai_model", check_ai_model_health)
+    checker.register_check("cache", check_cache_health)
+    checker.register_check("resilience", check_resilience_health)
+    return checker
