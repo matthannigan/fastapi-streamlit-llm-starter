@@ -37,26 +37,26 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 1. **Build and Push Images**:
 ```bash
 # Build images
-docker build -t your-repo/ai-processor-backend ./backend
-docker build -t your-repo/ai-processor-frontend ./frontend
+docker build -t your-repo/llm-starter-backend ./backend
+docker build -t your-repo/llm-starter-frontend ./frontend
 
 # Push to ECR
 aws ecr get-login-password | docker login --username AWS --password-stdin your-repo
-docker push your-repo/ai-processor-backend
-docker push your-repo/ai-processor-frontend
+docker push your-repo/llm-starter-backend
+docker push your-repo/llm-starter-frontend
 ```
 
 2. **Create ECS Task Definition**:
 ```json
 {
-  "family": "ai-text-processor",
+  "family": "llm-starter",
   "networkMode": "awsvpc",
   "cpu": "1024",
   "memory": "2048",
   "containerDefinitions": [
     {
       "name": "backend",
-      "image": "your-repo/ai-processor-backend",
+      "image": "your-repo/llm-starter-backend",
       "portMappings": [{"containerPort": 8000, "protocol": "tcp"}],
       "environment": [
         {"name": "RESILIENCE_PRESET", "value": "production"},
@@ -70,7 +70,7 @@ docker push your-repo/ai-processor-frontend
     },
     {
       "name": "frontend",
-      "image": "your-repo/ai-processor-frontend",
+      "image": "your-repo/llm-starter-frontend",
       "portMappings": [{"containerPort": 8501, "protocol": "tcp"}],
       "environment": [
         {"name": "API_BASE_URL", "value": "https://your-backend-url"},
@@ -86,16 +86,16 @@ docker push your-repo/ai-processor-frontend
 
 ```bash
 # Build and deploy backend
-gcloud builds submit --tag gcr.io/PROJECT-ID/ai-processor-backend ./backend
-gcloud run deploy ai-processor-backend \
-  --image gcr.io/PROJECT-ID/ai-processor-backend \
+gcloud builds submit --tag gcr.io/PROJECT-ID/llm-starter-backend ./backend
+gcloud run deploy llm-starter-backend \
+  --image gcr.io/PROJECT-ID/llm-starter-backend \
   --platform managed \
   --set-env-vars RESILIENCE_PRESET=production,GEMINI_API_KEY=your-gemini-key,API_KEY=your-secure-api-key,DISABLE_INTERNAL_DOCS=true,LOG_LEVEL=INFO
 
 # Build and deploy frontend
-gcloud builds submit --tag gcr.io/PROJECT-ID/ai-processor-frontend ./frontend  
-gcloud run deploy ai-processor-frontend \
-  --image gcr.io/PROJECT-ID/ai-processor-frontend \
+gcloud builds submit --tag gcr.io/PROJECT-ID/llm-starter-frontend ./frontend  
+gcloud run deploy llm-starter-frontend \
+  --image gcr.io/PROJECT-ID/llm-starter-frontend \
   --platform managed \
   --set-env-vars API_BASE_URL=https://your-backend-url,SHOW_DEBUG_INFO=false,INPUT_MAX_LENGTH=50000
 

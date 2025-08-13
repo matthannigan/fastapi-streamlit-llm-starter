@@ -176,7 +176,7 @@ make restore BACKUP=filename  # Restore Redis data
 
 ## Networking
 
-All services communicate through a custom Docker network (`ai-processor-network`) for:
+All services communicate through a custom Docker network (`llm-starter-network`) for:
 - Service discovery
 - Network isolation
 - Improved security
