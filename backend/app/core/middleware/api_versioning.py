@@ -286,6 +286,21 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         health_check_paths = {'/health', '/healthz', '/ping', '/status', '/readiness', '/liveness'}
         return path in health_check_paths or path.startswith('/health/')
     
+    def _is_root_or_docs_path(self, path: str) -> bool:
+        """Check if the path is the root or documentation/schema endpoints.
+
+        These endpoints should not be rewritten by API versioning, since they
+        are intentionally unversioned and live at stable paths.
+        """
+        # Stable, unversioned paths that must be accessible without a prefix
+        unversioned_paths = {
+            '/',
+            '/docs',
+            '/openapi.json',
+            '/redoc',
+        }
+        return path in unversioned_paths
+
     def _is_internal_path(self, path: str) -> bool:
         """Check if the path targets the internal API and should bypass public versioning.
 
@@ -308,6 +323,10 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         if self._is_health_check_path(request.url.path):
             return await call_next(request)
         
+        # Skip versioning for root and docs/schema endpoints
+        if self._is_root_or_docs_path(request.url.path):
+            return await call_next(request)
+
         # Skip versioning for internal API endpoints
         if self._is_internal_path(request.url.path):
             return await call_next(request)

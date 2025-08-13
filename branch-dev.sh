@@ -88,7 +88,7 @@ start_branch() {
     
     # Create environment file
     local env_file=$(create_env_file "$branch")
-    local project_name="ai-processor-${branch//\//_}"
+    local project_name="llm-starter-${branch//\//_}"
     
     # Get ports for display
     local ports_str=$(get_branch_ports "$branch")
@@ -118,7 +118,7 @@ stop_branch() {
     local branch="${1:-$(get_current_branch)}"
     echo "🛑 Stopping development environment for branch: $branch"
     
-    local project_name="ai-processor-${branch//\//_}"
+    local project_name="llm-starter-${branch//\//_}"
     local env_file=".env.${branch//\//_}"
     
     if [[ -f "$env_file" ]]; then
@@ -140,7 +140,7 @@ show_status() {
     echo "================================="
     
     for branch in "${!BRANCH_PORTS[@]}"; do
-        local project_name="ai-processor-${branch//\//_}"
+        local project_name="llm-starter-${branch//\//_}"
         local ports_str=$(get_branch_ports "$branch")
         IFS=':' read -r backend_port frontend_port redis_port <<< "$ports_str"
         
@@ -165,7 +165,7 @@ show_status() {
 
 show_logs() {
     local branch="${1:-$(get_current_branch)}"
-    local project_name="ai-processor-${branch//\//_}"
+    local project_name="llm-starter-${branch//\//_}"
     
     echo "📋 Logs for branch: $branch"
     docker-compose -p "$project_name" logs -f
@@ -175,7 +175,7 @@ clean_all() {
     echo "🧹 Cleaning all development environments..."
     
     for branch in "${!BRANCH_PORTS[@]}"; do
-        local project_name="ai-processor-${branch//\//_}"
+        local project_name="llm-starter-${branch//\//_}"
         echo "  Stopping $project_name..."
         docker-compose -p "$project_name" down -v 2>/dev/null || true
     done
