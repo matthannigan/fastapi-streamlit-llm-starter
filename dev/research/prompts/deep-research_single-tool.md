@@ -17,7 +17,7 @@ This is part of a series of podcasts about LLM starter templates. Today, we cond
 
 ### **II. Comparative Analysis**
 
-4.  **Key Alternatives:** Who are the main alternatives or competitors to **[Insert Component Name]** (e.g., for FastAPI: Flask, Django; for Redis: Memcached, RabbitMQ)?
+4.  **Key Alternatives:** What are the main alternatives or competitors to **[Insert Component Name]** (e.g., for FastAPI: Flask, Django; for Redis: Memcached, RabbitMQ)?
 5.  **Comparative Strengths & Weaknesses:** How does **[Insert Component Name]** compare and contrast with these alternatives? Analyze the trade-offs in terms of performance, ease of use, feature set, and scalability.
 6.  **Decision-Making Factors:** What are the key criteria a developer or architect should consider when deciding whether to use **[Insert Component Name]** over its alternatives for a new project?
 
