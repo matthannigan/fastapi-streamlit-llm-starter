@@ -106,7 +106,7 @@ Note:
 import os
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Union
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -388,6 +388,37 @@ class Settings(BaseSettings):
     resilience_health_check_enabled: bool = Field(
         default=True,
         description="Enable resilience health check endpoints"
+    )
+
+    # Health Check Configuration
+    health_check_timeout_ms: int = Field(
+        default=2000,
+        gt=0,
+        description="Default timeout in milliseconds for each health check"
+    )
+    health_check_ai_model_timeout_ms: int = Field(
+        default=2000,
+        gt=0,
+        description="Timeout override in milliseconds for AI model health check"
+    )
+    health_check_cache_timeout_ms: int = Field(
+        default=2000,
+        gt=0,
+        description="Timeout override in milliseconds for cache health check"
+    )
+    health_check_resilience_timeout_ms: int = Field(
+        default=2000,
+        gt=0,
+        description="Timeout override in milliseconds for resilience health check"
+    )
+    health_check_retry_count: int = Field(
+        default=1,
+        ge=0,
+        description="Number of retry attempts for failing health checks"
+    )
+    health_check_enabled_components: List[str] = Field(
+        default=["ai_model", "cache", "resilience"],
+        description="List of enabled health check component names"
     )
 
     # ========================================
@@ -704,6 +735,81 @@ class Settings(BaseSettings):
             default_value = defaults.get(info.field_name, 1.0)
             logger.warning(f"Invalid value for {info.field_name}: {v}, using default: {default_value}")
             return default_value
+        return v
+
+    # Health Check Configuration Validation
+    @field_validator(
+        'health_check_timeout_ms', 'health_check_ai_model_timeout_ms',
+        'health_check_cache_timeout_ms', 'health_check_resilience_timeout_ms',
+        'health_check_retry_count'
+    )
+    @classmethod
+    def validate_health_check_numbers(cls, v: Union[int, float], info) -> int:
+        """
+        Ensure health check numeric settings are valid, and warn about suboptimal values.
+        """
+        field_name = info.field_name
+
+        # First, handle type conversion for all numeric fields
+        try:
+            iv = int(v)
+        except (ValueError, TypeError):
+            raise ConfigurationError(
+                f"{field_name} must be a valid integer",
+                context={"field": field_name, "provided_value": v}
+            )
+
+        if field_name == 'health_check_retry_count':
+            # Validate range (ge=0)
+            if iv < 0:
+                raise ConfigurationError(
+                    "health_check_retry_count must be >= 0",
+                    context={"field": field_name, "provided_value": v}
+                )
+            # Warn about suboptimal settings
+            if iv == 0:
+                logger.warning(
+                    "Configuration Warning: health_check_retry_count is set to 0. "
+                    "Failing health checks will not be retried."
+                )
+            elif iv > 5:
+                logger.warning(
+                    f"Configuration Warning: health_check_retry_count is set to {iv}. "
+                    "A high number of retries may conceal underlying issues."
+                )
+        else: # Timeouts
+            # Validate range (gt=0)
+            if iv <= 0:
+                raise ConfigurationError(
+                    f"{field_name} must be > 0",
+                    context={"field": field_name, "provided_value": v}
+                )
+            # Warn about suboptimal settings
+            if iv > 10000:  # Warn if timeout is longer than 10 seconds
+                logger.warning(
+                    f"Configuration Warning: {field_name} is set to {iv}ms, "
+                    "which is a very long timeout and may impact system responsiveness."
+                )
+        return iv
+
+    @field_validator('health_check_enabled_components')
+    @classmethod
+    def validate_enabled_health_components(cls, v: List[str]) -> List[str]:
+        """
+        Checks that all enabled components are valid and warns if none are enabled.
+        """
+        # Check component configurations
+        allowed = {"ai_model", "cache", "resilience", "database"}
+        invalid = [name for name in v if name not in allowed]
+        if invalid:
+            raise ConfigurationError(
+                f"Invalid health check components found: {invalid}. "
+                f"Allowed components are: {sorted(list(allowed))}",
+                context={"field": "health_check_enabled_components", "invalid_components": invalid}
+            )
+        # Warn about suboptimal settings
+        if not v:
+            logger.warning("Configuration Warning: No health check components are enabled in health_check_enabled_components.")
         return v
 
     # ========================================
