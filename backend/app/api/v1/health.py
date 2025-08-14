@@ -106,7 +106,55 @@ health_router = APIRouter(prefix="/health", tags=["Health"])
 logger = logging.getLogger(__name__)
 
 
-@health_router.get("", response_model=HealthResponse)
+@health_router.get(
+    "",
+    response_model=HealthResponse,
+    summary="System Health Check",
+    responses={
+        200: {
+            "description": "Successful health check. Returns 'healthy' or 'degraded' based on component status.",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "healthy": {
+                            "summary": "All components healthy",
+                            "value": {
+                                "status": "healthy",
+                                "timestamp": "2025-06-28T00:06:39.130848",
+                                "version": "1.0.0",
+                                "ai_model_available": True,
+                                "resilience_healthy": True,
+                                "cache_healthy": True
+                            }
+                        },
+                        "degraded": {
+                            "summary": "One or more components degraded",
+                            "value": {
+                                "status": "degraded",
+                                "timestamp": "2025-06-28T00:06:39.130848",
+                                "version": "1.0.0",
+                                "ai_model_available": False,
+                                "resilience_healthy": None,
+                                "cache_healthy": True
+                            }
+                        },
+                        "unhealthy": {
+                            "summary": "Example of unhealthy components (mapped to degraded in public schema)",
+                            "value": {
+                                "status": "degraded",
+                                "timestamp": "2025-06-28T00:06:39.130848",
+                                "version": "1.0.0",
+                                "ai_model_available": False,
+                                "resilience_healthy": False,
+                                "cache_healthy": False
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def health_check(health_checker = Depends(get_health_checker)):
     """Enhanced health check endpoint with comprehensive system monitoring.
     
@@ -144,6 +192,9 @@ async def health_check(health_checker = Depends(get_health_checker)):
         Exception: Internal errors are caught and handled gracefully. Component
             failures result in None values rather than endpoint failures, ensuring
             the health check remains available even when subsystems are down.
+
+    Status Codes:
+        200: Health check executed successfully. Response body indicates system health status.
     
     Example:
         >>> # GET /health

@@ -75,3 +75,26 @@ def test_health_endpoint_graceful_failure(monkeypatch, client):
     assert data["cache_healthy"] is None
 
 
+def test_health_endpoint_failed_components(monkeypatch, client):
+    """When components fail (unhealthy), endpoint should not 500 and should degrade."""
+    async def fake_check_all():
+        from app.infrastructure.monitoring.health import (
+            SystemHealthStatus, ComponentStatus, HealthStatus
+        )
+        comps = [
+            ComponentStatus(name="ai_model", status=HealthStatus.UNHEALTHY, message="AI down"),
+            ComponentStatus(name="cache", status=HealthStatus.UNHEALTHY, message="Cache down"),
+        ]
+        return SystemHealthStatus(overall_status=HealthStatus.UNHEALTHY, components=comps, timestamp=0.0)
+
+    from app.dependencies import get_health_checker
+    checker = get_health_checker()
+    monkeypatch.setattr(checker, "check_all_components", fake_check_all)
+
+    resp = client.get("/v1/health")
+    assert resp.status_code == 200
+    data = resp.json()
+    # Backward-compat mapping uses 'degraded' for non-healthy
+    assert data["status"] in ["degraded", "unhealthy"]
+
+
