@@ -40,6 +40,23 @@
 # Configuration and Environment Detection
 ##################################################################################################
 
+# Check if .env file exists and include it
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+# Example target to show the variables are loaded
+show-env-vars:
+	@echo "Backend Port is: $(BACKEND_PORT)"
+	@echo "Frontend Port is: $(FRONTEND_PORT)"
+	@echo "Redis Port is: $(REDIS_PORT)"
+	@echo "Environment is: $(ENVIRONMENT)"
+	@echo "Debug mode is: $(DEBUG)"
+	@echo "Application logging level is: $(LOG_LEVEL)"
+	@echo "---"
+	@echo "The shell also sees BACKEND_PORT as: $$BACKEND_PORT etc"
+		
 # Python executable detection - prefer python3, fallback to python
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
 VENV_DIR := .venv
@@ -242,10 +259,10 @@ run-backend:
 	@echo "🚀 Starting backend FastAPI server..."
 	@echo ""
 	@echo "📍 Server endpoints:"
-	@echo "   🌐 API Documentation (Swagger): http://localhost:8000/docs"
-	@echo "   📚 API Documentation (ReDoc):   http://localhost:8000/redoc"
-	@echo "   🔌 API Base URL:                http://localhost:8000"
-	@echo "   ❤️  Health Check:               http://localhost:8000/health"
+	@echo "   🌐 API Documentation (Swagger): $(API_BASE_URL)/docs"
+	@echo "   📚 API Documentation (ReDoc):   $(API_BASE_URL)/redoc"
+	@echo "   🔌 API Base URL:                $(API_BASE_URL)"
+	@echo "   ❤️  Health Check:               $(API_BASE_URL)/health"
 	@echo ""
 	@echo "⏹️  Press Ctrl+C to stop the server"
 	@echo ""
@@ -255,9 +272,9 @@ run-backend:
 dev:
 	@echo "🚀 Starting development environment..."
 	@echo "📍 Services will be available at:"
-	@echo "   🌐 Frontend (Streamlit): http://localhost:8501"
-	@echo "   🔌 Backend (FastAPI):    http://localhost:8000"
-	@echo "   🗄️  Redis:               localhost:6379"
+	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
+	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
+	@echo "   🗄️  Redis:               localhost:$(REDIS_PORT)"
 	@echo ""
 	@echo "💡 File watching enabled - changes will trigger automatic reloads"
 	@echo "⏹️  Press Ctrl+C to stop all services"
@@ -268,9 +285,9 @@ dev:
 dev-legacy:
 	@echo "🚀 Starting development environment (legacy mode)..."
 	@echo "📍 Services will be available at:"
-	@echo "   🌐 Frontend (Streamlit): http://localhost:8501"
-	@echo "   🔌 Backend (FastAPI):    http://localhost:8000"
-	@echo "   🗄️  Redis:               localhost:6379"
+	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
+	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
+	@echo "   🗄️  Redis:               localhost:$(REDIS_PORT)"
 	@echo ""
 	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
@@ -386,7 +403,7 @@ test-backend-all:
 test-backend-manual:
 	@echo "🧪 Running backend manual tests..."
 	@echo "⚠️  Prerequisites for manual tests:"
-	@echo "   ✅ FastAPI server running: http://localhost:8000"
+	@echo "   ✅ FastAPI server running: http://localhost:$(BACKEND_PORT)"
 	@echo "   ✅ Environment variables set:"
 	@echo "      - API_KEY=test-api-key-12345"
 	@echo "      - GEMINI_API_KEY=<your-gemini-api-key>"
@@ -408,8 +425,8 @@ test-frontend:
 test-integration:
 	@echo "🧪 Running comprehensive integration tests..."
 	@echo "⚠️  Prerequisites:"
-	@echo "   ✅ Backend running: http://localhost:8000"
-	@echo "   ✅ Frontend running: http://localhost:8501"
+	@echo "   ✅ Backend running: http://localhost:$(BACKEND_PORT)"
+	@echo "   ✅ Frontend running: http://localhost:$(FRONTEND_PORT)"
 	@echo ""
 	@echo "💡 Start services first: make dev"
 	@echo ""
@@ -584,9 +601,9 @@ status:
 health:
 	@echo "❤️  Checking service health..."
 	@echo "🔌 Backend health:"
-	@curl -f http://localhost:8000/health 2>/dev/null && echo "✅ Backend healthy" || echo "❌ Backend unhealthy"
+	@curl -f http://localhost:$(BACKEND_PORT)/health 2>/dev/null && echo "✅ Backend healthy" || echo "❌ Backend unhealthy"
 	@echo "🌐 Frontend health:"
-	@curl -f http://localhost:8501/_stcore/health 2>/dev/null && echo "✅ Frontend healthy" || echo "❌ Frontend unhealthy"
+	@curl -f http://localhost:$(FRONTEND_PORT)/_stcore/health 2>/dev/null && echo "✅ Frontend healthy" || echo "❌ Frontend unhealthy"
 	@echo "⚙️  Resilience configuration:"
 	@$(PYTHON_CMD) scripts/validate_resilience_config.py --validate-current --quiet 2>/dev/null && echo "✅ Configuration valid" || echo "❌ Configuration issues detected"
 
