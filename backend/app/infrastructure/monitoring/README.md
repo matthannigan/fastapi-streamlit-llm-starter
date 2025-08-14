@@ -11,7 +11,7 @@ This directory provides a comprehensive monitoring and observability infrastruct
 ```
 monitoring/
 ├── __init__.py          # Centralized monitoring exports and comprehensive documentation
-├── health.py           # Health check infrastructure (placeholder for future implementation)
+├── health.py           # Health check infrastructure (core implementation)
 ├── metrics.py          # Application metrics collection (placeholder for future implementation)
 └── README.md           # This documentation file
 ```
@@ -53,36 +53,37 @@ The monitoring infrastructure follows a **centralized aggregation architecture**
   - ✅ **Trend Analysis**: Historical usage and performance trend analysis
   - ✅ **Session Analytics**: Session-based usage statistics and patterns
 
-### Planned Components (Future Implementation)
+### Health Check Infrastructure (`health.py`)
+Core health check capabilities for monitoring overall system status and component availability.
 
-#### Health Check Infrastructure (`health.py`)
-**Purpose:** Standardized health check capabilities for monitoring overall system status and component availability.
+Features:
+- ✅ Component and system status data models (`HealthStatus`, `ComponentStatus`, `SystemHealthStatus`)
+- ✅ Async `HealthChecker` with per-component/global timeouts, retries, and error isolation
+- ✅ Built-in checks: AI model, cache, resilience, and database placeholder
+- ✅ Backward-compatible mapping to existing `HealthResponse` in `/v1/health`
 
-**Planned Features:**
-- 🔄 **Component Health Monitoring**: Individual service health status tracking
-- 🔄 **Dependency Availability Checks**: External service dependency validation
-- 🔄 **System Resource Health**: CPU, memory, and disk usage monitoring
-- 🔄 **Standardized Responses**: Consistent health check response format
-- 🔄 **Integration Ready**: Support for load balancers and monitoring systems
-
-**Planned Architecture:**
+Usage:
 ```python
-# Future implementation structure
-class HealthStatus(Enum):
-    HEALTHY = "healthy"
-    DEGRADED = "degraded" 
-    UNHEALTHY = "unhealthy"
+from app.infrastructure.monitoring import (
+    HealthChecker,
+    check_ai_model_health,
+    check_cache_health,
+    check_resilience_health,
+)
 
-class ComponentStatus:
-    name: str
-    status: HealthStatus
-    message: str = ""
-    response_time_ms: float = 0.0
-
-class HealthChecker:
-    def register_check(self, name: str, check_func: Callable)
-    async def check_health(self) -> SystemHealthStatus
+checker = HealthChecker()
+checker.register_check("ai_model", check_ai_model_health)
+checker.register_check("cache", check_cache_health)
+checker.register_check("resilience", check_resilience_health)
+system_status = await checker.check_all_components()
 ```
+
+FastAPI integration:
+- `get_health_checker()` in `app/dependencies.py` returns a cached instance
+- `/v1/health` endpoint uses the checker and degrades gracefully on failures
+
+Configuration (see `app.core.config.Settings`):
+- `health_check_timeout_ms`, per-component overrides, retry count, enabled components
 
 #### Application Metrics Collection (`metrics.py`)
 **Purpose:** Centralized metrics collection and export capabilities for comprehensive application observability.

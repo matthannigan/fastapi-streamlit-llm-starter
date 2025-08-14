@@ -62,15 +62,46 @@ Comprehensive health check endpoint that evaluates:
 - Resilience infrastructure health (circuit breakers, failure detection)  
 - Cache system status (Redis connectivity, cache operations)
 
-**Response:**
+Status codes:
+- 200 OK: Health check executed successfully. Response body indicates health state.
+
+Response schema: `HealthResponse`
+
+Examples:
+
+Healthy
 ```json
 {
-    "status": "healthy",
-    "timestamp": "2025-06-28T00:06:39.130848",
-    "version": "1.0.0",
-    "ai_model_available": true,
-    "resilience_healthy": true,
-    "cache_healthy": true
+  "status": "healthy",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": true,
+  "resilience_healthy": true,
+  "cache_healthy": true
+}
+```
+
+Degraded (component unavailable or timed out)
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": false,
+  "resilience_healthy": null,
+  "cache_healthy": true
+}
+```
+
+Unhealthy components (mapped to degraded in public schema)
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": false,
+  "resilience_healthy": false,
+  "cache_healthy": false
 }
 ```
 
