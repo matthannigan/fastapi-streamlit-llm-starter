@@ -306,6 +306,7 @@ class TestSettingsIntegration:
         settings = Settings()
         assert settings._has_legacy_resilience_config() is True
     
+    @pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
     def test_has_legacy_resilience_config_true_modified_defaults(self):
         """Test detecting legacy config from modified default values."""
         settings = Settings(

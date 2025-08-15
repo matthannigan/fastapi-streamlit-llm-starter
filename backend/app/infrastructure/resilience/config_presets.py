@@ -341,15 +341,33 @@ class PresetManager:
         Returns:
             EnvironmentRecommendation based on detected environment
         """
-        # Check common environment variables
+        # First, honor an explicit ENVIRONMENT value when present
+        env_environment = os.getenv('ENVIRONMENT')
+        if env_environment:
+            env_val = env_environment.lower().strip()
+            if env_val in { 'staging', 'stage', 'production', 'prod' }:
+                return EnvironmentRecommendation(
+                    preset_name='production',
+                    confidence=0.70,
+                    reasoning=f"Explicit ENVIRONMENT={env_environment} maps to production preset",
+                    environment_detected=f"{env_environment} (auto-detected)"
+                )
+            if env_val in { 'development', 'dev', 'testing', 'test' }:
+                return EnvironmentRecommendation(
+                    preset_name='development',
+                    confidence=0.70,
+                    reasoning=f"Explicit ENVIRONMENT={env_environment} detected",
+                    environment_detected=f"{env_environment} (auto-detected)"
+                )
+
+        # Check common environment variables (prefer more specific/app-standard names first)
         env_vars_to_check = [
-            'ENVIRONMENT',
+            'NODE_ENV',
             'ENV',
             'DEPLOYMENT_ENV',
-            'NODE_ENV',
-            'RAILS_ENV',
             'DJANGO_SETTINGS_MODULE',
             'FLASK_ENV',
+            'RAILS_ENV',
             'APP_ENV'
         ]
         
@@ -410,6 +428,8 @@ class PresetManager:
                 environment_detected="production (auto-detected)"
             )
         
+        # ENVIRONMENT already handled above
+
         # Default fallback
         return EnvironmentRecommendation(
             preset_name="simple",
