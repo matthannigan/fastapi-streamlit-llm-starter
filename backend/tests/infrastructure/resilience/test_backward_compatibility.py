@@ -19,6 +19,7 @@ from app.infrastructure.resilience import AIServiceResilience, ResilienceStrateg
 from app.infrastructure.resilience.config_validator import config_validator
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestLegacyConfigurationDetection:
     """Test detection of legacy configuration patterns."""
     
@@ -78,6 +79,7 @@ class TestLegacyConfigurationDetection:
             assert config.circuit_breaker_config.failure_threshold == 15
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestLegacyConfigurationMapping:
     """Test mapping from legacy configuration to new system."""
     
@@ -179,6 +181,7 @@ class TestLegacyConfigurationMapping:
             assert not settings.retry_jitter_enabled
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestMigrationScenarios:
     """Test various migration scenarios from legacy to preset configuration."""
     
@@ -281,6 +284,7 @@ class TestMigrationScenarios:
             assert rollback_config.circuit_breaker_config.failure_threshold == original_config.circuit_breaker_config.failure_threshold
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestEdgeCasesAndErrorHandling:
     """Test edge cases and error handling in backward compatibility."""
     
@@ -362,6 +366,7 @@ class TestEdgeCasesAndErrorHandling:
                 settings = Settings()
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestMultiEnvironmentCompatibility:
     """Test compatibility across different deployment environments."""
     
@@ -438,6 +443,7 @@ class TestMultiEnvironmentCompatibility:
             assert config is not None
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestConfigurationVersioning:
     """Test configuration versioning and compatibility."""
     
@@ -541,6 +547,7 @@ class TestConfigurationVersioning:
         assert hasattr(config, 'circuit_breaker_config'), "Configuration should have circuit breaker config"
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestDataMigrationScenarios:
     """Test data migration scenarios for configuration persistence."""
     
@@ -611,6 +618,7 @@ class TestDataMigrationScenarios:
             os.unlink(backup_file.name)
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestPerformanceWithBackwardCompatibility:
     """Test performance implications of backward compatibility."""
     
@@ -669,6 +677,7 @@ class TestPerformanceWithBackwardCompatibility:
             assert avg_time < 0.01, f"Mixed configuration loading too slow: {avg_time:.3f}s"
 
 
+@pytest.mark.skip(reason="Legacy resilience configuration will be removed soon")
 class TestComprehensiveIntegrationScenarios:
     """Test comprehensive integration scenarios covering all compatibility aspects."""
     

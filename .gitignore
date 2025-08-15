@@ -187,6 +187,7 @@ logs/
 
 # Docker
 .dockerignore
+docker-compose.override.yml
 
 # OS
 .DS_Store

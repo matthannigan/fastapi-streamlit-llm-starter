@@ -160,6 +160,12 @@ from fastapi import Depends
 
 from app.core.config import Settings, settings
 from app.infrastructure.cache import AIResponseCache
+from app.infrastructure.monitoring import (
+    HealthChecker,
+    check_ai_model_health,
+    check_cache_health,
+    check_resilience_health,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -226,3 +232,58 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         logger.warning(f"Failed to connect to Redis: {e}. Cache will operate without persistence.")
     
     return cache
+
+
+@lru_cache()
+def get_health_checker() -> HealthChecker:
+    """
+    Dependency provider for the HealthChecker with registered standard checks.
+    
+    ⚠️ IMPLEMENTATION NOTE: This function currently uses hardcoded configuration
+    values instead of integrating with application settings. This is a known
+    issue that defeats the purpose of the health check configuration system.
+    
+    REQUIRED UPDATES (based on critique):
+    1. Add Settings dependency injection: settings: Settings = Depends(get_settings)
+    2. Use settings values instead of hardcoded ones:
+       - default_timeout_ms=settings.health_check_timeout_ms
+       - per_component_timeouts_ms from individual settings 
+       - retry_count=settings.health_check_retry_count
+    3. Add cache service dependency injection for performance optimization
+    4. Update cache health check registration to use injected service
+    
+    Uses lru_cache to ensure a single instance is reused across requests.
+    
+    Expected signature after fixes:
+    def get_health_checker(
+        settings: Settings = Depends(get_settings),
+        cache_service: AIResponseCache = Depends(get_cache_service)
+    ) -> HealthChecker:
+    """
+    checker = HealthChecker(
+        default_timeout_ms=2000,
+        per_component_timeouts_ms={},
+        retry_count=1,
+        backoff_base_seconds=0.1,
+    )
+    # Register built-in checks
+    checker.register_check("ai_model", check_ai_model_health)
+    checker.register_check("cache", check_cache_health)
+    checker.register_check("resilience", check_resilience_health)
+    return checker
+
+
+async def initialize_health_infrastructure() -> None:
+    """Initialize and validate health checker during application startup.
+
+    Ensures the singleton health checker is created and required checks are registered.
+    Avoids running external calls at startup to keep boot fast and non-blocking.
+    """
+    checker = get_health_checker()
+    required = {"ai_model", "cache", "resilience"}
+    missing = [name for name in required if name not in getattr(checker, "_checks", {})]
+    if missing:
+        logger.error(f"Health checker missing required checks: {missing}")
+        # Do not raise to avoid blocking startup; rely on endpoint to degrade gracefully
+    else:
+        logger.info("Health checker initialized with standard checks: ai_model, cache, resilience")

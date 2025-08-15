@@ -333,6 +333,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"AI Model: {settings.ai_model}")
     logger.info("Public API docs available at: /docs")
     logger.info("Internal API docs available at: /internal/docs")
+    # Initialize health infrastructure
+    try:
+        from app.dependencies import initialize_health_infrastructure
+        await initialize_health_infrastructure()
+    except Exception as e:
+        logger.warning(f"Health infrastructure initialization skipped: {e}")
     yield
     logger.info("Shutting down FastAPI application")
 

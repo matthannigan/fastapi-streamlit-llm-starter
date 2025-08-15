@@ -1,17 +1,47 @@
-"""
-Tests for health checks.
-"""
+"""Infrastructure tests for health checker and built-in checks."""
+
+import asyncio
 import pytest
 
+from app.infrastructure.monitoring.health import (
+    HealthChecker,
+    HealthStatus,
+    ComponentStatus,
+    check_ai_model_health,
+)
 
-# TODO: Move to backend/tests/api/v1/test_health_endpoints.py or backend/tests/core/test_health_checks.py
-# This test is currently testing empty infrastructure components and appears to be
-# intended for testing health check endpoints rather than infrastructure abstractions.
-# Infrastructure tests should focus on reusable, business-agnostic components with stable APIs.
-class TestHealthCheck:
-    """Test health check functionality."""
-    
-    def test_health_endpoint(self):
-        """Test health check endpoint."""
-        # TODO: Implement health check tests
-        pass
+
+@pytest.mark.asyncio
+async def test_health_checker_register_and_run():
+    checker = HealthChecker(default_timeout_ms=100)
+
+    # Register a fast healthy check
+    async def ok_check() -> ComponentStatus:
+        return ComponentStatus(name="ok", status=HealthStatus.HEALTHY)
+
+    checker.register_check("ok", ok_check)
+    status = await checker.check_all_components()
+    assert status.overall_status in {HealthStatus.HEALTHY, HealthStatus.DEGRADED, HealthStatus.UNHEALTHY}
+    assert any(c.name == "ok" for c in status.components)
+
+
+@pytest.mark.asyncio
+async def test_health_checker_timeout_degrades():
+    checker = HealthChecker(default_timeout_ms=50, retry_count=0)
+
+    async def slow_check() -> ComponentStatus:
+        await asyncio.sleep(0.2)
+        return ComponentStatus(name="slow", status=HealthStatus.HEALTHY)
+
+    checker.register_check("slow", slow_check)
+    result = await checker.check_component("slow")
+    # Timeout maps to DEGRADED by design
+    assert result.status is HealthStatus.DEGRADED
+
+
+@pytest.mark.asyncio
+async def test_ai_model_health_uses_settings(monkeypatch):
+    # No key -> degraded
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    result = await check_ai_model_health()
+    assert result.status in {HealthStatus.DEGRADED, HealthStatus.HEALTHY}

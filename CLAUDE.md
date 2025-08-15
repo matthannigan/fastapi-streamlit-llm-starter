@@ -570,6 +570,13 @@ API_BASE_URL=http://localhost:8000
 SHOW_DEBUG_INFO=true
 INPUT_MAX_LENGTH=10000
 
+# Health Check Configuration
+HEALTH_CHECK_TIMEOUT_MS=2000
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=1000
+HEALTH_CHECK_CACHE_TIMEOUT_MS=3000
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=1500
+HEALTH_CHECK_RETRY_COUNT=1
+
 # Development Features
 DEBUG=true
 LOG_LEVEL=DEBUG
@@ -591,6 +598,13 @@ CORS_ORIGINS=["https://your-frontend-domain.com"]
 API_BASE_URL=https://api.your-domain.com
 SHOW_DEBUG_INFO=false
 INPUT_MAX_LENGTH=50000
+
+# Health Check Configuration  
+HEALTH_CHECK_TIMEOUT_MS=2000
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=1000
+HEALTH_CHECK_CACHE_TIMEOUT_MS=3000
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=1500
+HEALTH_CHECK_RETRY_COUNT=2
 
 # Security
 DISABLE_INTERNAL_DOCS=true
@@ -640,6 +654,7 @@ CACHE_TTL_SECONDS=3600
    - Configure your AI provider (replace Gemini with your preferred LLM)
    - Set up your Redis instance or use the memory cache fallback
    - Configure authentication keys and CORS settings
+   - **Health Check Configuration**: Set `HEALTH_CHECK_*` environment variables for monitoring timeouts and retry behavior
 
 ### Template Customization Checklist
 

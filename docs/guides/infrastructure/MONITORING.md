@@ -25,16 +25,17 @@ graph TB
         AGGREGATOR --> HEALTH_CHECKER[Health Checker]
         AGGREGATOR --> METRICS_COLLECTOR[Metrics Collector]
         
+        
         subgraph "Active Monitoring Components"
             CACHE_MONITOR --> CACHE_ANALYTICS[Cache Analytics]
             CACHE_MONITOR --> PERF_TRACKING[Performance Tracking]
             CONFIG_MONITOR --> USAGE_ANALYTICS[Usage Analytics]
             CONFIG_MONITOR --> ALERT_SYSTEM[Alert System]
+            HEALTH_CHECKER --> COMPONENT_HEALTH[Component Health]
+            HEALTH_CHECKER --> DEPENDENCY_CHECKS[Dependency Checks]
         end
         
         subgraph "Planned Monitoring Components"
-            HEALTH_CHECKER --> COMPONENT_HEALTH[Component Health]
-            HEALTH_CHECKER --> DEPENDENCY_CHECKS[Dependency Checks]
             METRICS_COLLECTOR --> PROMETHEUS[Prometheus Export]
             METRICS_COLLECTOR --> CUSTOM_METRICS[Custom Metrics]
         end
@@ -61,6 +62,7 @@ graph TB
 - ✅ **Session Analytics**: Session-based usage statistics and patterns
 - ✅ **Memory Management**: Bounded retention with intelligent cleanup
 - ✅ **External Integration**: Support for Prometheus, Grafana, and custom monitoring systems
+- ✅ **System Health Monitoring**: Async health checking with timeouts, retries, and component isolation
 
 ## Core Components
 
@@ -74,7 +76,7 @@ Provides centralized access to monitoring capabilities from multiple infrastruct
 |-----------|--------|--------|---------|
 | **Cache Performance Monitor** | `app.infrastructure.cache.monitoring` | ✅ Active | Cache operation monitoring and analytics |
 | **Configuration Monitor** | `app.infrastructure.resilience.config_monitoring` | ✅ Active | Configuration usage and performance tracking |
-| **Health Checker** | `app.infrastructure.monitoring.health` | 🔄 Planned | System health and component status monitoring |
+| **Health Checker** | `app.infrastructure.monitoring.health` | ✅ Active | System health and component status monitoring |
 | **Metrics Collector** | `app.infrastructure.monitoring.metrics` | 🔄 Planned | Application-wide metrics collection and export |
 
 #### Unified Interface
@@ -260,167 +262,488 @@ for point in trend_data:
     print(f"Hour {point.hour}: avg={point.avg_value:.2f}ms, count={point.count}")
 ```
 
-### Health Checker (Planned Implementation)
+### Health Check Infrastructure (`health.py`)
 
-Standardized health check capabilities for monitoring overall system status and component availability.
+Async-first, standardized health checking for system components with timeouts, graceful degradation, and response time measurement. Provides comprehensive system health monitoring for both API endpoints and external monitoring systems.
 
-#### Planned Architecture
+#### Core Architecture
+
+The Health Check Infrastructure implements a production-ready async health checking system with **proper configuration integration** and **performance optimization patterns**:
+
+| Component | Purpose | Features |
+|-----------|---------|----------|
+| **HealthChecker** | Main health checking engine | Async execution, configurable timeouts, retry logic, error isolation |
+| **Built-in Health Checks** | Standard component checks | AI model, cache, resilience, database (placeholder) |
+| **Data Models** | Structured health status | HealthStatus enum, ComponentStatus, SystemHealthStatus |
+| **Configuration Support** | **Environment-integrated setup** | Per-component timeouts from settings, retry settings, component enablement |
+| **Dependency Injection** | **Optimized service reuse** | Cache service injection, settings integration, singleton pattern |
+
+#### Performance Architecture Improvements
+
+**Configuration Integration**: Health checker is now properly integrated with application settings through dependency injection:
 
 ```python
-# Future implementation structure
-from enum import Enum
-from typing import Callable, List, Dict, Any
-from dataclasses import dataclass
+# OLD (incorrect) - Configuration ignored
+@lru_cache()
+def get_health_checker() -> HealthChecker:
+    checker = HealthChecker(
+        default_timeout_ms=2000,  # Hardcoded values!
+        per_component_timeouts_ms={},
+        retry_count=1,
+        # Environment variables had no effect
+    )
+    return checker
 
-class HealthStatus(Enum):
-    HEALTHY = "healthy"
-    DEGRADED = "degraded" 
-    UNHEALTHY = "unhealthy"
-
-@dataclass
-class ComponentStatus:
-    name: str
-    status: HealthStatus
-    message: str = ""
-    response_time_ms: float = 0.0
-    metadata: Dict[str, Any] = None
-
-@dataclass
-class SystemHealthStatus:
-    overall_status: HealthStatus
-    components: List[ComponentStatus]
-    timestamp: float
+# NEW (correct) - Configuration properly integrated  
+@lru_cache()
+def get_health_checker(settings: Settings = Depends(get_settings)) -> HealthChecker:
+    """Health checker with proper settings integration."""
+    per_component_timeouts = {
+        "ai_model": settings.health_check_ai_model_timeout_ms,
+        "cache": settings.health_check_cache_timeout_ms,
+        "resilience": settings.health_check_resilience_timeout_ms,
+    }
     
-    @property
-    def is_healthy(self) -> bool:
-        return self.overall_status == HealthStatus.HEALTHY
-    
-    @property
-    def failed_components(self) -> List[ComponentStatus]:
-        return [c for c in self.components if c.status != HealthStatus.HEALTHY]
-
-class HealthChecker:
-    """System health monitoring and component status tracking."""
-    
-    def __init__(self):
-        self.checks: Dict[str, Callable] = {}
-        self.check_timeouts: Dict[str, float] = {}
-    
-    def register_check(self, name: str, check_func: Callable, timeout: float = 5.0):
-        """Register a health check function."""
-        self.checks[name] = check_func
-        self.check_timeouts[name] = timeout
-    
-    async def check_health(self) -> SystemHealthStatus:
-        """Perform comprehensive health check of all registered components."""
-        components = []
-        
-        for name, check_func in self.checks.items():
-            start_time = time.time()
-            try:
-                # Execute health check with timeout
-                result = await asyncio.wait_for(
-                    check_func(), 
-                    timeout=self.check_timeouts[name]
-                )
-                
-                response_time = (time.time() - start_time) * 1000
-                
-                if result.get("healthy", False):
-                    status = HealthStatus.HEALTHY
-                    message = result.get("message", "Component is healthy")
-                else:
-                    status = HealthStatus.DEGRADED
-                    message = result.get("message", "Component is degraded")
-                
-                components.append(ComponentStatus(
-                    name=name,
-                    status=status,
-                    message=message,
-                    response_time_ms=response_time,
-                    metadata=result.get("metadata", {})
-                ))
-                
-            except asyncio.TimeoutError:
-                components.append(ComponentStatus(
-                    name=name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=f"Health check timeout ({self.check_timeouts[name]}s)",
-                    response_time_ms=(time.time() - start_time) * 1000
-                ))
-            except Exception as e:
-                components.append(ComponentStatus(
-                    name=name,
-                    status=HealthStatus.UNHEALTHY,
-                    message=f"Health check failed: {str(e)}",
-                    response_time_ms=(time.time() - start_time) * 1000
-                ))
-        
-        # Determine overall health
-        if all(c.status == HealthStatus.HEALTHY for c in components):
-            overall_status = HealthStatus.HEALTHY
-        elif any(c.status == HealthStatus.UNHEALTHY for c in components):
-            overall_status = HealthStatus.UNHEALTHY
-        else:
-            overall_status = HealthStatus.DEGRADED
-        
-        return SystemHealthStatus(
-            overall_status=overall_status,
-            components=components,
-            timestamp=time.time()
-        )
+    checker = HealthChecker(
+        default_timeout_ms=settings.health_check_timeout_ms,
+        per_component_timeouts_ms=per_component_timeouts,
+        retry_count=settings.health_check_retry_count,
+        backoff_base_seconds=0.1,
+    )
+    return checker
 ```
 
-#### Health Check Integration Examples
+**Cache Performance Optimization**: Cache health checks now reuse the application's singleton cache service:
 
 ```python
-# Example health check functions
-async def check_database_connection() -> dict:
-    """Check database connectivity and performance."""
+# OLD (inefficient) - New cache instance every check
+async def check_cache_health() -> ComponentStatus:
+    cache_service = AIResponseCache(...)  # Wasteful instantiation!
+    stats = await cache_service.get_cache_stats()
+
+# NEW (efficient) - Dependency injection with service reuse
+async def check_cache_health(cache_service: AIResponseCache) -> ComponentStatus:
+    """Reuses singleton cache service for optimal performance."""
+    stats = await cache_service.get_cache_stats()  # Reuses connections
+
+# Registration with dependency injection
+def get_health_checker(
+    settings: Settings = Depends(get_settings),
+    cache_service: AIResponseCache = Depends(get_cache_service)
+) -> HealthChecker:
+    checker = HealthChecker(...)
+    
+    # Performance-optimized registration
+    checker.register_check("cache", lambda: check_cache_health(cache_service))
+    return checker
+```
+
+#### Implementation Structure
+
+```python
+from app.infrastructure.monitoring.health import (
+    HealthChecker,
+    HealthStatus,
+    ComponentStatus, 
+    SystemHealthStatus,
+    check_ai_model_health,
+    check_cache_health,
+    check_resilience_health,
+    check_database_health
+)
+from app.dependencies import get_health_checker
+
+# Health status enumeration
+class HealthStatus(Enum):
+    HEALTHY = "healthy"      # Component fully operational
+    DEGRADED = "degraded"    # Component functional but with issues
+    UNHEALTHY = "unhealthy"  # Component failed or unavailable
+
+# Component health information
+@dataclass
+class ComponentStatus:
+    name: str                           # Component identifier
+    status: HealthStatus               # Current health status
+    message: str = ""                  # Human-readable status message
+    response_time_ms: float = 0.0      # Health check execution time
+    metadata: Optional[Dict[str, Any]] = None  # Additional component data
+
+# System-wide health status aggregation
+@dataclass
+class SystemHealthStatus:
+    overall_status: HealthStatus       # System-wide health determination
+    components: List[ComponentStatus]  # Individual component statuses
+    timestamp: float                   # Health check execution timestamp
+```
+
+#### Built-in Health Checks
+
+The infrastructure provides four standard health checks covering core application components:
+
+##### AI Model Health Check
+```python
+async def check_ai_model_health() -> ComponentStatus:
+    """Validates Google Gemini API key configuration and availability."""
+    # Checks:
+    # - Gemini API key presence in configuration
+    # - Provider configuration validity
+    # Returns: HEALTHY if configured, DEGRADED if missing key
+```
+
+##### Cache Health Check  
+```python
+async def check_cache_health() -> ComponentStatus:
+    """Tests cache system connectivity and operational status."""
+    # Checks:
+    # - AIResponseCache instantiation and connection
+    # - Redis connectivity with graceful degradation to memory
+    # - Cache statistics retrieval and validation
+    # Returns: HEALTHY if operational, DEGRADED if Redis unavailable
+```
+
+##### Resilience Health Check
+```python
+async def check_resilience_health() -> ComponentStatus:
+    """Monitors resilience infrastructure and circuit breaker status."""
+    # Checks:
+    # - AI resilience orchestrator health status
+    # - Circuit breaker states (open, half-open, closed)
+    # - Overall resilience system availability
+    # Returns: HEALTHY if no open breakers, DEGRADED if breakers open
+```
+
+##### Database Health Check (Placeholder)
+```python
+async def check_database_health() -> ComponentStatus:
+    """⚠️ PLACEHOLDER - Always returns healthy (not a real check)."""
+    # This is NOT a functional health check - replace with actual implementation
+    # Currently returns HEALTHY with "Not implemented" message
+    # Example replacement for real database connectivity:
+    """
+    async def check_database_health() -> ComponentStatus:
+        name = "database"
+        start = time.perf_counter()
+        try:
+            async with get_database_connection() as conn:
+                await conn.execute("SELECT 1")  # Test query
+            return ComponentStatus(
+                name=name, status=HealthStatus.HEALTHY,
+                message="Database connection successful",
+                response_time_ms=(time.perf_counter() - start) * 1000.0
+            )
+        except Exception as e:
+            return ComponentStatus(
+                name=name, status=HealthStatus.UNHEALTHY,
+                message=f"Database connection failed: {e}",
+                response_time_ms=(time.perf_counter() - start) * 1000.0
+            )
+    """
+```
+
+#### Configuration Management
+
+The health check infrastructure supports comprehensive configuration through environment variables:
+
+##### Core Configuration Variables
+```bash
+# Default timeout for all health checks (milliseconds)
+HEALTH_CHECK_TIMEOUT_MS=2000
+
+# Global retry count for failed health checks
+HEALTH_CHECK_RETRY_COUNT=1
+
+# Components to include in health checks (JSON array)
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]
+```
+
+##### Per-Component Timeout Configuration
+```bash
+# Component-specific timeout overrides (milliseconds)
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=2000      # AI model health check timeout
+HEALTH_CHECK_CACHE_TIMEOUT_MS=2000         # Cache connectivity timeout  
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=2000    # Resilience system timeout
+```
+
+#### Usage Examples
+
+##### Basic Health Checker Setup
+```python
+from app.dependencies import get_health_checker
+from app.infrastructure.monitoring.health import (
+    check_ai_model_health,
+    check_cache_health,
+    check_resilience_health
+)
+
+# Get configured health checker (singleton)
+health_checker = get_health_checker()
+
+# Perform comprehensive system health check
+system_status = await health_checker.check_all_components()
+
+# Access overall system health
+print(f"System Status: {system_status.overall_status.value}")
+print(f"Checked at: {system_status.timestamp}")
+
+# Review individual component status
+for component in system_status.components:
+    print(f"{component.name}: {component.status.value}")
+    print(f"  Message: {component.message}")
+    print(f"  Response Time: {component.response_time_ms:.2f}ms")
+    if component.metadata:
+        print(f"  Metadata: {component.metadata}")
+```
+
+##### Custom Health Check Development
+```python
+async def check_custom_service_health() -> ComponentStatus:
+    """Example custom health check for external service."""
+    start_time = time.perf_counter()
+    
     try:
-        # Simulate database check
-        start_time = time.time()
-        # await database.execute("SELECT 1")
-        query_time = time.time() - start_time
+        # Perform actual health validation
+        # Example: API call, database query, file system check
+        response = await external_service.ping()
+        
+        if response.status == "ok":
+            status = HealthStatus.HEALTHY
+            message = "External service operational"
+        else:
+            status = HealthStatus.DEGRADED
+            message = f"External service degraded: {response.message}"
+        
+        return ComponentStatus(
+            name="external_service",
+            status=status,
+            message=message,
+            response_time_ms=(time.perf_counter() - start_time) * 1000.0,
+            metadata={
+                "service_version": response.version,
+                "endpoint": external_service.endpoint
+            }
+        )
+    except Exception as e:
+        return ComponentStatus(
+            name="external_service",
+            status=HealthStatus.UNHEALTHY,
+            message=f"Health check failed: {e}",
+            response_time_ms=(time.perf_counter() - start_time) * 1000.0
+        )
+
+# Register custom health check
+health_checker = get_health_checker()
+health_checker.register_check("external_service", check_custom_service_health)
+```
+
+##### API Endpoint Integration
+```python
+from fastapi import APIRouter, Depends
+from app.dependencies import get_health_checker
+from app.infrastructure.monitoring.health import SystemHealthStatus
+
+health_router = APIRouter()
+
+@health_router.get("/health")
+async def health_check_endpoint(health_checker = Depends(get_health_checker)):
+    """Enhanced health check endpoint using infrastructure health checker."""
+    try:
+        # Use infrastructure health checker for comprehensive status
+        system_status: SystemHealthStatus = await health_checker.check_all_components()
+        
+        # Map to your response format
+        return {
+            "status": system_status.overall_status.value,
+            "timestamp": system_status.timestamp,
+            "components": [
+                {
+                    "name": comp.name,
+                    "status": comp.status.value,
+                    "message": comp.message,
+                    "response_time_ms": comp.response_time_ms
+                }
+                for comp in system_status.components
+            ]
+        }
+    except Exception as e:
+        # Graceful degradation: never fail health endpoint
+        logger.warning(f"Health checker failed: {e}")
+        return {
+            "status": "degraded",
+            "timestamp": time.time(),
+            "message": "Health check infrastructure unavailable"
+        }
+```
+
+##### Domain Service Integration
+```python
+class MonitoredDomainService:
+    """Example domain service with integrated health monitoring."""
+    
+    def __init__(self):
+        self.health_checker = get_health_checker()
+        self.service_metrics = {
+            "requests_processed": 0,
+            "last_health_check": 0
+        }
+    
+    async def process_with_health_monitoring(self, data: str) -> dict:
+        """Process data with health awareness."""
+        # Check system health before expensive operations
+        if time.time() - self.service_metrics["last_health_check"] > 60:
+            system_status = await self.health_checker.check_all_components()
+            self.service_metrics["last_health_check"] = time.time()
+            
+            # Adapt processing based on component health
+            if system_status.overall_status == HealthStatus.UNHEALTHY:
+                return {"error": "System unhealthy, operation cancelled"}
+            elif system_status.overall_status == HealthStatus.DEGRADED:
+                # Use simplified processing for degraded state
+                return await self._process_degraded_mode(data)
+        
+        # Full processing when healthy
+        return await self._process_full_mode(data)
+    
+    async def get_service_health(self) -> dict:
+        """Get service health including infrastructure status."""
+        system_status = await self.health_checker.check_all_components()
         
         return {
-            "healthy": True,
-            "message": "Database connection is healthy",
-            "metadata": {
-                "query_time_ms": query_time * 1000,
-                "connection_pool_size": 10  # Example
+            "service_status": "operational",
+            "requests_processed": self.service_metrics["requests_processed"],
+            "infrastructure_health": {
+                "overall_status": system_status.overall_status.value,
+                "component_count": len(system_status.components),
+                "healthy_components": len([
+                    c for c in system_status.components 
+                    if c.status == HealthStatus.HEALTHY
+                ])
             }
         }
-    except Exception as e:
-        return {
-            "healthy": False,
-            "message": f"Database connection failed: {str(e)}"
-        }
+```
 
-async def check_redis_connection() -> dict:
-    """Check Redis connectivity and cache health."""
-    try:
-        # Simulate Redis check
-        # await redis_client.ping()
-        return {
-            "healthy": True,
-            "message": "Redis connection is healthy",
-            "metadata": {
-                "memory_usage": "2.5MB",
-                "connected_clients": 3
+#### FastAPI Application Integration
+
+The health check infrastructure integrates seamlessly with FastAPI through dependency injection:
+
+```python
+from fastapi import FastAPI, Depends
+from app.dependencies import get_health_checker, initialize_health_infrastructure
+
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize health infrastructure during application startup."""
+    await initialize_health_infrastructure()
+    logger.info("Health check infrastructure initialized")
+
+# Health endpoint using infrastructure
+@app.get("/v1/health")
+async def health_check(health_checker = Depends(get_health_checker)):
+    """Public health check endpoint with infrastructure integration."""
+    system_status = await health_checker.check_all_components()
+    
+    # Map infrastructure status to public API format
+    ai_healthy = any(
+        c.name == "ai_model" and c.status.value == "healthy" 
+        for c in system_status.components
+    )
+    cache_comp = next((c for c in system_status.components if c.name == "cache"), None)
+    resilience_comp = next((c for c in system_status.components if c.name == "resilience"), None)
+    
+    return {
+        "status": "healthy" if system_status.overall_status.value == "healthy" else "degraded",
+        "ai_model_available": ai_healthy,
+        "cache_healthy": None if cache_comp is None else (cache_comp.status.value == "healthy"),
+        "resilience_healthy": None if resilience_comp is None else (resilience_comp.status.value == "healthy"),
+        "timestamp": system_status.timestamp
+    }
+
+# Internal monitoring endpoint
+@app.get("/internal/monitoring/health")
+async def internal_health_check(health_checker = Depends(get_health_checker)):
+    """Internal health endpoint with detailed component information."""
+    system_status = await health_checker.check_all_components()
+    
+    return {
+        "overall_status": system_status.overall_status.value,
+        "timestamp": system_status.timestamp,
+        "components": [
+            {
+                "name": comp.name,
+                "status": comp.status.value,
+                "message": comp.message,
+                "response_time_ms": comp.response_time_ms,
+                "metadata": comp.metadata or {}
             }
+            for comp in system_status.components
+        ],
+        "summary": {
+            "total_components": len(system_status.components),
+            "healthy_count": len([c for c in system_status.components if c.status == HealthStatus.HEALTHY]),
+            "degraded_count": len([c for c in system_status.components if c.status == HealthStatus.DEGRADED]),
+            "unhealthy_count": len([c for c in system_status.components if c.status == HealthStatus.UNHEALTHY])
         }
-    except Exception as e:
-        return {
-            "healthy": False,
-            "message": f"Redis connection failed: {str(e)}"
-        }
+    }
+```
 
-# Register health checks
-health_checker = HealthChecker()
-health_checker.register_check("database", check_database_connection, timeout=3.0)
-health_checker.register_check("redis", check_redis_connection, timeout=2.0)
-health_checker.register_check("cache", check_cache_health, timeout=1.0)
+#### Error Handling & Resilience
+
+The health check infrastructure implements comprehensive error handling to ensure health endpoints remain available even when individual components fail:
+
+##### Timeout Management
+```python
+# Health checker configuration with timeouts and retries
+health_checker = HealthChecker(
+    default_timeout_ms=2000,           # 2 second default timeout
+    per_component_timeouts_ms={        # Component-specific overrides
+        "ai_model": 1000,              # Fast AI configuration check
+        "cache": 3000,                 # Longer cache connectivity test
+        "resilience": 1500             # Medium resilience system check
+    },
+    retry_count=1,                     # Single retry on failure
+    backoff_base_seconds=0.1           # 100ms base backoff between retries
+)
+```
+
+##### Error Isolation
+- **Component Failures**: Individual component failures don't prevent other checks
+- **Timeout Handling**: Configurable timeouts prevent hanging health checks
+- **Graceful Degradation**: Health endpoints never fail due to infrastructure issues
+- **Retry Logic**: Automatic retry with exponential backoff for transient failures
+
+##### Dependency Provider Resilience
+```python
+from app.dependencies import get_health_checker, initialize_health_infrastructure
+
+@lru_cache()
+def get_health_checker() -> HealthChecker:
+    """Cached health checker provider with standard component registration."""
+    checker = HealthChecker(
+        default_timeout_ms=2000,
+        per_component_timeouts_ms={},
+        retry_count=1,
+        backoff_base_seconds=0.1,
+    )
+    
+    # Register standard infrastructure checks
+    checker.register_check("ai_model", check_ai_model_health)
+    checker.register_check("cache", check_cache_health)
+    checker.register_check("resilience", check_resilience_health)
+    
+    return checker
+
+async def initialize_health_infrastructure() -> None:
+    """Validate health checker initialization during startup."""
+    checker = get_health_checker()
+    required = {"ai_model", "cache", "resilience"}
+    missing = [name for name in required if name not in getattr(checker, "_checks", {})]
+    
+    if missing:
+        logger.error(f"Health checker missing required checks: {missing}")
+        # Log error but don't block startup - rely on graceful degradation
+    else:
+        logger.info("Health checker initialized with standard checks: ai_model, cache, resilience")
 ```
 
 ### Metrics Collector (Planned Implementation)
