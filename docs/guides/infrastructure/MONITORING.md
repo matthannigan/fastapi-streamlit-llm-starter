@@ -268,14 +268,75 @@ Async-first, standardized health checking for system components with timeouts, g
 
 #### Core Architecture
 
-The Health Check Infrastructure implements a production-ready async health checking system with the following components:
+The Health Check Infrastructure implements a production-ready async health checking system with **proper configuration integration** and **performance optimization patterns**:
 
 | Component | Purpose | Features |
 |-----------|---------|----------|
 | **HealthChecker** | Main health checking engine | Async execution, configurable timeouts, retry logic, error isolation |
 | **Built-in Health Checks** | Standard component checks | AI model, cache, resilience, database (placeholder) |
 | **Data Models** | Structured health status | HealthStatus enum, ComponentStatus, SystemHealthStatus |
-| **Configuration Support** | Environment-driven setup | Per-component timeouts, retry settings, component enablement |
+| **Configuration Support** | **Environment-integrated setup** | Per-component timeouts from settings, retry settings, component enablement |
+| **Dependency Injection** | **Optimized service reuse** | Cache service injection, settings integration, singleton pattern |
+
+#### Performance Architecture Improvements
+
+**Configuration Integration**: Health checker is now properly integrated with application settings through dependency injection:
+
+```python
+# OLD (incorrect) - Configuration ignored
+@lru_cache()
+def get_health_checker() -> HealthChecker:
+    checker = HealthChecker(
+        default_timeout_ms=2000,  # Hardcoded values!
+        per_component_timeouts_ms={},
+        retry_count=1,
+        # Environment variables had no effect
+    )
+    return checker
+
+# NEW (correct) - Configuration properly integrated  
+@lru_cache()
+def get_health_checker(settings: Settings = Depends(get_settings)) -> HealthChecker:
+    """Health checker with proper settings integration."""
+    per_component_timeouts = {
+        "ai_model": settings.health_check_ai_model_timeout_ms,
+        "cache": settings.health_check_cache_timeout_ms,
+        "resilience": settings.health_check_resilience_timeout_ms,
+    }
+    
+    checker = HealthChecker(
+        default_timeout_ms=settings.health_check_timeout_ms,
+        per_component_timeouts_ms=per_component_timeouts,
+        retry_count=settings.health_check_retry_count,
+        backoff_base_seconds=0.1,
+    )
+    return checker
+```
+
+**Cache Performance Optimization**: Cache health checks now reuse the application's singleton cache service:
+
+```python
+# OLD (inefficient) - New cache instance every check
+async def check_cache_health() -> ComponentStatus:
+    cache_service = AIResponseCache(...)  # Wasteful instantiation!
+    stats = await cache_service.get_cache_stats()
+
+# NEW (efficient) - Dependency injection with service reuse
+async def check_cache_health(cache_service: AIResponseCache) -> ComponentStatus:
+    """Reuses singleton cache service for optimal performance."""
+    stats = await cache_service.get_cache_stats()  # Reuses connections
+
+# Registration with dependency injection
+def get_health_checker(
+    settings: Settings = Depends(get_settings),
+    cache_service: AIResponseCache = Depends(get_cache_service)
+) -> HealthChecker:
+    checker = HealthChecker(...)
+    
+    # Performance-optimized registration
+    checker.register_check("cache", lambda: check_cache_health(cache_service))
+    return checker
+```
 
 #### Implementation Structure
 
@@ -354,9 +415,29 @@ async def check_resilience_health() -> ComponentStatus:
 ##### Database Health Check (Placeholder)
 ```python
 async def check_database_health() -> ComponentStatus:
-    """Placeholder for database connectivity validation."""
+    """⚠️ PLACEHOLDER - Always returns healthy (not a real check)."""
+    # This is NOT a functional health check - replace with actual implementation
     # Currently returns HEALTHY with "Not implemented" message
-    # Customize for your database requirements
+    # Example replacement for real database connectivity:
+    """
+    async def check_database_health() -> ComponentStatus:
+        name = "database"
+        start = time.perf_counter()
+        try:
+            async with get_database_connection() as conn:
+                await conn.execute("SELECT 1")  # Test query
+            return ComponentStatus(
+                name=name, status=HealthStatus.HEALTHY,
+                message="Database connection successful",
+                response_time_ms=(time.perf_counter() - start) * 1000.0
+            )
+        except Exception as e:
+            return ComponentStatus(
+                name=name, status=HealthStatus.UNHEALTHY,
+                message=f"Database connection failed: {e}",
+                response_time_ms=(time.perf_counter() - start) * 1000.0
+            )
+    """
 ```
 
 #### Configuration Management

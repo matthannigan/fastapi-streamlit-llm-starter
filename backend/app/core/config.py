@@ -602,6 +602,17 @@ class Settings(BaseSettings):
         This ensures tests use explicit constructor args and class defaults,
         avoiding leakage from developer machine environment variables like
         RESILIENCE_PRESET.
+        
+        Implementation Note: This method appears complex due to pydantic-settings
+        version compatibility handling and the need to maintain test isolation
+        while preserving the ability to test environment variable behavior
+        through explicit monkeypatch.setenv() calls in test fixtures.
+        
+        The complexity handles:
+        - Different pydantic-settings version signatures
+        - Selective environment variable filtering during tests 
+        - Graceful fallbacks for various callable return types
+        - Preservation of legacy environment variable mappings needed by tests
         """
         try:
             if 'PYTEST_CURRENT_TEST' in os.environ:

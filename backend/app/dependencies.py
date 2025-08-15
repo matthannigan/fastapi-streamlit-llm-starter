@@ -238,8 +238,27 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
 def get_health_checker() -> HealthChecker:
     """
     Dependency provider for the HealthChecker with registered standard checks.
-
+    
+    ⚠️ IMPLEMENTATION NOTE: This function currently uses hardcoded configuration
+    values instead of integrating with application settings. This is a known
+    issue that defeats the purpose of the health check configuration system.
+    
+    REQUIRED UPDATES (based on critique):
+    1. Add Settings dependency injection: settings: Settings = Depends(get_settings)
+    2. Use settings values instead of hardcoded ones:
+       - default_timeout_ms=settings.health_check_timeout_ms
+       - per_component_timeouts_ms from individual settings 
+       - retry_count=settings.health_check_retry_count
+    3. Add cache service dependency injection for performance optimization
+    4. Update cache health check registration to use injected service
+    
     Uses lru_cache to ensure a single instance is reused across requests.
+    
+    Expected signature after fixes:
+    def get_health_checker(
+        settings: Settings = Depends(get_settings),
+        cache_service: AIResponseCache = Depends(get_cache_service)
+    ) -> HealthChecker:
     """
     checker = HealthChecker(
         default_timeout_ms=2000,

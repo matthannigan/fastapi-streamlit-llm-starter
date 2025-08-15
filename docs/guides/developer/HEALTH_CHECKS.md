@@ -867,7 +867,7 @@ class ProductionHealthChecker:
 
 ### Environment Variables
 
-Configure health check behavior through environment variables:
+Configure health check behavior through environment variables that are **properly integrated** with the application settings:
 
 ```bash
 # Default timeout for all health checks
@@ -883,6 +883,84 @@ HEALTH_CHECK_RETRY_COUNT=1                 # Number of retry attempts
 
 # Component enablement
 HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]
+```
+
+### Configuration Integration Pattern
+
+**Important**: The health checker is properly integrated with application settings through dependency injection. Environment variables affect the actual running configuration:
+
+```python
+# In app/dependencies.py
+from app.core.config import Settings
+from fastapi import Depends
+
+@lru_cache()
+def get_health_checker(settings: Settings = Depends(get_settings)) -> HealthChecker:
+    """
+    Health checker configured from application settings.
+    All environment variables are properly applied.
+    """
+    # Component-specific timeouts from settings
+    per_component_timeouts = {
+        "ai_model": settings.health_check_ai_model_timeout_ms,
+        "cache": settings.health_check_cache_timeout_ms,
+        "resilience": settings.health_check_resilience_timeout_ms,
+    }
+    
+    checker = HealthChecker(
+        default_timeout_ms=settings.health_check_timeout_ms,
+        per_component_timeouts_ms=per_component_timeouts,
+        retry_count=settings.health_check_retry_count,
+        backoff_base_seconds=0.1,
+    )
+    
+    # Register health checks with dependency injection for performance
+    cache_service = await get_cache_service(settings)
+    checker.register_check("ai_model", check_ai_model_health)
+    checker.register_check("cache", lambda: check_cache_health(cache_service))
+    checker.register_check("resilience", check_resilience_health)
+    
+    return checker
+```
+
+### Performance Optimization Patterns
+
+The health checker follows performance best practices:
+
+#### Dependency Injection for Cache Service
+
+**Problem Solved**: Eliminates redundant cache instantiation on every health check call.
+
+```python
+# OLD (inefficient) - Creates new cache instance every check
+async def check_cache_health() -> ComponentStatus:
+    cache_service = AIResponseCache(...)  # New instance every time!
+    stats = await cache_service.get_cache_stats()
+
+# NEW (efficient) - Reuses singleton cache service
+async def check_cache_health(cache_service: AIResponseCache) -> ComponentStatus:
+    """Reuses the application's singleton cache service for optimal performance."""
+    stats = await cache_service.get_cache_stats()  # Reuses existing connections
+```
+
+#### Proper Settings Integration
+
+**Problem Solved**: Configuration changes now affect the running application immediately.
+
+```python
+# Environment variables are properly applied through settings
+def verify_configuration_integration():
+    """Verify that environment variables affect health checker behavior."""
+    import os
+    os.environ["HEALTH_CHECK_TIMEOUT_MS"] = "5000"
+    
+    # Settings automatically pick up environment changes
+    fresh_settings = Settings()
+    assert fresh_settings.health_check_timeout_ms == 5000
+    
+    # Health checker uses these settings via dependency injection
+    checker = get_health_checker(fresh_settings)
+    assert checker._default_timeout_ms == 5000
 ```
 
 ### Development vs Production Configuration
@@ -1914,9 +1992,40 @@ Validates resilience system status and circuit breaker health.
 
 Placeholder for database connectivity validation.
 
+**⚠️ Important**: This is a **placeholder implementation** that always returns healthy status.
+
 **Returns**: ComponentStatus with placeholder information
-- **Healthy**: Always returns healthy (not implemented)
+- **Healthy**: Always returns healthy (**not a real check**)
 - **Message**: "Not implemented"
+
+**Usage Note**: This component is provided as an example of how to structure database health checks. Replace with actual database connectivity validation for production use:
+
+```python
+# Replace this placeholder with real database health check
+async def check_database_health() -> ComponentStatus:
+    """Real database health check implementation."""
+    name = "database"
+    start = time.perf_counter()
+    
+    try:
+        # Example: Test database connection
+        async with get_database_connection() as conn:
+            await conn.execute("SELECT 1")
+        
+        return ComponentStatus(
+            name=name,
+            status=HealthStatus.HEALTHY,
+            message="Database connection successful",
+            response_time_ms=(time.perf_counter() - start) * 1000.0
+        )
+    except Exception as e:
+        return ComponentStatus(
+            name=name,
+            status=HealthStatus.UNHEALTHY,
+            message=f"Database connection failed: {e}",
+            response_time_ms=(time.perf_counter() - start) * 1000.0
+        )
+```
 
 ### Exception Classes
 

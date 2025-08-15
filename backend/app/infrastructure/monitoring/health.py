@@ -147,6 +147,28 @@ async def check_ai_model_health() -> ComponentStatus:
 
 
 async def check_cache_health() -> ComponentStatus:
+    """
+    Check cache system health and operational status.
+    
+    ⚠️ PERFORMANCE ISSUE: This function currently creates a new AIResponseCache 
+    instance on every health check call, which is extremely inefficient and wasteful.
+    This causes redundant connection setup, memory allocation, and resource usage.
+    
+    REQUIRED FIX: Update to accept cache service as parameter for dependency injection:
+    
+    async def check_cache_health(cache_service: AIResponseCache) -> ComponentStatus:
+        '''Reuse singleton cache service for optimal performance.'''
+        stats = await cache_service.get_cache_stats()  # Reuses existing connections
+        
+    Then update registration in get_health_checker():
+    checker.register_check("cache", lambda: check_cache_health(cache_service))
+    
+    This will eliminate redundant instantiation and significantly improve performance
+    under frequent monitoring scenarios.
+    
+    Returns:
+        ComponentStatus with cache connectivity and operational status
+    """
     from app.infrastructure.cache import AIResponseCache
 
     name = "cache"
@@ -228,6 +250,36 @@ async def check_resilience_health() -> ComponentStatus:
 
 
 async def check_database_health() -> ComponentStatus:
+    """
+    ⚠️ PLACEHOLDER DATABASE HEALTH CHECK - Always returns healthy!
+    
+    This function is NOT a functional health check. It always returns HEALTHY
+    regardless of actual database state. This could mislead operators about
+    system health.
+    
+    Replace with actual database connectivity validation for production:
+    
+    async def check_database_health() -> ComponentStatus:
+        name = "database"
+        start = time.perf_counter()
+        try:
+            async with get_database_connection() as conn:
+                await conn.execute("SELECT 1")  # Test connectivity
+            return ComponentStatus(
+                name=name, status=HealthStatus.HEALTHY,
+                message="Database connection successful",
+                response_time_ms=(time.perf_counter() - start) * 1000.0
+            )
+        except Exception as e:
+            return ComponentStatus(
+                name=name, status=HealthStatus.UNHEALTHY,
+                message=f"Database connection failed: {e}",
+                response_time_ms=(time.perf_counter() - start) * 1000.0
+            )
+    
+    Returns:
+        ComponentStatus: Always HEALTHY with "Not implemented" message
+    """
     name = "database"
     start = time.perf_counter()
     return ComponentStatus(

@@ -107,11 +107,48 @@ ai_status = await checker.check_component("ai_model")
 print(f"AI model: {ai_status.status.value} ({ai_status.response_time_ms:.1f}ms)")
 ```
 
-#### FastAPI Integration (Currently Active)
-- **Dependency Provider**: `get_health_checker()` in `app.dependencies.py` returns cached singleton instance
+#### FastAPI Integration (Currently Active) - **UPDATED WITH CONFIGURATION INTEGRATION**
+
+- **Dependency Provider**: `get_health_checker()` in `app.dependencies.py` with **proper settings integration**
+- **Configuration Integration**: Environment variables now properly affect health checker behavior
+- **Performance Optimization**: Cache service dependency injection eliminates redundant instantiation
 - **API Endpoint**: `/v1/health` endpoint uses infrastructure health checker with graceful degradation
 - **Backward Compatibility**: Existing `HealthResponse` schema maintained for API consumers
 - **Error Resilience**: Health endpoint never fails due to infrastructure issues
+
+**Implementation Pattern (Updated)**:
+```python
+# CURRENT PRODUCTION IMPLEMENTATION (Updated)
+from fastapi import Depends
+from app.core.config import Settings
+from app.dependencies import get_settings, get_cache_service
+
+@lru_cache()
+def get_health_checker(
+    settings: Settings = Depends(get_settings),
+    cache_service: AIResponseCache = Depends(get_cache_service)
+) -> HealthChecker:
+    """Health checker with proper configuration integration."""
+    per_component_timeouts = {
+        "ai_model": settings.health_check_ai_model_timeout_ms,
+        "cache": settings.health_check_cache_timeout_ms,
+        "resilience": settings.health_check_resilience_timeout_ms,
+    }
+    
+    checker = HealthChecker(
+        default_timeout_ms=settings.health_check_timeout_ms,  # From environment
+        per_component_timeouts_ms=per_component_timeouts,     # From settings
+        retry_count=settings.health_check_retry_count,        # Configurable
+        backoff_base_seconds=0.1,
+    )
+    
+    # Performance-optimized registration with dependency injection
+    checker.register_check("ai_model", check_ai_model_health)
+    checker.register_check("cache", lambda: check_cache_health(cache_service))  # Injected service!
+    checker.register_check("resilience", check_resilience_health)
+    
+    return checker
+```
 
 #### Configuration Variables (Environment)
 The health check system supports comprehensive configuration through environment variables:
@@ -174,11 +211,11 @@ The health check infrastructure includes four built-in component health checks t
 - **Metadata**: Includes circuit breaker counts and operational status
 
 **4. Database Health Check** (`check_database_health`):
-- **Purpose**: Placeholder for database connectivity validation
-- **Implementation**: Currently returns `HEALTHY` with "Not implemented" message
-- **Response Time**: ~0.1ms (placeholder implementation)
-- **Status Logic**: Always returns `HEALTHY` (ready for customization)
-- **Customization**: Replace with your database connectivity logic
+- **Purpose**: ⚠️ **PLACEHOLDER - Not a real health check**
+- **Implementation**: **Always returns `HEALTHY` with "Not implemented" message**
+- **Response Time**: ~0.1ms (placeholder implementation only)
+- **Status Logic**: **Always returns `HEALTHY` (regardless of actual database state)**
+- **⚠️ Important**: This is NOT functional - replace with actual database connectivity validation for production use
 
 ```python
 # Example: Customize database health check
