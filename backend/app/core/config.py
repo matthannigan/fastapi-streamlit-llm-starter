@@ -116,6 +116,7 @@ Note:
 """
 
 import os
+import sys
 import json
 import logging
 from typing import List, Optional, Union
@@ -127,16 +128,19 @@ from dotenv import load_dotenv
 
 from app.core.exceptions import ConfigurationError
 
-# Load .env from project root (skip during tests to avoid overriding test expectations)
+# Load .env from project root, but avoid loading during pytest to prevent
+# ambient env from overriding test instance settings
 project_root = Path(__file__).parent.parent.parent.parent
-try:
-    # PYTEST_CURRENT_TEST is set by pytest for the duration of test runs
-    is_running_tests = "PYTEST_CURRENT_TEST" in os.environ
-except Exception:
-    is_running_tests = False
-
-if not is_running_tests:
+# Detect pytest robustly at import time
+_IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
+if not _IS_PYTEST:
     load_dotenv(project_root / ".env")
+else:
+    # During pytest, prevent ambient env from overriding test instance settings
+    # for preset/custom config keys. Other env vars remain available for
+    # legacy-focused tests that intentionally set them.
+    os.environ.pop("RESILIENCE_PRESET", None)
+    os.environ.pop("RESILIENCE_CUSTOM_CONFIG", None)
 
 logger = logging.getLogger(__name__)
 
@@ -581,7 +585,7 @@ class Settings(BaseSettings):
     # ========================================
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=None if _IS_PYTEST else ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -939,60 +943,35 @@ class Settings(BaseSettings):
         This method detects whether the application is using legacy environment
         variables for resilience configuration, which triggers backward compatibility mode.
         """
-        # Cache the result to avoid repeated expensive checks
+        # Cache the result to avoid repeated checks
         if hasattr(self, '_legacy_config_cache'):
             return self._legacy_config_cache
 
-        # Check the most common legacy environment variables first for faster detection
+        # Only treat explicit legacy environment variables as legacy mode triggers
         env = os.environ
-
-        # Check most common legacy vars first (ordered by usage frequency)
-        if ("RETRY_MAX_ATTEMPTS" in env or
-                "CIRCUIT_BREAKER_FAILURE_THRESHOLD" in env or
-                "DEFAULT_RESILIENCE_STRATEGY" in env):
-            self._legacy_config_cache = True
-            return True
-
-        # Check remaining legacy environment variables
-        other_legacy_vars = [
+        legacy_vars = [
+            "RETRY_MAX_ATTEMPTS",
+            "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+            "CIRCUIT_BREAKER_RECOVERY_TIMEOUT",
+            "RETRY_MAX_DELAY",
+            "RETRY_EXPONENTIAL_MULTIPLIER",
+            "RETRY_EXPONENTIAL_MIN",
+            "RETRY_EXPONENTIAL_MAX",
+            "RETRY_JITTER_ENABLED",
+            "RETRY_JITTER_MAX",
+            "DEFAULT_RESILIENCE_STRATEGY",
             "SUMMARIZE_RESILIENCE_STRATEGY",
             "SENTIMENT_RESILIENCE_STRATEGY",
             "KEY_POINTS_RESILIENCE_STRATEGY",
             "QUESTIONS_RESILIENCE_STRATEGY",
-            "QA_RESILIENCE_STRATEGY"
+            "QA_RESILIENCE_STRATEGY",
+            "CIRCUIT_BREAKER_ENABLED",
+            "RETRY_ENABLED",
         ]
 
-        for var in other_legacy_vars:
-            if var in env:
-                self._legacy_config_cache = True
-                return True
-
-        # Only check field values if no environment variables are set
-        default_values = {
-            'circuit_breaker_failure_threshold': 5,
-            'retry_max_attempts': 3,
-            'retry_max_delay': 30,
-            'circuit_breaker_recovery_timeout': 60,
-            'retry_exponential_multiplier': 1.0,
-            'retry_exponential_min': 2.0,
-            'retry_exponential_max': 10.0,
-            'retry_jitter_max': 2.0,
-            'default_resilience_strategy': 'balanced',
-            'summarize_resilience_strategy': 'conservative',
-            'sentiment_resilience_strategy': 'aggressive',
-            'key_points_resilience_strategy': 'balanced',
-            'questions_resilience_strategy': 'balanced',
-            'qa_resilience_strategy': 'conservative',
-        }
-
-        for field_name, default_value in default_values.items():
-            current_value = getattr(self, field_name)
-            if current_value != default_value:
-                self._legacy_config_cache = True
-                return True
-
-        self._legacy_config_cache = False
-        return False
+        has_legacy = any(var in env for var in legacy_vars)
+        self._legacy_config_cache = has_legacy
+        return has_legacy
 
     def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
         """
@@ -1064,7 +1043,7 @@ class Settings(BaseSettings):
 
             # Load preset configuration
             try:
-                # Use the instance's preset explicitly; do not let process env override per-test configuration
+                # Always prefer the instance's preset; do not let env override during tests
                 preset_name = self.resilience_preset
 
                 preset = preset_manager.get_preset(preset_name)
@@ -1079,9 +1058,13 @@ class Settings(BaseSettings):
                     metadata={"config_type": config_type}
                 )
 
-                # Apply custom overrides if provided
-                # Use the instance's custom config explicitly; ignore process env during runtime
+                # Apply custom overrides if provided. During pytest, do not read
+                # RESILIENCE_CUSTOM_CONFIG from the environment; always prefer instance.
                 custom_config_json = self.resilience_custom_config
+                if not _IS_PYTEST and not custom_config_json:
+                    env_custom_config = os.getenv("RESILIENCE_CUSTOM_CONFIG")
+                    if env_custom_config:
+                        custom_config_json = env_custom_config
 
                 if custom_config_json:
                     try:
