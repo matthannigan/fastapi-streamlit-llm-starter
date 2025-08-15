@@ -12,13 +12,62 @@ The starter template includes comprehensive monitoring capabilities through the 
 
 ## Core Monitoring Components
 
+### Enhanced Health Check Infrastructure
+
+The application uses a standardized `HealthChecker` infrastructure service that provides component-level monitoring with configurable timeouts, retry mechanisms, and graceful degradation.
+
+#### Enhanced `/v1/health` Endpoint
+
+The primary health endpoint now leverages the infrastructure health checker to provide comprehensive system status:
+
+**Component-Level Monitoring:**
+- **AI Model**: Verifies Google Gemini API key configuration  
+- **Cache System**: Validates Redis connectivity with graceful fallback to memory cache
+- **Resilience Infrastructure**: Checks circuit breakers and failure detection systems
+- **Database**: Placeholder for future database health checks
+
+**Enhanced Response Format:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": true,
+  "resilience_healthy": true,
+  "cache_healthy": true
+}
+```
+
+**Graceful Degradation Features:**
+- Never fails the endpoint due to infrastructure issues
+- Returns component-specific status information
+- Configurable timeouts per component
+- Automatic retry mechanisms with exponential backoff
+- Maps internal `SystemHealthStatus` to backward-compatible `HealthResponse` format
+
+#### Health Check Configuration
+
+The health check system is fully configurable via environment variables:
+
+```bash
+# Global Health Check Settings
+HEALTH_CHECK_TIMEOUT_MS=2000                    # Default timeout for all components
+HEALTH_CHECK_RETRY_COUNT=1                      # Number of retry attempts per component
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]
+
+# Per-Component Timeout Overrides
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=2000          # AI model specific timeout
+HEALTH_CHECK_CACHE_TIMEOUT_MS=2000             # Cache health check timeout
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=2000        # Resilience infrastructure timeout
+```
+
 ### System Health Checks
 
 #### Automated Health Endpoints
 
 | Endpoint | Purpose | Expected Response Time | Critical Threshold |
 |----------|---------|----------------------|-------------------|
-| `/health` | Basic application health | <100ms | >1000ms |
+| `/v1/health` | Enhanced component-level health checks | <100ms | >1000ms |
 | `/internal/monitoring/overview` | Comprehensive system status | <500ms | >2000ms |
 | `/internal/monitoring/health` | Infrastructure health checks | <300ms | >1500ms |
 | `/internal/monitoring/middleware` | Middleware health and metrics | <200ms | >1000ms |
@@ -27,8 +76,8 @@ The starter template includes comprehensive monitoring capabilities through the 
 
 **Daily Health Verification:**
 ```bash
-# Basic health check
-curl -w "@curl-format.txt" http://localhost:8000/health
+# Enhanced health check with infrastructure monitoring
+curl -w "@curl-format.txt" http://localhost:8000/v1/health
 
 # Comprehensive monitoring overview
 curl -s http://localhost:8000/internal/monitoring/overview | jq '.system_health'
@@ -154,6 +203,18 @@ echo "=== Middleware monitoring completed ==="
 | **Security Header Compliance** | 100% | 100% | < 95% |
 | **Version Detection Success** | > 99% | > 99.5% | < 98% |
 
+#### Enhanced Health Check Performance KPIs
+
+**Health Check Infrastructure Performance:**
+
+| Metric | Target | Good | Needs Attention |
+|--------|--------|------|-----------------|
+| **Overall Health Check Response** | < 100ms | < 50ms | > 200ms |
+| **Component Check Timeout** | < 2000ms | < 1000ms | > 3000ms |
+| **Health Check Success Rate** | > 99% | > 99.5% | < 98% |
+| **Component Availability** | > 95% | > 99% | < 90% |
+| **Retry Success Rate** | > 80% | > 90% | < 70% |
+
 #### Middleware Alerting
 
 **Critical Middleware Alerts:**
@@ -214,6 +275,88 @@ if [[ $(echo "$COMPRESSION_RATIO < 0.5" | bc) -eq 1 ]]; then
         \"timestamp\": \"$(date -Iseconds)\"
       }"
 fi
+```
+
+#### Health Check Component Troubleshooting
+
+**AI Model Health Issues:**
+```bash
+# Symptom: ai_model_available: false
+# Diagnosis: Check GEMINI_API_KEY environment variable
+echo "Checking AI Model Configuration:"
+echo "GEMINI_API_KEY set: ${GEMINI_API_KEY:+YES}"
+echo "Key length: ${#GEMINI_API_KEY}"
+
+# Resolution: Set valid Gemini API key and restart application
+export GEMINI_API_KEY="your-valid-api-key"
+# Restart application
+```
+
+**Cache Health Issues:**
+```bash
+# Symptom: cache_healthy: false
+# Diagnosis: Redis connectivity problems
+echo "Checking Cache Configuration:"
+echo "Redis URL: ${REDIS_URL:-redis://localhost:6379}"
+redis-cli ping || echo "Redis not accessible"
+
+# Check cache fallback status
+curl -s http://localhost:8000/internal/cache/stats | jq '.redis.status, .memory.status'
+
+# Resolution: Check Redis service status and REDIS_URL configuration
+sudo systemctl status redis  # or docker-compose ps redis
+```
+
+**Resilience Health Issues:**
+```bash
+# Symptom: resilience_healthy: false
+# Diagnosis: Circuit breakers in open state
+echo "Checking Resilience Status:"
+curl -s http://localhost:8000/internal/resilience/circuit-breakers | jq '.'
+
+# Check for open circuit breakers
+curl -s http://localhost:8000/internal/resilience/health | jq '.open_circuit_breakers[]'
+
+# Resolution: Reset circuit breakers if appropriate
+curl -X POST http://localhost:8000/internal/resilience/circuit-breakers/ai_service/reset
+```
+
+**Health Check Timeout Issues:**
+```bash
+# Symptom: Health checks timing out
+# Diagnosis: Check timeout configuration
+echo "Health Check Timeouts:"
+echo "Global: ${HEALTH_CHECK_TIMEOUT_MS:-2000}ms"
+echo "AI Model: ${HEALTH_CHECK_AI_MODEL_TIMEOUT_MS:-2000}ms"
+echo "Cache: ${HEALTH_CHECK_CACHE_TIMEOUT_MS:-2000}ms"
+echo "Resilience: ${HEALTH_CHECK_RESILIENCE_TIMEOUT_MS:-2000}ms"
+
+# Resolution: Increase timeout values for slow components
+export HEALTH_CHECK_TIMEOUT_MS=5000
+export HEALTH_CHECK_CACHE_TIMEOUT_MS=3000
+# Restart application
+```
+
+**Component Retry Issues:**
+```bash
+# Symptom: Components failing intermittently
+# Diagnosis: Check retry configuration
+echo "Retry Configuration:"
+echo "Retry Count: ${HEALTH_CHECK_RETRY_COUNT:-1}"
+
+# Resolution: Increase retry count for unstable components
+export HEALTH_CHECK_RETRY_COUNT=3
+# Restart application
+```
+
+**Health Check Component Enablement:**
+```bash
+# Disable problematic components temporarily
+export HEALTH_CHECK_ENABLED_COMPONENTS='["ai_model", "cache"]'  # Exclude resilience
+# Restart application
+
+# Verify component exclusion
+curl -s http://localhost:8000/v1/health | jq 'keys[]'
 ```
 
 #### Troubleshooting Middleware Issues
@@ -402,6 +545,66 @@ curl -X POST http://localhost:8000/internal/monitoring/test-webhook
 
 ### Daily Operations
 
+#### Enhanced Component Health Monitoring
+
+**Component-Level Health Check Script:**
+```bash
+#!/bin/bash
+# enhanced_health_monitoring.sh
+
+echo "=== Enhanced Health Check Monitoring $(date) ==="
+
+# 1. Overall system health with component breakdown
+echo "=== System Health Status ==="
+curl -s http://localhost:8000/v1/health | jq '{
+  status: .status,
+  ai_model_available: .ai_model_available,
+  resilience_healthy: .resilience_healthy,
+  cache_healthy: .cache_healthy,
+  timestamp: .timestamp
+}'
+
+# 2. Component-specific analysis
+HEALTH_RESPONSE=$(curl -s http://localhost:8000/v1/health)
+AI_STATUS=$(echo "$HEALTH_RESPONSE" | jq -r '.ai_model_available')
+CACHE_STATUS=$(echo "$HEALTH_RESPONSE" | jq -r '.cache_healthy')  
+RESILIENCE_STATUS=$(echo "$HEALTH_RESPONSE" | jq -r '.resilience_healthy')
+
+echo "=== Component Analysis ==="
+echo "AI Model: $AI_STATUS"
+echo "Cache: $CACHE_STATUS"  
+echo "Resilience: $RESILIENCE_STATUS"
+
+# 3. Alert on component failures
+if [ "$AI_STATUS" = "false" ]; then
+    echo "🚨 ALERT: AI Model unavailable - check GEMINI_API_KEY configuration"
+fi
+
+if [ "$CACHE_STATUS" = "false" ]; then
+    echo "🚨 ALERT: Cache unhealthy - check Redis connectivity"
+fi
+
+if [ "$RESILIENCE_STATUS" = "false" ]; then
+    echo "🚨 ALERT: Resilience degraded - check circuit breakers"
+fi
+
+echo "=== Enhanced health monitoring completed ==="
+```
+
+**Health Check Configuration Validation:**
+```bash
+#!/bin/bash
+# validate_health_config.sh
+
+echo "=== Health Check Configuration ==="
+echo "Global Timeout: ${HEALTH_CHECK_TIMEOUT_MS:-2000}ms"
+echo "AI Model Timeout: ${HEALTH_CHECK_AI_MODEL_TIMEOUT_MS:-2000}ms"
+echo "Cache Timeout: ${HEALTH_CHECK_CACHE_TIMEOUT_MS:-2000}ms"
+echo "Resilience Timeout: ${HEALTH_CHECK_RESILIENCE_TIMEOUT_MS:-2000}ms"
+echo "Retry Count: ${HEALTH_CHECK_RETRY_COUNT:-1}"
+echo "Enabled Components: ${HEALTH_CHECK_ENABLED_COMPONENTS:-['ai_model', 'cache', 'resilience']}"
+```
+
 #### Morning Health Check (5 minutes)
 ```bash
 #!/bin/bash
@@ -409,9 +612,9 @@ curl -X POST http://localhost:8000/internal/monitoring/test-webhook
 
 echo "=== Daily Health Check $(date) ==="
 
-# 1. Basic health verification
-echo "Checking basic health..."
-curl -f http://localhost:8000/health || echo "❌ Basic health check failed"
+# 1. Enhanced health verification with component details
+echo "Checking enhanced health status..."
+curl -f http://localhost:8000/v1/health || echo "❌ Enhanced health check failed"
 
 # 2. System overview
 echo "Getting system overview..."
@@ -471,8 +674,13 @@ echo "=== Health check complete ==="
 
 **Step 1: Initial Assessment (< 5 minutes)**
 ```bash
-# Quick status check
-curl -s http://localhost:8000/internal/monitoring/health | jq '.overall_status'
+# Enhanced component status check
+curl -s http://localhost:8000/v1/health | jq '{
+  overall_status: .status,
+  ai_model: .ai_model_available,
+  cache: .cache_healthy,
+  resilience: .resilience_healthy
+}'
 
 # Check for critical alerts
 curl -s http://localhost:8000/internal/monitoring/alerts | jq '.alerts[] | select(.severity == "critical")'
@@ -529,11 +737,15 @@ docker-compose restart redis
 docker-compose restart backend
 docker-compose restart frontend
 
-# 2. Verify service startup
-curl http://localhost:8000/health
+# 2. Verify service startup with enhanced health checks
+curl http://localhost:8000/v1/health
 curl http://localhost:8501/
 
-# 3. Run post-recovery health check
+# 3. Verify component-specific recovery
+echo "Component Recovery Status:"
+curl -s http://localhost:8000/v1/health | jq '.ai_model_available, .cache_healthy, .resilience_healthy'
+
+# 4. Run post-recovery health check
 curl -s http://localhost:8000/internal/monitoring/post-recovery-check
 ```
 
