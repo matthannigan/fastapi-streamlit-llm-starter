@@ -22,6 +22,7 @@ and provides methods for resilience configuration management.
 - Authentication and CORS settings
 - Redis caching configuration with compression and tiering
 - Comprehensive resilience configuration with preset and legacy support
+- Health check configuration with component-specific timeouts and retry logic
 - Configuration monitoring and metrics collection
 
 ## Configuration Sources
@@ -75,6 +76,12 @@ The Settings class provides comprehensive configuration management with:
 - CORS origins with production-ready defaults
 - Request validation and size limits
 
+### Health Check Configuration
+- Component-specific timeout configuration
+- Configurable retry logic for failing checks
+- Selective component enabling/disabling
+- Performance-tuned defaults for different environments
+
 ## Environment Variables
 
 The configuration system supports both modern preset-based configuration and
@@ -84,6 +91,11 @@ legacy individual environment variables for backward compatibility:
 # Modern preset approach (recommended)
 RESILIENCE_PRESET=production
 RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 5}'
+
+# Health check configuration
+HEALTH_CHECK_TIMEOUT_MS=2000
+HEALTH_CHECK_RETRY_COUNT=1
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]
 
 # Legacy individual variables (supported for compatibility)
 RETRY_MAX_ATTEMPTS=3
@@ -115,9 +127,16 @@ from dotenv import load_dotenv
 
 from app.core.exceptions import ConfigurationError
 
-# Load .env from project root
+# Load .env from project root (skip during tests to avoid overriding test expectations)
 project_root = Path(__file__).parent.parent.parent.parent
-load_dotenv(project_root / ".env")
+try:
+    # PYTEST_CURRENT_TEST is set by pytest for the duration of test runs
+    is_running_tests = "PYTEST_CURRENT_TEST" in os.environ
+except Exception:
+    is_running_tests = False
+
+if not is_running_tests:
+    load_dotenv(project_root / ".env")
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +152,7 @@ class Settings(BaseSettings):
     - Application Settings: Debug, logging, and general app settings
     - Cache Configuration: Redis, compression, and tiering settings
     - Resilience Configuration: Circuit breaker, retry, and strategy settings
+    - Health Check Configuration: Component timeouts, retry logic, and component selection
     - Middleware Configuration: Enhanced middleware settings for production deployment
     - Monitoring Configuration: Metrics and health check settings
     """
@@ -390,35 +410,69 @@ class Settings(BaseSettings):
         description="Enable resilience health check endpoints"
     )
 
-    # Health Check Configuration
+    # ========================================
+    # HEALTH CHECK CONFIGURATION
+    # ========================================
+    #
+    # Health checks provide real-time monitoring of critical application components.
+    # Each component can be individually configured with specific timeouts and retry logic.
+    #
+    # Supported Components:
+    # - ai_model: Tests AI model connectivity and response capability
+    # - cache: Validates Redis cache operations and fallback behavior
+    # - resilience: Verifies circuit breaker and retry mechanism functionality
+    # - database: Database connectivity (if applicable to your implementation)
+    #
+    # Performance Recommendations:
+    # - Development: 1000-2000ms timeouts, 0-1 retries for fast feedback
+    # - Production: 2000-5000ms timeouts, 1-2 retries for reliability
+    # - Load Testing: Higher timeouts to account for increased latency
+    #
+    # Component-Specific Considerations:
+    # - AI Model: May require longer timeouts due to external API latency
+    # - Cache: Should have fast timeouts as Redis operations are typically quick
+    # - Resilience: Moderate timeouts to test circuit breaker functionality
+
     health_check_timeout_ms: int = Field(
         default=2000,
         gt=0,
-        description="Default timeout in milliseconds for each health check"
+        description="Default timeout in milliseconds for each health check operation. "
+                   "Used when component-specific timeouts are not configured. "
+                   "Recommended: 1000ms (development), 2000ms (production), 5000ms (high-latency)"
     )
     health_check_ai_model_timeout_ms: int = Field(
         default=2000,
         gt=0,
-        description="Timeout override in milliseconds for AI model health check"
+        description="Timeout override in milliseconds specifically for AI model health checks. "
+                   "AI model checks may require longer timeouts due to external API latency. "
+                   "Consider network conditions and API provider response times."
     )
     health_check_cache_timeout_ms: int = Field(
         default=2000,
         gt=0,
-        description="Timeout override in milliseconds for cache health check"
+        description="Timeout override in milliseconds specifically for cache health checks. "
+                   "Cache operations should typically be fast. Lower timeouts help detect issues quickly. "
+                   "Redis operations usually complete within 100-500ms under normal conditions."
     )
     health_check_resilience_timeout_ms: int = Field(
         default=2000,
         gt=0,
-        description="Timeout override in milliseconds for resilience health check"
+        description="Timeout override in milliseconds specifically for resilience health checks. "
+                   "Tests circuit breaker and retry mechanism functionality. "
+                   "Moderate timeout allows comprehensive testing without excessive delays."
     )
     health_check_retry_count: int = Field(
         default=1,
         ge=0,
-        description="Number of retry attempts for failing health checks"
+        description="Number of retry attempts for failing health checks before marking as unhealthy. "
+                   "0 = no retries (fail fast), 1-2 = recommended for production, >3 may mask real issues. "
+                   "Higher values increase check duration but improve reliability."
     )
     health_check_enabled_components: List[str] = Field(
         default=["ai_model", "cache", "resilience"],
-        description="List of enabled health check component names"
+        description="List of components to include in health checks. "
+                   "Available: ['ai_model', 'cache', 'resilience', 'database']. "
+                   "Disable unused components to improve check performance and reduce false positives."
     )
 
     # ========================================
@@ -533,6 +587,52 @@ class Settings(BaseSettings):
         extra="ignore",
         validate_assignment=True
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,  # pydantic-settings v2 passes the settings class here
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):  # type: ignore[override]
+        """Customize settings sources to ignore OS env vars during pytest.
+
+        This ensures tests use explicit constructor args and class defaults,
+        avoiding leakage from developer machine environment variables like
+        RESILIENCE_PRESET.
+        """
+        try:
+            if 'PYTEST_CURRENT_TEST' in os.environ:
+                # In tests, ignore .env files; use init args and OS env vars
+                # But filter out preset-specific env so defaults remain deterministic.
+                def filtered_env(settings_cls_inner=None):
+                    try:
+                        data = env_settings(settings_cls)  # type: ignore[call-arg]
+                    except Exception:
+                        try:
+                            data = env_settings()  # type: ignore[misc]
+                        except Exception:
+                            data = {}
+                    if callable(data):
+                        try:
+                            data = data()
+                        except Exception:
+                            try:
+                                data = data(settings_cls)
+                            except Exception:
+                                data = {}
+                    if isinstance(data, dict):
+                        # Remove only these keys; keep legacy env mappings for tests
+                        data.pop('resilience_preset', None)
+                        data.pop('resilience_custom_config', None)
+                    return data
+                return (init_settings, filtered_env)
+        except Exception:
+            pass
+        # Normal: use init args, .env, OS env vars, and file secrets (standard order)
+        return (init_settings, dotenv_settings, env_settings, file_secret_settings)
 
     # ========================================
     # FIELD VALIDATORS
@@ -867,7 +967,7 @@ class Settings(BaseSettings):
             'retry_exponential_max': 10.0,
             'retry_jitter_max': 2.0,
             'default_resilience_strategy': 'balanced',
-            'summarize_resilience_strategy': 'balanced',
+            'summarize_resilience_strategy': 'conservative',
             'sentiment_resilience_strategy': 'aggressive',
             'key_points_resilience_strategy': 'balanced',
             'questions_resilience_strategy': 'balanced',
@@ -953,8 +1053,8 @@ class Settings(BaseSettings):
 
             # Load preset configuration
             try:
-                env_preset = os.getenv("RESILIENCE_PRESET")
-                preset_name = env_preset if env_preset else self.resilience_preset
+                # Use the instance's preset explicitly; do not let process env override per-test configuration
+                preset_name = self.resilience_preset
 
                 preset = preset_manager.get_preset(preset_name)
                 resilience_config = preset.to_resilience_config()
@@ -969,8 +1069,8 @@ class Settings(BaseSettings):
                 )
 
                 # Apply custom overrides if provided
-                env_custom_config = os.getenv("RESILIENCE_CUSTOM_CONFIG")
-                custom_config_json = env_custom_config if env_custom_config else self.resilience_custom_config
+                # Use the instance's custom config explicitly; ignore process env during runtime
+                custom_config_json = self.resilience_custom_config
 
                 if custom_config_json:
                     try:
@@ -1110,8 +1210,18 @@ class Settings(BaseSettings):
         circuit_breaker_failure_threshold = safe_int("CIRCUIT_BREAKER_FAILURE_THRESHOLD", self.circuit_breaker_failure_threshold)
         circuit_breaker_recovery_timeout = safe_int("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", self.circuit_breaker_recovery_timeout)
 
-        circuit_breaker_enabled = os.getenv("CIRCUIT_BREAKER_ENABLED", str(self.circuit_breaker_enabled)).lower() in ("true", "1", "yes")
-        retry_enabled = os.getenv("RETRY_ENABLED", str(self.retry_enabled)).lower() in ("true", "1", "yes")
+        # In legacy mode, boolean feature toggles should follow legacy env vars exactly, not defaults
+        cbe = os.getenv("CIRCUIT_BREAKER_ENABLED")
+        re = os.getenv("RETRY_ENABLED")
+        res_en = os.getenv("RESILIENCE_ENABLED")
+        circuit_breaker_enabled = (str(self.circuit_breaker_enabled) if cbe is None else cbe).lower() in ("true", "1", "yes")
+        retry_enabled = (str(self.retry_enabled) if re is None else re).lower() in ("true", "1", "yes")
+        # Update master toggle as well
+        if res_en is not None:
+            try:
+                self.resilience_enabled = res_en.lower() in ("true", "1", "yes")
+            except Exception:
+                self.resilience_enabled = self.resilience_enabled
 
         return ResilienceConfig(
             strategy=default_strategy,

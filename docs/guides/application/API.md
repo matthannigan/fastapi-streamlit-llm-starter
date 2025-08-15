@@ -57,19 +57,55 @@ The API uses **API Key authentication** with support for multiple authentication
 #### Health Check
 **GET `/v1/health`** - No authentication required
 
-Comprehensive health check endpoint that evaluates:
-- AI model availability (Google Gemini API key configuration)
-- Resilience infrastructure health (circuit breakers, failure detection)  
-- Cache system status (Redis connectivity, cache operations)
+**Enhanced health check endpoint powered by infrastructure health checker** that provides comprehensive system monitoring with component-level status reporting, configurable timeouts, and graceful degradation.
+
+**Enhanced Implementation Features:**
+- **Infrastructure Health Checker Integration**: Uses `app.infrastructure.monitoring.health.HealthChecker` for standardized component monitoring
+- **Component-Level Monitoring**: Individual health status for AI model, cache, resilience, and database components
+- **Configurable Timeouts**: Per-component timeout configuration via environment variables
+- **Automatic Retry Logic**: Configurable retry attempts with exponential backoff
+- **Parallel Component Checking**: Components checked concurrently for optimal performance
+- **Graceful Degradation**: Never fails the endpoint - component failures result in degraded status
+- **Response Time Measurement**: Tracks individual component response times for performance monitoring
+- **Dependency Injection**: Uses `get_health_checker()` from `app.dependencies` for consistent service lifecycle
+
+**Health Check Components:**
+- **AI Model**: Verifies Google Gemini API key configuration
+- **Resilience Infrastructure**: Checks circuit breakers, failure detection, and orchestration services
+- **Cache System**: Validates Redis connectivity and memory cache operations with fallback support
+- **Database**: Placeholder for future database connectivity checks
+
+**Health Status Algorithm:**
+- **"healthy"**: All enabled components are healthy or gracefully degraded
+- **"degraded"**: One or more components are degraded or timed out, but system can operate
+- **Component Isolation**: Individual component failures don't break the overall health endpoint
+
+**Configuration Support:**
+```bash
+# Health Check Configuration
+HEALTH_CHECK_TIMEOUT_MS=2000                    # Default timeout for all components
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=2000           # AI model check timeout
+HEALTH_CHECK_CACHE_TIMEOUT_MS=2000              # Cache system check timeout  
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=2000         # Resilience infrastructure timeout
+HEALTH_CHECK_RETRY_COUNT=1                      # Number of retry attempts
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]  # Active components
+```
+
+**Performance Characteristics:**
+- **Target Response Time**: <100ms for overall health check
+- **Component Timeout**: <2000ms default per component (configurable)
+- **Parallel Execution**: Components checked concurrently for optimal performance
+- **Retry Impact**: Failed checks automatically retried with exponential backoff
+- **Memory Efficient**: Uses async patterns and proper resource cleanup
 
 Status codes:
 - 200 OK: Health check executed successfully. Response body indicates health state.
 
 Response schema: `HealthResponse`
 
-Examples:
+**Response Examples:**
 
-Healthy
+**All Components Healthy:**
 ```json
 {
   "status": "healthy",
@@ -81,7 +117,7 @@ Healthy
 }
 ```
 
-Degraded (component unavailable or timed out)
+**Mixed Component Status (AI degraded, cache healthy):**
 ```json
 {
   "status": "degraded",
@@ -93,7 +129,31 @@ Degraded (component unavailable or timed out)
 }
 ```
 
-Unhealthy components (mapped to degraded in public schema)
+**AI Model Unavailable (missing GEMINI_API_KEY):**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": false,
+  "resilience_healthy": true,
+  "cache_healthy": true
+}
+```
+
+**Cache Degraded (Redis unavailable, memory cache active):**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": true,
+  "resilience_healthy": true,
+  "cache_healthy": false
+}
+```
+
+**Multiple Components Degraded:**
 ```json
 {
   "status": "degraded",
@@ -104,6 +164,25 @@ Unhealthy components (mapped to degraded in public schema)
   "cache_healthy": false
 }
 ```
+
+**Component Timeout Scenarios:**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-06-28T00:06:39.130848",
+  "version": "1.0.0",
+  "ai_model_available": true,
+  "resilience_healthy": null,
+  "cache_healthy": null
+}
+```
+
+**Error Handling & Resilience:**
+- **Never-Failing Endpoint**: Component failures are caught and mapped to degraded status
+- **Timeout Management**: Components that exceed timeout limits are marked as degraded
+- **Fallback Behavior**: When health checker itself fails, falls back to basic AI model check
+- **Component Isolation**: Individual component failures don't affect other component checks
+- **Graceful Logging**: All failures logged at appropriate levels without exposing sensitive information
 
 #### Authentication Status
 **GET `/v1/auth/status`** - Requires authentication
@@ -524,6 +603,131 @@ Get operational insights and recommendations.
 
 ## Request Examples
 
+### Health Check
+
+**Basic Health Check Request:**
+```bash
+# No authentication required - enhanced infrastructure monitoring
+curl http://localhost:8000/v1/health
+```
+
+**Health Check with Response Analysis:**
+```bash
+# Get health status and analyze components
+curl -s http://localhost:8000/v1/health | jq '.'
+
+# Check specific component status
+curl -s http://localhost:8000/v1/health | jq '.ai_model_available'
+curl -s http://localhost:8000/v1/health | jq '.cache_healthy'
+curl -s http://localhost:8000/v1/health | jq '.resilience_healthy'
+```
+
+**Monitoring Script Examples:**
+```bash
+#!/bin/bash
+# Simple health monitoring script
+HEALTH_URL="http://localhost:8000/v1/health"
+STATUS=$(curl -s $HEALTH_URL | jq -r '.status')
+
+if [[ "$STATUS" == "healthy" ]]; then
+    echo "✅ System is healthy"
+    exit 0
+elif [[ "$STATUS" == "degraded" ]]; then
+    echo "⚠️  System is degraded but operational"
+    exit 1
+else
+    echo "❌ System status unknown"
+    exit 2
+fi
+```
+
+**Component-Specific Monitoring:**
+```bash
+#!/bin/bash
+# Check individual components
+RESPONSE=$(curl -s http://localhost:8000/v1/health)
+
+AI_STATUS=$(echo $RESPONSE | jq -r '.ai_model_available')
+CACHE_STATUS=$(echo $RESPONSE | jq -r '.cache_healthy')
+RESILIENCE_STATUS=$(echo $RESPONSE | jq -r '.resilience_healthy')
+
+echo "AI Model: $AI_STATUS"
+echo "Cache: $CACHE_STATUS"
+echo "Resilience: $RESILIENCE_STATUS"
+```
+
+**Load Balancer Configuration:**
+```yaml
+# HAProxy configuration example
+backend api_servers
+    option httpchk GET /v1/health
+    http-check expect status 200
+    http-check expect string "healthy"
+    server api1 localhost:8000 check
+    server api2 localhost:8001 check
+```
+
+**Kubernetes Liveness/Readiness Probes:**
+```yaml
+# Kubernetes deployment configuration
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+      - name: api
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+```
+
+**Docker Compose Health Check:**
+```yaml
+# docker-compose.yml health check configuration
+version: '3.8'
+services:
+  api:
+    image: your-api:latest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+**Production Monitoring Integration:**
+```bash
+# Prometheus metrics collection script
+#!/bin/bash
+HEALTH_ENDPOINT="http://localhost:8000/v1/health"
+RESPONSE=$(curl -s $HEALTH_ENDPOINT)
+
+# Extract metrics for Prometheus
+STATUS=$(echo $RESPONSE | jq -r '.status')
+AI_AVAILABLE=$(echo $RESPONSE | jq -r '.ai_model_available')
+CACHE_HEALTHY=$(echo $RESPONSE | jq -r '.cache_healthy // "null"')
+RESILIENCE_HEALTHY=$(echo $RESPONSE | jq -r '.resilience_healthy // "null"')
+
+# Export as Prometheus metrics
+echo "api_health_status{status=\"$STATUS\"} 1"
+echo "api_component_health{component=\"ai_model\"} $([ "$AI_AVAILABLE" = "true" ] && echo 1 || echo 0)"
+echo "api_component_health{component=\"cache\"} $([ "$CACHE_HEALTHY" = "true" ] && echo 1 || echo 0)"
+echo "api_component_health{component=\"resilience\"} $([ "$RESILIENCE_HEALTHY" = "true" ] && echo 1 || echo 0)"
+```
+
 ### Single Text Processing
 
 ```bash
@@ -602,6 +806,7 @@ curl "http://localhost:8000/internal/resilience/circuit-breakers" \
 
 ### Health Check Response
 
+**All Components Healthy:**
 ```json
 {
     "status": "healthy",
@@ -610,6 +815,42 @@ curl "http://localhost:8000/internal/resilience/circuit-breakers" \
     "ai_model_available": true,
     "resilience_healthy": true,
     "cache_healthy": true
+}
+```
+
+**AI Model Unavailable (missing GEMINI_API_KEY):**
+```json
+{
+    "status": "degraded",
+    "timestamp": "2025-06-28T00:06:39.130848", 
+    "version": "1.0.0",
+    "ai_model_available": false,
+    "resilience_healthy": true,
+    "cache_healthy": true
+}
+```
+
+**Cache Degraded (Redis unavailable, memory cache active):**
+```json
+{
+    "status": "degraded",
+    "timestamp": "2025-06-28T00:06:39.130848",
+    "version": "1.0.0",
+    "ai_model_available": true,
+    "resilience_healthy": true,
+    "cache_healthy": false
+}
+```
+
+**Component Timeout Scenarios:**
+```json
+{
+    "status": "degraded", 
+    "timestamp": "2025-06-28T00:06:39.130848",
+    "version": "1.0.0",
+    "ai_model_available": true,
+    "resilience_healthy": null,
+    "cache_healthy": null
 }
 ```
 
@@ -630,7 +871,7 @@ curl "http://localhost:8000/internal/resilience/circuit-breakers" \
 - **Resilience Orchestration**: Circuit breakers, retry logic, failure detection
 - **Configuration Management**: Presets, templates, validation, recommendations
 - **Performance Monitoring**: Benchmarking, metrics collection, trend analysis
-- **Health Monitoring**: Component-level health checks and status reporting
+- **Enhanced Health Monitoring**: Infrastructure-powered health checker with component-level monitoring, configurable timeouts, retry logic, and parallel component checking
 - **Security**: API key authentication with multiple key support
 
 ### Monitoring and Observability
@@ -662,6 +903,14 @@ CACHE_COMPRESSION_THRESHOLD=1000
 RESILIENCE_PRESET=simple
 # Options: simple, development, production
 
+# Health Check Configuration
+HEALTH_CHECK_TIMEOUT_MS=2000                    # Default timeout for all components
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=2000           # AI model check timeout
+HEALTH_CHECK_CACHE_TIMEOUT_MS=2000              # Cache system check timeout  
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=2000         # Resilience infrastructure timeout
+HEALTH_CHECK_RETRY_COUNT=1                      # Number of retry attempts
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]  # Active components
+
 # Batch Processing
 MAX_BATCH_REQUESTS_PER_CALL=10
 ```
@@ -671,6 +920,83 @@ MAX_BATCH_REQUESTS_PER_CALL=10
 - **simple**: 3 retries, 5 failure threshold, 60s recovery, balanced strategy
 - **development**: 2 retries, 3 failure threshold, 30s recovery, aggressive strategy  
 - **production**: 5 retries, 10 failure threshold, 120s recovery, conservative strategy
+
+### Health Check Configuration
+
+The enhanced health check system supports comprehensive configuration for different environments and monitoring requirements.
+
+#### Basic Configuration
+
+**Default Settings (suitable for most environments):**
+```bash
+HEALTH_CHECK_TIMEOUT_MS=2000
+HEALTH_CHECK_RETRY_COUNT=1
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]
+```
+
+#### Environment-Specific Configuration
+
+**Development Environment:**
+```bash
+# Faster feedback for development
+HEALTH_CHECK_TIMEOUT_MS=1000
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=500
+HEALTH_CHECK_CACHE_TIMEOUT_MS=800
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=600
+HEALTH_CHECK_RETRY_COUNT=0  # No retries for immediate feedback
+```
+
+**Production Environment:**
+```bash
+# More resilient configuration for production
+HEALTH_CHECK_TIMEOUT_MS=5000
+HEALTH_CHECK_AI_MODEL_TIMEOUT_MS=3000
+HEALTH_CHECK_CACHE_TIMEOUT_MS=4000
+HEALTH_CHECK_RESILIENCE_TIMEOUT_MS=3000
+HEALTH_CHECK_RETRY_COUNT=2  # Additional retries for network issues
+```
+
+**Load Balancer Optimization:**
+```bash
+# Optimized for load balancer health checks
+HEALTH_CHECK_TIMEOUT_MS=1500
+HEALTH_CHECK_RETRY_COUNT=1
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model"]  # Check only critical components
+```
+
+#### Component Selection
+
+**Minimal Monitoring (essential services only):**
+```bash
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model"]
+```
+
+**Comprehensive Monitoring (all components):**
+```bash
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience", "database"]
+```
+
+**Cache-Optional Configuration:**
+```bash
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "resilience"]
+```
+
+#### Performance Tuning Guidelines
+
+- **Timeout Configuration**: Set timeouts based on your infrastructure capabilities
+  - Local development: 500-1000ms
+  - Cloud environments: 2000-3000ms
+  - High-latency networks: 5000ms+
+
+- **Retry Strategy**: Balance between reliability and response time
+  - Development: 0 retries for immediate feedback
+  - Production: 1-2 retries for transient failures
+  - Critical systems: 2-3 retries with exponential backoff
+
+- **Component Selection**: Enable only necessary components for your monitoring needs
+  - Load balancers: AI model only
+  - Operational dashboards: All components
+  - Service discovery: Essential components only
 
 ## Interactive Documentation
 
