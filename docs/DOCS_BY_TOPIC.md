@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-08-08*
+*Last updated on 2025-08-16*
 
 ## Application
 
@@ -38,7 +38,7 @@ This view organizes all documentation by topic category, providing an alternativ
 
 - **[Code Standards & Examples](guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation
 
-- **[Core Module Integration Guide](guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns
+- **[Core Module Integration Guide](guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and enhanced middleware patterns
 
 - **[Docker Setup & Usage](guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services
 
@@ -79,16 +79,16 @@ This view organizes all documentation by topic category, providing an alternativ
 
 - **[Middleware Operations Guide](guides/operations/MIDDLEWARE.md)**: Comprehensive middleware stack operations guide covering all 9 production-ready middleware components including CORS, security, rate limiting, compression, API versioning, and performance monitoring with configuration management and operational procedures
 
-- **[Operational Monitoring Guide](guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, alert management, and system health verification for production environments
+- **[Operational Monitoring Guide](guides/operations/MONITORING.md)**: Operational monitoring procedures, health checks, performance monitoring, middleware monitoring, alert management, and system health verification for production environments
 
-- **[Performance Optimization Guide](guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows
+- **[Performance Optimization Guide](guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, middleware performance optimization, AI service optimization, and performance testing workflows
 
 - **[Troubleshooting Guide](guides/operations/TROUBLESHOOTING.md)**: Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures
 
 
 ## Security
 
-- **[Security Guide](guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist
+- **[Security Guide](guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, middleware security integration, AI-specific security threats, incident response procedures, and production security checklist
 
 
 ## Setup
