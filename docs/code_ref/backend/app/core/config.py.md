@@ -27,6 +27,7 @@ and provides methods for resilience configuration management.
 - Authentication and CORS settings
 - Redis caching configuration with compression and tiering
 - Comprehensive resilience configuration with preset and legacy support
+- Health check configuration with component-specific timeouts and retry logic
 - Configuration monitoring and metrics collection
 
 ## Configuration Sources
@@ -80,6 +81,12 @@ The Settings class provides comprehensive configuration management with:
 - CORS origins with production-ready defaults
 - Request validation and size limits
 
+### Health Check Configuration
+- Component-specific timeout configuration
+- Configurable retry logic for failing checks
+- Selective component enabling/disabling
+- Performance-tuned defaults for different environments
+
 ## Environment Variables
 
 The configuration system supports both modern preset-based configuration and
@@ -89,6 +96,11 @@ legacy individual environment variables for backward compatibility:
 # Modern preset approach (recommended)
 RESILIENCE_PRESET=production
 RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 5}'
+
+# Health check configuration
+HEALTH_CHECK_TIMEOUT_MS=2000
+HEALTH_CHECK_RETRY_COUNT=1
+HEALTH_CHECK_ENABLED_COMPONENTS=["ai_model", "cache", "resilience"]
 
 # Legacy individual variables (supported for compatibility)
 RETRY_MAX_ATTEMPTS=3
