@@ -1076,7 +1076,7 @@ class AIResponseCache(GenericRedisCache):
         self,
         text: str,
         operation: str,
-        options: Dict[str, Any],
+        options: Optional[Dict[str, Any]] = None,
         question: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
@@ -1117,6 +1117,8 @@ class AIResponseCache(GenericRedisCache):
             ...     print("Cache miss - need to generate new response")
         """
         start_time = time.time()
+        if options is None:
+            options = {}
 
         try:
             # Input validation
