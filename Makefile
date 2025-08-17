@@ -368,7 +368,7 @@ test-backend-infra-cache:
 	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q
 	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -q
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -n 0 -q
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
