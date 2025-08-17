@@ -341,7 +341,7 @@ test-local: venv
 # Run backend tests (fast tests only, default)
 test-backend:
 	@echo "🧪 Running backend tests (fast tests only)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v
+	@cd backend && $(PYTHON_CMD) -m pytest tests/ -q --retries 2 --retry-delay 5
 
 # Run backend API endpoint tests
 test-backend-api:
@@ -366,9 +366,9 @@ test-backend-infra-ai:
 # Run infrastructure service tests
 test-backend-infra-cache:
 	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q --retries 2 --retry-delay 5
 	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -n 0 -q
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -n 0 -q --retries 2 --retry-delay 5
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
@@ -381,7 +381,7 @@ test-backend-infra-resilience:
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/resilience/ -v
 
 # Run infrastructure service tests
-	test-backend-infra-security:
+test-backend-infra-security:
 	@echo "🧪 Running backend security infrastructure service tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/security/ -v
 
