@@ -1,5 +1,5 @@
 """
-Parameter Mapping Module for Cache Inheritance Refactoring
+[REFACTORED] Parameter Mapping Module for Cache Inheritance Refactoring
 
 This module provides comprehensive parameter mapping functionality to enable
 AIResponseCache to properly inherit from GenericRedisCache. It separates 

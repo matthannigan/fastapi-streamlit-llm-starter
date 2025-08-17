@@ -1,5 +1,5 @@
 """
-In-Memory Cache Implementation Module
+[REFACTORED] In-Memory Cache Implementation Module
 
 This module provides a high-performance, thread-safe in-memory caching solution with
 advanced features including TTL (Time-To-Live) support, LRU (Least Recently Used)

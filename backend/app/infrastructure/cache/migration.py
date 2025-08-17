@@ -1,4 +1,4 @@
-"""Cache migration utilities for seamless transitions between cache versions.
+"""[REFACTORED] Cache migration utilities for seamless transitions between cache versions.
 
 This module provides tools for migrating cache data and configurations when
 upgrading between different cache implementations or schema versions. It ensures

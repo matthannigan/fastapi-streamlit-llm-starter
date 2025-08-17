@@ -1,5 +1,5 @@
 """
-AI Response Cache Implementation with Generic Redis Cache Inheritance
+[REFACTORED] AI Response Cache Implementation with Generic Redis Cache Inheritance
 
 This module provides the refactored AIResponseCache that properly inherits from 
 GenericRedisCache while maintaining all AI-specific features and backward compatibility.

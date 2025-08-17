@@ -1,5 +1,5 @@
 """
-Cache Performance Benchmarking Infrastructure
+[REFACTORED] Cache Performance Benchmarking Infrastructure
 
 This module provides comprehensive performance benchmarking capabilities for cache implementations,
 including timing analysis, memory usage tracking, compression efficiency testing, and regression

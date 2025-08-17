@@ -1,5 +1,5 @@
 """
-Cache Performance Monitoring and Analytics Module
+[REFACTORED] Cache Performance Monitoring and Analytics Module
 
 This module provides comprehensive monitoring, analysis, and optimization capabilities for cache
 performance across multiple dimensions including timing, memory usage, compression efficiency,

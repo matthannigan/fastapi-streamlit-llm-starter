@@ -1,4 +1,4 @@
-"""Generic Redis cache implementation providing flexible caching capabilities.
+"""[REFACTORED] Generic Redis cache implementation providing flexible caching capabilities.
 
 This module implements a generic Redis-backed cache that can handle various data
 types and caching patterns. It extends the base cache interface with Redis-specific

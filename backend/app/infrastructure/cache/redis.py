@@ -1,5 +1,5 @@
 """
-Redis-based AI Response Cache Implementation
+[LEGACY - TO BE REPLACED] Redis-based AI Response Cache Implementation
 
 This module provides a comprehensive Redis-based caching solution specifically designed 
 for AI response caching with advanced features including intelligent key generation, 
