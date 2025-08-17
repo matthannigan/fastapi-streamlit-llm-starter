@@ -23,8 +23,11 @@ from datetime import datetime
 
 from app.infrastructure.cache import (
     AIResponseCache,
+    AIResponseCacheConfig,
+    GenericRedisCache,
     InMemoryCache,
     CachePerformanceMonitor,
+    CacheParameterMapper,
     REDIS_AVAILABLE
 )
 
@@ -44,16 +47,27 @@ class CacheConfigurationExamples:
     
     async def example_1_basic_cache_setup(self):
         """
-        Example 1: Basic cache setup with default configuration.
+        Example 1: Basic cache setup with default configuration using AIResponseCacheConfig.
         
-        This is the simplest way to get started with AIResponseCache.
+        This demonstrates the new Phase 2 configuration approach with validation.
         Good for development and simple use cases.
         """
-        logger.info("\n🔧 Example 1: Basic Cache Setup")
+        logger.info("\n🔧 Example 1: Basic Cache Setup (Phase 2 - Configuration-Based)")
         logger.info("=" * 50)
         
-        # Basic cache with default settings
-        cache = AIResponseCache()
+        # Create configuration with defaults
+        config = AIResponseCacheConfig()
+        
+        # Validate configuration before use
+        validation_result = config.validate()
+        if not validation_result.is_valid:
+            logger.error(f"❌ Configuration validation failed: {validation_result.errors}")
+            return None
+        
+        logger.info("✅ Configuration validation passed")
+        
+        # Create cache using configuration object
+        cache = AIResponseCache(config)
         
         # Try to connect (will gracefully degrade if Redis unavailable)
         connected = await cache.connect()
@@ -101,12 +115,12 @@ class CacheConfigurationExamples:
     
     async def example_2_development_optimized_cache(self):
         """
-        Example 2: Development-optimized cache configuration.
+        Example 2: Development-optimized cache configuration using AIResponseCacheConfig.
         
+        Demonstrates Phase 2 configuration approach with development-specific settings.
         Optimized for fast development cycles with quick feedback.
-        Uses smaller thresholds and shorter TTLs.
         """
-        logger.info("\n🛠️  Example 2: Development-Optimized Cache")
+        logger.info("\n🛠️  Example 2: Development-Optimized Cache (Phase 2 - Config-Based)")
         logger.info("=" * 50)
         
         # Create performance monitor for development
@@ -116,8 +130,8 @@ class CacheConfigurationExamples:
             memory_critical_threshold_bytes=25 * 1024 * 1024,  # 25MB critical
         )
         
-        # Development cache configuration
-        dev_cache = AIResponseCache(
+        # Development cache configuration using AIResponseCacheConfig
+        dev_config = AIResponseCacheConfig(
             redis_url="redis://localhost:6379",
             default_ttl=300,  # 5 minutes - short for development
             text_hash_threshold=200,  # Hash smaller texts for testing
@@ -131,6 +145,17 @@ class CacheConfigurationExamples:
             },
             performance_monitor=dev_monitor
         )
+        
+        # Validate development configuration
+        validation_result = dev_config.validate()
+        if not validation_result.is_valid:
+            logger.error(f"❌ Development config validation failed: {validation_result.errors}")
+            return None
+        
+        logger.info("✅ Development configuration validated")
+        
+        # Create cache using configuration
+        dev_cache = AIResponseCache(dev_config)
         
         await dev_cache.connect()
         
@@ -170,7 +195,92 @@ class CacheConfigurationExamples:
         self.performance_monitors['development'] = dev_monitor
         return dev_cache
     
-    async def example_3_production_optimized_cache(self):
+    async def example_3_generic_redis_cache(self):
+        """
+        Example 3: GenericRedisCache - The inheritance base (NEW in Phase 2).
+        
+        Demonstrates the new GenericRedisCache that serves as the base for AIResponseCache.
+        Perfect for general-purpose applications that need Redis caching without AI features.
+        """
+        logger.info("\n🔧 Example 3: GenericRedisCache (Phase 2 - Inheritance Base)")
+        logger.info("=" * 50)
+        
+        # Create a generic Redis cache for non-AI applications
+        generic_cache = GenericRedisCache(
+            redis_url="redis://localhost:6379",
+            default_ttl=1800,                   # 30 minutes
+            enable_l1_cache=True,               # Enable memory tier
+            l1_cache_size=100,                  # 100 items in memory
+            compression_threshold=2000,         # Compress data > 2KB
+            compression_level=6                 # Balanced compression
+        )
+        
+        # Connect to Redis
+        connected = await generic_cache.connect()
+        
+        if connected:
+            logger.info("✅ GenericRedisCache connected to Redis")
+        else:
+            logger.info("⚠️  GenericRedisCache using memory-only mode")
+        
+        # Test generic cache operations (not AI-specific)
+        test_data = {
+            "user:profile:123": {"name": "John Doe", "email": "john@example.com", "role": "admin"},
+            "session:abc456": {"user_id": 123, "created_at": "2024-01-15T10:30:00Z"},
+            "config:feature_flags": {"new_ui": True, "beta_features": False},
+            "api:weather:nyc": {"temperature": 22, "humidity": 65, "conditions": "sunny"}
+        }
+        
+        logger.info("Testing GenericRedisCache with various data types:")
+        
+        # Store data with different TTLs
+        for key, value in test_data.items():
+            if "config" in key:
+                ttl = 3600  # Config data - 1 hour
+            elif "session" in key:
+                ttl = 1800  # Session data - 30 minutes  
+            else:
+                ttl = 7200  # Other data - 2 hours
+                
+            await generic_cache.set(key, value, ttl=ttl)
+            logger.info(f"   📦 Stored {key} (TTL: {ttl}s)")
+        
+        # Retrieve and verify data
+        retrieved_count = 0
+        for key in test_data.keys():
+            cached_value = await generic_cache.get(key)
+            if cached_value:
+                retrieved_count += 1
+                logger.info(f"   ✅ Retrieved {key}")
+        
+        logger.info(f"   📊 Successfully retrieved {retrieved_count}/{len(test_data)} items")
+        
+        # Test additional GenericRedisCache features
+        logger.info("\nTesting GenericRedisCache advanced features:")
+        
+        # Pattern operations
+        config_keys = await generic_cache.get_keys("config:*")
+        logger.info(f"   🔍 Found {len(config_keys)} config keys: {config_keys}")
+        
+        # Check existence and TTL
+        exists = await generic_cache.exists("user:profile:123")
+        ttl = await generic_cache.get_ttl("user:profile:123")
+        logger.info(f"   ⏰ user:profile:123 exists: {exists}, TTL: {ttl}s")
+        
+        # Memory cache statistics  
+        if hasattr(generic_cache, 'get_memory_usage'):
+            memory_stats = generic_cache.get_memory_usage()
+            logger.info(f"   💾 Memory cache: {memory_stats.get('memory_cache_entries', 0)} entries")
+        
+        # Demonstrate that this is the base class for AIResponseCache
+        logger.info(f"\n🏗️  Architecture: AIResponseCache inherits from {type(generic_cache).__name__}")
+        logger.info("   • AIResponseCache gets all GenericRedisCache features")
+        logger.info("   • Plus AI-specific optimizations (key generation, text tiers, etc.)")
+        
+        self.caches['generic'] = generic_cache
+        return generic_cache
+    
+    async def example_4_production_optimized_cache(self):
         """
         Example 3: Production-optimized cache configuration.
         
@@ -232,9 +342,9 @@ class CacheConfigurationExamples:
         self.performance_monitors['production'] = prod_monitor
         return prod_cache
     
-    async def example_4_memory_only_fallback(self):
+    async def example_5_memory_only_fallback(self):
         """
-        Example 4: Memory-only cache for scenarios without Redis.
+        Example 5: Memory-only cache for scenarios without Redis.
         
         Demonstrates graceful degradation when Redis is unavailable.
         Uses InMemoryCache as a complete fallback solution.
@@ -279,17 +389,17 @@ class CacheConfigurationExamples:
         self.caches['memory_only'] = memory_cache
         return memory_cache
     
-    async def example_5_cache_invalidation_patterns(self):
+    async def example_6_cache_invalidation_patterns(self):
         """
-        Example 5: Cache invalidation and management patterns.
+        Example 6: Cache invalidation and management patterns.
         
         Demonstrates different approaches to cache invalidation and maintenance.
         """
-        logger.info("\n🗑️  Example 5: Cache Invalidation Patterns")
+        logger.info("\n🗑️  Example 6: Cache Invalidation Patterns")
         logger.info("=" * 50)
         
         # Use the production cache for this example
-        cache = self.caches.get('production') or await self.example_3_production_optimized_cache()
+        cache = self.caches.get('production') or await self.example_4_production_optimized_cache()
         
         # Populate cache with test data
         test_documents = [
@@ -336,13 +446,13 @@ class CacheConfigurationExamples:
         
         logger.info(f"   📊 {remaining_count}/{len(test_documents)} items still cached after invalidation")
     
-    async def example_6_performance_monitoring(self):
+    async def example_7_performance_monitoring(self):
         """
-        Example 6: Performance monitoring and optimization.
+        Example 7: Performance monitoring and optimization.
         
         Demonstrates how to use performance monitoring to optimize cache configuration.
         """
-        logger.info("\n📊 Example 6: Performance Monitoring")
+        logger.info("\n📊 Example 7: Performance Monitoring")
         logger.info("=" * 50)
         
         # Use the development cache with its monitor
@@ -455,19 +565,21 @@ class CacheConfigurationExamples:
             # Run examples in logical order
             await self.example_1_basic_cache_setup()
             await self.example_2_development_optimized_cache()
-            await self.example_3_production_optimized_cache()
-            await self.example_4_memory_only_fallback()
-            await self.example_5_cache_invalidation_patterns()
-            await self.example_6_performance_monitoring()
+            await self.example_3_generic_redis_cache()
+            await self.example_4_production_optimized_cache()
+            await self.example_5_memory_only_fallback()
+            await self.example_6_cache_invalidation_patterns()
+            await self.example_7_performance_monitoring()
             
             logger.info("\n🎉 All Cache Configuration Examples Complete!")
             logger.info("=" * 60)
             
             # Summary of what was demonstrated
             logger.info("\n📋 Summary of Examples:")
-            logger.info("✅ Basic cache setup and usage")
-            logger.info("✅ Development-optimized configuration")
-            logger.info("✅ Production-optimized configuration")
+            logger.info("✅ Basic cache setup with AIResponseCacheConfig validation")
+            logger.info("✅ Development-optimized configuration with Phase 2 patterns")
+            logger.info("✅ GenericRedisCache - inheritance base demonstration")
+            logger.info("✅ Production-optimized AIResponseCache configuration")
             logger.info("✅ Memory-only fallback scenarios")
             logger.info("✅ Cache invalidation patterns")
             logger.info("✅ Performance monitoring and optimization")

@@ -194,6 +194,193 @@ redis-cli flushall
 redis-cli config set maxmemory-policy allkeys-lru
 ```
 
+### Phase 2 Cache Architecture Issues (NEW)
+
+**The Phase 2 cache architecture** introduces inheritance-based caching with GenericRedisCache and AIResponseCache. This section covers troubleshooting issues specific to the new architecture.
+
+#### Symptoms
+- AIResponseCacheConfig validation errors
+- Cache inheritance hierarchy issues
+- Parameter mapping failures
+- Migration between cache implementations
+- Performance degradation after upgrade
+
+#### Diagnostic Steps
+
+**Step 1: Verify Cache Configuration**
+```bash
+# Test AIResponseCacheConfig validation
+curl -s "http://localhost:8000/internal/cache/config/validate" | jq '.'
+
+# Check cache inheritance setup
+curl -s "http://localhost:8000/internal/cache/inheritance-status" | jq '.'
+
+# Verify parameter mapping
+curl -s "http://localhost:8000/internal/cache/parameter-mapping" | jq '.'
+```
+
+**Step 2: Check Cache Component Status**
+```bash
+# Check GenericRedisCache status
+curl -s "http://localhost:8000/internal/cache/generic/status" | jq '.'
+
+# Check AIResponseCache status
+curl -s "http://localhost:8000/internal/cache/ai/status" | jq '.'
+
+# Verify supporting components
+curl -s "http://localhost:8000/internal/cache/components/status" | jq '.'
+```
+
+**Step 3: Performance Analysis**
+```bash
+# Compare performance between cache types
+curl -s "http://localhost:8000/internal/cache/performance/comparison" | jq '.'
+
+# Check for inheritance overhead
+curl -s "http://localhost:8000/internal/cache/performance/inheritance-metrics" | jq '.'
+
+# Analyze text tier performance
+curl -s "http://localhost:8000/internal/cache/ai/text-tier-analysis" | jq '.'
+```
+
+#### Resolution Steps
+
+**Configuration Validation Failures:**
+```bash
+# Check specific validation errors
+curl -X POST "http://localhost:8000/internal/cache/config/validate" \
+  -H "Content-Type: application/json" \
+  -d '{"redis_url": "redis://localhost:6379", "default_ttl": 3600}' | jq '.'
+
+# Use configuration presets for known-good configurations
+export CACHE_CONFIG_PRESET=development  # or production, testing
+
+# Validate current environment configuration
+curl -s "http://localhost:8000/internal/cache/config/current" | jq '.validation_result'
+```
+
+**Cache Inheritance Issues:**
+```bash
+# Reset cache to use inheritance properly
+curl -X POST "http://localhost:8000/internal/cache/reset-inheritance"
+
+# Force cache reinitialization
+curl -X POST "http://localhost:8000/internal/cache/reinitialize" \
+  -H "Content-Type: application/json" \
+  -d '{"use_inheritance": true, "validate_config": true}'
+
+# Check inheritance chain
+curl -s "http://localhost:8000/internal/cache/inheritance-chain" | jq '.'
+```
+
+**Parameter Mapping Problems:**
+```bash
+# Test parameter mapping with current configuration
+curl -X POST "http://localhost:8000/internal/cache/parameter-mapping/test" \
+  -H "Content-Type: application/json" \
+  -d '{"redis_url": "redis://localhost:6379", "operation_ttls": {"summarize": 7200}}'
+
+# Get parameter mapping recommendations
+curl -s "http://localhost:8000/internal/cache/parameter-mapping/recommendations" | jq '.'
+
+# Validate specific parameter combinations
+curl -X POST "http://localhost:8000/internal/cache/parameter-mapping/validate" \
+  -H "Content-Type: application/json" \
+  -d '{"ai_params": {...}, "generic_params": {...}}'
+```
+
+**Cache Migration Issues:**
+```bash
+# Check migration status
+curl -s "http://localhost:8000/internal/cache/migration/status" | jq '.'
+
+# Test migration compatibility
+curl -X POST "http://localhost:8000/internal/cache/migration/compatibility-check" \
+  -H "Content-Type: application/json" \
+  -d '{"source_type": "legacy", "target_type": "phase2"}'
+
+# Run safe migration with validation
+curl -X POST "http://localhost:8000/internal/cache/migration/execute" \
+  -H "Content-Type: application/json" \
+  -d '{"batch_size": 100, "validate_data": true, "dry_run": true}'
+```
+
+**Performance Regression:**
+```bash
+# Get performance benchmarks
+curl -s "http://localhost:8000/internal/cache/performance/benchmarks" | jq '.'
+
+# Compare with baseline performance
+curl -X POST "http://localhost:8000/internal/cache/performance/compare" \
+  -H "Content-Type: application/json" \
+  -d '{"compare_with": "baseline", "include_inheritance_metrics": true}'
+
+# Optimize cache configuration based on usage patterns
+curl -X POST "http://localhost:8000/internal/cache/optimize" \
+  -H "Content-Type: application/json" \
+  -d '{"analyze_inheritance_patterns": true, "optimize_text_tiers": true}'
+```
+
+**Component Integration Issues:**
+```bash
+# Reset all cache components
+curl -X POST "http://localhost:8000/internal/cache/components/reset"
+
+# Test individual component functionality
+curl -X POST "http://localhost:8000/internal/cache/components/test" \
+  -H "Content-Type: application/json" \
+  -d '{"component": "key_generator", "test_text_sizes": [100, 1000, 10000]}'
+
+# Validate component integration
+curl -s "http://localhost:8000/internal/cache/components/integration-test" | jq '.'
+```
+
+#### Common Phase 2 Issues and Solutions
+
+**Issue**: AIResponseCacheConfig validation fails with "operation_ttls must be dict"
+```bash
+# Solution: Ensure operation_ttls is properly formatted
+export CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 86400}'
+
+# Or use API to set configuration
+curl -X POST "http://localhost:8000/internal/cache/config/set" \
+  -H "Content-Type: application/json" \
+  -d '{"operation_ttls": {"summarize": 7200, "sentiment": 86400}}'
+```
+
+**Issue**: Cache performance degraded after Phase 2 upgrade
+```bash
+# Solution: Run inheritance performance analysis
+curl -s "http://localhost:8000/internal/cache/performance/inheritance-overhead" | jq '.'
+
+# Optimize text tier configuration
+curl -X POST "http://localhost:8000/internal/cache/ai/optimize-text-tiers" \
+  -H "Content-Type: application/json" \
+  -d '{"analyze_usage_patterns": true, "adjust_thresholds": true}'
+```
+
+**Issue**: GenericRedisCache not falling back to memory properly
+```bash
+# Solution: Test fallback mechanism
+curl -X POST "http://localhost:8000/internal/cache/generic/test-fallback" \
+  -H "Content-Type: application/json" \
+  -d '{"simulate_redis_failure": true}'
+
+# Check fallback configuration
+curl -s "http://localhost:8000/internal/cache/generic/fallback-config" | jq '.'
+```
+
+**Issue**: Cache parameter mapping errors between AI and generic parameters
+```bash
+# Solution: Use parameter mapper validation
+curl -X POST "http://localhost:8000/internal/cache/parameter-mapping/fix" \
+  -H "Content-Type: application/json" \
+  -d '{"auto_correct": true, "validate_result": true}'
+
+# Get corrected parameter mapping
+curl -s "http://localhost:8000/internal/cache/parameter-mapping/corrected" | jq '.'
+```
+
 ## API Response Issues
 
 ### Slow API Responses

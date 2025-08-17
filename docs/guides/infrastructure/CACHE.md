@@ -11,7 +11,7 @@ The Cache Infrastructure Service is a **production-ready infrastructure componen
 
 ### Architecture Position
 
-**Phase 1 Cache Infrastructure Architecture**
+**Phase 2 Cache Infrastructure Architecture (Inheritance-Based)**
 
 ```mermaid
 graph TB
@@ -96,6 +96,31 @@ graph TB
 - ✅ **Smart Key Generation**: Optimized cache keys for different text sizes
 - ✅ **Pattern Invalidation**: Flexible cache management with pattern-based clearing
 - ✅ **Operation-Specific TTLs**: Different expiration strategies per AI operation type
+
+### 🚀 Phase 2 Inheritance Architecture
+
+**Key Architectural Innovation**: Phase 2 introduces a clean inheritance-based design where `AIResponseCache` extends `GenericRedisCache`, eliminating code duplication while maintaining all AI-specific features.
+
+#### Inheritance Hierarchy
+
+```
+CacheInterface (Abstract Base)
+├── InMemoryCache (Standalone)
+└── GenericRedisCache (Base Redis Implementation)
+    └── AIResponseCache (AI-Specialized Extension)
+```
+
+#### Benefits of Inheritance Design
+
+**🏗️ Code Reuse**: AIResponseCache inherits all Redis operations, compression, and memory cache management from GenericRedisCache.
+
+**🎯 Specialization**: AI-specific features (key generation, operation TTLs, text tier analysis) are cleanly added without duplicating base functionality.
+
+**⚡ Performance**: No overhead from inheritance - method calls are direct and efficient.
+
+**🔧 Maintainability**: Generic Redis improvements automatically benefit AI cache; AI enhancements don't affect generic cache.
+
+**📊 Enhanced Features**: AI cache gains all GenericRedisCache features (callbacks, security, migration) plus AI-specific monitoring and analytics.
 
 ## Core Components
 
@@ -289,9 +314,9 @@ stats = monitor.get_performance_summary()
 print(f"Compression ratio: {stats.get('avg_compression_ratio', 0):.2f}")
 ```
 
-### AIResponseCache (`redis.py`)
+### AIResponseCache (`redis_ai.py`)
 
-Production-ready, feature-rich caching system specifically optimized for AI response caching with advanced monitoring and compression.
+Production-ready, AI-specialized caching system that **inherits from GenericRedisCache** while adding AI-specific optimizations, enhanced monitoring, and intelligent text tier management.
 
 #### Advanced Features
 
@@ -306,6 +331,35 @@ Production-ready, feature-rich caching system specifically optimized for AI resp
 
 #### Configuration
 
+**Option 1: Using AIResponseCacheConfig (Recommended)**
+```python
+from app.infrastructure.cache import AIResponseCache, AIResponseCacheConfig
+
+# Create configuration object with validation
+config = AIResponseCacheConfig(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,                    # Base TTL in seconds
+    text_hash_threshold=1000,            # Hash texts over 1000 chars
+    compression_threshold=1000,          # Compress responses over 1KB
+    compression_level=6,                 # zlib compression level (1-9)
+    memory_cache_size=100,              # In-memory cache entries
+    text_size_tiers={                   # Text categorization thresholds
+        'small': 500,
+        'medium': 5000, 
+        'large': 50000
+    }
+)
+
+# Validate configuration
+validation_result = config.validate()
+if not validation_result.is_valid:
+    print(f"Configuration errors: {validation_result.errors}")
+
+# Initialize cache with configuration
+cache = AIResponseCache(config)
+```
+
+**Option 2: Direct Instantiation (Legacy)**
 ```python
 from app.infrastructure.cache import AIResponseCache
 
