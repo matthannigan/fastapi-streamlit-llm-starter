@@ -603,6 +603,10 @@ class AIResponseCacheConfig:
         for use with the AIResponseCache constructor. This method provides the
         bridge between the structured configuration and the cache initialization.
         
+        **Compatibility Note**: This method returns kwargs compatible with the legacy
+        AIResponseCache constructor, which expects `memory_cache_size` instead of
+        `enable_l1_cache` and `l1_cache_size` parameters.
+        
         Returns:
             Dict[str, Any]: Complete parameter dictionary for AIResponseCache
             
@@ -625,11 +629,9 @@ class AIResponseCacheConfig:
                 raise Exception("Field access returned property object instead of value")
             
             default_ttl = self.default_ttl
-            enable_l1_cache = self.enable_l1_cache
             compression_threshold = self.compression_threshold
             compression_level = self.compression_level
             performance_monitor = self.performance_monitor
-            security_config = self.security_config
             text_hash_threshold = self.text_hash_threshold
             hash_algorithm = self._get_hash_algorithm_func()
             text_size_tiers = self.text_size_tiers
@@ -637,29 +639,28 @@ class AIResponseCacheConfig:
             memory_cache_size = self.memory_cache_size
             
             kwargs = {
-                # Generic Redis parameters
+                # Legacy AIResponseCache compatible parameters
                 'redis_url': redis_url,
                 'default_ttl': default_ttl,
-                'enable_l1_cache': enable_l1_cache,
                 'compression_threshold': compression_threshold,
                 'compression_level': compression_level,
                 'performance_monitor': performance_monitor,
-                'security_config': security_config,
                 
                 # AI-specific parameters
                 'text_hash_threshold': text_hash_threshold,
                 'hash_algorithm': hash_algorithm,
                 'text_size_tiers': text_size_tiers,
-                'operation_ttls': operation_ttls,
-                
-                # Mapped parameters (AI name -> Generic name mapping handled by CacheParameterMapper)
                 'memory_cache_size': memory_cache_size,
             }
+            
+            # Only include operation_ttls if it's not None (legacy compatibility)
+            if operation_ttls is not None:
+                kwargs['operation_ttls'] = operation_ttls
             
             # Remove None values to avoid validation issues
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
             
-            logger.debug(f"Generated {len(kwargs)} cache kwargs from configuration")
+            logger.debug(f"Generated {len(kwargs)} legacy-compatible cache kwargs from configuration")
             return kwargs
             
         except Exception as e:
@@ -669,6 +670,67 @@ class AIResponseCacheConfig:
                 error_msg,
                 context={
                     'conversion_stage': 'to_ai_cache_kwargs',
+                    'error_type': type(e).__name__
+                }
+            )
+    
+    def to_generic_cache_kwargs(self) -> Dict[str, Any]:
+        """
+        Convert configuration to kwargs suitable for GenericRedisCache initialization.
+        
+        Creates a dictionary with parameters properly mapped for the new modular
+        GenericRedisCache architecture (enable_l1_cache, l1_cache_size, etc.).
+        
+        Returns:
+            Dict[str, Any]: Complete parameter dictionary for GenericRedisCache
+            
+        Examples:
+            >>> config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
+            >>> kwargs = config.to_generic_cache_kwargs()
+            >>> cache = GenericRedisCache(**kwargs)  # New modular architecture
+        """
+        logger.debug("Converting AIResponseCacheConfig to generic cache kwargs")
+        
+        try:
+            redis_url = self.redis_url
+            default_ttl = self.default_ttl
+            enable_l1_cache = self.enable_l1_cache
+            compression_threshold = self.compression_threshold
+            compression_level = self.compression_level
+            performance_monitor = self.performance_monitor
+            security_config = self.security_config
+            
+            # Map memory_cache_size to l1_cache_size for new architecture
+            l1_cache_size = self.memory_cache_size
+            
+            kwargs = {
+                # Generic Redis parameters for new architecture
+                'redis_url': redis_url,
+                'default_ttl': default_ttl,
+                'enable_l1_cache': enable_l1_cache,
+                'l1_cache_size': l1_cache_size,
+                'compression_threshold': compression_threshold,
+                'compression_level': compression_level,
+                'performance_monitor': performance_monitor,
+            }
+            
+            # Only include security_config if not None
+            if security_config is not None:
+                kwargs['security_config'] = security_config
+            
+            # Remove None values to avoid validation issues
+            kwargs = {k: v for k, v in kwargs.items() if v is not None}
+            
+            logger.debug(f"Generated {len(kwargs)} generic cache kwargs from configuration")
+            return kwargs
+            
+        except Exception as e:
+            error_msg = f"Failed to convert AIResponseCacheConfig to generic cache kwargs: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise ConfigurationError(
+                error_msg,
+                context={
+                    'conversion_stage': 'to_generic_cache_kwargs',
                     'error_type': type(e).__name__
                 }
             )

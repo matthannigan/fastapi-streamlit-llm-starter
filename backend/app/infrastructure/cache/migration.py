@@ -1,4 +1,5 @@
-"""[REFACTORED] Cache migration utilities for seamless transitions between cache versions.
+"""
+[REFACTORED] Cache migration utilities for seamless transitions between cache versions.
 
 This module provides tools for migrating cache data and configurations when
 upgrading between different cache implementations or schema versions. It ensures
@@ -49,7 +50,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Protocol, runt
 from app.core.exceptions import ValidationError
 
 if TYPE_CHECKING:
-    from app.infrastructure.cache.redis import AIResponseCache
+    from app.infrastructure.cache.redis_ai import AIResponseCache
     from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 try:

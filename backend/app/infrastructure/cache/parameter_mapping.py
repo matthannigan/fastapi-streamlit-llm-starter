@@ -613,3 +613,10 @@ class CacheParameterMapper:
             },
             'total_parameters': len(self._generic_parameters) + len(self._ai_specific_parameters)
         }
+
+
+# Public exports
+__all__ = [
+    "ValidationResult",
+    "CacheParameterMapper",
+]

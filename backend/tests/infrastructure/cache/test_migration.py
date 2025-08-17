@@ -22,7 +22,7 @@ from app.infrastructure.cache.migration import (
     RestoreResult
 )
 from app.infrastructure.cache.base import CacheInterface
-from app.infrastructure.cache.redis import AIResponseCache
+from app.infrastructure.cache.redis_ai import AIResponseCache
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 

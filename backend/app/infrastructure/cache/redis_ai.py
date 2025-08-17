@@ -2902,3 +2902,9 @@ class AIResponseCache(GenericRedisCache):
     def memory_cache_order(self) -> List[str]:
         """Legacy compatibility property for memory cache order (not used in new implementation)."""
         return []  # Maintained for compatibility but not used
+
+
+# Public exports
+__all__ = [
+    "AIResponseCache",
+]

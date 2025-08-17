@@ -1,4 +1,5 @@
-"""[REFACTORED] Cache key generation utilities for consistent and collision-free caching.
+"""
+[REFACTORED] Cache key generation utilities for consistent and collision-free caching.
 
 This module provides a standalone cache key generator that efficiently handles
 large texts by using streaming SHA-256 hashing strategies while preserving

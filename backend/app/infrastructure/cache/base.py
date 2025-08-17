@@ -1,4 +1,5 @@
-"""[REFACTORED] Abstract cache interface defining the contract for cache implementations.
+"""
+[REFACTORED] Abstract cache interface defining the contract for cache implementations.
 
 This module provides the base abstract class that defines the standard interface
 for all cache implementations in the application. It ensures consistent behavior

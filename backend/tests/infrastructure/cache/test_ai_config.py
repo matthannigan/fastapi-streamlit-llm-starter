@@ -257,7 +257,7 @@ class TestAIResponseCacheConfig:
         assert "operation-specific TTLs" in recommendations_text
 
     def test_to_ai_cache_kwargs(self):
-        """Test conversion to cache kwargs."""
+        """Test conversion to legacy AI cache kwargs."""
         config = AIResponseCacheConfig(
             redis_url="redis://test:6379",
             default_ttl=1800,
@@ -266,19 +266,60 @@ class TestAIResponseCacheConfig:
         
         kwargs = config.to_ai_cache_kwargs()
         
-        # Test that all expected parameters are included
-        expected_keys = {
-            'redis_url', 'default_ttl', 'enable_l1_cache', 'compression_threshold',
-            'compression_level', 'performance_monitor', 'security_config',
+        # Test that legacy compatible parameters are included (no enable_l1_cache)
+        expected_legacy_keys = {
+            'redis_url', 'default_ttl', 'compression_threshold',
+            'compression_level', 'performance_monitor',
             'text_hash_threshold', 'hash_algorithm', 'text_size_tiers',
             'operation_ttls', 'memory_cache_size'
         }
         
         # Check that non-None values are included
-        for key in expected_keys:
-            if getattr(config, key) is not None:
-                assert key in kwargs
-                assert kwargs[key] == getattr(config, key)
+        for key in expected_legacy_keys:
+            config_value = getattr(config, key)
+            if config_value is not None:
+                assert key in kwargs, f"Expected key '{key}' not in kwargs"
+                assert kwargs[key] == config_value
+        
+        # Ensure enable_l1_cache is NOT in legacy kwargs (for backward compatibility)
+        assert 'enable_l1_cache' not in kwargs
+        assert 'l1_cache_size' not in kwargs
+
+    def test_to_generic_cache_kwargs(self):
+        """Test conversion to generic cache kwargs."""
+        config = AIResponseCacheConfig(
+            redis_url="redis://test:6379",
+            default_ttl=1800,
+            memory_cache_size=50,
+            enable_l1_cache=True,
+        )
+        
+        kwargs = config.to_generic_cache_kwargs()
+        
+        # Test that generic parameters are included with proper mapping
+        expected_generic_keys = {
+            'redis_url', 'default_ttl', 'enable_l1_cache', 'l1_cache_size',
+            'compression_threshold', 'compression_level', 'performance_monitor'
+        }
+        
+        # Check that non-None values are included
+        for key in expected_generic_keys:
+            if key == 'l1_cache_size':
+                # This is mapped from memory_cache_size
+                assert key in kwargs, f"Expected mapped key '{key}' not in kwargs"
+                assert kwargs[key] == config.memory_cache_size
+            else:
+                config_value = getattr(config, key, None)
+                if config_value is not None:
+                    assert key in kwargs, f"Expected key '{key}' not in kwargs"
+                    assert kwargs[key] == config_value
+        
+        # Ensure AI-specific parameters are NOT in generic kwargs
+        assert 'text_hash_threshold' not in kwargs
+        assert 'hash_algorithm' not in kwargs
+        assert 'text_size_tiers' not in kwargs
+        assert 'operation_ttls' not in kwargs
+        assert 'memory_cache_size' not in kwargs
 
     def test_create_default(self):
         """Test default configuration creation."""

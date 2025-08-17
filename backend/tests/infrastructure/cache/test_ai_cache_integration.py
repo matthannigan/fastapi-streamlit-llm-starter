@@ -498,7 +498,7 @@ class TestAICacheIntegration:
         
         # Step 11: Test inheritance chain integrity
         # Verify AIResponseCache is properly inheriting from GenericRedisCache
-        from app.infrastructure.cache.redis import GenericRedisCache
+        from app.infrastructure.cache.redis_generic import GenericRedisCache
         assert isinstance(cache, GenericRedisCache), "AIResponseCache should inherit from GenericRedisCache"
         assert hasattr(cache, 'set'), "Should have inherited set method"
         assert hasattr(cache, 'get'), "Should have inherited get method"

@@ -1,4 +1,5 @@
-"""[REFACTORED] Compatibility wrapper for maintaining backwards compatibility during cache transitions.
+"""
+[REFACTORED] Compatibility wrapper for maintaining backwards compatibility during cache transitions.
 
 This module provides wrapper classes and utilities that ensure existing code
 continues to work during the cache infrastructure refactoring. It acts as a

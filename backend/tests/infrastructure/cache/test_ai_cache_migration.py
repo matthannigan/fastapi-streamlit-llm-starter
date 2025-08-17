@@ -31,7 +31,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.core.exceptions import ConfigurationError, ValidationError
 from app.infrastructure.cache.redis_ai import AIResponseCache
-from app.infrastructure.cache.redis_ai_backup import AIResponseCache as OriginalAIResponseCache
+from app.infrastructure.cache.redis import AIResponseCache as LegacyAIResponseCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
 
@@ -61,7 +61,7 @@ class TestAICacheMigration:
     @pytest.fixture
     async def original_ai_cache(self, performance_monitor):
         """Create original AIResponseCache implementation."""
-        cache = OriginalAIResponseCache(
+        cache = LegacyAIResponseCache(
             redis_url="redis://localhost:6379",
             default_ttl=3600,
             text_hash_threshold=1000,
@@ -661,7 +661,7 @@ class TestMigrationSafety:
     @pytest.fixture
     async def migration_caches(self):
         """Create both cache implementations for migration testing."""
-        original = OriginalAIResponseCache(
+        original = LegacyAIResponseCache(
             redis_url="redis://localhost:6379",
             default_ttl=3600,
             memory_cache_size=50
@@ -849,7 +849,7 @@ class TestMigrationSafety:
         }
         
         # Both implementations should accept same configuration
-        original_cache = OriginalAIResponseCache(**config_params)
+        original_cache = LegacyAIResponseCache(**config_params)
         new_cache = AIResponseCache(**config_params)
         
         # Verify configuration is applied correctly
@@ -953,7 +953,7 @@ class TestPerformanceBenchmarking:
         # This test integrates with the existing CachePerformanceBenchmark
         # to provide detailed performance analysis for migration validation
         
-        original_cache = OriginalAIResponseCache(
+        original_cache = LegacyAIResponseCache(
             redis_url="redis://localhost:6379",
             memory_cache_size=100
         )

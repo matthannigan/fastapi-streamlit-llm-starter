@@ -7,10 +7,13 @@ functionality in the application.
 
 Main Components:
     - CacheInterface: Abstract base class for all cache implementations
-    - AIResponseCache: Redis-based cache with compression and tiered storage
+    - AIResponseCache: AI-specific Redis cache with intelligent features
+    - GenericRedisCache: Generic Redis cache base implementation
     - InMemoryCache: High-performance in-memory cache with TTL and LRU eviction
     - CacheKeyGenerator: Optimized cache key generation for large texts
     - CachePerformanceMonitor: Comprehensive performance monitoring and analytics
+    - AIResponseCacheConfig: Configuration management for AI cache
+    - CacheParameterMapper: Parameter mapping and validation utilities
 
 Cache Implementations:
     - Redis-based caching with fallback to memory-only mode
@@ -25,11 +28,16 @@ Monitoring and Analytics:
     - Automatic threshold-based alerting
 
 Usage Example:
-    >>> from app.infrastructure.cache import AIResponseCache, InMemoryCache
+    >>> from app.infrastructure.cache import AIResponseCache, GenericRedisCache, InMemoryCache
+    >>> from app.infrastructure.cache import AIResponseCacheConfig
     >>> 
-    >>> # Redis-based cache for production
-    >>> cache = AIResponseCache(redis_url="redis://localhost:6379")
+    >>> # AI-specific Redis cache with configuration
+    >>> config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
+    >>> cache = AIResponseCache(**config.to_ai_cache_kwargs())
     >>> await cache.connect()
+    >>> 
+    >>> # Generic Redis cache for basic usage
+    >>> generic_cache = GenericRedisCache(redis_url="redis://localhost:6379")
     >>> 
     >>> # In-memory cache for development/testing
     >>> memory_cache = InMemoryCache(default_ttl=3600, max_size=1000)
@@ -75,23 +83,33 @@ from .migration import CacheMigrationManager
 from .monitoring import (CachePerformanceMonitor, CompressionMetric,
                          InvalidationMetric, MemoryUsageMetric,
                          PerformanceMetric)
-# Redis implementation with all components
-from .redis import (REDIS_AVAILABLE, AIResponseCache, CacheKeyGenerator,
-                    aioredis)
-# Generic Redis implementation
-from .redis_generic import GenericRedisCache
+# AI-specific Redis implementation
+from .redis_ai import AIResponseCache
+# Generic Redis implementation  
+from .redis_generic import GenericRedisCache, REDIS_AVAILABLE, aioredis
+# Cache key generation
+from .key_generator import CacheKeyGenerator
+# AI configuration management
+from .ai_config import AIResponseCacheConfig
+# Parameter mapping utilities
+from .parameter_mapping import ValidationResult, CacheParameterMapper
 
 # Export all public components
 __all__ = [
     # Base interface
     "CacheInterface",
-    # Redis implementation
+    # AI Redis implementation
     "AIResponseCache",
-    "CacheKeyGenerator",
-    "REDIS_AVAILABLE",
-    "aioredis",
+    "AIResponseCacheConfig",
     # Generic Redis implementation
     "GenericRedisCache",
+    "REDIS_AVAILABLE",
+    "aioredis",
+    # Cache key generation
+    "CacheKeyGenerator",
+    # Parameter mapping and validation
+    "ValidationResult",
+    "CacheParameterMapper",
     # Performance benchmarking
     "CachePerformanceBenchmark",
     "BenchmarkResult",
