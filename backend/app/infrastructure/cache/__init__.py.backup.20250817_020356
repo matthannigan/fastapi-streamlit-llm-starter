@@ -14,21 +14,11 @@ Main Components:
     - CachePerformanceMonitor: Comprehensive performance monitoring and analytics
     - AIResponseCacheConfig: Configuration management for AI cache
     - CacheParameterMapper: Parameter mapping and validation utilities
-    - RedisCacheSecurityManager: Redis security management and authentication
-    - SecurityConfig: Security configuration for Redis connections
 
 Cache Implementations:
     - Redis-based caching with fallback to memory-only mode
     - In-memory caching with TTL and LRU eviction
     - Graceful degradation when Redis is unavailable
-
-Security Features:
-    - TLS/SSL encryption for Redis connections
-    - Authentication support with username/password
-    - Redis AUTH command support
-    - Certificate-based authentication
-    - Security configuration validation
-    - Connection security management
 
 Monitoring and Analytics:
     - Real-time performance metrics
@@ -66,15 +56,6 @@ Usage Example:
     ...     operation="summarize",
     ...     options={"max_length": 100}
     ... )
-    >>> 
-    >>> # Security configuration for Redis
-    >>> from app.infrastructure.cache import SecurityConfig, RedisCacheSecurityManager
-    >>> security_config = SecurityConfig(
-    ...     username="cache_user",
-    ...     password="secure_password",
-    ...     use_tls=True
-    ... )
-    >>> security_manager = RedisCacheSecurityManager(security_config)
 
 Configuration:
     The cache system supports extensive configuration for:
@@ -83,8 +64,6 @@ Configuration:
     - Memory cache size limits
     - Performance monitoring thresholds
     - Redis connection settings
-    - Security settings (TLS, authentication, certificates)
-    - Migration and compatibility options
 """
 
 # Base interface
@@ -114,9 +93,6 @@ from .key_generator import CacheKeyGenerator
 from .ai_config import AIResponseCacheConfig
 # Parameter mapping utilities
 from .parameter_mapping import ValidationResult, CacheParameterMapper
-# Security components
-from .security import (RedisCacheSecurityManager, SecurityConfig, 
-                       SecurityValidationResult, create_security_config_from_env)
 
 # Export all public components
 __all__ = [
@@ -134,11 +110,6 @@ __all__ = [
     # Parameter mapping and validation
     "ValidationResult",
     "CacheParameterMapper",
-    # Security components
-    "RedisCacheSecurityManager",
-    "SecurityConfig",
-    "SecurityValidationResult",
-    "create_security_config_from_env",
     # Performance benchmarking
     "CachePerformanceBenchmark",
     "BenchmarkResult",
