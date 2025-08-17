@@ -271,6 +271,7 @@ class TestConfigValidatorIntegration:
         from app.core.config import Settings
         
         settings = Settings(
+            gemini_api_key="test-gemini-api-key",
             resilience_preset="simple",
             resilience_custom_config='{"retry_attempts": 5}'
         )
@@ -283,6 +284,7 @@ class TestConfigValidatorIntegration:
         from app.core.config import Settings
         
         settings = Settings(
+            gemini_api_key="test-gemini-api-key",
             resilience_preset="simple",
             resilience_custom_config='{"retry_attempts": 15}'  # Invalid value
         )
@@ -295,7 +297,7 @@ class TestConfigValidatorIntegration:
         """Test Settings validation with external JSON string."""
         from app.core.config import Settings
         
-        settings = Settings()
+        settings = Settings(gemini_api_key="test-gemini-api-key")
         external_json = '{"circuit_breaker_threshold": 8}'
         
         validation_result = settings.validate_custom_config(external_json)

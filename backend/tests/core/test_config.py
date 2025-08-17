@@ -205,7 +205,7 @@ class TestSettings:
         
         # Just verify the settings object is created and has expected structure
         assert hasattr(settings, 'model_config')
-        assert settings.model_config.get('env_file') == '.env'
+        assert settings.model_config.get('env_file') is None
 
 
 class TestDependencyProviders:

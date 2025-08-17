@@ -7,7 +7,6 @@ TODO: Split this file into fixtures.py and mocks.py
 import pytest
 import asyncio
 import sys
-import os
 from pathlib import Path
 from unittest.mock import AsyncMock, patch, Mock
 from httpx import AsyncClient, ASGITransport
@@ -22,6 +21,8 @@ from app.main import app
 from app.services.text_processor import TextProcessorService
 from app.infrastructure.cache import AIResponseCache, CachePerformanceMonitor
 from app.schemas import TextProcessingRequest, TextProcessingOperation
+from app.core.config import Settings
+
 
 # Test API key for authentication
 TEST_API_KEY = "test-api-key-12345"
@@ -84,6 +85,24 @@ def authenticated_client(client, auth_headers):
             return self.client.options(url, **kwargs)
     
     return AuthenticatedTestClient(client, auth_headers)
+
+@pytest.fixture
+def test_settings():
+    """Test Settings instance with all required fields including GEMINI_API_KEY."""
+    return Settings(
+        gemini_api_key="test-gemini-api-key-12345",
+        api_key=TEST_API_KEY,
+        ai_model="gemini-2.0-flash-exp",
+        ai_temperature=0.7,
+        host="0.0.0.0",
+        port=8000,
+        debug=False,
+        log_level="INFO",
+        resilience_enabled=True,
+        default_resilience_strategy="balanced",
+        resilience_preset="simple",
+        allowed_origins=["http://localhost:3000", "http://localhost:3001"]
+    )
 
 @pytest.fixture
 def sample_text():
@@ -261,18 +280,18 @@ def client_with_mock_monitor(app_with_mock_performance_monitor):
 def mock_ai_agent():
     """Mock the AI agent to avoid actual API calls during testing."""
     # Create a smart mock that returns different responses based on the prompt
-    async def smart_run(prompt):
+    async def smart_run(user_prompt: str):
         # Extract the user input from the prompt to make intelligent responses
         user_text = ""
-        if "---USER TEXT START---" in prompt and "---USER TEXT END---" in prompt:
+        if "---USER TEXT START---" in user_prompt and "---USER TEXT END---" in user_prompt:
             start_marker = "---USER TEXT START---"
             end_marker = "---USER TEXT END---"
-            start_idx = prompt.find(start_marker) + len(start_marker)
-            end_idx = prompt.find(end_marker)
-            user_text = prompt[start_idx:end_idx].strip()
+            start_idx = user_prompt.find(start_marker) + len(start_marker)
+            end_idx = user_prompt.find(end_marker)
+            user_text = user_prompt[start_idx:end_idx].strip()
         else:
             # Fallback: use the entire prompt
-            user_text = prompt
+            user_text = user_prompt
         
         user_text_lower = user_text.lower()
         
@@ -280,7 +299,7 @@ def mock_ai_agent():
         from unittest.mock import MagicMock
         
         # Check the type of task based on the task instruction section
-        if "JSON object containing" in prompt and "sentiment" in prompt:
+        if "JSON object containing" in user_prompt and "sentiment" in user_prompt:
             # Return valid JSON for sentiment analysis
             mock_result = MagicMock()
             if "positive" in user_text_lower or "good" in user_text_lower or "great" in user_text_lower:
@@ -290,7 +309,7 @@ def mock_ai_agent():
             else:
                 mock_result.output = '{"sentiment": "neutral", "confidence": 0.75, "explanation": "Test sentiment analysis"}'
             return mock_result
-        elif "Return each point as a separate line starting with a dash" in prompt:
+        elif "Return each point as a separate line starting with a dash" in user_prompt:
             # This is specifically for key points extraction
             mock_result = MagicMock()
             if "cooking" in user_text_lower:
@@ -300,7 +319,7 @@ def mock_ai_agent():
             else:
                 mock_result.output = "- First key point\n- Second key point\n- Third key point"
             return mock_result
-        elif "Generate thoughtful questions" in prompt:
+        elif "Generate thoughtful questions" in user_prompt:
             # This is specifically for question generation
             mock_result = MagicMock()
             if "ai" in user_text_lower or "artificial intelligence" in user_text_lower:
