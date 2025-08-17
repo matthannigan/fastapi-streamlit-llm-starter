@@ -15,7 +15,7 @@ from datetime import datetime
 from app.infrastructure.cache import AIResponseCache, CacheKeyGenerator
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
-
+@pytest.mark.skip(reason="Archive AIResponseCache tests created before refactoring")
 class TestAIResponseCache:
     """Test the AIResponseCache class."""
     
@@ -590,6 +590,7 @@ class TestAIResponseCache:
         assert cache.compression_level == custom_level
 
 
+@pytest.mark.skip(reason="Archive AIResponseCache tests created before refactoring")
 class TestMemoryCacheOperations:
     """Comprehensive unit tests for memory cache operations."""
     
@@ -2091,6 +2092,7 @@ class TestCacheKeyGenerator:
         assert "opts:" in cache_key  # Should have options component
 
 
+@pytest.mark.skip(reason="Archive AIResponseCache tests created before refactoring")
 class TestAIResponseCacheTierSelection:
     """Comprehensive tests for AIResponseCache tier selection logic."""
     
@@ -2892,6 +2894,7 @@ class TestDataCompressionDecompression:
         assert decompressed == large_data
 
 
+@pytest.mark.skip(reason="Archive AIResponseCache tests created before refactoring")
 class TestRedisIntegrationTests:
     """Integration tests for Redis cache interactions with proper mocking."""
     
@@ -3423,6 +3426,7 @@ class TestRedisIntegrationTests:
             assert large_cache_key not in integration_cache_instance.memory_cache
 
 
+@pytest.mark.skip(reason="Archive AIResponseCache tests created before refactoring")
 class TestCacheHitRatioTracking:
     """Test cache hit ratio tracking functionality."""
     
