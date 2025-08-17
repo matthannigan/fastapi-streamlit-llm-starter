@@ -178,7 +178,7 @@ License:
 """
 
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Annotated, Optional, Dict, Any, List
 from pydantic import BaseModel, Field, field_validator, ConfigDict, field_serializer
 from datetime import datetime
 
@@ -206,7 +206,7 @@ class TextProcessingRequest(BaseModel):
     
     text: str = Field(..., min_length=10, max_length=10000, description="Text to process")
     operation: TextProcessingOperation = Field(..., description="Type of processing to perform")
-    question: Optional[str] = Field(None, description="Question for Q&A operation")
+    question: Annotated[Optional[str], Field(description="Question for Q&A operation")] = None
     options: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Operation-specific options")
     user_metadata: Optional[Dict[str, Any]] = Field(default=None, description="User context metadata")
     
