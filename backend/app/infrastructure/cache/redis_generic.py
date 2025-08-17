@@ -176,7 +176,7 @@ class GenericRedisCache(CacheInterface):
         self._callbacks[event].append(callback)
 
     def _compress_data(self, data: Any) -> bytes:
-        """Compress data using pickle and zlib if it exceeds threshold.
+        """Compress/serialize data efficiently, with JSON fast-path for small payloads.
 
         ### Overview
         Serializes data with pickle and compresses it using zlib if the data
@@ -193,6 +193,16 @@ class GenericRedisCache(CacheInterface):
         compressed = cache._compress_data({"large": "data"})
         ```
         """
+        # JSON fast-path for common small payloads (dict/list/primitives)
+        try:
+            if isinstance(data, (dict, list, str, int, float, bool)) or data is None:
+                json_bytes = json.dumps(data, separators=(",", ":")).encode("utf-8")
+                if len(json_bytes) <= self.compression_threshold:
+                    return b"rawj:" + json_bytes
+        except Exception:
+            # Fallback to pickle path on any serialization error
+            pass
+
         pickled_data = pickle.dumps(data)
 
         # Use the size of original content as the decision signal. For strings/bytes,
@@ -212,7 +222,7 @@ class GenericRedisCache(CacheInterface):
         return b"raw:" + pickled_data
 
     def _decompress_data(self, data: bytes) -> Any:
-        """Decompress data using zlib and unpickle.
+        """Decompress/deserialize data that was serialized by _compress_data.
 
         ### Overview
         Decompresses data if it was compressed, then deserializes using pickle.
@@ -229,12 +239,24 @@ class GenericRedisCache(CacheInterface):
         ```
         """
         if data.startswith(b"compressed:"):
-            compressed_data = data[11:]  # Remove "compressed:" prefix
+            compressed_data = data[11:]
             pickled_data = zlib.decompress(compressed_data)
-        else:
-            pickled_data = data[4:]  # Remove "raw:" prefix
-
-        return pickle.loads(pickled_data)
+            return pickle.loads(pickled_data)
+        if data.startswith(b"raw:"):
+            pickled_data = data[4:]
+            return pickle.loads(pickled_data)
+        if data.startswith(b"rawj:"):
+            json_bytes = data[5:]
+            return json.loads(json_bytes.decode("utf-8"))
+        # Backward compatibility: attempt pickle if no prefix
+        try:
+            return pickle.loads(data)
+        except Exception:
+            # As a last resort, try JSON
+            try:
+                return json.loads(data.decode("utf-8"))
+            except Exception:
+                raise
 
     async def connect(self) -> bool:
         """Initialize Redis connection with security features and graceful degradation.

@@ -1014,23 +1014,6 @@ class AIResponseCache(GenericRedisCache):
                     "question_provided": question is not None,
                 }
 
-                if not await self.connect():
-                    duration = time.time() - start_time
-                    self._record_cache_operation(
-                        operation=operation,
-                        cache_operation='set',
-                        text_tier=text_tier,
-                        duration=duration,
-                        success=False,
-                        additional_data={
-                            'error': 'redis_unavailable',
-                            'text_length': len(text),
-                            'ttl': ttl,
-                        }
-                    )
-                    logger.debug("Redis unavailable during cache_response; skipping set and degrading gracefully")
-                    return
-
                 await self.set(cache_key, cached_response, ttl)
                 self._record_cache_operation(
                     operation=operation,

@@ -365,8 +365,10 @@ test-backend-infra-ai:
 
 # Run infrastructure service tests
 test-backend-infra-cache:
-	@echo "🧪 Running backend cache infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -v
+	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q
+	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -q
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
@@ -543,6 +545,7 @@ clean:
 	@find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
 	@find . -name ".coverage" -delete 2>/dev/null || true
 	@find . -name "coverage.xml" -delete 2>/dev/null || true
+	@./backend/scripts/clean_redis_test_env.sh
 	@echo "✅ Cleanup complete!"
 
 # Remove virtual environment only
