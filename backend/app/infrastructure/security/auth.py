@@ -127,6 +127,7 @@ License: MIT
 """
 
 import os
+import sys
 import logging
 from typing import Optional, Dict, Any
 from fastapi import Depends, status
@@ -219,7 +220,9 @@ class APIKeyAuth:
                     }
         
         if not api_keys:
-            logger.warning("No API keys configured. API endpoints will be unprotected!")
+            _IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
+            if not _IS_PYTEST:
+                logger.warning("No API keys configured. API endpoints will be unprotected!")
         else:
             logger.info(f"Loaded {len(api_keys)} API key(s) in {self.config.get_auth_info()['mode']} mode")
         
