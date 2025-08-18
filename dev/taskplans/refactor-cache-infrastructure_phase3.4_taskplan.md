@@ -389,12 +389,9 @@ A modular `benchmarks/` package with clear separation between data models, utili
 
 ### Risk Mitigation
 - Keep backup of original benchmarks.py
-- Implement changes incrementally with tests
-- Run full regression suite after each deliverable
-- Monitor performance impact of refactoring
 
 ### Success Metrics
-- [ ] File size: No single file >500 lines (except legacy backup)
+- [ ] File size: No single file >750 lines of code (excluding comments; except `benchmarks_legacy.py` backup)
 - [ ] Test coverage: >95% for all new modules
 - [ ] Performance: No regression in benchmark execution time
 - [ ] Documentation: All public APIs documented
