@@ -1967,7 +1967,7 @@ from .dependencies import (
 )
 
 # Core components (from previous phases)
-from .key_generator import CacheKeyGenerator                    # Phase 1
+from .key_generator import CacheKeyGenerator                   # Phase 1
 from .parameter_mapping import CacheParameterMapper            # Phase 2
 
 # Infrastructure components (from Phase 1)
