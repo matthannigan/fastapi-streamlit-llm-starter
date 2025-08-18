@@ -2,7 +2,7 @@
 sidebar_label: monitoring
 ---
 
-# Cache Performance Monitoring and Analytics Module
+# [REFACTORED] Cache Performance Monitoring and Analytics Module
 
   file_path: `backend/app/infrastructure/cache/monitoring.py`
 

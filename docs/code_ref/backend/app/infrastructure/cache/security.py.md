@@ -2,7 +2,7 @@
 sidebar_label: security
 ---
 
-# Redis Security Implementation for Cache Infrastructure
+# [REFACTORED] Redis Security Implementation for Cache Infrastructure
 
   file_path: `backend/app/infrastructure/cache/security.py`
 

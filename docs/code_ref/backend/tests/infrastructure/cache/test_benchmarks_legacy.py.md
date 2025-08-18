@@ -1,10 +1,10 @@
 ---
-sidebar_label: test_benchmarks
+sidebar_label: test_benchmarks_legacy
 ---
 
 # Comprehensive tests for cache performance benchmarking infrastructure.
 
-  file_path: `backend/tests/infrastructure/cache/test_benchmarks.py`
+  file_path: `backend/tests/infrastructure/cache/test_benchmarks_legacy.py`
 
 This test suite validates the cache benchmarking system including timing accuracy,
 memory measurement, regression detection, and comprehensive reporting capabilities.

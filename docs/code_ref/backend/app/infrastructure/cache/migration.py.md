@@ -2,7 +2,7 @@
 sidebar_label: migration
 ---
 
-# Cache migration utilities for seamless transitions between cache versions.
+# [REFACTORED] Cache migration utilities for seamless transitions between cache versions.
 
   file_path: `backend/app/infrastructure/cache/migration.py`
 

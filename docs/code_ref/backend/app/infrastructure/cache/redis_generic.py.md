@@ -2,7 +2,7 @@
 sidebar_label: redis_generic
 ---
 
-# Generic Redis cache implementation providing flexible caching capabilities.
+# [REFACTORED] Generic Redis cache implementation providing flexible caching capabilities.
 
   file_path: `backend/app/infrastructure/cache/redis_generic.py`
 

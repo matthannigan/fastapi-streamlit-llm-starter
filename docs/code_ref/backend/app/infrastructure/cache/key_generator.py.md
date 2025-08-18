@@ -2,7 +2,7 @@
 sidebar_label: key_generator
 ---
 
-# Cache key generation utilities for consistent and collision-free caching.
+# [REFACTORED] Cache key generation utilities for consistent and collision-free caching.
 
   file_path: `backend/app/infrastructure/cache/key_generator.py`
 

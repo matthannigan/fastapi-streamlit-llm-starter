@@ -2,7 +2,7 @@
 sidebar_label: compatibility
 ---
 
-# Compatibility wrapper for maintaining backwards compatibility during cache transitions.
+# [REFACTORED] Compatibility wrapper for maintaining backwards compatibility during cache transitions.
 
   file_path: `backend/app/infrastructure/cache/compatibility.py`
 

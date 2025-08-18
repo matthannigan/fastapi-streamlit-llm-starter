@@ -2,7 +2,7 @@
 sidebar_label: base
 ---
 
-# Abstract cache interface defining the contract for cache implementations.
+# [REFACTORED] Abstract cache interface defining the contract for cache implementations.
 
   file_path: `backend/app/infrastructure/cache/base.py`
 

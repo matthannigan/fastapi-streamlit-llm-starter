@@ -1,10 +1,10 @@
 ---
-sidebar_label: benchmarks
+sidebar_label: benchmarks_legacy
 ---
 
-# Cache Performance Benchmarking Infrastructure
+# [REFACTORED] Cache Performance Benchmarking Infrastructure
 
-  file_path: `backend/app/infrastructure/cache/benchmarks.py`
+  file_path: `backend/app/infrastructure/cache/benchmarks_legacy.py`
 
 This module provides comprehensive performance benchmarking capabilities for cache implementations,
 including timing analysis, memory usage tracking, compression efficiency testing, and regression
