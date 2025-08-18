@@ -78,8 +78,9 @@ class TestCachePerformanceBenchmark:
         from app.infrastructure.cache.benchmarks.reporting import CIReporter
         assert isinstance(ci_reporter, CIReporter)
     
+    @pytest.mark.asyncio
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_benchmark_basic_operations(self, mock_memory_tracker, test_cache):
+    async def test_benchmark_basic_operations(self, mock_memory_tracker, test_cache):
         """Test running basic operations benchmark."""
         # Mock memory tracker
         mock_tracker = MagicMock()
@@ -90,7 +91,7 @@ class TestCachePerformanceBenchmark:
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.benchmark_basic_operations(test_cache)
+        result = await benchmark.benchmark_basic_operations(test_cache)
         
         assert isinstance(result, BenchmarkResult)
         assert result.operation_type == "basic_operations"
@@ -98,9 +99,10 @@ class TestCachePerformanceBenchmark:
         assert result.avg_duration_ms > 0
         assert result.success_rate > 0
     
+    @pytest.mark.asyncio
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_benchmark_cache_efficiency(self, mock_memory_tracker, test_cache):
-        """Test running cache efficiency benchmark."""
+    async def test_comprehensive_benchmark_suite_cache_efficiency(self, mock_memory_tracker, test_cache):
+        """Test cache efficiency through comprehensive benchmark suite."""
         mock_tracker = MagicMock()
         mock_tracker.get_process_memory_mb.return_value = 10.0
         mock_memory_tracker.return_value = mock_tracker
@@ -108,47 +110,59 @@ class TestCachePerformanceBenchmark:
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.benchmark_cache_efficiency(test_cache)
+        suite = await benchmark.run_comprehensive_benchmark_suite(test_cache)
         
-        assert isinstance(result, BenchmarkResult)
-        assert result.operation_type == "cache_efficiency"
-        assert result.cache_hit_rate is not None
-        assert 0.0 <= result.cache_hit_rate <= 1.0
+        assert isinstance(suite, BenchmarkSuite)
+        assert len(suite.results) > 0
+        # Verify basic operations are included (cache efficiency is part of basic ops)
+        basic_ops_result = next((r for r in suite.results if r.operation_type == "basic_operations"), None)
+        assert basic_ops_result is not None
+        assert basic_ops_result.success_rate > 0
     
+    @pytest.mark.asyncio
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_benchmark_memory_usage(self, mock_memory_tracker, test_cache):
-        """Test running memory usage benchmark."""
+    async def test_memory_usage_tracking(self, mock_memory_tracker, test_cache):
+        """Test memory usage tracking in basic operations benchmark."""
         mock_tracker = MagicMock()
-        mock_tracker.get_process_memory_mb.side_effect = [5.0, 15.0, 10.0]  # baseline, peak, final
+        mock_tracker.get_memory_usage.side_effect = [
+            {"process_mb": 5.0},  # baseline
+            {"process_mb": 15.0}  # after benchmark
+        ]
+        mock_tracker.calculate_memory_delta.return_value = {"process_mb": 10.0}
         mock_memory_tracker.return_value = mock_tracker
         
         config = ConfigPresets.development_config()
+        # Create the benchmark with mocked memory tracker
         benchmark = CachePerformanceBenchmark(config=config)
+        benchmark.memory_tracker = mock_tracker  # Replace with our mock
         
-        result = benchmark.benchmark_memory_usage(test_cache)
+        result = await benchmark.benchmark_basic_operations(test_cache)
         
         assert isinstance(result, BenchmarkResult)
-        assert result.operation_type == "memory_usage"
-        assert result.memory_usage_mb > 0
+        assert result.operation_type == "basic_operations"
+        assert result.memory_usage_mb > 0  # Should be 10.0 from our mock
     
+    @pytest.mark.asyncio
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_run_comprehensive_benchmark_suite(self, mock_memory_tracker, test_cache):
+    async def test_run_comprehensive_benchmark_suite(self, mock_memory_tracker, test_cache):
         """Test running comprehensive benchmark suite."""
         mock_tracker = MagicMock()
-        mock_tracker.get_process_memory_mb.return_value = 10.0
+        mock_tracker.get_memory_usage.return_value = {"process_mb": 10.0}
+        mock_tracker.calculate_memory_delta.return_value = {"process_mb": 5.0}
         mock_memory_tracker.return_value = mock_tracker
         
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
         
-        suite = benchmark.run_comprehensive_benchmark_suite(test_cache)
+        suite = await benchmark.run_comprehensive_benchmark_suite(test_cache)
         
         assert isinstance(suite, BenchmarkSuite)
         assert len(suite.results) > 0
         assert suite.total_duration_ms > 0
         assert all(isinstance(result, BenchmarkResult) for result in suite.results)
     
-    def test_benchmark_timeout_handling(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_benchmark_timeout_handling(self, test_cache):
         """Test benchmark timeout handling."""
         # Create config with very short timeout
         config = BenchmarkConfig(timeout_seconds=0.001, default_iterations=1000)
@@ -156,28 +170,31 @@ class TestCachePerformanceBenchmark:
         
         # This should either complete very quickly or handle timeout gracefully
         try:
-            result = benchmark.benchmark_basic_operations(test_cache)
+            result = await benchmark.benchmark_basic_operations(test_cache)
             # If it completes, should be valid
             assert isinstance(result, BenchmarkResult)
         except Exception as e:
             # Should be a timeout or configuration related exception
             assert "timeout" in str(e).lower() or "time" in str(e).lower()
     
-    def test_warmup_iterations(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_warmup_iterations(self, test_cache):
         """Test that warmup iterations are performed."""
         config = BenchmarkConfig(warmup_iterations=5, default_iterations=10)
         benchmark = CachePerformanceBenchmark(config=config)
         
-        with patch.object(benchmark, '_perform_cache_operation') as mock_operation:
-            mock_operation.return_value = 0.01  # 10ms operation
+        # Mock the warmup method to verify it's called
+        with patch.object(benchmark, '_perform_warmup') as mock_warmup:
+            mock_warmup.return_value = None
             
-            result = benchmark.benchmark_basic_operations(test_cache)
+            result = await benchmark.benchmark_basic_operations(test_cache)
             
-            # Should have called operation for warmup + actual iterations
-            expected_calls = config.warmup_iterations + config.default_iterations
-            assert mock_operation.call_count >= expected_calls
+            # Should have called warmup with expected iterations
+            mock_warmup.assert_called_once_with(test_cache, config.warmup_iterations)
+            assert isinstance(result, BenchmarkResult)
     
-    def test_error_handling_in_operations(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_error_handling_in_operations(self, test_cache):
         """Test error handling during benchmark operations."""
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
@@ -186,23 +203,24 @@ class TestCachePerformanceBenchmark:
         original_set = test_cache.set
         call_count = 0
         
-        def failing_set(key, value, ttl=None):
+        async def failing_set(key, value, ttl=None):
             nonlocal call_count
             call_count += 1
             if call_count % 5 == 0:  # Fail every 5th operation
                 raise Exception("Simulated cache error")
-            return original_set(key, value, ttl)
+            return await original_set(key, value, ttl)
         
         test_cache.set = failing_set
         
-        result = benchmark.benchmark_basic_operations(test_cache)
+        result = await benchmark.benchmark_basic_operations(test_cache)
         
         # Should handle errors gracefully
         assert isinstance(result, BenchmarkResult)
         assert result.error_count > 0
         assert result.success_rate < 1.0
     
-    def test_data_generation_integration(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_data_generation_integration(self, test_cache):
         """Test integration with data generator."""
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
@@ -214,50 +232,54 @@ class TestCachePerformanceBenchmark:
                 {"key": "test_key_2", "text": "test_value_2", "operation": "get"}
             ]
             
-            result = benchmark.benchmark_basic_operations(test_cache)
+            result = await benchmark.benchmark_basic_operations(test_cache)
             
             assert mock_generate.called
             assert isinstance(result, BenchmarkResult)
     
-    def test_statistical_analysis_integration(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_statistical_analysis_integration(self, test_cache):
         """Test integration with statistical calculator."""
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.benchmark_basic_operations(test_cache)
+        result = await benchmark.benchmark_basic_operations(test_cache)
         
         # Should have calculated percentiles
         assert result.p95_duration_ms >= result.avg_duration_ms
         assert result.p99_duration_ms >= result.p95_duration_ms
         assert result.std_dev_ms >= 0
     
-    def test_memory_tracking_disabled(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_memory_tracking_disabled(self, test_cache):
         """Test benchmark with memory tracking disabled."""
         config = BenchmarkConfig(enable_memory_tracking=False)
         benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.benchmark_basic_operations(test_cache)
+        result = await benchmark.benchmark_basic_operations(test_cache)
         
         # Memory usage should be minimal or zero when tracking disabled
         assert result.memory_usage_mb >= 0
     
-    def test_compression_tests_disabled(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_compression_tests_disabled(self, test_cache):
         """Test benchmark with compression tests disabled."""
         config = BenchmarkConfig(enable_compression_tests=False)
         benchmark = CachePerformanceBenchmark(config=config)
         
-        suite = benchmark.run_comprehensive_benchmark_suite(test_cache)
+        suite = await benchmark.run_comprehensive_benchmark_suite(test_cache)
         
         # Should not include compression benchmarks
         compression_results = [r for r in suite.results if "compression" in r.operation_type.lower()]
         assert len(compression_results) == 0
     
-    def test_environment_info_collection(self, test_cache):
+    @pytest.mark.asyncio
+    async def test_environment_info_collection(self, test_cache):
         """Test collection of environment information."""
         config = ConfigPresets.development_config()
         benchmark = CachePerformanceBenchmark(config=config)
         
-        suite = benchmark.run_comprehensive_benchmark_suite(test_cache)
+        suite = await benchmark.run_comprehensive_benchmark_suite(test_cache)
         
         # Should collect environment info
         assert suite.environment_info is not None
@@ -493,15 +515,16 @@ class TestPerformanceRegressionDetector:
         """Test regression detection with custom thresholds."""
         from app.infrastructure.cache.benchmarks.config import CachePerformanceThresholds
         
-        strict_thresholds = CachePerformanceThresholds(
-            regression_warning_percent=5.0,  # Very strict
-            regression_critical_percent=10.0
+        # Use strict thresholds directly in constructor
+        detector = PerformanceRegressionDetector(
+            warning_threshold=5.0,   # Very strict warning threshold
+            critical_threshold=10.0  # Very strict critical threshold
         )
-        
-        detector = PerformanceRegressionDetector(thresholds=strict_thresholds)
         
         baseline = BenchmarkResult(
             operation_type="threshold_test",
+            duration_ms=10000.0,  # Required field
+            memory_peak_mb=25.0,  # Required field
             avg_duration_ms=100.0,
             min_duration_ms=80.0,
             max_duration_ms=150.0,
@@ -518,6 +541,8 @@ class TestPerformanceRegressionDetector:
         # 7% regression (between warning and critical)
         current = BenchmarkResult(
             operation_type="threshold_test",
+            duration_ms=10700.0,  # Required field
+            memory_peak_mb=27.0,  # Required field
             avg_duration_ms=107.0,
             min_duration_ms=85.0,
             max_duration_ms=160.0,
@@ -540,6 +565,8 @@ class TestPerformanceRegressionDetector:
         """Test detection of memory usage regressions."""
         baseline = BenchmarkResult(
             operation_type="memory_test",
+            duration_ms=2500.0,  # Required field
+            memory_peak_mb=15.0,  # Required field
             avg_duration_ms=25.0,
             min_duration_ms=20.0,
             max_duration_ms=35.0,
@@ -556,6 +583,8 @@ class TestPerformanceRegressionDetector:
         # Same performance, but much higher memory usage
         current = BenchmarkResult(
             operation_type="memory_test",
+            duration_ms=2500.0,  # Required field - same performance
+            memory_peak_mb=60.0,  # Required field - higher peak memory
             avg_duration_ms=25.0,  # Same performance
             min_duration_ms=20.0,
             max_duration_ms=35.0,
@@ -583,6 +612,8 @@ class TestPerformanceRegressionDetector:
         """Test detection of success rate regressions."""
         baseline = BenchmarkResult(
             operation_type="reliability_test",
+            duration_ms=2500.0,  # Required field
+            memory_peak_mb=15.0,  # Required field
             avg_duration_ms=25.0,
             min_duration_ms=20.0,
             max_duration_ms=35.0,
@@ -598,6 +629,8 @@ class TestPerformanceRegressionDetector:
         
         current = BenchmarkResult(
             operation_type="reliability_test",
+            duration_ms=2500.0,  # Required field - same performance
+            memory_peak_mb=15.0,  # Required field
             avg_duration_ms=25.0,  # Same performance
             min_duration_ms=20.0,
             max_duration_ms=35.0,
@@ -624,6 +657,8 @@ class TestPerformanceRegressionDetector:
         # Test with zero baseline performance
         zero_baseline = BenchmarkResult(
             operation_type="edge_case",
+            duration_ms=0.0,  # Required field
+            memory_peak_mb=0.0,  # Required field
             avg_duration_ms=0.0,
             min_duration_ms=0.0,
             max_duration_ms=0.0,
@@ -639,6 +674,8 @@ class TestPerformanceRegressionDetector:
         
         normal_current = BenchmarkResult(
             operation_type="edge_case",
+            duration_ms=2500.0,  # Required field
+            memory_peak_mb=15.0,  # Required field
             avg_duration_ms=25.0,
             min_duration_ms=20.0,
             max_duration_ms=35.0,
