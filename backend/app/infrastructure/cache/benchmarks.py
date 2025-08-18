@@ -722,7 +722,7 @@ class CachePerformanceBenchmark:
         # Add operation_types for backward compatibility
         self.operation_types = ["summarize", "sentiment", "key_points", "questions", "qa"]
         
-    async def benchmark_basic_operations(self, cache: CacheInterface, iterations: int = None) -> BenchmarkResult:
+    async def benchmark_basic_operations(self, cache: CacheInterface, iterations: Optional[int] = None) -> BenchmarkResult:
         """
         Benchmark basic cache operations (get/set/delete) with comprehensive timing analysis.
         
@@ -776,9 +776,9 @@ class CachePerformanceBenchmark:
                 
                 # Test exists operation (if available)
                 if hasattr(cache, 'exists'):
-                    exists = await cache.exists(data["key"])
+                    await cache.exists(data["key"])
                 else:
-                    exists = result is not None
+                    _ = result is not None
                 
                 operation_end = time.perf_counter()
                 operation_duration = (operation_end - operation_start) * 1000  # Convert to ms
@@ -874,7 +874,7 @@ class CachePerformanceBenchmark:
         logger.info(f"Basic operations benchmark completed: {avg_duration:.2f}ms avg, {operations_per_second:.0f} ops/sec")
         return result
 
-    async def benchmark_memory_cache_performance(self, cache, iterations: int = None) -> BenchmarkResult:
+    async def benchmark_memory_cache_performance(self, cache, iterations: Optional[int] = None) -> BenchmarkResult:
         """
         Benchmark memory cache (L1) performance and efficiency.
         
@@ -1030,7 +1030,7 @@ class CachePerformanceBenchmark:
         logger.info(f"Memory cache benchmark completed: {avg_duration:.2f}ms avg, {memory_hit_rate:.1f}% memory hit rate")
         return result
 
-    async def benchmark_compression_efficiency(self, cache, iterations: int = None) -> BenchmarkResult:
+    async def benchmark_compression_efficiency(self, cache, iterations: Optional[int] = None) -> BenchmarkResult:
         """
         Benchmark compression performance and efficiency.
         
@@ -1102,7 +1102,7 @@ class CachePerformanceBenchmark:
                                     compression_ratios.append(compression_ratio)
                                     total_original_bytes += original_size
                                     total_compressed_bytes += compressed_size
-                            except:
+                            except Exception:
                                 # Fallback to expected compression ratio from test data
                                 compression_ratio = test_data.get("expected_compression_ratio", 0.5)
                                 compression_ratios.append(compression_ratio)
@@ -1175,7 +1175,7 @@ class CachePerformanceBenchmark:
         return result
 
     async def compare_before_after_refactoring(self, original_cache: CacheInterface, new_cache: CacheInterface, 
-                                             test_iterations: int = None) -> ComparisonResult:
+                                             test_iterations: Optional[int] = None) -> ComparisonResult:
         """
         Compare performance between original and refactored cache implementations.
         
@@ -1315,8 +1315,8 @@ class CachePerformanceBenchmark:
                 recommendation = "Performance characteristics are similar - refactoring successful"
             
             comparison_result = ComparisonResult(
-                baseline_cache_name=getattr(original_cache, '__class__', {}).get('__name__', 'Original Cache'),
-                comparison_cache_name=getattr(new_cache, '__class__', {}).get('__name__', 'New Cache'),
+                baseline_cache_name=getattr(original_cache.__class__, '__name__', 'Original Cache'),
+                comparison_cache_name=getattr(new_cache.__class__, '__name__', 'New Cache'),
                 original_cache_results=original_result,
                 new_cache_results=new_result,
                 operation_comparisons=operation_comparisons,
@@ -1340,7 +1340,7 @@ class CachePerformanceBenchmark:
             logger.error(f"Cache comparison failed: {e}")
             raise
 
-    async def compare_caches(self, caches: Dict[str, CacheInterface], test_iterations: int = None) -> Dict[str, Any]:
+    async def compare_caches(self, caches: Dict[str, CacheInterface], test_iterations: Optional[int] = None) -> Dict[str, Any]:
         """
         Compare performance between multiple cache implementations.
         
@@ -1705,6 +1705,9 @@ class CachePerformanceBenchmark:
         """
         logger.info(f"Starting factory creation benchmark with {iterations} iterations per method")
         
+        # Create factory instance
+        factory = CacheFactory()
+        
         # Track memory usage
         initial_memory = self._get_process_memory_mb()
         peak_memory = initial_memory
@@ -1722,9 +1725,8 @@ class CachePerformanceBenchmark:
             operation_start = time.perf_counter()
             
             try:
-                if CacheFactory:
-                    cache = CacheFactory.for_web_app(
-                        redis_url=None,  # Use fallback
+                if factory:
+                    cache = await factory.for_web_app(
                         fail_on_connection_error=False
                     )
                 else:
@@ -1756,9 +1758,8 @@ class CachePerformanceBenchmark:
             operation_start = time.perf_counter()
             
             try:
-                if CacheFactory:
-                    cache = CacheFactory.for_ai_app(
-                        redis_url=None,  # Use fallback
+                if factory:
+                    cache = await factory.for_ai_app(
                         fail_on_connection_error=False
                     )
                 else:
@@ -1790,8 +1791,8 @@ class CachePerformanceBenchmark:
             operation_start = time.perf_counter()
             
             try:
-                if CacheFactory:
-                    cache = CacheFactory.for_testing(cache_type="memory")
+                if factory:
+                    cache = await factory.for_testing(use_memory_cache=True)
                 else:
                     raise AttributeError("CacheFactory not available")
                 
@@ -1822,10 +1823,10 @@ class CachePerformanceBenchmark:
             
             try:
                 # Create a simple config for testing
-                if CacheConfigBuilder and CacheFactory:
+                if CacheConfigBuilder and factory:
                     config = CacheConfigBuilder().for_environment("testing").build()
-                    cache = CacheFactory.create_cache_from_config(
-                        config,
+                    cache = await factory.create_cache_from_config(
+                        config.to_dict(),
                         fail_on_connection_error=False
                     )
                 else:
@@ -1918,14 +1919,17 @@ class CachePerformanceBenchmark:
         """
         logger.info(f"Starting environment benchmarks with {test_iterations} iterations each")
         
+        # Create factory instance
+        factory = CacheFactory()
+        
         environment_results = {}
         
         # Test development environment
         try:
             logger.info("Testing development environment configuration...")
-            if EnvironmentPresets and CacheFactory:
+            if EnvironmentPresets and factory:
                 dev_config = EnvironmentPresets.development()
-                dev_cache = CacheFactory.create_cache_from_config(dev_config, fail_on_connection_error=False)
+                dev_cache = await factory.create_cache_from_config(dev_config.to_dict(), fail_on_connection_error=False)
             else:
                 raise AttributeError("EnvironmentPresets or CacheFactory not available")
             
@@ -1952,9 +1956,9 @@ class CachePerformanceBenchmark:
         # Test testing environment
         try:
             logger.info("Testing testing environment configuration...")
-            if EnvironmentPresets and CacheFactory:
+            if EnvironmentPresets and factory:
                 test_config = EnvironmentPresets.testing()
-                test_cache = CacheFactory.create_cache_from_config(test_config, fail_on_connection_error=False)
+                test_cache = await factory.create_cache_from_config(test_config.to_dict(), fail_on_connection_error=False)
             else:
                 raise AttributeError("EnvironmentPresets or CacheFactory not available")
             
@@ -1981,9 +1985,9 @@ class CachePerformanceBenchmark:
         # Test production environment
         try:
             logger.info("Testing production environment configuration...")
-            if EnvironmentPresets and CacheFactory:
+            if EnvironmentPresets and factory:
                 prod_config = EnvironmentPresets.production()
-                prod_cache = CacheFactory.create_cache_from_config(prod_config, fail_on_connection_error=False)
+                prod_cache = await factory.create_cache_from_config(prod_config.to_dict(), fail_on_connection_error=False)
             else:
                 raise AttributeError("EnvironmentPresets or CacheFactory not available")
             
@@ -2010,9 +2014,9 @@ class CachePerformanceBenchmark:
         # Test AI development environment
         try:
             logger.info("Testing AI development environment configuration...")
-            if EnvironmentPresets and CacheFactory:
+            if EnvironmentPresets and factory:
                 ai_dev_config = EnvironmentPresets.ai_development()
-                ai_dev_cache = CacheFactory.create_cache_from_config(ai_dev_config, fail_on_connection_error=False)
+                ai_dev_cache = await factory.create_cache_from_config(ai_dev_config.to_dict(), fail_on_connection_error=False)
             else:
                 raise AttributeError("EnvironmentPresets or CacheFactory not available")
             
@@ -2040,9 +2044,9 @@ class CachePerformanceBenchmark:
         # Test AI production environment
         try:
             logger.info("Testing AI production environment configuration...")
-            if EnvironmentPresets and CacheFactory:
+            if EnvironmentPresets and factory:
                 ai_prod_config = EnvironmentPresets.ai_production()
-                ai_prod_cache = CacheFactory.create_cache_from_config(ai_prod_config, fail_on_connection_error=False)
+                ai_prod_cache = await factory.create_cache_from_config(ai_prod_config.to_dict(), fail_on_connection_error=False)
             else:
                 raise AttributeError("EnvironmentPresets or CacheFactory not available")
             
@@ -2232,7 +2236,7 @@ class CachePerformanceBenchmark:
         avg_ops_per_sec = sum(valid_ops) / len(valid_ops) if valid_ops else 0.0
         avg_success_rate = (sum(valid_rates) / len(valid_rates) * 100) if valid_rates else 0.0
         
-        report_lines.append(f"\nOVERALL AVERAGES")
+        report_lines.append("\nOVERALL AVERAGES")
         report_lines.append("-" * 40)
         report_lines.append(f"Average Duration: {avg_duration:.2f}ms")
         report_lines.append(f"Average Throughput: {avg_ops_per_sec:.0f} ops/sec")
@@ -2493,6 +2497,9 @@ class CachePerformanceBenchmark:
         """
         logger.info("Starting CI benchmark suite (optimized for speed)")
         
+        # Create factory instance
+        factory = CacheFactory()
+        
         ci_results = {
             "overall_status": "PASS",
             "benchmark_results": {},
@@ -2520,8 +2527,8 @@ class CachePerformanceBenchmark:
             
             # 2. Quick basic operations test
             logger.info("Running basic operations benchmark...")
-            if FACTORY_AVAILABLE and CacheFactory:
-                test_cache = CacheFactory.for_testing("memory")
+            if FACTORY_AVAILABLE and factory:
+                test_cache = await factory.for_testing(use_memory_cache=True)
             else:
                 from .memory import InMemoryCache
                 test_cache = InMemoryCache(default_ttl=60, max_size=100)
@@ -2626,8 +2633,8 @@ class CachePerformanceBenchmark:
             
         elif isinstance(results, BenchmarkSuite):
             # Suite-level badges
-            avg_duration = sum(r.avg_duration_ms for r in results.results) / len(results.results) if results.results else 0
-            avg_throughput = sum(r.operations_per_second for r in results.results) / len(results.results) if results.results else 0
+            _ = sum(r.avg_duration_ms for r in results.results) / len(results.results) if results.results else 0
+            _ = sum(r.operations_per_second for r in results.results) / len(results.results) if results.results else 0
             
             badges["performance_grade"] = {
                 "label": "Performance",
