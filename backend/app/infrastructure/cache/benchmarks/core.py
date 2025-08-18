@@ -212,6 +212,77 @@ class PerformanceRegressionDetector:
             }
         
         return {"status": "ok", "hit_rate_change": hit_rate_change}
+    
+    def compare_results(self, baseline: BenchmarkResult, current: BenchmarkResult) -> ComparisonResult:
+        """
+        Compare two benchmark results and generate a comprehensive comparison.
+        
+        Args:
+            baseline: Baseline benchmark result
+            current: Current benchmark result to compare
+            
+        Returns:
+            ComparisonResult with detailed performance comparison and regression analysis
+        """
+        # Calculate performance changes
+        performance_change = 0.0
+        memory_change = 0.0
+        ops_change = 0.0
+        
+        if baseline.avg_duration_ms > 0:
+            performance_change = ((current.avg_duration_ms - baseline.avg_duration_ms) / baseline.avg_duration_ms) * 100
+        
+        if baseline.memory_usage_mb > 0:
+            memory_change = ((current.memory_usage_mb - baseline.memory_usage_mb) / baseline.memory_usage_mb) * 100
+        
+        if baseline.operations_per_second > 0:
+            ops_change = ((current.operations_per_second - baseline.operations_per_second) / baseline.operations_per_second) * 100
+        
+        # Detect regressions
+        timing_regressions = self.detect_timing_regressions(baseline, current)
+        memory_regressions = self.detect_memory_regressions(baseline, current)
+        regression_detected = len(timing_regressions) > 0 or len(memory_regressions) > 0
+        
+        # Determine improvement and degradation areas
+        improvement_areas = []
+        degradation_areas = []
+        
+        if performance_change < -self.warning_threshold:
+            improvement_areas.append("timing")
+        elif performance_change > self.warning_threshold:
+            degradation_areas.append("timing")
+        
+        if memory_change < -self.warning_threshold:
+            improvement_areas.append("memory")
+        elif memory_change > self.warning_threshold:
+            degradation_areas.append("memory")
+        
+        if ops_change > self.warning_threshold:
+            improvement_areas.append("throughput")
+        elif ops_change < -self.warning_threshold:
+            degradation_areas.append("throughput")
+        
+        # Generate recommendation
+        if regression_detected:
+            recommendation = "Performance regressions detected. Review before deployment."
+        elif len(improvement_areas) > 0:
+            recommendation = f"Performance improved in: {', '.join(improvement_areas)}"
+        else:
+            recommendation = "Performance analysis complete. No significant changes detected."
+        
+        return ComparisonResult(
+            original_cache_results=baseline,
+            new_cache_results=current,
+            performance_change_percent=performance_change,
+            memory_change_percent=memory_change,
+            operations_per_second_change=ops_change,
+            baseline_cache_name="Baseline",
+            comparison_cache_name="Current",
+            regression_detected=regression_detected,
+            improvement_areas=improvement_areas,
+            degradation_areas=degradation_areas,
+            recommendation=recommendation
+        )
 
 
 class CachePerformanceBenchmark:

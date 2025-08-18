@@ -527,4 +527,6 @@ def get_default_config() -> BenchmarkConfig:
     Returns:
         BenchmarkConfig with default settings
     """
-    return BenchmarkConfig()
+    config = BenchmarkConfig()
+    config.validate()
+    return config

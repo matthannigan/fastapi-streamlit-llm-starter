@@ -65,13 +65,16 @@ class StatisticalCalculator:
         if not data:
             return 0.0
         
+        # Clamp percentile to valid range
+        percentile = max(0.0, min(100.0, percentile))
+        
         sorted_data = sorted(data)
         k = (len(sorted_data) - 1) * (percentile / 100.0)
         f = int(k)
         c = k - f
         
-        if f == len(sorted_data) - 1:
-            return sorted_data[f]
+        if f >= len(sorted_data) - 1:
+            return sorted_data[-1]
         else:
             return sorted_data[f] * (1 - c) + sorted_data[f + 1] * c
     
@@ -89,9 +92,15 @@ class StatisticalCalculator:
         if len(data) < 2:
             return 0.0
         
+        # Filter out non-finite values (inf, -inf, nan)
+        finite_data = [x for x in data if isinstance(x, (int, float)) and not (x == float('inf') or x == float('-inf') or x != x)]
+        
+        if len(finite_data) < 2:
+            return 0.0
+        
         try:
-            return statistics.stdev(data)
-        except statistics.StatisticsError:
+            return statistics.stdev(finite_data)
+        except (statistics.StatisticsError, AttributeError):
             return 0.0
     
     @staticmethod
@@ -168,7 +177,7 @@ class StatisticalCalculator:
             >>> print(f"95% CI: [{ci['lower']:.2f}, {ci['upper']:.2f}]")
         """
         if len(data) < 2:
-            return {"lower": 0.0, "upper": 0.0, "margin_of_error": 0.0}
+            return {"mean": 0.0, "lower": 0.0, "upper": 0.0, "margin_of_error": 0.0}
         
         try:
             mean = statistics.mean(data)
@@ -186,13 +195,14 @@ class StatisticalCalculator:
                 margin_of_error = t_score * (stdev / math.sqrt(n))
             
             return {
+                "mean": mean,
                 "lower": mean - margin_of_error,
                 "upper": mean + margin_of_error,
                 "margin_of_error": margin_of_error
             }
         except Exception as e:
             logger.debug(f"Could not calculate confidence intervals: {e}")
-            return {"lower": 0.0, "upper": 0.0, "margin_of_error": 0.0}
+            return {"mean": 0.0, "lower": 0.0, "upper": 0.0, "margin_of_error": 0.0}
     
     @staticmethod
     def calculate_statistics(data: List[float]) -> Dict[str, Any]:
@@ -223,24 +233,31 @@ class StatisticalCalculator:
         if not data:
             return {}
         
+        # Filter out non-finite values for statistics calculation
+        finite_data = [x for x in data if isinstance(x, (int, float)) and not (x == float('inf') or x == float('-inf') or x != x)]
+        
+        if not finite_data:
+            return {"count": len(data), "finite_count": 0, "error": "no_finite_values"}
+        
         result = {
-            "mean": statistics.mean(data),
-            "median": StatisticalCalculator.percentile(data, 50),
-            "std_dev": StatisticalCalculator.calculate_standard_deviation(data),
-            "p50": StatisticalCalculator.percentile(data, 50),
-            "p95": StatisticalCalculator.percentile(data, 95),
-            "p99": StatisticalCalculator.percentile(data, 99),
-            "min": min(data),
-            "max": max(data),
-            "count": len(data)
+            "mean": statistics.mean(finite_data),
+            "median": StatisticalCalculator.percentile(finite_data, 50),
+            "std_dev": StatisticalCalculator.calculate_standard_deviation(finite_data),
+            "p50": StatisticalCalculator.percentile(finite_data, 50),
+            "p95": StatisticalCalculator.percentile(finite_data, 95),
+            "p99": StatisticalCalculator.percentile(finite_data, 99),
+            "min": min(finite_data),
+            "max": max(finite_data),
+            "count": len(data),
+            "finite_count": len(finite_data)
         }
         
-        # Add outlier analysis
-        outlier_info = StatisticalCalculator.detect_outliers(data)
+        # Add outlier analysis using finite data
+        outlier_info = StatisticalCalculator.detect_outliers(finite_data)
         result.update(outlier_info)
         
-        # Add confidence intervals
-        ci = StatisticalCalculator.calculate_confidence_intervals(data)
+        # Add confidence intervals using finite data
+        ci = StatisticalCalculator.calculate_confidence_intervals(finite_data)
         result["confidence_interval"] = ci
         
         return result

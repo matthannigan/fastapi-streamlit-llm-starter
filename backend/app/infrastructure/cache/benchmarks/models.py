@@ -203,6 +203,26 @@ class ComparisonResult:
     recommendations: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     
+    @property
+    def is_regression(self) -> bool:
+        """
+        Check if this comparison indicates a performance regression.
+        
+        Returns:
+            True if regression was detected, False otherwise
+        """
+        return self.regression_detected
+    
+    @property
+    def operation_type(self) -> str:
+        """
+        Get the operation type being compared.
+        
+        Returns:
+            The operation type from the new cache results
+        """
+        return self.new_cache_results.operation_type
+    
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert comparison result to dictionary for serialization.
@@ -225,6 +245,55 @@ class ComparisonResult:
         return (f"Performance {direction} by {abs_change:.1f}% "
                 f"(Memory: {self.memory_change_percent:+.1f}%, "
                 f"Throughput: {self.operations_per_second_change:+.1f}%)")
+    
+    def generate_recommendations(self) -> List[str]:
+        """
+        Generate performance recommendations based on comparison results.
+        
+        Returns:
+            List of recommendation strings based on detected changes
+        """
+        recommendations = []
+        
+        # Performance recommendations
+        if self.performance_change_percent > 20:
+            recommendations.append("Consider optimizing algorithms for better performance")
+        elif self.performance_change_percent < -20:
+            recommendations.append("Excellent performance improvement achieved")
+        
+        # Memory recommendations  
+        if self.memory_change_percent > 50:
+            recommendations.append("Memory usage has increased significantly - investigate memory leaks")
+        elif self.memory_change_percent > 20:
+            recommendations.append("Monitor memory usage as it has increased")
+        elif self.memory_change_percent < -20:
+            recommendations.append("Good memory optimization achieved")
+        
+        # Throughput recommendations
+        if self.operations_per_second_change < -20:
+            recommendations.append("Throughput has decreased - review performance bottlenecks")
+        elif self.operations_per_second_change > 20:
+            recommendations.append("Throughput improvement is excellent")
+        
+        # Regression recommendations
+        if self.regression_detected:
+            recommendations.append("Address performance regressions before deployment")
+        
+        # Success rate recommendations
+        if (hasattr(self.new_cache_results, 'success_rate') and 
+            hasattr(self.original_cache_results, 'success_rate')):
+            success_rate_change = self.new_cache_results.success_rate - self.original_cache_results.success_rate
+            if success_rate_change < -0.1:  # 10% degradation
+                recommendations.append("Success rate has decreased - investigate reliability issues")
+        
+        # Default recommendation if no specific issues found
+        if not recommendations:
+            if self.performance_change_percent < 5 and self.memory_change_percent < 10:
+                recommendations.append("Performance changes are minimal - deployment ready")
+            else:
+                recommendations.append("Review performance changes before deployment")
+        
+        return recommendations
 
 
 @dataclass
@@ -270,6 +339,15 @@ class BenchmarkSuite:
     memory_efficiency_grade: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     environment_info: Dict[str, Any] = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert benchmark suite to dictionary for serialization.
+        
+        Returns:
+            Dictionary representation of all benchmark suite data
+        """
+        return asdict(self)
     
     def to_json(self) -> str:
         """

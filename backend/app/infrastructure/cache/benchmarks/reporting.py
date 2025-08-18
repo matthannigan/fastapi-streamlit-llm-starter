@@ -18,6 +18,7 @@ for cache performance optimization.
 
 import json
 from abc import ABC, abstractmethod
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
@@ -449,7 +450,7 @@ class JSONReporter(BenchmarkReporter):
         report_data = {
             "schema_version": self.schema_version,
             "generated_at": datetime.now().isoformat(),
-            "suite": suite.to_dict(),
+            "suite": asdict(suite),
         }
         
         if self.include_metadata:
