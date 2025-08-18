@@ -82,12 +82,12 @@ def sample_comparison_result() -> ComparisonResult:
     )
     
     return ComparisonResult(
-        operation_type="test_comparison",
-        baseline_result=baseline,
-        current_result=current,
+        original_cache_results=baseline,
+        new_cache_results=current,
         performance_change_percent=-16.67,  # 16.67% improvement
-        is_regression=False,
-        comparison_timestamp=datetime.now()
+        memory_change_percent=0.0,
+        operations_per_second_change=20.0,
+        regression_detected=False
     )
 
 
@@ -97,11 +97,13 @@ def sample_benchmark_suite(sample_benchmark_result) -> BenchmarkSuite:
     return BenchmarkSuite(
         name="Test Suite",
         results=[sample_benchmark_result],
-        timestamp=datetime.now(),
         total_duration_ms=1000.0,
-        environment_info={"python_version": "3.9", "platform": "test"},
+        pass_rate=1.0,
         failed_benchmarks=[],
-        config_used={"iterations": 100}
+        performance_grade="Good",
+        memory_efficiency_grade="Excellent",
+        timestamp=datetime.now().isoformat(),
+        environment_info={"python_version": "3.9", "platform": "test"}
     )
 
 
@@ -161,7 +163,7 @@ def data_generator() -> CacheBenchmarkDataGenerator:
 @pytest.fixture
 def test_cache() -> InMemoryCache:
     """Create an in-memory cache for testing."""
-    return InMemoryCache(max_size=100, ttl_seconds=3600)
+    return InMemoryCache(max_size=100, default_ttl=3600)
 
 
 @pytest.fixture

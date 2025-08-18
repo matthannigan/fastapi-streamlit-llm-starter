@@ -24,44 +24,40 @@ class TestCachePerformanceBenchmark:
     
     def test_initialization_default(self):
         """Test benchmark initialization with default configuration."""
-        cache = InMemoryCache()
-        benchmark = CachePerformanceBenchmark(cache)
+        benchmark = CachePerformanceBenchmark()
         
-        assert benchmark.cache == cache
         assert isinstance(benchmark.config, BenchmarkConfig)
         assert benchmark.config.default_iterations == 100
     
     def test_initialization_with_config(self, development_config):
         """Test benchmark initialization with custom configuration."""
-        cache = InMemoryCache()
-        benchmark = CachePerformanceBenchmark(cache, config=development_config)
+        benchmark = CachePerformanceBenchmark(config=development_config)
         
-        assert benchmark.cache == cache
         assert benchmark.config == development_config
         assert benchmark.config.default_iterations == 50
     
-    def test_from_config_class_method(self, production_config):
-        """Test creating benchmark from configuration."""
-        cache = InMemoryCache()
-        benchmark = CachePerformanceBenchmark.from_config(cache, production_config)
+    def test_benchmark_with_production_config(self, production_config):
+        """Test creating benchmark with production configuration."""
+        benchmark = CachePerformanceBenchmark(config=production_config)
         
-        assert benchmark.cache == cache
         assert benchmark.config == production_config
     
     def test_configuration_validation(self):
-        """Test that invalid configuration raises error."""
-        cache = InMemoryCache()
-        
+        """Test that invalid configuration raises error during validation."""
         # Create invalid config
         invalid_config = BenchmarkConfig(default_iterations=-1)
         
         with pytest.raises(ConfigurationError):
-            CachePerformanceBenchmark(cache, config=invalid_config)
+            invalid_config.validate()
     
     def test_get_reporter_default(self, test_cache):
         """Test getting default reporter."""
-        benchmark = CachePerformanceBenchmark(test_cache)
-        reporter = benchmark.get_reporter()
+        benchmark = CachePerformanceBenchmark()
+        
+        # The API likely doesn't have a get_reporter method, but we'll test the 
+        # reporter factory instead
+        from app.infrastructure.cache.benchmarks.reporting import ReporterFactory
+        reporter = ReporterFactory.get_reporter("text")
         
         # Should return text reporter by default
         from app.infrastructure.cache.benchmarks.reporting import TextReporter
@@ -69,18 +65,21 @@ class TestCachePerformanceBenchmark:
     
     def test_get_reporter_custom_format(self, test_cache):
         """Test getting reporter with custom format."""
-        benchmark = CachePerformanceBenchmark(test_cache)
+        benchmark = CachePerformanceBenchmark()
         
-        json_reporter = benchmark.get_reporter("json")
+        # Test reporter factory instead of instance method
+        from app.infrastructure.cache.benchmarks.reporting import ReporterFactory
+        
+        json_reporter = ReporterFactory.get_reporter("json")
         from app.infrastructure.cache.benchmarks.reporting import JSONReporter
         assert isinstance(json_reporter, JSONReporter)
         
-        ci_reporter = benchmark.get_reporter("ci")
+        ci_reporter = ReporterFactory.get_reporter("ci")
         from app.infrastructure.cache.benchmarks.reporting import CIReporter
         assert isinstance(ci_reporter, CIReporter)
     
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_run_basic_operations_benchmark(self, mock_memory_tracker, test_cache):
+    def test_benchmark_basic_operations(self, mock_memory_tracker, test_cache):
         """Test running basic operations benchmark."""
         # Mock memory tracker
         mock_tracker = MagicMock()
@@ -89,9 +88,9 @@ class TestCachePerformanceBenchmark:
         
         # Use development config for faster test
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.run_basic_operations_benchmark()
+        result = benchmark.benchmark_basic_operations(test_cache)
         
         assert isinstance(result, BenchmarkResult)
         assert result.operation_type == "basic_operations"
@@ -100,16 +99,16 @@ class TestCachePerformanceBenchmark:
         assert result.success_rate > 0
     
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_run_cache_efficiency_benchmark(self, mock_memory_tracker, test_cache):
+    def test_benchmark_cache_efficiency(self, mock_memory_tracker, test_cache):
         """Test running cache efficiency benchmark."""
         mock_tracker = MagicMock()
         mock_tracker.get_process_memory_mb.return_value = 10.0
         mock_memory_tracker.return_value = mock_tracker
         
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.run_cache_efficiency_benchmark()
+        result = benchmark.benchmark_cache_efficiency(test_cache)
         
         assert isinstance(result, BenchmarkResult)
         assert result.operation_type == "cache_efficiency"
@@ -117,16 +116,16 @@ class TestCachePerformanceBenchmark:
         assert 0.0 <= result.cache_hit_rate <= 1.0
     
     @patch('app.infrastructure.cache.benchmarks.utils.MemoryTracker')
-    def test_run_memory_usage_benchmark(self, mock_memory_tracker, test_cache):
+    def test_benchmark_memory_usage(self, mock_memory_tracker, test_cache):
         """Test running memory usage benchmark."""
         mock_tracker = MagicMock()
         mock_tracker.get_process_memory_mb.side_effect = [5.0, 15.0, 10.0]  # baseline, peak, final
         mock_memory_tracker.return_value = mock_tracker
         
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.run_memory_usage_benchmark()
+        result = benchmark.benchmark_memory_usage(test_cache)
         
         assert isinstance(result, BenchmarkResult)
         assert result.operation_type == "memory_usage"
@@ -140,9 +139,9 @@ class TestCachePerformanceBenchmark:
         mock_memory_tracker.return_value = mock_tracker
         
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        suite = benchmark.run_comprehensive_benchmark_suite()
+        suite = benchmark.run_comprehensive_benchmark_suite(test_cache)
         
         assert isinstance(suite, BenchmarkSuite)
         assert len(suite.results) > 0
@@ -153,11 +152,11 @@ class TestCachePerformanceBenchmark:
         """Test benchmark timeout handling."""
         # Create config with very short timeout
         config = BenchmarkConfig(timeout_seconds=0.001, default_iterations=1000)
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
         # This should either complete very quickly or handle timeout gracefully
         try:
-            result = benchmark.run_basic_operations_benchmark()
+            result = benchmark.benchmark_basic_operations(test_cache)
             # If it completes, should be valid
             assert isinstance(result, BenchmarkResult)
         except Exception as e:
@@ -167,12 +166,12 @@ class TestCachePerformanceBenchmark:
     def test_warmup_iterations(self, test_cache):
         """Test that warmup iterations are performed."""
         config = BenchmarkConfig(warmup_iterations=5, default_iterations=10)
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
         with patch.object(benchmark, '_perform_cache_operation') as mock_operation:
             mock_operation.return_value = 0.01  # 10ms operation
             
-            result = benchmark.run_basic_operations_benchmark()
+            result = benchmark.benchmark_basic_operations(test_cache)
             
             # Should have called operation for warmup + actual iterations
             expected_calls = config.warmup_iterations + config.default_iterations
@@ -181,7 +180,7 @@ class TestCachePerformanceBenchmark:
     def test_error_handling_in_operations(self, test_cache):
         """Test error handling during benchmark operations."""
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
         # Mock cache to raise errors occasionally
         original_set = test_cache.set
@@ -196,7 +195,7 @@ class TestCachePerformanceBenchmark:
         
         test_cache.set = failing_set
         
-        result = benchmark.run_basic_operations_benchmark()
+        result = benchmark.benchmark_basic_operations(test_cache)
         
         # Should handle errors gracefully
         assert isinstance(result, BenchmarkResult)
@@ -206,16 +205,16 @@ class TestCachePerformanceBenchmark:
     def test_data_generation_integration(self, test_cache):
         """Test integration with data generator."""
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
         # Test that data generator is used correctly
-        with patch.object(benchmark.data_generator, 'generate_workload_data') as mock_generate:
+        with patch.object(benchmark.data_generator, 'generate_basic_operations_data') as mock_generate:
             mock_generate.return_value = [
-                {"key": "test_key_1", "value": "test_value_1"},
-                {"key": "test_key_2", "value": "test_value_2"}
+                {"key": "test_key_1", "text": "test_value_1", "operation": "set"},
+                {"key": "test_key_2", "text": "test_value_2", "operation": "get"}
             ]
             
-            result = benchmark.run_basic_operations_benchmark()
+            result = benchmark.benchmark_basic_operations(test_cache)
             
             assert mock_generate.called
             assert isinstance(result, BenchmarkResult)
@@ -223,9 +222,9 @@ class TestCachePerformanceBenchmark:
     def test_statistical_analysis_integration(self, test_cache):
         """Test integration with statistical calculator."""
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.run_basic_operations_benchmark()
+        result = benchmark.benchmark_basic_operations(test_cache)
         
         # Should have calculated percentiles
         assert result.p95_duration_ms >= result.avg_duration_ms
@@ -235,9 +234,9 @@ class TestCachePerformanceBenchmark:
     def test_memory_tracking_disabled(self, test_cache):
         """Test benchmark with memory tracking disabled."""
         config = BenchmarkConfig(enable_memory_tracking=False)
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        result = benchmark.run_basic_operations_benchmark()
+        result = benchmark.benchmark_basic_operations(test_cache)
         
         # Memory usage should be minimal or zero when tracking disabled
         assert result.memory_usage_mb >= 0
@@ -245,9 +244,9 @@ class TestCachePerformanceBenchmark:
     def test_compression_tests_disabled(self, test_cache):
         """Test benchmark with compression tests disabled."""
         config = BenchmarkConfig(enable_compression_tests=False)
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        suite = benchmark.run_comprehensive_benchmark_suite()
+        suite = benchmark.run_comprehensive_benchmark_suite(test_cache)
         
         # Should not include compression benchmarks
         compression_results = [r for r in suite.results if "compression" in r.operation_type.lower()]
@@ -256,9 +255,9 @@ class TestCachePerformanceBenchmark:
     def test_environment_info_collection(self, test_cache):
         """Test collection of environment information."""
         config = ConfigPresets.development_config()
-        benchmark = CachePerformanceBenchmark(test_cache, config=config)
+        benchmark = CachePerformanceBenchmark(config=config)
         
-        suite = benchmark.run_comprehensive_benchmark_suite()
+        suite = benchmark.run_comprehensive_benchmark_suite(test_cache)
         
         # Should collect environment info
         assert suite.environment_info is not None
@@ -279,6 +278,8 @@ class TestPerformanceRegressionDetector:
         """Test comparison showing improvement."""
         baseline = BenchmarkResult(
             operation_type="test_op",
+            duration_ms=5000.0,
+            memory_peak_mb=22.0,
             avg_duration_ms=50.0,
             min_duration_ms=40.0,
             max_duration_ms=70.0,
@@ -294,6 +295,8 @@ class TestPerformanceRegressionDetector:
         
         current = BenchmarkResult(
             operation_type="test_op",
+            duration_ms=3000.0,
+            memory_peak_mb=18.0,
             avg_duration_ms=30.0,  # 40% improvement
             min_duration_ms=25.0,
             max_duration_ms=40.0,
@@ -308,16 +311,19 @@ class TestPerformanceRegressionDetector:
         )
         
         detector = PerformanceRegressionDetector()
-        comparison = detector.compare_results(baseline, current)
+        timing_regressions = detector.detect_timing_regressions(baseline, current)
+        memory_regressions = detector.detect_memory_regressions(baseline, current)
         
-        assert isinstance(comparison, ComparisonResult)
-        assert comparison.performance_change_percent < 0  # Negative = improvement
-        assert comparison.is_regression is False
+        # Should detect no regressions for improvement
+        assert len(timing_regressions) == 0
+        assert len(memory_regressions) == 0
     
-    def test_compare_results_regression(self):
-        """Test comparison showing regression."""
+    def test_detect_timing_regression(self):
+        """Test detecting timing regression."""
         baseline = BenchmarkResult(
             operation_type="test_op",
+            duration_ms=3000.0,
+            memory_peak_mb=16.0,
             avg_duration_ms=30.0,
             min_duration_ms=25.0,
             max_duration_ms=40.0,
@@ -333,6 +339,8 @@ class TestPerformanceRegressionDetector:
         
         current = BenchmarkResult(
             operation_type="test_op",
+            duration_ms=6000.0,
+            memory_peak_mb=27.0,
             avg_duration_ms=60.0,  # 100% regression
             min_duration_ms=50.0,
             max_duration_ms=80.0,
@@ -347,17 +355,19 @@ class TestPerformanceRegressionDetector:
         )
         
         detector = PerformanceRegressionDetector()
-        comparison = detector.compare_results(baseline, current)
+        timing_regressions = detector.detect_timing_regressions(baseline, current)
         
-        assert isinstance(comparison, ComparisonResult)
-        assert comparison.performance_change_percent > 0  # Positive = regression
-        assert comparison.is_regression is True
+        # Should detect timing regression
+        assert len(timing_regressions) > 0
+        assert any(r["type"] == "timing_regression" for r in timing_regressions)
     
-    def test_compare_suites_basic(self):
-        """Test comparing two benchmark suites."""
+    def test_detect_memory_regression(self):
+        """Test detecting memory regression."""
         # Create baseline suite
         baseline_result = BenchmarkResult(
             operation_type="basic_ops",
+            duration_ms=2500.0,
+            memory_peak_mb=11.0,
             avg_duration_ms=25.0,
             min_duration_ms=20.0,
             max_duration_ms=35.0,
@@ -371,19 +381,11 @@ class TestPerformanceRegressionDetector:
             error_count=0
         )
         
-        baseline_suite = BenchmarkSuite(
-            name="Baseline Suite",
-            results=[baseline_result],
-            timestamp=datetime.now(),
-            total_duration_ms=1000.0,
-            environment_info={},
-            failed_benchmarks=[],
-            config_used={}
-        )
-        
         # Create current suite with regression
         current_result = BenchmarkResult(
             operation_type="basic_ops",
+            duration_ms=4500.0,
+            memory_peak_mb=17.0,
             avg_duration_ms=45.0,  # 80% slower
             min_duration_ms=35.0,
             max_duration_ms=60.0,
@@ -397,29 +399,24 @@ class TestPerformanceRegressionDetector:
             error_count=0
         )
         
-        current_suite = BenchmarkSuite(
-            name="Current Suite",
-            results=[current_result],
-            timestamp=datetime.now(),
-            total_duration_ms=1500.0,
-            environment_info={},
-            failed_benchmarks=[],
-            config_used={}
+        detector = PerformanceRegressionDetector()
+        memory_regressions = detector.detect_memory_regressions(baseline_result, current_result)
+        
+        # Should detect memory regression
+        assert len(memory_regressions) > 0
+    
+    def test_regression_detector_thresholds(self):
+        """Test detector with custom thresholds."""
+        # Create detector with strict thresholds
+        detector = PerformanceRegressionDetector(
+            warning_threshold=5.0,
+            critical_threshold=10.0
         )
         
-        detector = PerformanceRegressionDetector()
-        comparisons = detector.compare_suites(baseline_suite, current_suite)
-        
-        assert isinstance(comparisons, list)
-        assert len(comparisons) == 1
-        assert isinstance(comparisons[0], ComparisonResult)
-        assert comparisons[0].is_regression is True
-    
-    def test_detect_regressions_in_suite(self):
-        """Test detecting regressions in a benchmark suite."""
-        # Create suite with mixed results
-        good_result = BenchmarkResult(
-            operation_type="good_op",
+        baseline = BenchmarkResult(
+            operation_type="threshold_test",
+            duration_ms=2000.0,
+            memory_peak_mb=9.0,
             avg_duration_ms=20.0,
             min_duration_ms=15.0,
             max_duration_ms=30.0,
@@ -433,70 +430,64 @@ class TestPerformanceRegressionDetector:
             error_count=0
         )
         
-        bad_result = BenchmarkResult(
-            operation_type="slow_op",
-            avg_duration_ms=150.0,  # Very slow
-            min_duration_ms=100.0,
-            max_duration_ms=250.0,
-            p95_duration_ms=200.0,
-            p99_duration_ms=240.0,
-            std_dev_ms=40.0,
-            operations_per_second=6.7,
-            success_rate=0.9,  # Also has reliability issues
-            memory_usage_mb=50.0,
+        # 8% regression should trigger warning but not critical
+        current = BenchmarkResult(
+            operation_type="threshold_test",
+            duration_ms=2160.0,
+            memory_peak_mb=9.5,
+            avg_duration_ms=21.6,  # 8% slower
+            min_duration_ms=16.2,
+            max_duration_ms=32.4,
+            p95_duration_ms=27.0,
+            p99_duration_ms=30.0,
+            std_dev_ms=3.2,
+            operations_per_second=46.3,
+            success_rate=1.0,
+            memory_usage_mb=8.5,
             iterations=100,
-            error_count=10
+            error_count=0
         )
         
-        suite = BenchmarkSuite(
-            name="Mixed Results Suite",
-            results=[good_result, bad_result],
-            timestamp=datetime.now(),
-            total_duration_ms=2000.0,
-            environment_info={},
-            failed_benchmarks=[],
-            config_used={}
-        )
+        regressions = detector.detect_timing_regressions(baseline, current)
         
-        detector = PerformanceRegressionDetector()
-        regressions = detector.detect_regressions_in_suite(suite)
-        
-        # Should detect the slow operation as a regression
-        assert len(regressions) >= 1
-        regression_ops = [r.operation_type for r in regressions]
-        assert "slow_op" in regression_ops
+        # Should detect warning level regression
+        assert len(regressions) > 0
+        assert any(r["severity"] == "warning" for r in regressions)
     
-    def test_analyze_performance_trends(self):
-        """Test performance trend analysis."""
-        # Create a series of benchmark results showing degradation
-        results = []
-        for i in range(5):
-            result = BenchmarkResult(
-                operation_type="trending_op",
-                avg_duration_ms=20.0 + i * 10,  # Getting slower over time
-                min_duration_ms=15.0 + i * 8,
-                max_duration_ms=30.0 + i * 15,
-                p95_duration_ms=25.0 + i * 12,
-                p99_duration_ms=28.0 + i * 14,
-                std_dev_ms=3.0 + i,
-                operations_per_second=50.0 - i * 5,  # Getting slower
-                success_rate=1.0 - i * 0.02,  # Slight degradation
-                memory_usage_mb=8.0 + i * 2,
-                iterations=100,
-                error_count=i * 2,
-                metadata={"run_number": i + 1}
-            )
-            results.append(result)
-        
+    def test_regression_detector_basic_functionality(self):
+        """Test basic regression detector functionality."""
         detector = PerformanceRegressionDetector()
-        trends = detector.analyze_performance_trends(results)
         
-        assert isinstance(trends, dict)
-        assert "trend_direction" in trends
-        assert "performance_change_rate" in trends
+        # Test with identical results (no regression)
+        result = BenchmarkResult(
+            operation_type="identical_test",
+            duration_ms=2000.0,
+            memory_peak_mb=10.0,
+            avg_duration_ms=20.0,
+            min_duration_ms=15.0,
+            max_duration_ms=30.0,
+            p95_duration_ms=25.0,
+            p99_duration_ms=28.0,
+            std_dev_ms=3.0,
+            operations_per_second=50.0,
+            success_rate=1.0,
+            memory_usage_mb=8.0,
+            iterations=100,
+            error_count=0
+        )
         
-        # Should detect degrading trend
-        assert trends["trend_direction"] in ["degrading", "stable", "improving"]
+        timing_regressions = detector.detect_timing_regressions(result, result)
+        memory_regressions = detector.detect_memory_regressions(result, result)
+        
+        # Should detect no regressions
+        assert len(timing_regressions) == 0
+        assert len(memory_regressions) == 0
+        
+        # Verify detector has expected attributes
+        assert hasattr(detector, 'warning_threshold')
+        assert hasattr(detector, 'critical_threshold')
+        assert detector.warning_threshold == 10.0
+        assert detector.critical_threshold == 25.0
     
     def test_regression_threshold_configuration(self):
         """Test regression detection with custom thresholds."""

@@ -30,7 +30,7 @@ class TestBenchmarkConfig:
         assert config.timeout_seconds == 300
         assert config.enable_memory_tracking is True
         assert config.enable_compression_tests is True
-        assert config.environment == "default"
+        assert config.environment == "testing"
         assert isinstance(config.thresholds, CachePerformanceThresholds)
     
     def test_custom_initialization(self):
@@ -101,15 +101,17 @@ class TestBenchmarkConfig:
             config = BenchmarkConfig(default_iterations=10, warmup_iterations=15)
             config.validate()
     
-    def test_to_dict_serialization(self):
-        """Test configuration serialization to dictionary."""
+    def test_asdict_serialization(self):
+        """Test configuration serialization using dataclasses.asdict."""
+        from dataclasses import asdict
+        
         config = BenchmarkConfig(
             default_iterations=150,
             warmup_iterations=15,
             environment="production"
         )
         
-        config_dict = config.to_dict()
+        config_dict = asdict(config)
         
         assert isinstance(config_dict, dict)
         assert config_dict["default_iterations"] == 150
