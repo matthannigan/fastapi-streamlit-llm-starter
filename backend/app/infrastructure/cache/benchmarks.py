@@ -130,6 +130,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .base import CacheInterface
 from .monitoring import CachePerformanceMonitor
+from .factory import CacheFactory
+from .config import CacheConfig, AICacheConfig, CacheConfigBuilder, EnvironmentPresets
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +156,11 @@ class BenchmarkResult:
     cache_hit_rate: Optional[float] = None
     compression_ratio: Optional[float] = None
     compression_savings_mb: Optional[float] = None
+    # Additional statistical fields for Phase 3
+    median_duration_ms: float = 0.0
+    error_count: int = 0
+    test_data_size_bytes: int = 0
+    additional_metrics: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     
@@ -183,16 +190,22 @@ class BenchmarkResult:
 class ComparisonResult:
     """Result data for comparing performance between cache implementations."""
     
+    baseline_cache_name: str
+    comparison_cache_name: str
     original_cache_results: BenchmarkResult
     new_cache_results: BenchmarkResult
-    performance_change_percent: float
-    memory_change_percent: float
-    operations_per_second_change: float
+    operation_comparisons: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    overall_performance_change: float = 0.0
+    performance_change_percent: float = 0.0
+    memory_change_percent: float = 0.0
+    operations_per_second_change: float = 0.0
     cache_hit_rate_change: Optional[float] = None
     compression_efficiency_change: Optional[float] = None
     regression_detected: bool = False
+    significant_differences: List[str] = field(default_factory=list)
     improvement_areas: List[str] = field(default_factory=list)
     degradation_areas: List[str] = field(default_factory=list)
+    recommendation: str = ""
     recommendations: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     
@@ -298,26 +311,145 @@ class CacheBenchmarkDataGenerator:
             "detail_level": ["brief", "detailed", "comprehensive"]
         }
     
+    def _generate_test_data_sets(self, test_operations: int = 100) -> Dict[str, List[Dict[str, Any]]]:
+        """Generate varied test data sets for comprehensive benchmarking."""
+        import random
+        
+        # Small data set (simple key-value pairs)
+        small_data = []
+        for i in range(min(25, test_operations // 4)):
+            small_data.append({
+                "key": f"small_key_{i}",
+                "text": "Short text for basic testing.",
+                "operation": random.choice(self.operation_types),
+                "options": {"length": "short"},
+                "expected_size_bytes": 30,
+                "cache_ttl": 300
+            })
+        
+        # Medium data set (100x repetitions)
+        medium_data = []
+        for i in range(min(50, test_operations // 2)):
+            text = self.text_samples[1] * random.randint(1, 3)
+            medium_data.append({
+                "key": f"medium_key_{i}",
+                "text": text,
+                "operation": random.choice(self.operation_types),
+                "options": {"length": "medium", "detail_level": "detailed"},
+                "expected_size_bytes": len(text.encode('utf-8')),
+                "cache_ttl": random.randint(600, 1800)
+            })
+        
+        # Large data set (1000x repetitions with lists)
+        large_data = []
+        for i in range(min(20, test_operations // 5)):
+            base_text = self.text_samples[2]
+            text_with_lists = base_text + "\n" + "\n".join([f"Item {j}: {base_text[:50]}" for j in range(random.randint(5, 15))])
+            large_data.append({
+                "key": f"large_key_{i}",
+                "text": text_with_lists,
+                "operation": random.choice(self.operation_types),
+                "options": {"length": "long", "detail_level": "comprehensive"},
+                "expected_size_bytes": len(text_with_lists.encode('utf-8')),
+                "cache_ttl": random.randint(1800, 3600)
+            })
+        
+        # JSON data set (complex objects)
+        json_data = []
+        for i in range(min(30, test_operations // 3)):
+            complex_obj = {
+                "user_id": random.randint(1, 10000),
+                "content": random.choice(self.text_samples),
+                "metadata": {
+                    "timestamp": datetime.now().isoformat(),
+                    "tags": [f"tag_{j}" for j in range(random.randint(1, 5))],
+                    "scores": {op: random.uniform(0.1, 1.0) for op in self.operation_types}
+                },
+                "processing_history": [{
+                    "operation": random.choice(self.operation_types),
+                    "timestamp": datetime.now().isoformat(),
+                    "duration_ms": random.randint(10, 500)
+                } for _ in range(random.randint(1, 3))]
+            }
+            json_text = json.dumps(complex_obj)
+            json_data.append({
+                "key": f"json_key_{i}",
+                "text": json_text,
+                "operation": "qa",  # More complex operation for JSON data
+                "options": {"format": "json", "detail_level": "comprehensive"},
+                "expected_size_bytes": len(json_text.encode('utf-8')),
+                "cache_ttl": random.randint(900, 2700)
+            })
+        
+        # Realistic data generation using sentence-like patterns
+        realistic_data = []
+        sentence_templates = [
+            "The {adjective} {noun} {verb} {adverb} in the {location}.",
+            "During {time_period}, we observed that {subject} {action} {object} with {result}.",
+            "Analysis of {data_type} reveals {finding} which {implication} for {domain}."
+        ]
+        
+        vocab = {
+            "adjective": ["complex", "efficient", "robust", "scalable", "innovative"],
+            "noun": ["system", "algorithm", "process", "framework", "solution"],
+            "verb": ["processes", "analyzes", "transforms", "optimizes", "manages"],
+            "adverb": ["effectively", "rapidly", "consistently", "accurately", "reliably"],
+            "location": ["production environment", "test suite", "cache layer", "data pipeline"],
+            "time_period": ["Q1 2024", "the past month", "recent testing", "initial deployment"],
+            "subject": ["the cache system", "our algorithm", "the benchmark suite"],
+            "action": ["improved performance by", "reduced latency to", "achieved throughput of"],
+            "object": ["25% over baseline", "sub-millisecond levels", "1000+ requests/second"],
+            "result": ["significant improvements", "optimal efficiency", "enhanced reliability"],
+            "data_type": ["performance metrics", "cache statistics", "response times"],
+            "finding": ["consistent patterns", "notable improvements", "optimal configurations"],
+            "implication": ["suggests optimization opportunities", "indicates successful refactoring"],
+            "domain": ["AI applications", "web services", "data processing"]
+        }
+        
+        for i in range(min(25, test_operations // 4)):
+            template = random.choice(sentence_templates)
+            # Generate varied, sentence-like text
+            filled_template = template
+            for placeholder, options in vocab.items():
+                if f"{{{placeholder}}}" in filled_template:
+                    filled_template = filled_template.replace(f"{{{placeholder}}}", random.choice(options))
+            
+            # Create multiple sentences for more realistic content
+            realistic_text = " ".join([filled_template for _ in range(random.randint(2, 5))])
+            
+            realistic_data.append({
+                "key": f"realistic_key_{i}",
+                "text": realistic_text,
+                "operation": random.choice(self.operation_types),
+                "options": {k: random.choice(v) for k, v in self.sample_options.items()},
+                "expected_size_bytes": len(realistic_text.encode('utf-8')),
+                "cache_ttl": random.randint(300, 3600)
+            })
+        
+        return {
+            "small": small_data,
+            "medium": medium_data,
+            "large": large_data,
+            "json": json_data,
+            "realistic": realistic_data
+        }
+
     def generate_basic_operations_data(self, count: int = 100) -> List[Dict[str, Any]]:
         """Generate test data for basic cache operations."""
         import random
         
-        test_data = []
-        for i in range(count):
-            text = random.choice(self.text_samples)
-            operation = random.choice(self.operation_types)
-            options = {k: random.choice(v) for k, v in self.sample_options.items()}
-            
-            test_data.append({
-                "key": f"test_key_{i}",
-                "text": text,
-                "operation": operation,
-                "options": options,
-                "expected_size_bytes": len(text.encode('utf-8')),
-                "cache_ttl": random.randint(300, 3600)
-            })
+        # Use the new varied data generation but flatten for backward compatibility
+        data_sets = self._generate_test_data_sets(count)
         
-        return test_data
+        # Combine all data sets and shuffle
+        all_data = []
+        for data_set in data_sets.values():
+            all_data.extend(data_set)
+        
+        random.shuffle(all_data)
+        
+        # Return the requested count
+        return all_data[:count]
     
     def generate_memory_pressure_data(self, total_size_mb: float = 10.0) -> List[Dict[str, Any]]:
         """Generate large dataset for memory cache pressure testing."""
@@ -575,6 +707,9 @@ class CachePerformanceBenchmark:
         self.warmup_iterations = 10
         self.timeout_seconds = 300  # 5 minute timeout for benchmarks
         
+        # Add operation_types for backward compatibility
+        self.operation_types = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        
     async def benchmark_basic_operations(self, cache: CacheInterface, iterations: int = None) -> BenchmarkResult:
         """
         Benchmark basic cache operations (get/set/delete) with comprehensive timing analysis.
@@ -658,21 +793,33 @@ class CachePerformanceBenchmark:
         
         total_duration = time.time() - start_time
         
-        # Calculate statistics
+        # Calculate statistics with enhanced metrics
         if durations:
             avg_duration = statistics.mean(durations)
             min_duration = min(durations)
             max_duration = max(durations)
-            std_dev = statistics.stdev(durations) if len(durations) > 1 else 0.0
-            p95_duration = statistics.quantiles(durations, n=20)[18] if len(durations) >= 20 else max_duration
-            p99_duration = statistics.quantiles(durations, n=100)[98] if len(durations) >= 100 else max_duration
+            median_duration = statistics.median(durations)
+            std_dev = self._calculate_standard_deviation(durations)
+            p95_duration = self._percentile(durations, 95)
+            p99_duration = self._percentile(durations, 99)
+            
+            # Detect outliers
+            outlier_analysis = self._detect_outliers(durations)
+            
+            # Calculate confidence intervals
+            confidence_intervals = self._calculate_confidence_intervals(durations)
         else:
-            avg_duration = min_duration = max_duration = std_dev = p95_duration = p99_duration = 0.0
+            avg_duration = min_duration = max_duration = median_duration = std_dev = p95_duration = p99_duration = 0.0
+            outlier_analysis = {"outlier_count": 0}
+            confidence_intervals = {"margin_of_error": 0.0}
         
         # Calculate performance metrics
         success_rate = successful_operations / iterations if iterations > 0 else 0.0
         operations_per_second = successful_operations / total_duration if total_duration > 0 else 0.0
         cache_hit_rate = (cache_hits / (cache_hits + cache_misses)) * 100 if (cache_hits + cache_misses) > 0 else None
+        
+        # Calculate test data size
+        total_data_size = sum(len(data["text"].encode('utf-8')) for data in test_data)
         
         result = BenchmarkResult(
             operation_type="basic_operations",
@@ -684,17 +831,28 @@ class CachePerformanceBenchmark:
             max_duration_ms=max_duration,
             p95_duration_ms=p95_duration,
             p99_duration_ms=p99_duration,
+            median_duration_ms=median_duration,
             std_dev_ms=std_dev,
             operations_per_second=operations_per_second,
             success_rate=success_rate,
             memory_usage_mb=peak_memory - initial_memory,
             cache_hit_rate=cache_hit_rate,
+            error_count=iterations - successful_operations,
+            test_data_size_bytes=total_data_size,
+            additional_metrics={
+                "outlier_count": outlier_analysis.get("outlier_count", 0),
+                "confidence_interval_95": confidence_intervals,
+                "data_variety_score": len(set(data["operation"] for data in test_data)) / len(self.operation_types),
+                "avg_text_size_bytes": total_data_size / len(test_data) if test_data else 0
+            },
             metadata={
                 "total_operations": iterations,
                 "successful_operations": successful_operations,
                 "cache_hits": cache_hits,
                 "cache_misses": cache_misses,
-                "warmup_iterations": self.warmup_iterations
+                "warmup_iterations": self.warmup_iterations,
+                "outlier_analysis": outlier_analysis,
+                "statistical_confidence": "95%" if len(durations) >= 30 else "estimated"
             }
         )
         
@@ -1101,16 +1259,63 @@ class CachePerformanceBenchmark:
             if improvement_areas:
                 recommendations.append("Performance improvements detected - monitor in production to validate")
             
+            # Create detailed operation comparisons
+            operation_comparisons = {
+                "avg_duration": {
+                    "baseline_ms": original_result.avg_duration_ms,
+                    "comparison_ms": new_result.avg_duration_ms,
+                    "change_percent": performance_change
+                },
+                "throughput": {
+                    "baseline_ops_sec": original_result.operations_per_second,
+                    "comparison_ops_sec": new_result.operations_per_second,
+                    "change_percent": ops_change
+                },
+                "memory_usage": {
+                    "baseline_mb": original_result.memory_usage_mb,
+                    "comparison_mb": new_result.memory_usage_mb,
+                    "change_percent": memory_change
+                }
+            }
+            
+            # Determine overall performance change
+            overall_change = (performance_change + (-ops_change) + memory_change) / 3  # Average of key metrics
+            
+            # Identify significant differences
+            significant_differences = []
+            if abs(performance_change) > 15:
+                significant_differences.append(f"Response time changed by {performance_change:+.1f}%")
+            if abs(ops_change) > 15:
+                significant_differences.append(f"Throughput changed by {ops_change:+.1f}%")
+            if abs(memory_change) > 25:
+                significant_differences.append(f"Memory usage changed by {memory_change:+.1f}%")
+            
+            # Generate primary recommendation
+            if regression_detected:
+                recommendation = "Performance regression detected - investigate before deployment"
+            elif overall_change < -10:
+                recommendation = "Significant performance improvement - deploy with confidence"
+            elif overall_change > 10:
+                recommendation = "Performance degradation detected - optimization needed"
+            else:
+                recommendation = "Performance characteristics are similar - refactoring successful"
+            
             comparison_result = ComparisonResult(
+                baseline_cache_name=getattr(original_cache, '__class__', {}).get('__name__', 'Original Cache'),
+                comparison_cache_name=getattr(new_cache, '__class__', {}).get('__name__', 'New Cache'),
                 original_cache_results=original_result,
                 new_cache_results=new_result,
+                operation_comparisons=operation_comparisons,
+                overall_performance_change=overall_change,
                 performance_change_percent=performance_change,
                 memory_change_percent=memory_change,
                 operations_per_second_change=ops_change,
                 cache_hit_rate_change=hit_rate_change,
                 regression_detected=regression_detected,
+                significant_differences=significant_differences,
                 improvement_areas=improvement_areas,
                 degradation_areas=degradation_areas,
+                recommendation=recommendation,
                 recommendations=recommendations
             )
             
@@ -1120,6 +1325,253 @@ class CachePerformanceBenchmark:
         except Exception as e:
             logger.error(f"Cache comparison failed: {e}")
             raise
+
+    async def compare_caches(self, caches: Dict[str, CacheInterface], test_iterations: int = None) -> Dict[str, Any]:
+        """
+        Compare performance between multiple cache implementations.
+        
+        This method runs identical benchmarks on all provided cache implementations
+        and provides a comprehensive comparison matrix with performance rankings.
+        
+        Args:
+            caches: Dictionary of cache name -> cache implementation
+            test_iterations: Number of test iterations for comparison (default: 100)
+        
+        Returns:
+            Dict containing comparison matrix, rankings, and recommendations
+        """
+        test_iterations = test_iterations or self.default_iterations
+        
+        if len(caches) < 2:
+            raise ValueError("Need at least 2 caches for comparison")
+        
+        logger.info(f"Starting multi-cache comparison with {len(caches)} caches, {test_iterations} iterations each")
+        
+        # Benchmark all caches
+        cache_results = {}
+        
+        for cache_name, cache in caches.items():
+            try:
+                logger.info(f"Benchmarking {cache_name}...")
+                
+                # Ensure cache is in clean state
+                if hasattr(cache, 'clear'):
+                    await cache.clear()
+                
+                result = await self.benchmark_basic_operations(cache, test_iterations)
+                cache_results[cache_name] = result
+                
+                # Wait between benchmarks to avoid interference
+                await asyncio.sleep(1)
+                
+            except Exception as e:
+                logger.error(f"Benchmarking {cache_name} failed: {e}")
+                continue
+        
+        if len(cache_results) < 2:
+            raise RuntimeError("Not enough successful cache benchmarks for comparison")
+        
+        # Create comparison matrix
+        comparison_matrix = {}
+        
+        for metric in ["avg_duration_ms", "operations_per_second", "memory_usage_mb", "success_rate"]:
+            comparison_matrix[metric] = {}
+            
+            for cache_name, result in cache_results.items():
+                comparison_matrix[metric][cache_name] = getattr(result, metric)
+        
+        # Calculate performance rankings
+        rankings = {
+            "fastest_response": min(cache_results.items(), key=lambda x: x[1].avg_duration_ms),
+            "highest_throughput": max(cache_results.items(), key=lambda x: x[1].operations_per_second),
+            "most_memory_efficient": min(cache_results.items(), key=lambda x: x[1].memory_usage_mb),
+            "most_reliable": max(cache_results.items(), key=lambda x: x[1].success_rate)
+        }
+        
+        # Calculate relative performance scores
+        baseline_name, baseline_result = min(cache_results.items(), key=lambda x: x[1].avg_duration_ms)
+        
+        relative_performance = {}
+        for cache_name, result in cache_results.items():
+            score = 0
+            
+            # Response time score (lower is better)
+            response_ratio = baseline_result.avg_duration_ms / result.avg_duration_ms
+            score += response_ratio * 40  # 40% weight
+            
+            # Throughput score (higher is better) 
+            throughput_ratio = result.operations_per_second / baseline_result.operations_per_second
+            score += throughput_ratio * 30  # 30% weight
+            
+            # Memory efficiency score (lower is better)
+            if baseline_result.memory_usage_mb > 0:
+                memory_ratio = baseline_result.memory_usage_mb / max(result.memory_usage_mb, 0.1)
+                score += memory_ratio * 20  # 20% weight
+            else:
+                score += 20  # Full score if no memory usage
+            
+            # Reliability score
+            reliability_ratio = result.success_rate / baseline_result.success_rate
+            score += reliability_ratio * 10  # 10% weight
+            
+            relative_performance[cache_name] = {
+                "overall_score": score,
+                "response_time_vs_fastest": (result.avg_duration_ms / baseline_result.avg_duration_ms - 1) * 100,
+                "throughput_vs_fastest": (result.operations_per_second / baseline_result.operations_per_second - 1) * 100
+            }
+        
+        # Generate recommendations
+        recommendations = []
+        
+        # Best overall performer
+        best_overall = max(relative_performance.items(), key=lambda x: x[1]["overall_score"])
+        recommendations.append(f"Best overall performance: {best_overall[0]} (score: {best_overall[1]['overall_score']:.1f})")
+        
+        # Specific use case recommendations
+        if rankings["fastest_response"][0] != rankings["highest_throughput"][0]:
+            recommendations.append(
+                f"For low latency: use {rankings['fastest_response'][0]} "
+                f"({rankings['fastest_response'][1].avg_duration_ms:.2f}ms avg)"
+            )
+            recommendations.append(
+                f"For high throughput: use {rankings['highest_throughput'][0]} "
+                f"({rankings['highest_throughput'][1].operations_per_second:.0f} ops/sec)"
+            )
+        
+        # Memory efficiency recommendation
+        if rankings["most_memory_efficient"][1].memory_usage_mb < 10:
+            recommendations.append(
+                f"For memory-constrained environments: use {rankings['most_memory_efficient'][0]} "
+                f"({rankings['most_memory_efficient'][1].memory_usage_mb:.2f}MB)"
+            )
+        
+        # Detect significant performance differences
+        performance_spread = max(r.avg_duration_ms for r in cache_results.values()) / min(r.avg_duration_ms for r in cache_results.values())
+        if performance_spread > 2:
+            recommendations.append(f"Significant performance variation detected (spread: {performance_spread:.1f}x) - choose carefully")
+        
+        return {
+            "cache_results": {name: result.to_dict() for name, result in cache_results.items()},
+            "comparison_matrix": comparison_matrix,
+            "rankings": {
+                k: {"cache_name": v[0], "value": getattr(v[1], k.split("_")[-1] if "_" in k else "avg_duration_ms")}
+                for k, v in rankings.items()
+            },
+            "relative_performance": relative_performance,
+            "recommendations": recommendations,
+            "baseline_cache": baseline_name,
+            "test_config": {
+                "iterations_per_cache": test_iterations,
+                "caches_tested": list(caches.keys()),
+                "total_operations": test_iterations * len(caches)
+            }
+        }
+
+    def _percentile(self, data: List[float], percentile: float) -> float:
+        """Calculate percentile for a list of values."""
+        if not data:
+            return 0.0
+        
+        sorted_data = sorted(data)
+        k = (len(sorted_data) - 1) * (percentile / 100.0)
+        f = int(k)
+        c = k - f
+        
+        if f == len(sorted_data) - 1:
+            return sorted_data[f]
+        else:
+            return sorted_data[f] * (1 - c) + sorted_data[f + 1] * c
+    
+    def _get_memory_usage(self) -> Dict[str, float]:
+        """Get comprehensive memory usage information."""
+        memory_info = {"process_mb": 0.0, "available_mb": 0.0, "total_mb": 0.0}
+        
+        try:
+            import psutil
+            
+            # Process memory
+            process = psutil.Process()
+            memory_info["process_mb"] = process.memory_info().rss / 1024 / 1024
+            
+            # System memory
+            vm = psutil.virtual_memory()
+            memory_info["available_mb"] = vm.available / 1024 / 1024
+            memory_info["total_mb"] = vm.total / 1024 / 1024
+            memory_info["percent_used"] = vm.percent
+            
+        except ImportError:
+            # Fallback for process memory only
+            memory_info["process_mb"] = self._get_process_memory_mb()
+        except Exception as e:
+            logger.debug(f"Could not get comprehensive memory usage: {e}")
+        
+        return memory_info
+    
+    def _calculate_standard_deviation(self, data: List[float]) -> float:
+        """Calculate standard deviation with outlier detection."""
+        if len(data) < 2:
+            return 0.0
+        
+        try:
+            return statistics.stdev(data)
+        except statistics.StatisticsError:
+            return 0.0
+    
+    def _detect_outliers(self, data: List[float]) -> Dict[str, Any]:
+        """Detect outliers using IQR method."""
+        if len(data) < 4:
+            return {"outliers": [], "outlier_count": 0, "clean_data": data}
+        
+        sorted_data = sorted(data)
+        q1 = self._percentile(sorted_data, 25)
+        q3 = self._percentile(sorted_data, 75)
+        iqr = q3 - q1
+        
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        
+        outliers = [x for x in data if x < lower_bound or x > upper_bound]
+        clean_data = [x for x in data if lower_bound <= x <= upper_bound]
+        
+        return {
+            "outliers": outliers,
+            "outlier_count": len(outliers),
+            "clean_data": clean_data,
+            "lower_bound": lower_bound,
+            "upper_bound": upper_bound,
+            "iqr": iqr
+        }
+    
+    def _calculate_confidence_intervals(self, data: List[float], confidence: float = 0.95) -> Dict[str, float]:
+        """Calculate confidence intervals for mean."""
+        if len(data) < 2:
+            return {"lower": 0.0, "upper": 0.0, "margin_of_error": 0.0}
+        
+        try:
+            import math
+            
+            mean = statistics.mean(data)
+            stdev = statistics.stdev(data)
+            n = len(data)
+            
+            # Use t-distribution for small samples, normal for large
+            if n >= 30:
+                # Normal distribution (z-score)
+                z_score = 1.96 if confidence == 0.95 else 2.576  # 95% or 99%
+                margin_of_error = z_score * (stdev / math.sqrt(n))
+            else:
+                # t-distribution (simplified - using approximation)
+                t_score = 2.0 + (0.3 / n)  # Rough approximation for small samples
+                margin_of_error = t_score * (stdev / math.sqrt(n))
+            
+            return {
+                "lower": mean - margin_of_error,
+                "upper": mean + margin_of_error,
+                "margin_of_error": margin_of_error
+            }
+        except Exception as e:
+            logger.debug(f"Could not calculate confidence intervals: {e}")
+            return {"lower": 0.0, "upper": 0.0, "margin_of_error": 0.0}
 
     def _get_process_memory_mb(self) -> float:
         """Get current process memory usage in MB."""
@@ -1223,6 +1675,549 @@ class CachePerformanceBenchmark:
         
         logger.info(f"Benchmark suite completed: {len(results)}/{total_benchmarks} passed, grade: {performance_grade}")
         return suite
+
+    async def benchmark_factory_creation(self, iterations: int = 50) -> BenchmarkResult:
+        """
+        Benchmark factory method performance for cache creation.
+        
+        Tests the performance of different CacheFactory methods to ensure
+        factory overhead is minimal and creation times are acceptable.
+        
+        Args:
+            iterations: Number of cache creation iterations per factory method
+        
+        Returns:
+            BenchmarkResult: Factory creation performance metrics
+        """
+        logger.info(f"Starting factory creation benchmark with {iterations} iterations per method")
+        
+        # Track memory usage
+        initial_memory = self._get_process_memory_mb()
+        peak_memory = initial_memory
+        
+        # Performance tracking
+        durations = []
+        successful_operations = 0
+        factory_methods_tested = []
+        
+        start_time = time.time()
+        
+        # Test for_web_app() factory performance
+        logger.debug("Testing for_web_app() factory method...")
+        for i in range(iterations):
+            operation_start = time.perf_counter()
+            
+            try:
+                cache = CacheFactory.for_web_app(
+                    redis_url=None,  # Use fallback
+                    fail_on_connection_error=False
+                )
+                
+                operation_end = time.perf_counter()
+                operation_duration = (operation_end - operation_start) * 1000
+                durations.append(operation_duration)
+                successful_operations += 1
+                
+                # Clean up
+                if hasattr(cache, 'disconnect'):
+                    await cache.disconnect()
+                
+                # Track memory usage
+                current_memory = self._get_process_memory_mb()
+                peak_memory = max(peak_memory, current_memory)
+                
+            except Exception as e:
+                logger.warning(f"for_web_app() creation {i} failed: {e}")
+                operation_end = time.perf_counter()
+                durations.append((operation_end - operation_start) * 1000)
+        
+        factory_methods_tested.append("for_web_app")
+        
+        # Test for_ai_app() factory performance
+        logger.debug("Testing for_ai_app() factory method...")
+        for i in range(iterations):
+            operation_start = time.perf_counter()
+            
+            try:
+                cache = CacheFactory.for_ai_app(
+                    redis_url=None,  # Use fallback
+                    fail_on_connection_error=False
+                )
+                
+                operation_end = time.perf_counter()
+                operation_duration = (operation_end - operation_start) * 1000
+                durations.append(operation_duration)
+                successful_operations += 1
+                
+                # Clean up
+                if hasattr(cache, 'disconnect'):
+                    await cache.disconnect()
+                
+                # Track memory usage
+                current_memory = self._get_process_memory_mb()
+                peak_memory = max(peak_memory, current_memory)
+                
+            except Exception as e:
+                logger.warning(f"for_ai_app() creation {i} failed: {e}")
+                operation_end = time.perf_counter()
+                durations.append((operation_end - operation_start) * 1000)
+        
+        factory_methods_tested.append("for_ai_app")
+        
+        # Test for_testing() factory performance
+        logger.debug("Testing for_testing() factory method...")
+        for i in range(iterations):
+            operation_start = time.perf_counter()
+            
+            try:
+                cache = CacheFactory.for_testing(cache_type="memory")
+                
+                operation_end = time.perf_counter()
+                operation_duration = (operation_end - operation_start) * 1000
+                durations.append(operation_duration)
+                successful_operations += 1
+                
+                # Clean up
+                if hasattr(cache, 'disconnect'):
+                    await cache.disconnect()
+                
+                # Track memory usage
+                current_memory = self._get_process_memory_mb()
+                peak_memory = max(peak_memory, current_memory)
+                
+            except Exception as e:
+                logger.warning(f"for_testing() creation {i} failed: {e}")
+                operation_end = time.perf_counter()
+                durations.append((operation_end - operation_start) * 1000)
+        
+        factory_methods_tested.append("for_testing")
+        
+        # Test create_cache_from_config() factory performance
+        logger.debug("Testing create_cache_from_config() factory method...")
+        for i in range(iterations):
+            operation_start = time.perf_counter()
+            
+            try:
+                # Create a simple config for testing
+                config = CacheConfigBuilder().for_environment("testing").build()
+                cache = CacheFactory.create_cache_from_config(
+                    config,
+                    fail_on_connection_error=False
+                )
+                
+                operation_end = time.perf_counter()
+                operation_duration = (operation_end - operation_start) * 1000
+                durations.append(operation_duration)
+                successful_operations += 1
+                
+                # Clean up
+                if hasattr(cache, 'disconnect'):
+                    await cache.disconnect()
+                
+                # Track memory usage
+                current_memory = self._get_process_memory_mb()
+                peak_memory = max(peak_memory, current_memory)
+                
+            except Exception as e:
+                logger.warning(f"create_cache_from_config() creation {i} failed: {e}")
+                operation_end = time.perf_counter()
+                durations.append((operation_end - operation_start) * 1000)
+        
+        factory_methods_tested.append("create_cache_from_config")
+        
+        total_duration = time.time() - start_time
+        
+        # Calculate statistics
+        if durations:
+            avg_duration = statistics.mean(durations)
+            min_duration = min(durations)
+            max_duration = max(durations)
+            median_duration = statistics.median(durations)
+            std_dev = self._calculate_standard_deviation(durations)
+            p95_duration = self._percentile(durations, 95)
+            p99_duration = self._percentile(durations, 99)
+        else:
+            avg_duration = min_duration = max_duration = median_duration = std_dev = p95_duration = p99_duration = 0.0
+        
+        # Calculate performance metrics
+        total_iterations = iterations * len(factory_methods_tested)
+        success_rate = successful_operations / total_iterations if total_iterations > 0 else 0.0
+        operations_per_second = successful_operations / total_duration if total_duration > 0 else 0.0
+        
+        result = BenchmarkResult(
+            operation_type="factory_creation",
+            duration_ms=total_duration * 1000,
+            memory_peak_mb=peak_memory,
+            iterations=total_iterations,
+            avg_duration_ms=avg_duration,
+            min_duration_ms=min_duration,
+            max_duration_ms=max_duration,
+            p95_duration_ms=p95_duration,
+            p99_duration_ms=p99_duration,
+            median_duration_ms=median_duration,
+            std_dev_ms=std_dev,
+            operations_per_second=operations_per_second,
+            success_rate=success_rate,
+            memory_usage_mb=peak_memory - initial_memory,
+            error_count=total_iterations - successful_operations,
+            test_data_size_bytes=0,  # No data size for factory creation
+            additional_metrics={
+                "factory_methods_tested": factory_methods_tested,
+                "iterations_per_method": iterations,
+                "creation_overhead_acceptable": avg_duration < 10.0  # Less than 10ms is acceptable
+            },
+            metadata={
+                "factory_methods": factory_methods_tested,
+                "successful_operations": successful_operations,
+                "total_iterations": total_iterations,
+                "avg_creation_time_per_method": avg_duration
+            }
+        )
+        
+        logger.info(f"Factory creation benchmark completed: {avg_duration:.2f}ms avg creation time")
+        return result
+
+    async def run_environment_benchmarks(self, test_iterations: int = 50) -> Dict[str, BenchmarkResult]:
+        """
+        Run benchmarks across different environment configurations.
+        
+        Tests cache performance using different environment presets to validate
+        configuration impact on performance and help with environment tuning.
+        
+        Args:
+            test_iterations: Number of iterations for each environment test
+        
+        Returns:
+            Dict[str, BenchmarkResult]: Environment-specific benchmark results
+        """
+        logger.info(f"Starting environment benchmarks with {test_iterations} iterations each")
+        
+        environment_results = {}
+        
+        # Test development environment
+        try:
+            logger.info("Testing development environment configuration...")
+            dev_config = EnvironmentPresets.development()
+            dev_cache = CacheFactory.create_cache_from_config(dev_config, fail_on_connection_error=False)
+            
+            dev_result = await self.benchmark_basic_operations(dev_cache, test_iterations)
+            dev_result.operation_type = "development_environment"
+            dev_result.metadata.update({
+                "environment": "development",
+                "preset_used": "EnvironmentPresets.development()",
+                "config_summary": {
+                    "default_ttl": dev_config.default_ttl,
+                    "memory_cache_size": dev_config.memory_cache_size,
+                    "compression_threshold": dev_config.compression_threshold
+                }
+            })
+            environment_results["development"] = dev_result
+            
+            # Clean up
+            if hasattr(dev_cache, 'disconnect'):
+                await dev_cache.disconnect()
+            
+        except Exception as e:
+            logger.error(f"Development environment benchmark failed: {e}")
+        
+        # Test testing environment
+        try:
+            logger.info("Testing testing environment configuration...")
+            test_config = EnvironmentPresets.testing()
+            test_cache = CacheFactory.create_cache_from_config(test_config, fail_on_connection_error=False)
+            
+            test_result = await self.benchmark_basic_operations(test_cache, test_iterations)
+            test_result.operation_type = "testing_environment"
+            test_result.metadata.update({
+                "environment": "testing",
+                "preset_used": "EnvironmentPresets.testing()",
+                "config_summary": {
+                    "default_ttl": test_config.default_ttl,
+                    "memory_cache_size": test_config.memory_cache_size,
+                    "compression_threshold": test_config.compression_threshold
+                }
+            })
+            environment_results["testing"] = test_result
+            
+            # Clean up
+            if hasattr(test_cache, 'disconnect'):
+                await test_cache.disconnect()
+            
+        except Exception as e:
+            logger.error(f"Testing environment benchmark failed: {e}")
+        
+        # Test production environment
+        try:
+            logger.info("Testing production environment configuration...")
+            prod_config = EnvironmentPresets.production()
+            prod_cache = CacheFactory.create_cache_from_config(prod_config, fail_on_connection_error=False)
+            
+            prod_result = await self.benchmark_basic_operations(prod_cache, test_iterations)
+            prod_result.operation_type = "production_environment"
+            prod_result.metadata.update({
+                "environment": "production",
+                "preset_used": "EnvironmentPresets.production()",
+                "config_summary": {
+                    "default_ttl": prod_config.default_ttl,
+                    "memory_cache_size": prod_config.memory_cache_size,
+                    "compression_threshold": prod_config.compression_threshold
+                }
+            })
+            environment_results["production"] = prod_result
+            
+            # Clean up
+            if hasattr(prod_cache, 'disconnect'):
+                await prod_cache.disconnect()
+            
+        except Exception as e:
+            logger.error(f"Production environment benchmark failed: {e}")
+        
+        # Test AI development environment
+        try:
+            logger.info("Testing AI development environment configuration...")
+            ai_dev_config = EnvironmentPresets.ai_development()
+            ai_dev_cache = CacheFactory.create_cache_from_config(ai_dev_config, fail_on_connection_error=False)
+            
+            ai_dev_result = await self.benchmark_basic_operations(ai_dev_cache, test_iterations)
+            ai_dev_result.operation_type = "ai_development_environment"
+            ai_dev_result.metadata.update({
+                "environment": "ai_development",
+                "preset_used": "EnvironmentPresets.ai_development()",
+                "has_ai_config": ai_dev_config.ai_config is not None,
+                "config_summary": {
+                    "default_ttl": ai_dev_config.default_ttl,
+                    "memory_cache_size": ai_dev_config.memory_cache_size,
+                    "compression_threshold": ai_dev_config.compression_threshold
+                }
+            })
+            environment_results["ai_development"] = ai_dev_result
+            
+            # Clean up
+            if hasattr(ai_dev_cache, 'disconnect'):
+                await ai_dev_cache.disconnect()
+            
+        except Exception as e:
+            logger.error(f"AI development environment benchmark failed: {e}")
+        
+        # Test AI production environment
+        try:
+            logger.info("Testing AI production environment configuration...")
+            ai_prod_config = EnvironmentPresets.ai_production()
+            ai_prod_cache = CacheFactory.create_cache_from_config(ai_prod_config, fail_on_connection_error=False)
+            
+            ai_prod_result = await self.benchmark_basic_operations(ai_prod_cache, test_iterations)
+            ai_prod_result.operation_type = "ai_production_environment"
+            ai_prod_result.metadata.update({
+                "environment": "ai_production",
+                "preset_used": "EnvironmentPresets.ai_production()",
+                "has_ai_config": ai_prod_config.ai_config is not None,
+                "config_summary": {
+                    "default_ttl": ai_prod_config.default_ttl,
+                    "memory_cache_size": ai_prod_config.memory_cache_size,
+                    "compression_threshold": ai_prod_config.compression_threshold
+                }
+            })
+            environment_results["ai_production"] = ai_prod_result
+            
+            # Clean up
+            if hasattr(ai_prod_cache, 'disconnect'):
+                await ai_prod_cache.disconnect()
+            
+        except Exception as e:
+            logger.error(f"AI production environment benchmark failed: {e}")
+        
+        logger.info(f"Environment benchmarks completed: {len(environment_results)} environments tested")
+        return environment_results
+
+    def compare_environment_performance(self, environment_results: Dict[str, BenchmarkResult]) -> Dict[str, Any]:
+        """
+        Compare performance across different environment configurations.
+        
+        Args:
+            environment_results: Results from run_environment_benchmarks()
+        
+        Returns:
+            Dict containing environment performance comparison and recommendations
+        """
+        if len(environment_results) < 2:
+            return {"error": "Need at least 2 environment results for comparison"}
+        
+        # Find best and worst performing environments
+        best_env = min(environment_results.items(), key=lambda x: x[1].avg_duration_ms)
+        worst_env = max(environment_results.items(), key=lambda x: x[1].avg_duration_ms)
+        
+        # Calculate relative performance
+        performance_comparison = {}
+        baseline = best_env[1].avg_duration_ms
+        
+        for env_name, result in environment_results.items():
+            performance_comparison[env_name] = {
+                "avg_duration_ms": result.avg_duration_ms,
+                "relative_performance": ((result.avg_duration_ms - baseline) / baseline) * 100 if baseline > 0 else 0,
+                "operations_per_second": result.operations_per_second,
+                "memory_usage_mb": result.memory_usage_mb,
+                "success_rate": result.success_rate
+            }
+        
+        # Generate recommendations
+        recommendations = []
+        
+        if best_env[0] in ["production", "ai_production"]:
+            recommendations.append(f"Production environment ({best_env[0]}) shows optimal performance - good configuration")
+        else:
+            recommendations.append(f"Consider adopting {best_env[0]} configuration settings for better performance")
+        
+        if worst_env[1].avg_duration_ms > best_env[1].avg_duration_ms * 2:
+            recommendations.append(f"{worst_env[0]} environment shows significant performance degradation - review configuration")
+        
+        # Check for memory efficiency
+        memory_efficient = min(environment_results.items(), key=lambda x: x[1].memory_usage_mb)
+        if memory_efficient[1].memory_usage_mb < 10:
+            recommendations.append(f"{memory_efficient[0]} environment is most memory efficient")
+        
+        return {
+            "best_performance": {
+                "environment": best_env[0],
+                "avg_duration_ms": best_env[1].avg_duration_ms,
+                "operations_per_second": best_env[1].operations_per_second
+            },
+            "worst_performance": {
+                "environment": worst_env[0],
+                "avg_duration_ms": worst_env[1].avg_duration_ms,
+                "operations_per_second": worst_env[1].operations_per_second
+            },
+            "performance_comparison": performance_comparison,
+            "recommendations": recommendations
+        }
+
+    def generate_report(self, results: Union[BenchmarkResult, BenchmarkSuite, List[BenchmarkResult]]) -> str:
+        """
+        Generate comprehensive performance report from benchmark results.
+        
+        Args:
+            results: Single result, suite, or list of results to report on
+        
+        Returns:
+            str: Formatted performance report with charts data and recommendations
+        """
+        if isinstance(results, BenchmarkResult):
+            return self._generate_single_result_report(results)
+        elif isinstance(results, BenchmarkSuite):
+            return self.generate_performance_report(results)
+        elif isinstance(results, list):
+            return self._generate_multi_result_report(results)
+        else:
+            return "Invalid results type for report generation"
+    
+    def _generate_single_result_report(self, result: BenchmarkResult) -> str:
+        """Generate report for a single benchmark result."""
+        report_lines = []
+        
+        report_lines.append("=" * 60)
+        report_lines.append(f"SINGLE BENCHMARK REPORT: {result.operation_type.upper()}")
+        report_lines.append("=" * 60)
+        report_lines.append(f"Timestamp: {result.timestamp}")
+        report_lines.append(f"Performance Grade: {result.performance_grade()}")
+        report_lines.append("")
+        
+        # Core metrics
+        report_lines.append("CORE METRICS")
+        report_lines.append("-" * 30)
+        report_lines.append(f"Average Duration: {result.avg_duration_ms:.2f}ms")
+        report_lines.append(f"Median Duration: {result.median_duration_ms:.2f}ms")
+        report_lines.append(f"P95 Duration: {result.p95_duration_ms:.2f}ms")
+        report_lines.append(f"P99 Duration: {result.p99_duration_ms:.2f}ms")
+        report_lines.append(f"Operations/sec: {result.operations_per_second:.0f}")
+        report_lines.append(f"Success Rate: {result.success_rate * 100:.1f}%")
+        report_lines.append(f"Memory Usage: {result.memory_usage_mb:.2f}MB")
+        
+        if result.error_count > 0:
+            report_lines.append(f"Errors: {result.error_count}")
+        
+        if result.cache_hit_rate is not None:
+            report_lines.append(f"Cache Hit Rate: {result.cache_hit_rate:.1f}%")
+        
+        # Additional metrics
+        if result.additional_metrics:
+            report_lines.append("\nADDITIONAL METRICS")
+            report_lines.append("-" * 30)
+            for key, value in result.additional_metrics.items():
+                report_lines.append(f"{key}: {value}")
+        
+        report_lines.append("\n" + "=" * 60)
+        
+        return "\n".join(report_lines)
+    
+    def _generate_multi_result_report(self, results: List[BenchmarkResult]) -> str:
+        """Generate comparative report for multiple benchmark results."""
+        report_lines = []
+        
+        report_lines.append("=" * 80)
+        report_lines.append("MULTI-BENCHMARK COMPARISON REPORT")
+        report_lines.append("=" * 80)
+        report_lines.append(f"Number of Benchmarks: {len(results)}")
+        report_lines.append("")
+        
+        # Summary table
+        report_lines.append("PERFORMANCE SUMMARY")
+        report_lines.append("-" * 80)
+        report_lines.append(f"{'Operation':<25} {'Avg Duration':<15} {'Ops/Sec':<12} {'Success Rate':<12} {'Grade':<10}")
+        report_lines.append("-" * 80)
+        
+        for result in results:
+            report_lines.append(
+                f"{result.operation_type:<25} "
+                f"{result.avg_duration_ms:<15.2f} "
+                f"{result.operations_per_second:<12.0f} "
+                f"{result.success_rate * 100:<12.1f}% "
+                f"{result.performance_grade():<10}"
+            )
+        
+        # Best and worst performers
+        best = min(results, key=lambda x: x.avg_duration_ms)
+        worst = max(results, key=lambda x: x.avg_duration_ms)
+        
+        report_lines.append("\nPERFORMANCE HIGHLIGHTS")
+        report_lines.append("-" * 40)
+        report_lines.append(f"Best Performance: {best.operation_type} ({best.avg_duration_ms:.2f}ms)")
+        report_lines.append(f"Worst Performance: {worst.operation_type} ({worst.avg_duration_ms:.2f}ms)")
+        
+        # Overall statistics
+        avg_duration = sum(r.avg_duration_ms for r in results) / len(results)
+        avg_ops_per_sec = sum(r.operations_per_second for r in results) / len(results)
+        avg_success_rate = sum(r.success_rate for r in results) / len(results) * 100
+        
+        report_lines.append(f"\nOVERALL AVERAGES")
+        report_lines.append("-" * 40)
+        report_lines.append(f"Average Duration: {avg_duration:.2f}ms")
+        report_lines.append(f"Average Throughput: {avg_ops_per_sec:.0f} ops/sec")
+        report_lines.append(f"Average Success Rate: {avg_success_rate:.1f}%")
+        
+        report_lines.append("\n" + "=" * 80)
+        
+        return "\n".join(report_lines)
+
+    def save_results_to_file(self, results: Union[BenchmarkResult, BenchmarkSuite], filename: str) -> None:
+        """Save benchmark results to JSON file."""
+        try:
+            import os
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            
+            # Convert to dict for serialization
+            if isinstance(results, BenchmarkSuite):
+                data = results.to_dict() if hasattr(results, 'to_dict') else asdict(results)
+            else:
+                data = results.to_dict() if hasattr(results, 'to_dict') else asdict(results)
+            
+            with open(filename, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+            
+            logger.info(f"Benchmark results saved to {filename}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save results to {filename}: {e}")
 
     def generate_performance_report(self, suite: BenchmarkSuite) -> str:
         """
@@ -1387,6 +2382,322 @@ class CachePerformanceBenchmark:
             }
         
         return trends
+
+    def create_benchmark_ci_workflow(self) -> Dict[str, Any]:
+        """
+        Generate CI/CD workflow configuration for automated benchmarking.
+        
+        Returns:
+            Dict containing workflow configuration and performance thresholds
+        """
+        workflow_config = {
+            "name": "Cache Performance Benchmarks",
+            "triggers": [
+                "pull_request",
+                "push_to_main",
+                "schedule_nightly"
+            ],
+            "jobs": {
+                "benchmark_cache_performance": {
+                    "steps": [
+                        "checkout_code",
+                        "setup_python",
+                        "install_dependencies", 
+                        "setup_redis_test_instance",
+                        "run_benchmark_suite",
+                        "analyze_performance_regression",
+                        "upload_benchmark_artifacts",
+                        "post_performance_summary"
+                    ],
+                    "performance_thresholds": {
+                        "max_avg_duration_ms": self.thresholds.BASIC_OPERATIONS_AVG_MS,
+                        "min_operations_per_second": 100,
+                        "max_memory_usage_mb": self.thresholds.MEMORY_USAGE_WARNING_MB,
+                        "min_success_rate_percent": self.thresholds.SUCCESS_RATE_WARNING,
+                        "max_regression_percent": self.thresholds.REGRESSION_WARNING_PERCENT
+                    },
+                    "benchmark_commands": [
+                        "python -m pytest tests/infrastructure/cache/test_benchmarks.py::test_ci_benchmark_suite -v",
+                        "python -c 'from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark; import asyncio; asyncio.run(CachePerformanceBenchmark().run_ci_benchmark_suite())'"
+                    ]
+                }
+            },
+            "artifacts": {
+                "benchmark_results": "benchmark_results.json",
+                "performance_report": "performance_report.md",
+                "performance_charts": "performance_charts/"
+            },
+            "notifications": {
+                "on_regression": "team_channel",
+                "on_improvement": "team_channel",
+                "on_failure": "oncall_engineer"
+            }
+        }
+        
+        return workflow_config
+
+    async def run_ci_benchmark_suite(self) -> Dict[str, Any]:
+        """
+        Run optimized benchmark suite for CI/CD environments.
+        
+        This method runs a subset of benchmarks optimized for CI execution time
+        while still providing meaningful performance validation.
+        
+        Returns:
+            Dict containing CI-specific benchmark results and pass/fail status
+        """
+        logger.info("Starting CI benchmark suite (optimized for speed)")
+        
+        ci_results = {
+            "overall_status": "PASS",
+            "benchmark_results": {},
+            "performance_checks": {},
+            "recommendations": [],
+            "execution_time_seconds": 0,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        start_time = time.time()
+        
+        try:
+            # 1. Quick factory creation benchmark
+            logger.info("Running factory creation benchmark...")
+            factory_result = await self.benchmark_factory_creation(iterations=10)  # Reduced for CI
+            ci_results["benchmark_results"]["factory_creation"] = factory_result.to_dict()
+            
+            # Check factory creation threshold
+            if factory_result.avg_duration_ms > 10.0:  # 10ms threshold for CI
+                ci_results["performance_checks"]["factory_creation"] = "FAIL"
+                ci_results["overall_status"] = "FAIL"
+                ci_results["recommendations"].append("Factory creation is too slow for production use")
+            else:
+                ci_results["performance_checks"]["factory_creation"] = "PASS"
+            
+            # 2. Quick basic operations test
+            logger.info("Running basic operations benchmark...")
+            test_cache = CacheFactory.for_testing("memory")
+            basic_result = await self.benchmark_basic_operations(test_cache, iterations=25)  # Reduced for CI
+            ci_results["benchmark_results"]["basic_operations"] = basic_result.to_dict()
+            
+            # Check basic operations thresholds
+            if basic_result.avg_duration_ms > self.thresholds.BASIC_OPERATIONS_AVG_MS:
+                ci_results["performance_checks"]["basic_operations_speed"] = "FAIL"
+                ci_results["overall_status"] = "FAIL"
+                ci_results["recommendations"].append(f"Basic operations exceed {self.thresholds.BASIC_OPERATIONS_AVG_MS}ms threshold")
+            else:
+                ci_results["performance_checks"]["basic_operations_speed"] = "PASS"
+            
+            if basic_result.success_rate < 0.95:
+                ci_results["performance_checks"]["basic_operations_reliability"] = "FAIL"
+                ci_results["overall_status"] = "FAIL"
+                ci_results["recommendations"].append("Basic operations reliability below 95%")
+            else:
+                ci_results["performance_checks"]["basic_operations_reliability"] = "PASS"
+            
+            # 3. Quick environment comparison
+            logger.info("Running environment comparison...")
+            env_results = await self.run_environment_benchmarks(test_iterations=10)  # Reduced for CI
+            ci_results["benchmark_results"]["environments"] = {k: v.to_dict() for k, v in env_results.items()}
+            
+            # Check environment consistency
+            if len(env_results) >= 2:
+                durations = [r.avg_duration_ms for r in env_results.values()]
+                max_duration = max(durations)
+                min_duration = min(durations)
+                variation = (max_duration - min_duration) / min_duration * 100 if min_duration > 0 else 0
+                
+                if variation > 50:  # More than 50% variation between environments
+                    ci_results["performance_checks"]["environment_consistency"] = "WARN"
+                    ci_results["recommendations"].append(f"High variation between environments ({variation:.1f}%)")
+                else:
+                    ci_results["performance_checks"]["environment_consistency"] = "PASS"
+            
+            # Clean up
+            if hasattr(test_cache, 'disconnect'):
+                await test_cache.disconnect()
+            
+        except Exception as e:
+            logger.error(f"CI benchmark suite failed: {e}")
+            ci_results["overall_status"] = "ERROR"
+            ci_results["error"] = str(e)
+            ci_results["recommendations"].append("Benchmark execution failed - investigate test environment")
+        
+        ci_results["execution_time_seconds"] = time.time() - start_time
+        
+        # Final recommendations based on overall status
+        if ci_results["overall_status"] == "PASS":
+            ci_results["recommendations"].append("All performance checks passed - safe to deploy")
+        elif ci_results["overall_status"] == "FAIL":
+            ci_results["recommendations"].insert(0, "Performance regression detected - review before deployment")
+        
+        logger.info(f"CI benchmark suite completed: {ci_results['overall_status']} ({ci_results['execution_time_seconds']:.1f}s)")
+        
+        # Save results for CI artifacts
+        try:
+            import os
+            results_file = os.path.join(os.getcwd(), "benchmark_results.json")
+            with open(results_file, 'w') as f:
+                json.dump(ci_results, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"Could not save CI results to file: {e}")
+        
+        return ci_results
+
+    def create_performance_badges(self, results: Union[BenchmarkResult, BenchmarkSuite]) -> Dict[str, str]:
+        """
+        Generate performance badge data for README/documentation.
+        
+        Args:
+            results: Benchmark results to create badges from
+        
+        Returns:
+            Dict containing badge configurations for various metrics
+        """
+        badges = {}
+        
+        if isinstance(results, BenchmarkResult):
+            # Single result badges
+            badges["response_time"] = {
+                "label": "Response Time",
+                "message": f"{results.avg_duration_ms:.1f}ms",
+                "color": "green" if results.avg_duration_ms < 25 else "yellow" if results.avg_duration_ms < 50 else "red"
+            }
+            
+            badges["throughput"] = {
+                "label": "Throughput", 
+                "message": f"{results.operations_per_second:.0f} ops/sec",
+                "color": "green" if results.operations_per_second > 500 else "yellow" if results.operations_per_second > 100 else "red"
+            }
+            
+            badges["reliability"] = {
+                "label": "Reliability",
+                "message": f"{results.success_rate * 100:.1f}%",
+                "color": "green" if results.success_rate >= 0.99 else "yellow" if results.success_rate >= 0.95 else "red"
+            }
+            
+        elif isinstance(results, BenchmarkSuite):
+            # Suite-level badges
+            avg_duration = sum(r.avg_duration_ms for r in results.results) / len(results.results) if results.results else 0
+            avg_throughput = sum(r.operations_per_second for r in results.results) / len(results.results) if results.results else 0
+            
+            badges["performance_grade"] = {
+                "label": "Performance",
+                "message": results.performance_grade,
+                "color": "green" if results.performance_grade in ["Excellent", "Good"] else "yellow" if results.performance_grade == "Acceptable" else "red"
+            }
+            
+            badges["test_coverage"] = {
+                "label": "Tests",
+                "message": f"{len(results.results)} benchmarks",
+                "color": "green" if len(results.results) >= 3 else "yellow"
+            }
+            
+            badges["pass_rate"] = {
+                "label": "Pass Rate",
+                "message": f"{results.pass_rate * 100:.0f}%",
+                "color": "green" if results.pass_rate >= 0.9 else "yellow" if results.pass_rate >= 0.7 else "red"
+            }
+        
+        # Convert to shields.io format
+        shield_badges = {}
+        for badge_name, config in badges.items():
+            shield_url = f"https://img.shields.io/badge/{config['label']}-{config['message'].replace(' ', '%20')}-{config['color']}"
+            shield_badges[badge_name] = {
+                "url": shield_url,
+                "markdown": f"![{config['label']}]({shield_url})",
+                "html": f'<img src="{shield_url}" alt="{config["label"]} Badge"/>'
+            }
+        
+        return shield_badges
+
+    def set_performance_thresholds(self, **thresholds) -> None:
+        """
+        Update performance thresholds for CI/CD validation.
+        
+        Args:
+            **thresholds: Threshold values to update (e.g., max_avg_duration_ms=30)
+        """
+        threshold_mapping = {
+            "max_avg_duration_ms": "BASIC_OPERATIONS_AVG_MS",
+            "max_p95_duration_ms": "BASIC_OPERATIONS_P95_MS", 
+            "max_memory_usage_mb": "MEMORY_USAGE_WARNING_MB",
+            "max_regression_percent": "REGRESSION_WARNING_PERCENT",
+            "min_success_rate": "SUCCESS_RATE_WARNING"
+        }
+        
+        for threshold_name, value in thresholds.items():
+            if threshold_name in threshold_mapping:
+                attr_name = threshold_mapping[threshold_name]
+                setattr(self.thresholds, attr_name, value)
+                logger.info(f"Updated threshold {attr_name} to {value}")
+            else:
+                logger.warning(f"Unknown threshold: {threshold_name}")
+
+    def generate_performance_summary_for_ci(self, ci_results: Dict[str, Any]) -> str:
+        """
+        Generate a markdown performance summary for CI/CD posting.
+        
+        Args:
+            ci_results: Results from run_ci_benchmark_suite()
+        
+        Returns:
+            str: Markdown formatted summary for CI posting
+        """
+        status_emoji = "✅" if ci_results["overall_status"] == "PASS" else "❌" if ci_results["overall_status"] == "FAIL" else "⚠️"
+        
+        summary = []
+        summary.append(f"## {status_emoji} Cache Performance Benchmark Results")
+        summary.append(f"**Status:** {ci_results['overall_status']}")
+        summary.append(f"**Execution Time:** {ci_results['execution_time_seconds']:.1f}s")
+        summary.append(f"**Timestamp:** {ci_results['timestamp']}")
+        summary.append("")
+        
+        # Performance checks summary
+        summary.append("### Performance Checks")
+        summary.append("| Check | Status |")
+        summary.append("|-------|--------|") 
+        
+        for check_name, status in ci_results.get("performance_checks", {}).items():
+            check_emoji = "✅" if status == "PASS" else "❌" if status == "FAIL" else "⚠️"
+            summary.append(f"| {check_name.replace('_', ' ').title()} | {check_emoji} {status} |")
+        
+        summary.append("")
+        
+        # Key metrics
+        if "basic_operations" in ci_results.get("benchmark_results", {}):
+            basic_ops = ci_results["benchmark_results"]["basic_operations"]
+            summary.append("### Key Metrics")
+            summary.append(f"- **Average Response Time:** {basic_ops.get('avg_duration_ms', 0):.2f}ms")
+            summary.append(f"- **Throughput:** {basic_ops.get('operations_per_second', 0):.0f} ops/sec")
+            summary.append(f"- **Success Rate:** {basic_ops.get('success_rate', 0) * 100:.1f}%")
+            summary.append(f"- **Memory Usage:** {basic_ops.get('memory_usage_mb', 0):.2f}MB")
+            summary.append("")
+        
+        # Recommendations
+        if ci_results.get("recommendations"):
+            summary.append("### Recommendations")
+            for rec in ci_results["recommendations"]:
+                summary.append(f"- {rec}")
+            summary.append("")
+        
+        # Environment results summary
+        if "environments" in ci_results.get("benchmark_results", {}):
+            summary.append("### Environment Performance")
+            summary.append("| Environment | Avg Duration (ms) | Throughput (ops/sec) |")
+            summary.append("|-------------|-------------------|----------------------|") 
+            
+            for env_name, env_result in ci_results["benchmark_results"]["environments"].items():
+                summary.append(
+                    f"| {env_name.title()} | {env_result.get('avg_duration_ms', 0):.2f} | "
+                    f"{env_result.get('operations_per_second', 0):.0f} |"
+                )
+            summary.append("")
+        
+        # Link to full results
+        summary.append("---")
+        summary.append("📊 [View detailed benchmark results](./benchmark_results.json)")
+        
+        return "\n".join(summary)
 
     def _collect_environment_info(self) -> Dict[str, Any]:
         """Collect environment information for benchmark context."""
