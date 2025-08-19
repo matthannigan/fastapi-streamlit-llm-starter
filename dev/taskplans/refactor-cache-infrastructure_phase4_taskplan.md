@@ -254,20 +254,20 @@ A preset-based cache configuration system where users choose `CACHE_PRESET=devel
 ### Task 4.2: Update High-Impact Test Files (~1,421 lines, 2-3 days)
 **Files requiring significant updates based on test analysis:**
 
-- [ ] **Update `backend/tests/infrastructure/cache/test_factory.py`** (567 lines)
-  - [ ] Add preset-based factory method tests for `for_web_app()`, `for_ai_app()`, `for_testing()`
-  - [ ] Test factory creation with preset configurations vs individual parameters
-  - [ ] Test preset + override parameter combinations in all factory methods
-  - [ ] Test fallback behavior when preset loading fails
-  - [ ] Add tests for `create_cache_from_config()` with preset-based configurations
-  - [ ] Validate cache behavior equivalence with preset vs manual configuration
+- [X] **Update `backend/tests/infrastructure/cache/test_factory.py`** (567 → 902 lines)
+  - [X] Add preset-based factory method tests for `for_web_app()`, `for_ai_app()`, `for_testing()`
+  - [X] Test factory creation with preset configurations vs individual parameters
+  - [X] Test preset + override parameter combinations in all factory methods
+  - [X] Test fallback behavior when preset loading fails
+  - [X] Add tests for `create_cache_from_config()` with preset-based configurations
+  - [X] Validate cache behavior equivalence with preset vs manual configuration
 
-- [ ] **Update `backend/tests/infrastructure/cache/test_ai_config.py`** (854 lines)
-  - [ ] Add preset integration tests to existing `from_env()` tests
-  - [ ] Test environment variable precedence with preset system
-  - [ ] Add preset scenarios to configuration validation tests
-  - [ ] Test preset + AI config combinations and inheritance
-  - [ ] Update existing environment variable tests to work alongside preset system
+- [X] **Update `backend/tests/infrastructure/cache/test_ai_config.py`** (854 → 1,147 lines)
+  - [X] Add preset integration tests to existing `from_env()` tests
+  - [X] Test environment variable precedence with preset system
+  - [X] Add preset scenarios to configuration validation tests
+  - [X] Test preset + AI config combinations and inheritance
+  - [X] Update existing environment variable tests to work alongside preset system
 
 ### Task 4.3: Update Medium-Impact Test Files (~6,659 lines, 1-2 days)
 **Files requiring minor preset test scenario additions:**

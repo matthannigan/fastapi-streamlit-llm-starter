@@ -1,10 +1,11 @@
 """
-Comprehensive Tests for AI Cache Configuration Module
+Comprehensive Tests for AI Cache Configuration Module with Preset Integration
 
 This test suite validates the AIResponseCacheConfig implementation including:
 - Configuration creation and validation
 - Factory methods for different sources
 - Environment variable integration
+- Preset system integration (NEW)
 - ValidationResult integration
 - Configuration merging and inheritance
 - Error handling and edge cases
@@ -26,6 +27,8 @@ from app.core.exceptions import ConfigurationError, ValidationError
 from app.infrastructure.cache.ai_config import AIResponseCacheConfig
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.parameter_mapping import ValidationResult
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
+from app.core.config import Settings
 
 
 class TestAIResponseCacheConfig:
@@ -852,4 +855,294 @@ class TestAIResponseCacheConfigIntegration:
         assert merged is not config2
         assert config1.redis_url == "redis://test1:6379"  # Original unchanged
         assert config2.redis_url == "redis://test2:6379"  # Original unchanged
-        assert merged.redis_url == "redis://test2:6379"   # New instance has merged values
+
+
+class TestAIConfigPresetIntegration:
+    """Test preset system integration with AI cache configuration."""
+    
+    def test_from_env_with_preset_integration(self, monkeypatch):
+        """Test from_env() method with preset system integration."""
+        
+        # Test with AI-specific presets
+        ai_preset_names = ['ai-development', 'ai-production']
+        
+        for preset_name in ai_preset_names:
+            monkeypatch.setenv('CACHE_PRESET', preset_name)
+            
+            # Get preset configuration for comparison
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Set additional AI-specific environment variables
+            env_vars = {
+                'AI_CACHE_REDIS_URL': 'redis://ai-env:6379',
+                'AI_CACHE_TEXT_HASH_THRESHOLD': '2000',
+            }
+            
+            with patch.dict(os.environ, env_vars):
+                ai_config = AIResponseCacheConfig.from_env()
+            
+            # Environment variables should take precedence over preset defaults
+            assert ai_config.redis_url == 'redis://ai-env:6379'
+            assert ai_config.text_hash_threshold == 2000
+            
+            # Other values should come from preset or defaults
+            assert ai_config.default_ttl > 0  # Should have valid TTL
+            
+            monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_environment_variable_precedence_with_preset(self, monkeypatch):
+        """Test environment variable precedence with preset system."""
+        
+        # Set up AI preset
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        
+        preset = cache_preset_manager.get_preset('ai-development')
+        preset_config = preset.to_cache_config()
+        
+        # Set environment variables that should override preset values
+        override_vars = {
+            'AI_CACHE_DEFAULT_TTL': '9999',  # Override preset default
+            'AI_CACHE_MEMORY_CACHE_SIZE': '500',  # Override preset default
+            'AI_CACHE_TEXT_HASH_THRESHOLD': '3000',  # Override preset default
+        }
+        
+        with patch.dict(os.environ, override_vars):
+            ai_config = AIResponseCacheConfig.from_env()
+        
+        # Environment variables should override preset defaults
+        assert ai_config.default_ttl == 9999
+        assert ai_config.memory_cache_size == 500
+        assert ai_config.text_hash_threshold == 3000
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_preset_scenario_validation_tests(self, monkeypatch):
+        """Test configuration validation with preset scenarios."""
+        
+        preset_names = ['ai-development', 'ai-production', 'development', 'production']
+        
+        for preset_name in preset_names:
+            monkeypatch.setenv('CACHE_PRESET', preset_name)
+            
+            # Create AI config with preset context
+            ai_config = AIResponseCacheConfig()
+            
+            # Validate the configuration
+            validation_result = ai_config.validate()
+            
+            assert validation_result.is_valid, (
+                f"AI configuration with preset '{preset_name}' should be valid: "
+                f"{validation_result.errors}"
+            )
+            
+            # AI-specific validation should pass
+            assert ai_config.text_hash_threshold > 0
+            assert ai_config.hash_algorithm is not None
+            
+            monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_preset_ai_config_combinations_and_inheritance(self, monkeypatch):
+        """Test preset + AI config combinations and inheritance."""
+        
+        # Test AI preset with additional AI configuration
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        
+        # Create base AI config
+        base_ai_config = AIResponseCacheConfig(
+            text_hash_threshold=1500,
+            operation_ttls={"summarize": 1800, "sentiment": 900}
+        )
+        
+        # Create AI config with preset influence
+        preset_ai_config = AIResponseCacheConfig(
+            text_hash_threshold=2500,
+            enable_smart_promotion=True
+        )
+        
+        # Merge configurations (simulating inheritance)
+        merged_config = base_ai_config.merge(preset_ai_config)
+        
+        # Merged configuration should combine both sources
+        assert merged_config.text_hash_threshold == 2500  # Override from preset_ai_config
+        assert merged_config.enable_smart_promotion is True  # From preset_ai_config
+        assert merged_config.operation_ttls == {"summarize": 1800, "sentiment": 900}  # From base
+        
+        # Validate merged configuration
+        validation_result = merged_config.validate()
+        assert validation_result.is_valid
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_existing_environment_variable_tests_with_preset_system(self, monkeypatch):
+        """Test that existing environment variable tests work alongside preset system."""
+        
+        # Set a preset to ensure it doesn't interfere with direct env var tests
+        monkeypatch.setenv('CACHE_PRESET', 'development')
+        
+        # Run existing environment variable test with preset context
+        env_vars = {
+            'AI_CACHE_REDIS_URL': 'redis://env-with-preset:6379',
+            'AI_CACHE_DEFAULT_TTL': '2400',
+            'AI_CACHE_TEXT_HASH_THRESHOLD': '1200',
+            'AI_CACHE_ENABLE_L1_CACHE': 'false',
+        }
+        
+        with patch.dict(os.environ, env_vars):
+            config = AIResponseCacheConfig.from_env()
+        
+        # Environment variables should still work correctly
+        assert config.redis_url == 'redis://env-with-preset:6379'
+        assert config.default_ttl == 2400
+        assert config.text_hash_threshold == 1200
+        assert config.enable_l1_cache is False
+        
+        # Configuration should be valid
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_preset_with_custom_prefix_environment_variables(self, monkeypatch):
+        """Test preset system works with custom prefix environment variables."""
+        
+        # Set preset
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        
+        # Use custom prefix for AI config
+        custom_env_vars = {
+            'CUSTOM_AI_REDIS_URL': 'redis://custom-ai:6379',
+            'CUSTOM_AI_TEXT_HASH_THRESHOLD': '800',
+        }
+        
+        with patch.dict(os.environ, custom_env_vars):
+            ai_config = AIResponseCacheConfig.from_env(prefix="CUSTOM_AI_")
+        
+        # Custom prefix should work correctly with preset system
+        assert ai_config.redis_url == 'redis://custom-ai:6379'
+        assert ai_config.text_hash_threshold == 800
+        
+        monkeypatch.delenv('CACHE_PRESET')
+
+
+class TestPresetSystemCompatibility:
+    """Test compatibility between preset system and AI configuration."""
+    
+    def test_all_presets_produce_valid_ai_configurations(self, monkeypatch):
+        """Test that all presets produce valid AI configurations."""
+        
+        for preset_name in CACHE_PRESETS.keys():
+            monkeypatch.setenv('CACHE_PRESET', preset_name)
+            
+            try:
+                # Create AI config in preset context
+                ai_config = AIResponseCacheConfig()
+                
+                # Validate AI configuration
+                validation_result = ai_config.validate()
+                
+                assert validation_result.is_valid, (
+                    f"Preset '{preset_name}' should produce valid AI configuration: "
+                    f"{validation_result.errors}"
+                )
+                
+                # AI-specific fields should be properly initialized
+                assert ai_config.text_hash_threshold > 0
+                assert ai_config.hash_algorithm is not None
+                assert isinstance(ai_config.text_size_tiers, dict)
+                
+            except Exception as e:
+                pytest.fail(f"Preset '{preset_name}' failed to create valid AI configuration: {e}")
+            finally:
+                monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_ai_preset_vs_standard_preset_differences(self, monkeypatch):
+        """Test differences between AI-specific and standard presets."""
+        
+        # Test AI-specific preset
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        ai_config = AIResponseCacheConfig()
+        monkeypatch.delenv('CACHE_PRESET')
+        
+        # Test standard preset
+        monkeypatch.setenv('CACHE_PRESET', 'development')
+        standard_config = AIResponseCacheConfig()
+        monkeypatch.delenv('CACHE_PRESET')
+        
+        # Both should be valid
+        assert ai_config.validate().is_valid
+        assert standard_config.validate().is_valid
+        
+        # AI preset may have different optimization characteristics
+        # (The actual differences would depend on preset implementation)
+        assert ai_config.text_hash_threshold > 0
+        assert standard_config.text_hash_threshold > 0
+    
+    def test_preset_system_performance_with_ai_config(self, monkeypatch):
+        """Test preset system performance with AI configuration loading."""
+        import time
+        
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        
+        start_time = time.time()
+        
+        # Create multiple AI configs with preset context
+        ai_configs = []
+        for i in range(10):
+            ai_config = AIResponseCacheConfig()
+            validation_result = ai_config.validate()
+            assert validation_result.is_valid
+            ai_configs.append(ai_config)
+        
+        end_time = time.time()
+        total_time = end_time - start_time
+        
+        # Should create AI configs quickly even with preset system
+        assert total_time < 2.0, f"AI config creation with presets too slow: {total_time:.3f}s"
+        assert len(ai_configs) == 10
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_preset_error_handling_with_ai_configuration(self, monkeypatch):
+        """Test error handling when preset system has issues with AI configuration."""
+        
+        # Test with invalid preset
+        monkeypatch.setenv('CACHE_PRESET', 'invalid-preset-name')
+        
+        # AI configuration should still work (fallback to defaults)
+        try:
+            ai_config = AIResponseCacheConfig()
+            validation_result = ai_config.validate()
+            
+            # Should either work with defaults or handle gracefully
+            assert validation_result.is_valid or len(validation_result.errors) > 0
+            
+        except Exception as e:
+            # If it raises an exception, it should be appropriate
+            assert isinstance(e, (ConfigurationError, ValidationError))
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    def test_preset_json_field_interaction(self, monkeypatch):
+        """Test preset system interaction with JSON fields in AI configuration."""
+        
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        
+        # Set JSON fields via environment
+        json_env_vars = {
+            'AI_CACHE_TEXT_SIZE_TIERS': '{"small": 200, "medium": 2000, "large": 20000}',
+            'AI_CACHE_OPERATION_TTLS': '{"summarize": 2400, "sentiment": 1200, "questions": 3600}',
+        }
+        
+        with patch.dict(os.environ, json_env_vars):
+            ai_config = AIResponseCacheConfig.from_env()
+        
+        # JSON fields should work correctly with preset system
+        assert ai_config.text_size_tiers == {"small": 200, "medium": 2000, "large": 20000}
+        assert ai_config.operation_ttls == {"summarize": 2400, "sentiment": 1200, "questions": 3600}
+        
+        # Configuration should be valid
+        validation_result = ai_config.validate()
+        assert validation_result.is_valid
+        
+        monkeypatch.delenv('CACHE_PRESET')

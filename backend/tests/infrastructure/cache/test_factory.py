@@ -1,10 +1,10 @@
 """
-Tests for CacheFactory explicit cache instantiation.
+Tests for CacheFactory explicit cache instantiation with preset system integration.
 
 This module provides comprehensive testing for the CacheFactory class that enables
 explicit cache instantiation with deterministic behavior and environment-optimized
-defaults. Tests cover all factory methods, validation logic, error handling, and
-fallback behavior.
+defaults. Tests cover all factory methods, validation logic, error handling, preset
+integration, and fallback behavior.
 
 Test Categories:
     - Factory Initialization Tests
@@ -13,6 +13,7 @@ Test Categories:
     - AI Application Cache Factory Tests  
     - Testing Cache Factory Tests
     - Configuration-Based Cache Factory Tests
+    - Preset-Based Cache Factory Tests (NEW)
     - Error Handling and Fallback Tests
     - Performance and Integration Tests
 """
@@ -27,6 +28,8 @@ from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 from app.infrastructure.cache.redis_ai import AIResponseCache
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
+from app.infrastructure.cache.config import CacheConfig
 
 
 class TestCacheFactoryInitialization:
@@ -566,3 +569,335 @@ class TestFactoryPerformance:
         # Caches should be independent instances
         cache_ids = [id(cache) for cache in caches]
         assert len(set(cache_ids)) == 10  # All unique instances
+
+
+class TestPresetBasedFactoryMethods:
+    """Test preset integration with factory methods."""
+    
+    @pytest.mark.asyncio
+    async def test_for_web_app_with_preset_configuration(self, monkeypatch):
+        """Test for_web_app() with preset configurations."""
+        factory = CacheFactory()
+        
+        # Test with different presets
+        preset_names = ['development', 'production', 'simple']
+        
+        for preset_name in preset_names:
+            monkeypatch.setenv('CACHE_PRESET', preset_name)
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Create cache using factory with preset-based configuration
+            cache = await factory.for_web_app(
+                redis_url="redis://nonexistent:6379",
+                default_ttl=preset_config.default_ttl,
+                max_connections=preset_config.max_connections,
+                fail_on_connection_error=False
+            )
+            
+            assert cache is not None
+            assert isinstance(cache, InMemoryCache)  # Falls back due to connection failure
+            
+            monkeypatch.delenv('CACHE_PRESET')
+    
+    @pytest.mark.asyncio
+    async def test_for_ai_app_with_preset_configuration(self, monkeypatch):
+        """Test for_ai_app() with preset configurations."""
+        factory = CacheFactory()
+        
+        # Test with AI-specific presets
+        ai_preset_names = ['ai-development', 'ai-production']
+        
+        for preset_name in ai_preset_names:
+            monkeypatch.setenv('CACHE_PRESET', preset_name)
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Create cache using factory with preset-based configuration
+            cache = await factory.for_ai_app(
+                redis_url="redis://nonexistent:6379",
+                default_ttl=preset_config.default_ttl,
+                max_connections=preset_config.max_connections,
+                text_hash_threshold=preset_config.ai_config.text_hash_threshold if preset_config.ai_config else 1000,
+                fail_on_connection_error=False
+            )
+            
+            assert cache is not None
+            assert isinstance(cache, InMemoryCache)  # Falls back due to connection failure
+            
+            monkeypatch.delenv('CACHE_PRESET')
+    
+    @pytest.mark.asyncio
+    async def test_for_testing_with_preset_configuration(self, monkeypatch):
+        """Test for_testing() with preset configurations."""
+        factory = CacheFactory()
+        
+        # Test with testing preset
+        monkeypatch.setenv('CACHE_PRESET', 'testing')
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset('testing')
+        preset_config = preset.to_cache_config()
+        
+        # Create cache using factory with preset-based configuration
+        cache = await factory.for_testing(
+            default_ttl=preset_config.default_ttl,
+            l1_cache_size=preset_config.l1_cache_size,
+            use_memory_cache=True  # Force memory cache for testing
+        )
+        
+        assert cache is not None
+        assert isinstance(cache, InMemoryCache)
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    @pytest.mark.asyncio
+    async def test_create_cache_from_config_with_preset(self, monkeypatch):
+        """Test create_cache_from_config() with preset-based configurations."""
+        factory = CacheFactory()
+        
+        # Test with different presets
+        preset_names = ['development', 'production', 'ai-development']
+        
+        for preset_name in preset_names:
+            monkeypatch.setenv('CACHE_PRESET', preset_name)
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Convert to dictionary for factory method
+            config_dict = preset_config.to_dict()
+            
+            # Override redis_url for testing
+            config_dict['redis_url'] = 'redis://nonexistent:6379'
+            
+            # Create cache using factory with preset-based configuration
+            cache = await factory.create_cache_from_config(
+                config_dict,
+                fail_on_connection_error=False
+            )
+            
+            assert cache is not None
+            assert isinstance(cache, InMemoryCache)  # Falls back due to connection failure
+            
+            monkeypatch.delenv('CACHE_PRESET')
+
+
+class TestFactoryWithPresetOverrides:
+    """Test factory methods with preset configurations and parameter overrides."""
+    
+    @pytest.mark.asyncio
+    async def test_preset_with_parameter_overrides(self, monkeypatch):
+        """Test preset + override parameter combinations in factory methods."""
+        factory = CacheFactory()
+        
+        # Set up base preset
+        monkeypatch.setenv('CACHE_PRESET', 'development')
+        
+        preset = cache_preset_manager.get_preset('development')
+        preset_config = preset.to_cache_config()
+        
+        # Test overriding preset defaults with custom parameters
+        custom_ttl = 7200  # Different from preset default
+        custom_connections = 50  # Different from preset default
+        
+        cache = await factory.for_web_app(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=custom_ttl,  # Override preset default
+            max_connections=custom_connections,  # Override preset default
+            fail_on_connection_error=False
+        )
+        
+        assert cache is not None
+        assert isinstance(cache, InMemoryCache)
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    @pytest.mark.asyncio
+    async def test_ai_preset_with_ai_parameter_overrides(self, monkeypatch):
+        """Test AI preset with AI-specific parameter overrides."""
+        factory = CacheFactory()
+        
+        # Set up AI preset
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        
+        preset = cache_preset_manager.get_preset('ai-development')
+        preset_config = preset.to_cache_config()
+        
+        # Test overriding AI-specific parameters
+        custom_threshold = 2000  # Different from preset default
+        custom_operation_ttls = {"summarize": 1800, "sentiment": 900}
+        
+        cache = await factory.for_ai_app(
+            redis_url="redis://nonexistent:6379",
+            text_hash_threshold=custom_threshold,  # Override preset default
+            operation_ttls=custom_operation_ttls,  # Override preset default
+            fail_on_connection_error=False
+        )
+        
+        assert cache is not None
+        assert isinstance(cache, InMemoryCache)
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    @pytest.mark.asyncio
+    async def test_multiple_preset_overrides(self, monkeypatch):
+        """Test multiple parameter overrides with preset base configuration."""
+        factory = CacheFactory()
+        
+        # Set up preset
+        monkeypatch.setenv('CACHE_PRESET', 'production')
+        
+        # Test overriding multiple parameters at once
+        cache = await factory.for_web_app(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=1800,  # Override
+            max_connections=25,  # Override
+            enable_l1_cache=False,  # Override
+            compression_threshold=2000,  # Override
+            fail_on_connection_error=False
+        )
+        
+        assert cache is not None
+        assert isinstance(cache, InMemoryCache)
+        
+        monkeypatch.delenv('CACHE_PRESET')
+
+
+class TestFactoryPresetFallbackBehavior:
+    """Test fallback behavior when preset loading fails."""
+    
+    @pytest.mark.asyncio
+    async def test_fallback_with_invalid_preset(self, monkeypatch):
+        """Test factory fallback behavior when preset loading fails."""
+        factory = CacheFactory()
+        
+        # Set invalid preset name
+        monkeypatch.setenv('CACHE_PRESET', 'nonexistent-preset')
+        
+        # Factory should still work with fallback to default behavior
+        cache = await factory.for_web_app(
+            redis_url="redis://nonexistent:6379",
+            fail_on_connection_error=False
+        )
+        
+        assert cache is not None
+        assert isinstance(cache, InMemoryCache)
+        
+        monkeypatch.delenv('CACHE_PRESET')
+    
+    @pytest.mark.asyncio
+    async def test_fallback_with_corrupted_preset_environment(self, monkeypatch):
+        """Test factory behavior with corrupted preset environment."""
+        factory = CacheFactory()
+        
+        # Set up environment that might cause preset loading issues
+        monkeypatch.setenv('CACHE_PRESET', 'development')
+        monkeypatch.setenv('CACHE_CUSTOM_CONFIG', 'invalid-json')
+        
+        # Factory should handle gracefully and still create cache
+        cache = await factory.for_web_app(
+            redis_url="redis://nonexistent:6379",
+            fail_on_connection_error=False
+        )
+        
+        assert cache is not None
+        assert isinstance(cache, InMemoryCache)
+        
+        monkeypatch.delenv('CACHE_PRESET')
+        monkeypatch.delenv('CACHE_CUSTOM_CONFIG')
+
+
+class TestPresetConfigurationEquivalence:
+    """Test behavior equivalence between preset and manual configuration."""
+    
+    @pytest.mark.asyncio
+    async def test_preset_vs_manual_configuration_equivalence(self, monkeypatch):
+        """Test that preset configuration produces equivalent behavior to manual configuration."""
+        factory = CacheFactory()
+        
+        # Get development preset configuration
+        monkeypatch.setenv('CACHE_PRESET', 'development')
+        preset = cache_preset_manager.get_preset('development')
+        preset_config = preset.to_cache_config()
+        
+        # Create cache using preset-based approach
+        preset_cache = await factory.for_web_app(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl,
+            max_connections=preset_config.max_connections,
+            fail_on_connection_error=False
+        )
+        
+        monkeypatch.delenv('CACHE_PRESET')
+        
+        # Create cache using manual configuration with same values
+        manual_cache = await factory.for_web_app(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl,
+            max_connections=preset_config.max_connections,
+            fail_on_connection_error=False
+        )
+        
+        # Both caches should have equivalent behavior
+        assert type(preset_cache) == type(manual_cache)
+        assert isinstance(preset_cache, InMemoryCache)
+        assert isinstance(manual_cache, InMemoryCache)
+        
+        # Test equivalent operations
+        await preset_cache.set("test_key", "test_value")
+        await manual_cache.set("test_key", "test_value")
+        
+        preset_result = await preset_cache.get("test_key")
+        manual_result = await manual_cache.get("test_key")
+        
+        assert preset_result == manual_result == "test_value"
+    
+    @pytest.mark.asyncio
+    async def test_ai_preset_vs_manual_ai_configuration_equivalence(self, monkeypatch):
+        """Test AI preset configuration equivalence with manual AI configuration."""
+        factory = CacheFactory()
+        
+        # Get AI development preset configuration
+        monkeypatch.setenv('CACHE_PRESET', 'ai-development')
+        preset = cache_preset_manager.get_preset('ai-development')
+        preset_config = preset.to_cache_config()
+        
+        # Create cache using preset-based approach
+        preset_ai_cache = await factory.for_ai_app(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl,
+            text_hash_threshold=preset_config.ai_config.text_hash_threshold if preset_config.ai_config else 1000,
+            fail_on_connection_error=False
+        )
+        
+        monkeypatch.delenv('CACHE_PRESET')
+        
+        # Create cache using manual configuration with same values
+        manual_ai_cache = await factory.for_ai_app(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl,
+            text_hash_threshold=preset_config.ai_config.text_hash_threshold if preset_config.ai_config else 1000,
+            fail_on_connection_error=False
+        )
+        
+        # Both AI caches should have equivalent behavior
+        assert type(preset_ai_cache) == type(manual_ai_cache)
+        assert isinstance(preset_ai_cache, InMemoryCache)
+        assert isinstance(manual_ai_cache, InMemoryCache)
+        
+        # Test equivalent AI operations
+        test_text = "This is a test text for AI cache operations"
+        
+        await preset_ai_cache.set("ai_test", test_text)
+        await manual_ai_cache.set("ai_test", test_text)
+        
+        preset_ai_result = await preset_ai_cache.get("ai_test")
+        manual_ai_result = await manual_ai_cache.get("ai_test")
+        
+        assert preset_ai_result == manual_ai_result == test_text
