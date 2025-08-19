@@ -142,21 +142,21 @@ A preset-based cache configuration system where users choose `CACHE_PRESET=devel
 - [X] **Enhance `.env.cache.simple.template`** (already created) as primary template
 
 ### Task 2.5: Update Configuration Documentation
-- [ ] **Update `docs/guides/infrastructure/REDIS_ENVIRONMENT_VARIABLES.md`**
-  - [ ] Add preset-based configuration section
-  - [ ] Show before/after comparison (28 vars → 3 vars)
-  - [ ] Document override patterns and use cases
-- [ ] **Create `docs/guides/infrastructure/CACHE_PRESETS.md`** (following resilience documentation structure)
-  - [ ] Document each preset with detailed settings
-  - [ ] Explain when to use each preset
-  - [ ] Show override examples for common customizations
-  - [ ] Include troubleshooting guide
+- [X] **Update `docs/guides/infrastructure/REDIS_ENVIRONMENT_VARIABLES.md`**
+  - [X] Add preset-based configuration section
+  - [X] Show before/after comparison (28 vars → 3 vars)
+  - [X] Document override patterns and use cases
+- [X] **Create `docs/guides/infrastructure/CACHE_PRESETS.md`** (following resilience documentation structure)
+  - [X] Document each preset with detailed settings
+  - [X] Explain when to use each preset
+  - [X] Show override examples for common customizations
+  - [X] Include troubleshooting guide
 
-### Task 2.6: Update Environment Variable References
-- [ ] Update all documentation references to use preset approach
-- [ ] Update examples in code comments and docstrings
-- [ ] Update README files to show simplified configuration
-- [ ] Update FastAPI integration examples to use presets
+### Task 2.6: Update Environment Variable References  
+- [X] Update all documentation references to use preset approach
+- [X] Update examples in code comments and docstrings
+- [X] Update README files to show simplified configuration
+- [X] Update FastAPI integration examples to use presets
 
 ---
 
@@ -184,7 +184,7 @@ A preset-based cache configuration system where users choose `CACHE_PRESET=devel
 - [ ] Implement `EnvironmentPresets.ai_production()` if not exists
   - [ ] Combine production settings with optimized AI configurations
   - [ ] AI-specific performance tuning
-- [ ] Add `EnvironmentPresets.minimal()` for lightweight deployments
+- [ ] Add `EnvironmentPresets.simple()` for lightweight deployments
   - [ ] Minimal memory usage and features
   - [ ] Suitable for resource-constrained environments
 

@@ -270,6 +270,23 @@ CACHE_PRESETS = {
         ai_optimizations={}
     ),
     
+    "minimal": CachePreset(
+        name="Minimal",
+        description="Ultra-lightweight caching for resource-constrained environments",
+        strategy=CacheStrategy.FAST,
+        default_ttl=900,     # 15 minutes - longer than disabled but still short
+        max_connections=2,   # Very minimal connection pool
+        connection_timeout=3, # Short timeout to avoid hanging
+        memory_cache_size=25, # Small but functional memory cache
+        compression_threshold=5000,  # High threshold, minimal compression usage
+        compression_level=1,  # Fastest compression level
+        enable_ai_cache=False, # No AI features to save resources
+        enable_monitoring=False, # Minimal monitoring to save overhead
+        log_level="ERROR",   # Only log errors to reduce I/O
+        environment_contexts=["minimal", "embedded", "iot", "container", "serverless"],
+        ai_optimizations={}
+    ),
+    
     "simple": CachePreset(
         name="Simple",
         description="Basic cache configuration suitable for most use cases",

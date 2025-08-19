@@ -695,6 +695,42 @@ class EnvironmentPresets:
     """
     
     @staticmethod
+    def disabled():
+        """
+        Cache completely disabled, no Redis connection, memory-only fallback.
+        
+        Returns:
+            CacheConfig with no caching
+        """
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("disabled")
+        return preset.to_cache_config()
+    
+    @staticmethod
+    def minimal():
+        """
+        Ultra-lightweight caching for resource-constrained environments.
+        
+        Returns:
+            CacheConfig optimized for minimal caching
+        """
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("minimal")
+        return preset.to_cache_config()
+    
+    @staticmethod
+    def simple():
+        """
+        Simple cache preset with balanced caching and typical expiration.
+        
+        Returns:
+            CacheConfig suitable for most use cases
+        """
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("simple")
+        return preset.to_cache_config()
+    
+    @staticmethod
     def development():
         """
         Development environment preset with balanced performance and debugging.
@@ -782,7 +818,7 @@ class EnvironmentPresets:
         return cache_preset_manager.get_preset_details(preset_name)
     
     @staticmethod
-    def recommend_preset(environment: str = None) -> str:
+    def recommend_preset(environment: Optional[str] = None) -> str:
         """
         Recommend appropriate preset for given environment.
         

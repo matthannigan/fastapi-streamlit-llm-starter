@@ -1,10 +1,34 @@
 ---
-sidebar_label: Cache Usage Guide
+sidebar_label: Cache Usage Guide  
 ---
 
-# Cache Infrastructure Usage Guide
+# Cache Infrastructure Usage Guide (Updated for Phase 4 Preset System)
 
-A comprehensive guide to using the Cache Infrastructure Service effectively across different application types, environments, and scenarios. This guide provides practical patterns for cache selection, configuration, optimization, and troubleshooting.
+A comprehensive guide to using the Phase 4 preset-based Cache Infrastructure Service that reduces configuration complexity from 28+ environment variables to 1-4 variables. This guide provides practical patterns for preset selection, configuration, optimization, and troubleshooting.
+
+> **🚀 NEW in Phase 4**: The cache system now uses `CACHE_PRESET` for simplified configuration, reducing 28+ environment variables to 1-4 variables. This follows the successful pattern from the resilience system.
+
+## Quick Start with Presets
+
+### Simple Configuration (Recommended)
+```bash
+# NEW: Preset-based configuration (replaces 28+ CACHE_* variables)
+CACHE_PRESET=development                    # Choose preset for your use case
+CACHE_REDIS_URL=redis://localhost:6379     # Essential Redis connection override
+ENABLE_AI_CACHE=true                        # AI features toggle
+
+# Available presets:
+# disabled, minimal, simple, development, production, ai-development, ai-production
+```
+
+### Preset Selection by Use Case
+| Application Type | Development | Production | 
+|------------------|-------------|------------|
+| **Simple Web App** | `simple` or `development` | `production` |
+| **AI Applications** | `ai-development` | `ai-production` |
+| **Microservices** | `minimal` or `simple` | `production` |
+| **Resource-Constrained** | `minimal` | `minimal` |
+| **Testing/Debug** | `disabled` or `minimal` | N/A |
 
 ## Table of Contents
 

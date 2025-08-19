@@ -2,9 +2,122 @@
 
 ## Overview
 
-The cache infrastructure currently uses multiple Redis-related environment variables that serve different purposes. This guide clarifies the differences, usage patterns, and consolidation strategy.
+The cache infrastructure has been simplified through a **preset-based configuration system** that reduces 28+ environment variables to 1-4 variables. This guide explains the new preset approach alongside legacy variable usage patterns.
 
-## Current Environment Variables
+> **🚀 New in Phase 4**: The cache system now uses `CACHE_PRESET` for simplified configuration, following the successful pattern from the resilience system. This reduces configuration complexity by 96% (28+ variables → 1-4 variables).
+
+## Quick Start (Preset-Based Configuration)
+
+### Simple Configuration (Recommended)
+```bash
+# NEW WAY: Preset-based (1-4 variables)
+CACHE_PRESET=development                    # Choose your preset
+CACHE_REDIS_URL=redis://localhost:6379     # Redis connection override
+ENABLE_AI_CACHE=true                        # AI features toggle
+```
+
+### Available Presets
+- **`disabled`**: Cache completely disabled, memory-only fallback
+- **`minimal`**: Ultra-lightweight caching for resource-constrained environments
+- **`simple`**: Basic cache configuration suitable for most use cases
+- **`development`**: Fast-feedback configuration optimized for development speed
+- **`production`**: High-performance configuration for production workloads
+- **`ai-development`**: AI-optimized configuration for development with text processing
+- **`ai-production`**: AI-optimized configuration for production with advanced text processing
+
+### Before/After Comparison
+
+**OLD WAY (28+ environment variables)**:
+```bash
+CACHE_REDIS_URL=redis://localhost:6379
+CACHE_DEFAULT_TTL=1800  
+CACHE_MEMORY_CACHE_SIZE=200
+CACHE_COMPRESSION_THRESHOLD=2000
+CACHE_COMPRESSION_LEVEL=4
+CACHE_TEXT_HASH_THRESHOLD=1000
+CACHE_HASH_ALGORITHM=sha256
+CACHE_MAX_TEXT_LENGTH=50000
+CACHE_ENABLE_SMART_PROMOTION=true
+CACHE_OPERATION_TTLS={"summarize": 3600, "sentiment": 1800}
+CACHE_TEXT_SIZE_TIERS={"small": 1000, "medium": 5000}
+CACHE_USE_TLS=false
+CACHE_MAX_CONNECTIONS=50
+CACHE_CONNECTION_TIMEOUT=5
+CACHE_SOCKET_TIMEOUT=5
+CACHE_MAX_BATCH_SIZE=100
+CACHE_ENABLE_MONITORING=true
+CACHE_LOG_LEVEL=INFO
+HEALTH_CHECK_CACHE_TIMEOUT_MS=3000
+ENABLE_AI_CACHE=true
+# ... plus 6+ more security variables
+```
+
+**NEW WAY (1-4 environment variables)**:
+```bash
+CACHE_PRESET=development                    # Replaces most CACHE_* variables
+CACHE_REDIS_URL=redis://localhost:6379     # Essential override
+ENABLE_AI_CACHE=true                        # Feature toggle
+CACHE_CUSTOM_CONFIG='{"memory_cache_size": 500}'  # Advanced overrides (optional)
+```
+
+**Result**: 96% reduction in configuration complexity!
+
+## Preset Override Patterns
+
+### Common Override Scenarios
+
+#### Scenario 1: Different Redis for Cache vs General App
+```bash
+# General app Redis (rate limiting, sessions)
+REDIS_URL=redis://general-redis:6379
+
+# High-performance cache Redis  
+CACHE_PRESET=production
+CACHE_REDIS_URL=redis://cache-redis:6379
+ENABLE_AI_CACHE=true
+```
+
+#### Scenario 2: Development with Custom Settings
+```bash
+# Development preset with custom memory size
+CACHE_PRESET=development
+CACHE_REDIS_URL=redis://localhost:6379
+CACHE_CUSTOM_CONFIG='{"memory_cache_size": 200, "default_ttl": 900}'
+```
+
+#### Scenario 3: Production with Security
+```bash
+# Production with TLS and authentication
+CACHE_PRESET=production
+CACHE_REDIS_URL=rediss://secure-cache:6380
+CACHE_CUSTOM_CONFIG='{"use_tls": true, "redis_password": "secure_pass"}'
+```
+
+### Override Precedence
+The preset system follows this precedence order:
+1. **`CACHE_CUSTOM_CONFIG`** - JSON overrides (highest priority)
+2. **Essential environment variables** - `CACHE_REDIS_URL`, `ENABLE_AI_CACHE`
+3. **Preset defaults** - Configuration from chosen preset
+
+### Management Commands
+```bash
+# List all available presets
+make list-cache-presets
+
+# Show detailed preset configuration
+make show-cache-preset PRESET=production
+
+# Validate current configuration
+make validate-cache-config
+
+# Get preset recommendations
+make recommend-cache-preset ENV=staging
+
+# Migrate from legacy configuration
+make migrate-cache-config
+```
+
+## Legacy Environment Variables (Phase 3 and Earlier)
 
 ### 1. `REDIS_URL` (General Application Redis)
 - **Purpose**: General Redis connection for non-cache application features
@@ -135,23 +248,33 @@ make test-backend-infra-cache
 
 ## Docker Compose Examples
 
-### Development (Single Redis)
+### Development (Preset-Based)
 ```yaml
 services:
   backend:
     environment:
-      - REDIS_URL=redis://redis:6379
+      # NEW: Preset-based approach
+      - CACHE_PRESET=${CACHE_PRESET:-development}
       - CACHE_REDIS_URL=redis://redis:6379
+      - ENABLE_AI_CACHE=${ENABLE_AI_CACHE:-true}
+      
+      # Legacy variables still supported
+      - REDIS_URL=redis://redis:6379
       - TEST_REDIS_URL=redis://redis:6379/15
 ```
 
-### Production (Dedicated Cache Redis)
+### Production (Dedicated Cache Redis with Presets)
 ```yaml
 services:
   backend:
     environment:
-      - REDIS_URL=redis://general-redis:6379
+      # NEW: Production preset with dedicated cache Redis
+      - CACHE_PRESET=${CACHE_PRESET:-production}
       - CACHE_REDIS_URL=redis://cache-redis:6379
+      - ENABLE_AI_CACHE=${ENABLE_AI_CACHE:-true}
+      
+      # Legacy/general Redis
+      - REDIS_URL=redis://general-redis:6379
       - TEST_REDIS_URL=redis://test-redis:6379/15
   
   cache-redis:
@@ -160,6 +283,23 @@ services:
   
   general-redis:
     image: redis:7-alpine
+
+### AI-Optimized Production
+```yaml
+services:
+  backend:
+    environment:
+      # AI-specific production preset
+      - CACHE_PRESET=ai-production
+      - CACHE_REDIS_URL=redis://ai-cache-redis:6379
+      - ENABLE_AI_CACHE=true
+      
+      # Custom overrides for AI workloads
+      - CACHE_CUSTOM_CONFIG={"max_connections": 50, "compression_level": 9}
+  
+  ai-cache-redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 4gb --maxmemory-policy allkeys-lru --save ""
 ```
 
 ## Best Practices

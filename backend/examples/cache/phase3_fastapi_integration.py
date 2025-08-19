@@ -1,19 +1,35 @@
 #!/usr/bin/env python3
 """
-Example FastAPI Application Integration with Phase 3 Cache Dependencies
+Example FastAPI Application Integration with Phase 4 Preset-Based Cache Configuration
 
-This example demonstrates how to integrate Phase 3 cache infrastructure with
-FastAPI applications using the new dependency injection system, explicit
-factory methods, and lifecycle management.
+This example demonstrates how to integrate Phase 4 preset-based cache configuration
+with FastAPI applications, showcasing the simplified approach that reduces 28+
+environment variables to 1-4 variables.
+
+🚀 NEW in Phase 4: Preset-Based Configuration
+    OLD WAY (28+ environment variables):
+        CACHE_DEFAULT_TTL=1800, CACHE_MEMORY_CACHE_SIZE=200, CACHE_COMPRESSION_THRESHOLD=2000, ...
+    
+    NEW WAY (1-4 environment variables):
+        CACHE_PRESET=development
+        CACHE_REDIS_URL=redis://localhost:6379  # Override if needed
+        ENABLE_AI_CACHE=true                     # Feature toggle
 
 Features Demonstrated:
+    - Preset-based cache configuration (Phase 4 enhancement)
     - FastAPI dependency injection with cache services
     - Cache lifecycle management (startup/shutdown)
     - Health check endpoints with cache status
-    - Explicit cache factory usage
-    - Configuration-based cache setup
+    - Explicit cache factory usage with preset loading
+    - Configuration-based cache setup via presets
     - Cache monitoring and status endpoints
     - Graceful degradation patterns
+
+Environment Setup:
+    # Simplified configuration using presets
+    export CACHE_PRESET=development              # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
+    export CACHE_REDIS_URL=redis://localhost:6379   # Essential override
+    export ENABLE_AI_CACHE=true                  # AI features toggle
 
 Usage:
     python backend/examples/cache/phase3_fastapi_integration.py
@@ -108,13 +124,22 @@ async def lifespan(app: FastAPI):
         logger.info("Creating test cache using for_testing() factory method")
         _demo_caches["test"] = await factory.for_testing(use_memory_cache=True)
         
-        # Configuration-based cache
+        # Configuration-based cache (legacy builder pattern)
         logger.info("Creating config-based cache using builder pattern")
         config = (CacheConfigBuilder()
                  .for_environment("development")
                  .with_memory_cache(200)
                  .build())
         _demo_caches["config"] = await factory.create_cache_from_config(config)
+        
+        # 🚀 NEW: Preset-based cache (Phase 4 enhancement)
+        logger.info("Creating preset-based cache using new dependency injection")
+        from app.infrastructure.cache.dependencies import get_cache_config
+        
+        # Load configuration from preset system (CACHE_PRESET environment variable)
+        preset_config = get_cache_config()
+        _demo_caches["preset"] = await factory.create_cache_from_config(preset_config)
+        logger.info(f"Loaded preset-based cache with configuration: {preset_config.__class__.__name__}")
         
         logger.info(f"✅ Initialized {len(_demo_caches)} cache instances successfully")
         

@@ -27,7 +27,7 @@ This starter template demonstrates:
 
 ### 🔧 Developer Experience
 - **Virtual Environment Automation**: All Python scripts automatically use `.venv` from project root
-- **Preset-Based Configuration**: Simplified resilience system reduces 47+ environment variables to single preset choice
+- **Preset-Based Configuration**: Simplified system reduces complexity by 96% - resilience (47 variables → 1) and cache (28+ variables → 1-4)
 - **Parallel Testing**: Fast feedback cycles with comprehensive coverage requirements
 - **Hot Reload Development**: Docker Compose with file watching for both frontend and backend
 
@@ -131,7 +131,7 @@ The template now features an **advanced inheritance-based cache architecture** t
 
 **⚡ Performance Optimized**: No regression - inherits efficient Redis operations while adding specialized AI features.
 
-**🔧 Configuration-Driven**: New AIResponseCacheConfig provides type-safe configuration with validation and factory methods.
+**🔧 Configuration-Driven**: Features preset-based configuration system that reduces 28+ cache environment variables to 1-4 variables (`CACHE_PRESET=development`), with full AIResponseCacheConfig for advanced customization.
 
 **📊 Enhanced Monitoring**: AI-specific performance analytics, text tier analysis, and intelligent optimization recommendations.
 
@@ -383,9 +383,56 @@ if __name__ == "__main__":
 
 ### Advanced Cache Architecture Usage
 
+#### Simple Configuration (Preset-Based) - Recommended
+```bash
+# NEW: Simplified preset-based configuration (replaces 28+ variables)
+CACHE_PRESET=ai-development           # Choose preset for your use case
+CACHE_REDIS_URL=redis://localhost:6379  # Essential Redis connection override  
+ENABLE_AI_CACHE=true                  # Enable AI-specific features
+
+# Available presets: disabled, minimal, simple, development, production, ai-development, ai-production
+```
+
 ```python
 #!/usr/bin/env python3
-"""Example demonstrating the new Phase 2 cache architecture."""
+"""Example demonstrating preset-based cache configuration."""
+
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import create_cache_from_config
+
+# Load cache configuration from preset system
+cache_config = get_cache_config()
+
+# Factory automatically creates appropriate cache (AI or Generic) based on configuration
+cache = await create_cache_from_config(cache_config)
+
+# Use the cache with inherited operations
+await cache.cache_response(
+    text="Document to analyze...",
+    operation="summarize",
+    options={"max_length": 150},
+    response={"summary": "Brief document summary"}
+)
+
+# Retrieve with automatic optimization
+cached_result = await cache.get_cached_response(
+    text="Document to analyze...",
+    operation="summarize", 
+    options={"max_length": 150}
+)
+```
+
+#### Advanced Configuration (Custom Overrides)
+```bash
+# Preset with custom overrides for specific requirements
+CACHE_PRESET=ai-production
+CACHE_REDIS_URL=redis://prod-cache:6379
+CACHE_CUSTOM_CONFIG='{"memory_cache_size": 1000, "max_connections": 50}'
+```
+
+```python
+#!/usr/bin/env python3
+"""Example with manual configuration for advanced use cases."""
 
 from app.infrastructure.cache import (
     AIResponseCache, 
@@ -394,7 +441,7 @@ from app.infrastructure.cache import (
     CacheParameterMapper
 )
 
-# Option 1: AI-Specialized Cache with Configuration
+# Manual configuration (when preset system isn't sufficient)
 config = AIResponseCacheConfig(
     redis_url="redis://localhost:6379",
     text_hash_threshold=1000,
@@ -408,32 +455,6 @@ config = AIResponseCacheConfig(
 
 ai_cache = AIResponseCache(config)
 await ai_cache.connect()
-
-# Cache AI response with optimized key generation
-await ai_cache.cache_response(
-    text="Document to analyze...",
-    operation="summarize",
-    options={"max_length": 150},
-    response={"summary": "Brief document summary"}
-)
-
-# Retrieve with automatic L1/L2 tier checking
-cached_result = await ai_cache.get_cached_response(
-    text="Document to analyze...",
-    operation="summarize", 
-    options={"max_length": 150}
-)
-
-# Option 2: Generic Redis Cache (for non-AI applications)
-generic_cache = GenericRedisCache(
-    redis_url="redis://localhost:6379",
-    enable_l1_cache=True,
-    compression_threshold=1000
-)
-
-await generic_cache.connect()
-await generic_cache.set("user:profile:123", user_data, ttl=3600)
-profile = await generic_cache.get("user:profile:123")
 
 # Enhanced monitoring and analytics
 ai_performance = ai_cache.get_ai_performance_summary()
