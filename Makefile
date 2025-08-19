@@ -519,6 +519,14 @@ lint-frontend:
 	@echo "🔍 Running frontend code quality checks via Docker..."
 	@docker-compose run frontend flake8 app/
 
+# Lint a specific file
+lint-file:
+	@if [ -z "$(FILE)" ]; then echo "Usage: make lint-file FILE=path/to/file.py"; exit 1; fi
+	@echo "🔍 Linting $(FILE)..."
+	@source $(VENV_DIR)/bin/activate && $(PYTHON_CMD) -m flake8 "$(FILE)"
+	@echo "🔍 Type checking $(FILE)..."
+	@source $(VENV_DIR)/bin/activate && $(PYTHON_CMD) -m mypy "$(FILE)" --ignore-missing-imports || true
+
 # Format code with black and isort
 format:
 	@echo "🎨 Formatting code with black and isort..."
@@ -542,6 +550,7 @@ clean:
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
 	@find . -name ".coverage" -delete 2>/dev/null || true
 	@find . -name "coverage.xml" -delete 2>/dev/null || true
