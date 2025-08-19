@@ -15,6 +15,15 @@ services:
       - CORS_ORIGINS=["http://localhost:${FRONTEND_PORT:-8501}", "http://frontend:8501"]
       - REDIS_URL=redis://redis:6379
       - RESILIENCE_PRESET=${RESILIENCE_PRESET:-simple}
+      # Phase 3 Cache Configuration
+      - CACHE_REDIS_URL=redis://redis:6379
+      - CACHE_DEFAULT_TTL=${CACHE_DEFAULT_TTL:-1800}
+      - CACHE_MEMORY_CACHE_SIZE=${CACHE_MEMORY_CACHE_SIZE:-200}
+      - CACHE_COMPRESSION_THRESHOLD=${CACHE_COMPRESSION_THRESHOLD:-2000}
+      - CACHE_COMPRESSION_LEVEL=${CACHE_COMPRESSION_LEVEL:-4}
+      - ENABLE_AI_CACHE=${ENABLE_AI_CACHE:-true}
+      - CACHE_TEXT_HASH_THRESHOLD=${CACHE_TEXT_HASH_THRESHOLD:-1000}
+      - CACHE_HASH_ALGORITHM=${CACHE_HASH_ALGORITHM:-sha256}
     volumes:
       - ./backend:/app
       - ./shared:/app/shared

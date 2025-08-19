@@ -8,6 +8,11 @@ services:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
       - RESILIENCE_PRESET=${RESILIENCE_PRESET:-development}
+      # Phase 3 Cache Configuration - Development
+      - CACHE_ENVIRONMENT_PRESET=development
+      - ENABLE_AI_CACHE=true
+      - CACHE_LOG_LEVEL=DEBUG
+      - CACHE_ENABLE_MONITORING=true
     volumes:
       - ./backend:/app
       - ./shared:/app/shared

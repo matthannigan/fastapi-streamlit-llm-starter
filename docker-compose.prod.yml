@@ -4,6 +4,12 @@ services:
       - DEBUG=false
       - LOG_LEVEL=INFO
       - RESILIENCE_PRESET=${RESILIENCE_PRESET:-production}
+      # Phase 3 Cache Configuration - Production
+      - CACHE_ENVIRONMENT_PRESET=production
+      - ENABLE_AI_CACHE=true
+      - CACHE_ENABLE_MONITORING=true
+      - CACHE_MAX_CONNECTIONS=100
+      - CACHE_COMPRESSION_LEVEL=6
     volumes: []  # No volume mounts in production
     deploy:
       replicas: 3
