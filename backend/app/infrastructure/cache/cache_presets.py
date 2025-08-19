@@ -226,27 +226,54 @@ class CachePreset:
         """Convert preset to dictionary for serialization."""
         return asdict(self)
     
-    def to_cache_config(self) -> CacheConfig:
-        """Convert preset to cache configuration object."""
-        # Base configuration from preset
-        config = CacheConfig(
-            strategy=self.strategy,
+    def to_cache_config(self):
+        """Convert preset to cache configuration object compatible with config.py CacheConfig."""
+        # Import the actual CacheConfig from config.py to ensure compatibility
+        from app.infrastructure.cache.config import CacheConfig as ConfigCacheConfig, AICacheConfig
+        
+        # Create AI configuration if AI features are enabled
+        ai_config = None
+        if self.enable_ai_cache:
+            ai_config = AICacheConfig(
+                text_hash_threshold=self.ai_optimizations.get('text_hash_threshold', 1000),
+                hash_algorithm=self.ai_optimizations.get('hash_algorithm', 'sha256'),
+                text_size_tiers=self.ai_optimizations.get('text_size_tiers', {
+                    "small": 1000,
+                    "medium": 5000,
+                    "large": 20000
+                }),
+                operation_ttls=self.ai_optimizations.get('operation_ttls', {
+                    "summarize": 7200,
+                    "sentiment": 3600,
+                    "key_points": 5400,
+                    "questions": 4800,
+                    "qa": 3600
+                }),
+                enable_smart_promotion=self.ai_optimizations.get('enable_smart_promotion', True),
+                max_text_length=self.ai_optimizations.get('max_text_length', 100000)
+            )
+        
+        # Create base configuration using config.py CacheConfig structure
+        config = ConfigCacheConfig(
+            # Redis configuration (no strategy field in config.py CacheConfig)
+            redis_url=None,  # Will be set by environment overrides
+            redis_password=None,
+            use_tls=False,
+            tls_cert_path=None,
+            tls_key_path=None,
+            
+            # Cache behavior
             default_ttl=self.default_ttl,
-            max_connections=self.max_connections,
-            connection_timeout=self.connection_timeout,
             memory_cache_size=self.memory_cache_size,
             compression_threshold=self.compression_threshold,
             compression_level=self.compression_level,
-            enable_ai_cache=self.enable_ai_cache,
-            enable_monitoring=self.enable_monitoring,
-            log_level=self.log_level
+            
+            # Environment
+            environment=self.environment_contexts[0] if self.environment_contexts else "development",
+            
+            # AI configuration (nested structure)
+            ai_config=ai_config
         )
-        
-        # Apply AI optimizations if present
-        if self.enable_ai_cache and self.ai_optimizations:
-            for key, value in self.ai_optimizations.items():
-                if hasattr(config, key):
-                    setattr(config, key, value)
         
         return config
 
