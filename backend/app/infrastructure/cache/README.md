@@ -10,14 +10,23 @@ This directory provides a comprehensive caching infrastructure with multiple imp
 
 ```
 cache/
-├── __init__.py          # Module exports and comprehensive documentation
-├── base.py             # Abstract interface defining cache contract
-├── memory.py           # In-memory cache implementation with TTL and LRU
-├── redis.py            # Redis-based AIResponseCache with advanced features
-├── monitoring.py       # Comprehensive performance monitoring and analytics
-├── redis.py.md         # Additional Redis cache documentation
-├── redis.py.txt        # Redis cache implementation notes
-└── README.md           # This documentation file
+├── __init__.py                    # Module exports and comprehensive documentation
+├── base.py                       # Abstract interface defining cache contract
+├── memory.py                     # In-memory cache implementation with TTL and LRU
+├── redis_generic.py              # Generic Redis cache for web applications
+├── redis_ai.py                   # AI-optimized Redis cache with text processing
+├── monitoring.py                 # Comprehensive performance monitoring and analytics
+├── factory.py                    # CacheFactory for explicit cache instantiation
+├── config.py                     # Configuration management with builder pattern
+├── dependencies.py               # FastAPI dependency injection with lifecycle management
+├── benchmarks.py                 # Performance benchmarking suite with comparison tools
+├── parameter_mapping.py          # Advanced parameter mapping for cache inheritance
+├── compatibility_wrapper.py      # Backward compatibility and migration support
+├── migration_helper.py           # Migration utilities for smooth transitions
+├── security.py                   # Security features and prompt injection protection
+├── redis.py.md                   # Additional Redis cache documentation
+├── redis.py.txt                  # Redis cache implementation notes
+└── README.md                     # This documentation file
 ```
 
 ## Core Architecture
@@ -155,6 +164,228 @@ operation_ttls = {
 - **Operation Timing:** Detailed performance analysis  
 - **Memory Usage:** Memory consumption monitoring with alerts
 - **Compression Analytics:** Efficiency metrics and recommendations
+
+## Phase 3 Features: Enhanced Developer Experience
+
+### CacheFactory - Explicit Cache Instantiation
+
+The `CacheFactory` provides deterministic, explicit cache creation methods that eliminate auto-detection ambiguity and improve developer experience.
+
+**Key Benefits:**
+- **Explicit Selection:** Clear intent with `for_web_app()`, `for_ai_app()`, `for_testing()`
+- **Graceful Degradation:** Configurable fallback behavior with `fail_on_connection_error` parameter
+- **Optimized Defaults:** Environment-specific configurations built-in
+- **Configuration-Based Creation:** Support for `CacheConfig` objects
+
+**Factory Methods:**
+```python
+from app.infrastructure.cache import CacheFactory
+
+# Web application cache (optimized for sessions, API responses)
+web_cache = CacheFactory.for_web_app(
+    redis_url="redis://localhost:6379/0",
+    fail_on_connection_error=False,  # Graceful fallback to memory
+    default_ttl=1800,               # 30 minutes
+    compression_threshold=2000       # Compress larger responses
+)
+
+# AI application cache (optimized for text processing)
+ai_cache = CacheFactory.for_ai_app(
+    redis_url="redis://localhost:6379/1",
+    fail_on_connection_error=False,
+    text_hash_threshold=500,         # Hash long texts
+    compression_level=6,             # Higher compression
+    operation_ttls={
+        "summarize": 3600,           # 1 hour
+        "sentiment": 1800            # 30 minutes
+    }
+)
+
+# Testing cache (isolated, fast)
+test_cache = CacheFactory.for_testing("memory")  # or "redis"
+
+# Configuration-based creation
+config = CacheConfigBuilder().for_environment("production").build()
+prod_cache = CacheFactory.create_cache_from_config(config)
+```
+
+### Configuration Management with Builder Pattern
+
+The `CacheConfigBuilder` provides a fluent interface for complex cache configuration across environments.
+
+**Builder Pattern Features:**
+- **Fluent Interface:** Method chaining for readable configuration
+- **Environment Presets:** Development, testing, production defaults
+- **Validation:** Built-in configuration validation with detailed error messages
+- **File Support:** Load from/save to JSON configuration files
+- **Environment Loading:** Automatic environment variable detection
+
+```python
+from app.infrastructure.cache import CacheConfigBuilder, EnvironmentPresets
+
+# Fluent configuration building
+config = (CacheConfigBuilder()
+          .for_environment("production")
+          .with_redis("redis://prod-server:6379/0")
+          .with_security(use_tls=True)
+          .with_compression(threshold=1000, level=6)
+          .with_ai_features(
+              text_hash_threshold=500,
+              operation_ttls={"summarize": 7200}
+          )
+          .build())
+
+# Environment presets
+dev_config = EnvironmentPresets.development()
+ai_prod_config = EnvironmentPresets.ai_production()
+
+# Environment variable loading
+env_config = CacheConfigBuilder().from_environment().build()
+
+# File-based configuration
+file_config = CacheConfigBuilder().from_file("cache_config.json").build()
+```
+
+### FastAPI Dependency Integration
+
+Comprehensive dependency injection system with lifecycle management and health checking.
+
+**Dependency Features:**
+- **Automatic Lifecycle:** Connection management and cleanup
+- **Configuration Integration:** Uses `CacheConfig` for consistent setup
+- **Health Checking:** Built-in cache health status monitoring  
+- **Registry Management:** Weak reference cache registry for multi-worker safety
+- **Conditional Dependencies:** Environment-based cache selection
+
+```python
+from app.infrastructure.cache.dependencies import (
+    get_cache_service,
+    get_cache_config,
+    get_cache_health_status,
+    validate_cache_configuration
+)
+
+# FastAPI endpoint with dependency injection
+@app.post("/api/process")
+async def process_text(
+    request: ProcessRequest,
+    cache: CacheInterface = Depends(get_cache_service),
+    config: CacheConfig = Depends(get_cache_config)
+):
+    # Cache is automatically connected and configured
+    cached_result = await cache.get(f"process:{request.operation}:{hash(request.text)}")
+    if cached_result:
+        return cached_result
+    
+    # Process and cache result
+    result = await process_service.execute(request)
+    await cache.set(f"process:{request.operation}:{hash(request.text)}", result)
+    return result
+
+# Health check endpoint
+@app.get("/internal/cache/health")
+async def cache_health(
+    cache: CacheInterface = Depends(get_cache_service)
+):
+    return await get_cache_health_status(cache)
+```
+
+### Performance Benchmarking Suite
+
+The `CachePerformanceBenchmark` class provides comprehensive performance testing and comparison tools.
+
+**Benchmarking Features:**
+- **Operation Benchmarks:** SET, GET, DELETE performance with statistical analysis
+- **Cache Comparison:** Side-by-side performance comparison between cache types
+- **Factory Performance:** Benchmark cache creation overhead
+- **Environment Testing:** Compare configurations across environments
+- **Statistical Analysis:** Percentiles, confidence intervals, outlier detection
+
+```python
+from app.infrastructure.cache import CachePerformanceBenchmark
+
+benchmark = CachePerformanceBenchmark()
+
+# Benchmark basic operations
+memory_results = await benchmark.benchmark_basic_operations(
+    memory_cache, 
+    test_operations=1000,
+    data_size="medium"
+)
+
+redis_results = await benchmark.benchmark_basic_operations(
+    redis_cache,
+    test_operations=1000, 
+    data_size="medium"
+)
+
+# Compare caches
+comparison = await benchmark.compare_caches(
+    baseline_cache=memory_cache,
+    comparison_cache=redis_cache,
+    test_operations=500
+)
+
+print(f"Performance difference: {comparison.overall_performance_change:.2f}%")
+print(f"Recommendation: {comparison.recommendation}")
+
+# Factory performance
+factory_results = await benchmark.benchmark_factory_creation()
+```
+
+### Environment Configuration System
+
+Comprehensive environment variable support with intelligent defaults and validation.
+
+**Configuration Variables:**
+```bash
+# Basic Configuration
+REDIS_URL=redis://localhost:6379/0
+CACHE_DEFAULT_TTL=3600
+CACHE_MEMORY_CACHE_SIZE=100
+
+# Compression Settings
+CACHE_COMPRESSION_THRESHOLD=1000
+CACHE_COMPRESSION_LEVEL=6
+
+# AI-Specific Settings
+CACHE_TEXT_HASH_THRESHOLD=500
+CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 1800}'
+
+# Security Settings
+CACHE_USE_TLS=false
+CACHE_TLS_CERT_PATH=/path/to/cert.pem
+CACHE_TLS_KEY_PATH=/path/to/key.pem
+
+# Environment Selection
+ENVIRONMENT=production  # development, testing, production
+ENABLE_AI_CACHE=true
+```
+
+**Environment Presets:**
+- **Development:** Fast iteration, debug-friendly settings
+- **Testing:** Isolated, reproducible configurations
+- **Production:** Performance-optimized, security-enabled settings
+
+### Advanced Features
+
+#### Security Integration
+- **Prompt Injection Protection:** Input sanitization for AI operations
+- **TLS Support:** Encrypted Redis connections in production
+- **Input Validation:** Comprehensive parameter validation
+- **Audit Logging:** Security event tracking
+
+#### Performance Optimization
+- **Memory Management:** Intelligent memory cache sizing
+- **Compression Strategy:** Adaptive compression based on content type
+- **Connection Pooling:** Efficient Redis connection management
+- **Batch Operations:** Optimized bulk cache operations
+
+#### Monitoring & Analytics
+- **Real-time Metrics:** Performance monitoring with configurable thresholds
+- **Health Checking:** Comprehensive cache health status
+- **Performance Recommendations:** Automated optimization suggestions
+- **Usage Analytics:** Detailed operation statistics and trends
 
 ## Usage Examples
 
