@@ -34,7 +34,8 @@
         mkdocs-serve mkdocs-build \
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
         ci-test ci-test-all lock-deps update-deps \
-        list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets
+        list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets \
+        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset migrate-cache-config
 
 ##################################################################################################
 # Configuration and Environment Detection
@@ -154,6 +155,14 @@ help:
 	@echo "  recommend-preset     Get preset recommendation (Usage: ENV=development)"
 	@echo "  migrate-config       Migrate legacy config to presets"
 	@echo "  test-presets         Run all preset-related tests"
+	@echo ""
+	@echo "🗂️  CACHE CONFIGURATION:"
+	@echo "  list-cache-presets   List available cache presets"
+	@echo "  show-cache-preset    Show cache preset details (Usage: PRESET=development)"
+	@echo "  validate-cache-config Validate current cache configuration"
+	@echo "  validate-cache-preset Validate specific cache preset (Usage: PRESET=production)"
+	@echo "  recommend-cache-preset Get cache preset recommendation (Usage: ENV=staging)"
+	@echo "  migrate-cache-config Migrate legacy cache config to presets"
 	@echo ""
 	@echo "🐳 DOCKER OPERATIONS:"
 	@echo "  docker-build         Build all Docker images"
@@ -896,3 +905,52 @@ migrate-config:
 test-presets:
 	@echo "🧪 Running preset-related tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/test_resilience_presets.py tests/integration/test_preset_resilience_integration.py -v
+
+# ========================================
+# CACHE PRESET MANAGEMENT COMMANDS
+# ========================================
+
+# List available cache configuration presets
+list-cache-presets:
+	@echo "🗂️  Available cache configuration presets:"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --list-presets
+
+# Show details of a specific cache preset
+show-cache-preset:
+	@if [ -z "$(PRESET)" ]; then \
+		echo "❌ Usage: make show-cache-preset PRESET=<preset_name>"; \
+		echo "💡 Available presets: disabled, simple, development, production, ai-development, ai-production"; \
+		exit 1; \
+	fi
+	@echo "🗂️  Showing details for cache preset: $(PRESET)"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --show-preset $(PRESET)
+
+# Validate current cache configuration
+validate-cache-config:
+	@echo "🗂️  Validating current cache configuration..."
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --validate-current
+
+# Validate a specific cache preset configuration
+validate-cache-preset:
+	@if [ -z "$(PRESET)" ]; then \
+		echo "❌ Usage: make validate-cache-preset PRESET=<preset_name>"; \
+		echo "💡 Available presets: disabled, simple, development, production, ai-development, ai-production"; \
+		exit 1; \
+	fi
+	@echo "🗂️  Validating cache preset: $(PRESET)"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --validate-preset $(PRESET)
+
+# Get cache preset recommendation for environment
+recommend-cache-preset:
+	@if [ -z "$(ENV)" ]; then \
+		echo "❌ Usage: make recommend-cache-preset ENV=<environment>"; \
+		echo "💡 Example environments: development, staging, production, ai-development"; \
+		exit 1; \
+	fi
+	@echo "🗂️  Getting cache preset recommendation for environment: $(ENV)"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --recommend-preset $(ENV)
+
+# Migrate legacy cache configuration to presets
+migrate-cache-config:
+	@echo "🗂️  Analyzing legacy cache configuration and providing migration recommendations..."
+	@cd backend && $(PYTHON_CMD) scripts/migrate_cache_config.py --analyze
