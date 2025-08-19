@@ -12,16 +12,19 @@ Key Areas Tested:
 - Edge cases and error scenarios  
 - Migration safety and data consistency
 - Configuration parameter mapping validation
+- Preset system integration and migration compatibility
 
 Test Classes:
     TestAICacheMigration: Main migration validation test suite
     TestPerformanceBenchmarking: Performance regression testing
     TestEdgeCaseValidation: Edge cases and error scenarios
     TestMigrationSafety: Data consistency and safety validation
+    TestPresetMigrationCompatibility: Preset system migration testing
 """
 
 import asyncio
 import json
+import os
 import pytest
 import time
 from collections import defaultdict
@@ -34,6 +37,7 @@ from app.infrastructure.cache.redis_ai import AIResponseCache
 from app.infrastructure.cache.redis import AIResponseCache as LegacyAIResponseCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.benchmarks import CachePerformanceBenchmark
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
 
 
 class TestAICacheMigration:
@@ -1033,3 +1037,275 @@ class TestPerformanceBenchmarking:
                             print(f"  Regression: {metrics['regression_percent']:.2f}%")
                             print(f"  Status: {'✓ PASS' if metrics['within_threshold'] else '✗ FAIL'}")
                             print()
+
+
+class TestPresetMigrationCompatibility:
+    """Test migration compatibility with preset-based configuration system."""
+    
+    @pytest.mark.asyncio
+    async def test_migration_with_development_preset(self, monkeypatch):
+        """Test migration scenarios using development preset configuration."""
+        # Set up development preset environment
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("development")
+        preset_config = preset.to_cache_config()
+        
+        # Create cache instances with preset-based configuration
+        legacy_cache = LegacyAIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl,
+            memory_cache_size=preset_config.l1_cache_size
+        )
+        
+        new_cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379", 
+            default_ttl=preset_config.default_ttl,
+            memory_cache_size=preset_config.l1_cache_size
+        )
+        
+        # Test migration compatibility with preset settings
+        test_data = [
+            ("Development preset test 1", "summarize", {"length": "short"}, {"summary": "Brief dev summary"}),
+            ("Development preset test 2", "analyze", {"depth": "shallow"}, {"analysis": "Quick analysis"}),
+        ]
+        
+        for text, operation, options, response in test_data:
+            # Cache with legacy implementation
+            await legacy_cache.cache_response(text, operation, options, response)
+            legacy_result = await legacy_cache.get_cached_response(text, operation, options)
+            
+            # Cache with new implementation 
+            await new_cache.cache_response(text, operation, options, response)
+            new_result = await new_cache.get_cached_response(text, operation, options)
+            
+            # Verify behavioral equivalence with preset configuration
+            assert legacy_result == new_result == response
+    
+    @pytest.mark.asyncio
+    async def test_migration_with_ai_production_preset(self, monkeypatch):
+        """Test migration scenarios using ai-production preset configuration."""
+        # Set up ai-production preset environment
+        monkeypatch.setenv("CACHE_PRESET", "ai-production")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("ai-production")
+        preset_config = preset.to_cache_config()
+        
+        # Create cache instances with AI production preset settings
+        legacy_cache = LegacyAIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl,
+            memory_cache_size=preset_config.l1_cache_size,
+            text_hash_threshold=preset_config.ai_config.text_hash_threshold if preset_config.ai_config else 1000
+        )
+        
+        new_cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl, 
+            memory_cache_size=preset_config.l1_cache_size,
+            text_hash_threshold=preset_config.ai_config.text_hash_threshold if preset_config.ai_config else 1000
+        )
+        
+        # Test with production-scale data
+        large_text = "Production AI workload " * 200  # Large text for production testing
+        large_response = {"result": "Comprehensive production analysis " * 100}
+        
+        # Test migration compatibility with production preset
+        await legacy_cache.cache_response(large_text, "comprehensive_analysis", {"mode": "production"}, large_response)
+        legacy_result = await legacy_cache.get_cached_response(large_text, "comprehensive_analysis", {"mode": "production"})
+        
+        await new_cache.cache_response(large_text, "comprehensive_analysis", {"mode": "production"}, large_response)
+        new_result = await new_cache.get_cached_response(large_text, "comprehensive_analysis", {"mode": "production"})
+        
+        # Verify behavioral equivalence with AI production preset
+        assert legacy_result == new_result == large_response
+    
+    @pytest.mark.asyncio
+    async def test_migration_with_preset_custom_overrides(self, monkeypatch):
+        """Test migration with preset configuration and custom overrides."""
+        # Set up base preset with custom overrides
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        monkeypatch.setenv("CACHE_CUSTOM_CONFIG", json.dumps({
+            "default_ttl": 2400,  # Override default TTL
+            "text_hash_threshold": 400,  # Override text hash threshold  
+            "compression_threshold": 800  # Override compression threshold
+        }))
+        
+        # Get preset configuration (with overrides applied)
+        preset = cache_preset_manager.get_preset("development")
+        preset_config = preset.to_cache_config()
+        
+        # Create cache instances with override values
+        override_ttl = 2400
+        override_threshold = 400
+        override_compression = 800
+        
+        legacy_cache = LegacyAIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=override_ttl,
+            text_hash_threshold=override_threshold,
+            compression_threshold=override_compression
+        )
+        
+        new_cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=override_ttl,
+            text_hash_threshold=override_threshold,
+            compression_threshold=override_compression
+        )
+        
+        # Test migration with text at different threshold boundaries
+        test_scenarios = [
+            ("Short text", "A" * 300),  # Below hash threshold
+            ("Long text", "B" * 500),   # Above hash threshold
+            ("Large data", "C" * 1000)  # Above compression threshold
+        ]
+        
+        for scenario_name, text in test_scenarios:
+            response = {"analysis": f"{scenario_name} analysis result", "length": len(text)}
+            
+            # Test with both implementations
+            await legacy_cache.cache_response(text, "analyze", {"scenario": scenario_name}, response)
+            legacy_result = await legacy_cache.get_cached_response(text, "analyze", {"scenario": scenario_name})
+            
+            await new_cache.cache_response(text, "analyze", {"scenario": scenario_name}, response)
+            new_result = await new_cache.get_cached_response(text, "analyze", {"scenario": scenario_name})
+            
+            # Verify behavioral equivalence with custom overrides
+            assert legacy_result == new_result == response
+    
+    @pytest.mark.asyncio
+    async def test_cross_preset_migration_consistency(self, monkeypatch):
+        """Test migration consistency across different preset configurations."""
+        presets_to_test = ["development", "production", "ai-development", "ai-production"]
+        
+        migration_results = {}
+        
+        for preset_name in presets_to_test:
+            # Set up preset environment
+            monkeypatch.setenv("CACHE_PRESET", preset_name)
+            monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Create cache instances with preset configuration
+            legacy_cache = LegacyAIResponseCache(
+                redis_url="redis://nonexistent:6379",
+                default_ttl=preset_config.default_ttl,
+                memory_cache_size=preset_config.l1_cache_size
+            )
+            
+            new_cache = AIResponseCache(
+                redis_url="redis://nonexistent:6379",
+                default_ttl=preset_config.default_ttl,
+                memory_cache_size=preset_config.l1_cache_size
+            )
+            
+            # Test migration with preset-specific data
+            test_text = f"Cross-preset migration test for {preset_name}"
+            test_response = {"preset": preset_name, "ttl": preset_config.default_ttl, "test": "migration"}
+            
+            # Cache with both implementations
+            await legacy_cache.cache_response(test_text, "migration_test", {"preset": preset_name}, test_response)
+            legacy_result = await legacy_cache.get_cached_response(test_text, "migration_test", {"preset": preset_name})
+            
+            await new_cache.cache_response(test_text, "migration_test", {"preset": preset_name}, test_response)
+            new_result = await new_cache.get_cached_response(test_text, "migration_test", {"preset": preset_name})
+            
+            # Store results for consistency validation
+            migration_results[preset_name] = {
+                "legacy": legacy_result,
+                "new": new_result,
+                "expected": test_response,
+                "equivalent": legacy_result == new_result == test_response
+            }
+            
+            # Clean up environment for next preset
+            monkeypatch.delenv("CACHE_PRESET")
+            if "CACHE_REDIS_URL" in os.environ:
+                monkeypatch.delenv("CACHE_REDIS_URL")
+        
+        # Verify consistency across all presets
+        for preset_name, results in migration_results.items():
+            assert results["equivalent"], f"Migration equivalence failed for preset: {preset_name}"
+            assert results["legacy"] == results["expected"], f"Legacy cache failed for preset: {preset_name}"
+            assert results["new"] == results["expected"], f"New cache failed for preset: {preset_name}"
+        
+        # Verify all presets were tested
+        assert len(migration_results) == len(presets_to_test), "Not all presets were tested successfully"
+        
+        print(f"\n✓ Migration consistency verified across {len(presets_to_test)} presets")
+        for preset_name in presets_to_test:
+            print(f"  ✓ {preset_name}: Migration equivalence confirmed")
+    
+    @pytest.mark.asyncio
+    async def test_preset_migration_error_handling(self, monkeypatch):
+        """Test migration error handling with invalid preset configurations."""
+        # Test with invalid preset name
+        monkeypatch.setenv("CACHE_PRESET", "invalid-preset")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        
+        # Migration should handle gracefully with fallback to defaults
+        try:
+            preset = cache_preset_manager.get_preset("invalid-preset")
+            # If preset manager handles gracefully, continue with test
+            if preset is not None:
+                preset_config = preset.to_cache_config()
+                
+                legacy_cache = LegacyAIResponseCache(
+                    redis_url="redis://nonexistent:6379",
+                    default_ttl=preset_config.default_ttl
+                )
+                
+                new_cache = AIResponseCache(
+                    redis_url="redis://nonexistent:6379",
+                    default_ttl=preset_config.default_ttl
+                )
+                
+                # Should still work with default values
+                await legacy_cache.cache_response("Error handling test", "test", {}, {"status": "ok"})
+                await new_cache.cache_response("Error handling test", "test", {}, {"status": "ok"})
+                
+                legacy_result = await legacy_cache.get_cached_response("Error handling test", "test", {})
+                new_result = await new_cache.get_cached_response("Error handling test", "test", {})
+                
+                assert legacy_result == new_result == {"status": "ok"}
+        except (ConfigurationError, KeyError):
+            # Expected behavior - should handle preset errors gracefully
+            pass
+        
+        # Test with corrupted custom config
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_CUSTOM_CONFIG", "invalid-json-data")
+        
+        # Should fallback to preset defaults
+        preset = cache_preset_manager.get_preset("development")
+        preset_config = preset.to_cache_config()
+        
+        legacy_cache = LegacyAIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl
+        )
+        
+        new_cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379", 
+            default_ttl=preset_config.default_ttl
+        )
+        
+        # Should still work despite corrupted config
+        await legacy_cache.cache_response("Corrupted config test", "test", {}, {"result": "handled"})
+        await new_cache.cache_response("Corrupted config test", "test", {}, {"result": "handled"})
+        
+        legacy_result = await legacy_cache.get_cached_response("Corrupted config test", "test", {})
+        new_result = await new_cache.get_cached_response("Corrupted config test", "test", {})
+        
+        assert legacy_result == new_result == {"result": "handled"}
+        
+        print("✓ Preset migration error handling validated successfully")

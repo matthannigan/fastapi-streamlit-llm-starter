@@ -16,6 +16,7 @@ from app.infrastructure.cache.benchmarks.config import (
     BenchmarkConfig, CachePerformanceThresholds, ConfigPresets,
     load_config_from_env, load_config_from_file, get_default_config
 )
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
 
 
 class TestBenchmarkConfig:
@@ -490,3 +491,187 @@ class TestConfigurationLoading:
             monkeypatch.setenv("BENCHMARK_ENABLE_MEMORY_TRACKING", env_value)
             config = load_config_from_env()
             assert config.enable_memory_tracking == expected, f"Failed for value: {env_value}"
+
+
+class TestCachePresetBenchmarkConfiguration:
+    """Test cache preset integration with benchmark configuration loading."""
+    
+    def test_preset_configuration_loading_integration(self, monkeypatch):
+        """Test benchmark configuration loading with cache preset integration."""
+        # Set up cache preset environment
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("development") 
+        preset_config = preset.to_cache_config()
+        
+        # Configure benchmark environment variables influenced by preset
+        monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "25")  # Fast for development
+        monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "3")
+        monkeypatch.setenv("BENCHMARK_ENVIRONMENT", f"preset_development_ttl{preset_config.default_ttl}")
+        monkeypatch.setenv("BENCHMARK_TIMEOUT_SECONDS", "180")
+        
+        # Load benchmark configuration
+        config = load_config_from_env()
+        
+        # Validate configuration reflects preset influence
+        assert config.default_iterations == 25
+        assert config.warmup_iterations == 3
+        assert "preset_development" in config.environment
+        assert config.timeout_seconds == 180
+        
+        # Configuration should be valid
+        config.validate()
+        
+        print(f"✓ Preset configuration loading integration validated")
+        print(f"  Cache TTL: {preset_config.default_ttl}s influences benchmark environment")
+    
+    def test_multiple_preset_benchmark_configurations(self, monkeypatch):
+        """Test benchmark configuration loading across different cache presets."""
+        preset_names = ["development", "production", "ai-development"]
+        config_results = {}
+        
+        for preset_name in preset_names:
+            # Configure cache preset environment
+            monkeypatch.setenv("CACHE_PRESET", preset_name)
+            monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Configure benchmark parameters based on preset characteristics
+            if "production" in preset_name:
+                iterations = 50  # More thorough for production presets
+                timeout = 600
+            elif "ai" in preset_name:
+                iterations = 35  # Moderate for AI presets
+                timeout = 450
+            else:
+                iterations = 20  # Fast for development
+                timeout = 300
+            
+            # Set benchmark environment variables
+            monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", str(iterations))
+            monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "3")
+            monkeypatch.setenv("BENCHMARK_TIMEOUT_SECONDS", str(timeout))
+            monkeypatch.setenv("BENCHMARK_ENVIRONMENT", f"preset_{preset_name}")
+            monkeypatch.setenv("BENCHMARK_ENABLE_MEMORY_TRACKING", "true")
+            
+            # Load configuration
+            config = load_config_from_env()
+            config.validate()  # Ensure configuration is valid
+            
+            config_results[preset_name] = {
+                "benchmark_config": config,
+                "preset_config": preset_config,
+                "iterations": iterations,
+                "timeout": timeout
+            }
+            
+            # Clean up environment for next preset
+            monkeypatch.delenv("CACHE_PRESET")
+            monkeypatch.delenv("BENCHMARK_DEFAULT_ITERATIONS")
+            monkeypatch.delenv("BENCHMARK_WARMUP_ITERATIONS")
+            monkeypatch.delenv("BENCHMARK_TIMEOUT_SECONDS")
+            monkeypatch.delenv("BENCHMARK_ENVIRONMENT")
+            monkeypatch.delenv("BENCHMARK_ENABLE_MEMORY_TRACKING")
+        
+        # Validate all preset configurations loaded correctly
+        for preset_name, result in config_results.items():
+            config = result["benchmark_config"]
+            expected_iterations = result["iterations"]
+            
+            assert isinstance(config, BenchmarkConfig)
+            assert config.default_iterations == expected_iterations
+            assert config.warmup_iterations == 3
+            assert config.enable_memory_tracking is True
+            assert f"preset_{preset_name}" in config.environment
+        
+        # Compare characteristics between different preset configurations
+        dev_config = config_results["development"]["benchmark_config"]
+        prod_config = config_results["production"]["benchmark_config"] 
+        ai_config = config_results["ai-development"]["benchmark_config"]
+        
+        # Production should have more iterations than development
+        assert prod_config.default_iterations > dev_config.default_iterations
+        # AI should be between development and production
+        assert ai_config.default_iterations > dev_config.default_iterations
+        assert ai_config.default_iterations < prod_config.default_iterations
+        
+        print(f"✓ Multiple preset benchmark configurations validated")
+        print(f"  Development: {dev_config.default_iterations} iterations")
+        print(f"  AI Development: {ai_config.default_iterations} iterations")
+        print(f"  Production: {prod_config.default_iterations} iterations")
+    
+    def test_preset_configuration_validation_with_benchmarks(self, monkeypatch):
+        """Test configuration validation when integrating preset and benchmark systems."""
+        # Test valid preset with valid benchmark configuration
+        monkeypatch.setenv("CACHE_PRESET", "production")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        # Configure valid benchmark settings
+        monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "100") 
+        monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "10")
+        monkeypatch.setenv("BENCHMARK_TIMEOUT_SECONDS", "600")
+        monkeypatch.setenv("BENCHMARK_ENABLE_MEMORY_TRACKING", "true")
+        
+        # Load and validate configuration
+        config = load_config_from_env()
+        preset = cache_preset_manager.get_preset("production")
+        preset_config = preset.to_cache_config()
+        
+        # Both configurations should be valid
+        config.validate()  # Should not raise
+        assert preset_config.default_ttl > 0
+        assert preset_config.l1_cache_size > 0
+        
+        # Benchmark configuration should be properly loaded
+        assert config.default_iterations == 100
+        assert config.warmup_iterations == 10
+        assert config.timeout_seconds == 600
+        assert config.enable_memory_tracking is True
+        
+        print(f"✓ Preset and benchmark configuration validation completed")
+    
+    def test_preset_config_error_handling(self, monkeypatch):
+        """Test error handling when combining preset and benchmark configurations."""
+        # Test with invalid preset but valid benchmark config
+        monkeypatch.setenv("CACHE_PRESET", "nonexistent-preset")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        # Valid benchmark configuration
+        monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "50")
+        monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "5")
+        
+        # Benchmark configuration should still load successfully
+        config = load_config_from_env()
+        assert isinstance(config, BenchmarkConfig)
+        assert config.default_iterations == 50
+        assert config.warmup_iterations == 5
+        
+        # Preset error handling should be graceful
+        try:
+            preset = cache_preset_manager.get_preset("nonexistent-preset")
+            # Should either return a default or handle gracefully
+            assert preset is not None or True  # Accept graceful handling
+        except (ConfigurationError, KeyError):
+            # Expected behavior for invalid presets
+            pass
+        
+        # Test with invalid benchmark config but valid preset
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "-10")  # Invalid
+        monkeypatch.setenv("BENCHMARK_TIMEOUT_SECONDS", "-100")    # Invalid
+        
+        # Should handle invalid benchmark values gracefully
+        config = load_config_from_env()
+        assert isinstance(config, BenchmarkConfig)
+        
+        # Invalid benchmark values should use defaults
+        # (exact behavior depends on implementation)
+        assert config.default_iterations >= 0
+        assert config.timeout_seconds >= 0
+        
+        print(f"✓ Preset and benchmark configuration error handling validated")

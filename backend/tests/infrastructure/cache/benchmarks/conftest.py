@@ -17,6 +17,7 @@ from app.infrastructure.cache.benchmarks.config import (
 )
 from app.infrastructure.cache.benchmarks.generator import CacheBenchmarkDataGenerator
 from app.infrastructure.cache.memory import InMemoryCache
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
 
 
 @pytest.fixture
@@ -239,3 +240,161 @@ def invalid_config_file(tmp_path):
     config_file = tmp_path / "invalid_config.json"
     config_file.write_text(invalid_content)
     return str(config_file)
+
+
+@pytest.fixture
+def preset_development_cache(monkeypatch):
+    """Create a cache configured with development preset for testing."""
+    monkeypatch.setenv("CACHE_PRESET", "development")
+    monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+    
+    preset = cache_preset_manager.get_preset("development")
+    preset_config = preset.to_cache_config()
+    
+    return InMemoryCache(
+        max_size=preset_config.l1_cache_size,
+        default_ttl=preset_config.default_ttl
+    )
+
+
+@pytest.fixture
+def preset_production_cache(monkeypatch):
+    """Create a cache configured with production preset for testing."""
+    monkeypatch.setenv("CACHE_PRESET", "production")
+    monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+    
+    preset = cache_preset_manager.get_preset("production")
+    preset_config = preset.to_cache_config()
+    
+    return InMemoryCache(
+        max_size=preset_config.l1_cache_size,
+        default_ttl=preset_config.default_ttl
+    )
+
+
+@pytest.fixture
+def preset_ai_development_cache(monkeypatch):
+    """Create a cache configured with ai-development preset for testing."""
+    monkeypatch.setenv("CACHE_PRESET", "ai-development")
+    monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+    
+    preset = cache_preset_manager.get_preset("ai-development")
+    preset_config = preset.to_cache_config()
+    
+    return InMemoryCache(
+        max_size=preset_config.l1_cache_size,
+        default_ttl=preset_config.default_ttl
+    )
+
+
+@pytest.fixture
+def preset_benchmark_config(monkeypatch):
+    """Create a benchmark configuration influenced by cache preset."""
+    monkeypatch.setenv("CACHE_PRESET", "development")
+    monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+    
+    # Get preset configuration to influence benchmark settings
+    preset = cache_preset_manager.get_preset("development")
+    preset_config = preset.to_cache_config()
+    
+    # Configure benchmark environment variables influenced by preset
+    monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "25")  # Fast for development preset
+    monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "3")
+    monkeypatch.setenv("BENCHMARK_ENVIRONMENT", f"preset_dev_{preset_config.default_ttl}")
+    monkeypatch.setenv("BENCHMARK_TIMEOUT_SECONDS", "120")
+    
+    return {
+        "preset_config": preset_config,
+        "benchmark_env": {
+            "iterations": 25,
+            "warmup": 3,
+            "timeout": 120,
+            "environment": f"preset_dev_{preset_config.default_ttl}"
+        }
+    }
+
+
+@pytest.fixture
+def multiple_preset_caches(monkeypatch):
+    """Create multiple caches with different preset configurations."""
+    preset_names = ["development", "production", "ai-development"]
+    caches = {}
+    
+    for preset_name in preset_names:
+        monkeypatch.setenv("CACHE_PRESET", preset_name)
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        preset = cache_preset_manager.get_preset(preset_name)
+        preset_config = preset.to_cache_config()
+        
+        caches[preset_name] = {
+            "cache": InMemoryCache(
+                max_size=preset_config.l1_cache_size,
+                default_ttl=preset_config.default_ttl
+            ),
+            "preset_config": preset_config
+        }
+        
+        monkeypatch.delenv("CACHE_PRESET")
+    
+    return caches
+
+
+@pytest.fixture
+def preset_environment_setup(monkeypatch):
+    """Set up complete preset environment for comprehensive testing."""
+    # Cache preset configuration
+    monkeypatch.setenv("CACHE_PRESET", "production")
+    monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+    
+    # Benchmark configuration influenced by preset
+    monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "50")
+    monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "5")
+    monkeypatch.setenv("BENCHMARK_TIMEOUT_SECONDS", "300")
+    monkeypatch.setenv("BENCHMARK_ENABLE_MEMORY_TRACKING", "true")
+    monkeypatch.setenv("BENCHMARK_ENVIRONMENT", "preset_production_integration")
+    
+    # Get configurations
+    preset = cache_preset_manager.get_preset("production")
+    preset_config = preset.to_cache_config()
+    
+    return {
+        "preset_name": "production",
+        "preset_config": preset_config,
+        "cache": InMemoryCache(
+            max_size=preset_config.l1_cache_size,
+            default_ttl=preset_config.default_ttl
+        ),
+        "benchmark_settings": {
+            "iterations": 50,
+            "warmup": 5,
+            "timeout": 300,
+            "memory_tracking": True,
+            "environment": "preset_production_integration"
+        }
+    }
+
+
+@pytest.fixture
+def preset_test_data_scenarios():
+    """Generate test data scenarios for different preset configurations."""
+    return {
+        "development": {
+            "data_size": "small",
+            "operations": ["get", "set", "delete"],
+            "test_keys": [f"dev_key_{i}" for i in range(10)],
+            "test_values": [f"dev_value_{i}" * 5 for i in range(10)]
+        },
+        "production": {
+            "data_size": "large", 
+            "operations": ["get", "set", "delete", "exists", "clear"],
+            "test_keys": [f"prod_key_{i}" for i in range(100)],
+            "test_values": [f"prod_value_{i}" * 50 for i in range(100)]
+        },
+        "ai-development": {
+            "data_size": "medium",
+            "operations": ["cache_response", "get_cached_response"],
+            "test_keys": [f"ai_dev_key_{i}" for i in range(25)],
+            "test_values": [{"ai_response": f"analysis_result_{i}"} for i in range(25)]
+        }
+    }

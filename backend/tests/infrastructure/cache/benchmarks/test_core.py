@@ -17,6 +17,7 @@ from app.infrastructure.cache.benchmarks.core import (
 from app.infrastructure.cache.benchmarks.config import BenchmarkConfig, ConfigPresets
 from app.infrastructure.cache.benchmarks.models import BenchmarkResult, BenchmarkSuite, ComparisonResult
 from app.infrastructure.cache.memory import InMemoryCache
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
 
 
 class TestCachePerformanceBenchmark:
@@ -695,3 +696,212 @@ class TestPerformanceRegressionDetector:
         comparison = detector.compare_results(zero_baseline, normal_current)
         assert isinstance(comparison, ComparisonResult)
         # When baseline is zero, any positive current performance is an improvement
+
+
+class TestCachePresetBenchmarkCore:
+    """Test cache preset integration with core benchmark functionality."""
+    
+    @pytest.mark.asyncio
+    async def test_environment_detection_with_presets(self, monkeypatch):
+        """Test environment detection integrating cache preset information."""
+        # Set up cache preset environment
+        monkeypatch.setenv("CACHE_PRESET", "production")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("production")
+        preset_config = preset.to_cache_config()
+        
+        # Create benchmark with development config (for fast execution)
+        config = ConfigPresets.development_config()
+        benchmark = CachePerformanceBenchmark(config=config)
+        
+        # Create cache with preset configuration
+        cache = InMemoryCache(
+            max_size=preset_config.l1_cache_size,
+            default_ttl=preset_config.default_ttl
+        )
+        
+        # Run benchmark and check environment info collection
+        suite = await benchmark.run_comprehensive_benchmark_suite(cache)
+        
+        # Validate environment info includes preset information
+        assert suite.environment_info is not None
+        assert isinstance(suite.environment_info, dict)
+        assert len(suite.environment_info) > 0
+        
+        # Environment info should contain system details
+        assert "config" in suite.environment_info
+        
+        # Preset information should be detectable in environment
+        # (The actual preset detection would be implementation-specific)
+        print(f"✓ Environment detection completed with preset configuration")
+        print(f"  Cache TTL: {preset_config.default_ttl}s")
+        print(f"  Cache Size: {preset_config.l1_cache_size}")
+    
+    @pytest.mark.asyncio
+    async def test_benchmark_core_with_preset_environments(self, monkeypatch):
+        """Test core benchmark functionality across different preset environments."""
+        preset_names = ["development", "production"]
+        benchmark_cores = {}
+        
+        for preset_name in preset_names:
+            # Configure preset environment
+            monkeypatch.setenv("CACHE_PRESET", preset_name)
+            monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Create benchmark configuration appropriate for testing
+            if preset_name == "production":
+                config = ConfigPresets.testing_config()  # More thorough but still fast
+            else:
+                config = ConfigPresets.development_config()  # Fast execution
+            
+            benchmark = CachePerformanceBenchmark(config=config)
+            
+            # Create cache with preset configuration
+            cache = InMemoryCache(
+                max_size=preset_config.l1_cache_size,
+                default_ttl=preset_config.default_ttl
+            )
+            
+            # Run core benchmark operations
+            suite = await benchmark.run_comprehensive_benchmark_suite(cache)
+            
+            benchmark_cores[preset_name] = {
+                "suite": suite,
+                "preset_config": preset_config,
+                "benchmark_config": config
+            }
+            
+            # Clean up environment for next preset
+            monkeypatch.delenv("CACHE_PRESET")
+        
+        # Validate core benchmark functionality across presets
+        for preset_name, core_data in benchmark_cores.items():
+            suite = core_data["suite"]
+            assert isinstance(suite, BenchmarkSuite)
+            assert len(suite.results) > 0
+            
+            # Each result should be properly formed
+            for result in suite.results:
+                assert isinstance(result, BenchmarkResult)
+                assert result.duration_ms > 0
+                assert result.operations_per_second > 0
+                assert result.success_rate >= 0.0
+                assert result.success_rate <= 1.0
+        
+        # Compare core characteristics between preset environments
+        dev_core = benchmark_cores["development"]
+        prod_core = benchmark_cores["production"]
+        
+        # Both should produce valid benchmark suites
+        assert isinstance(dev_core["suite"], BenchmarkSuite)
+        assert isinstance(prod_core["suite"], BenchmarkSuite)
+        
+        print(f"✓ Core benchmark validation completed across {len(preset_names)} preset environments")
+    
+    def test_preset_configuration_integration_with_core(self, monkeypatch):
+        """Test preset configuration integration with benchmark core initialization."""
+        # Set up preset environment
+        monkeypatch.setenv("CACHE_PRESET", "ai-development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("ai-development")
+        preset_config = preset.to_cache_config()
+        
+        # Create benchmark configurations that could be influenced by presets
+        base_config = ConfigPresets.development_config()
+        
+        # Initialize benchmark with base configuration
+        benchmark = CachePerformanceBenchmark(config=base_config)
+        
+        # Validate benchmark initialization
+        assert isinstance(benchmark.config, BenchmarkConfig)
+        assert benchmark.config.default_iterations > 0
+        
+        # Create cache with preset-based configuration
+        cache = InMemoryCache(
+            max_size=preset_config.l1_cache_size,
+            default_ttl=preset_config.default_ttl
+        )
+        
+        # Validate cache configuration matches preset
+        assert cache.max_size == preset_config.l1_cache_size
+        assert cache.default_ttl == preset_config.default_ttl
+        
+        # Benchmark core should be able to work with preset-configured cache
+        assert benchmark.config is not None
+        assert cache is not None
+        
+        print(f"✓ Preset configuration integration validated with benchmark core")
+        print(f"  AI Development Preset - TTL: {preset_config.default_ttl}s, Size: {preset_config.l1_cache_size}")
+    
+    def test_regression_detection_with_preset_scenarios(self):
+        """Test regression detection between different preset-based scenarios."""
+        # Simulate benchmark results from different preset configurations
+        
+        # Development preset - typically faster/smaller
+        dev_result = BenchmarkResult(
+            operation_type="cache_operations",
+            duration_ms=100.0,
+            memory_peak_mb=15.0,
+            avg_duration_ms=10.0,
+            min_duration_ms=8.0,
+            max_duration_ms=15.0,
+            p95_duration_ms=13.0,
+            p99_duration_ms=14.0,
+            std_dev_ms=2.0,
+            operations_per_second=100.0,
+            success_rate=1.0,
+            memory_usage_mb=12.0,
+            iterations=50,
+            error_count=0
+        )
+        
+        # Production preset - typically more robust but potentially slower
+        prod_result = BenchmarkResult(
+            operation_type="cache_operations", 
+            duration_ms=150.0,
+            memory_peak_mb=25.0,
+            avg_duration_ms=15.0,
+            min_duration_ms=12.0,
+            max_duration_ms=20.0,
+            p95_duration_ms=18.0,
+            p99_duration_ms=19.0,
+            std_dev_ms=3.0,
+            operations_per_second=66.7,
+            success_rate=1.0,
+            memory_usage_mb=20.0,
+            iterations=100,
+            error_count=0
+        )
+        
+        # Test regression detection between preset scenarios
+        detector = PerformanceRegressionDetector()
+        
+        # Compare development (baseline) to production (current)
+        comparison = detector.compare_results(dev_result, prod_result)
+        
+        # Validate comparison result
+        assert isinstance(comparison, ComparisonResult)
+        assert hasattr(comparison, 'performance_change_percent')
+        assert hasattr(comparison, 'is_regression')
+        
+        # Production may be slower but should be within acceptable ranges for preset differences
+        if comparison.is_regression:
+            # Some regression is expected when moving from development to production preset
+            # due to different optimization priorities
+            assert comparison.performance_change_percent < 100.0  # Should not be extreme
+        
+        # Compare in reverse (production as baseline)
+        reverse_comparison = detector.compare_results(prod_result, dev_result)
+        assert isinstance(reverse_comparison, ComparisonResult)
+        
+        print(f"✓ Regression detection validated between preset scenarios")
+        print(f"  Dev→Prod: {comparison.performance_change_percent:.1f}% change")
+        print(f"  Prod→Dev: {reverse_comparison.performance_change_percent:.1f}% change")

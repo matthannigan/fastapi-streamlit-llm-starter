@@ -272,23 +272,23 @@ A preset-based cache configuration system where users choose `CACHE_PRESET=devel
 ### Task 4.3: Update Medium-Impact Test Files (~6,659 lines, 1-2 days)
 **Files requiring minor preset test scenario additions:**
 
-- [ ] **Update `backend/tests/infrastructure/cache/test_ai_cache_integration.py`** (2,500 lines)
-  - [ ] Replace 5 `monkeypatch.setenv` calls with preset-based environment setup
-  - [ ] Add preset configuration scenarios to existing integration tests
+- [X] **Update `backend/tests/infrastructure/cache/test_ai_cache_integration.py`** (2,500 lines)
+  - [X] Replace 5 `monkeypatch.setenv` calls with preset-based environment setup
+  - [X] Add preset configuration scenarios to existing integration tests
   
-- [ ] **Update `backend/tests/infrastructure/cache/test_ai_cache_migration.py`** (1,200 lines)
-  - [ ] Add preset examples to migration scenarios
-  - [ ] Test migration compatibility with preset-based configurations
+- [X] **Update `backend/tests/infrastructure/cache/test_ai_cache_migration.py`** (1,200 lines)
+  - [X] Add preset examples to migration scenarios
+  - [X] Test migration compatibility with preset-based configurations
   
-- [ ] **Update `backend/tests/infrastructure/cache/test_cross_module_integration.py`** (209 lines)
-  - [ ] Update 1 `REDIS_URL` reference to use preset approach
-  - [ ] Add preset configuration to integrated cache system fixture
+- [X] **Update `backend/tests/infrastructure/cache/test_cross_module_integration.py`** (209 lines)
+  - [X] Update 1 `REDIS_URL` reference to use preset approach
+  - [X] Add preset configuration to integrated cache system fixture
   
-- [ ] **Update benchmark test files** (2,750 lines total)
-  - [ ] `benchmarks/test_integration.py`: Add preset scenarios to config loading tests
-  - [ ] `benchmarks/test_core.py`: Add preset support to environment detection
-  - [ ] `benchmarks/test_config.py`: Add preset tests to configuration loading
-  - [ ] `benchmarks/conftest.py`: Add preset fixtures for test setup
+- [X] **Update benchmark test files** (2,750 lines total)
+  - [X] `benchmarks/test_integration.py`: Add preset scenarios to config loading tests
+  - [X] `benchmarks/test_core.py`: Add preset support to environment detection
+  - [X] `benchmarks/test_config.py`: Add preset tests to configuration loading
+  - [X] `benchmarks/conftest.py`: Add preset fixtures for test setup
 
 ### Task 4.4: Preserve Low-Impact Test Files (17 files, ~6,000 lines)
 **No changes required for these files as confirmed by analysis:**

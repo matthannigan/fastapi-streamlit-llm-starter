@@ -19,6 +19,7 @@ from app.infrastructure.cache.benchmarks.config import (
 from app.infrastructure.cache.benchmarks.reporting import ReporterFactory
 from app.infrastructure.cache.benchmarks.models import BenchmarkSuite
 from app.infrastructure.cache.memory import InMemoryCache
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
 
 
 class TestEndToEndBenchmarkExecution:
@@ -547,3 +548,176 @@ class TestPerformanceRegressionIntegration:
             assert "current" in comparison_data
             assert "comparisons" in comparison_data
             assert len(comparison_data["comparisons"]) > 0
+
+
+class TestCachePresetBenchmarkIntegration:
+    """Test cache preset integration with benchmark system."""
+    
+    @pytest.mark.asyncio
+    async def test_preset_based_config_loading(self, monkeypatch):
+        """Test loading benchmark configuration with cache preset integration."""
+        # Set up cache preset environment
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("development")
+        preset_config = preset.to_cache_config()
+        
+        # Configure benchmark environment variables based on preset
+        monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "10")  # Fast for development
+        monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "2") 
+        monkeypatch.setenv("BENCHMARK_ENVIRONMENT", f"preset_development_{preset_config.default_ttl}")
+        
+        # Load benchmark config from environment
+        config = load_config_from_env()
+        
+        # Validate benchmark config reflects preset influence
+        assert config.default_iterations == 10
+        assert config.warmup_iterations == 2
+        assert "preset_development" in config.environment
+        
+        # Create cache with preset configuration
+        from app.infrastructure.cache.memory import InMemoryCache
+        cache = InMemoryCache(
+            max_size=preset_config.l1_cache_size,
+            default_ttl=preset_config.default_ttl
+        )
+        
+        # Run benchmark with preset-configured cache
+        benchmark = CachePerformanceBenchmark(config=config)
+        suite = await benchmark.run_comprehensive_benchmark_suite(cache)
+        
+        # Validate results
+        assert isinstance(suite, BenchmarkSuite)
+        assert len(suite.results) > 0
+        assert "preset_development" in suite.environment_info["config"]
+    
+    @pytest.mark.asyncio 
+    async def test_multiple_preset_benchmark_scenarios(self, monkeypatch):
+        """Test benchmarking across different cache preset scenarios."""
+        preset_names = ["development", "production", "ai-development"]
+        benchmark_results = {}
+        
+        for preset_name in preset_names:
+            # Configure preset environment
+            monkeypatch.setenv("CACHE_PRESET", preset_name)
+            monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Configure benchmark based on preset characteristics
+            if "production" in preset_name:
+                iterations = 20  # More thorough for production
+                warmup = 5
+            else:
+                iterations = 10  # Faster for development/testing
+                warmup = 2
+            
+            monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", str(iterations))
+            monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", str(warmup))
+            monkeypatch.setenv("BENCHMARK_ENVIRONMENT", f"preset_{preset_name}")
+            
+            # Create cache with preset configuration
+            from app.infrastructure.cache.memory import InMemoryCache
+            cache = InMemoryCache(
+                max_size=preset_config.l1_cache_size,
+                default_ttl=preset_config.default_ttl
+            )
+            
+            # Load benchmark config and run
+            config = load_config_from_env()
+            benchmark = CachePerformanceBenchmark(config=config)
+            suite = await benchmark.run_comprehensive_benchmark_suite(cache)
+            
+            benchmark_results[preset_name] = {
+                "suite": suite,
+                "preset_config": preset_config,
+                "benchmark_config": config
+            }
+            
+            # Clean up environment for next preset
+            monkeypatch.delenv("CACHE_PRESET")
+            monkeypatch.delenv("BENCHMARK_DEFAULT_ITERATIONS")
+            monkeypatch.delenv("BENCHMARK_WARMUP_ITERATIONS")
+            monkeypatch.delenv("BENCHMARK_ENVIRONMENT")
+        
+        # Validate all preset scenarios produced results
+        for preset_name, result_data in benchmark_results.items():
+            suite = result_data["suite"]
+            assert isinstance(suite, BenchmarkSuite)
+            assert len(suite.results) > 0
+            assert f"preset_{preset_name}" in suite.environment_info["config"]
+        
+        # Compare characteristics between presets
+        dev_results = benchmark_results["development"]
+        prod_results = benchmark_results["production"]
+        
+        # Production should have more thorough benchmarking
+        assert prod_results["benchmark_config"].default_iterations > dev_results["benchmark_config"].default_iterations
+        assert prod_results["benchmark_config"].warmup_iterations > dev_results["benchmark_config"].warmup_iterations
+        
+        print(f"✓ Preset benchmark scenarios completed for {len(preset_names)} presets")
+    
+    @pytest.mark.asyncio
+    async def test_preset_performance_comparison(self, monkeypatch):
+        """Test performance comparison between different preset configurations.""" 
+        # Test development vs production preset performance characteristics
+        presets_to_compare = ["development", "production"]
+        performance_data = {}
+        
+        for preset_name in presets_to_compare:
+            # Configure preset environment
+            monkeypatch.setenv("CACHE_PRESET", preset_name)
+            monkeypatch.setenv("CACHE_REDIS_URL", "redis://localhost:6379")
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Configure consistent benchmark parameters for fair comparison
+            monkeypatch.setenv("BENCHMARK_DEFAULT_ITERATIONS", "15")
+            monkeypatch.setenv("BENCHMARK_WARMUP_ITERATIONS", "3")
+            monkeypatch.setenv("BENCHMARK_ENVIRONMENT", f"comparison_{preset_name}")
+            
+            # Create cache with preset configuration
+            from app.infrastructure.cache.memory import InMemoryCache
+            cache = InMemoryCache(
+                max_size=preset_config.l1_cache_size,
+                default_ttl=preset_config.default_ttl
+            )
+            
+            # Load config and run benchmark
+            config = load_config_from_env()
+            benchmark = CachePerformanceBenchmark(config=config)
+            suite = await benchmark.run_comprehensive_benchmark_suite(cache)
+            
+            performance_data[preset_name] = {
+                "suite": suite,
+                "preset_ttl": preset_config.default_ttl,
+                "preset_cache_size": preset_config.l1_cache_size
+            }
+            
+            # Clean up environment for next preset
+            monkeypatch.delenv("CACHE_PRESET")
+            monkeypatch.delenv("BENCHMARK_ENVIRONMENT")
+        
+        # Validate performance comparison data
+        dev_data = performance_data["development"]
+        prod_data = performance_data["production"]
+        
+        assert isinstance(dev_data["suite"], BenchmarkSuite)
+        assert isinstance(prod_data["suite"], BenchmarkSuite)
+        
+        # Both should have benchmark results
+        assert len(dev_data["suite"].results) > 0
+        assert len(prod_data["suite"].results) > 0
+        
+        # Preset configurations should be different
+        assert dev_data["preset_ttl"] != prod_data["preset_ttl"]
+        
+        print(f"✓ Performance comparison completed between development and production presets")
+        print(f"  Development: TTL={dev_data['preset_ttl']}s, Cache={dev_data['preset_cache_size']}")
+        print(f"  Production: TTL={prod_data['preset_ttl']}s, Cache={prod_data['preset_cache_size']}")

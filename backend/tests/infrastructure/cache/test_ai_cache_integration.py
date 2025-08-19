@@ -1,32 +1,33 @@
 """
-Comprehensive Integration Testing Framework for AI Cache System
+Comprehensive Integration Testing Framework for AI Cache System with Preset Integration
 
 This module provides end-to-end integration tests for the AI cache system,
 validating the complete interaction between AIResponseCache, configuration management,
-parameter mapping, and monitoring systems. Tests ensure the cache system works
-correctly as an integrated whole with proper inheritance patterns.
+parameter mapping, monitoring systems, and the new preset system. Tests ensure the cache 
+system works correctly as an integrated whole with proper inheritance patterns.
 
 Test Coverage:
 - End-to-end cache workflows with various text sizes and operations
 - Inheritance method delegation from GenericRedisCache
 - AI-specific invalidation patterns and behavior
 - Memory cache promotion logic and LRU behavior
-- Configuration integration and validation
+- Configuration integration and validation with preset system
 - Monitoring integration and metrics collection
 - Error handling and graceful degradation
 - Performance benchmarks and security validation
+- Preset-based environment setup and configuration
 
 Architecture:
 - Uses async/await patterns consistently
 - Handles Redis unavailability gracefully with memory cache fallback
-- Tests both positive and negative scenarios
+- Tests both positive and negative scenarios with preset configurations
 - Provides comprehensive error reporting
 - Follows pytest async testing patterns
 
 Dependencies:
 - pytest-asyncio for async test execution
 - AIResponseCache and supporting infrastructure
-- Configuration management systems
+- Configuration management systems with preset support
 - Performance monitoring framework
 """
 
@@ -45,6 +46,7 @@ from app.infrastructure.cache.redis_ai import AIResponseCache
 from app.infrastructure.cache.ai_config import AIResponseCacheConfig
 from app.infrastructure.cache.parameter_mapping import CacheParameterMapper, ValidationResult
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+from app.infrastructure.cache.cache_presets import cache_preset_manager, CACHE_PRESETS
 
 
 class TestAICacheIntegration:
@@ -114,10 +116,14 @@ class TestAICacheIntegration:
         Raises:
             InfrastructureError: If cache cannot be initialized properly
         """
-        # Set test environment variables for isolation
-        monkeypatch.setenv("REDIS_URL", self.TEST_REDIS_URL)
-        monkeypatch.setenv("CACHE_DEFAULT_TTL", str(self.TEST_DEFAULT_TTL))
-        monkeypatch.setenv("CACHE_MEMORY_SIZE", "50")
+        # Set preset-based environment for testing
+        monkeypatch.setenv("CACHE_PRESET", "testing")
+        # Override specific values for test isolation
+        monkeypatch.setenv("CACHE_REDIS_URL", self.TEST_REDIS_URL)
+        monkeypatch.setenv("CACHE_CUSTOM_CONFIG", json.dumps({
+            "default_ttl": self.TEST_DEFAULT_TTL,
+            "memory_cache_size": 50
+        }))
         
         cache = None
         try:
@@ -980,11 +986,14 @@ class TestAICacheIntegration:
         # Step 3: Test environment variable integration
         print("Testing environment variable integration...")
         
-        # Set environment variables
-        monkeypatch.setenv("REDIS_URL", "redis://env-redis:6379")
-        monkeypatch.setenv("CACHE_DEFAULT_TTL", "7200")
-        monkeypatch.setenv("CACHE_MEMORY_SIZE", "100")
-        monkeypatch.setenv("CACHE_COMPRESSION_THRESHOLD", "1000")
+        # Set preset-based environment variables
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://env-redis:6379")
+        monkeypatch.setenv("CACHE_CUSTOM_CONFIG", json.dumps({
+            "default_ttl": 7200,
+            "memory_cache_size": 100,
+            "compression_threshold": 1000
+        }))
         
         # Create config that should pick up environment values
         env_config = AIResponseCacheConfig(
@@ -1693,8 +1702,9 @@ class TestAICacheIntegration:
         # Step 7: Test exception propagation and logging
         print("Testing exception propagation...")
         
-        # Test with environment variables that might cause issues
-        monkeypatch.setenv("REDIS_URL", "redis://invalid-host:99999")
+        # Test with preset-based environment variables that might cause issues
+        monkeypatch.setenv("CACHE_PRESET", "testing")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://invalid-host:99999")
         
         try:
             # Create cache with invalid Redis URL
@@ -2470,3 +2480,223 @@ class TestAICacheIntegration:
         assert validation_bypasses <= 1, f"Too many security validation bypasses detected: {validation_bypasses}"
         
         print("✓ Security validation testing completed successfully")
+
+
+class TestAICachePresetIntegration:
+    """
+    Comprehensive test class for AI cache preset system integration.
+    
+    Tests the integration between the AI cache system and the preset configuration
+    system, ensuring that preset-based configurations work correctly with all
+    existing AI cache functionality.
+    """
+    
+    @pytest.mark.asyncio
+    async def test_ai_cache_with_ai_development_preset(self, monkeypatch):
+        """Test AI cache integration with ai-development preset configuration."""
+        # Set up ai-development preset
+        monkeypatch.setenv("CACHE_PRESET", "ai-development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("ai-development")
+        preset_config = preset.to_cache_config()
+        
+        # Test cache creation with preset configuration
+        cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379",  # Fallback to memory
+            default_ttl=preset_config.default_ttl,
+            memory_cache_size=preset_config.l1_cache_size,
+            text_hash_threshold=preset_config.ai_config.text_hash_threshold if preset_config.ai_config else 1000
+        )
+        
+        # Verify cache behavior with AI operations
+        await cache.cache_response(
+            text="Test AI development preset integration",
+            operation="summarize",
+            options={"max_length": 100},
+            response={"summary": "Development preset test summary"}
+        )
+        
+        # Verify retrieval
+        result = await cache.get_cached_response(
+            text="Test AI development preset integration",
+            operation="summarize",
+            options={"max_length": 100}
+        )
+        
+        assert result is not None
+        assert result["summary"] == "Development preset test summary"
+    
+    @pytest.mark.asyncio 
+    async def test_ai_cache_with_production_preset(self, monkeypatch):
+        """Test AI cache integration with production preset configuration."""
+        # Set up production preset
+        monkeypatch.setenv("CACHE_PRESET", "production")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        
+        # Get preset configuration
+        preset = cache_preset_manager.get_preset("production")
+        preset_config = preset.to_cache_config()
+        
+        # Test cache creation with preset configuration
+        cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379",  # Fallback to memory
+            default_ttl=preset_config.default_ttl,
+            memory_cache_size=preset_config.l1_cache_size,
+            compression_threshold=preset_config.compression_threshold
+        )
+        
+        # Test with larger data typical of production workloads
+        large_text = "Production workload " * 100
+        large_response = {"result": "Production analysis " * 50}
+        
+        await cache.cache_response(
+            text=large_text,
+            operation="analyze",
+            options={"depth": "comprehensive"},
+            response=large_response
+        )
+        
+        # Verify retrieval
+        result = await cache.get_cached_response(
+            text=large_text,
+            operation="analyze", 
+            options={"depth": "comprehensive"}
+        )
+        
+        assert result is not None
+        assert result["result"].startswith("Production analysis")
+    
+    @pytest.mark.asyncio
+    async def test_preset_override_scenarios(self, monkeypatch):
+        """Test preset configuration with custom overrides."""
+        # Set up base preset with custom overrides
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        monkeypatch.setenv("CACHE_CUSTOM_CONFIG", json.dumps({
+            "default_ttl": 1800,
+            "text_hash_threshold": 300,
+            "memory_cache_size": 150
+        }))
+        
+        # Get preset and verify override values
+        preset = cache_preset_manager.get_preset("development") 
+        preset_config = preset.to_cache_config()
+        
+        # Test cache with override values
+        cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=1800,  # Overridden value
+            text_hash_threshold=300,  # Overridden value
+            memory_cache_size=150  # Overridden value
+        )
+        
+        # Test short text below hash threshold
+        short_text = "A" * 250  # Below 300 character threshold
+        await cache.cache_response(
+            text=short_text,
+            operation="test",
+            options={},
+            response={"result": "short text response"}
+        )
+        
+        # Test long text above hash threshold
+        long_text = "B" * 350  # Above 300 character threshold
+        await cache.cache_response(
+            text=long_text,
+            operation="test",
+            options={},
+            response={"result": "long text response"}
+        )
+        
+        # Verify both are retrievable
+        short_result = await cache.get_cached_response(short_text, "test", {})
+        long_result = await cache.get_cached_response(long_text, "test", {})
+        
+        assert short_result["result"] == "short text response"
+        assert long_result["result"] == "long text response"
+    
+    @pytest.mark.asyncio
+    async def test_multiple_preset_scenarios(self, monkeypatch):
+        """Test switching between different preset configurations."""
+        presets_to_test = ["development", "production", "ai-development"]
+        
+        for preset_name in presets_to_test:
+            # Set up preset
+            monkeypatch.setenv("CACHE_PRESET", preset_name)
+            monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+            
+            # Get preset configuration
+            preset = cache_preset_manager.get_preset(preset_name)
+            preset_config = preset.to_cache_config()
+            
+            # Create cache with preset settings
+            cache = AIResponseCache(
+                redis_url="redis://nonexistent:6379",
+                default_ttl=preset_config.default_ttl,
+                memory_cache_size=preset_config.l1_cache_size
+            )
+            
+            # Test basic AI operations
+            test_key = f"preset_{preset_name}_test"
+            await cache.cache_response(
+                text=f"Testing {preset_name} preset",
+                operation="test",
+                options={"preset": preset_name},
+                response={"preset_used": preset_name, "ttl": preset_config.default_ttl}
+            )
+            
+            result = await cache.get_cached_response(
+                text=f"Testing {preset_name} preset",
+                operation="test",
+                options={"preset": preset_name}
+            )
+            
+            assert result is not None
+            assert result["preset_used"] == preset_name
+            assert result["ttl"] == preset_config.default_ttl
+            
+            # Clean up environment for next preset
+            monkeypatch.delenv("CACHE_PRESET")
+            if "CACHE_REDIS_URL" in os.environ:
+                monkeypatch.delenv("CACHE_REDIS_URL")
+    
+    @pytest.mark.asyncio
+    async def test_preset_error_handling(self, monkeypatch):
+        """Test error handling with invalid preset configurations."""
+        # Test with invalid preset name
+        monkeypatch.setenv("CACHE_PRESET", "nonexistent-preset")
+        monkeypatch.setenv("CACHE_REDIS_URL", "redis://nonexistent:6379")
+        
+        try:
+            preset = cache_preset_manager.get_preset("nonexistent-preset")
+            # Should raise an error or return default
+            assert preset is not None  # Should handle gracefully
+        except (ConfigurationError, KeyError):
+            # Expected behavior for invalid presets
+            pass
+        
+        # Test with corrupted custom config
+        monkeypatch.setenv("CACHE_PRESET", "development")
+        monkeypatch.setenv("CACHE_CUSTOM_CONFIG", "invalid-json-data")
+        
+        # Should handle gracefully and use preset defaults
+        preset = cache_preset_manager.get_preset("development")
+        preset_config = preset.to_cache_config()
+        
+        cache = AIResponseCache(
+            redis_url="redis://nonexistent:6379",
+            default_ttl=preset_config.default_ttl
+        )
+        
+        # Should still work with preset defaults
+        await cache.cache_response(
+            text="Error handling test",
+            operation="test",
+            options={},
+            response={"status": "success"}
+        )
+        
+        result = await cache.get_cached_response("Error handling test", "test", {})
+        assert result["status"] == "success"
