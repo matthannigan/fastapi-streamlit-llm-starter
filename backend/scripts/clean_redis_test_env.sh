@@ -41,30 +41,30 @@ done
 echo "✓ Temporary directories cleaned"
 
 # Check for any remaining Redis servers on common test ports
-echo ""
-echo "Checking for Redis servers on common test ports..."
-TEST_PORTS=(6379 6380 $(seq 33000 33100) $(seq 22000 22300) $(seq 29000 29400))
+# echo ""
+# echo "Checking for Redis servers on common test ports..."
+# TEST_PORTS=(6379 6380 $(seq 33000 33100) $(seq 22000 22300) $(seq 29000 29400))
 
-FOUND_PORTS=()
-for port in "${TEST_PORTS[@]}"; do
-    if lsof -i :$port 2>/dev/null | grep -q redis; then
-        FOUND_PORTS+=($port)
-    fi
-done
+# FOUND_PORTS=()
+# for port in "${TEST_PORTS[@]}"; do
+#     if lsof -i :$port 2>/dev/null | grep -q redis; then
+#         FOUND_PORTS+=($port)
+#     fi
+# done
 
-if [ ${#FOUND_PORTS[@]} -gt 0 ]; then
-    echo "⚠️  Found Redis on ports: ${FOUND_PORTS[*]}"
-    echo "   These may be legitimate Redis instances."
-    echo "   To stop a specific instance: redis-cli -p PORT shutdown"
-else
-    echo "✓ No Redis servers found on test ports"
-fi
+# if [ ${#FOUND_PORTS[@]} -gt 0 ]; then
+#     echo "⚠️  Found Redis on ports: ${FOUND_PORTS[*]}"
+#     echo "   These may be legitimate Redis instances."
+#     echo "   To stop a specific instance: redis-cli -p PORT shutdown"
+# else
+#     echo "✓ No Redis servers found on test ports"
+# fi
 
-echo ""
-echo "✅ Cleanup complete!"
-echo ""
-echo "Tips for running Redis tests:"
-echo "  • Run tests without parallelization: pytest -n 0"
-echo "  • Run specific test: pytest path/to/test.py::TestClass::test_method"
-echo "  • Check Redis connectivity: redis-cli ping"
-echo ""
+# echo ""
+# echo "✅ Cleanup complete!"
+# echo ""
+# echo "Tips for running Redis tests:"
+# echo "  • Run tests without parallelization: pytest -n 0"
+# echo "  • Run specific test: pytest path/to/test.py::TestClass::test_method"
+# echo "  • Check Redis connectivity: redis-cli ping"
+# echo ""
