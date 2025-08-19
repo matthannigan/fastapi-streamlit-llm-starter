@@ -237,19 +237,19 @@ A preset-based cache configuration system where users choose `CACHE_PRESET=devel
 **Goal**: Ensure the preset system works correctly and doesn't break existing functionality.
 
 ### Task 4.1: Create New Preset System Tests (~400 lines, 1-2 days)
-- [ ] **Create `backend/tests/infrastructure/cache/test_dependencies.py`** (NEW FILE)
-  - [ ] Test `get_cache_config()` with all preset values (`development`, `testing`, `production`, `ai-development`, `ai-production`)
-  - [ ] Test `CACHE_PRESET` environment variable validation and error handling
-  - [ ] Test preset + override combinations (`CACHE_REDIS_URL`, `ENABLE_AI_CACHE`, `CACHE_CUSTOM_CONFIG`)
-  - [ ] Test override precedence: Custom Config > Environment Variables > Preset Defaults
-  - [ ] Test invalid preset names with descriptive error messages
-  - [ ] Test fallback to 'development' preset when `CACHE_PRESET` not specified
-  - [ ] Test preset configuration validation after loading
-- [ ] **Create `backend/tests/infrastructure/cache/test_preset_system.py`** (NEW FILE)
-  - [ ] Test preset validation and error handling utilities
-  - [ ] Test preset comparison and recommendation functionality
-  - [ ] Test preset metadata and documentation features
-  - [ ] Test configuration export/import functionality
+- [X] **Create `backend/tests/infrastructure/cache/test_dependencies.py`** (NEW FILE)
+  - [X] Test `get_cache_config()` with all preset values (`development`, `testing`, `production`, `ai-development`, `ai-production`)
+  - [X] Test `CACHE_PRESET` environment variable validation and error handling
+  - [X] Test preset + override combinations (`CACHE_REDIS_URL`, `ENABLE_AI_CACHE`, `CACHE_CUSTOM_CONFIG`)
+  - [X] Test override precedence: Custom Config > Environment Variables > Preset Defaults
+  - [X] Test invalid preset names with descriptive error messages
+  - [X] Test fallback to 'development' preset when `CACHE_PRESET` not specified
+  - [X] Test preset configuration validation after loading
+- [X] **Create `backend/tests/infrastructure/cache/test_preset_system.py`** (NEW FILE)
+  - [X] Test preset validation and error handling utilities
+  - [X] Test preset comparison and recommendation functionality
+  - [X] Test preset metadata and documentation features
+  - [X] Test configuration export/import functionality
 
 ### Task 4.2: Update High-Impact Test Files (~1,421 lines, 2-3 days)
 **Files requiring significant updates based on test analysis:**
