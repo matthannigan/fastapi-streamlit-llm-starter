@@ -293,6 +293,16 @@ class Settings(BaseSettings):
         description="Default cache TTL in seconds (1 hour)"
     )
 
+    # Cache Preset System Configuration
+    cache_preset: str = Field(
+        default="development",
+        description="Cache configuration preset (disabled, simple, development, production, ai-development, ai-production)"
+    )
+    cache_custom_config: Optional[str] = Field(
+        default=None,
+        description="Custom cache configuration as JSON string (overrides preset)"
+    )
+
     # ========================================
     # RESILIENCE CONFIGURATION
     # ========================================
@@ -696,6 +706,23 @@ class Settings(BaseSettings):
                 f"Invalid resilience_preset '{v}': must be one of {', '.join(allowed_presets)}",
                 context={
                     "field": "resilience_preset",
+                    "provided_value": v,
+                    "allowed_values": list(allowed_presets),
+                    "validation_context": "pydantic_field_validator"
+                }
+            )
+        return v
+
+    @field_validator('cache_preset')
+    @classmethod
+    def validate_cache_preset(cls, v: str) -> str:
+        """Validate cache preset name."""
+        allowed_presets = {"disabled", "simple", "development", "production", "ai-development", "ai-production"}
+        if v not in allowed_presets:
+            raise ConfigurationError(
+                f"Invalid cache_preset '{v}': must be one of {', '.join(allowed_presets)}",
+                context={
+                    "field": "cache_preset",
                     "provided_value": v,
                     "allowed_values": list(allowed_presets),
                     "validation_context": "pydantic_field_validator"
@@ -1417,6 +1444,132 @@ class Settings(BaseSettings):
             "qa": self.qa_resilience_strategy,
             "answer_question": self.qa_resilience_strategy,
         }
+
+    def get_cache_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
+        """
+        Get cache configuration from preset or legacy settings.
+        
+        This is the main entry point for cache configuration. It automatically
+        determines the appropriate configuration source and returns a complete
+        CacheConfig object.
+
+        Returns appropriate cache configuration based on:
+        1. Custom configuration JSON (if provided)
+        2. Preset configuration (default)
+        3. Environment variable overrides (CACHE_REDIS_URL, ENABLE_AI_CACHE)
+
+        Args:
+            session_id: Optional session identifier for monitoring
+            user_context: Optional user context for monitoring
+
+        Returns:
+            CacheConfig object with complete configuration
+        """
+        # Import here to avoid circular imports
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        
+        try:
+            # Load preset configuration
+            preset_name = self.cache_preset
+            preset = cache_preset_manager.get_preset(preset_name)
+            cache_config = preset.to_cache_config()
+            
+            logger.info(f"Loaded cache preset '{preset_name}' successfully")
+            
+            # Apply environment variable overrides if provided
+            # These take precedence over preset defaults
+            redis_url = os.getenv('CACHE_REDIS_URL')
+            if redis_url:
+                cache_config.redis_url = redis_url
+                logger.info(f"Applied CACHE_REDIS_URL override: {redis_url}")
+            
+            enable_ai_cache = os.getenv('ENABLE_AI_CACHE', '').lower() in ('true', '1', 'yes')
+            if enable_ai_cache and not cache_config.enable_ai_cache:
+                cache_config.enable_ai_cache = True
+                logger.info("Applied ENABLE_AI_CACHE override: enabled AI features")
+            elif not enable_ai_cache and cache_config.enable_ai_cache:
+                # If preset enables AI but env var explicitly disables it
+                env_disable = os.getenv('ENABLE_AI_CACHE', '').lower() in ('false', '0', 'no')
+                if env_disable:
+                    cache_config.enable_ai_cache = False
+                    logger.info("Applied ENABLE_AI_CACHE override: disabled AI features")
+            
+            # Apply custom overrides if provided
+            custom_config_json = self.cache_custom_config
+            if not _IS_PYTEST and not custom_config_json:
+                env_custom_config = os.getenv("CACHE_CUSTOM_CONFIG")
+                if env_custom_config:
+                    custom_config_json = env_custom_config
+            
+            if custom_config_json:
+                try:
+                    custom_config = json.loads(custom_config_json)
+                    cache_config = self._apply_cache_custom_overrides(cache_config, custom_config)
+                    logger.info(f"Applied custom cache configuration overrides: {list(custom_config.keys())}")
+                    
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in cache_custom_config: {e}")
+                    # Continue with preset configuration without custom overrides
+            
+            return cache_config
+            
+        except Exception as e:
+            logger.error(f"Error loading cache preset '{self.cache_preset}': {e}")
+            
+            # Fallback to simple preset on error
+            logger.warning("Falling back to 'simple' cache preset due to configuration error")
+            try:
+                fallback_preset = cache_preset_manager.get_preset("simple")
+                return fallback_preset.to_cache_config()
+            except Exception as fallback_error:
+                logger.error(f"Fallback cache configuration also failed: {fallback_error}")
+                raise ConfigurationError(
+                    f"Failed to load cache configuration and fallback failed: {str(e)}",
+                    context={
+                        "original_error": str(e),
+                        "fallback_error": str(fallback_error),
+                        "cache_preset": self.cache_preset
+                    }
+                )
+
+    def _apply_cache_custom_overrides(self, base_config, custom_config: dict):
+        """
+        Apply custom configuration overrides to base cache preset config.
+        
+        Args:
+            base_config: Base cache configuration from preset
+            custom_config: Dictionary of custom overrides
+            
+        Returns:
+            Modified cache configuration with overrides applied
+        """
+        # Create a copy to avoid modifying the original
+        from dataclasses import replace
+        import copy
+        
+        # Make a deep copy of the config
+        modified_config = copy.deepcopy(base_config)
+        
+        # Apply each override
+        for key, value in custom_config.items():
+            if hasattr(modified_config, key):
+                # Special handling for nested dictionaries
+                if key in ['text_size_tiers', 'operation_ttls']:
+                    if hasattr(modified_config, key):
+                        current_value = getattr(modified_config, key)
+                        if isinstance(current_value, dict) and isinstance(value, dict):
+                            current_value.update(value)
+                        else:
+                            setattr(modified_config, key, value)
+                    else:
+                        setattr(modified_config, key, value)
+                else:
+                    setattr(modified_config, key, value)
+                logger.debug(f"Applied cache override: {key} = {value}")
+            else:
+                logger.warning(f"Unknown cache configuration key '{key}' in custom config")
+        
+        return modified_config
 
 
 # ========================================

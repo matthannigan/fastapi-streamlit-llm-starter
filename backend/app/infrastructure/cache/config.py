@@ -683,80 +683,114 @@ class CacheConfigBuilder:
 
 class EnvironmentPresets:
     """
-    Pre-configured cache settings for different environments.
+    Pre-configured cache settings for different environments using the new preset system.
     
     This class provides static methods that return pre-configured CacheConfig
-    instances optimized for different environments and use cases.
+    instances from the new cache preset system, replacing the CacheConfigBuilder approach
+    with the simplified preset-based configuration system.
+    
+    **Migration Note**: This class now uses the new cache preset system from
+    `app.infrastructure.cache.cache_presets` which reduces 28+ environment variables
+    to a single CACHE_PRESET configuration.
     """
     
     @staticmethod
-    def development() -> CacheConfig:
+    def development():
         """
         Development environment preset with balanced performance and debugging.
         
         Returns:
-            CacheConfig optimized for development
+            CacheConfig optimized for development from the new preset system
         """
-        return (CacheConfigBuilder()
-               .for_environment("development")
-               .build())
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("development")
+        return preset.to_cache_config()
     
     @staticmethod
-    def testing() -> CacheConfig:
+    def testing():
         """
         Testing environment preset with minimal caching and fast expiration.
         
         Returns:
-            CacheConfig optimized for testing
+            CacheConfig optimized for testing from the new preset system
+            
+        Note: Uses 'development' preset as base since it's optimized for fast feedback
         """
-        return (CacheConfigBuilder()
-               .for_environment("testing")
-               .build())
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("development")
+        return preset.to_cache_config()
     
     @staticmethod
-    def production() -> CacheConfig:
+    def production():
         """
         Production environment preset with optimized performance and security.
         
         Returns:
-            CacheConfig optimized for production
+            CacheConfig optimized for production from the new preset system
         """
-        return (CacheConfigBuilder()
-               .for_environment("production")
-               .build())
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("production")
+        return preset.to_cache_config()
     
     @staticmethod
-    def ai_development() -> CacheConfig:
+    def ai_development():
         """
         AI development preset with AI features and development-friendly settings.
         
         Returns:
-            CacheConfig optimized for AI development
+            CacheConfig optimized for AI development from the new preset system
         """
-        return (CacheConfigBuilder()
-               .for_environment("development")
-               .with_ai_features(
-                   text_hash_threshold=500,
-                   hash_algorithm="sha256",
-                   enable_smart_promotion=True
-               )
-               .build())
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("ai-development")
+        return preset.to_cache_config()
     
     @staticmethod
-    def ai_production() -> CacheConfig:
+    def ai_production():
         """
         AI production preset with AI features and production-optimized settings.
         
         Returns:
-            CacheConfig optimized for AI production workloads
+            CacheConfig optimized for AI production workloads from the new preset system
         """
-        return (CacheConfigBuilder()
-               .for_environment("production")
-               .with_ai_features(
-                   text_hash_threshold=1000,
-                   hash_algorithm="sha256",
-                   enable_smart_promotion=True,
-                   max_text_length=200000
-               )
-               .with_compression(threshold=1000, level=6)
-               .build())
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        preset = cache_preset_manager.get_preset("ai-production")
+        return preset.to_cache_config()
+    
+    @staticmethod
+    def get_preset_names() -> list:
+        """
+        Get list of all available preset names.
+        
+        Returns:
+            List of preset names available in the system
+        """
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        return cache_preset_manager.list_presets()
+    
+    @staticmethod
+    def get_preset_details(preset_name: str) -> dict:
+        """
+        Get detailed information about a specific preset.
+        
+        Args:
+            preset_name: Name of the preset to get details for
+            
+        Returns:
+            Dictionary with preset configuration details
+        """
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        return cache_preset_manager.get_preset_details(preset_name)
+    
+    @staticmethod
+    def recommend_preset(environment: str = None) -> str:
+        """
+        Recommend appropriate preset for given environment.
+        
+        Args:
+            environment: Environment name (optional, auto-detects if None)
+            
+        Returns:
+            Recommended preset name
+        """
+        from app.infrastructure.cache.cache_presets import cache_preset_manager
+        return cache_preset_manager.recommend_preset(environment)

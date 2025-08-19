@@ -116,7 +116,6 @@ from app.core.config import Settings
 from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.factory import CacheFactory
-from app.infrastructure.cache.config import CacheConfig, CacheConfigBuilder
 from app.infrastructure.cache.memory import InMemoryCache
 
 # Optional imports for enhanced functionality
@@ -285,28 +284,30 @@ def get_settings() -> Settings:
     return Settings()
 
 
-async def get_cache_config(settings: Settings = Depends(get_settings)) -> CacheConfig:
+async def get_cache_config(settings: Settings = Depends(get_settings)):
     """
-    Build cache configuration from application settings with environment detection.
+    Build cache configuration from application settings using preset system.
     
-    This dependency creates a CacheConfig instance using the CacheConfigBuilder
-    with intelligent environment detection and settings integration. It handles
-    Redis configuration, AI features, and environment-specific optimizations.
+    This dependency creates a CacheConfig instance using the preset-based approach
+    with intelligent environment detection and settings integration. It replaces
+    the previous CacheConfigBuilder approach with the new preset system that
+    reduces 28+ environment variables to a single CACHE_PRESET variable.
     
-    Environment Detection:
-        - Development: settings.debug=True
-        - Testing: settings.testing=True (if available)
-        - Production: Default when not debug or testing
+    Preset System:
+        - Loads configuration from settings.cache_preset (default: "development")
+        - Supports overrides via CACHE_REDIS_URL and ENABLE_AI_CACHE environment variables
+        - Supports custom JSON configuration via CACHE_CUSTOM_CONFIG
+        - Provides fallback to "simple" preset on configuration errors
     
     Args:
         settings: Application settings dependency
         
     Returns:
-        CacheConfig: Built and validated cache configuration
+        CacheConfig: Built and validated cache configuration from preset system
         
     Raises:
         ConfigurationError: Configuration building or validation failures
-        ValidationError: Invalid configuration parameters from settings
+        InfrastructureError: Preset system failures
         
     Examples:
         @app.get("/cache/config")
@@ -316,59 +317,40 @@ async def get_cache_config(settings: Settings = Depends(get_settings)) -> CacheC
             return config.to_dict()
     """
     try:
-        logger.debug("Building cache configuration from application settings")
+        logger.debug("Building cache configuration from preset system")
         
-        # Detect environment from settings
-        if getattr(settings, 'debug', False):
-            environment = "development"
-        elif getattr(settings, 'testing', False):
-            environment = "testing"
-        else:
-            environment = "production"
+        # Use the new preset-based configuration loading from settings
+        cache_config = settings.get_cache_config()
         
-        logger.info(f"Detected environment: {environment}")
+        logger.info(f"Cache configuration loaded successfully from preset '{settings.cache_preset}'")
         
-        # Start with environment preset
-        builder = CacheConfigBuilder().for_environment(environment)
+        # Convert to the expected return type if needed
+        # The settings.get_cache_config() returns the new CacheConfig from cache_presets
+        # but we need to ensure compatibility with existing code expectations
         
-        # Configure Redis if available in settings
-        redis_url = getattr(settings, 'redis_url', None)
-        if redis_url:
-            logger.debug(f"Configuring Redis from settings: {redis_url}")
-            builder = builder.with_redis(redis_url)
-        
-        # Configure AI features if enabled
-        enable_ai = os.environ.get('ENABLE_AI_CACHE', 'false').lower() == 'true'
-        if enable_ai:
-            logger.debug("Enabling AI cache features from environment")
-            builder = builder.with_ai_features()
-        
-        # Build and validate configuration
-        config = builder.build()
-        logger.info(f"Cache configuration built successfully for {environment} environment")
-        
-        return config
+        return cache_config
         
     except Exception as e:
-        logger.error(f"Failed to build cache configuration: {e}")
+        logger.error(f"Failed to build cache configuration from preset system: {e}")
         
-        # Fallback to development preset on configuration errors
-        logger.warning("Falling back to development environment preset")
+        # Fallback to simple preset on configuration errors
+        logger.warning("Falling back to 'simple' cache preset due to configuration error")
         try:
-            fallback_config = CacheConfigBuilder().for_environment("development").build()
-            logger.info("Using fallback development configuration")
+            from app.infrastructure.cache.cache_presets import cache_preset_manager
+            fallback_preset = cache_preset_manager.get_preset("simple")
+            fallback_config = fallback_preset.to_cache_config()
+            logger.info("Using fallback 'simple' cache configuration")
             return fallback_config
             
         except Exception as fallback_error:
-            logger.error(f"Fallback configuration also failed: {fallback_error}")
+            logger.error(f"Fallback cache configuration also failed: {fallback_error}")
             raise ConfigurationError(
                 f"Failed to build cache configuration and fallback failed: {str(e)}",
                 context={
                     "original_error": str(e),
                     "fallback_error": str(fallback_error),
-                    "environment": environment if 'environment' in locals() else "unknown",
-                    "redis_url": redis_url if 'redis_url' in locals() else None,
-                    "enable_ai": enable_ai if 'enable_ai' in locals() else False
+                    "cache_preset": getattr(settings, 'cache_preset', 'unknown'),
+                    "preset_system": "cache_presets"
                 }
             )
 
@@ -377,7 +359,7 @@ async def get_cache_config(settings: Settings = Depends(get_settings)) -> CacheC
 # Main Cache Service Dependencies
 # ============================================================================
 
-async def get_cache_service(config: CacheConfig = Depends(get_cache_config)) -> CacheInterface:
+async def get_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
     """
     Get main cache service with explicit factory usage and registry management.
     
@@ -438,7 +420,7 @@ async def get_cache_service(config: CacheConfig = Depends(get_cache_config)) -> 
         )
 
 
-async def get_web_cache_service(config: CacheConfig = Depends(get_cache_config)) -> CacheInterface:
+async def get_web_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
     """
     Get web-optimized cache service ensuring no AI configuration.
     
@@ -504,7 +486,7 @@ async def get_web_cache_service(config: CacheConfig = Depends(get_cache_config))
         )
 
 
-async def get_ai_cache_service(config: CacheConfig = Depends(get_cache_config)) -> CacheInterface:
+async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
     """
     Get AI-optimized cache service ensuring AI configuration is present.
     
@@ -692,7 +674,7 @@ async def get_fallback_cache_service() -> CacheInterface:
     return cache
 
 
-async def validate_cache_configuration(config: CacheConfig = Depends(get_cache_config)) -> CacheConfig:
+async def validate_cache_configuration(config = Depends(get_cache_config)):
     """
     Validate cache configuration and raise HTTP errors for invalid configs.
     
