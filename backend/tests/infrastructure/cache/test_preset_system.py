@@ -72,7 +72,7 @@ class TestPresetValidation:
             strategy=CacheStrategy.FAST,
             default_ttl=-100,  # Invalid negative TTL
             max_connections=10,
-            connection_timeout=5.0,
+            connection_timeout=5,
             memory_cache_size=1000,
             compression_level=1,
             enable_monitoring=True,
@@ -91,7 +91,7 @@ class TestPresetValidation:
             strategy=CacheStrategy.BALANCED,
             default_ttl=3600,
             max_connections=0,  # Invalid zero connections
-            connection_timeout=5.0,
+            connection_timeout=5,
             memory_cache_size=1000,
             compression_level=1,
             enable_monitoring=True,
@@ -131,7 +131,7 @@ class TestPresetValidation:
             strategy=CacheStrategy.FAST,
             default_ttl=60,  # Minimum 1 minute
             max_connections=1,  # Minimum 1 connection
-            connection_timeout=1.0,  # Minimum timeout
+            connection_timeout=1,  # Minimum timeout
             memory_cache_size=100,  # Small but valid size
             compression_level=1,  # Minimum compression
             enable_monitoring=False,
@@ -149,7 +149,7 @@ class TestPresetValidation:
             strategy=CacheStrategy.ROBUST,
             default_ttl=604800,  # 1 week
             max_connections=100,  # High but reasonable
-            connection_timeout=60.0,  # Long timeout
+            connection_timeout=60,  # Long timeout
             memory_cache_size=100000,  # Large cache
             compression_level=9,  # Maximum compression
             enable_monitoring=True,
@@ -522,7 +522,7 @@ class TestPresetSystemIntegration:
             strategy=CacheStrategy.BALANCED,
             default_ttl=3600,
             max_connections=10,
-            connection_timeout=5.0,
+            connection_timeout=5,
             memory_cache_size=1000,
             compression_level=1,
             enable_monitoring=True,
