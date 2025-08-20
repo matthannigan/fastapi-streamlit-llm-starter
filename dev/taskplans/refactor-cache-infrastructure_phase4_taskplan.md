@@ -292,12 +292,12 @@ A preset-based cache configuration system where users choose `CACHE_PRESET=devel
 
 ### Task 4.4: Preserve Low-Impact Test Files (17 files, ~6,000 lines)
 **No changes required for these files as confirmed by analysis:**
-- [ ] **Verify** that core cache functionality tests remain unchanged:
-  - [ ] `test_base.py`, `test_memory.py`, `test_redis_generic.py`, `test_redis_ai.py`
-  - [ ] `test_redis_ai_inheritance.py`, `test_redis_ai_monitoring.py`
-  - [ ] `test_key_generator.py`, `test_parameter_mapping.py`, `test_security.py`
-  - [ ] `test_monitoring.py`, `test_migration.py`, `test_compatibility.py`
-  - [ ] All benchmark model and utility tests (`test_models.py`, `test_utils.py`, etc.)
+- [X] **Verify** that core cache functionality tests remain unchanged (no deprecated `CACHE_*` usage; preset-agnostic):
+  - [X] `test_base.py`, `test_memory.py`, `test_redis_generic.py`, `test_redis_ai.py`
+  - [X] `test_redis_ai_inheritance.py`, `test_redis_ai_monitoring.py`
+  - [X] `test_key_generator.py`, `test_parameter_mapping.py`, `test_security.py`
+  - [X] `test_monitoring.py`, `test_migration.py`, `test_compatibility.py`
+  - [X] All benchmark model and utility tests (`test_models.py`, `test_utils.py`, etc.)
 
 ### Task 4.5: Comprehensive Integration and Regression Testing
 - [ ] **Performance Regression Testing**
