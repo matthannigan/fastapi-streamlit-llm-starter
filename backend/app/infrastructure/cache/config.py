@@ -195,6 +195,7 @@ class CacheConfig:
     
     # AI-specific configuration
     ai_config: Optional[AICacheConfig] = None
+    enable_ai_cache: bool = False
     
     # Internal flags
     _from_env: bool = field(default=False, init=False)

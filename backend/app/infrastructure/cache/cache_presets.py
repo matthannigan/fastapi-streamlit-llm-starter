@@ -459,8 +459,12 @@ class CachePresetManager:
             ValueError: If preset name is not found
         """
         if name not in self.presets:
+            from app.core.exceptions import ConfigurationError
             available = list(self.presets.keys())
-            raise ValueError(f"Unknown preset '{name}'. Available presets: {available}")
+            raise ConfigurationError(
+                f"Unknown preset '{name}'. Available presets: {available}",
+                context={"requested_preset": name, "available": available}
+            )
         return self.presets[name]
     
     def list_presets(self) -> List[str]:

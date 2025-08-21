@@ -33,6 +33,7 @@ Note:
 """
 
 
+import json
 import logging
 import pickle
 import time
@@ -132,6 +133,10 @@ class GenericRedisCache(CacheInterface):
 
         self.performance_monitor = performance_monitor or CachePerformanceMonitor()
         self._callbacks: Dict[str, List[Callable]] = defaultdict(list)
+        # Connection attempt throttling to avoid repeated slow attempts when Redis is unavailable
+        self._last_connect_ts: float = 0.0
+        self._last_connect_result: Optional[bool] = None
+        self._connect_retry_interval: float = 0.5  # seconds
         
         # Security configuration
         self.security_config = security_config
@@ -289,6 +294,11 @@ class GenericRedisCache(CacheInterface):
             logger.warning("Redis not available - operating in memory-only mode")
             return False
 
+        # Throttle repeated failed connection attempts for performance
+        now = time.time()
+        if self._last_connect_result is False and (now - self._last_connect_ts) < self._connect_retry_interval:
+            return False
+
         if not self.redis:
             try:
                 # Use security manager for secure connections if available
@@ -302,16 +312,20 @@ class GenericRedisCache(CacheInterface):
                     self.redis = await aioredis.from_url(
                         self.redis_url,
                         decode_responses=False,  # Handle binary data
-                        socket_connect_timeout=5,
-                        socket_timeout=5,
+                        socket_connect_timeout=0.2,
+                        socket_timeout=0.2,
                     )
                     assert self.redis is not None
                     await self.redis.ping()
                     logger.info(f"Basic Redis connection established at {self.redis_url}")
+                    self._last_connect_result = True
+                    self._last_connect_ts = time.time()
                     return True
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e} - using memory-only mode")
                 self.redis = None
+                self._last_connect_result = False
+                self._last_connect_ts = time.time()
                 return False
         return True
 
@@ -461,20 +475,44 @@ class GenericRedisCache(CacheInterface):
         start_time = time.time()
         effective_ttl = ttl or self.default_ttl
 
-        # Store in L1 cache first
-        if self.l1_cache:
-            await self.l1_cache.set(key, value, ttl=effective_ttl)
-
-        # Store in Redis
+        # Attempt to store in Redis first. If Redis is unavailable, fall back to L1-only
+        # to maintain functional caching behavior in memory.
         if not await self.connect():
+            # Populate L1 cache if enabled
+            if self.l1_cache:
+                try:
+                    await self.l1_cache.set(key, value, ttl=effective_ttl)
+                    duration = time.time() - start_time
+                    self.performance_monitor.record_cache_operation_time(
+                        operation="set",
+                        duration=duration,
+                        cache_hit=True,
+                        additional_data={"reason": "l1_only", "ttl": effective_ttl},
+                    )
+                    self._fire_callback("set_success", key, value)
+                    logger.debug(
+                        f"Set key {key} in L1 cache only (Redis unavailable), TTL {effective_ttl}s"
+                    )
+                    return
+                except Exception as e:
+                    duration = time.time() - start_time
+                    self.performance_monitor.record_cache_operation_time(
+                        operation="set",
+                        duration=duration,
+                        cache_hit=False,
+                        additional_data={"reason": "l1_only_failed", "error": str(e)},
+                    )
+                    logger.warning(f"Failed to set L1 cache for key {key}: {e}")
+                    return
+            # No L1 cache; record and return
             duration = time.time() - start_time
             self.performance_monitor.record_cache_operation_time(
                 operation="set",
                 duration=duration,
                 cache_hit=False,
-                additional_data={"reason": "redis_unavailable"},
+                additional_data={"reason": "redis_unavailable_no_l1"},
             )
-            logger.debug(f"Set key {key} in L1 cache only (Redis unavailable)")
+            logger.debug(f"Skipped set for key {key} (Redis unavailable, no L1 cache)")
             return
 
         try:
@@ -494,6 +532,10 @@ class GenericRedisCache(CacheInterface):
 
             assert self.redis is not None
             await self.redis.setex(key, effective_ttl, cache_data)
+
+            # Populate L1 cache after successful Redis write
+            if self.l1_cache:
+                await self.l1_cache.set(key, value, ttl=effective_ttl)
 
             duration = time.time() - start_time
             self.performance_monitor.record_cache_operation_time(

@@ -1146,25 +1146,7 @@ class AIResponseCache(GenericRedisCache):
             # Determine text tier for metrics and promotion decisions
             text_tier = self._get_text_tier(text)
 
-            # If Redis is unavailable, degrade gracefully without consulting L1
-            if not await self.connect():
-                self._record_cache_operation(
-                    operation=operation,
-                    cache_operation='get',
-                    text_tier=text_tier,
-                    duration=time.time() - start_time,
-                    success=False,
-                    additional_data={
-                        'cache_result': 'miss',
-                        'reason': 'redis_unavailable',
-                        'text_length': len(text),
-                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0),
-                    }
-                )
-                logger.debug("Redis unavailable during get_cached_response; returning None (graceful degradation)")
-                return None
-
-            # Use inherited get method from GenericRedisCache (will populate/promote L1)
+            # Use inherited get method from GenericRedisCache (will check L1 first and populate/promote L1)
             cached_data = await self.get(cache_key)
 
             if cached_data:
@@ -1477,30 +1459,31 @@ class AIResponseCache(GenericRedisCache):
                 return total_invalidated
             
             try:
-                # Use Redis pattern search to find and count matching keys
-                assert self.redis is not None
-                search_pattern = f"ai_cache:*{pattern}*"
-                _keys_call = self.redis.keys(search_pattern.encode("utf-8"))
-                keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
-                keys_count = len(keys) if keys else 0
+                # Use Redis pattern search to find and count matching keys if Redis is available
+                keys_count = 0
+                redis_key_strs: List[str] = []
+                if await self.connect():
+                    assert self.redis is not None
+                    search_pattern = f"ai_cache:*{pattern}*"
+                    _keys_call = self.redis.keys(search_pattern.encode("utf-8"))
+                    keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                    keys_count = len(keys) if keys else 0
+                    if keys:
+                        # Delete the matching keys
+                        _del_call = self.redis.delete(*keys)
+                        if inspect.isawaitable(_del_call):
+                            await _del_call
+                        logger.info(f"Invalidated {keys_count} cache entries for operation {operation}")
+                    else:
+                        logger.debug(f"No cache entries found for operation {operation}")
+                    try:
+                        redis_key_strs = [
+                            (k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else (k if isinstance(k, str) else str(k)))
+                            for k in (keys or [])
+                        ]
+                    except Exception:
+                        redis_key_strs = []
                 
-                if keys:
-                    # Delete the matching keys
-                    _del_call = self.redis.delete(*keys)
-                    if inspect.isawaitable(_del_call):
-                        await _del_call
-                    logger.info(f"Invalidated {keys_count} cache entries for operation {operation}")
-                else:
-                    logger.debug(f"No cache entries found for operation {operation}")
-                
-                # Compute unique invalidated keys across L1 and Redis to avoid double counting
-                try:
-                    redis_key_strs = [
-                        (k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else (k if isinstance(k, str) else str(k)))
-                        for k in (keys or [])
-                    ]
-                except Exception:
-                    redis_key_strs = []
                 unique_invalidated = len(set(matching_l1_keys) | set(redis_key_strs))
 
                 # Record invalidation metrics if any tier invalidated keys
@@ -1536,42 +1519,25 @@ class AIResponseCache(GenericRedisCache):
                 return unique_invalidated
                 
             except Exception as e:
+                # Gracefully handle Redis errors by returning L1-only invalidation count
                 duration = time.time() - start_time
-                
-                # Record failed invalidation
                 self.performance_monitor.record_invalidation_event(
                     pattern=pattern,
-                    keys_invalidated=0,
+                    keys_invalidated=total_invalidated,
                     duration=duration,
                     invalidation_type="operation_specific",
                     operation_context=operation_context,
                     additional_data={
                         "operation": operation,
-                        "status": "failed",
+                        "status": "partial",
+                        "reason": "redis_error",
                         "error": str(e),
-                        "error_type": type(e).__name__
+                        "error_type": type(e).__name__,
+                        "l1_invalidated": total_invalidated
                     }
                 )
-                
-                logger.error(
-                    f"Failed to invalidate operation {operation}: {e}",
-                    exc_info=True,
-                    extra={
-                        'operation': operation,
-                        'operation_context': operation_context,
-                        'duration': duration,
-                        'error_type': type(e).__name__
-                    }
-                )
-                raise InfrastructureError(
-                    f"Failed to invalidate cache entries for operation {operation}: {e}",
-                    context={
-                        'operation': operation,
-                        'operation_context': operation_context,
-                        'pattern': pattern,
-                        'duration': duration
-                    }
-                )
+                logger.warning(f"Operation invalidation degraded to L1 only due to Redis error: {e}")
+                return total_invalidated
                 
         except ValidationError:
             # Re-raise validation errors to caller
