@@ -81,7 +81,18 @@ import httpx
 
 @dataclass
 class RetryConfig:
-    """Configuration for retry behavior."""
+    """
+    Configuration for retry behavior with exponential backoff and jitter.
+    
+    Attributes:
+        max_attempts: Maximum number of retry attempts
+        max_delay_seconds: Maximum delay between retries in seconds
+        exponential_multiplier: Multiplier for exponential backoff calculation
+        exponential_min: Minimum delay for exponential backoff in seconds
+        exponential_max: Maximum delay for exponential backoff in seconds
+        jitter: Whether to add random jitter to prevent thundering herd
+        jitter_max: Maximum jitter value to add to delays in seconds
+    """
     max_attempts: int = 3
     max_delay_seconds: int = 60
     exponential_multiplier: float = 1.0

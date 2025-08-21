@@ -195,11 +195,24 @@ class PresetManager:
         return self.presets[name]
     
     def list_presets(self) -> List[str]:
-        """Get list of available preset names."""
+        """
+        Get list of available preset names.
+        
+        Returns:
+            List of preset names (e.g., ["simple", "development", "production"])
+        """
         return list(self.presets.keys())
     
     def get_preset_details(self, name: str) -> Dict[str, Any]:
-        """Get detailed information about a preset."""
+        """
+        Get detailed information about a specific preset.
+        
+        Args:
+            name: Preset name to get details for
+            
+        Returns:
+            Dictionary containing preset configuration details, description, and context
+        """
         preset = self.get_preset(name)
         return {
             "name": preset.name,
@@ -492,7 +505,12 @@ class PresetManager:
         return ("simple", 0.40, f"Unknown environment pattern '{env_str}', defaulting to simple preset")
     
     def get_all_presets_summary(self) -> Dict[str, Dict[str, Any]]:
-        """Get summary of all available presets."""
+        """
+        Get summary of all available presets with their detailed information.
+        
+        Returns:
+            Dictionary mapping preset names to their detailed configuration information
+        """
         summary = {}
         for name in self.presets.keys():
             summary[name] = self.get_preset_details(name)
@@ -500,7 +518,16 @@ class PresetManager:
 
 
 def get_default_presets() -> Dict[ResilienceStrategy, ResilienceConfig]:
-    """Returns a dictionary of default resilience strategy configurations."""
+    """
+    Returns a dictionary of default resilience strategy configurations.
+    
+    Creates pre-configured ResilienceConfig objects for each available strategy
+    (aggressive, balanced, conservative, critical) with optimized settings for
+    different operational requirements.
+    
+    Returns:
+        Dictionary mapping ResilienceStrategy enum values to configured ResilienceConfig objects
+    """
     return {
         ResilienceStrategy.AGGRESSIVE: ResilienceConfig(
             strategy=ResilienceStrategy.AGGRESSIVE,

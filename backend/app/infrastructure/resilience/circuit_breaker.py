@@ -85,7 +85,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CircuitBreakerConfig:
-    """Configuration for circuit breaker behavior."""
+    """
+    Configuration for circuit breaker behavior.
+    
+    Attributes:
+        failure_threshold: Number of consecutive failures before opening circuit
+        recovery_timeout: Seconds to wait in open state before attempting half-open
+        half_open_max_calls: Maximum calls allowed in half-open state for testing
+    """
     failure_threshold: int = 5
     recovery_timeout: int = 60
     half_open_max_calls: int = 1
@@ -93,7 +100,20 @@ class CircuitBreakerConfig:
 
 @dataclass
 class ResilienceMetrics:
-    """Metrics for monitoring resilience behavior."""
+    """
+    Metrics for monitoring resilience behavior and service health.
+    
+    Attributes:
+        total_calls: Total number of service calls attempted
+        successful_calls: Number of calls that completed successfully
+        failed_calls: Number of calls that failed
+        retry_attempts: Total number of retry attempts across all calls
+        circuit_breaker_opens: Number of times circuit breaker opened
+        circuit_breaker_half_opens: Number of times circuit breaker half-opened
+        circuit_breaker_closes: Number of times circuit breaker closed
+        last_failure: Timestamp of most recent failure
+        last_success: Timestamp of most recent success
+    """
     total_calls: int = 0
     successful_calls: int = 0
     failed_calls: int = 0
@@ -106,20 +126,35 @@ class ResilienceMetrics:
 
     @property
     def success_rate(self) -> float:
-        """Calculate success rate as a percentage."""
+        """
+        Calculate success rate as a percentage.
+        
+        Returns:
+            Success rate as a percentage (0.0-100.0), or 0.0 if no calls made
+        """
         if self.total_calls == 0:
             return 0.0
         return (self.successful_calls / self.total_calls) * 100
 
     @property
     def failure_rate(self) -> float:
-        """Calculate failure rate as a percentage."""
+        """
+        Calculate failure rate as a percentage.
+        
+        Returns:
+            Failure rate as a percentage (0.0-100.0), or 0.0 if no calls made
+        """
         if self.total_calls == 0:
             return 0.0
         return (self.failed_calls / self.total_calls) * 100
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert metrics to dictionary for JSON serialization."""
+        """
+        Convert metrics to dictionary for JSON serialization.
+        
+        Returns:
+            Dictionary containing all metrics with calculated rates and formatted timestamps
+        """
         return {
             "total_calls": self.total_calls,
             "successful_calls": self.successful_calls,

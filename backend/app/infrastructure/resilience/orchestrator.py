@@ -578,21 +578,48 @@ ai_resilience = AIServiceResilience()
 
 # Convenience decorator functions
 def with_operation_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Global decorator for operation-specific resilience."""
+    """
+    Global decorator for applying operation-specific resilience patterns.
+    
+    Args:
+        operation_name: Name of the operation for configuration lookup
+        fallback: Optional fallback function to call on permanent failures
+        
+    Returns:
+        Decorator function that applies resilience patterns to the wrapped function
+    """
     if not ai_resilience:
         raise RuntimeError("AIServiceResilience not initialized")
     return ai_resilience.with_operation_resilience(operation_name, fallback)
 
 
 def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Global decorator for aggressive resilience strategy."""
+    """
+    Global decorator for applying aggressive resilience strategy.
+    
+    Args:
+        operation_name: Name of the operation for metrics tracking
+        fallback: Optional fallback function to call on permanent failures
+        
+    Returns:
+        Decorator function that applies aggressive resilience patterns (fast retries, low tolerance)
+    """
     if not ai_resilience:
         raise RuntimeError("AIServiceResilience not initialized")
     return ai_resilience.with_resilience(operation_name, ResilienceStrategy.AGGRESSIVE, fallback=fallback)
 
 
 def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Global decorator for balanced resilience strategy."""
+    """
+    Global decorator for applying balanced resilience strategy.
+    
+    Args:
+        operation_name: Name of the operation for metrics tracking  
+        fallback: Optional fallback function to call on permanent failures
+        
+    Returns:
+        Decorator function that applies balanced resilience patterns (moderate settings)
+    """
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -608,14 +635,32 @@ def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] =
 
 
 def with_conservative_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Global decorator for conservative resilience strategy."""
+    """
+    Global decorator for applying conservative resilience strategy.
+    
+    Args:
+        operation_name: Name of the operation for metrics tracking
+        fallback: Optional fallback function to call on permanent failures
+        
+    Returns:
+        Decorator function that applies conservative resilience patterns (higher tolerance, longer delays)
+    """
     if not ai_resilience:
         raise RuntimeError("AIServiceResilience not initialized")
     return ai_resilience.with_resilience(operation_name, ResilienceStrategy.CONSERVATIVE, fallback=fallback)
 
 
 def with_critical_resilience(operation_name: str, fallback: Optional[Callable] = None):
-    """Global decorator for critical resilience strategy."""
+    """
+    Global decorator for applying critical resilience strategy.
+    
+    Args:
+        operation_name: Name of the operation for metrics tracking
+        fallback: Optional fallback function to call on permanent failures
+        
+    Returns:
+        Decorator function that applies maximum resilience patterns for mission-critical operations
+    """
     if not ai_resilience:
         raise RuntimeError("AIServiceResilience not initialized")
     return ai_resilience.with_resilience(operation_name, ResilienceStrategy.CRITICAL, fallback=fallback) 
