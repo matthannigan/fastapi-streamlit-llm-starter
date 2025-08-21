@@ -347,6 +347,7 @@ class AIResponseCacheConfig:
     hash_algorithm: Union[str, Callable] = field(default_factory=lambda: hashlib.sha256)
     text_size_tiers: Optional[Dict[str, int]] = None
     operation_ttls: Optional[Dict[str, int]] = None
+    enable_smart_promotion: Optional[bool] = None
     
     # Mapped Parameters (AI -> Generic)
     memory_cache_size: int = 100  # Maps to l1_cache_size
@@ -970,6 +971,10 @@ class AIResponseCacheConfig:
             # Create configuration with environment overrides
             if env_config:
                 env_config['_from_env_load'] = True  # Mark as environment load before creation
+                # If L1 cache is explicitly disabled and memory_cache_size is not provided,
+                # set memory_cache_size to 0 to avoid validation inconsistency
+                if env_config.get('enable_l1_cache') is False and 'memory_cache_size' not in env_config:
+                    env_config['memory_cache_size'] = 0
                 config = cls.from_dict(env_config, convert_hash_algorithm=False)
                 logger.info(f"Created AIResponseCacheConfig from {len(env_config)} environment variables")
             else:

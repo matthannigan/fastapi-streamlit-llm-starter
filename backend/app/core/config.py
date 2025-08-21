@@ -1470,7 +1470,10 @@ class Settings(BaseSettings):
         
         try:
             # Load preset configuration
+            # Map testing alias to development; leave others as-is
             preset_name = self.cache_preset
+            if preset_name == "testing":
+                preset_name = "development"
             preset = cache_preset_manager.get_preset(preset_name)
             cache_config = preset.to_cache_config()
             
@@ -1496,7 +1499,7 @@ class Settings(BaseSettings):
             
             # Apply custom overrides if provided
             custom_config_json = self.cache_custom_config
-            if not _IS_PYTEST and not custom_config_json:
+            if not custom_config_json:
                 env_custom_config = os.getenv("CACHE_CUSTOM_CONFIG")
                 if env_custom_config:
                     custom_config_json = env_custom_config

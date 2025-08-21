@@ -418,7 +418,17 @@ class CachePerformanceBenchmark:
         )
     
     async def _perform_warmup(self, cache: CacheInterface, warmup_iterations: int):
-        """Perform warmup operations to stabilize performance measurements."""
+        """
+        Perform warmup operations to stabilize performance measurements.
+        
+        Executes a series of cache operations before benchmarking to ensure the cache
+        is in a stable state and any initialization overhead is accounted for. This
+        helps provide more accurate and consistent benchmark results.
+        
+        Args:
+            cache: Cache implementation to warm up
+            warmup_iterations: Number of warmup operations to perform
+        """
         if warmup_iterations <= 0:
             return
         
@@ -548,10 +558,27 @@ class CachePerformanceBenchmark:
         )
     
     def get_reporter(self, format: str = "text"):
-        """Get appropriate reporter for specified format."""
+        """
+        Get appropriate reporter for specified output format.
+        
+        Args:
+            format: Output format ("text", "json", "markdown", "ci")
+            
+        Returns:
+            Reporter instance configured for the specified format
+        """
         return ReporterFactory.get_reporter(format)
     
     def generate_performance_report(self, suite: BenchmarkSuite, format: str = "text") -> str:
-        """Generate performance report in specified format."""
+        """
+        Generate comprehensive performance report in specified format.
+        
+        Args:
+            suite: Benchmark suite results to report on
+            format: Output format ("text", "json", "markdown", "ci")
+            
+        Returns:
+            Formatted report string containing performance analysis and recommendations
+        """
         reporter = self.get_reporter(format)
         return reporter.generate_report(suite)

@@ -191,13 +191,29 @@ class TextReporter(BenchmarkReporter):
         return "\\n".join(report_lines)
     
     def _should_include_section(self, section: str) -> bool:
-        """Check if section should be included based on configuration."""
+        """
+        Check if section should be included based on configuration.
+        
+        Args:
+            section: Section name to check
+            
+        Returns:
+            True if section should be included in the report
+        """
         if self.include_sections is None:
             return True
         return section in self.include_sections
     
     def _generate_header(self, suite: BenchmarkSuite) -> List[str]:
-        """Generate report header section."""
+        """
+        Generate report header section with suite overview.
+        
+        Args:
+            suite: Benchmark suite to generate header for
+            
+        Returns:
+            List of formatted header lines
+        """
         lines = []
         lines.append("=" * 80)
         lines.append("CACHE PERFORMANCE BENCHMARK REPORT")
@@ -212,7 +228,15 @@ class TextReporter(BenchmarkReporter):
         return lines
     
     def _generate_environment_section(self, suite: BenchmarkSuite) -> List[str]:
-        """Generate environment information section."""
+        """
+        Generate environment information section.
+        
+        Args:
+            suite: Benchmark suite containing environment metadata
+            
+        Returns:
+            List of formatted environment information lines
+        """
         lines = []
         lines.append("ENVIRONMENT")
         lines.append("-" * 40)

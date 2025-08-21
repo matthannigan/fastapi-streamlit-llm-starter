@@ -93,7 +93,7 @@ class ValidationResult:
         """Get list of info messages."""
         return [msg.message for msg in self.messages if msg.severity == ValidationSeverity.INFO]
     
-    def add_error(self, message: str, field_path: str = "", context: Dict[str, Any] = None) -> None:
+    def add_error(self, message: str, field_path: str = "", context: Optional[Dict[str, Any]] = None) -> None:
         """Add an error message and mark validation as invalid."""
         self.messages.append(ValidationMessage(
             severity=ValidationSeverity.ERROR,
@@ -103,7 +103,7 @@ class ValidationResult:
         ))
         self.is_valid = False
     
-    def add_warning(self, message: str, field_path: str = "", context: Dict[str, Any] = None) -> None:
+    def add_warning(self, message: str, field_path: str = "", context: Optional[Dict[str, Any]] = None) -> None:
         """Add a warning message."""
         self.messages.append(ValidationMessage(
             severity=ValidationSeverity.WARNING,
@@ -112,7 +112,7 @@ class ValidationResult:
             context=context or {}
         ))
     
-    def add_info(self, message: str, field_path: str = "", context: Dict[str, Any] = None) -> None:
+    def add_info(self, message: str, field_path: str = "", context: Optional[Dict[str, Any]] = None) -> None:
         """Add an info message."""
         self.messages.append(ValidationMessage(
             severity=ValidationSeverity.INFO,

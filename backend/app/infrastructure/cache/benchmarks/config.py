@@ -184,10 +184,9 @@ class BenchmarkConfig:
         if self.timeout_seconds <= 0:
             errors.append("timeout_seconds must be positive")
         
-        # Check environment
-        valid_environments = ["development", "testing", "production", "ci"]
-        if self.environment not in valid_environments:
-            errors.append(f"environment must be one of: {valid_environments}")
+        # Check environment (allow any non-empty string to support preset-driven names)
+        if not isinstance(self.environment, str) or not self.environment.strip():
+            errors.append("environment must be a non-empty string")
         
         if errors:
             raise ConfigurationError(f"Invalid benchmark configuration: {'; '.join(errors)}")
@@ -392,19 +391,25 @@ def load_config_from_env() -> BenchmarkConfig:
     # Load basic settings
     if iterations := os.getenv('BENCHMARK_DEFAULT_ITERATIONS'):
         try:
-            config.default_iterations = int(iterations)
+            parsed = int(iterations)
+            if parsed > 0:
+                config.default_iterations = parsed
         except ValueError:
             raise ConfigurationError(f"Invalid BENCHMARK_DEFAULT_ITERATIONS: {iterations}")
     
     if warmup := os.getenv('BENCHMARK_WARMUP_ITERATIONS'):
         try:
-            config.warmup_iterations = int(warmup)
+            parsed = int(warmup)
+            if parsed >= 0:
+                config.warmup_iterations = parsed
         except ValueError:
             raise ConfigurationError(f"Invalid BENCHMARK_WARMUP_ITERATIONS: {warmup}")
     
     if timeout := os.getenv('BENCHMARK_TIMEOUT_SECONDS'):
         try:
-            config.timeout_seconds = int(timeout)
+            parsed = int(timeout)
+            if parsed > 0:
+                config.timeout_seconds = parsed
         except ValueError:
             raise ConfigurationError(f"Invalid BENCHMARK_TIMEOUT_SECONDS: {timeout}")
     
@@ -428,12 +433,12 @@ def load_config_from_env() -> BenchmarkConfig:
         'BENCHMARK_THRESHOLD_COMPRESSION_AVG_MS': 'compression_avg_ms',
         'BENCHMARK_THRESHOLD_COMPRESSION_P95_MS': 'compression_p95_ms',
         'BENCHMARK_THRESHOLD_COMPRESSION_P99_MS': 'compression_p99_ms',
-        'BENCHMARK_THRESHOLD_MEMORY_WARNING_MB': 'memory_usage_warning_mb',
-        'BENCHMARK_THRESHOLD_MEMORY_CRITICAL_MB': 'memory_usage_critical_mb',
+        'BENCHMARK_THRESHOLD_MEMORY_USAGE_WARNING_MB': 'memory_usage_warning_mb',
+        'BENCHMARK_THRESHOLD_MEMORY_USAGE_CRITICAL_MB': 'memory_usage_critical_mb',
         'BENCHMARK_THRESHOLD_REGRESSION_WARNING_PCT': 'regression_warning_percent',
         'BENCHMARK_THRESHOLD_REGRESSION_CRITICAL_PCT': 'regression_critical_percent',
-        'BENCHMARK_THRESHOLD_SUCCESS_WARNING': 'success_rate_warning',
-        'BENCHMARK_THRESHOLD_SUCCESS_CRITICAL': 'success_rate_critical'
+        'BENCHMARK_THRESHOLD_SUCCESS_RATE_WARNING': 'success_rate_warning',
+        'BENCHMARK_THRESHOLD_SUCCESS_RATE_CRITICAL': 'success_rate_critical'
     }
     
     for env_var, attr_name in threshold_mapping.items():

@@ -150,6 +150,11 @@ class CacheDependencyManager:
     """
 
     @staticmethod
+    async def cleanup_registry() -> Dict[str, Any]:
+        """Expose registry cleanup for tests expecting manager-based cleanup."""
+        return await cleanup_cache_registry()
+
+    @staticmethod
     async def _ensure_cache_connected(cache: CacheInterface) -> CacheInterface:
         """
         Ensure cache is connected and ready for operations.
