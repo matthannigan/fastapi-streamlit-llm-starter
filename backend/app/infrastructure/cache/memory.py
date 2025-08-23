@@ -349,7 +349,9 @@ class InMemoryCache(CacheInterface):
             # Calculate expiration time
             expires_at = None
             if ttl is not None:
-                expires_at = time.time() + ttl
+                if ttl > 0:  # ttl=0 means no expiration
+                    expires_at = time.time() + ttl
+                # ttl=0 keeps expires_at=None (no expiration)
             elif self.default_ttl > 0:
                 expires_at = time.time() + self.default_ttl
 

@@ -199,8 +199,8 @@ class AIResponseCache(GenericRedisCache):
                 'operation_ttls': operation_ttls,
             }
             
-            # Remove None values to avoid validation issues
-            ai_params = {k: v for k, v in ai_params.items() if v is not None}
+            # Remove None values to avoid validation issues, but keep performance_monitor
+            ai_params = {k: v for k, v in ai_params.items() if v is not None or k == 'performance_monitor'}
             
             # Use CacheParameterMapper to separate parameters
             self._parameter_mapper = CacheParameterMapper()
@@ -258,6 +258,8 @@ class AIResponseCache(GenericRedisCache):
         hash_algorithm=hashlib.sha256,
         text_size_tiers: Optional[Dict[str, int]] = None,
         operation_ttls: Optional[Dict[str, int]] = None,
+        performance_monitor=None,
+        default_ttl: int = 3600,
         **kwargs
     ):
         """
@@ -282,6 +284,12 @@ class AIResponseCache(GenericRedisCache):
             # Store text processing configuration
             self.text_hash_threshold = text_hash_threshold
             self.hash_algorithm = hash_algorithm
+            
+            # Store performance monitor (can be None)
+            self.performance_monitor = performance_monitor
+            
+            # Store default_ttl for AI-specific operations
+            self.default_ttl = default_ttl
             
             # Set up operation-specific TTLs with defaults
             self.operation_ttls = operation_ttls or {
