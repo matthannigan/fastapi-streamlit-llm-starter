@@ -182,7 +182,7 @@ health_status = HealthResponse(
 ### Documentation Quality
 ```python
 class ErrorResponse(BaseModel):
-    """Standardized error response model for all API endpoints."""
+    \"\"\"Standardized error response model for all API endpoints.\"\"\"
     
     error: str = Field(
         ..., 

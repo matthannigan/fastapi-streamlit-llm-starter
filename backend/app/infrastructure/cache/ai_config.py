@@ -345,10 +345,6 @@ class AIResponseCacheConfig:
             cache = AIResponseCache(generic_config)
         else:
             logger.error(f"Configuration errors: {validation_result.errors}")
-    """
-    - `compression_level`: Zlib compression level
-    - `performance_monitor`: Performance monitoring instance
-    - `security_config`: Security configuration for Redis connections
     
     ### AI-Specific Parameters
     These parameters are unique to AI response caching:

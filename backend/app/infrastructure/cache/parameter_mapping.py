@@ -75,7 +75,10 @@ class ValidationResult:
         errors: List[str] specific validation error messages requiring correction
         warnings: List[str] configuration warnings for suboptimal but valid settings
         recommendations: List[str] intelligent suggestions for parameter optimization
-        context: Dict[str, Any] additional validation context and metadata
+        parameter_conflicts: Dict[str, str] mapping of conflicting parameters to conflict descriptions
+        ai_specific_params: Set[str] of parameters identified as AI-specific
+        generic_params (Set[str]): Set of parameters identified as generic Redis parameters
+        context (Dict[str, Any]): Additional validation context information
         
     Behavior:
         - Aggregates validation results from multiple parameter checking phases
@@ -95,13 +98,6 @@ class ValidationResult:
         ... else:
         ...     for error in result.errors:
         ...         logger.error(f"Validation error: {error}")
-    """
-        warnings (List[str]): List of non-fatal warning messages
-        recommendations (List[str]): List of configuration recommendations
-        parameter_conflicts (Dict[str, str]): Mapping of conflicting parameters to conflict descriptions
-        ai_specific_params (Set[str]): Set of parameters identified as AI-specific
-        generic_params (Set[str]): Set of parameters identified as generic Redis parameters
-        context (Dict[str, Any]): Additional validation context information
     
     Example:
         >>> result = ValidationResult(
@@ -192,10 +188,6 @@ class CacheParameterMapper:
             cache = AIResponseCache(generic_config, ai_config)
         except ValueError as e:
             logger.error(f"Parameter mapping failed: {e}")
-    """
-        - Validate parameter compatibility and identify conflicts
-        - Provide detailed validation results with actionable feedback
-        - Support parameter transformation and value validation
     
     Parameter Categories:
         1. Generic Redis Parameters: Shared between all Redis cache implementations

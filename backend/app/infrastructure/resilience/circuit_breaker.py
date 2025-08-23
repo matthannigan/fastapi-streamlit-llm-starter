@@ -170,12 +170,6 @@ class ResilienceMetrics:
         if metrics.success_rate < 0.95:
             alert_manager.trigger_alert("Low success rate")
     """
-        circuit_breaker_opens: Number of times circuit breaker opened
-        circuit_breaker_half_opens: Number of times circuit breaker half-opened
-        circuit_breaker_closes: Number of times circuit breaker closed
-        last_failure: Timestamp of most recent failure
-        last_success: Timestamp of most recent success
-    """
     total_calls: int = 0
     successful_calls: int = 0
     failed_calls: int = 0
