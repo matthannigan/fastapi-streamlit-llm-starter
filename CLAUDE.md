@@ -167,10 +167,15 @@ make help | head -10                   # Should show available Makefile targets
 **Use `make help` for complete list of test commands. Key testing targets:**
 
 ```bash
+# Quick Start - Install and run all tests
+make install                  # Setup venv and install dependencies
+make test                    # All tests (includes Docker integration if available)
+make test-local              # Local tests only (no Docker required)
+
 # Backend testing (recommended approach)
-make test-backend              # Fast tests only
-make test-backend-all          # All tests including slow
-make test-backend-manual       # Manual tests (requires server)
+make test-backend              # Fast tests only (excludes slow and manual)
+make test-backend-all          # All tests including slow ones
+make test-backend-manual       # Manual tests (requires running server)
 make test-coverage            # With coverage reporting
 
 # Infrastructure-specific tests  
@@ -179,11 +184,84 @@ make test-backend-infra-*      # Replace * with: cache, ai, monitoring, resilien
 # Frontend testing
 make test-frontend            # Run via Docker for consistency
 
-# Direct pytest (when needed - from backend/ directory)
-pytest -v -m "slow" --run-slow        # Slow tests
-pytest -v -m "manual" --run-manual    # Manual tests
-pytest --cov=app --cov-report=term    # With coverage
+# Direct pytest commands (from backend/ directory using venv)
+../.venv/bin/python -m pytest tests/ -v                    # Default fast tests
+../.venv/bin/python -m pytest tests/ -v -m "slow" --run-slow        # Slow tests
+../.venv/bin/python -m pytest tests/ -v -m "manual" --run-manual    # Manual tests
+../.venv/bin/python -m pytest tests/ --cov=app --cov-report=term    # With coverage
+
+# Test specific directories
+../.venv/bin/python -m pytest tests/infrastructure/cache/ -v       # Cache tests only
+../.venv/bin/python -m pytest tests/api/v1/ -v                     # Public API tests
+../.venv/bin/python -m pytest tests/api/internal/ -v               # Internal API tests
 ```
+
+**Note on Virtual Environment**: The Makefile automatically handles Python executable detection and virtual environment management. All Python scripts run from the `.venv` virtual environment automatically.
+
+#### Testing Philosophy
+
+This project follows a **behavior-driven testing philosophy** that emphasizes:
+- **Test behavior, not implementation** - Focus on what the system should accomplish from an external observer's perspective
+- **Maintainability over exhaustiveness** - Better to have fewer, high-value tests than comprehensive low-value tests
+- **Mock only at system boundaries** - Minimize mocking to reduce test brittleness (external APIs, databases)
+- **Fast feedback loops** - Tests should run quickly to enable continuous development
+
+Refer to `docs/guides/developer/TESTING.md` for comprehensive testing patterns and examples.
+
+#### Test Organization
+
+Tests are organized by purpose rather than strict architectural boundaries:
+
+```
+backend/tests/
+├── functional/              # User-facing behavior (end-to-end workflows)
+├── integration/             # Component interactions (services working together)
+├── unit/                    # Pure functions and isolated components
+└── manual/                  # Tests requiring real services (LLM APIs, performance)
+```
+
+**Coverage Requirements**:
+- **Infrastructure services**: >90% test coverage (stable, reusable components)
+- **Domain services**: >70% test coverage (customizable business logic)
+- **API endpoints**: >95% coverage (user-facing contracts)
+
+#### Test Execution
+
+**Test Markers**:
+- `slow`: Comprehensive resilience tests, performance scenarios (excluded by default)
+- `manual`: Require running server and real API keys (excluded by default) 
+- `integration`: Component interactions with mocked external services
+- `no_parallel`: Must run sequentially
+
+**Special Flags**:
+- `--run-slow`: Enable tests marked as `slow`
+- `--run-manual`: Enable tests marked as `manual`
+
+**Manual Test Requirements**:
+For tests marked `manual`, ensure:
+1. FastAPI server running on `http://localhost:8000`
+2. `API_KEY=test-api-key-12345` environment variable
+3. `GEMINI_API_KEY` environment variable for AI features
+4. Use `--run-manual` flag to enable
+
+#### Mock Strategy
+
+**Always Mock**:
+- External APIs (LLM providers, third-party services)
+- Network calls to external systems
+- File system operations in unit tests
+
+**Sometimes Mock**:
+- Databases (mock for unit tests, use real instances for integration tests)
+- Redis and other infrastructure (depending on test scope)
+- Time-dependent operations (for deterministic testing)
+
+**Rarely Mock**:
+- Internal services and business logic
+- Utility functions and helpers
+- Domain-specific operations
+
+The test suite uses comprehensive AI service mocking to avoid external API calls, ensure consistent results, and test error scenarios.
 
 
 
@@ -764,6 +842,85 @@ When adding tests, place them in the correct architectural boundary:
 - `tests/test_config.py` - Configuration validation tests
 - `tests/conftest.py` - Shared test fixtures
 
+### Writing New Tests - Docstring-Driven Approach
+
+This project promotes **docstring-driven test development** where comprehensive function docstrings serve as specifications for generating focused, behavior-based tests. This creates a complete documentation ecosystem where production code docstrings drive test generation.
+
+**Documentation Workflow:**
+1. **Production Docstrings** (`docs/guides/developer/DOCSTRINGS_CODE.md`) - Write rich Args, Returns, Raises, and Behavior sections
+2. **Test Generation** (`docs/guides/developer/TESTING.md`) - Convert docstring contracts into behavior-focused tests  
+3. **Test Documentation** (`docs/guides/developer/DOCSTRINGS_TESTS.md`) - Document test intent and business impact
+
+**Core Principles:**
+1. **TEST WHAT'S DOCUMENTED** - Only test behaviors mentioned in docstrings (Args, Returns, Raises, Behavior sections)
+2. **IGNORE IMPLEMENTATION** - Don't test internal methods, private attributes, or undocumented behavior
+3. **FOCUS ON CONTRACTS** - Test that the function fulfills its documented contract
+4. **USE DOCSTRING EXAMPLES** - Convert docstring examples into actual test cases
+5. **DOCUMENT TEST PURPOSE** - Explain WHY the test exists, not HOW it works
+
+**Production Code Example:**
+```python
+def validate_config(config: dict) -> ValidationResult:
+    """
+    Validates AI service configuration.
+    
+    Args:
+        config: Configuration dictionary with required keys:
+               - 'timeout': int, 1-300 seconds
+               - 'model': str, one of ['gpt-4', 'claude', 'gemini']
+               
+    Returns:
+        ValidationResult with is_valid boolean and error details
+        
+    Raises:
+        TypeError: If config is not a dictionary
+        
+    Behavior:
+        - Validates all required fields are present
+        - Checks field value constraints and types
+        - Returns detailed error messages for debugging
+    """
+```
+
+**Generated Test with Rich Documentation:**
+```python
+def test_validate_config_timeout_boundaries():
+    """
+    Test that config validation enforces timeout boundaries per docstring.
+    
+    Business Impact:
+        Prevents invalid timeout configurations that could cause system instability
+        
+    Test Scenario:
+        Validates boundary conditions for timeout field (1-300 seconds)
+        
+    Success Criteria:
+        - Accepts valid boundaries (1 and 300 seconds)
+        - Rejects invalid boundaries (0 and 301+ seconds)
+        - Provides clear error messages for debugging
+    """
+    # Test valid boundaries from docstring
+    assert validate_config({'timeout': 1, 'model': 'gpt-4'}).is_valid
+    assert validate_config({'timeout': 300, 'model': 'gpt-4'}).is_valid
+    
+    # Test invalid boundaries from docstring  
+    result = validate_config({'timeout': 0, 'model': 'gpt-4'})
+    assert not result.is_valid
+    assert "timeout" in result.errors[0].lower()
+```
+
+**Key Benefits:**
+- **Maintainable Tests**: Survive refactoring by testing behavior contracts, not implementation
+- **Clear Intent**: Rich test documentation explains business purpose and failure impact
+- **Better Coverage**: Docstring-driven approach ensures testing what matters to users
+- **Faster Development**: Less test maintenance during refactoring cycles
+- **Living Documentation**: Tests serve as executable specifications of system behavior
+
+**Quick Reference:**
+- Use `docs/guides/developer/DOCSTRINGS_CODE.md` for production code docstring templates
+- Use `docs/guides/developer/DOCSTRINGS_TESTS.md` for test documentation templates  
+- Use `docs/guides/developer/TESTING.md` for comprehensive testing methodology and examples
+
 ### Configuration Management
 
 Prefer resilience presets over individual environment variables:
@@ -798,12 +955,39 @@ Follow established patterns:
 - **API**: Custom exceptions automatically return appropriate HTTP status codes with structured error responses
 - **Import pattern**: `from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError, get_http_status_for_exception`
 
+**Testing Exception Handling:**
+```python
+# ✅ Test exception behavior per docstring
+def test_service_raises_validation_error_for_invalid_input():
+    \"\"\"Test that service raises ValidationError for invalid input per docstring.\"\"\"
+    with pytest.raises(ValidationError) as exc_info:
+        service.process_data(invalid_input)
+    assert "validation" in str(exc_info.value).lower()
+
+# ✅ Test API error response behavior
+def test_api_returns_proper_status_for_validation_error(client):
+    \"\"\"Test API returns 422 for ValidationError per exception mapping.\"\"\"
+    response = client.post("/api/endpoint", json={"invalid": "data"})
+    assert response.status_code == 422
+    assert "validation" in response.json()["detail"].lower()
+```
+
+See `docs/guides/developer/EXCEPTION_HANDLING.md` for comprehensive exception testing patterns.
+
 ### Performance Considerations
 
 When suggesting changes:
 - **Infrastructure changes**: Must maintain performance targets (see backend/README.md)
 - **Domain changes**: Focus on business logic clarity over micro-optimizations
 - **Test changes**: Ensure parallel execution compatibility (use `monkeypatch.setenv()`)
+
+**Testing Performance Targets:**
+- **Test execution time**: <60 seconds total for fast feedback loops
+- **Test maintenance time**: <10% of development time (tests shouldn't slow development)
+- **Bug detection rate**: 80%+ of production bugs should be caught by tests first
+- **False positive rate**: <5% (tests should be reliable indicators)
+
+Focus on meaningful metrics like critical path coverage and test execution speed rather than vanity metrics like total test count or line coverage percentage.
 
 ### Template Customization Guidance
 
