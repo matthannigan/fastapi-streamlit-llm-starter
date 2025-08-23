@@ -95,30 +95,122 @@ def get_settings() -> Settings:
 
 @main_router.get("/health")
 async def get_resilience_health():
-    """Get resilience service health status and circuit breaker information.
-
-    This endpoint provides comprehensive health monitoring for the AI resilience
-    service, including overall health status and detailed circuit breaker states.
+    """
+    Comprehensive resilience infrastructure health assessment endpoint with circuit breaker monitoring.
+    
+    This endpoint provides real-time health validation for the complete AI resilience infrastructure,
+    including circuit breaker states, failure detection systems, and overall service operational status.
+    It serves as the primary health validation interface for resilience monitoring systems, enabling
+    operational teams to assess resilience system effectiveness and identify degradation patterns.
     
     Returns:
-        Dict[str, Any]: A dictionary containing:
-            - healthy (bool): Overall service health status
-            - status (str): Human-readable status ("healthy" or "degraded")
-            - details (Dict): Detailed health information including circuit breaker states
-            
+        dict: Comprehensive resilience health assessment containing:
+             - healthy: Boolean indicating overall resilience system operational health status
+             - status: Human-readable status indicator ("healthy" or "degraded") for monitoring integration
+             - details: Detailed health breakdown including circuit breaker states, failure patterns,
+                       and operational metrics for comprehensive system health visibility
+    
     Raises:
-        HTTPException: 500 Internal Server Error if health status retrieval fails
+        HTTPException: 500 Internal Server Error when resilience health assessment fails due to
+                      infrastructure issues or when critical resilience components become unavailable,
+                      preventing basic health status determination.
+    
+    Behavior:
+        **Resilience Health Assessment:**
+        - Evaluates overall resilience infrastructure operational status and system health
+        - Validates circuit breaker states and failure detection mechanism effectiveness
+        - Assesses resilience pattern performance and system degradation indicators
+        - Provides real-time operational health status for monitoring and alerting systems
         
-    Example:
-        >>> response = await get_resilience_health()
-        >>> {
-        ...     "healthy": True,
-        ...     "status": "healthy",
-        ...     "details": {
-        ...         "circuit_breakers": {...},
-        ...         "overall_health": "operational"
+        **Circuit Breaker Monitoring:**
+        - Reports current states of all registered circuit breakers (open, closed, half-open)
+        - Provides circuit breaker effectiveness metrics and failure threshold monitoring
+        - Includes circuit breaker activation history and recovery pattern analysis
+        - Enables circuit breaker performance optimization and threshold adjustment
+        
+        **System Health Determination:**
+        - Aggregates individual component health into overall system status assessment
+        - Applies sophisticated health determination logic based on circuit breaker states
+        - Provides degradation detection with detailed failure pattern analysis
+        - Maintains health status consistency for reliable monitoring integration
+        
+        **Operational Integration:**
+        - Structures health data for integration with monitoring and alerting platforms
+        - Provides detailed diagnostic information for troubleshooting and analysis
+        - Enables resilience system performance optimization through health visibility
+        - Supports operational dashboards and health monitoring workflow integration
+    
+    Examples:
+        >>> # Comprehensive resilience health assessment
+        >>> response = await client.get("/internal/resilience/health")
+        >>> assert response.status_code == 200
+        >>> health = response.json()
+        >>> assert "healthy" in health and "status" in health
+        >>> 
+        >>> # Circuit breaker health validation
+        >>> if health["healthy"]:
+        ...     print("Resilience system operational")
+        ...     circuit_breakers = health["details"].get("circuit_breakers", {})
+        ...     for breaker_name, breaker_status in circuit_breakers.items():
+        ...         if breaker_status.get("state") == "open":
+        ...             print(f"Circuit breaker {breaker_name} is open - degraded service")
+        
+        >>> # Operational monitoring integration
+        >>> async def monitor_resilience_health():
+        ...     health_response = await client.get("/internal/resilience/health")
+        ...     resilience_health = health_response.json()
+        ...     
+        ...     alerts = []
+        ...     if not resilience_health["healthy"]:
+        ...         alerts.append("resilience_system_degraded")
+        ...     
+        ...     # Check individual circuit breakers
+        ...     cb_details = resilience_health["details"].get("circuit_breakers", {})
+        ...     for cb_name, cb_info in cb_details.items():
+        ...         if cb_info.get("state") == "open":
+        ...             alerts.append(f"circuit_breaker_open_{cb_name}")
+        ...     
+        ...     return {
+        ...         "healthy": resilience_health["healthy"],
+        ...         "alerts": alerts,
+        ...         "status": resilience_health["status"]
         ...     }
-        ... }
+        
+        >>> # Dashboard integration for operational visibility
+        >>> def prepare_resilience_dashboard(health_data):
+        ...     cb_states = health_data["details"].get("circuit_breakers", {})
+        ...     cb_summary = {}
+        ...     for name, info in cb_states.items():
+        ...         state = info.get("state", "unknown")
+        ...         cb_summary[name] = {
+        ...             "status": "🟢" if state == "closed" else "🔴" if state == "open" else "🟡",
+        ...             "state": state
+        ...         }
+        ...     
+        ...     return {
+        ...         "overall_health": health_data["status"],
+        ...         "circuit_breakers": cb_summary,
+        ...         "system_operational": health_data["healthy"]
+        ...     }
+        
+        >>> # Automated alerting integration
+        >>> async def check_resilience_alerts():
+        ...     try:
+        ...         health = await client.get("/internal/resilience/health").json()
+        ...         if health["status"] == "degraded":
+        ...             await send_alert("Resilience system degraded", 
+        ...                            details=health["details"])
+        ...         return health["healthy"]
+        ...     except Exception as e:
+        ...         await send_critical_alert(f"Resilience health check failed: {e}")
+        ...         return False
+    
+    Note:
+        This endpoint provides comprehensive resilience infrastructure health monitoring and is
+        designed for integration with operational monitoring systems, alerting platforms, and
+        resilience performance dashboards. It enables proactive detection of resilience system
+        degradation and supports optimization of resilience patterns through detailed health
+        visibility and circuit breaker performance analysis.
     """
     try:
         health_status = ai_resilience.get_health_status()

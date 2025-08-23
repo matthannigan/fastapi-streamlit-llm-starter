@@ -69,18 +69,74 @@ import httpx
 
 class ApplicationError(Exception):
     """
-    Base exception for all application-specific errors.
+    Base exception for all application-specific errors within the business logic layer.
     
-    This should be used for errors that originate from business logic,
-    validation, or other application-level concerns.
+    This exception serves as the foundation for all errors that originate from business logic,
+    validation, authentication, authorization, and other application-level concerns. It provides
+    structured error handling with contextual information for debugging and monitoring.
+    
+    Attributes:
+        message: Human-readable error description
+        context: Optional dictionary containing additional error context and debugging information
+    
+    Behavior:
+        - Preserves original error message in structured format
+        - Maintains optional context dictionary for debugging information
+        - Provides string representation that includes context when available
+        - Supports serialization for API error responses
+        - Integrates with monitoring systems for error tracking
+        
+    Examples:
+        >>> # Basic error without context
+        >>> error = ApplicationError("User validation failed")
+        >>> str(error)
+        'User validation failed'
+        
+        >>> # Error with debugging context
+        >>> error = ApplicationError("Invalid input", {"field": "email", "value": "invalid@"})
+        >>> str(error)
+        'Invalid input (Context: {\'field\': \'email\', \'value\': \'invalid@\'})'
+        
+        >>> # Usage in application code
+        >>> if not user_data.get("email"):
+        ...     raise ApplicationError(
+        ...         "Email is required", 
+        ...         {"user_id": user_data.get("id"), "provided_fields": list(user_data.keys())}
+        ...     )
     """
     
     def __init__(self, message: str, context: Optional[Dict[str, Any]] = None):
+        """
+        Initialize ApplicationError with message and optional context.
+        
+        Args:
+            message: Human-readable error description for display and logging
+            context: Optional dictionary with additional debugging information,
+                    error metadata, or relevant state data
+        
+        Behavior:
+            - Sets up exception inheritance chain properly
+            - Stores message and context for later access
+            - Ensures context is always a dictionary (empty if None provided)
+            - Prepares error for integration with logging and monitoring systems
+        """
         super().__init__(message)
         self.message = message
         self.context = context or {}
 
     def __str__(self) -> str:
+        """
+        Generate string representation of the error including context if available.
+        
+        Returns:
+            String representation with context appended if context exists
+            
+        Behavior:
+            - Returns plain message if no context provided
+            - Appends context information in readable format when available
+            - Ensures consistent string formatting across all application errors
+            - Supports debugging by including relevant context data
+        """
         if self.context:
             return f"{self.message} (Context: {self.context})"
         return self.message
@@ -88,10 +144,44 @@ class ApplicationError(Exception):
 
 class ValidationError(ApplicationError):
     """
-    Raised when input validation fails.
+    Raised when input validation fails across the application layer.
     
-    Use this for user input validation, schema validation,
-    or any data format/content validation errors.
+    This exception should be used for all forms of data validation failures including
+    user input validation, schema validation, business rule validation, and data
+    format/content validation errors. It provides clear error classification for
+    client-side error handling and debugging.
+    
+    Behavior:
+        - Maps to HTTP 400 (Bad Request) status code automatically
+        - Provides structured validation error information
+        - Supports field-specific error reporting through context
+        - Integrates with API error response formatting
+        - Enables client-side validation error handling
+        
+    Examples:
+        >>> # Basic validation error
+        >>> raise ValidationError("Email format is invalid")
+        
+        >>> # Field-specific validation with context
+        >>> raise ValidationError(
+        ...     "Invalid email format", 
+        ...     {"field": "email", "value": "user@invalid", "expected_format": "user@domain.com"}
+        ... )
+        
+        >>> # Multiple field validation error
+        >>> raise ValidationError(
+        ...     "Multiple fields failed validation",
+        ...     {
+        ...         "failed_fields": ["email", "phone"], 
+        ...         "errors": {"email": "Invalid format", "phone": "Required"}
+        ...     }
+        ... )
+        
+        >>> # Schema validation error
+        >>> raise ValidationError(
+        ...     "Request schema validation failed",
+        ...     {"schema": "TextProcessingRequest", "missing_fields": ["text", "operation"]}
+        ... )
     """
     pass
 
@@ -241,14 +331,50 @@ class ServiceUnavailableError(TransientAIError):
 
 def classify_ai_exception(exc: Exception) -> bool:
     """
-    Classify whether an AI-related exception should trigger retries.
+    Classify whether an AI-related exception should trigger retry attempts in resilience patterns.
+    
+    This function provides intelligent exception classification for the resilience system,
+    enabling automatic retry logic for transient failures while avoiding retries for
+    permanent errors that will not resolve with additional attempts.
     
     Args:
-        exc: The exception to classify
+        exc: The exception instance to classify for retry eligibility.
+            Supports both custom application exceptions and standard Python/HTTP exceptions.
         
     Returns:
-        True if the exception is transient and should be retried,
-        False if it's permanent and should not be retried
+        True if the exception represents a transient failure that should be retried,
+        False if it represents a permanent failure that should not be retried.
+        
+    Behavior:
+        - Classifies network and connection errors as transient (should retry)
+        - Treats HTTP 5xx and 429 status codes as transient failures
+        - Classifies HTTP 4xx client errors as permanent (should not retry)
+        - Treats validation and configuration errors as permanent failures
+        - Applies conservative approach: unknown exceptions default to retryable
+        - Supports both httpx and requests library exception types
+        - Integrates with circuit breaker pattern for failure threshold tracking
+        
+    Examples:
+        >>> # Network error (should retry)
+        >>> import httpx
+        >>> error = httpx.ConnectError("Connection failed")
+        >>> assert classify_ai_exception(error) == True
+        
+        >>> # Rate limit error (should retry with backoff)
+        >>> rate_error = RateLimitError("Rate limit exceeded", retry_after=60)
+        >>> assert classify_ai_exception(rate_error) == True
+        
+        >>> # Validation error (should not retry)
+        >>> validation_error = ValidationError("Invalid API key format")
+        >>> assert classify_ai_exception(validation_error) == False
+        
+        >>> # HTTP server error (should retry)
+        >>> server_error = httpx.HTTPStatusError("Server error", request=None, response=Mock(status_code=503))
+        >>> assert classify_ai_exception(server_error) == True
+        
+        >>> # HTTP client error (should not retry)
+        >>> client_error = httpx.HTTPStatusError("Bad request", request=None, response=Mock(status_code=400))
+        >>> assert classify_ai_exception(client_error) == False
     """
     # Network and connection errors (should retry)
     if isinstance(exc, (
@@ -290,13 +416,52 @@ def classify_ai_exception(exc: Exception) -> bool:
 
 def get_http_status_for_exception(exc: Exception) -> int:
     """
-    Map exceptions to appropriate HTTP status codes for API responses.
+    Map application and infrastructure exceptions to appropriate HTTP status codes for API responses.
+    
+    This function provides consistent HTTP status code mapping across the entire application,
+    ensuring that API clients receive semantically correct status codes based on the type
+    of error that occurred. It supports both custom application exceptions and standard
+    Python exceptions.
     
     Args:
-        exc: The exception to map
+        exc: The exception instance to map to an HTTP status code.
+            Supports all custom application exceptions, infrastructure exceptions,
+            and common Python standard library exceptions.
         
     Returns:
-        Appropriate HTTP status code
+        Appropriate HTTP status code (int) between 400-599 based on exception type.
+        Returns 500 (Internal Server Error) for unknown exception types.
+        
+    Behavior:
+        - Maps validation errors to 400 (Bad Request) for client input issues
+        - Maps authentication errors to 401 (Unauthorized) for missing/invalid credentials
+        - Maps authorization errors to 403 (Forbidden) for insufficient permissions
+        - Maps rate limit errors to 429 (Too Many Requests) with retry-after semantics
+        - Maps service unavailable errors to 503 for temporary outages
+        - Maps configuration errors to 500 for server-side configuration issues
+        - Provides consistent error response structure across all API endpoints
+        - Supports custom exception hierarchy for domain-specific error mapping
+        
+    Examples:
+        >>> # Validation error mapping
+        >>> error = ValidationError("Invalid email format")
+        >>> assert get_http_status_for_exception(error) == 400
+        
+        >>> # Authentication error mapping
+        >>> auth_error = AuthenticationError("Invalid API key")
+        >>> assert get_http_status_for_exception(auth_error) == 401
+        
+        >>> # Rate limit error mapping
+        >>> rate_error = RateLimitError("Rate limit exceeded", retry_after=60)
+        >>> assert get_http_status_for_exception(rate_error) == 429
+        
+        >>> # Service unavailable mapping
+        >>> service_error = ServiceUnavailableError("AI service temporarily down")
+        >>> assert get_http_status_for_exception(service_error) == 503
+        
+        >>> # Unknown exception mapping
+        >>> unknown_error = Exception("Unexpected error")
+        >>> assert get_http_status_for_exception(unknown_error) == 500
     """
     if isinstance(exc, ValidationError):
         return 400  # Bad Request

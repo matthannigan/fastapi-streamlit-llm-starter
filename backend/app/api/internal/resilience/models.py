@@ -229,7 +229,75 @@ from pydantic import BaseModel, Field
 # Request models
 
 class TemplateValidationRequest(BaseModel):
-    """Request model for template-based validation."""
+    """
+    Template-based configuration validation request with override support for flexible customization.
+    
+    This model represents requests for validating resilience configurations based on predefined
+    templates with optional customization overrides. It enables template-driven configuration
+    validation while maintaining flexibility for environment-specific customizations and testing
+    scenarios with structured parameter validation.
+    
+    Attributes:
+        template_name: Unique identifier for the base configuration template to validate against.
+                      Must correspond to an available template in the resilience system's
+                      template catalog for successful validation processing.
+        overrides: Optional configuration overrides to apply over the base template settings.
+                  Allows customization of specific template parameters while maintaining
+                  template structure and validation rules (defaults to empty dictionary).
+    
+    Behavior:
+        **Template Resolution:**
+        - Validates that specified template_name exists in available template catalog
+        - Applies base template configuration as validation foundation
+        - Merges override parameters with template defaults for comprehensive validation
+        - Maintains template structure integrity while enabling customization flexibility
+        
+        **Override Processing:**
+        - Applies overrides on top of base template configuration using deep merge semantics
+        - Validates override parameters against template schema and constraints
+        - Preserves template defaults for parameters not specified in overrides
+        - Enables partial customization without requiring complete configuration specification
+        
+        **Validation Integration:**
+        - Provides structured input for template-based validation endpoints
+        - Enables testing of template configurations with environment-specific modifications
+        - Supports validation workflow integration with template management systems
+        - Facilitates configuration testing and validation automation scenarios
+    
+    Examples:
+        >>> # Basic template validation request
+        >>> request = TemplateValidationRequest(
+        ...     template_name="production",
+        ...     overrides={}
+        ... )
+        >>> assert request.template_name == "production"
+        >>> assert request.overrides == {}
+        
+        >>> # Template validation with custom overrides
+        >>> custom_request = TemplateValidationRequest(
+        ...     template_name="development",
+        ...     overrides={
+        ...         "retry_attempts": 5,
+        ...         "circuit_breaker_threshold": 3
+        ...     }
+        ... )
+        >>> assert custom_request.overrides["retry_attempts"] == 5
+        
+        >>> # API request integration
+        >>> import httpx
+        >>> validation_data = {
+        ...     "template_name": "simple",
+        ...     "overrides": {"recovery_timeout": 45}
+        ... }
+        >>> response = await client.post("/internal/resilience/config/validate-template",
+        ...                             json=validation_data)
+    
+    Note:
+        This model is designed for template-based configuration workflows where base templates
+        provide sensible defaults while overrides enable environment-specific customization.
+        The validation process ensures template integrity while supporting flexible parameter
+        modification for diverse deployment scenarios and testing requirements.
+    """
     template_name: str
     overrides: Dict[str, Any] = {}
 
@@ -260,7 +328,108 @@ class TemplateBasedConfigRequest(BaseModel):
 # Response models
 
 class ResilienceMetricsResponse(BaseModel):
-    """Resilience service metrics response."""
+    """
+    Comprehensive resilience system metrics response with multi-dimensional monitoring data.
+    
+    This response model provides complete visibility into resilience infrastructure performance,
+    including operation-level metrics, circuit breaker status information, and aggregated system
+    summaries. It serves as the primary data structure for resilience monitoring dashboards,
+    alerting systems, and performance analysis workflows with structured metric organization.
+    
+    Attributes:
+        operations: Operation-level metrics and performance data organized by operation identifier.
+                   Each operation entry contains detailed metrics including success rates, failure
+                   counts, response times, and resilience pattern effectiveness measurements.
+        circuit_breakers: Circuit breaker status and operational metrics organized by breaker name.
+                         Each circuit breaker entry includes state information, failure thresholds,
+                         recovery timers, and historical failure/recovery event data.
+        summary: Aggregated system-wide metrics providing overall resilience system health status,
+                performance indicators, and high-level operational statistics for dashboard display
+                and alerting integration purposes.
+    
+    Behavior:
+        **Comprehensive Metrics Collection:**
+        - Aggregates operation-level performance metrics across all monitored operations
+        - Provides circuit breaker state and performance information for failure detection
+        - Includes system-wide summary statistics for high-level health assessment
+        - Maintains temporal metric data for trend analysis and performance monitoring
+        
+        **Monitoring Integration:**
+        - Structures metrics data for integration with monitoring and alerting systems
+        - Provides hierarchical metric organization from system-level to operation-specific details
+        - Enables performance trend analysis and capacity planning through historical data
+        - Supports dashboard visualization and operational monitoring workflow integration
+        
+        **Operational Visibility:**
+        - Exposes resilience pattern effectiveness and system health indicators
+        - Provides detailed failure analysis data and recovery pattern information
+        - Enables performance optimization through comprehensive metric exposure
+        - Supports troubleshooting and operational analysis with detailed metric breakdowns
+    
+    Examples:
+        >>> # Comprehensive metrics response structure
+        >>> metrics = ResilienceMetricsResponse(
+        ...     operations={
+        ...         "text_processing": {
+        ...             "success_rate": 98.5,
+        ...             "failure_count": 12,
+        ...             "avg_response_time": 250.0,
+        ...             "circuit_breaker_trips": 2
+        ...         }
+        ...     },
+        ...     circuit_breakers={
+        ...         "gemini_api": {
+        ...             "state": "closed",
+        ...             "failure_threshold": 5,
+        ...             "current_failures": 0,
+        ...             "last_failure_time": None
+        ...         }
+        ...     },
+        ...     summary={
+        ...         "overall_health": "healthy",
+        ...         "total_operations": 10000,
+        ...         "system_uptime": "99.8%"
+        ...     }
+        ... )
+        
+        >>> # Operational monitoring integration
+        >>> def analyze_resilience_health(metrics: ResilienceMetricsResponse):
+        ...     health_indicators = []
+        ...     
+        ...     # Check operation performance
+        ...     for op_name, op_metrics in metrics.operations.items():
+        ...         if op_metrics.get("success_rate", 0) < 95.0:
+        ...             health_indicators.append(f"low_success_rate_{op_name}")
+        ...     
+        ...     # Check circuit breaker status
+        ...     for cb_name, cb_metrics in metrics.circuit_breakers.items():
+        ...         if cb_metrics.get("state") == "open":
+        ...             health_indicators.append(f"circuit_breaker_open_{cb_name}")
+        ...     
+        ...     return {
+        ...         "healthy": len(health_indicators) == 0,
+        ...         "issues": health_indicators,
+        ...         "overall_status": metrics.summary.get("overall_health")
+        ...     }
+        
+        >>> # Dashboard data preparation
+        >>> def prepare_dashboard_metrics(metrics: ResilienceMetricsResponse):
+        ...     return {
+        ...         "system_health": metrics.summary.get("overall_health", "unknown"),
+        ...         "operation_count": len(metrics.operations),
+        ...         "active_circuit_breakers": len(metrics.circuit_breakers),
+        ...         "avg_success_rate": sum(
+        ...             op.get("success_rate", 0) 
+        ...             for op in metrics.operations.values()
+        ...         ) / max(len(metrics.operations), 1)
+        ...     }
+    
+    Note:
+        This response model provides comprehensive resilience system visibility and is designed
+        for integration with monitoring systems, operational dashboards, and alerting platforms.
+        The structured metric organization enables both high-level system health assessment and
+        detailed operational analysis for performance optimization and troubleshooting workflows.
+    """
     operations: Dict[str, Dict[str, Any]]
     circuit_breakers: Dict[str, Dict[str, Any]]
     summary: Dict[str, Any]
