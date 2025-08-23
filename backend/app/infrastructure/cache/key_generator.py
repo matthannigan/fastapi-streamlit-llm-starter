@@ -88,21 +88,43 @@ except ImportError:
 
 
 class CacheKeyGenerator:
-    """Optimized cache key generator for handling large texts efficiently.
-
-    This standalone component provides efficient cache key generation with
-    streaming SHA-256 hashing for large texts while maintaining backward
-    compatibility with existing key formats.
-
-    The generator is completely free of Redis dependencies and accepts only
-    an optional performance monitor for tracking key generation metrics.
-
-    Args:
-        text_hash_threshold (int): Character count threshold above which text is hashed.
-                                  Defaults to 1000 characters.
-        hash_algorithm: Hash algorithm to use for large texts. Defaults to hashlib.sha256.
-        performance_monitor (CachePerformanceMonitor, optional): Optional performance
-                                                                monitor for tracking metrics.
+    """
+    High-performance cache key generator with streaming hash algorithms and intelligent text processing.
+    
+    Provides efficient cache key generation optimized for AI text processing workloads with
+    configurable hashing thresholds, backward compatibility, and performance monitoring.
+    Designed as a standalone component free of external cache dependencies.
+    
+    Attributes:
+        text_hash_threshold: int character count threshold (100-100000) for hash vs direct inclusion
+        hash_algorithm: Callable hash algorithm function (default: hashlib.sha256)
+        performance_monitor: Optional[CachePerformanceMonitor] metrics tracking instance
+        
+    Public Methods:
+        generate_cache_key(): Primary key generation method with intelligent text handling
+        _hash_large_text(): Internal streaming hash method for memory efficiency
+        
+    State Management:
+        - Thread-safe key generation for concurrent cache operations
+        - Consistent key format maintaining backward compatibility
+        - Streaming hash processing for memory-efficient large text handling
+        - Optional performance metrics collection without impacting generation speed
+        
+    Usage:
+        # Basic key generation
+        generator = CacheKeyGenerator()
+        key = generator.generate_cache_key("User input text", "summarize", {"max_length": 100})
+        
+        # Large text optimization with custom threshold
+        generator = CacheKeyGenerator(text_hash_threshold=2000)
+        key = generator.generate_cache_key(large_document, "analyze")
+        
+        # Production usage with monitoring
+        monitor = CachePerformanceMonitor()
+        generator = CacheKeyGenerator(
+            text_hash_threshold=1000,
+            performance_monitor=monitor
+        )
 
     Example:
         >>> generator = CacheKeyGenerator()

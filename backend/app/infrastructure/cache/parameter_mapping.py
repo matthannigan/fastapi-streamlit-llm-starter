@@ -64,15 +64,38 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ValidationResult:
     """
-    Dataclass representing the result of parameter validation.
+    Comprehensive parameter validation result with detailed error reporting and recommendations.
     
-    This comprehensive result structure provides detailed information about
-    parameter compatibility, validation errors, warnings, and recommendations
-    for optimal cache configuration.
+    Provides structured validation feedback for cache parameter mapping and compatibility checking.
+    Includes specific error messages, warnings for suboptimal configurations, and intelligent
+    recommendations for parameter optimization.
     
     Attributes:
-        is_valid (bool): True if all parameters are valid and compatible
-        errors (List[str]): List of validation error messages
+        is_valid: bool indicating whether all parameters passed validation checks
+        errors: List[str] specific validation error messages requiring correction
+        warnings: List[str] configuration warnings for suboptimal but valid settings
+        recommendations: List[str] intelligent suggestions for parameter optimization
+        context: Dict[str, Any] additional validation context and metadata
+        
+    Behavior:
+        - Aggregates validation results from multiple parameter checking phases
+        - Provides actionable error messages with specific parameter references
+        - Includes performance and security recommendations for configuration improvement
+        - Maintains validation context for debugging and troubleshooting
+        - Thread-safe result structure for concurrent validation operations
+        
+    Examples:
+        >>> result = ValidationResult()
+        >>> result.errors.append("redis_url cannot be empty")
+        >>> result.warnings.append("Low TTL may impact performance")
+        >>> result.recommendations.append("Consider enabling compression")
+        >>> 
+        >>> if result.is_valid:
+        ...     print("Configuration validated successfully")
+        ... else:
+        ...     for error in result.errors:
+        ...         logger.error(f"Validation error: {error}")
+    """
         warnings (List[str]): List of non-fatal warning messages
         recommendations (List[str]): List of configuration recommendations
         parameter_conflicts (Dict[str, str]): Mapping of conflicting parameters to conflict descriptions
@@ -121,15 +144,55 @@ class ValidationResult:
 
 class CacheParameterMapper:
     """
-    Parameter mapper for separating AI-specific parameters from generic Redis parameters.
+    Advanced parameter mapping system enabling clean cache inheritance architecture.
     
-    This class provides the core functionality for the cache inheritance refactoring,
-    enabling AIResponseCache to properly extend GenericRedisCache by mapping parameters
-    between AI-specific and generic configurations.
+    Provides comprehensive parameter separation, mapping, and validation to support
+    AIResponseCache inheritance from GenericRedisCache. Handles parameter classification,
+    name mapping, value transformation, and compatibility validation with detailed reporting.
     
-    Key Responsibilities:
-        - Maintain authoritative parameter classifications
-        - Map between AI parameter names and generic equivalents
+    Attributes:
+        ai_specific_params: Set[str] parameters unique to AI cache functionality
+        generic_params: Set[str] parameters inherited by generic Redis cache
+        parameter_mappings: Dict[str, str] AI-to-generic parameter name mappings
+        value_transformers: Dict[str, Callable] parameter value transformation functions
+        
+    Public Methods:
+        map_ai_to_generic_params(): Separate and map AI parameters to generic equivalents
+        validate_parameter_compatibility(): Comprehensive parameter validation with reporting
+        get_parameter_classification(): Classify parameters by type and inheritance level
+        transform_parameter_values(): Apply value transformations for compatibility
+        
+    State Management:
+        - Immutable parameter classification for consistent behavior
+        - Thread-safe mapping operations for concurrent cache initialization
+        - Comprehensive validation with detailed error context
+        - Extensible architecture for custom parameter types
+        
+    Usage:
+        # Basic parameter mapping for inheritance
+        mapper = CacheParameterMapper()
+        ai_params = {
+            'redis_url': 'redis://localhost:6379',
+            'text_hash_threshold': 1000,
+            'memory_cache_size': 100
+        }
+        
+        generic_params, ai_only = mapper.map_ai_to_generic_params(ai_params)
+        
+        # Validation with detailed reporting
+        result = mapper.validate_parameter_compatibility(ai_params)
+        if not result.is_valid:
+            for error in result.errors:
+                logger.error(f"Parameter error: {error}")
+        
+        # Production usage with error handling
+        try:
+            generic_config = mapper.create_generic_config(ai_params)
+            ai_config = mapper.extract_ai_specific_config(ai_params)
+            cache = AIResponseCache(generic_config, ai_config)
+        except ValueError as e:
+            logger.error(f"Parameter mapping failed: {e}")
+    """
         - Validate parameter compatibility and identify conflicts
         - Provide detailed validation results with actionable feedback
         - Support parameter transformation and value validation

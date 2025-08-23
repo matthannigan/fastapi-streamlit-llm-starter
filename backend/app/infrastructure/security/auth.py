@@ -141,7 +141,42 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 class AuthConfig:
-    """Configuration class that can be extended for user management."""
+    """
+    Authentication configuration manager with environment-based settings and extensibility hooks.
+    
+    Manages authentication behavior, feature flags, and operation modes through environment
+    variables, providing a flexible foundation for both simple API key validation and
+    advanced user management systems.
+    
+    Attributes:
+        simple_mode: bool indicating basic API key validation mode (default)
+        enable_user_tracking: bool for user context and session tracking
+        enable_request_logging: bool for request metadata collection
+        
+    Public Methods:
+        supports_user_context: Property indicating user context availability
+        
+    State Management:
+        - Environment-driven configuration with sensible defaults
+        - Immutable configuration after initialization
+        - Extension points for custom authentication logic
+        - Thread-safe operation for concurrent request handling
+        
+    Usage:
+        # Default configuration for simple API key authentication
+        config = AuthConfig()
+        
+        # Environment-based configuration
+        # AUTH_MODE=advanced ENABLE_USER_TRACKING=true
+        config = AuthConfig()
+        if not config.simple_mode:
+            print("Advanced authentication features enabled")
+            
+        # Extension point usage
+        class CustomAuthConfig(AuthConfig):
+            def supports_permissions(self) -> bool:
+                return True
+    """
     
     def __init__(self):
         # Can be overridden via environment variable
@@ -178,7 +213,46 @@ class AuthConfig:
         }
 
 class APIKeyAuth:
-    """API Key authentication handler with extensibility hooks."""
+    """
+    API key authentication handler with multi-key support and extensible metadata management.
+    
+    Provides secure API key validation with support for multiple keys, development mode,
+    test integration, and extensibility hooks for advanced authentication requirements.
+    Handles Bearer token extraction, validation, and optional user context management.
+    
+    Attributes:
+        config: AuthConfig instance controlling authentication behavior
+        api_keys: Set[str] containing valid API keys for authentication
+        _key_metadata: Dict[str, Dict[str, Any]] extensible metadata per API key
+        
+    Public Methods:
+        authenticate(): Primary authentication method with Bearer token validation
+        get_user_context(): Extract user information from authenticated requests
+        add_key_metadata(): Associate metadata with specific API keys
+        
+    State Management:
+        - Thread-safe API key validation for concurrent requests
+        - Immutable key set after initialization (reload required for changes)
+        - Extensible metadata system for custom authentication logic
+        - Development and test mode support with automatic fallbacks
+        
+    Usage:
+        # Basic API key authentication
+        auth = APIKeyAuth()
+        api_key = await auth.authenticate("Bearer sk-abc123")
+        
+        # Advanced usage with user context
+        config = AuthConfig()
+        auth = APIKeyAuth(config)
+        if config.supports_user_context:
+            user_info = auth.get_user_context(api_key)
+            
+        # Extension with metadata
+        auth.add_key_metadata("sk-abc123", {
+            "user_id": "user_123",
+            "permissions": ["read", "write"]
+        })
+    """
     
     def __init__(self, auth_config: Optional[AuthConfig] = None):
         self.config = auth_config or AuthConfig()

@@ -147,18 +147,87 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     """
-    Application settings with environment variable support and validation.
-
-    Configuration is organized into logical sections for maintainability:
-    - AI Configuration: AI model settings and batch processing
-    - API Configuration: Host, port, and basic API settings
-    - Authentication & CORS: Security and cross-origin settings
-    - Application Settings: Debug, logging, and general app settings
-    - Cache Configuration: Redis, compression, and tiering settings
-    - Resilience Configuration: Circuit breaker, retry, and strategy settings
-    - Health Check Configuration: Component timeouts, retry logic, and component selection
-    - Middleware Configuration: Enhanced middleware settings for production deployment
-    - Monitoring Configuration: Metrics and health check settings
+    Centralized application configuration class with comprehensive environment variable support and validation.
+    
+    This class serves as the single source of truth for all application configuration, providing
+    organized, validated, and type-safe access to environment-specific settings. It supports
+    both modern preset-based configuration and legacy environment variables for backward compatibility.
+    
+    Attributes:
+        gemini_api_key: Google Gemini API key for AI service integration
+        ai_model: Default AI model identifier for processing requests
+        ai_temperature: AI model temperature (0.0-2.0) for response creativity control
+        MAX_BATCH_REQUESTS_PER_CALL: Maximum batch size for concurrent processing
+        BATCH_AI_CONCURRENCY_LIMIT: Concurrent AI request limit in batch operations
+        host: Server host address for binding (default: "0.0.0.0")
+        port: Server port number for binding (1-65535, default: 8000)
+        api_key: Primary API key for authentication
+        additional_api_keys: Comma-separated additional API keys for multi-client access
+        allowed_origins: List of allowed CORS origins for cross-origin requests
+        debug: Debug mode flag for development environments
+        log_level: Application logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        redis_url: Redis connection URL for caching infrastructure
+        cache_compression_threshold: Size threshold (bytes) for enabling compression
+        cache_large_text_threshold: Size threshold (bytes) for large text handling
+        RESILIENCE_PRESET: Resilience configuration preset (simple, development, production)
+        RESILIENCE_CUSTOM_CONFIG: Custom JSON configuration for advanced resilience settings
+        
+    Public Methods:
+        get_resilience_config(): Get complete resilience configuration with preset and custom overrides
+        get_operation_strategy(): Get resilience strategy for specific operation types
+        _load_resilience_config(): Load and validate resilience configuration from various sources
+        get_valid_api_keys(): Get list of all valid API keys (primary + additional)
+        is_development(): Check if running in development mode
+        model_config: Pydantic configuration for environment variable handling
+        
+    State Management:
+        - Immutable configuration once loaded (Pydantic BaseSettings behavior)
+        - Thread-safe access to configuration values
+        - Automatic environment variable type conversion and validation
+        - Graceful handling of missing or invalid configuration values
+        - Support for .env file loading in non-test environments
+        
+    Usage:
+        # Basic configuration access
+        from app.core.config import settings
+        
+        # AI configuration
+        api_key = settings.gemini_api_key
+        model = settings.ai_model
+        temperature = settings.ai_temperature
+        
+        # Resilience configuration (modern preset approach)
+        resilience_config = settings.get_resilience_config()
+        strategy = settings.get_operation_strategy("summarize")
+        
+        # Authentication configuration
+        valid_keys = settings.get_valid_api_keys()
+        is_dev = settings.is_development()
+        
+        # Cache configuration
+        redis_url = settings.redis_url
+        compression_threshold = settings.cache_compression_threshold
+        
+        # Advanced resilience configuration
+        custom_config = {
+            "retry_attempts": 5,
+            "circuit_breaker_threshold": 10,
+            "timeout_seconds": 30
+        }
+        settings.RESILIENCE_CUSTOM_CONFIG = json.dumps(custom_config)
+        updated_config = settings.get_resilience_config()
+        
+        # Environment-specific configuration
+        if settings.debug:
+            # Development-specific logic
+            logger.setLevel(logging.DEBUG)
+        
+        # Health check configuration
+        timeouts = {
+            "ai_model": settings.HEALTH_CHECK_AI_MODEL_TIMEOUT_MS,
+            "cache": settings.HEALTH_CHECK_CACHE_TIMEOUT_MS,
+            "resilience": settings.HEALTH_CHECK_RESILIENCE_TIMEOUT_MS
+        }
     """
 
     # ========================================

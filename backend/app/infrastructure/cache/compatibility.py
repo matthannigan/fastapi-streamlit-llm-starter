@@ -56,27 +56,46 @@ logger = logging.getLogger(__name__)
 
 
 class CacheCompatibilityWrapper:
-    """Wrapper class providing backwards compatibility during cache transitions.
+    """
+    Compatibility wrapper enabling seamless migration between cache implementations with deprecation management.
 
-    Acts as an adapter between old and new cache implementations, ensuring
-    existing code continues to function while internally leveraging new cache
-    infrastructure. Provides configurable compatibility modes and migration
-    assistance.
+    Provides backwards compatibility during cache refactoring by proxying legacy method calls
+    to new cache implementations while emitting configurable deprecation warnings and
+    maintaining compatibility metrics for migration tracking.
 
-    This wrapper is designed to be a temporary bridge during the refactoring
-    process and should be removed once all code has been migrated to use the
-    new cache interfaces directly.
-
-    ### Parameters
-    - `inner_cache` (Any): The underlying cache implementation to proxy to.
-    - `emit_warnings` (bool): Whether to emit deprecation warnings. Default: True.
-
-    ### Examples
-    ```python
-    generic_cache = GenericRedisCache()
-    wrapper = CacheCompatibilityWrapper(generic_cache)
-
-    # Legacy method calls emit warnings but still work
+    Attributes:
+        inner_cache: Any underlying cache implementation to delegate operations to
+        emit_warnings: bool whether to emit deprecation warnings for legacy usage
+        compatibility_metrics: Dict[str, int] tracking usage of legacy vs new patterns
+        
+    Public Methods:
+        All legacy cache methods with automatic delegation to inner cache
+        get_compatibility_metrics(): Retrieve usage statistics for migration planning
+        
+    State Management:
+        - Thread-safe proxying of all cache operations to underlying implementation
+        - Configurable warning system for gradual migration assistance
+        - Compatibility metrics collection for migration progress tracking
+        - Temporary bridge designed for removal after complete migration
+        
+    Usage:
+        # Wrap new cache implementation for legacy compatibility
+        new_cache = GenericRedisCache(redis_url="redis://localhost:6379")
+        wrapper = CacheCompatibilityWrapper(new_cache, emit_warnings=True)
+        
+        # Legacy code continues working with deprecation warnings
+        await wrapper.set("key", "value")  # Warns about deprecated usage
+        result = await wrapper.get("key")
+        
+        # Migration monitoring
+        metrics = wrapper.get_compatibility_metrics()
+        legacy_usage = metrics.get("legacy_method_calls", 0)
+        
+        # Production usage with warnings disabled
+        prod_wrapper = CacheCompatibilityWrapper(
+            inner_cache=production_cache,
+            emit_warnings=False  # Disable warnings in production
+        )
     result = await wrapper.get_cached_response(text, operation, options)
     ```
     """

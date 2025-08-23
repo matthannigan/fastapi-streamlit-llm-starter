@@ -281,20 +281,71 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AIResponseCacheConfig:
     """
-    Comprehensive configuration for AI Response Cache with parameter separation.
+    Comprehensive AI Response Cache configuration with validation, factory methods, and parameter mapping.
     
-    This dataclass provides a structured approach to configuring the AIResponseCache
-    with clear separation between generic Redis parameters and AI-specific parameters.
-    It includes validation, type safety, and conversion methods for seamless integration
-    with the inheritance-based cache architecture.
+    Provides structured configuration management for AI caching with clear parameter separation between
+    generic Redis functionality and AI-specific optimizations. Includes comprehensive validation,
+    multiple factory methods, and seamless integration with inheritance-based cache architecture.
     
-    ### Generic Redis Parameters
-    These parameters are used by the parent GenericRedisCache:
-    - `redis_url`: Redis connection URL
-    - `default_ttl`: Default time-to-live for cache entries
-    - `enable_l1_cache`: Enable in-memory L1 cache tier
-    - `l1_cache_size`: Maximum entries in L1 cache (maps from memory_cache_size)
-    - `compression_threshold`: Size threshold for compression
+    Attributes:
+        redis_url: Optional[str] Redis connection URL (redis://, rediss://, unix://)
+        default_ttl: int default time-to-live (1-31536000 seconds, default: 3600)
+        enable_l1_cache: bool enable in-memory L1 cache tier (default: True)
+        memory_cache_size: int maximum L1 cache entries (1-10000, default: 1000)
+        compression_threshold: int bytes threshold for compression (0-1048576, default: 1024)
+        compression_level: int zlib compression level (1-9, default: 6)
+        text_hash_threshold: int characters threshold for text hashing (1-100000, default: 1000)
+        hash_algorithm: str hash algorithm for text processing (default: 'sha256')
+        operation_ttls: Dict[str, int] operation-specific TTL overrides
+        performance_monitor: Optional cache performance monitor instance
+        security_config: Optional security configuration for encrypted connections
+        
+    Public Methods:
+        validate(): Comprehensive validation with detailed error reporting
+        to_generic_config(): Convert to GenericRedisCache configuration
+        merge_config(): Merge with another configuration for inheritance
+        from_environment(): Factory method loading from environment variables
+        from_dict(): Factory method loading from dictionary data
+        from_preset(): Factory method loading from preset configurations
+        
+    State Management:
+        - Immutable configuration after validation for consistent behavior
+        - Thread-safe parameter access for concurrent cache operations
+        - Comprehensive validation with actionable error messages
+        - Factory methods support various configuration sources
+        
+    Usage:
+        # Basic configuration with defaults
+        config = AIResponseCacheConfig(
+            redis_url="redis://localhost:6379/0"
+        )
+        
+        # Advanced configuration with AI optimizations
+        config = AIResponseCacheConfig(
+            redis_url="redis://ai-cache:6379/1",
+            default_ttl=7200,
+            text_hash_threshold=5000,
+            operation_ttls={
+                "summarize": 3600,
+                "analyze": 7200,
+                "translate": 1800
+            }
+        )
+        
+        # Environment-based configuration
+        config = AIResponseCacheConfig.from_environment(
+            prefix="AI_CACHE_",
+            fallback_redis_url="redis://localhost:6379"
+        )
+        
+        # Validation and conversion
+        validation_result = config.validate()
+        if validation_result.is_valid:
+            generic_config = config.to_generic_config()
+            cache = AIResponseCache(generic_config)
+        else:
+            logger.error(f"Configuration errors: {validation_result.errors}")
+    """
     - `compression_level`: Zlib compression level
     - `performance_monitor`: Performance monitoring instance
     - `security_config`: Security configuration for Redis connections

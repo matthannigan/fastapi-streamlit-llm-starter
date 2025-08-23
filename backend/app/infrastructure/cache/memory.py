@@ -157,19 +157,74 @@ logger = logging.getLogger(__name__)
 
 class InMemoryCache(CacheInterface):
     """
-    In-memory cache implementation with TTL support.
-
-    This cache stores data in memory with optional expiration times.
-    It's suitable for development, testing, or when Redis is not available.
+    High-performance in-memory cache with TTL support and LRU eviction for development and production use.
+    
+    Provides a complete caching solution storing data directly in application memory with automatic
+    expiration, intelligent eviction policies, and comprehensive monitoring. Designed as a drop-in
+    replacement for Redis during development or for applications requiring embedded caching.
+    
+    Attributes:
+        default_ttl: int default time-to-live in seconds for cache entries
+        max_size: int maximum entries before LRU eviction triggers
+        _cache: Dict[str, Dict[str, Any]] internal storage with metadata
+        _access_order: List[str] LRU tracking for eviction decisions
+        
+    Public Methods:
+        get(): Retrieve value by key with automatic expiration handling
+        set(): Store value with optional TTL and LRU management
+        delete(): Remove entry immediately with cleanup
+        exists(): Check key existence without affecting LRU order
+        clear(): Remove all cached entries for testing/cleanup
+        get_stats(): Retrieve cache performance statistics
+        
+    State Management:
+        - Thread-safe for single event loop concurrent access
+        - Automatic cleanup of expired entries during operations
+        - LRU eviction maintains memory bounds automatically
+        - Statistics tracking for monitoring and debugging
+        
+    Usage:
+        # Development and testing configuration
+        cache = InMemoryCache(default_ttl=1800, max_size=500)
+        
+        # Basic caching operations
+        await cache.set("user:123", {"name": "John", "active": True})
+        user_data = await cache.get("user:123")
+        await cache.delete("user:123")
+        
+        # Advanced usage with custom TTL
+        await cache.set("session:abc", "active", ttl=300)  # 5 minutes
+        if await cache.exists("session:abc"):
+            print("Session still active")
+            
+        # Production monitoring
+        stats = cache.get_stats()
+        print(f"Cache hit rate: {stats['hit_rate']:.2%}")
+        
+        # Testing and cleanup
+        cache.clear()  # Remove all entries for clean test state
     """
 
     def __init__(self, default_ttl: int = 3600, max_size: int = 1000):
         """
-        Initialize InMemoryCache with configurable parameters.
-
+        Initialize in-memory cache with TTL and LRU eviction configuration.
+        
+        Sets up cache storage structures, eviction policies, and monitoring systems
+        for optimal performance in development and production environments.
+        
         Args:
-            default_ttl: Default time-to-live for cache entries in seconds
-            max_size: Maximum number of entries to store (LRU eviction when exceeded)
+            default_ttl: Default time-to-live in seconds (1-86400). Applied when
+                        set() called without explicit ttl parameter. Default 3600 (1 hour).
+            max_size: Maximum cache entries (1-100000) before LRU eviction. Controls
+                     memory usage by removing least-recently-used entries. Default 1000.
+                     
+        Behavior:
+            - Initializes empty cache storage with metadata tracking
+            - Sets up LRU access order tracking for intelligent eviction
+            - Configures TTL system for automatic expiration
+            - Initializes statistics counters for performance monitoring
+            - Validates configuration parameters for safe operation
+            - Prepares thread-safe data structures for concurrent access
         """
         self.default_ttl = default_ttl
         self.max_size = max_size
