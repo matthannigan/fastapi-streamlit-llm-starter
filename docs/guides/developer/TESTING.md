@@ -8,6 +8,8 @@ This document provides comprehensive information about the test suite for the Fa
 
 ## Overview
 
+> **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
+
 The test suite covers both backend and frontend components with the following types of tests:
 
 - **Unit Tests**: Test individual functions and classes in isolation
@@ -622,6 +624,9 @@ Typical performance metrics from `integration_test.py`:
 
 This project follows a **tiered test coverage strategy** that prioritizes testing effort based on component criticality and user impact. Rather than applying uniform coverage requirements across all code, we focus intensive testing on components where failures matter most.
 
+> ⚠️ **Warning: Principles Over Percentages**
+> These coverage targets are guidelines, not mandates. A test suite that perfectly follows the 'Test Behavior, Not Implementation' principle at 80% coverage is far more valuable than a 95% coverage suite full of brittle, implementation-focused tests. **Never sacrifice test quality to meet a numeric target.
+
 #### 🔴 Critical Components (90-100% line coverage)
 **What:** User-facing APIs, core business logic, data integrity operations  
 **Why:** Failures directly impact users and business operations  
@@ -1047,6 +1052,11 @@ def authenticated_user():
 > **📖 Fixture Documentation Templates**: See **[DOCSTRINGS_TESTS.md](./DOCSTRINGS_TESTS.md)** section on "Fixture Documentation" for comprehensive fixture docstring patterns and examples.
 
 ## Mocking Strategy
+
+**Anti-Patterns: What NOT to Mock in Unit Tests:**
+* **Parent Classes**: Do not mock methods from a class's parent (e.g., `GenericRedisCache.set`).
+* **Internal Helper Classes**: Do not mock internal collaborators (e.g., `CacheKeyGenerator`).
+* **Private Methods**: Never test or mock private methods (e.g., `_decompress_data`).
 
 ### AI Service Mocking
 
