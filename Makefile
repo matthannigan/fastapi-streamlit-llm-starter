@@ -763,7 +763,7 @@ repomix:
 	@echo "📄 Generating comprehensive repository documentation..."
 	@mkdir -p repomix-output
 	@echo "📝 Creating uncompressed documentation..."
-	@npx repomix --quiet --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_all-uncompressed.md
+	@npx repomix --quiet --ignore "docs/code_ref*/**/*,backend/contracts/**/*" --output repomix-output/repomix_all-uncompressed.md
 	@echo "📝 Creating compressed documentation..."
 	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --ignore "docs/code_ref*/**/*,backend/contracts/**/*" --compress --output repomix-output/repomix_all-compressed.md
 	@$(MAKE) repomix-backend
@@ -775,8 +775,9 @@ repomix:
 repomix-backend:
 	@echo "📄 Generating backend documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/scripts/**/*,backend/tests/**/*,backend/contracts/**/*,backend/tests.old/**/*" --output repomix-output/repomix_backend.md
-	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*,backend/tests.old/**/*" --output repomix-output/repomix_backend-all_uncompressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/scripts/**/*,backend/tests/**/*,backend/contracts/**/*" --output repomix-output/repomix-backend.md
+	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*" --output repomix-output/repomix-backend_all_uncompressed.md
+	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*,backend/tests/**/*" --output repomix-output/repomix-backend_no-tests_uncompressed.md
 
 # Generate backend tests documentation
 repomix-backend-tests:
@@ -788,7 +789,7 @@ repomix-backend-tests:
 repomix-backend-cache:
 	@echo "📄 Generating backend cache documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,README.md"  --ignore "backend/tests.old/**/*" --output repomix-output/repomix_backend-cache-all_uncompressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,README.md"  --ignore "backend/contracts/**/*" --output repomix-output/repomix_backend-cache-all_uncompressed.md
 
 # Generate backend cache documentation 
 repomix-backend-contracts:
