@@ -1,0 +1,30 @@
+{
+  "default_iterations": 50,
+  "warmup_iterations": 5,
+  "timeout_seconds": 120,
+  "enable_memory_tracking": true,
+  "enable_compression_tests": true,
+  "environment": "development",
+  "thresholds": {
+    "basic_operations_avg_ms": 100.0,
+    "basic_operations_p95_ms": 200.0,
+    "basic_operations_p99_ms": 400.0,
+    "memory_cache_avg_ms": 10.0,
+    "memory_cache_p95_ms": 20.0,
+    "memory_cache_p99_ms": 40.0,
+    "compression_avg_ms": 200.0,
+    "compression_p95_ms": 400.0,
+    "compression_p99_ms": 800.0,
+    "memory_usage_warning_mb": 100.0,
+    "memory_usage_critical_mb": 200.0,
+    "regression_warning_percent": 15.0,
+    "regression_critical_percent": 30.0,
+    "success_rate_warning": 95.0,
+    "success_rate_critical": 90.0
+  },
+  "custom_settings": {
+    "description": "Development configuration with relaxed thresholds and fast execution",
+    "optimized_for": "fast_feedback",
+    "suitable_for": ["local_development", "debugging", "quick_validation"]
+  }
+}

@@ -229,3 +229,6 @@ tasks/
 backend/app.old/
 
 /docusaurus.bak/
+
+.mkdocs/
+docs-mkdocs/

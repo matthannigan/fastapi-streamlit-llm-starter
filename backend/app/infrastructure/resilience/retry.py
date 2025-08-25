@@ -81,7 +81,55 @@ import httpx
 
 @dataclass
 class RetryConfig:
-    """Configuration for retry behavior."""
+    """
+    Comprehensive retry configuration with exponential backoff, jitter, and production-optimized defaults.
+    
+    Defines retry behavior parameters for resilient service communication, including attempt limits,
+    exponential backoff configuration, and jitter settings to prevent thundering herd effects.
+    Optimized for AI service patterns with appropriate defaults for various environments.
+    
+    Attributes:
+        max_attempts: int maximum retry attempts (1-20) before giving up (default: 3)
+        max_delay_seconds: int maximum delay (1-3600) between retries to cap exponential growth (default: 60)
+        exponential_multiplier: float multiplier (0.1-10.0) for exponential backoff calculation (default: 1.0)
+        exponential_min: float minimum delay (0.1-60.0) for exponential backoff in seconds (default: 1.0)
+        exponential_max: float maximum delay (1.0-3600.0) for exponential backoff in seconds (default: 60.0)
+        jitter: bool whether to add random jitter to prevent thundering herd effects (default: True)
+        jitter_max: float maximum jitter (0.1-60.0) to add to delays in seconds (default: 1.0)
+        
+    State Management:
+        - Immutable configuration after initialization for consistent behavior
+        - Validation of parameter ranges for safe operation
+        - Compatible with Tenacity retry library integration
+        - Environment-specific defaults for different use cases
+        
+    Usage:
+        # Balanced configuration for most services
+        config = RetryConfig()
+        
+        # Aggressive retry for critical operations
+        config = RetryConfig(
+            max_attempts=5,
+            max_delay_seconds=120,
+            exponential_multiplier=2.0
+        )
+        
+        # Conservative retry for resource-intensive operations
+        config = RetryConfig(
+            max_attempts=2,
+            max_delay_seconds=30,
+            jitter_max=5.0
+        )
+        
+        # Integration with Tenacity
+        from tenacity import retry, wait_exponential
+        @retry(
+            stop=stop_after_attempt(config.max_attempts),
+            wait=wait_exponential(multiplier=config.exponential_multiplier)
+        )
+        async def resilient_operation():
+            pass
+    """
     max_attempts: int = 3
     max_delay_seconds: int = 60
     exponential_multiplier: float = 1.0

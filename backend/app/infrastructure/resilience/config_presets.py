@@ -62,7 +62,42 @@ class EnvironmentRecommendation(NamedTuple):
 
 
 class ResilienceStrategy(str, Enum):
-    """Available resilience strategies for different operation types."""
+    """
+    Resilience strategy enumeration defining optimized patterns for different operation criticality levels.
+    
+    Provides predefined strategy configurations that automatically optimize retry attempts,
+    circuit breaker thresholds, and timeout values based on operation requirements and
+    acceptable latency/reliability trade-offs.
+    
+    Values:
+        AGGRESSIVE: Fast retries (3 attempts), low circuit breaker thresholds (3 failures)
+                   for user-facing operations requiring quick response
+        BALANCED: Moderate retries (3 attempts), balanced thresholds (5 failures)
+                 for standard API operations and background processing
+        CONSERVATIVE: Minimal retries (2 attempts), high thresholds (10 failures)
+                     for resource-intensive operations and batch processing
+        CRITICAL: Maximum retries (5 attempts), highest thresholds (15 failures)
+                 for mission-critical operations requiring highest reliability
+                 
+    Behavior:
+        - String enum supporting serialization and direct comparison
+        - Each strategy maps to specific retry and circuit breaker configurations
+        - Strategies balance latency, reliability, and resource consumption
+        - Enables consistent resilience patterns across different services
+        
+    Examples:
+        >>> strategy = ResilienceStrategy.BALANCED
+        >>> config = DEFAULT_PRESETS[strategy]
+        >>> print(f"Max attempts: {config.retry_config.max_attempts}")
+        
+        >>> # Strategy selection based on operation criticality
+        >>> if operation_type == "user_facing":
+        ...     strategy = ResilienceStrategy.AGGRESSIVE
+        >>> elif operation_type == "critical":
+        ...     strategy = ResilienceStrategy.CRITICAL
+        >>> else:
+        ...     strategy = ResilienceStrategy.BALANCED
+    """
     AGGRESSIVE = "aggressive"      # Fast retries, low tolerance
     BALANCED = "balanced"         # Default strategy
     CONSERVATIVE = "conservative" # Slower retries, high tolerance
@@ -71,7 +106,50 @@ class ResilienceStrategy(str, Enum):
 
 @dataclass
 class ResilienceConfig:
-    """Configuration for resilience policies."""
+    """
+    Comprehensive resilience configuration with retry mechanisms, circuit breakers, and strategy management.
+    
+    Provides complete configuration for resilience patterns including retry behavior,
+    circuit breaker policies, and feature toggles. Integrates with strategy-based presets
+    while supporting custom configuration overrides for specific requirements.
+    
+    Attributes:
+        strategy: ResilienceStrategy enum defining the overall resilience approach
+        retry_config: RetryConfig with exponential backoff and jitter settings
+        circuit_breaker_config: CircuitBreakerConfig with failure thresholds and recovery
+        enable_circuit_breaker: bool to enable/disable circuit breaker functionality
+        enable_retry: bool to enable/disable retry mechanisms
+        
+    State Management:
+        - Immutable configuration after creation for consistent behavior
+        - Strategy-based defaults with override capabilities
+        - Comprehensive validation ensuring configuration integrity
+        - Thread-safe access for concurrent resilience operations
+        
+    Usage:
+        # Strategy-based configuration
+        config = ResilienceConfig(strategy=ResilienceStrategy.CRITICAL)
+        
+        # Custom configuration with overrides
+        config = ResilienceConfig(
+            strategy=ResilienceStrategy.BALANCED,
+            retry_config=RetryConfig(max_attempts=5),
+            circuit_breaker_config=CircuitBreakerConfig(failure_threshold=3)
+        )
+        
+        # Feature-specific configuration
+        config = ResilienceConfig(
+            strategy=ResilienceStrategy.CONSERVATIVE,
+            enable_circuit_breaker=False,  # Retry-only mode
+            enable_retry=True
+        )
+        
+        # Integration with orchestrator
+        orchestrator = AIServiceResilience()
+        @orchestrator.with_resilience("ai_operation", custom_config=config)
+        async def ai_operation():
+            return await ai_service.process()
+    """
     strategy: ResilienceStrategy = ResilienceStrategy.BALANCED
     retry_config: RetryConfig = field(default_factory=RetryConfig)
     circuit_breaker_config: CircuitBreakerConfig = field(default_factory=CircuitBreakerConfig)
@@ -195,11 +273,24 @@ class PresetManager:
         return self.presets[name]
     
     def list_presets(self) -> List[str]:
-        """Get list of available preset names."""
+        """
+        Get list of available preset names.
+        
+        Returns:
+            List of preset names (e.g., ["simple", "development", "production"])
+        """
         return list(self.presets.keys())
     
     def get_preset_details(self, name: str) -> Dict[str, Any]:
-        """Get detailed information about a preset."""
+        """
+        Get detailed information about a specific preset.
+        
+        Args:
+            name: Preset name to get details for
+            
+        Returns:
+            Dictionary containing preset configuration details, description, and context
+        """
         preset = self.get_preset(name)
         return {
             "name": preset.name,
@@ -492,7 +583,12 @@ class PresetManager:
         return ("simple", 0.40, f"Unknown environment pattern '{env_str}', defaulting to simple preset")
     
     def get_all_presets_summary(self) -> Dict[str, Dict[str, Any]]:
-        """Get summary of all available presets."""
+        """
+        Get summary of all available presets with their detailed information.
+        
+        Returns:
+            Dictionary mapping preset names to their detailed configuration information
+        """
         summary = {}
         for name in self.presets.keys():
             summary[name] = self.get_preset_details(name)
@@ -500,7 +596,16 @@ class PresetManager:
 
 
 def get_default_presets() -> Dict[ResilienceStrategy, ResilienceConfig]:
-    """Returns a dictionary of default resilience strategy configurations."""
+    """
+    Returns a dictionary of default resilience strategy configurations.
+    
+    Creates pre-configured ResilienceConfig objects for each available strategy
+    (aggressive, balanced, conservative, critical) with optimized settings for
+    different operational requirements.
+    
+    Returns:
+        Dictionary mapping ResilienceStrategy enum values to configured ResilienceConfig objects
+    """
     return {
         ResilienceStrategy.AGGRESSIVE: ResilienceConfig(
             strategy=ResilienceStrategy.AGGRESSIVE,

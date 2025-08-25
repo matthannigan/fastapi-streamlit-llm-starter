@@ -2,11 +2,20 @@
 sidebar_label: redis
 ---
 
-# Redis-based AI Response Cache Implementation
+# [DEPRECATED] Redis-based AI Response Cache Implementation
 
   file_path: `backend/app/infrastructure/cache/redis.py`
 
-This module provides a comprehensive Redis-based caching solution specifically designed
+⚠️  WARNING: This module is deprecated and has been refactored into a modular structure.
+
+Please migrate to the new modular imports:
+- AIResponseCache: from app.infrastructure.cache.redis_ai import AIResponseCache
+- CacheKeyGenerator: from app.infrastructure.cache.key_generator import CacheKeyGenerator
+- REDIS_AVAILABLE, aioredis: from app.infrastructure.cache.redis_generic import REDIS_AVAILABLE, aioredis
+
+This compatibility module will be removed in a future version.
+
+LEGACY: This module provides a comprehensive Redis-based caching solution specifically designed
 for AI response caching with advanced features including intelligent key generation,
 compression, tiered caching, and performance monitoring.
 

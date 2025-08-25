@@ -1,14 +1,39 @@
-"""Domain Service: AI Text Processing REST API
+"""
+Domain Service: Comprehensive AI Text Processing REST API with Enterprise-Grade Infrastructure Integration
 
 📚 **EXAMPLE IMPLEMENTATION** - Replace in your project  
 💡 **Demonstrates infrastructure usage patterns**  
 🔄 **Expected to be modified/replaced**
 
-This module provides comprehensive REST API endpoints for AI-powered text processing
-operations, demonstrating how to build domain services that leverage infrastructure
-services for AI processing, caching, resilience, and security. It serves as a complete
-example for implementing AI-powered domain APIs with proper error handling,
-authentication, and monitoring.
+This module provides a comprehensive REST API implementation for AI-powered text processing operations,
+serving as a complete reference implementation that demonstrates enterprise-grade patterns for building
+domain services with robust infrastructure integration. It showcases how to leverage infrastructure
+services for AI processing, caching, resilience patterns, security, and operational monitoring while
+maintaining clean separation of concerns between domain logic and infrastructure capabilities.
+
+The module implements production-ready patterns including authentication, validation, caching, resilience,
+monitoring, and error handling, providing a complete template for AI-powered API development that can be
+customized and extended for specific business requirements while maintaining operational excellence.
+
+## Architecture Overview
+
+### Domain Service Implementation Pattern
+This module demonstrates the **Domain Service** architectural pattern where business logic is implemented
+as services that orchestrate infrastructure capabilities. The text processing operations represent domain
+functionality that leverages infrastructure services for:
+
+- **AI Model Integration**: PydanticAI agents with Gemini models for text processing operations
+- **Caching Layer**: Redis-backed response caching with memory fallback for performance optimization
+- **Resilience Patterns**: Circuit breakers, retry mechanisms, and graceful degradation
+- **Security Integration**: API key authentication and input validation for secure operation
+- **Monitoring Capabilities**: Request tracing, performance metrics, and operational visibility
+
+### API Design Principles
+- **RESTful Design**: Standard HTTP methods and status codes with clear resource organization
+- **Comprehensive Validation**: Pydantic models for request/response validation and API documentation
+- **Error Handling**: Structured exception handling with appropriate HTTP status codes
+- **Authentication**: API key-based security with flexible access control patterns
+- **Documentation**: OpenAPI/Swagger integration with comprehensive endpoint documentation
 
 ## Core Components
 
@@ -173,45 +198,117 @@ router = APIRouter(prefix="/text_processing", tags=["Text Processing"])
                 401: {"model": ErrorResponse, "description": "Authentication Error"},
             })
 async def get_operations(api_key: str = Depends(optional_verify_api_key)):
-    """Get available text processing operations and their configurations.
+    """
+    AI operations discovery endpoint with comprehensive configuration metadata and optional authentication.
     
-    Retrieves a comprehensive list of all supported AI text processing operations,
-    including their descriptions, supported options, and special requirements.
-    This endpoint supports optional authentication.
+    This endpoint provides complete discoverability for all supported AI text processing operations,
+    including detailed configuration options, parameter requirements, and operational metadata. It
+    serves as the primary API discovery mechanism for client applications and development tools,
+    enabling dynamic UI generation and automated API integration with optional authentication for
+    enhanced functionality access.
     
     Args:
-        api_key (str, optional): API key for authentication. Defaults to optional verification.
+        api_key: Optional API key for enhanced authentication and access logging. When provided,
+                enables additional operational metadata and usage tracking. Authentication is optional
+                to support public API discovery and development integration scenarios.
     
     Returns:
-        dict: A dictionary containing:
-            - operations (list): List of operation objects, each containing:
-                - id (str): Unique operation identifier
-                - name (str): Human-readable operation name
-                - description (str): Detailed operation description
-                - options (list): List of supported configuration options
-                - requires_question (bool, optional): Whether operation requires a question parameter
+        dict: Comprehensive operations catalog containing:
+             - operations: List of operation definition objects, each providing complete metadata:
+               * id: Unique operation identifier for API requests and caching
+               * name: Human-readable operation name for UI display and documentation
+               * description: Detailed operational description explaining functionality and use cases
+               * options: List of supported configuration parameter names for operation customization
+               * requires_question: Boolean flag indicating operations requiring question parameter input
     
-    Example:
-        Response format:
-        ```json
-        {
-            "operations": [
-                {
-                    "id": "summarize",
-                    "name": "Summarize", 
-                    "description": "Generate a concise summary of the text",
-                    "options": ["max_length"]
-                },
-                {
-                    "id": "qa",
-                    "name": "Question & Answer",
-                    "description": "Answer a specific question about the text",
-                    "options": [],
-                    "requires_question": true
-                }
-            ]
-        }
-        ```
+    Behavior:
+        **API Discovery and Documentation:**
+        - Provides complete catalog of all supported AI text processing operations
+        - Includes comprehensive metadata for dynamic client integration and UI generation
+        - Enables automatic API documentation generation and client SDK development
+        - Supports versioning and backward compatibility for evolving operation sets
+        
+        **Authentication Integration:**
+        - Supports optional authentication for enhanced access and usage tracking
+        - Maintains public accessibility for API discovery and development scenarios
+        - Enables authentication-based operation filtering and access control future enhancement
+        - Provides consistent authentication patterns across all API endpoints
+        
+        **Client Integration Support:**
+        - Enables dynamic UI generation based on available operations and options
+        - Supports automated validation of operation requests in client applications
+        - Facilitates API testing tools and development environment integration
+        - Provides machine-readable operation metadata for automated processing
+        
+        **Operation Metadata Management:**
+        - Maintains centralized definition of all available AI processing operations
+        - Provides consistent operation information across all API endpoints
+        - Enables operation-specific configuration validation and request processing
+        - Supports future extension with additional operation metadata and capabilities
+    
+    Examples:
+        >>> # Public API discovery (no authentication required)
+        >>> response = await client.get("/v1/text_processing/operations")
+        >>> operations = response.json()["operations"]
+        >>> summarize_op = next(op for op in operations if op["id"] == "summarize")
+        >>> assert summarize_op["options"] == ["max_length"]
+        >>> assert "requires_question" not in summarize_op
+        
+        >>> # Authenticated access for enhanced metadata
+        >>> headers = {"Authorization": "Bearer api-key-12345"}
+        >>> response = await client.get("/v1/text_processing/operations", headers=headers)
+        >>> assert response.status_code == 200
+        >>> operations_data = response.json()
+        
+        >>> # Dynamic UI generation based on operations
+        >>> def generate_operation_forms(operations):
+        ...     forms = []
+        ...     for op in operations:
+        ...         form = {"id": op["id"], "name": op["name"], "fields": []}
+        ...         if op.get("requires_question"):
+        ...             form["fields"].append({"name": "question", "required": True})
+        ...         for option in op["options"]:
+        ...             form["fields"].append({"name": option, "required": False})
+        ...         forms.append(form)
+        ...     return forms
+        
+        >>> # Client SDK operation validation
+        >>> available_operations = {op["id"]: op for op in operations["operations"]}
+        >>> def validate_request(operation_id, options):
+        ...     if operation_id not in available_operations:
+        ...         raise ValueError(f"Unknown operation: {operation_id}")
+        ...     op_def = available_operations[operation_id]
+        ...     if op_def.get("requires_question") and "question" not in options:
+        ...         raise ValueError(f"Operation {operation_id} requires question parameter")
+        ...     return True
+        
+        >>> # API testing and development integration
+        >>> def test_all_operations():
+        ...     ops_response = await client.get("/v1/text_processing/operations")
+        ...     operations = ops_response.json()["operations"]
+        ...     
+        ...     for operation in operations:
+        ...         test_request = {
+        ...             "text": "Sample text for testing",
+        ...             "operation": operation["id"]
+        ...         }
+        ...         if operation.get("requires_question"):
+        ...             test_request["question"] = "What is this about?"
+        ...         
+        ...         response = await client.post("/v1/text_processing/process", json=test_request)
+        ...         print(f"Operation {operation['id']}: {response.status_code}")
+        
+        >>> # Complete operations discovery response structure
+        >>> expected_operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
+        >>> actual_operations = [op["id"] for op in operations["operations"]]
+        >>> assert all(op_id in actual_operations for op_id in expected_operations)
+    
+    Note:
+        This endpoint serves as the primary API discovery interface and should remain stable
+        across API versions to maintain client compatibility. Operation metadata changes should
+        be carefully versioned to prevent breaking existing client integrations. The endpoint
+        supports both public and authenticated access to enable flexible development workflows
+        while maintaining security for production usage scenarios.
     """
     return {
         "operations": [
@@ -264,53 +361,160 @@ async def process_text(
     api_key: str = Depends(verify_api_key),
     text_processor: TextProcessorService = Depends(get_text_processor)
 ):
-    """Process a single text request using specified AI operations.
+    """
+    Primary AI text processing endpoint with comprehensive operation support and resilience integration.
     
-    Performs AI-powered text processing operations such as summarization, sentiment analysis,
-    key point extraction, question generation, or question answering. Each request is assigned
-    a unique ID for tracing and logging purposes.
+    This endpoint provides the core AI text processing functionality for the application, supporting
+    multiple AI operations with comprehensive validation, caching, resilience patterns, and monitoring.
+    Each request is uniquely tracked for operational visibility and debugging, with integrated error
+    handling and graceful degradation patterns ensuring reliable service operation under various
+    system conditions.
     
     Args:
-        request (TextProcessingRequest): The text processing request containing:
-            - text (str): The input text to be processed
-            - operation (TextTextProcessingOperation): The type of operation to perform
-            - options (dict, optional): Additional options for the operation
-            - question (str, optional): Required for Q&A operations
-        api_key (str): Valid API key for authentication.
-        text_processor (TextProcessorService): Injected text processing service.
+        request: Comprehensive text processing request containing input text, operation specification,
+                optional configuration parameters, and operation-specific requirements such as questions
+                for Q&A operations
+        api_key: Validated API key for authentication and authorization, enabling secure access to AI
+                processing capabilities and usage tracking for operational monitoring
+        text_processor: Injected text processing service providing AI model integration, caching
+                       capabilities, resilience patterns, and comprehensive error handling for all
+                       supported text processing operations
     
     Returns:
-        TextProcessingResponse: Processing result containing:
-            - result (str): The processed output text
-            - operation (str): The operation that was performed
-            - metadata (dict, optional): Additional information about the processing
+        TextProcessingResponse: Comprehensive processing result containing:
+                               - result: Processed output text from the specified AI operation
+                               - operation: Echo of the operation performed for request verification
+                               - metadata: Additional processing information including timing, caching status,
+                                         and operational metrics for monitoring and optimization
     
     Raises:
-        ValidationError: If:
-            - Question is missing for Q&A operations
-            - Request validation fails
-            - Input data is invalid
-        BusinessLogicError: If text processing business rules are violated
-        InfrastructureError: If underlying services fail
+        ValidationError: Request validation failures including missing required parameters (question for Q&A),
+                        invalid operation specifications, malformed input data, or business rule violations
+        InfrastructureError: AI service failures, cache system issues, or other infrastructure-related
+                           problems that prevent successful request processing
+        HTTPException: HTTP-specific errors with appropriate status codes:
+                      - 400: Bad Request for validation failures
+                      - 422: Unprocessable Entity for data validation errors  
+                      - 500: Internal Server Error for unexpected system failures
+                      - 502: Bad Gateway for AI service communication issues
+                      - 503: Service Unavailable for temporary system unavailability
     
-    Example:
-        Request:
-        ```json
-        {
-            "text": "The quick brown fox jumps over the lazy dog...",
-            "operation": "summarize",
-            "options": {"max_length": 50}
-        }
-        ```
+    Behavior:
+        **Request Processing and Validation:**
+        - Generates unique request ID for comprehensive request tracing and logging
+        - Validates operation-specific requirements (question parameter for Q&A operations)
+        - Applies comprehensive input validation and sanitization for security and reliability
+        - Logs request initiation with operation type and authentication details for monitoring
         
-        Response:
-        ```json
-        {
-            "result": "A brief summary of the text...",
-            "operation": "summarize",
-            "metadata": {"processing_time": 1.23}
-        }
-        ```
+        **AI Service Integration:**
+        - Integrates with TextProcessorService for AI model access and processing capabilities
+        - Applies caching strategies for performance optimization and cost reduction
+        - Implements resilience patterns including circuit breakers and retry mechanisms
+        - Provides graceful degradation when AI services experience temporary issues
+        
+        **Response Processing and Metadata:**
+        - Generates comprehensive processing results with operation confirmation
+        - Includes processing metadata for performance monitoring and optimization
+        - Applies response validation and sanitization for security and quality assurance
+        - Provides detailed logging for operational visibility and troubleshooting
+        
+        **Error Handling and Recovery:**
+        - Implements comprehensive exception handling with structured error responses
+        - Provides meaningful error messages for client application integration
+        - Maintains detailed error logging for operational monitoring and debugging
+        - Ensures graceful error handling without exposing sensitive system information
+        
+        **Security and Authentication:**
+        - Requires valid API key authentication for all processing requests
+        - Implements secure request processing with input sanitization and validation
+        - Maintains audit trails for security monitoring and compliance requirements
+        - Protects against common security vulnerabilities and attack patterns
+    
+    Examples:
+        >>> # Basic text summarization request
+        >>> request_data = {
+        ...     "text": "Long article text that needs to be summarized...",
+        ...     "operation": "summarize",
+        ...     "options": {"max_length": 150}
+        ... }
+        >>> headers = {"Authorization": "Bearer api-key-12345"}
+        >>> response = await client.post("/v1/text_processing/process", 
+        ...                             json=request_data, headers=headers)
+        >>> assert response.status_code == 200
+        >>> result = response.json()
+        >>> assert result["operation"] == "summarize"
+        >>> assert "result" in result and len(result["result"]) > 0
+        
+        >>> # Sentiment analysis with metadata
+        >>> request_data = {
+        ...     "text": "I absolutely love this new feature! It's amazing.",
+        ...     "operation": "sentiment"
+        ... }
+        >>> response = await client.post("/v1/text_processing/process", 
+        ...                             json=request_data, headers=headers)
+        >>> sentiment_result = response.json()
+        >>> assert sentiment_result["operation"] == "sentiment"
+        >>> assert "metadata" in sentiment_result
+        
+        >>> # Question-answering operation with required question parameter
+        >>> qa_request = {
+        ...     "text": "Python is a programming language created by Guido van Rossum.",
+        ...     "operation": "qa",
+        ...     "question": "Who created Python?"
+        ... }
+        >>> response = await client.post("/v1/text_processing/process",
+        ...                             json=qa_request, headers=headers)
+        >>> qa_result = response.json()
+        >>> assert "Guido" in qa_result["result"]
+        
+        >>> # Error handling for missing required parameters
+        >>> invalid_request = {
+        ...     "text": "Some text here",
+        ...     "operation": "qa"  # Missing required question parameter
+        ... }
+        >>> response = await client.post("/v1/text_processing/process",
+        ...                             json=invalid_request, headers=headers)
+        >>> assert response.status_code == 400
+        >>> error = response.json()
+        >>> assert "Question is required" in error["detail"]
+        
+        >>> # Key points extraction with custom options
+        >>> key_points_request = {
+        ...     "text": "Complex document with multiple important points...",
+        ...     "operation": "key_points",
+        ...     "options": {"max_points": 5}
+        ... }
+        >>> response = await client.post("/v1/text_processing/process",
+        ...                             json=key_points_request, headers=headers)
+        >>> key_points = response.json()
+        >>> assert key_points["operation"] == "key_points"
+        
+        >>> # Comprehensive error handling and retry patterns
+        >>> async def robust_text_processing(text, operation, max_retries=3):
+        ...     for attempt in range(max_retries):
+        ...         try:
+        ...             response = await client.post("/v1/text_processing/process", 
+        ...                                        json={"text": text, "operation": operation}, 
+        ...                                        headers=headers)
+        ...             if response.status_code == 200:
+        ...                 return response.json()
+        ...             elif response.status_code in [502, 503]:  # Temporary errors
+        ...                 await asyncio.sleep(2 ** attempt)  # Exponential backoff
+        ...                 continue
+        ...             else:
+        ...                 break  # Permanent error
+        ...         except Exception as e:
+        ...             if attempt == max_retries - 1:
+        ...                 raise
+        ...             await asyncio.sleep(2 ** attempt)
+        ...     return None
+    
+    Note:
+        This endpoint represents the core business functionality of the AI text processing service
+        and implements comprehensive production-ready patterns including authentication, validation,
+        caching, resilience, monitoring, and error handling. All requests are uniquely tracked for
+        operational visibility and the endpoint maintains backward compatibility while supporting
+        extensible operation definitions and configuration options.
     """
     # Generate unique request ID for tracing
     request_id = str(uuid.uuid4())

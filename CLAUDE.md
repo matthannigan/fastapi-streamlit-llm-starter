@@ -4,63 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 FastAPI + Streamlit LLM Starter Template
 
-**This repository is a comprehensive starter template for building production-ready LLM-powered APIs with FastAPI.** It showcases industry best practices, robust architecture patterns, and educational examples to help developers quickly bootstrap sophisticated AI applications.
-
-### Template Purpose & Educational Goals
-
-This starter template demonstrates:
-- **Production-ready FastAPI architecture** with dual-API design (public + internal endpoints)
-- **Enterprise-grade infrastructure services** (resilience patterns, caching, monitoring, security)
-- **Clean separation** between reusable infrastructure and customizable domain logic
-- **Comprehensive testing strategies** with high coverage requirements
-- **Modern development practices** (preset-based configuration, automated tooling, containerization)
+**A comprehensive starter template for building production-ready LLM-powered APIs** showcasing industry best practices, robust architecture patterns, and educational examples.
 
 ### 📦 Monorepo Structure
 
-This template includes three main components designed as learning examples:
+- **Backend** (`backend/`): Production-ready FastAPI with infrastructure services and domain examples
+- **Frontend** (`frontend/`): Production-ready Streamlit with async patterns and comprehensive testing  
+- **Shared** (`shared/`): Common Pydantic models for type safety
 
-- **Backend** (`backend/`): **Production-ready FastAPI application** with robust infrastructure services and a text processing domain example
-- **Frontend** (`frontend/`): **Production-ready Streamlit application** demonstrating modern development patterns for AI interfaces with comprehensive async integration and testing
-- **Shared** (`shared/`): **Common Pydantic models** for type safety across components
-
-**The backend infrastructure and frontend patterns are production-ready and reusable, while the text processing domain services serve as educational examples meant to be replaced with your specific business logic.**
+**Infrastructure and frontend patterns are production-ready. Domain services are educational examples to be replaced with your business logic.**
 
 ## 📖 Key Architectural Concepts
 
-### Infrastructure vs Domain Services Architecture
+### Infrastructure vs Domain Services
 
-The template demonstrates a critical architectural distinction documented in `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`:
+| Type | Infrastructure Services 🏗️ | Domain Services 💼 |
+|------|---------------------------|--------------------|
+| **Status** | Production-Ready - Keep & Extend | Educational Examples - Replace |
+| **Purpose** | Business-agnostic technical capabilities | Business-specific implementations |
+| **Coverage** | >90% test coverage required | >70% test coverage required |
+| **Location** | `app/infrastructure/` | `app/services/` |
+| **Examples** | Cache, Resilience, Security, Monitoring | Text processing, validation |
 
-**Infrastructure Services** 🏗️ **[Production-Ready - Keep & Extend]**
-- Business-agnostic, reusable technical capabilities (>90% test coverage)
-- Stable APIs designed for cross-project reuse
-- Location: `app/infrastructure/` (AI, Cache, Resilience, Security, Monitoring)
-
-**Domain Services** 💼 **[Educational Examples - Replace with Your Logic]**  
-- Business-specific implementations serving as learning examples (>70% test coverage)
-- Expected to be replaced per project with your business logic
-- Location: `app/services/` (text processing workflows, validation examples)
+Detailed documentation: `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`
 
 ### Dual-API Architecture
 
-The backend implements a sophisticated dual-API design documented in `docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`:
+- **Public API** (`/v1/`): External business endpoints with authentication → `http://localhost:8000/docs`
+- **Internal API** (`/internal/`): Administrative infrastructure endpoints → `http://localhost:8000/internal/docs`
 
-**Public API** (`/v1/`): External-facing business endpoints with authentication
-- Text processing operations, health checks, business functionality
-- Swagger documentation at `http://localhost:8000/docs`
-
-**Internal API** (`/internal/`): Administrative infrastructure endpoints  
-- Cache management, system monitoring, resilience configuration
-- Swagger documentation at `http://localhost:8000/internal/docs`
-
-This separation provides clear boundaries between external business operations and internal infrastructure management.
-
-### 🐳 **Docker & Containerization**
-The template includes comprehensive Docker support for both development and production:
-- **Development**: Hot-reload containers with file watching (`make dev`)
-- **Production**: Optimized multi-stage builds (`make prod`)
-- **Services**: Backend (FastAPI), Frontend (Streamlit), Redis cache
-- **Docker Compose**: Full orchestration with health checks and dependency management
+Detailed documentation: `docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md`
 
 ## Development Commands
 
@@ -105,76 +78,190 @@ streamlit run app/app.py --server.runOnSave=true
 
 ### Testing
 
-#### Backend Testing
+#### Navigation Guide for Claude Code
+
+##### Monorepo Structure:
+- **Root directory**: Contains `.venv/` virtual environment and `Makefile`
+- **Backend code**: Located in `backend/` subdirectory
+- **Python commands**: Must account for virtual environment location
+
+##### Recommended Testing Commands:
+
+###### 1. Use Makefile (Preferred):
 ```bash
-# Recommended: Use Makefile commands (handles venv automatically)
-make test-backend                       # Run fast tests (default)
-make test-backend-all                   # Run all tests including slow ones
-make test-backend-manual                # Run manual tests (requires running server)
-make test-coverage                      # Run tests with coverage reporting
+# Run specific test categories:
+make test-backend-infra                # All infrastructure tests
+make test-backend-infra-cache          # Cache infrastructure tests
+make test-backend-infra-ai             # AI infrastructure tests  
+make test-backend-infra-monitoring     # Monitoring infrastructure tests
+make test-backend-infra-resilience     # Resilience infrastructure tests
+make test-backend-infra-security       # Security infrastructure tests
 
-# Specific test categories
-make test-backend-api                   # API endpoint tests
-make test-backend-core                  # Core functionality tests
-make test-backend-infrastructure        # Infrastructure service tests
-make test-backend-services              # Domain service tests
-make test-backend-integration           # Integration tests
-make test-backend-performance           # Performance tests
+# Run all backend tests:
+make test-backend                      # Fast tests only
+make test-backend-all                  # All tests including slow
 
-# Manual commands (activate virtual environment first)
-source .venv/bin/activate
-cd backend/
-
-# Default: Run fast tests in parallel (excludes slow and manual tests)
-pytest -v
-
-# Run specific test directories
-pytest tests/api/ -v                        # API endpoint tests
-pytest tests/core/ -v                       # Core functionality tests
-pytest tests/infrastructure/ -v             # Infrastructure service tests
-pytest tests/services/ -v                   # Domain service tests
-pytest tests/integration/ -v                # Integration tests
-pytest tests/performance/ -v                # Performance tests
-
-# Run all tests including slow ones (excluding manual)
-pytest -v -m "not manual" --run-slow
-
-# Run only slow tests (requires --run-slow flag)
-pytest -v -m "slow" --run-slow
-
-# Run manual tests (requires running server and --run-manual flag)
-pytest -v -m "manual" --run-manual
-
-# Run with coverage
-pytest --cov=app --cov-report=html --cov-report=term -v
-
-# Run tests sequentially (for debugging)
-pytest -v -n 0
-
-# Run specific test markers
-pytest -v -m "retry" --run-slow             # Retry logic tests
-pytest -v -m "circuit_breaker" --run-slow   # Circuit breaker tests
-pytest -v -m "no_parallel"                  # Tests that must run sequentially
+# Run with specific pytest args:
+make test-backend PYTEST_ARGS="tests/infrastructure/cache/test_parameter_mapping.py -v \
+    --cov=app.infrastructure.cache.parameter_mapping --cov-report=term"
 ```
 
-#### Frontend Testing
+###### 2. Direct Python Commands (Fallback):
 ```bash
-# Recommended: Use Makefile commands for consistent environment
-make test-frontend            # Run frontend tests via Docker
+# From monorepo root:
+.venv/bin/python -c "import os; os.chdir('backend'); import pytest; pytest.main(['-v', 
+'tests/infrastructure/cache/test_parameter_mapping.py'])"
 
-# Manual testing (requires active virtual environment)
-cd frontend/
-
-# Run frontend tests with async support
-pytest tests/ -v
-
-# Run with coverage reporting
-pytest tests/ --cov=app --cov-report=html --cov-report=term
-
-# Run specific test types
-pytest tests/test_api_client.py -v    # API communication tests
-pytest tests/test_config.py -v       # Configuration tests
+# Or with explicit path navigation:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/test_parameter_mapping.py -v
 ```
+
+###### 3. Environment Verification:
+```bash
+# Check if virtual environment exists:
+ls -la .venv/bin/python
+
+# Check current working directory:
+pwd
+
+# List backend directory contents:
+ls -la backend/
+```
+
+##### Common Issues & Solutions:
+
+**Issue**: `(eval):cd:1: no such file or directory: backend`
+**Solution**: Use absolute paths or verify current directory with `pwd`. You may already be in the `backend` directory.
+
+**Issue**: `(eval):source:1: no such file or directory: .venv/bin/activate`
+**Solution**: Virtual environment is in root, use `../.venv/bin/activate` from `backend` directory
+
+**Issue**: `make: *** No rule to make target 'test-backend-xyz'. Stop.`
+**Solution**: Use `make help` to see available targets, check for typos in target names
+
+**Issue**: `make: *** No rule to make target `help'.  Stop.`
+**Solution**: The `Makefile` is located in the project root directory. You may be in a subdirectory. Verify current directory with `pwd`. 
+
+**Issue**: `command not found: python`
+**Solution**: Use `python3` or the full path to virtual environment Python
+
+##### Testing Best Practices for Claude:
+
+1. **Always use Makefile commands first** - they handle environment setup automatically
+2. **Verify directory structure** with `ls` before running commands
+3. **Check working directory** with `pwd` when commands fail
+4. **Use relative paths** appropriately based on current directory
+5. **Fall back to absolute paths** when relative paths fail
+
+##### Quick Environment Check:
+```bash
+# Verify you're in the right place before running tests:
+pwd                                    # Should show monorepo root
+ls -la .venv/bin/python               # Should exist if venv is set up
+ls -la backend/pytest.ini             # Should exist if backend is there
+make help | head -10                   # Should show available Makefile targets
+```
+
+#### Testing Commands
+
+**Use `make help` for complete list of test commands. Key testing targets:**
+
+```bash
+# Quick Start - Install and run all tests
+make install                  # Setup venv and install dependencies
+make test                    # All tests (includes Docker integration if available)
+make test-local              # Local tests only (no Docker required)
+
+# Backend testing (recommended approach)
+make test-backend              # Fast tests only (excludes slow and manual)
+make test-backend-all          # All tests including slow ones
+make test-backend-manual       # Manual tests (requires running server)
+make test-coverage            # With coverage reporting
+
+# Infrastructure-specific tests  
+make test-backend-infra-*      # Replace * with: cache, ai, monitoring, resilience, security
+
+# Frontend testing
+make test-frontend            # Run via Docker for consistency
+
+# Direct pytest commands (from backend/ directory using venv)
+../.venv/bin/python -m pytest tests/ -v                    # Default fast tests
+../.venv/bin/python -m pytest tests/ -v -m "slow" --run-slow        # Slow tests
+../.venv/bin/python -m pytest tests/ -v -m "manual" --run-manual    # Manual tests
+../.venv/bin/python -m pytest tests/ --cov=app --cov-report=term    # With coverage
+
+# Test specific directories
+../.venv/bin/python -m pytest tests/infrastructure/cache/ -v       # Cache tests only
+../.venv/bin/python -m pytest tests/api/v1/ -v                     # Public API tests
+../.venv/bin/python -m pytest tests/api/internal/ -v               # Internal API tests
+```
+
+**Note on Virtual Environment**: The Makefile automatically handles Python executable detection and virtual environment management. All Python scripts run from the `.venv` virtual environment automatically.
+
+#### Testing Philosophy
+
+This project follows a **behavior-driven testing philosophy** that emphasizes:
+- **Test behavior, not implementation** - Focus on what the system should accomplish from an external observer's perspective
+- **Maintainability over exhaustiveness** - Better to have fewer, high-value tests than comprehensive low-value tests
+- **Mock only at system boundaries** - Minimize mocking to reduce test brittleness (external APIs, databases)
+- **Fast feedback loops** - Tests should run quickly to enable continuous development
+
+Refer to `docs/guides/developer/TESTING.md` for comprehensive testing patterns and examples.
+
+#### Test Organization
+
+Tests are organized by purpose rather than strict architectural boundaries:
+
+```
+backend/tests/
+├── functional/              # User-facing behavior (end-to-end workflows)
+├── integration/             # Component interactions (services working together)
+├── unit/                    # Pure functions and isolated components
+└── manual/                  # Tests requiring real services (LLM APIs, performance)
+```
+
+**Coverage Requirements**:
+- **Infrastructure services**: >90% test coverage (stable, reusable components)
+- **Domain services**: >70% test coverage (customizable business logic)
+- **API endpoints**: >95% coverage (user-facing contracts)
+
+#### Test Execution
+
+**Test Markers**:
+- `slow`: Comprehensive resilience tests, performance scenarios (excluded by default)
+- `manual`: Require running server and real API keys (excluded by default) 
+- `integration`: Component interactions with mocked external services
+- `no_parallel`: Must run sequentially
+
+**Special Flags**:
+- `--run-slow`: Enable tests marked as `slow`
+- `--run-manual`: Enable tests marked as `manual`
+
+**Manual Test Requirements**:
+For tests marked `manual`, ensure:
+1. FastAPI server running on `http://localhost:8000`
+2. `API_KEY=test-api-key-12345` environment variable
+3. `GEMINI_API_KEY` environment variable for AI features
+4. Use `--run-manual` flag to enable
+
+#### Mock Strategy
+
+**Always Mock**:
+- External APIs (LLM providers, third-party services)
+- Network calls to external systems
+- File system operations in unit tests
+
+**Sometimes Mock**:
+- Databases (mock for unit tests, use real instances for integration tests)
+- Redis and other infrastructure (depending on test scope)
+- Time-dependent operations (for deterministic testing)
+
+**Rarely Mock**:
+- Internal services and business logic
+- Utility functions and helpers
+- Domain-specific operations
+
+The test suite uses comprehensive AI service mocking to avoid external API calls, ensure consistent results, and test error scenarios.
 
 
 
@@ -184,75 +271,18 @@ pytest tests/test_config.py -v       # Configuration tests
 
 ### Code Quality
 
-#### Code Quality (Backend)
 ```bash
-# Recommended: Use Makefile commands (handles venv automatically)
-make lint-backend                       # Run all code quality checks
-make format                             # Format code with black and isort
+# Recommended: Use Makefile commands
+make lint-backend              # All backend quality checks
+make lint-frontend            # All frontend quality checks  
+make format                   # Format all code
 
-# Manual commands (activate virtual environment first)
-source .venv/bin/activate
-cd backend/
-
-# Linting and formatting (from requirements-dev.txt)
-flake8 app/ tests/
-black app/ tests/
-isort app/ tests/
-mypy app/
+# See `make help` for complete list of quality commands
 ```
 
-#### Code Quality (Frontend)
-```bash
-# Recommended: Use Makefile commands (handles Docker environment)
-make lint-frontend            # Run all frontend code quality checks
-make format                   # Format frontend code via Docker
+## 🏗️ Architecture Details
 
-# Manual commands via Docker (consistent environment)
-docker-compose run frontend flake8 app/ tests/
-docker-compose run frontend black app/ tests/
-docker-compose run frontend isort app/ tests/
-docker-compose run frontend mypy app/ --ignore-missing-imports
-
-# Local commands (requires active virtual environment)
-cd frontend/
-flake8 app/ tests/
-black app/ tests/
-isort app/ tests/
-```
-
-## 🏗️ Architecture Overview
-
-**This starter template showcases a production-ready FastAPI architecture designed for educational purposes and real-world deployment.** The template demonstrates modern software engineering practices for building scalable, maintainable LLM-powered APIs.
-
-### 🎯 What You'll Learn
-
-This template teaches developers how to build:
-- **Dual-API architectures** separating public business logic from internal administrative endpoints
-- **Infrastructure vs Domain service patterns** for maintainable, reusable code
-- **Comprehensive resilience strategies** (circuit breakers, retry logic, graceful degradation)
-- **Production-grade security** (prompt injection protection, multi-key authentication)
-- **Advanced testing patterns** with high coverage requirements and parallel execution
-- **Modern configuration management** using preset-based systems
-
-### Infrastructure vs Domain Services Architecture
-
-The backend follows a clear architectural distinction between **Infrastructure Services** and **Domain Services**:
-
-#### Infrastructure Services 🏗️ **[Production-Ready - Keep & Extend]**
-- **Purpose**: Business-agnostic, reusable technical capabilities that form the backbone of any LLM API
-- **Characteristics**: Stable APIs, high test coverage (>90%), configuration-driven behavior
-- **Examples**: Cache management, resilience patterns, AI provider integrations, monitoring, security utilities
-- **Usage in Template**: **Production-ready foundation** - use as-is or extend for your needs
-- **Location**: `app/infrastructure/` - core modules designed to remain stable across projects
-
-#### Domain Services 💼 **[Educational Examples - Replace with Your Logic]**
-- **Purpose**: Business-specific implementations serving as **educational examples**
-- **Characteristics**: Designed to be replaced per project, moderate test coverage (>70%), feature-driven
-- **Examples**: Text processing workflows (summarization, sentiment analysis), document analysis pipelines
-- **Usage in Template**: **Learning examples** - study the patterns, then replace with your business logic
-- **Location**: `app/services/` - customizable modules that demonstrate best practices
-
-**Dependency Direction**: `Domain Services → Infrastructure Services → External Dependencies`
+### Backend Services Organization
 
 ### Frontend Architecture
 
@@ -610,8 +640,12 @@ RESILIENCE_PRESET=development
 API_KEY=dev-test-key
 GEMINI_API_KEY=your-gemini-api-key
 
-# Redis (optional - falls back to memory cache)
-REDIS_URL=redis://localhost:6379
+# Cache Configuration (choose one preset)
+CACHE_PRESET=development              # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
+
+# Optional Cache Overrides (only when needed)
+CACHE_REDIS_URL=redis://localhost:6379  # Override Redis connection URL
+ENABLE_AI_CACHE=true                     # Toggle AI cache features
 
 # Frontend Configuration
 API_BASE_URL=http://localhost:8000
@@ -638,8 +672,11 @@ API_KEY=your-secure-production-key
 ADDITIONAL_API_KEYS=key1,key2,key3
 GEMINI_API_KEY=your-production-gemini-key
 
+# Cache Configuration
+CACHE_PRESET=production               # Production-optimized cache settings
+
 # Infrastructure
-REDIS_URL=redis://your-redis-instance:6379
+CACHE_REDIS_URL=redis://your-redis-instance:6379  # Production Redis instance
 CORS_ORIGINS=["https://your-frontend-domain.com"]
 
 # Frontend Configuration
@@ -664,9 +701,19 @@ LOG_LEVEL=INFO
 # Custom Resilience Configuration
 RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
 
+# Custom Cache Configuration (JSON overrides)
+CACHE_PRESET=production
+CACHE_CUSTOM_CONFIG='{
+  "compression_threshold": 500,
+  "memory_cache_size": 2000,
+  "operation_ttls": {
+    "summarize": 7200,
+    "sentiment": 3600
+  }
+}'
+
 # Performance Tuning
 MAX_CONCURRENT_REQUESTS=50
-CACHE_TTL_SECONDS=3600
 ```
 
 ## 🛠️ Customizing This Template for Your Project
@@ -676,7 +723,9 @@ CACHE_TTL_SECONDS=3600
 1. **Keep the Infrastructure** 🏗️
    - Use `app/infrastructure/` services as-is (cache, resilience, security, monitoring)
    - Extend infrastructure services if needed, but maintain the existing APIs
-   - Configure resilience presets for your environment (`simple`, `development`, `production`)
+   - Configure presets for your environment:
+     - Resilience: `RESILIENCE_PRESET=simple|development|production`
+     - Cache: `CACHE_PRESET=development|production|ai-development|ai-production`
 
 2. **Replace Domain Services** 💼
    - Study the patterns in `app/services/text_processor.py`
@@ -700,7 +749,8 @@ CACHE_TTL_SECONDS=3600
 5. **Configure for Your Environment** ⚙️
    - Update `backend/app/core/config.py` with your settings
    - Configure your AI provider (replace Gemini with your preferred LLM)
-   - Set up your Redis instance or use the memory cache fallback
+   - **Cache Configuration**: Set `CACHE_PRESET` for your environment (development, production, ai-production)
+   - **Optional Redis Setup**: Use `CACHE_REDIS_URL` to override Redis connection or rely on preset defaults
    - Configure authentication keys and CORS settings
    - **Health Check Configuration**: Set `HEALTH_CHECK_*` environment variables for monitoring timeouts and retry behavior
 
@@ -714,6 +764,7 @@ CACHE_TTL_SECONDS=3600
 - [ ] Update frontend API client for your specific backend endpoints
 - [ ] Update authentication and security settings
 - [ ] Configure resilience presets for your environment
+- [ ] Configure cache presets for your environment (`CACHE_PRESET=development|production|ai-production`)
 - [ ] Update README.md with your project details
 - [ ] Replace example tests with your business logic tests
 
@@ -812,6 +863,85 @@ When adding tests, place them in the correct architectural boundary:
 - `tests/test_config.py` - Configuration validation tests
 - `tests/conftest.py` - Shared test fixtures
 
+### Writing New Tests - Docstring-Driven Approach
+
+This project promotes **docstring-driven test development** where comprehensive function docstrings serve as specifications for generating focused, behavior-based tests. This creates a complete documentation ecosystem where production code docstrings drive test generation.
+
+**Documentation Workflow:**
+1. **Production Docstrings** (`docs/guides/developer/DOCSTRINGS_CODE.md`) - Write rich Args, Returns, Raises, and Behavior sections
+2. **Test Generation** (`docs/guides/developer/TESTING.md`) - Convert docstring contracts into behavior-focused tests  
+3. **Test Documentation** (`docs/guides/developer/DOCSTRINGS_TESTS.md`) - Document test intent and business impact
+
+**Core Principles:**
+1. **TEST WHAT'S DOCUMENTED** - Only test behaviors mentioned in docstrings (Args, Returns, Raises, Behavior sections)
+2. **IGNORE IMPLEMENTATION** - Don't test internal methods, private attributes, or undocumented behavior
+3. **FOCUS ON CONTRACTS** - Test that the function fulfills its documented contract
+4. **USE DOCSTRING EXAMPLES** - Convert docstring examples into actual test cases
+5. **DOCUMENT TEST PURPOSE** - Explain WHY the test exists, not HOW it works
+
+**Production Code Example:**
+```python
+def validate_config(config: dict) -> ValidationResult:
+    """
+    Validates AI service configuration.
+    
+    Args:
+        config: Configuration dictionary with required keys:
+               - 'timeout': int, 1-300 seconds
+               - 'model': str, one of ['gpt-4', 'claude', 'gemini']
+               
+    Returns:
+        ValidationResult with is_valid boolean and error details
+        
+    Raises:
+        TypeError: If config is not a dictionary
+        
+    Behavior:
+        - Validates all required fields are present
+        - Checks field value constraints and types
+        - Returns detailed error messages for debugging
+    """
+```
+
+**Generated Test with Rich Documentation:**
+```python
+def test_validate_config_timeout_boundaries():
+    """
+    Test that config validation enforces timeout boundaries per docstring.
+    
+    Business Impact:
+        Prevents invalid timeout configurations that could cause system instability
+        
+    Test Scenario:
+        Validates boundary conditions for timeout field (1-300 seconds)
+        
+    Success Criteria:
+        - Accepts valid boundaries (1 and 300 seconds)
+        - Rejects invalid boundaries (0 and 301+ seconds)
+        - Provides clear error messages for debugging
+    """
+    # Test valid boundaries from docstring
+    assert validate_config({'timeout': 1, 'model': 'gpt-4'}).is_valid
+    assert validate_config({'timeout': 300, 'model': 'gpt-4'}).is_valid
+    
+    # Test invalid boundaries from docstring  
+    result = validate_config({'timeout': 0, 'model': 'gpt-4'})
+    assert not result.is_valid
+    assert "timeout" in result.errors[0].lower()
+```
+
+**Key Benefits:**
+- **Maintainable Tests**: Survive refactoring by testing behavior contracts, not implementation
+- **Clear Intent**: Rich test documentation explains business purpose and failure impact
+- **Better Coverage**: Docstring-driven approach ensures testing what matters to users
+- **Faster Development**: Less test maintenance during refactoring cycles
+- **Living Documentation**: Tests serve as executable specifications of system behavior
+
+**Quick Reference:**
+- Use `docs/guides/developer/DOCSTRINGS_CODE.md` for production code docstring templates
+- Use `docs/guides/developer/DOCSTRINGS_TESTS.md` for test documentation templates  
+- Use `docs/guides/developer/TESTING.md` for comprehensive testing methodology and examples
+
 ### Configuration Management
 
 Prefer resilience presets over individual environment variables:
@@ -834,10 +964,36 @@ When suggesting API changes, maintain this separation and update both sets of do
 
 ### Error Handling Patterns
 
+**Custom Exception Usage - CRITICAL:**
+- **Always use custom exceptions** (`ConfigurationError`, `ValidationError`, `InfrastructureError`) instead of generic exceptions like `ValueError`, `HTTPException`
+- **Reference**: See `docs/guides/developer/EXCEPTION_HANDLING.md` for comprehensive exception handling guidelines
+- **Context required**: All custom exceptions should include contextual information for debugging
+- **HTTP mapping**: Custom exceptions automatically map to appropriate HTTP status codes via `get_http_status_for_exception`
+
 Follow established patterns:
-- **Infrastructure**: Use structured exceptions with proper classification
-- **Domain**: Use business-specific error messages with infrastructure error handling
-- **API**: Return appropriate HTTP status codes with structured error responses
+- **Infrastructure**: Use structured exceptions with proper classification (`ConfigurationError` for config issues, `InfrastructureError` for service failures)
+- **Domain**: Use business-specific error messages with infrastructure error handling (`ValidationError` for input validation)
+- **API**: Custom exceptions automatically return appropriate HTTP status codes with structured error responses
+- **Import pattern**: `from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError, get_http_status_for_exception`
+
+**Testing Exception Handling:**
+```python
+# ✅ Test exception behavior per docstring
+def test_service_raises_validation_error_for_invalid_input():
+    \"\"\"Test that service raises ValidationError for invalid input per docstring.\"\"\"
+    with pytest.raises(ValidationError) as exc_info:
+        service.process_data(invalid_input)
+    assert "validation" in str(exc_info.value).lower()
+
+# ✅ Test API error response behavior
+def test_api_returns_proper_status_for_validation_error(client):
+    \"\"\"Test API returns 422 for ValidationError per exception mapping.\"\"\"
+    response = client.post("/api/endpoint", json={"invalid": "data"})
+    assert response.status_code == 422
+    assert "validation" in response.json()["detail"].lower()
+```
+
+See `docs/guides/developer/EXCEPTION_HANDLING.md` for comprehensive exception testing patterns.
 
 ### Performance Considerations
 
@@ -845,6 +1001,14 @@ When suggesting changes:
 - **Infrastructure changes**: Must maintain performance targets (see backend/README.md)
 - **Domain changes**: Focus on business logic clarity over micro-optimizations
 - **Test changes**: Ensure parallel execution compatibility (use `monkeypatch.setenv()`)
+
+**Testing Performance Targets:**
+- **Test execution time**: <60 seconds total for fast feedback loops
+- **Test maintenance time**: <10% of development time (tests shouldn't slow development)
+- **Bug detection rate**: 80%+ of production bugs should be caught by tests first
+- **False positive rate**: <5% (tests should be reliable indicators)
+
+Focus on meaningful metrics like critical path coverage and test execution speed rather than vanity metrics like total test count or line coverage percentage.
 
 ### Template Customization Guidance
 

@@ -13,16 +13,30 @@ functionality in the application.
 ## Main Components
 
 - CacheInterface: Abstract base class for all cache implementations
-- AIResponseCache: Redis-based cache with compression and tiered storage
+- AIResponseCache: AI-specific Redis cache with intelligent features
+- GenericRedisCache: Generic Redis cache base implementation
 - InMemoryCache: High-performance in-memory cache with TTL and LRU eviction
 - CacheKeyGenerator: Optimized cache key generation for large texts
 - CachePerformanceMonitor: Comprehensive performance monitoring and analytics
+- AIResponseCacheConfig: Configuration management for AI cache
+- CacheParameterMapper: Parameter mapping and validation utilities
+- RedisCacheSecurityManager: Redis security management and authentication
+- SecurityConfig: Security configuration for Redis connections
 
 ## Cache Implementations
 
 - Redis-based caching with fallback to memory-only mode
 - In-memory caching with TTL and LRU eviction
 - Graceful degradation when Redis is unavailable
+
+## Security Features
+
+- TLS/SSL encryption for Redis connections
+- Authentication support with username/password
+- Redis AUTH command support
+- Certificate-based authentication
+- Security configuration validation
+- Connection security management
 
 ## Monitoring and Analytics
 
@@ -35,11 +49,16 @@ functionality in the application.
 ## Usage Example
 
 ```python
-from app.infrastructure.cache import AIResponseCache, InMemoryCache
+from app.infrastructure.cache import AIResponseCache, GenericRedisCache, InMemoryCache
+from app.infrastructure.cache import AIResponseCacheConfig
 
-# Redis-based cache for production
-cache = AIResponseCache(redis_url="redis://localhost:6379")
+# AI-specific Redis cache with configuration
+config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
+cache = AIResponseCache(**config.to_ai_cache_kwargs())
 await cache.connect()
+
+# Generic Redis cache for basic usage
+generic_cache = GenericRedisCache(redis_url="redis://localhost:6379")
 
 # In-memory cache for development/testing
 memory_cache = InMemoryCache(default_ttl=3600, max_size=1000)
@@ -58,6 +77,15 @@ result = await cache.get_cached_response(
     operation="summarize",
     options={"max_length": 100}
 )
+
+# Security configuration for Redis
+from app.infrastructure.cache import SecurityConfig, RedisCacheSecurityManager
+security_config = SecurityConfig(
+    username="cache_user",
+    password="secure_password",
+    use_tls=True
+)
+security_manager = RedisCacheSecurityManager(security_config)
 ```
 
 ## Configuration
@@ -68,3 +96,5 @@ The cache system supports extensive configuration for:
 - Memory cache size limits
 - Performance monitoring thresholds
 - Redis connection settings
+- Security settings (TLS, authentication, certificates)
+- Migration and compatibility options

@@ -34,7 +34,8 @@
         mkdocs-serve mkdocs-build \
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
         ci-test ci-test-all lock-deps update-deps \
-        list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets
+        list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets \
+        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset migrate-cache-config
 
 ##################################################################################################
 # Configuration and Environment Detection
@@ -119,7 +120,13 @@ help:
 	@echo "  test-backend         Run backend tests (fast tests only)"
 	@echo "  test-backend-api     Run backend API endpoint tests"
 	@echo "  test-backend-core    Run backend core functionality tests"
-	@echo "  test-backend-infrastructure  Run infrastructure service tests"
+	@echo "  test-backend-infrastructure  Run all infrastructure service tests"
+	@echo "  test-backend-infra   Run all infrastructure service tests (alias)"
+	@echo "  test-backend-infra-ai        Run AI infrastructure service tests"
+	@echo "  test-backend-infra-cache     Run cache infrastructure service tests"
+	@echo "  test-backend-infra-monitoring Run monitoring infrastructure service tests"
+	@echo "  test-backend-infra-resilience Run resilience infrastructure service tests"
+	@echo "  test-backend-infra-security   Run security infrastructure service tests"
 	@echo "  test-backend-integration     Run backend integration tests"
 	@echo "  test-backend-performance    Run backend performance tests"
 	@echo "  test-backend-services       Run domain services tests"
@@ -149,6 +156,14 @@ help:
 	@echo "  migrate-config       Migrate legacy config to presets"
 	@echo "  test-presets         Run all preset-related tests"
 	@echo ""
+	@echo "🗂️  CACHE CONFIGURATION:"
+	@echo "  list-cache-presets   List available cache presets"
+	@echo "  show-cache-preset    Show cache preset details (Usage: PRESET=development)"
+	@echo "  validate-cache-config Validate current cache configuration"
+	@echo "  validate-cache-preset Validate specific cache preset (Usage: PRESET=production)"
+	@echo "  recommend-cache-preset Get cache preset recommendation (Usage: ENV=staging)"
+	@echo "  migrate-cache-config Migrate legacy cache config to presets"
+	@echo ""
 	@echo "🐳 DOCKER OPERATIONS:"
 	@echo "  docker-build         Build all Docker images"
 	@echo "  docker-up            Start services with Docker Compose"
@@ -174,8 +189,17 @@ help:
 	@echo "  clean-all            Complete cleanup (cache + venv)"
 	@echo ""
 	@echo "📖 DOCUMENTATION:"
-	@echo "  docs-serve           Serve documentation locally (http://127.0.0.1:8000)"
-	@echo "  docs-build           Build static documentation site"
+	@echo "  code_ref             Generate code reference documentation"
+	@echo "  generate-doc-views   Generate BY_TOPIC.md and BY_AUDIENCE.md from metadata"
+	@echo ""
+	@echo "📚 DOCUMENTATION WEBSITES:"
+	@echo "  docusaurus           Serve Docusaurus documentation locally"
+	@echo "  docusaurus-build     Build static Docusaurus documentation site"
+	@echo "  docusaurus-serve     Serve built Docusaurus site"
+	@echo "  docusaurus-clear     Clear Docusaurus build cache"
+	@echo "  docusaurus-install   Install Docusaurus dependencies"
+	@echo "  mkdocs-serve         Serve MkDocs documentation locally (http://127.0.0.1:8000)"
+	@echo "  mkdocs-build         Build static MkDocs documentation site"
 	@echo ""
 	@echo "📄 REPOSITORY DOCUMENTATION (Repomix):"
 	@echo "  repomix              Generate complete repository documentation"
@@ -184,7 +208,6 @@ help:
 	@echo "  repomix-frontend     Generate frontend-only documentation"
 	@echo "  repomix-frontend-tests Generate frontend tests documentation"
 	@echo "  repomix-docs         Generate README and docs/ documentation"
-	@echo "  generate-doc-views   Generate BY_TOPIC.md and BY_AUDIENCE.md from metadata"
 	@echo ""
 	@echo "🏭 CI/CD AND DEPENDENCIES:"
 	@echo "  ci-test              Run fast CI tests (for pull requests)"
@@ -195,8 +218,10 @@ help:
 	@echo "💡 EXAMPLES:"
 	@echo "  make install && make dev    # Complete setup and start development"
 	@echo "  make test-backend-api       # Test just the API endpoints"
+	@echo "  make test-backend-infra-cache # Test just cache infrastructure"
 	@echo "  make show-preset PRESET=production  # Show production preset"
 	@echo "  make restore BACKUP=redis-20240101-120000.rdb  # Restore backup"
+	@echo "  make code_ref && make docusaurus # Generate docs and serve locally"
 	@echo ""
 	@echo "📝 For detailed documentation, see README.md and docs/ directory"
 	@echo ""
@@ -325,7 +350,7 @@ test-local: venv
 # Run backend tests (fast tests only, default)
 test-backend:
 	@echo "🧪 Running backend tests (fast tests only)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v
+	@cd backend && $(PYTHON_CMD) -m pytest tests/ -q --retries 2 --retry-delay 5
 
 # Run backend API endpoint tests
 test-backend-api:
@@ -349,8 +374,10 @@ test-backend-infra-ai:
 
 # Run infrastructure service tests
 test-backend-infra-cache:
-	@echo "🧪 Running backend cache infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -v
+	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q --retries 2 --retry-delay 5
+	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -n auto -q --retries 2 --retry-delay 5
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
@@ -363,7 +390,7 @@ test-backend-infra-resilience:
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/resilience/ -v
 
 # Run infrastructure service tests
-	test-backend-infra-security:
+test-backend-infra-security:
 	@echo "🧪 Running backend security infrastructure service tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/security/ -v
 
@@ -501,6 +528,14 @@ lint-frontend:
 	@echo "🔍 Running frontend code quality checks via Docker..."
 	@docker-compose run frontend flake8 app/
 
+# Lint a specific file
+lint-file:
+	@if [ -z "$(FILE)" ]; then echo "Usage: make lint-file FILE=path/to/file.py"; exit 1; fi
+	@echo "🔍 Linting $(FILE)..."
+	@source $(VENV_DIR)/bin/activate && $(PYTHON_CMD) -m flake8 "$(FILE)"
+	@echo "🔍 Type checking $(FILE)..."
+	@source $(VENV_DIR)/bin/activate && $(PYTHON_CMD) -m mypy "$(FILE)" --ignore-missing-imports || true
+
 # Format code with black and isort
 format:
 	@echo "🎨 Formatting code with black and isort..."
@@ -524,9 +559,11 @@ clean:
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
 	@find . -name ".coverage" -delete 2>/dev/null || true
 	@find . -name "coverage.xml" -delete 2>/dev/null || true
+	@./backend/scripts/clean_redis_test_env.sh
 	@echo "✅ Cleanup complete!"
 
 # Remove virtual environment only
@@ -674,7 +711,7 @@ code_ref:
 generate-doc-views:
 	@echo "📄 Generating documentation views from metadata..."
 	@$(PYTHON_CMD) scripts/generate_doc_views.py
-	@echo "✅ Documentation views generated: docs/BY_TOPIC.md and docs/BY_AUDIENCE.md"
+#	@echo "✅ Documentation views generated: docs/BY_TOPIC.md and docs/BY_AUDIENCE.md"
 
 ##################################################################################################
 # Documentation Website (via Docusaurus)
@@ -722,50 +759,69 @@ mkdocs-build:
 ##################################################################################################
 
 # Generate complete repository documentation
-repomix: code_ref
+repomix:
 	@echo "📄 Generating comprehensive repository documentation..."
 	@mkdir -p repomix-output
 	@echo "📝 Creating uncompressed documentation..."
-	@npx repomix --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_all-uncompressed.md
+	@npx repomix --quiet --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_all-uncompressed.md
 	@echo "📝 Creating compressed documentation..."
-	@npx repomix --ignore "docs/code_ref*/**/*" --compress --output repomix-output/repomix_all-compressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --ignore "docs/code_ref*/**/*,backend/contracts/**/*" --compress --output repomix-output/repomix_all-compressed.md
 	@$(MAKE) repomix-backend
 	@$(MAKE) repomix-frontend  
 	@$(MAKE) repomix-docs
 	@echo "✅ All repository documentation generated in repomix-output/"
 
-# Generate backend-only documentation
+# Generate backend main documentation
 repomix-backend:
 	@echo "📄 Generating backend documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output repomix-output/repomix_backend.md
-	@npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_backend-all_uncompressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/scripts/**/*,backend/tests/**/*,backend/contracts/**/*,backend/tests.old/**/*" --output repomix-output/repomix_backend.md
+	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*,backend/tests.old/**/*" --output repomix-output/repomix_backend-all_uncompressed.md
 
 # Generate backend tests documentation
 repomix-backend-tests:
 	@echo "📄 Generating backend tests documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "backend/tests/**/*" --compress --output repomix-output/repomix_backend-tests.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/tests/**/*" --compress --output repomix-output/repomix_backend-tests.md
+
+# Generate backend cache documentation 
+repomix-backend-cache:
+	@echo "📄 Generating backend cache documentation..."
+	@mkdir -p repomix-output
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,README.md"  --ignore "backend/tests.old/**/*" --output repomix-output/repomix_backend-cache-all_uncompressed.md
+
+# Generate backend cache documentation 
+repomix-backend-contracts:
+	@echo "📄 Generating backend cache documentation..."
+	@mkdir -p repomix-output
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*,.env.example,README.md" --output repomix-output/repomix_backend-contracts.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*,.env.example" --output repomix-output/repomix_backend-contracts-cache.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*,.env.example" --output repomix-output/repomix_backend-contracts-resilience.md
+
+repomix-backend-tests-unit-conftest:
+	@echo "📄 Generating backend tests conftest documentation..."
+	@mkdir -p repomix-output
+	@npx repomix --quiet  --no-file-summary --include "backend/tests/unit/**/conftest.py" --output repomix-output/repomix_backend-tests-unit-conftest.md
 
 # Generate frontend-only documentation
 repomix-frontend:
 	@echo "📄 Generating frontend documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*" --output repomix-output/repomix_frontend.md
-	@npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_frontend-all_uncompressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*" --output repomix-output/repomix_frontend.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_frontend-all_uncompressed.md
 
 # Generate frontend tests documentation
 repomix-frontend-tests:
 	@echo "📄 Generating frontend tests documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
+	@npx repomix --quiet --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
 # Generate documentation for code_ref, READMEs and docs/
-repomix-docs: code_ref generate-doc-views
+repomix-docs: generate-doc-views
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
-	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
-	@npx repomix --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
+#	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
 
 ##################################################################################################
 # CI/CD and Dependencies
@@ -868,3 +924,52 @@ migrate-config:
 test-presets:
 	@echo "🧪 Running preset-related tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/test_resilience_presets.py tests/integration/test_preset_resilience_integration.py -v
+
+# ========================================
+# CACHE PRESET MANAGEMENT COMMANDS
+# ========================================
+
+# List available cache configuration presets
+list-cache-presets:
+	@echo "🗂️  Available cache configuration presets:"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --list-presets
+
+# Show details of a specific cache preset
+show-cache-preset:
+	@if [ -z "$(PRESET)" ]; then \
+		echo "❌ Usage: make show-cache-preset PRESET=<preset_name>"; \
+		echo "💡 Available presets: disabled, simple, development, production, ai-development, ai-production"; \
+		exit 1; \
+	fi
+	@echo "🗂️  Showing details for cache preset: $(PRESET)"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --show-preset $(PRESET)
+
+# Validate current cache configuration
+validate-cache-config:
+	@echo "🗂️  Validating current cache configuration..."
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --validate-current
+
+# Validate a specific cache preset configuration
+validate-cache-preset:
+	@if [ -z "$(PRESET)" ]; then \
+		echo "❌ Usage: make validate-cache-preset PRESET=<preset_name>"; \
+		echo "💡 Available presets: disabled, simple, development, production, ai-development, ai-production"; \
+		exit 1; \
+	fi
+	@echo "🗂️  Validating cache preset: $(PRESET)"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --validate-preset $(PRESET)
+
+# Get cache preset recommendation for environment
+recommend-cache-preset:
+	@if [ -z "$(ENV)" ]; then \
+		echo "❌ Usage: make recommend-cache-preset ENV=<environment>"; \
+		echo "💡 Example environments: development, staging, production, ai-development"; \
+		exit 1; \
+	fi
+	@echo "🗂️  Getting cache preset recommendation for environment: $(ENV)"
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --recommend-preset $(ENV)
+
+# Migrate legacy cache configuration to presets
+migrate-cache-config:
+	@echo "🗂️  Analyzing legacy cache configuration and providing migration recommendations..."
+	@cd backend && $(PYTHON_CMD) scripts/migrate_cache_config.py --analyze

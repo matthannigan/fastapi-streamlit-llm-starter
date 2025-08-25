@@ -22,11 +22,39 @@ logger = logging.getLogger(__name__)
 
 
 class HealthCheckError(Exception):
-    """Generic health check error."""
+    """
+    Base exception for health check operations with contextual error information.
+    
+    Provides the foundation for health check error handling, enabling specific error
+    classification and appropriate response strategies for monitoring system failures.
+    
+    Usage:
+        >>> try:
+        ...     await health_checker.check_component("database")
+        ... except HealthCheckError as e:
+        ...     logger.error(f"Health check failed: {e}")
+    """
 
 
 class HealthCheckTimeoutError(HealthCheckError):
-    """Raised when a health check exceeds its timeout."""
+    """
+    Exception raised when health check operations exceed configured timeout limits.
+    
+    Indicates that a component health check took longer than the allowed time,
+    suggesting potential system performance issues or component unavailability.
+    
+    Behavior:
+        - Inherits from HealthCheckError for consistent exception hierarchy
+        - Automatically raised by timeout mechanisms in health check execution
+        - Includes timing context for debugging performance issues
+        
+    Usage:
+        >>> try:
+        ...     status = await health_checker.check_component("slow_service")
+        ... except HealthCheckTimeoutError:
+        ...     # Handle timeout with degraded response
+        ...     status = ComponentStatus("slow_service", HealthStatus.DEGRADED, "Timeout")
+    """
 
 
 class HealthStatus(Enum):

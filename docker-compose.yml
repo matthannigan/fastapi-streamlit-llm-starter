@@ -15,6 +15,14 @@ services:
       - CORS_ORIGINS=["http://localhost:${FRONTEND_PORT:-8501}", "http://frontend:8501"]
       - REDIS_URL=redis://redis:6379
       - RESILIENCE_PRESET=${RESILIENCE_PRESET:-simple}
+      # Phase 4 Cache Preset Configuration - Simplified from 28+ variables to preset-based approach
+      # Uses the new cache preset system matching resilience pattern for consistency
+      - CACHE_PRESET=${CACHE_PRESET:-development}
+      # Essential overrides (only specify if different from preset defaults)
+      - CACHE_REDIS_URL=redis://redis:6379
+      - ENABLE_AI_CACHE=${ENABLE_AI_CACHE:-true}
+      # Advanced customization via JSON (optional - overrides preset defaults)
+      # - CACHE_CUSTOM_CONFIG={"default_ttl": 3600, "max_connections": 15}
     volumes:
       - ./backend:/app
       - ./shared:/app/shared

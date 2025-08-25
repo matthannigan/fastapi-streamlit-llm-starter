@@ -220,28 +220,32 @@ async def process_text(
 #### Configuration Pattern
 
 ```python
-# Infrastructure services use configuration-driven behavior
+# Infrastructure services use preset-based configuration (Phase 4 pattern)
 class CacheConfiguration:
-    """Infrastructure service configuration."""
+    """Infrastructure service configuration using presets."""
     
     def __init__(self):
-        self.redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-        self.default_ttl = int(os.getenv("CACHE_DEFAULT_TTL", "3600"))
-        self.compression_threshold = int(os.getenv("CACHE_COMPRESSION_THRESHOLD", "1000"))
+        # NEW: Use preset-based configuration (replaces 28+ individual variables)
+        self.cache_preset = os.getenv("CACHE_PRESET", "development")
+        self.redis_url = os.getenv("CACHE_REDIS_URL", "redis://redis:6379")
+        self.enable_ai_cache = os.getenv("ENABLE_AI_CACHE", "true").lower() == "true"
+        
+        # Load preset configuration via settings
+        from app.core.config import settings
+        self._config = settings.get_cache_config()
     
     @classmethod
     def for_environment(cls, env: str) -> "CacheConfiguration":
-        """Get environment-specific configuration."""
+        """Get environment-specific configuration using presets."""
+        # Set appropriate preset for environment
         if env == "production":
-            config = cls()
-            config.default_ttl = 7200  # Longer TTL for production
-            return config
+            os.environ["CACHE_PRESET"] = "ai-production"
         elif env == "development":
-            config = cls()
-            config.default_ttl = 300   # Shorter TTL for development
-            return config
+            os.environ["CACHE_PRESET"] = "ai-development"
         else:
-            return cls()
+            os.environ["CACHE_PRESET"] = "simple"
+        
+        return cls()
 
 # Domain services can have simpler, business-focused configuration
 class TextProcessingOptions:
@@ -939,7 +943,7 @@ When updating existing code to follow these architectural standards:
 - [ ] Verify example completeness
 
 ### 7. Code Structure Alignment
-- [ ] Add comprehensive docstrings
+- [ ] Add comprehensive Google-style docstrings with Markdown for formatting and readability
 - [ ] Follow standard function/class structure
 - [ ] Include type hints consistently
 - [ ] Add appropriate metadata to responses

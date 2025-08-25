@@ -79,7 +79,7 @@ def generate_by_topic(metadata: Dict[str, Any], output_path: Path) -> None:
     
     # Write the file
     write_markdown_file(output_path, content)
-    print(f"Generated {output_path}")
+    #print(f"Generated {output_path}")
 
 
 def generate_by_audience(metadata: Dict[str, Any], output_path: Path) -> None:
@@ -140,7 +140,7 @@ def generate_by_audience(metadata: Dict[str, Any], output_path: Path) -> None:
     
     # Write the file
     write_markdown_file(output_path, content)
-    print(f"Generated {output_path}")
+    #print(f"Generated {output_path}")
 
 
 def write_markdown_file(output_path: Path, content: List[str]) -> None:
@@ -166,14 +166,14 @@ def main():
     docs_dir.mkdir(exist_ok=True)
     
     # Load and validate metadata
-    print("Loading documentation metadata...")
+    #print("Loading documentation metadata...")
     metadata = load_metadata(metadata_path)
     validate_metadata(metadata)
     
-    print(f"Found {len(metadata)} documents in metadata")
+    #print(f"Found {len(metadata)} documents in metadata")
     
     # Generate views
-    print("Generating documentation views...")
+    #print("Generating documentation views...")
     
     # Generate DOCS_BY_TOPIC.md
     topic_output = docs_dir / 'DOCS_BY_TOPIC.md'
@@ -183,10 +183,10 @@ def main():
     audience_output = docs_dir / 'DOCS_BY_AUDIENCE.md'
     generate_by_audience(metadata, audience_output)
     
-    print(f"\nSuccessfully generated documentation views:")
-    print(f"  - {topic_output}")
-    print(f"  - {audience_output}")
-    print(f"\nThese files provide alternative navigation structures for the documentation.")
+    #print(f"\nSuccessfully generated documentation views:")
+    #print(f"  - {topic_output}")
+    #print(f"  - {audience_output}")
+    #print(f"\nThese files provide alternative navigation structures for the documentation.")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 sidebar_label: memory
 ---
 
-# In-Memory Cache Implementation Module
+# [REFACTORED] In-Memory Cache Implementation Module
 
   file_path: `backend/app/infrastructure/cache/memory.py`
 

@@ -8,12 +8,6 @@
             - lifespan
         heading: "Main"
 
-::: app.config
-    options:
-        show_root_heading: true
-        show_source: false
-        heading: "Config"
-
 ::: app.dependencies
     options:
         show_root_heading: true

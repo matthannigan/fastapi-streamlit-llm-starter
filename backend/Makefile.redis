@@ -1,0 +1,52 @@
+# Makefile for Redis test management
+# This file provides convenient targets for running Redis tests
+
+.PHONY: test-redis test-redis-seq test-redis-clean test-non-redis help
+
+help:  ## Show this help message
+	@echo "Redis Test Management Commands:"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Usage examples:"
+	@echo "  make -f Makefile.redis test-redis       # Run Redis tests sequentially"
+	@echo "  make -f Makefile.redis test-non-redis   # Run non-Redis tests in parallel"
+	@echo "  make -f Makefile.redis test-redis-clean # Clean and run Redis tests"
+
+test-redis:  ## Run all Redis tests sequentially (no parallelization)
+	@echo "🔴 Running Redis tests sequentially..."
+	pytest tests/ -m "redis" -n 0 -v
+
+test-redis-seq:  ## Run Redis tests one at a time with detailed output
+	@echo "🔴 Running Redis tests one at a time..."
+	pytest tests/ -m "redis" -n 0 -xvs
+
+test-redis-clean:  ## Clean Redis environment and run tests
+	@echo "🧹 Cleaning Redis test environment..."
+	@./scripts/clean_redis_test_env.sh
+	@echo ""
+	@echo "🔴 Running Redis tests..."
+	pytest tests/ -m "redis" -n 0 -v
+
+test-non-redis:  ## Run all non-Redis tests in parallel
+	@echo "⚡ Running non-Redis tests in parallel..."
+	pytest tests/ -m "not redis" -n auto -v
+
+test-all:  ## Run all tests (non-Redis in parallel, then Redis sequentially)
+	@echo "⚡ Running non-Redis tests in parallel..."
+	pytest tests/ -m "not redis" -n auto -v
+	@echo ""
+	@echo "🔴 Running Redis tests sequentially..."
+	pytest tests/ -m "redis" -n 0 -v
+
+test-redis-debug:  ## Run Redis tests with debug output
+	@echo "🔍 Running Redis tests with debug output..."
+	PYTEST_REDIS_DEBUG=1 pytest tests/ -m "redis" -n 0 -xvs --log-cli-level=DEBUG
+
+test-redis-specific:  ## Run a specific Redis test (use TEST=path/to/test::TestClass::test_method)
+	@if [ -z "$(TEST)" ]; then \
+		echo "❌ Please specify a test with TEST=path/to/test::TestClass::test_method"; \
+		exit 1; \
+	fi
+	@echo "🎯 Running specific test: $(TEST)"
+	pytest $(TEST) -n 0 -xvs

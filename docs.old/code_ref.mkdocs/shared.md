@@ -15,10 +15,3 @@
     options:
         show_root_heading: true
         show_source: false
-
-## Examples
-
-::: shared.examples
-    options:
-        show_root_heading: true
-        show_source: false

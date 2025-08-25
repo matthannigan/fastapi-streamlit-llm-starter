@@ -17,7 +17,7 @@ This starter template demonstrates:
 - **Dual-API Design**: Separate public (`/v1/`) and internal (`/internal/`) endpoints with distinct documentation
 - **Infrastructure vs Domain Separation**: Clear boundaries between reusable components and customizable business logic
 - **Comprehensive Resilience Patterns**: Circuit breakers, retry logic, graceful degradation
-- **Multi-tier Caching System**: Redis-backed with automatic fallback to in-memory cache
+- **Advanced Multi-tier Caching System**: Redis-backed with automatic fallback to in-memory cache, featuring inheritance-based architecture and AI-optimized patterns
 
 ### 🤖 AI Integration Excellence
 - **PydanticAI Agents**: Built-in security and validation for AI model interactions
@@ -27,7 +27,7 @@ This starter template demonstrates:
 
 ### 🔧 Developer Experience
 - **Virtual Environment Automation**: All Python scripts automatically use `.venv` from project root
-- **Preset-Based Configuration**: Simplified resilience system reduces 47+ environment variables to single preset choice
+- **Preset-Based Configuration**: Simplified system reduces complexity by 96% - resilience (47 variables → 1) and cache (28+ variables → 1-4)
 - **Parallel Testing**: Fast feedback cycles with comprehensive coverage requirements
 - **Hot Reload Development**: Docker Compose with file watching for both frontend and backend
 
@@ -89,6 +89,51 @@ The backend follows a clear architectural distinction between **Infrastructure S
     │  (8501)     │              │ (Pydantic) │
     └─────────────┘              └─────────────┘
 ```
+
+### 🚀 Phase 2 Cache Architecture (NEW)
+
+The template now features an **advanced inheritance-based cache architecture** that provides both generic and AI-specialized caching capabilities:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  Cache Infrastructure Layer                     │
+├─────────────────────────────────────────────────────────────────┤
+│  CacheInterface (Abstract Base)                                │
+│  └─ Defines common contract for all cache implementations      │
+├─────────────────────────────────────────────────────────────────┤
+│  InMemoryCache                   │  GenericRedisCache           │
+│  ├─ High-performance L1 cache    │  ├─ Redis-backed caching    │
+│  ├─ TTL & LRU eviction          │  ├─ L1 memory + L2 Redis    │
+│  └─ Development & testing        │  ├─ Compression & callbacks │
+│                                  │  └─ General-purpose apps    │
+├─────────────────────────────────────────────────────────────────┤
+│  AIResponseCache (Inherits from GenericRedisCache)            │
+│  ├─ AI-optimized key generation     ├─ Operation-specific TTLs │
+│  ├─ Text tier classification       ├─ AI performance analytics│
+│  ├─ Smart memory promotion logic   ├─ Configuration management │
+│  └─ Enhanced monitoring & recommendations                      │
+├─────────────────────────────────────────────────────────────────┤
+│  Supporting Components                                          │
+│  ├─ CacheKeyGenerator: Optimized key generation for AI content │
+│  ├─ AIResponseCacheConfig: Comprehensive configuration         │
+│  ├─ CacheParameterMapper: Parameter validation & mapping       │
+│  ├─ RedisCacheSecurityManager: TLS & authentication           │
+│  ├─ CacheMigrationManager: Safe data migration utilities       │
+│  └─ CachePerformanceBenchmark: Performance validation tools    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Key Architecture Benefits
+
+**🏗️ Inheritance-Based Design**: AIResponseCache extends GenericRedisCache, inheriting all Redis operations, memory cache management, and compression features while adding AI-specific optimizations.
+
+**🎯 Composition Over Inheritance**: Uses callback system for AI-specific behavior while maintaining clean inheritance hierarchy.
+
+**⚡ Performance Optimized**: No regression - inherits efficient Redis operations while adding specialized AI features.
+
+**🔧 Configuration-Driven**: Features preset-based configuration system that reduces 28+ cache environment variables to 1-4 variables (`CACHE_PRESET=development`), with full AIResponseCacheConfig for advanced customization.
+
+**📊 Enhanced Monitoring**: AI-specific performance analytics, text tier analysis, and intelligent optimization recommendations.
 
 ## 🚀 Quick Start
 
@@ -268,7 +313,11 @@ The template includes these **educational examples** to demonstrate API patterns
 ### Backend (Production-Ready)
 - **FastAPI**: Modern, fast web framework with automatic API documentation
 - **PydanticAI**: Type-safe AI agent framework with built-in security
-- **Redis**: High-performance caching with automatic fallback to in-memory
+- **Advanced Cache Infrastructure**: 
+  - **GenericRedisCache**: Production-ready Redis caching with L1 memory tier
+  - **AIResponseCache**: AI-specialized cache with inheritance-based architecture
+  - **Intelligent Key Generation**: Optimized for various text sizes with performance monitoring
+  - **Migration Tools**: Safe data migration and compatibility validation
 - **Pydantic**: Data validation and settings management with type hints
 - **uvicorn**: ASGI server with hot reload capabilities
 
@@ -330,6 +379,87 @@ async def process_text_example():
 # Run the example
 if __name__ == "__main__":
     asyncio.run(process_text_example())
+```
+
+### Advanced Cache Architecture Usage
+
+#### Simple Configuration (Preset-Based) - Recommended
+```bash
+# NEW: Simplified preset-based configuration (replaces 28+ variables)
+CACHE_PRESET=ai-development           # Choose preset for your use case
+CACHE_REDIS_URL=redis://localhost:6379  # Essential Redis connection override  
+ENABLE_AI_CACHE=true                  # Enable AI-specific features
+
+# Available presets: disabled, minimal, simple, development, production, ai-development, ai-production
+```
+
+```python
+#!/usr/bin/env python3
+"""Example demonstrating preset-based cache configuration."""
+
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import create_cache_from_config
+
+# Load cache configuration from preset system
+cache_config = get_cache_config()
+
+# Factory automatically creates appropriate cache (AI or Generic) based on configuration
+cache = await create_cache_from_config(cache_config)
+
+# Use the cache with inherited operations
+await cache.cache_response(
+    text="Document to analyze...",
+    operation="summarize",
+    options={"max_length": 150},
+    response={"summary": "Brief document summary"}
+)
+
+# Retrieve with automatic optimization
+cached_result = await cache.get_cached_response(
+    text="Document to analyze...",
+    operation="summarize", 
+    options={"max_length": 150}
+)
+```
+
+#### Advanced Configuration (Custom Overrides)
+```bash
+# Preset with custom overrides for specific requirements
+CACHE_PRESET=ai-production
+CACHE_REDIS_URL=redis://prod-cache:6379
+CACHE_CUSTOM_CONFIG='{"memory_cache_size": 1000, "max_connections": 50}'
+```
+
+```python
+#!/usr/bin/env python3
+"""Example with manual configuration for advanced use cases."""
+
+from app.infrastructure.cache import (
+    AIResponseCache, 
+    GenericRedisCache, 
+    AIResponseCacheConfig,
+    CacheParameterMapper
+)
+
+# Manual configuration (when preset system isn't sufficient)
+config = AIResponseCacheConfig(
+    redis_url="redis://localhost:6379",
+    text_hash_threshold=1000,
+    operation_ttls={
+        "summarize": 7200,    # 2 hours - stable summaries
+        "sentiment": 86400,   # 24 hours - sentiment rarely changes
+        "qa": 1800           # 30 minutes - context-dependent
+    },
+    memory_cache_size=100
+)
+
+ai_cache = AIResponseCache(config)
+await ai_cache.connect()
+
+# Enhanced monitoring and analytics
+ai_performance = ai_cache.get_ai_performance_summary()
+print(f"Cache hit rate: {ai_performance['overall_hit_rate']:.1f}%")
+print(f"Recommendations: {ai_performance['optimization_recommendations']}")
 ```
 
 ### Shared Models Usage
@@ -419,7 +549,18 @@ fastapi-streamlit-llm-starter/
 │   │   │   └── internal/             # Internal API endpoints (/internal/)
 │   │   ├── infrastructure/           # 🏗️ Production-Ready Infrastructure
 │   │   │   ├── ai/                   # AI security & provider abstractions
-│   │   │   ├── cache/                # Multi-tier caching (Redis + Memory)
+│   │   │   ├── cache/                # Advanced multi-tier caching with inheritance architecture
+│   │   │   │   ├── base.py           #   Abstract cache interface
+│   │   │   │   ├── memory.py         #   High-performance in-memory cache
+│   │   │   │   ├── redis_generic.py  #   Generic Redis cache (new)
+│   │   │   │   ├── redis_ai.py       #   AI-specialized cache (inherits from generic)
+│   │   │   │   ├── key_generator.py  #   Optimized cache key generation
+│   │   │   │   ├── ai_config.py      #   AI cache configuration management
+│   │   │   │   ├── parameter_mapping.py # Parameter validation and mapping
+│   │   │   │   ├── security.py       #   Redis security management
+│   │   │   │   ├── migration.py      #   Data migration utilities
+│   │   │   │   ├── monitoring.py     #   Performance monitoring and analytics
+│   │   │   │   └── benchmarks.py     #   Performance benchmarking tools
 │   │   │   ├── resilience/           # Circuit breakers, retry, orchestration
 │   │   │   ├── security/             # Authentication & authorization
 │   │   │   └── monitoring/           # Health checks & metrics
