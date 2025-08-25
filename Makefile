@@ -711,7 +711,7 @@ code_ref:
 generate-doc-views:
 	@echo "📄 Generating documentation views from metadata..."
 	@$(PYTHON_CMD) scripts/generate_doc_views.py
-	@echo "✅ Documentation views generated: docs/BY_TOPIC.md and docs/BY_AUDIENCE.md"
+#	@echo "✅ Documentation views generated: docs/BY_TOPIC.md and docs/BY_AUDIENCE.md"
 
 ##################################################################################################
 # Documentation Website (via Docusaurus)
@@ -759,50 +759,69 @@ mkdocs-build:
 ##################################################################################################
 
 # Generate complete repository documentation
-repomix: code_ref
+repomix:
 	@echo "📄 Generating comprehensive repository documentation..."
 	@mkdir -p repomix-output
 	@echo "📝 Creating uncompressed documentation..."
-	@npx repomix --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_all-uncompressed.md
+	@npx repomix --quiet --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_all-uncompressed.md
 	@echo "📝 Creating compressed documentation..."
-	@npx repomix --ignore "docs/code_ref*/**/*" --compress --output repomix-output/repomix_all-compressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --ignore "docs/code_ref*/**/*,backend/contracts/**/*" --compress --output repomix-output/repomix_all-compressed.md
 	@$(MAKE) repomix-backend
 	@$(MAKE) repomix-frontend  
 	@$(MAKE) repomix-docs
 	@echo "✅ All repository documentation generated in repomix-output/"
 
-# Generate backend-only documentation
+# Generate backend main documentation
 repomix-backend:
 	@echo "📄 Generating backend documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/tests/**/*" --output repomix-output/repomix_backend.md
-	@npx repomix --include "backend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_backend-all_uncompressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/scripts/**/*,backend/tests/**/*,backend/contracts/**/*,backend/tests.old/**/*" --output repomix-output/repomix_backend.md
+	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*,backend/tests.old/**/*" --output repomix-output/repomix_backend-all_uncompressed.md
 
 # Generate backend tests documentation
 repomix-backend-tests:
 	@echo "📄 Generating backend tests documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "backend/tests/**/*" --compress --output repomix-output/repomix_backend-tests.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/tests/**/*" --compress --output repomix-output/repomix_backend-tests.md
+
+# Generate backend cache documentation 
+repomix-backend-cache:
+	@echo "📄 Generating backend cache documentation..."
+	@mkdir -p repomix-output
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,README.md"  --ignore "backend/tests.old/**/*" --output repomix-output/repomix_backend-cache-all_uncompressed.md
+
+# Generate backend cache documentation 
+repomix-backend-contracts:
+	@echo "📄 Generating backend cache documentation..."
+	@mkdir -p repomix-output
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*,.env.example,README.md" --output repomix-output/repomix_backend-contracts.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*,.env.example" --output repomix-output/repomix_backend-contracts-cache.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*,.env.example" --output repomix-output/repomix_backend-contracts-resilience.md
+
+repomix-backend-tests-unit-conftest:
+	@echo "📄 Generating backend tests conftest documentation..."
+	@mkdir -p repomix-output
+	@npx repomix --quiet  --no-file-summary --include "backend/tests/unit/**/conftest.py" --output repomix-output/repomix_backend-tests-unit-conftest.md
 
 # Generate frontend-only documentation
 repomix-frontend:
 	@echo "📄 Generating frontend documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*" --output repomix-output/repomix_frontend.md
-	@npx repomix --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_frontend-all_uncompressed.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*" --output repomix-output/repomix_frontend.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_frontend-all_uncompressed.md
 
 # Generate frontend tests documentation
 repomix-frontend-tests:
 	@echo "📄 Generating frontend tests documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
+	@npx repomix --quiet --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
 
 # Generate documentation for code_ref, READMEs and docs/
-repomix-docs: code_ref generate-doc-views
+repomix-docs: generate-doc-views
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
-	@npx repomix --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
-	@npx repomix --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
+#	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
+	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
 
 ##################################################################################################
 # CI/CD and Dependencies
