@@ -1,0 +1,124 @@
+"""
+Global Exception Handler
+
+## Overview
+
+Centralized, security-conscious exception handling for the FastAPI application.
+Provides standardized JSON error responses, consistent HTTP status mapping, and
+structured logging with request correlation for observability.
+
+## Responsibilities
+
+- **Consistency**: Uniform error payloads via `app.schemas.common.ErrorResponse`
+- **Security**: Sanitized messages; no internal details leaked to clients
+- **Mapping**: Stable HTTP status codes by exception category
+- **Observability**: Correlated logs using request IDs
+
+## HTTP Status Mapping
+
+- `ApplicationError` → 400
+- `InfrastructureError` → 502
+- `TransientAIError` → 503
+- `PermanentAIError` → 502
+- Other uncaught exceptions → 500
+
+## Special Cases
+
+Maintains compatibility for API versioning errors by returning a specific
+payload and headers (`X-API-Supported-Versions`, `X-API-Current-Version`).
+
+## Usage
+
+```python
+from app.core.middleware.global_exception_handler import setup_global_exception_handler
+from app.core.config import settings
+
+setup_global_exception_handler(app, settings)
+```
+
+## Important Architecture Note
+
+This module implements centralized exception handling using FastAPI's 
+@app.exception_handler() decorator system, NOT Starlette middleware.
+
+While located in the middleware directory and functioning like middleware,
+this uses FastAPI's exception handler system rather than Starlette's 
+BaseHTTPMiddleware. This means:
+
+- It catches exceptions AFTER middleware processing
+- It doesn't appear in app.middleware_stack
+- It's configured via @app.exception_handler() decorators
+- It runs when middleware or application code raises unhandled exceptions
+
+This is architecturally correct for error handling but differs from 
+traditional middleware implementation patterns.
+"""
+
+import logging
+from contextvars import ContextVar
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from app.core.config import Settings
+from app.core.exceptions import ApplicationError, ValidationError, AuthenticationError, AuthorizationError, ConfigurationError, BusinessLogicError, InfrastructureError, AIServiceException, TransientAIError, PermanentAIError, get_http_status_for_exception
+from app.schemas.common import ErrorResponse
+
+
+def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
+    """
+    Configure global exception handling for unhandled application errors.
+    
+    Provides a centralized error handling mechanism that catches all unhandled
+    exceptions across the application and returns consistent, secure error responses.
+    The handler ensures clients receive predictable error responses while protecting
+    internal implementation details and sensitive information.
+    
+    Exception Handling Features:
+        * Comprehensive logging of all unhandled exceptions with full context
+        * Standardized error response format using shared.models.ErrorResponse
+        * HTTP status code mapping based on exception types
+        * Security-conscious error messages that don't expose internal details
+        * Request context preservation for debugging and monitoring
+        * Integration with the custom exception hierarchy
+    
+    Args:
+        app (FastAPI): The FastAPI application instance to configure
+        settings (Settings): Application settings for error handling configuration
+    
+    Exception Processing:
+        The handler processes exceptions in the following order:
+        1. Log the full exception with context for debugging
+        2. Determine appropriate HTTP status code based on exception type
+        3. Generate secure, user-friendly error message
+        4. Create standardized ErrorResponse model
+        5. Return JSONResponse with appropriate status code
+    
+    HTTP Status Code Mapping:
+        * ApplicationError -> 400 Bad Request (validation, business logic errors)
+        * InfrastructureError -> 502 Bad Gateway (external service failures)
+        * TransientAIError -> 503 Service Unavailable (temporary AI issues)
+        * PermanentAIError -> 502 Bad Gateway (permanent AI issues)
+        * All other exceptions -> 500 Internal Server Error
+    
+    Security Features:
+        * Generic error messages prevent information disclosure
+        * Full exception details logged server-side only
+        * No stack traces or internal paths exposed to clients
+        * Request correlation IDs for secure debugging
+    
+    Example Response:
+        ```json
+        {
+            "success": false,
+            "error": "Internal server error",
+            "error_code": "INTERNAL_ERROR",
+            "timestamp": "2025-07-12T12:34:56.789012"
+        }
+        ```
+    
+    Note:
+        This handler is the last resort for exception handling and will catch
+        any exception not handled by more specific exception handlers. It ensures
+        the application never returns unhandled exceptions to clients.
+    """
+    ...
