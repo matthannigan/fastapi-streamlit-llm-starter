@@ -103,21 +103,37 @@ config = AIResponseCacheConfig(
 )
 ```
 
-### Environment-Based Configuration
+### Preset-Based Configuration (RECOMMENDED)
 ```python
-# Set environment variables
-os.environ['AI_CACHE_REDIS_URL'] = 'redis://prod:6379'
-os.environ['AI_CACHE_DEFAULT_TTL'] = '7200'
-os.environ['AI_CACHE_MEMORY_CACHE_SIZE'] = '200'
-os.environ['AI_CACHE_TEXT_SIZE_TIERS'] = '{"small": 500, "medium": 5000, "large": 50000}'
+# Use preset-based configuration (replaces 28+ individual variables)
+os.environ['CACHE_PRESET'] = 'ai-production'
+os.environ['CACHE_REDIS_URL'] = 'redis://prod:6379'  # Optional override
+os.environ['ENABLE_AI_CACHE'] = 'true'  # Optional override
 
-# Load from environment
-config = AIResponseCacheConfig.from_env(prefix="AI_CACHE_")
+# Load from preset system via Settings
+from app.core.config import settings
+cache_config = settings.get_cache_config()
 
-# Validate and get recommendations
-result = config.validate()
-for rec in result.recommendations:
-    print(f"💡 Recommendation: {rec}")
+# Advanced customization with JSON overrides
+os.environ['CACHE_CUSTOM_CONFIG'] = '''{
+    "compression_threshold": 500,
+    "text_size_tiers": {"small": 500, "medium": 5000, "large": 50000},
+    "memory_cache_size": 200
+}'''
+```
+
+### Legacy Environment-Based Configuration (DEPRECATED)
+```python
+# DEPRECATED: Individual environment variables no longer supported
+# Use CACHE_PRESET with preset-based configuration instead
+
+# OLD WAY (no longer works):
+# os.environ['AI_CACHE_DEFAULT_TTL'] = '7200'
+# os.environ['AI_CACHE_MEMORY_CACHE_SIZE'] = '200'
+
+# NEW WAY (recommended):
+os.environ['CACHE_PRESET'] = 'ai-development'
+cache_config = settings.get_cache_config()
 ```
 
 ### Configuration Presets
@@ -209,14 +225,15 @@ cache = AIResponseCache(**kwargs)
 
 ### Environment Variable Migration
 ```bash
-# Legacy environment variables
-export REDIS_URL="redis://localhost:6379"
-export CACHE_TTL="3600"
+# Preset-based configuration (RECOMMENDED)
+export CACHE_PRESET="ai-development"
+export CACHE_REDIS_URL="redis://localhost:6379"  # Optional override
+export ENABLE_AI_CACHE="true"  # Optional override
 
-# New structured environment variables
-export AI_CACHE_REDIS_URL="redis://localhost:6379"
-export AI_CACHE_DEFAULT_TTL="3600"
-export AI_CACHE_MEMORY_CACHE_SIZE="100"
+# Legacy environment variables (DEPRECATED - no longer supported)
+# export AI_CACHE_REDIS_URL="redis://localhost:6379"
+# export AI_CACHE_DEFAULT_TTL="3600"
+# export AI_CACHE_MEMORY_CACHE_SIZE="100"
 ```
 
 ## Performance Considerations
@@ -955,19 +972,20 @@ class AIResponseCacheConfig:
         Returns:
             AIResponseCacheConfig: Configuration instance from environment
             
-        Environment Variables:
-            AI_CACHE_REDIS_URL: Redis connection URL
-            AI_CACHE_DEFAULT_TTL: Default TTL in seconds
-            AI_CACHE_MEMORY_CACHE_SIZE: Memory cache size
-            AI_CACHE_TEXT_HASH_THRESHOLD: Text hashing threshold
-            AI_CACHE_COMPRESSION_THRESHOLD: Compression threshold
-            AI_CACHE_COMPRESSION_LEVEL: Compression level (1-9)
-            AI_CACHE_ENABLE_L1_CACHE: Enable L1 cache (true/false)
+        DEPRECATED: Individual environment variables are no longer supported.
+        Use CACHE_PRESET with preset-based configuration instead.
+        
+        Preset System (RECOMMENDED):
+            CACHE_PRESET: Cache preset name (ai-development, ai-production, etc.)
+            CACHE_REDIS_URL: Optional Redis URL override
+            ENABLE_AI_CACHE: Optional AI features toggle
+            CACHE_CUSTOM_CONFIG: Optional JSON configuration override
             
         Examples:
-            >>> os.environ['AI_CACHE_REDIS_URL'] = 'redis://localhost:6379'
-            >>> os.environ['AI_CACHE_DEFAULT_TTL'] = '3600'
-            >>> config = AIResponseCacheConfig.from_env()
+            >>> os.environ['CACHE_PRESET'] = 'ai-development'
+            >>> os.environ['CACHE_REDIS_URL'] = 'redis://localhost:6379'  # Optional
+            >>> from app.core.config import settings
+            >>> config = settings.get_cache_config()  # Use preset system instead
         """
         logger.debug(f"Creating AIResponseCacheConfig from environment with prefix '{prefix}'")
         

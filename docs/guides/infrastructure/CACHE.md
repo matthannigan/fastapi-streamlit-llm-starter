@@ -701,14 +701,18 @@ development_cache = InMemoryCache(
     max_size=100       # Small cache for testing
 )
 
-# Production configuration  
-production_cache = AIResponseCache(
-    redis_url=os.getenv("REDIS_URL", "redis://redis:6379"),
-    default_ttl=int(os.getenv("CACHE_TTL", "3600")),
-    compression_threshold=int(os.getenv("CACHE_COMPRESSION_THRESHOLD", "1000")),
-    compression_level=int(os.getenv("CACHE_COMPRESSION_LEVEL", "6")),
-    memory_cache_size=int(os.getenv("CACHE_MEMORY_SIZE", "100"))
-)
+# Production configuration using preset system (RECOMMENDED)
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import CacheFactory
+
+# Set preset in environment
+os.environ['CACHE_PRESET'] = 'ai-production'
+os.environ['CACHE_REDIS_URL'] = 'redis://redis:6379'
+
+# Load configuration and create cache using factory
+config = await get_cache_config()
+factory = CacheFactory()
+production_cache = await factory.create_cache_from_config(config)
 ```
 
 ## Advanced Cache Management
@@ -926,42 +930,47 @@ class CacheWithCircuitBreaker:
 
 ## Configuration Management
 
-### Environment Variables
+### Preset-Based Configuration (Phase 4)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REDIS_URL` | `redis://redis:6379` | Redis connection URL |
-| `CACHE_DEFAULT_TTL` | `3600` | Default TTL in seconds |
-| `CACHE_TEXT_HASH_THRESHOLD` | `1000` | Text size threshold for hashing |
-| `CACHE_COMPRESSION_THRESHOLD` | `1000` | Response size threshold for compression |
-| `CACHE_COMPRESSION_LEVEL` | `6` | Compression level (1-9) |
-| `CACHE_MEMORY_CACHE_SIZE` | `100` | Memory cache entry limit |
+**⚡ NEW**: Simplified configuration using presets that replace 28+ individual variables with 1-4 variables.
+
+| Variable | Default | Description | Examples |
+|----------|---------|-------------|----------|
+| `CACHE_PRESET` | `"development"` | Cache preset name | `"production"`, `"ai-production"` |
+| `CACHE_REDIS_URL` | From preset | Optional Redis URL override | `redis://redis-cluster:6379` |
+| `ENABLE_AI_CACHE` | From preset | Optional AI features toggle | `true`, `false` |
+| `CACHE_CUSTOM_CONFIG` | `None` | Optional JSON overrides | `{"compression_threshold": 500}` |
 
 ### Configuration Examples
 
 **Development Environment**:
 ```bash
-REDIS_URL=redis://localhost:6379
-CACHE_DEFAULT_TTL=1800
-CACHE_MEMORY_CACHE_SIZE=50
-CACHE_COMPRESSION_THRESHOLD=2000
+CACHE_PRESET=development
+CACHE_REDIS_URL=redis://localhost:6379  # Optional override
 ```
 
 **Production Environment**:
 ```bash
-REDIS_URL=redis://redis-cluster:6379
-CACHE_DEFAULT_TTL=7200
-CACHE_MEMORY_CACHE_SIZE=200
-CACHE_COMPRESSION_THRESHOLD=1000
-CACHE_COMPRESSION_LEVEL=7
+CACHE_PRESET=production
+CACHE_REDIS_URL=redis://redis-cluster:6379
+```
+
+**AI Production Environment**:
+```bash
+CACHE_PRESET=ai-production
+CACHE_REDIS_URL=redis://ai-redis:6379
+ENABLE_AI_CACHE=true
 ```
 
 **Memory-Constrained Environment**:
 ```bash
-CACHE_MEMORY_CACHE_SIZE=25
-CACHE_COMPRESSION_THRESHOLD=500
-CACHE_COMPRESSION_LEVEL=8
+CACHE_PRESET=minimal
+CACHE_CUSTOM_CONFIG='{"memory_cache_size": 25, "compression_threshold": 500}'
 ```
+
+### Legacy Environment Variables (DEPRECATED)
+
+Individual CACHE_* environment variables (CACHE_DEFAULT_TTL, CACHE_MEMORY_CACHE_SIZE, etc.) are no longer supported. Use `CACHE_PRESET` with optional overrides instead. See [Cache Preset Guide](CACHE_PRESET_GUIDE.md) for migration instructions.
 
 ## API Reference
 

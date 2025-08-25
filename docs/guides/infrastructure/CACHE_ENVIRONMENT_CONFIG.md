@@ -1,51 +1,91 @@
-# Cache Environment Configuration Guide
+# Cache Environment Configuration Guide (UPDATED FOR PRESET SYSTEM)
 
-This comprehensive guide provides complete reference documentation for configuring the Cache Infrastructure Service across different environments and deployment scenarios. It covers all supported environment variables, configuration file formats, Docker configurations, and cloud deployment patterns.
+This guide documents the **Phase 4 preset-based cache configuration system** that replaces 28+ individual environment variables with 1-4 simple variables. For comprehensive preset documentation, see **[Cache Preset Guide](CACHE_PRESET_GUIDE.md)**.
+
+⚡ **NEW: Phase 4 simplifies cache configuration from 28+ variables to 1-4 variables**
 
 ## Table of Contents
 
-1. [Environment Variable Reference](#environment-variable-reference)
-2. [Configuration File Examples](#configuration-file-examples)
-3. [Environment Presets](#environment-presets)
-4. [Docker Configuration](#docker-configuration)
-5. [Kubernetes Configuration](#kubernetes-configuration)
-6. [Cloud Provider Configurations](#cloud-provider-configurations)
-7. [Validation and Troubleshooting](#validation-and-troubleshooting)
-8. [Migration from Legacy Configuration](#migration-from-legacy-configuration)
+1. [Preset-Based Configuration (RECOMMENDED)](#preset-based-configuration-recommended)
+2. [Legacy Variable Migration](#legacy-variable-migration)
+3. [Docker Configuration](#docker-configuration)
+4. [Kubernetes Configuration](#kubernetes-configuration)
+5. [Cloud Provider Configurations](#cloud-provider-configurations)
+6. [Validation and Troubleshooting](#validation-and-troubleshooting)
 
-## Environment Variable Reference
+## Preset-Based Configuration (RECOMMENDED)
 
-### Core Configuration Variables
+### Current Environment Variables (Phase 4)
 
+**Primary Configuration:**
 | Variable | Type | Default | Description | Example |
 |----------|------|---------|-------------|---------|
-| `REDIS_URL` | string | `redis://redis:6379` | Redis connection URL with optional authentication | `redis://user:pass@redis:6379/0` |
-| `CACHE_DEFAULT_TTL` | integer | `3600` | Default time-to-live in seconds | `7200` |
-| `CACHE_MEMORY_SIZE` | integer | `100` | Maximum entries in memory cache | `200` |
-| `CACHE_COMPRESSION_THRESHOLD` | integer | `1000` | Size threshold for compression (bytes) | `2000` |
-| `CACHE_COMPRESSION_LEVEL` | integer | `6` | Compression level (1-9, higher = better compression) | `8` |
+| `CACHE_PRESET` | string | `"development"` | Cache preset name | `"production"`, `"ai-production"` |
 
-### Redis Connection and Security
-
+**Optional Overrides:**
 | Variable | Type | Default | Description | Example |
 |----------|------|---------|-------------|---------|
-| `CACHE_REDIS_URL` | string | `None` | Override for Redis URL (takes precedence over REDIS_URL) | `redis://cache-cluster:6379` |
-| `CACHE_REDIS_PASSWORD` | string | `None` | Redis password for authentication | `secure_password_123` |
-| `CACHE_USE_TLS` | boolean | `false` | Enable TLS for Redis connections | `true` |
-| `CACHE_TLS_CERT_PATH` | string | `None` | Path to TLS certificate file | `/certs/redis-client.crt` |
-| `CACHE_TLS_KEY_PATH` | string | `None` | Path to TLS private key file | `/certs/redis-client.key` |
+| `CACHE_REDIS_URL` | string | `None` | Override Redis connection URL | `redis://prod-cache:6379` |
+| `ENABLE_AI_CACHE` | boolean | `None` | Override AI features (depends on preset) | `true`, `false` |
+| `CACHE_CUSTOM_CONFIG` | JSON | `None` | Advanced customization via JSON | `{"compression_threshold": 500}` |
 
-### AI-Specific Configuration
+### Available Presets
 
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `CACHE_ENABLE_AI_FEATURES` | boolean | `false` | Enable AI-specific caching features | `true` |
-| `CACHE_TEXT_HASH_THRESHOLD` | integer | `1000` | Text length threshold for hashing | `2000` |
-| `CACHE_HASH_ALGORITHM` | string | `sha256` | Hash algorithm for text content | `sha512` |
-| `CACHE_ENABLE_SMART_PROMOTION` | boolean | `true` | Enable smart cache promotion | `false` |
-| `CACHE_MAX_TEXT_LENGTH` | integer | `100000` | Maximum text length to cache | `200000` |
+| Preset | Use Case | Redis Required | AI Features | TTL | Memory Cache |
+|--------|----------|----------------|-------------|-----|--------------|
+| `disabled` | Testing, debugging | No | No | 5 min | Memory-only |
+| `minimal` | Resource-constrained | Optional | No | 15 min | 10 entries |
+| `simple` | Small applications | Optional | No | 1 hour | 100 entries |
+| `development` | Local development | Recommended | Yes | 30 min | 100 entries |
+| `production` | Web applications | Required | No | 2 hours | 500 entries |
+| `ai-development` | AI development | Recommended | Yes | 30 min | 200 entries |
+| `ai-production` | AI applications | Required | Yes | 4 hours | 1000 entries |
 
-### Text Size Tiers Configuration
+**Quick Start:**
+```bash
+# Choose your preset
+export CACHE_PRESET=development
+
+# Add Redis if desired
+export CACHE_REDIS_URL=redis://localhost:6379
+
+# That's it! Your cache is configured.
+```
+
+## Legacy Variable Migration
+
+**DEPRECATED**: Individual CACHE_* environment variables are no longer supported in Phase 4.
+
+### Migration Guide
+
+**Old Way (28+ variables):**
+```bash
+export CACHE_DEFAULT_TTL=3600
+export CACHE_MEMORY_SIZE=200
+export CACHE_COMPRESSION_THRESHOLD=2000
+export CACHE_COMPRESSION_LEVEL=6
+export CACHE_TEXT_HASH_THRESHOLD=1000
+# ... 23+ more variables
+```
+
+**New Way (1-4 variables):**
+```bash
+export CACHE_PRESET=development
+export CACHE_REDIS_URL=redis://localhost:6379  # Optional override
+export ENABLE_AI_CACHE=true                     # Optional toggle
+```
+
+**Migration Tools:**
+```bash
+# Analyze current configuration
+python backend/scripts/migrate_cache_config.py --analyze
+
+# Get preset recommendation
+python backend/scripts/migrate_cache_config.py --recommend
+
+# Apply migration
+python backend/scripts/migrate_cache_config.py --migrate
+```
 
 | Variable | Type | Default | Description | Example |
 |----------|------|---------|-------------|---------|

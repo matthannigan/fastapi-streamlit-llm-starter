@@ -207,93 +207,33 @@ class CacheConfig:
     
     def _load_from_environment(self) -> None:
         """
-        Load configuration from environment variables.
+        Load configuration from environment variables (DEPRECATED).
         
-        This method maps environment variables to configuration fields with
-        appropriate type conversion and error handling.
+        This method is deprecated in favor of the preset-based configuration system.
+        Individual CACHE_* environment variables are no longer supported.
+        
+        Use CACHE_PRESET environment variable with preset-based configuration instead.
         """
-        try:
-            # Environment variable mappings
-            env_mappings = {
-                'redis_url': ('CACHE_REDIS_URL', str),
-                'redis_password': ('CACHE_REDIS_PASSWORD', str),
-                'use_tls': ('CACHE_USE_TLS', self._parse_bool),
-                'tls_cert_path': ('CACHE_TLS_CERT_PATH', str),
-                'tls_key_path': ('CACHE_TLS_KEY_PATH', str),
-                'default_ttl': ('CACHE_DEFAULT_TTL', int),
-                'memory_cache_size': ('CACHE_MEMORY_SIZE', int),
-                'compression_threshold': ('CACHE_COMPRESSION_THRESHOLD', int),
-                'compression_level': ('CACHE_COMPRESSION_LEVEL', int),
-                'environment': ('CACHE_ENVIRONMENT', str),
-            }
-            
-            # Load each configuration value
-            for field_name, (env_var, converter) in env_mappings.items():
-                env_value = os.getenv(env_var)
-                if env_value is not None:
-                    try:
-                        converted_value = converter(env_value)
-                        setattr(self, field_name, converted_value)
-                        logger.debug(f"Loaded {field_name} from {env_var}")
-                    except (ValueError, TypeError) as e:
-                        raise ConfigurationError(
-                            f"Invalid value for {env_var}: {env_value}",
-                            context={"field": field_name, "env_var": env_var, "error": str(e)}
-                        )
-            
-            # Load AI configuration if enabled
-            if os.getenv('CACHE_ENABLE_AI_FEATURES', '').lower() in ('true', '1', 'yes'):
-                self._load_ai_config_from_environment()
-                
-        except Exception as e:
-            if isinstance(e, ConfigurationError):
-                raise
-            raise ConfigurationError(
-                f"Failed to load configuration from environment: {e}",
-                context={"error_type": type(e).__name__}
-            )
+        logger.warning(
+            "Individual CACHE_* environment variable loading is deprecated. "
+            "Use CACHE_PRESET with preset-based configuration instead."
+        )
+        # No-op - preset system should be used instead
     
     def _load_ai_config_from_environment(self) -> None:
-        """Load AI-specific configuration from environment variables."""
-        ai_config = AICacheConfig()
+        """
+        Load AI-specific configuration from environment variables (DEPRECATED).
         
-        # AI configuration mappings
-        ai_env_mappings = {
-            'text_hash_threshold': ('CACHE_TEXT_HASH_THRESHOLD', int),
-            'hash_algorithm': ('CACHE_HASH_ALGORITHM', str),
-            'enable_smart_promotion': ('CACHE_ENABLE_SMART_PROMOTION', self._parse_bool),
-            'max_text_length': ('CACHE_MAX_TEXT_LENGTH', int),
-        }
+        This method is deprecated in favor of the preset-based configuration system.
+        Individual CACHE_* environment variables are no longer supported.
         
-        # Load AI configuration values
-        for field_name, (env_var, converter) in ai_env_mappings.items():
-            env_value = os.getenv(env_var)
-            if env_value is not None:
-                try:
-                    converted_value = converter(env_value)
-                    setattr(ai_config, field_name, converted_value)
-                except (ValueError, TypeError) as e:
-                    raise ConfigurationError(
-                        f"Invalid AI config value for {env_var}: {env_value}",
-                        context={"field": field_name, "env_var": env_var, "error": str(e)}
-                    )
-        
-        # Load operation TTLs from JSON
-        operation_ttls_json = os.getenv('CACHE_OPERATION_TTLS')
-        if operation_ttls_json:
-            try:
-                operation_ttls = json.loads(operation_ttls_json)
-                if isinstance(operation_ttls, dict):
-                    ai_config.operation_ttls.update(operation_ttls)
-                else:
-                    raise ConfigurationError("CACHE_OPERATION_TTLS must be a JSON object")
-            except json.JSONDecodeError as e:
-                raise ConfigurationError(
-                    f"Invalid JSON in CACHE_OPERATION_TTLS: {e}",
-                    context={"json_value": operation_ttls_json}
-                )
-        
-        self.ai_config = ai_config
+        Use CACHE_PRESET environment variable with preset-based configuration instead.
+        """
+        logger.warning(
+            "Individual AI CACHE_* environment variable loading is deprecated. "
+            "Use CACHE_PRESET with preset-based configuration instead."
+        )
+        # No-op - preset system should be used instead
     
     @staticmethod
     def _parse_bool(value: str) -> bool:
