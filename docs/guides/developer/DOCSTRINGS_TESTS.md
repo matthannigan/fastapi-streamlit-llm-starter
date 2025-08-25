@@ -43,6 +43,10 @@ def test_validate_api_key_rejects_invalid_format():
         - Keys without 'sk-' prefix  
         - Keys with incorrect length
         - Keys with invalid characters
+
+    Mocks Used:
+        - mock_verify_api_key
+        - mock_api_key_auth
         
     Related Tests:
         - test_validate_api_key_accepts_valid_format()
