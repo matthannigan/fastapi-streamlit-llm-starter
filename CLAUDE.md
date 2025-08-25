@@ -640,8 +640,12 @@ RESILIENCE_PRESET=development
 API_KEY=dev-test-key
 GEMINI_API_KEY=your-gemini-api-key
 
-# Redis (optional - falls back to memory cache)
-REDIS_URL=redis://localhost:6379
+# Cache Configuration (choose one preset)
+CACHE_PRESET=development              # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
+
+# Optional Cache Overrides (only when needed)
+CACHE_REDIS_URL=redis://localhost:6379  # Override Redis connection URL
+ENABLE_AI_CACHE=true                     # Toggle AI cache features
 
 # Frontend Configuration
 API_BASE_URL=http://localhost:8000
@@ -668,8 +672,11 @@ API_KEY=your-secure-production-key
 ADDITIONAL_API_KEYS=key1,key2,key3
 GEMINI_API_KEY=your-production-gemini-key
 
+# Cache Configuration
+CACHE_PRESET=production               # Production-optimized cache settings
+
 # Infrastructure
-REDIS_URL=redis://your-redis-instance:6379
+CACHE_REDIS_URL=redis://your-redis-instance:6379  # Production Redis instance
 CORS_ORIGINS=["https://your-frontend-domain.com"]
 
 # Frontend Configuration
@@ -694,9 +701,19 @@ LOG_LEVEL=INFO
 # Custom Resilience Configuration
 RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
 
+# Custom Cache Configuration (JSON overrides)
+CACHE_PRESET=production
+CACHE_CUSTOM_CONFIG='{
+  "compression_threshold": 500,
+  "memory_cache_size": 2000,
+  "operation_ttls": {
+    "summarize": 7200,
+    "sentiment": 3600
+  }
+}'
+
 # Performance Tuning
 MAX_CONCURRENT_REQUESTS=50
-CACHE_TTL_SECONDS=3600
 ```
 
 ## 🛠️ Customizing This Template for Your Project
@@ -706,7 +723,9 @@ CACHE_TTL_SECONDS=3600
 1. **Keep the Infrastructure** 🏗️
    - Use `app/infrastructure/` services as-is (cache, resilience, security, monitoring)
    - Extend infrastructure services if needed, but maintain the existing APIs
-   - Configure resilience presets for your environment (`simple`, `development`, `production`)
+   - Configure presets for your environment:
+     - Resilience: `RESILIENCE_PRESET=simple|development|production`
+     - Cache: `CACHE_PRESET=development|production|ai-development|ai-production`
 
 2. **Replace Domain Services** 💼
    - Study the patterns in `app/services/text_processor.py`
@@ -730,7 +749,8 @@ CACHE_TTL_SECONDS=3600
 5. **Configure for Your Environment** ⚙️
    - Update `backend/app/core/config.py` with your settings
    - Configure your AI provider (replace Gemini with your preferred LLM)
-   - Set up your Redis instance or use the memory cache fallback
+   - **Cache Configuration**: Set `CACHE_PRESET` for your environment (development, production, ai-production)
+   - **Optional Redis Setup**: Use `CACHE_REDIS_URL` to override Redis connection or rely on preset defaults
    - Configure authentication keys and CORS settings
    - **Health Check Configuration**: Set `HEALTH_CHECK_*` environment variables for monitoring timeouts and retry behavior
 
@@ -744,6 +764,7 @@ CACHE_TTL_SECONDS=3600
 - [ ] Update frontend API client for your specific backend endpoints
 - [ ] Update authentication and security settings
 - [ ] Configure resilience presets for your environment
+- [ ] Configure cache presets for your environment (`CACHE_PRESET=development|production|ai-production`)
 - [ ] Update README.md with your project details
 - [ ] Replace example tests with your business logic tests
 

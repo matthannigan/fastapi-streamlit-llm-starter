@@ -177,36 +177,40 @@ The `CacheFactory` provides deterministic, explicit cache creation methods that 
 - **Optimized Defaults:** Environment-specific configurations built-in
 - **Configuration-Based Creation:** Support for `CacheConfig` objects
 
-**Factory Methods:**
+**Factory Methods with Preset Support:**
 ```python
 from app.infrastructure.cache import CacheFactory
+from app.infrastructure.cache.dependencies import get_cache_config
 
-# Web application cache (optimized for sessions, API responses)
-web_cache = CacheFactory.for_web_app(
+# Preset-based factory creation (RECOMMENDED)
+config = get_cache_config()  # Uses CACHE_PRESET environment variable
+cache = CacheFactory.create_cache_from_config(config)
+
+# Web application cache (uses "production" preset)
+os.environ["CACHE_PRESET"] = "production"
+web_cache = CacheFactory.create_cache_from_config(get_cache_config())
+
+# AI application cache (uses "ai-production" preset)
+os.environ["CACHE_PRESET"] = "ai-production" 
+ai_cache = CacheFactory.create_cache_from_config(get_cache_config())
+
+# Development cache (uses "development" preset)
+os.environ["CACHE_PRESET"] = "development"
+dev_cache = CacheFactory.create_cache_from_config(get_cache_config())
+
+# Testing cache (uses "minimal" preset)
+os.environ["CACHE_PRESET"] = "minimal"
+test_cache = CacheFactory.create_cache_from_config(get_cache_config())
+
+# Legacy factory methods (still supported)
+legacy_web_cache = CacheFactory.for_web_app(
     redis_url="redis://localhost:6379/0",
-    fail_on_connection_error=False,  # Graceful fallback to memory
-    default_ttl=1800,               # 30 minutes
-    compression_threshold=2000       # Compress larger responses
+    fail_on_connection_error=False
 )
-
-# AI application cache (optimized for text processing)
-ai_cache = CacheFactory.for_ai_app(
-    redis_url="redis://localhost:6379/1",
-    fail_on_connection_error=False,
-    text_hash_threshold=500,         # Hash long texts
-    compression_level=6,             # Higher compression
-    operation_ttls={
-        "summarize": 3600,           # 1 hour
-        "sentiment": 1800            # 30 minutes
-    }
+legacy_ai_cache = CacheFactory.for_ai_app(
+    redis_url="redis://localhost:6379/1", 
+    fail_on_connection_error=False
 )
-
-# Testing cache (isolated, fast)
-test_cache = CacheFactory.for_testing("memory")  # or "redis"
-
-# Configuration-based creation
-config = CacheConfigBuilder().for_environment("production").build()
-prod_cache = CacheFactory.create_cache_from_config(config)
 ```
 
 ### Configuration Management with Builder Pattern
@@ -221,29 +225,34 @@ The `CacheConfigBuilder` provides a fluent interface for complex cache configura
 - **Environment Loading:** Automatic environment variable detection
 
 ```python
-from app.infrastructure.cache import CacheConfigBuilder, EnvironmentPresets
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache.cache_presets import CachePresetManager
 
-# Fluent configuration building
-config = (CacheConfigBuilder()
-          .for_environment("production")
-          .with_redis("redis://prod-server:6379/0")
-          .with_security(use_tls=True)
-          .with_compression(threshold=1000, level=6)
-          .with_ai_features(
-              text_hash_threshold=500,
-              operation_ttls={"summarize": 7200}
-          )
-          .build())
+# Preset-based configuration (RECOMMENDED)
+preset_manager = CachePresetManager()
 
-# Environment presets
-dev_config = EnvironmentPresets.development()
-ai_prod_config = EnvironmentPresets.ai_production()
+# Get preset configuration directly
+config = preset_manager.get_preset("production").to_cache_config()
 
-# Environment variable loading
-env_config = CacheConfigBuilder().from_environment().build()
+# List available presets
+available_presets = preset_manager.list_presets()
+# Returns: ['disabled', 'minimal', 'simple', 'development', 'production', 'ai-development', 'ai-production']
 
-# File-based configuration
-file_config = CacheConfigBuilder().from_file("cache_config.json").build()
+# Get preset details
+preset_details = preset_manager.get_preset_details("ai-production")
+
+# Environment-based preset loading
+config = get_cache_config()  # Loads from CACHE_PRESET environment variable
+
+# Custom configuration with preset base + overrides
+os.environ["CACHE_PRESET"] = "production"
+os.environ["CACHE_REDIS_URL"] = "redis://prod-server:6379/0"
+os.environ["CACHE_CUSTOM_CONFIG"] = '{"compression_level": 9, "memory_cache_size": 2000}'
+config = get_cache_config()
+
+# Legacy builder pattern (still supported)
+# from app.infrastructure.cache import CacheConfigBuilder, EnvironmentPresets
+# config = CacheConfigBuilder().for_environment("production").build()
 ```
 
 ### FastAPI Dependency Integration
@@ -265,14 +274,15 @@ from app.infrastructure.cache.dependencies import (
     validate_cache_configuration
 )
 
-# FastAPI endpoint with dependency injection
+# FastAPI endpoint with preset-based dependency injection
 @app.post("/api/process")
 async def process_text(
     request: ProcessRequest,
-    cache: CacheInterface = Depends(get_cache_service),
-    config: CacheConfig = Depends(get_cache_config)
+    cache: CacheInterface = Depends(get_cache_service),  # Automatically uses CACHE_PRESET
+    config: CacheConfig = Depends(get_cache_config)      # Loads preset configuration
 ):
-    # Cache is automatically connected and configured
+    # Cache is automatically configured from CACHE_PRESET environment variable
+    # Example: CACHE_PRESET=ai-production -> AIResponseCache with AI optimizations
     cached_result = await cache.get(f"process:{request.operation}:{hash(request.text)}")
     if cached_result:
         return cached_result
@@ -282,12 +292,27 @@ async def process_text(
     await cache.set(f"process:{request.operation}:{hash(request.text)}", result)
     return result
 
-# Health check endpoint
+# Health check endpoint with preset info
 @app.get("/internal/cache/health")
 async def cache_health(
-    cache: CacheInterface = Depends(get_cache_service)
+    cache: CacheInterface = Depends(get_cache_service),
+    config: CacheConfig = Depends(get_cache_config)
 ):
-    return await get_cache_health_status(cache)
+    health_status = await get_cache_health_status(cache)
+    health_status["preset_used"] = config.preset_name if hasattr(config, 'preset_name') else 'unknown'
+    return health_status
+
+# Configuration validation endpoint
+@app.get("/internal/cache/config")
+async def cache_config_info(
+    config: CacheConfig = Depends(get_cache_config)
+):
+    return {
+        "preset": os.getenv("CACHE_PRESET", "development"),
+        "redis_url": config.redis_url,
+        "default_ttl": config.default_ttl,
+        "ai_features_enabled": config.enable_ai_cache
+    }
 ```
 
 ### Performance Benchmarking Suite
@@ -333,39 +358,58 @@ print(f"Recommendation: {comparison.recommendation}")
 factory_results = await benchmark.benchmark_factory_creation()
 ```
 
-### Environment Configuration System
+### Preset-Based Configuration System
 
-Comprehensive environment variable support with intelligent defaults and validation.
+The cache infrastructure uses a **preset-based configuration system** that dramatically simplifies setup by reducing 28+ individual environment variables to a single `CACHE_PRESET` variable.
 
-**Configuration Variables:**
+**Quick Configuration (Choose One):**
 ```bash
-# Basic Configuration
-REDIS_URL=redis://localhost:6379/0
-CACHE_DEFAULT_TTL=3600
-CACHE_MEMORY_CACHE_SIZE=100
+# Primary Configuration Variable
+CACHE_PRESET=development     # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
 
-# Compression Settings
-CACHE_COMPRESSION_THRESHOLD=1000
-CACHE_COMPRESSION_LEVEL=6
-
-# AI-Specific Settings
-CACHE_TEXT_HASH_THRESHOLD=500
-CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 1800}'
-
-# Security Settings
-CACHE_USE_TLS=false
-CACHE_TLS_CERT_PATH=/path/to/cert.pem
-CACHE_TLS_KEY_PATH=/path/to/key.pem
-
-# Environment Selection
-ENVIRONMENT=production  # development, testing, production
-ENABLE_AI_CACHE=true
+# Optional Overrides (only when needed)
+CACHE_REDIS_URL=redis://localhost:6379/0  # Override Redis connection
+ENABLE_AI_CACHE=true                      # Toggle AI features
+CACHE_CUSTOM_CONFIG='{"compression_level": 9}'  # Advanced JSON overrides
 ```
 
-**Environment Presets:**
-- **Development:** Fast iteration, debug-friendly settings
-- **Testing:** Isolated, reproducible configurations
-- **Production:** Performance-optimized, security-enabled settings
+**Available Presets:**
+
+| Preset | Use Case | Key Features |
+|--------|----------|-------------|
+| **`disabled`** | Testing, minimal overhead | Cache disabled, memory-only fallback, 5min TTL |
+| **`minimal`** | Resource-constrained environments | Lightweight setup, 15min TTL, minimal features |
+| **`simple`** | Quick setup, small applications | Basic caching, 1hr TTL, no AI features |
+| **`development`** | Local development | Debug-friendly, 30min TTL, monitoring enabled |
+| **`production`** | Web applications | High performance, 2hr TTL, optimized settings |
+| **`ai-development`** | AI app development | AI features, 30min TTL, text processing optimized |
+| **`ai-production`** | Production AI workloads | AI optimized, 4hr TTL, maximum performance |
+
+**Benefits of Preset System:**
+- ✅ **Simplicity**: 1 variable instead of 28+ individual variables
+- ✅ **Consistency**: Follows the same pattern as resilience system (`RESILIENCE_PRESET`)
+- ✅ **Reliability**: Battle-tested configurations for common scenarios
+- ✅ **Maintainability**: Easy to add new features without environment variable proliferation
+- ✅ **Quick Setup**: 5-minute setup vs 30-minute manual configuration
+
+**Override Patterns:**
+```bash
+# Base configuration with overrides
+CACHE_PRESET=production
+CACHE_REDIS_URL=redis://production-server:6379  # Custom Redis URL
+ENABLE_AI_CACHE=false                           # Disable AI features
+
+# Advanced JSON overrides
+CACHE_PRESET=development
+CACHE_CUSTOM_CONFIG='{
+  "compression_threshold": 500,
+  "memory_cache_size": 200,
+  "operation_ttls": {
+    "summarize": 1800,
+    "sentiment": 3600
+  }
+}'
+```
 
 ### Advanced Features
 
@@ -537,17 +581,24 @@ async def process_text(
     return result
 ```
 
-### Environment-Based Configuration
+### Preset-Based Configuration
 ```python
-# Development
-cache = InMemoryCache(default_ttl=1800, max_size=100)
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import CacheFactory
 
-# Production  
-cache = AIResponseCache(
-    redis_url=os.getenv("REDIS_URL", "redis://redis:6379"),
-    default_ttl=int(os.getenv("CACHE_TTL", "3600")),
-    compression_threshold=int(os.getenv("CACHE_COMPRESSION_THRESHOLD", "1000"))
-)
+# Using preset-based configuration
+config = get_cache_config()  # Loads from CACHE_PRESET environment variable
+cache = CacheFactory.create_cache_from_config(config)
+
+# Examples with different presets:
+# CACHE_PRESET=development -> InMemoryCache with debug settings
+# CACHE_PRESET=production -> AIResponseCache with optimized performance
+# CACHE_PRESET=ai-production -> AIResponseCache with AI optimizations
+
+# Manual override example
+os.environ["CACHE_PRESET"] = "production"
+os.environ["CACHE_REDIS_URL"] = "redis://production:6379"
+cache = CacheFactory.create_cache_from_config(get_cache_config())
 ```
 
 ## Error Handling & Resilience

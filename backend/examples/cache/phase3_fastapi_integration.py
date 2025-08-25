@@ -43,6 +43,7 @@ Usage:
 
 import asyncio
 import logging
+import os
 import uvicorn
 from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional
@@ -135,11 +136,29 @@ async def lifespan(app: FastAPI):
         # 🚀 NEW: Preset-based cache (Phase 4 enhancement)
         logger.info("Creating preset-based cache using new dependency injection")
         from app.infrastructure.cache.dependencies import get_cache_config
+        import os
         
         # Load configuration from preset system (CACHE_PRESET environment variable)
+        preset_name = os.getenv("CACHE_PRESET", "development")
+        logger.info(f"Loading cache preset: {preset_name}")
+        
         preset_config = get_cache_config()
         _demo_caches["preset"] = await factory.create_cache_from_config(preset_config)
-        logger.info(f"Loaded preset-based cache with configuration: {preset_config.__class__.__name__}")
+        logger.info(f"✅ Loaded {preset_name} preset with config: {preset_config.__class__.__name__}")
+        
+        # Demonstrate different preset scenarios
+        preset_scenarios = {
+            "development": "Optimized for local development with debug features",
+            "production": "High-performance production configuration",
+            "ai-development": "AI features enabled for development",
+            "ai-production": "AI-optimized production configuration",
+            "minimal": "Lightweight configuration for resource constraints"
+        }
+        
+        if preset_name in preset_scenarios:
+            logger.info(f"Using {preset_name} preset: {preset_scenarios[preset_name]}")
+        else:
+            logger.warning(f"Unknown preset '{preset_name}', using defaults")
         
         logger.info(f"✅ Initialized {len(_demo_caches)} cache instances successfully")
         
@@ -202,12 +221,14 @@ async def get_demo_cache(cache_type: str = "web") -> CacheInterface:
 async def root():
     """Root endpoint with API information"""
     return {
-        "message": "Phase 3 Cache Integration Example",
-        "version": "3.0.0",
+        "message": "Phase 4 Cache Integration Example (Preset-Based)",
+        "version": "4.0.0",
         "documentation": "/docs",
         "health_check": "/health",
         "cache_status": "/cache/status",
-        "cache_test": "/cache/test"
+        "cache_test": "/cache/test",
+        "preset_info": "/cache/preset-info",  # 🚀 New in Phase 4
+        "dependency_demo": "/dependencies/demo"
     }
 
 @app.get("/health", response_model=HealthResponse)
@@ -392,6 +413,61 @@ async def clear_cache(
         logger.error(f"Cache clear failed: {e}")
         return {"success": False, "message": f"Clear failed: {str(e)}"}
 
+@app.get("/cache/preset-info")
+async def preset_info():
+    """
+    Show current preset configuration and available presets
+    
+    🚀 Phase 4 Feature: Demonstrates the preset-based configuration system
+    """
+    import os
+    from app.infrastructure.cache.cache_presets import CachePresetManager
+    
+    try:
+        preset_manager = CachePresetManager()
+        current_preset = os.getenv("CACHE_PRESET", "development")
+        redis_url = os.getenv("CACHE_REDIS_URL", "not set")
+        ai_enabled = os.getenv("ENABLE_AI_CACHE", "not set")
+        custom_config = os.getenv("CACHE_CUSTOM_CONFIG", "not set")
+        
+        # Get available presets
+        available_presets = preset_manager.list_presets()
+        
+        # Get current preset details
+        current_preset_details = {}
+        if current_preset in available_presets:
+            current_preset_details = preset_manager.get_preset_details(current_preset)
+        
+        return {
+            "current_configuration": {
+                "preset": current_preset,
+                "redis_url": redis_url,
+                "ai_enabled": ai_enabled,
+                "custom_config": custom_config
+            },
+            "current_preset_details": current_preset_details,
+            "available_presets": available_presets,
+            "preset_descriptions": {
+                "disabled": "Cache disabled, memory-only fallback",
+                "minimal": "Lightweight for resource-constrained environments",
+                "simple": "Basic caching for small applications",
+                "development": "Local development with debug features",
+                "production": "High-performance production settings",
+                "ai-development": "AI features enabled for development",
+                "ai-production": "AI-optimized production configuration"
+            },
+            "migration_note": "🚀 Phase 4: Reduced 28+ variables to 1-4 variables using presets",
+            "example_usage": {
+                "development": "CACHE_PRESET=development",
+                "production": "CACHE_PRESET=production CACHE_REDIS_URL=redis://prod:6379",
+                "ai_app": "CACHE_PRESET=ai-production ENABLE_AI_CACHE=true"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting preset info: {e}")
+        return {"error": str(e)}
+
 # Demonstration of using standard Phase 3 dependencies
 @app.get("/dependencies/demo")
 async def dependency_demo(
@@ -424,11 +500,16 @@ def main():
     """
     Main function to run the example application
     """
-    print("🚀 Starting Phase 3 Cache Integration Example")
+    print("🚀 Starting Phase 4 Cache Integration Example (Preset-Based)")
     print("📖 Visit http://localhost:8080/docs for API documentation")
     print("🔍 Visit http://localhost:8080/health for health status")
     print("📊 Visit http://localhost:8080/cache/status for cache details")
     print("🧪 Visit http://localhost:8080/cache/test for testing cache operations")
+    print("⚙️  Visit http://localhost:8080/cache/preset-info for preset configuration info")
+    print("🔗 Visit http://localhost:8080/dependencies/demo for dependency injection demo")
+    print()
+    print(f"💡 Current preset: {os.getenv('CACHE_PRESET', 'development')}")
+    print("💡 Try different presets: export CACHE_PRESET=production")
     print()
     
     # Run the FastAPI application

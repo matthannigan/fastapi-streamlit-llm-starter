@@ -340,29 +340,46 @@ hybrid_config = (CacheConfigBuilder()
     .build())
 ```
 
-**Supported Environment Variables:**
+**Preset-Based Configuration (Phase 4+):**
 ```bash
-# Basic cache configuration
+# Primary preset configuration (replaces 10+ individual variables above)
+CACHE_PRESET=production                    # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
+
+# Essential overrides (only when needed)
+CACHE_REDIS_URL=redis://localhost:6379     # Override Redis connection
+ENABLE_AI_CACHE=true                        # Toggle AI features
+
+# Advanced JSON overrides for complex scenarios
+CACHE_CUSTOM_CONFIG='{
+  "compression_threshold": 1000,
+  "memory_cache_size": 100,
+  "default_ttl": 3600,
+  "use_tls": true
+}'
+
+# Legacy individual variables (deprecated, use presets instead)
+# CACHE_DEFAULT_TTL=3600                    # ❌ Use CACHE_PRESET instead
+# CACHE_COMPRESSION_THRESHOLD=1000          # ❌ Use CACHE_PRESET or CACHE_CUSTOM_CONFIG
+# CACHE_MEMORY_SIZE=100                     # ❌ Use CACHE_PRESET or CACHE_CUSTOM_CONFIG
+
+# ❌ Legacy individual AI variables (deprecated, use ai-development or ai-production presets instead)
+# CACHE_ENABLE_AI_FEATURES=true            # Use CACHE_PRESET=ai-development
+# CACHE_TEXT_HASH_THRESHOLD=1000           # Use CACHE_PRESET=ai-production  
+# CACHE_HASH_ALGORITHM=sha256              # Use CACHE_PRESET=ai-production
+# CACHE_ENABLE_SMART_PROMOTION=true        # Use CACHE_PRESET=ai-production
+# CACHE_MAX_TEXT_LENGTH=100000             # Use CACHE_PRESET=ai-production
+# CACHE_OPERATION_TTLS='{"summarize": 7200}' # Use CACHE_PRESET=ai-production
+```
+
+**Modern Preset Approach (Recommended):**
+```bash
+# For AI applications in development
+CACHE_PRESET=ai-development
 CACHE_REDIS_URL=redis://localhost:6379
-CACHE_DEFAULT_TTL=3600
-CACHE_MEMORY_SIZE=100
-CACHE_COMPRESSION_THRESHOLD=1000
-CACHE_COMPRESSION_LEVEL=6
-CACHE_ENVIRONMENT=production
 
-# Security configuration
-CACHE_USE_TLS=true
-CACHE_TLS_CERT_PATH=/certs/redis.crt
-CACHE_TLS_KEY_PATH=/certs/redis.key
-CACHE_REDIS_PASSWORD=secure_password
-
-# AI-specific configuration
-CACHE_ENABLE_AI_FEATURES=true
-CACHE_TEXT_HASH_THRESHOLD=1000
-CACHE_HASH_ALGORITHM=sha256
-CACHE_ENABLE_SMART_PROMOTION=true
-CACHE_MAX_TEXT_LENGTH=100000
-CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 86400}'
+# For AI applications in production  
+CACHE_PRESET=ai-production
+CACHE_REDIS_URL=redis://production:6379
 ```
 
 ### File-Based Configuration
@@ -1244,27 +1261,29 @@ async def warm_cache_across_workers(cache_factory, critical_data: dict):
 **Docker/Kubernetes Multi-Worker Patterns:**
 
 ```python
-# Environment-based worker configuration
+# Environment-based worker configuration with presets
 import os
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import CacheFactory
 
 async def configure_for_container_deployment():
-    """Configure cache for containerized multi-worker deployment."""
+    """Configure cache for containerized multi-worker deployment using presets."""
     
     # Get worker information from environment
     worker_id = int(os.environ.get('WORKER_ID', '0'))
     total_workers = int(os.environ.get('TOTAL_WORKERS', '1'))
-    redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379')
     
-    # Adjust configuration based on worker count
-    l1_cache_size = max(25, 200 // total_workers)  # Distribute L1 cache budget
+    # Use preset-based configuration
+    # Environment should set: CACHE_PRESET=production, CACHE_REDIS_URL=redis://redis:6379
+    config = get_cache_config()  # Loads from CACHE_PRESET
     
-    cache = await factory.for_web_app(
-        redis_url=redis_url,
-        l1_cache_size=l1_cache_size,
-        compression_threshold=1000,
-        default_ttl=3600,
-        fail_on_connection_error=True  # Fail fast in production
-    )
+    # Optional: Adjust memory cache size based on worker count
+    if total_workers > 1:
+        l1_cache_size = max(25, 500 // total_workers)  # Distribute memory budget
+        os.environ["CACHE_CUSTOM_CONFIG"] = f'{{"memory_cache_size": {l1_cache_size}}}'
+        config = get_cache_config()  # Reload with custom config
+    
+    cache = CacheFactory.create_cache_from_config(config)
     
     logger.info(f"Worker {worker_id}/{total_workers} cache configured with L1 size: {l1_cache_size}")
     
