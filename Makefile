@@ -713,6 +713,11 @@ generate-doc-views:
 	@$(PYTHON_CMD) scripts/generate_doc_views.py
 #	@echo "✅ Documentation views generated: docs/BY_TOPIC.md and docs/BY_AUDIENCE.md"
 
+# Generate public contracts
+generate-contracts:
+	@echo "📄 Generating .pyi public contracts for backend..."
+	@find backend/contracts -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + && $(PYTHON_CMD) scripts/generate_contract.py backend/app/ -o backend/contracts/
+
 ##################################################################################################
 # Documentation Website (via Docusaurus)
 ##################################################################################################
