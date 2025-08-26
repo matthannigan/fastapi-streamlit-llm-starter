@@ -118,8 +118,7 @@ from .benchmarks import (BenchmarkResult, BenchmarkSuite,
                          CacheBenchmarkDataGenerator, CachePerformanceBenchmark,
                          CachePerformanceThresholds, ComparisonResult,
                          PerformanceRegressionDetector)
-# Compatibility wrapper
-from .compatibility import CacheCompatibilityWrapper
+# Compatibility wrapper (removed - no longer needed)
 # Memory implementation
 from .memory import InMemoryCache
 # Migration utilities
@@ -186,8 +185,6 @@ __all__ = [
     "CachePerformanceThresholds",
     # Migration utilities
     "CacheMigrationManager",
-    # Compatibility wrapper
-    "CacheCompatibilityWrapper",
     # Memory implementation
     "InMemoryCache",
     # Monitoring and metrics

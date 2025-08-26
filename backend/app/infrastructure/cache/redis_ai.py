@@ -27,17 +27,17 @@ Architecture:
     - AI-specific callbacks integrate with the generic cache event system
 
 Usage Examples:
-    Basic Usage (maintains backward compatibility):
+    Basic Usage (uses standard cache interface):
         >>> cache = AIResponseCache(redis_url="redis://localhost:6379")
         >>> await cache.connect()
         >>> 
-        >>> # Cache an AI response
-        >>> await cache.cache_response(
+        >>> # Cache an AI response using standard interface
+        >>> key = cache.build_key(
         ...     text="Long document to summarize...",
-        ...     operation="summarize",
-        ...     options={"max_length": 100},
-        ...     response={"summary": "Brief summary", "confidence": 0.95}
+        ...     operation="summarize", 
+        ...     options={"max_length": 100}
         ... )
+        >>> await cache.set(key, {"summary": "Brief summary", "confidence": 0.95}, ttl=3600)
 
     Advanced Configuration:
         >>> cache = AIResponseCache(
@@ -941,320 +941,47 @@ class AIResponseCache(GenericRedisCache):
     # =============================================================================
     
     # Public AI-Specific Methods
-
-    def cache_response(
-        self,
-        text: str,
-        operation: str,
-        options: Dict[str, Any],
-        response: Dict[str, Any],
-        question: Optional[str] = None,
-    ):
+    
+    def build_key(self, text: str, operation: str, options: Dict[str, Any]) -> str:
         """
-        Cache AI response with enhanced AI-specific optimizations and comprehensive error handling.
-
-        This method provides the main AI caching functionality, using the inherited
-        set() method from GenericRedisCache while adding comprehensive AI-specific features:
-        - Intelligent cache key generation using CacheKeyGenerator
-        - Operation-specific TTLs from configuration
-        - Text tier analysis for optimization decisions
-        - Enhanced response metadata for AI analytics
-        - Comprehensive error handling with custom exceptions
-        - Performance monitoring and metrics collection
-
+        Build cache key using generic key generation logic.
+        
+        This helper method provides a generic interface for cache key generation
+        without any domain-specific knowledge. It delegates to the CacheKeyGenerator
+        for actual key generation, allowing domain services to build keys using
+        the infrastructure layer's key generation patterns.
+        
         Args:
-            text (str): Input text that generated this response
-            operation (str): Operation type (e.g., 'summarize', 'sentiment')
-            options (Dict[str, Any]): Operation options used to generate response
-            response (Dict[str, Any]): AI response data to cache
-            question (str, optional): Question for Q&A operations
-
-        Raises:
-            ValidationError: If input parameters are invalid
-            InfrastructureError: If cache operation fails critically
-
-        Example:
-            >>> await cache.cache_response(
-            ...     text="Long document to summarize...",
-            ...     operation="summarize",
-            ...     options={"max_length": 100},
-            ...     response={"summary": "Brief summary", "confidence": 0.95}
-            ... )
-        """
-        async def _do_cache_response():
-            start_time = time.time()
-            try:
-                # Input validation
-                if not text or not isinstance(text, str):
-                    raise ValidationError(
-                        "Invalid text parameter: must be non-empty string",
-                        context={'text_type': type(text), 'text_length': len(text) if text else 0}
-                    )
-                if not operation or not isinstance(operation, str):
-                    raise ValidationError(
-                        "Invalid operation parameter: must be non-empty string",
-                        context={'operation': operation, 'operation_type': type(operation)}
-                    )
-                if not isinstance(options, dict):
-                    raise ValidationError(
-                        "Invalid options parameter: must be dictionary",
-                        context={'options_type': type(options)}
-                    )
-                if not isinstance(response, dict):
-                    raise ValidationError(
-                        "Invalid response parameter: must be dictionary",
-                        context={'response_type': type(response)}
-                    )
-
-                cache_key = self.key_generator.generate_cache_key(text, operation, options, question)
-                text_tier = self._get_text_tier(text)
-                ttl = self.operation_ttls.get(operation, self.default_ttl)
-                cached_response = {
-                    **response,
-                    "cached_at": datetime.now().isoformat(),
-                    "cache_hit": False,
-                    "text_length": len(text),
-                    "text_tier": text_tier,
-                    "operation": operation,
-                    "ai_version": "refactored_inheritance",
-                    "key_generation_time": getattr(self.key_generator, 'last_generation_time', 0),
-                    "options_hash": str(hash(str(sorted(options.items())) if options else "")),
-                    "question_provided": question is not None,
-                }
-
-                await self.set(cache_key, cached_response, ttl)
-                self._record_cache_operation(
-                    operation=operation,
-                    cache_operation='set',
-                    text_tier=text_tier,
-                    duration=time.time() - start_time,
-                    success=True,
-                    additional_data={
-                        'text_length': len(text),
-                        'ttl': ttl,
-                        'response_size': len(str(cached_response)),
-                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0)
-                    }
-                )
-                duration = time.time() - start_time
-                logger.debug(
-                    f"Successfully cached AI response: operation={operation}, tier={text_tier}, "
-                    f"ttl={ttl}s, duration={duration:.3f}s, text_length={len(text)}, "
-                    f"key_generation_time={getattr(self.key_generator, 'last_generation_time', 0):.3f}s"
-                )
-            except ValidationError:
-                raise
-            except Exception as e:
-                duration = time.time() - start_time
-                if 'operation' in locals() and 'text_tier' in locals():
-                    self._record_cache_operation(
-                        operation=operation,
-                        cache_operation='set',
-                        text_tier=text_tier,
-                        duration=duration,
-                        success=False,
-                        additional_data={
-                            'error': str(e),
-                            'error_type': type(e).__name__,
-                            'text_length': len(text) if text else 0
-                        }
-                    )
-                logger.error(
-                    f"Failed to cache AI response: {e}",
-                    exc_info=True,
-                    extra={
-                        'operation': operation if 'operation' in locals() else 'unknown',
-                        'text_length': len(text) if text else 0,
-                        'options_count': len(options) if isinstance(options, dict) else 0,
-                        'response_size': len(str(response)) if isinstance(response, dict) else 0,
-                        'duration': duration,
-                        'error_type': type(e).__name__
-                    }
-                )
-                # swallow non-validation errors
-                return
-
-        class _AwaitableCacheOp:
-            def __await__(self):
-                return _do_cache_response().__await__()
-
-        return _AwaitableCacheOp()
-
-    async def get_cached_response(
-        self,
-        text: str,
-        operation: str,
-        options: Optional[Dict[str, Any]] = None,
-        question: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve cached AI response with enhanced AI-specific optimizations and comprehensive metrics.
-
-        This method provides comprehensive AI cache retrieval functionality, using the inherited
-        get() method from GenericRedisCache while adding extensive AI-specific features:
-        - Intelligent cache key generation using CacheKeyGenerator
-        - Text tier determination for metrics and promotion decisions
-        - Enhanced cache hit metadata with retrieval timestamps
-        - Comprehensive AI metrics tracking for hits and misses
-        - Memory cache promotion logic for frequently accessed content
-        - Detailed error handling and logging
-
-        Args:
-            text (str): Input text content to search for in cache
-            operation (str): Operation type (e.g., 'summarize', 'sentiment')
-            options (Dict[str, Any]): Operation options used for key generation
-            question (str, optional): Question for Q&A operations
-
-        Returns:
-            Cached response dictionary with enhanced metadata if found, None otherwise.
-            Response includes: original response data, cache_hit=True, retrieved_at timestamp
-
-        Raises:
-            ValidationError: If input parameters are invalid
-
-        Example:
-            >>> cached = await cache.get_cached_response(
-            ...     text="Long document to analyze...",
-            ...     operation="summarize",
-            ...     options={"max_length": 100}
-            ... )
-            >>> if cached:
-            ...     print(f"Cache hit! Summary: {cached['summary']}")
-            ...     print(f"Retrieved at: {cached['retrieved_at']}")
-            ... else:
-            ...     print("Cache miss - need to generate new response")
-        """
-        start_time = time.time()
-        if options is None:
-            options = {}
-
-        try:
-            # Input validation
-            if not text or not isinstance(text, str):
-                raise ValidationError(
-                    "Invalid text parameter: must be non-empty string",
-                    context={'text_type': type(text), 'text_length': len(text) if text else 0}
-                )
-            
-            if not operation or not isinstance(operation, str):
-                raise ValidationError(
-                    "Invalid operation parameter: must be non-empty string",
-                    context={'operation': operation, 'operation_type': type(operation)}
-                )
-            
-            if not isinstance(options, dict):
-                raise ValidationError(
-                    "Invalid options parameter: must be dictionary",
-                    context={'options_type': type(options)}
-                )
-
-            # Generate AI-optimized cache key using CacheKeyGenerator
-            cache_key = self.key_generator.generate_cache_key(text, operation, options, question)
-            
-            # Determine text tier for metrics and promotion decisions
-            text_tier = self._get_text_tier(text)
-
-            # Use inherited get method from GenericRedisCache (will check L1 first and populate/promote L1)
-            cached_data = await self.get(cache_key)
-
-            if cached_data:
-                # Cache hit - enhance cached data with retrieval metadata
-                if isinstance(cached_data, dict):
-                    cached_data["cache_hit"] = True
-                    cached_data["retrieved_at"] = datetime.now().isoformat()
+            text: Input text for key generation
+            operation: Operation type (generic string)
+            options: Options dictionary containing all operation-specific data
+                    including any embedded question or other parameters
                     
-                    # Add retrieval metrics to existing cached metadata
-                    if "retrieval_count" not in cached_data:
-                        cached_data["retrieval_count"] = 1
-                    else:
-                        cached_data["retrieval_count"] += 1
-                
-                # Record AI cache hit metrics
-                self._record_cache_operation(
-                    operation=operation,
-                    cache_operation='get',
-                    text_tier=text_tier,
-                    duration=time.time() - start_time,
-                    success=True,
-                    additional_data={
-                        'cache_result': 'hit',
-                        'text_length': len(text),
-                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0),
-                        'retrieval_count': cached_data.get("retrieval_count", 1) if isinstance(cached_data, dict) else 1
-                    }
-                )
-
-                # Check if content should be promoted to memory cache for faster future access
-                if self._should_promote_to_memory(text_tier, operation):
-                    # Memory cache promotion is handled automatically by parent class
-                    # via L1 cache integration - GenericRedisCache.get() already promotes to L1
-                    logger.debug(f"Content eligible for memory cache promotion: tier={text_tier}, operation={operation}")
-
-                duration = time.time() - start_time
-                logger.debug(
-                    f"AI cache hit: operation={operation}, tier={text_tier}, "
-                    f"duration={duration:.3f}s, text_length={len(text)}, "
-                    f"retrieval_count={cached_data.get('retrieval_count', 1) if isinstance(cached_data, dict) else 1}"
-                )
-                return cached_data
-            else:
-                # Cache miss - record AI cache miss metrics
-                self._record_cache_operation(
-                    operation=operation,
-                    cache_operation='get',
-                    text_tier=text_tier,
-                    duration=time.time() - start_time,
-                    success=False,
-                    additional_data={
-                        'cache_result': 'miss',
-                        'text_length': len(text),
-                        'key_generation_time': getattr(self.key_generator, 'last_generation_time', 0),
-                        'miss_reason': 'key_not_found'
-                    }
-                )
-
-                duration = time.time() - start_time
-                logger.debug(
-                    f"AI cache miss: operation={operation}, tier={text_tier}, "
-                    f"duration={duration:.3f}s, text_length={len(text)}"
-                )
-                return None
-
-        except ValidationError:
-            # Re-raise validation errors to caller
-            raise
-        except Exception as e:
-            duration = time.time() - start_time
+        Returns:
+            Generated cache key string
             
-            # Record failed cache retrieval for metrics
-            if 'operation' in locals() and 'text_tier' in locals():
-                self._record_cache_operation(
-                    operation=operation,
-                    cache_operation='get',
-                    text_tier=text_tier,
-                    duration=duration,
-                    success=False,
-                    additional_data={
-                        'cache_result': 'error',
-                        'error': str(e),
-                        'error_type': type(e).__name__,
-                        'text_length': len(text) if text else 0
-                    }
-                )
+        Behavior:
+            - Delegates to CacheKeyGenerator for actual key generation
+            - No domain-specific logic or knowledge about operations
+            - Generic interface suitable for any domain service usage
+            - Maintains consistency with existing key generation patterns
             
-            # Log error with comprehensive context
-            logger.error(
-                f"Cache retrieval error: {e}",
-                exc_info=True,
-                extra={
-                    'operation': operation if 'operation' in locals() else 'unknown',
-                    'text_length': len(text) if text else 0,
-                    'options_count': len(options) if isinstance(options, dict) else 0,
-                    'duration': duration,
-                    'error_type': type(e).__name__
-                }
-            )
-            return None
+        Examples:
+            >>> # Basic operation key generation
+            >>> key = cache.build_key(
+            ...     text="Sample text",
+            ...     operation="process",
+            ...     options={"param": "value"}
+            ... )
+            
+            >>> # Key generation with embedded question
+            >>> key = cache.build_key(
+            ...     text="Document content",
+            ...     operation="qa",
+            ...     options={"question": "What is this about?", "max_tokens": 150}
+            ... )
+        """
+        return self.key_generator.generate_cache_key(text, operation, options)
 
     async def invalidate_pattern(self, pattern: str, operation_context: str = ""):
         """
