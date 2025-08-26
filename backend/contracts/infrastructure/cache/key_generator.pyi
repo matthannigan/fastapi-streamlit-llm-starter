@@ -45,6 +45,14 @@ Usage Examples:
         ... )
         >>> # Result: "ai_cache:op:summarize|txt:Document to summarize...|opts:abc12345"
         
+    Q&A Usage with Question in Options:
+        >>> key = generator.generate_cache_key(
+        ...     text="Document content", 
+        ...     operation="qa",
+        ...     options={"question": "What is the main point?", "max_tokens": 150}
+        ... )
+        >>> # Result: "ai_cache:op:qa|txt:Document content|opts:def12345|q:ghi67890"
+        
     With Performance Monitoring:
         >>> from app.infrastructure.cache.monitoring import CachePerformanceMonitor
         >>> monitor = CachePerformanceMonitor()
@@ -110,7 +118,7 @@ class CacheKeyGenerator:
         
         # Large text optimization with custom threshold
         generator = CacheKeyGenerator(text_hash_threshold=2000)
-        key = generator.generate_cache_key(large_document, "analyze")
+        key = generator.generate_cache_key(large_document, "analyze", {})
         
         # Production usage with monitoring
         monitor = CachePerformanceMonitor()
@@ -141,7 +149,7 @@ class CacheKeyGenerator:
         """
         ...
 
-    def generate_cache_key(self, text: str, operation: str, options: Dict[str, Any], question: Optional[str] = None) -> str:
+    def generate_cache_key(self, text: str, operation: str, options: Dict[str, Any]) -> str:
         """
         Generate optimized cache key with efficient text handling.
         
@@ -150,12 +158,14 @@ class CacheKeyGenerator:
         
         The method maintains backward compatibility with existing key formats
         while providing efficient handling of large texts through streaming hashing.
+        Questions are now extracted from the options dictionary to maintain
+        architectural separation and eliminate domain-specific parameters.
         
         Args:
             text: Input text content
             operation: Operation type (summarize, sentiment, etc.)
-            options: Operation options dictionary
-            question: Optional question for Q&A operations
+            options: Operation options dictionary containing all parameters
+                    including embedded question for Q&A operations
         
         Returns:
             Optimized cache key string compatible with existing cache systems.
@@ -165,11 +175,19 @@ class CacheKeyGenerator:
             >>> key = generator.generate_cache_key(
             ...     text="Sample document",
             ...     operation="summarize",
-            ...     options={"max_length": 100},
-            ...     question="What is the main point?"
+            ...     options={"max_length": 100}
             ... )
             >>> print(key)
-            'ai_cache:op:summarize|txt:Sample document|opts:abc12345|q:def67890'
+            'ai_cache:op:summarize|txt:Sample document|opts:abc12345'
+            
+            >>> # Q&A operation with question in options
+            >>> key = generator.generate_cache_key(
+            ...     text="Document content",
+            ...     operation="qa", 
+            ...     options={"question": "What is the main point?", "max_tokens": 150}
+            ... )
+            >>> print(key)  
+            'ai_cache:op:qa|txt:Document content|opts:def67890|q:hij12345'
         """
         ...
 

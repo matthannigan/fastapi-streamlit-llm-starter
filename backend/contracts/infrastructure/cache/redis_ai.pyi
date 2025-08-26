@@ -27,17 +27,17 @@ Architecture:
     - AI-specific callbacks integrate with the generic cache event system
 
 Usage Examples:
-    Basic Usage (maintains backward compatibility):
+    Basic Usage (uses standard cache interface):
         >>> cache = AIResponseCache(redis_url="redis://localhost:6379")
         >>> await cache.connect()
         >>> 
-        >>> # Cache an AI response
-        >>> await cache.cache_response(
+        >>> # Cache an AI response using standard interface
+        >>> key = cache.build_key(
         ...     text="Long document to summarize...",
-        ...     operation="summarize",
-        ...     options={"max_length": 100},
-        ...     response={"summary": "Brief summary", "confidence": 0.95}
+        ...     operation="summarize", 
+        ...     options={"max_length": 100}
         ... )
+        >>> await cache.set(key, {"summary": "Brief summary", "confidence": 0.95}, ttl=3600)
 
     Advanced Configuration:
         >>> cache = AIResponseCache(
@@ -160,77 +160,44 @@ class AIResponseCache(GenericRedisCache):
         """
         ...
 
-    def cache_response(self, text: str, operation: str, options: Dict[str, Any], response: Dict[str, Any], question: Optional[str] = None):
+    def build_key(self, text: str, operation: str, options: Dict[str, Any]) -> str:
         """
-        Cache AI response with enhanced AI-specific optimizations and comprehensive error handling.
+        Build cache key using generic key generation logic.
         
-        This method provides the main AI caching functionality, using the inherited
-        set() method from GenericRedisCache while adding comprehensive AI-specific features:
-        - Intelligent cache key generation using CacheKeyGenerator
-        - Operation-specific TTLs from configuration
-        - Text tier analysis for optimization decisions
-        - Enhanced response metadata for AI analytics
-        - Comprehensive error handling with custom exceptions
-        - Performance monitoring and metrics collection
+        This helper method provides a generic interface for cache key generation
+        without any domain-specific knowledge. It delegates to the CacheKeyGenerator
+        for actual key generation, allowing domain services to build keys using
+        the infrastructure layer's key generation patterns.
         
         Args:
-            text (str): Input text that generated this response
-            operation (str): Operation type (e.g., 'summarize', 'sentiment')
-            options (Dict[str, Any]): Operation options used to generate response
-            response (Dict[str, Any]): AI response data to cache
-            question (str, optional): Question for Q&A operations
-        
-        Raises:
-            ValidationError: If input parameters are invalid
-            InfrastructureError: If cache operation fails critically
-        
-        Example:
-            >>> await cache.cache_response(
-            ...     text="Long document to summarize...",
-            ...     operation="summarize",
-            ...     options={"max_length": 100},
-            ...     response={"summary": "Brief summary", "confidence": 0.95}
-            ... )
-        """
-        ...
-
-    async def get_cached_response(self, text: str, operation: str, options: Optional[Dict[str, Any]] = None, question: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve cached AI response with enhanced AI-specific optimizations and comprehensive metrics.
-        
-        This method provides comprehensive AI cache retrieval functionality, using the inherited
-        get() method from GenericRedisCache while adding extensive AI-specific features:
-        - Intelligent cache key generation using CacheKeyGenerator
-        - Text tier determination for metrics and promotion decisions
-        - Enhanced cache hit metadata with retrieval timestamps
-        - Comprehensive AI metrics tracking for hits and misses
-        - Memory cache promotion logic for frequently accessed content
-        - Detailed error handling and logging
-        
-        Args:
-            text (str): Input text content to search for in cache
-            operation (str): Operation type (e.g., 'summarize', 'sentiment')
-            options (Dict[str, Any]): Operation options used for key generation
-            question (str, optional): Question for Q&A operations
-        
+            text: Input text for key generation
+            operation: Operation type (generic string)
+            options: Options dictionary containing all operation-specific data
+                    including any embedded question or other parameters
+                    
         Returns:
-            Cached response dictionary with enhanced metadata if found, None otherwise.
-            Response includes: original response data, cache_hit=True, retrieved_at timestamp
-        
-        Raises:
-            ValidationError: If input parameters are invalid
-        
-        Example:
-            >>> cached = await cache.get_cached_response(
-            ...     text="Long document to analyze...",
-            ...     operation="summarize",
-            ...     options={"max_length": 100}
+            Generated cache key string
+            
+        Behavior:
+            - Delegates to CacheKeyGenerator for actual key generation
+            - No domain-specific logic or knowledge about operations
+            - Generic interface suitable for any domain service usage
+            - Maintains consistency with existing key generation patterns
+            
+        Examples:
+            >>> # Basic operation key generation
+            >>> key = cache.build_key(
+            ...     text="Sample text",
+            ...     operation="process",
+            ...     options={"param": "value"}
             ... )
-            >>> if cached:
-            ...     print(f"Cache hit! Summary: {cached['summary']}")
-            ...     print(f"Retrieved at: {cached['retrieved_at']}")
-            ... else:
-            ...     print("Cache miss - need to generate new response")
+            
+            >>> # Key generation with embedded question
+            >>> key = cache.build_key(
+            ...     text="Document content",
+            ...     operation="qa",
+            ...     options={"question": "What is this about?", "max_tokens": 150}
+            ... )
         """
         ...
 

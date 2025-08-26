@@ -471,16 +471,15 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         ...     text: str,
         ...     cache: AIResponseCache = Depends(get_cache_service)
         ... ):
-        ...     # Check for cached response
-        ...     cached_result = await cache.get_cached_response(
-        ...         text, "summarization", {"max_length": 100}
-        ...     )
+        ...     # Build cache key and check for cached response
+        ...     cache_key = cache.build_key(text, "summarization", {"max_length": 100})
+        ...     cached_result = await cache.get(cache_key)
         ...     if cached_result:
         ...         return {"result": cached_result, "from_cache": True}
         ...     
-        ...     # Process and cache new response
+        ...     # Process and cache new response using standard interface
         ...     result = await process_ai_request(text)
-        ...     await cache.cache_response(text, "summarization", {"max_length": 100}, result)
+        ...     await cache.set(cache_key, result, ttl=3600)
         ...     return {"result": result, "from_cache": False}
         
         >>> # Service configuration verification

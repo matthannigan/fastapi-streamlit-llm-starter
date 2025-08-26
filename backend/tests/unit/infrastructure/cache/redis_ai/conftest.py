@@ -186,7 +186,7 @@ def mock_key_generator():
     generator.performance_monitor = None
     
     # Mock key generation method per contract - returns properly formatted cache keys
-    def mock_generate_key(text, operation, options, question=None):
+    def mock_generate_key(text, operation, options):
         # Simulate the documented key format: "ai_cache:op:{operation}|txt:{text_or_hash}|opts:{options_hash}"
         if len(text) > generator.text_hash_threshold:
             text_part = f"hash:{hashlib.sha256(text.encode()).hexdigest()[:12]}"
@@ -196,8 +196,9 @@ def mock_key_generator():
         options_hash = hashlib.sha256(str(sorted(options.items())).encode()).hexdigest()[:8]
         key = f"ai_cache:op:{operation}|txt:{text_part}|opts:{options_hash}"
         
-        if question:
-            question_hash = hashlib.sha256(question.encode()).hexdigest()[:8]
+        # Extract question from options for Q&A operations
+        if options and "question" in options:
+            question_hash = hashlib.sha256(options["question"].encode()).hexdigest()[:8]
             key += f"|q:{question_hash}"
             
         return key

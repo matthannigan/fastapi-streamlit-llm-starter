@@ -226,12 +226,9 @@ class CacheFactory:
             Basic AI application cache:
                 >>> factory = CacheFactory()
                 >>> cache = await factory.for_ai_app()
-                >>> await cache.cache_response(
-                ...     text="Document to analyze...",
-                ...     operation="summarize",
-                ...     options={"max_length": 100},
-                ...     response={"summary": "Brief summary"}
-                ... )
+                >>> # Use standard interface for caching
+                >>> cache_key = cache.build_key("Document to analyze...", "summarize", {"max_length": 100})
+                >>> await cache.set(cache_key, {"summary": "Brief summary"}, ttl=3600)
             
             Production AI cache with custom settings:
                 >>> cache = await factory.for_ai_app(

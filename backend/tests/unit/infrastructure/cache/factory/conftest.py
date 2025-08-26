@@ -89,21 +89,27 @@ def mock_ai_response_cache():
             return True
         return False
     
-    async def mock_cache_response(text, operation, options, response, ttl=None):
-        key = f"ai_cache:{operation}:{text[:50]}"
-        mock_cache._internal_storage[key] = response
+    def mock_build_key(text, operation, options):
+        """Mock build_key method using simplified key generation logic."""
+        # Simplified mock key generation - for realistic testing, use CacheKeyGenerator
+        text_part = text[:50] + ("..." if len(text) > 50 else "")
+        options_str = str(sorted(options.items())) if options else ""
+        options_hash = str(hash(options_str))[-8:] if options_str else "00000000"
+        
+        key = f"ai_cache:op:{operation}|txt:{text_part}|opts:{options_hash}"
+        
+        # Handle embedded question for Q&A operations
+        if options and "question" in options:
+            question_hash = str(hash(options["question"]))[-8:]
+            key += f"|q:{question_hash}"
+            
         return key
-    
-    async def mock_get_cached_response(text, operation, options):
-        key = f"ai_cache:{operation}:{text[:50]}"
-        return mock_cache._internal_storage.get(key)
     
     # Assign mock implementations
     mock_cache.get.side_effect = mock_get
     mock_cache.set.side_effect = mock_set
     mock_cache.delete.side_effect = mock_delete
-    mock_cache.cache_response.side_effect = mock_cache_response
-    mock_cache.get_cached_response.side_effect = mock_get_cached_response
+    mock_cache.build_key.side_effect = mock_build_key
     
     # Mock factory-relevant methods
     mock_cache.is_connected.return_value = True
