@@ -312,7 +312,7 @@ class TestAIResponseCacheStatistics:
             
         Related Tests:
             - test_get_ai_performance_summary_includes_comprehensive_ai_analytics()
-            - test_cache_response_handles_large_text_with_hashing()
+            - test_build_key_handles_large_text_with_hashing()
         """
         pass
 
@@ -356,7 +356,7 @@ class TestAIResponseCacheStatistics:
             Metrics enable per-operation cache and TTL optimization
             
         Related Tests:
-            - test_cache_response_applies_operation_specific_ttl()
+            - test_standard_cache_interface_integration()
             - test_get_ai_performance_summary_includes_comprehensive_ai_analytics()
         """
         pass

@@ -160,9 +160,9 @@ class TestAIResponseCacheConnection:
         """
         pass
 
-    def test_cache_operations_work_without_redis_connection(self):
+    def test_standard_cache_operations_work_without_redis_connection(self):
         """
-        Test that cache operations continue working without Redis connection.
+        Test that standard cache operations continue working without Redis connection.
         
         Verifies:
             Memory-only operations provide graceful degradation when Redis unavailable
@@ -172,15 +172,16 @@ class TestAIResponseCacheConnection:
             
         Scenario:
             Given: AIResponseCache operating without Redis connection (connection failed)
-            When: cache_response and get_cached_response are called
+            When: Standard cache operations (build_key, get, set) are called
             Then: Operations use memory-only caching through parent class
-            And: Cache operations complete without Redis-related errors
-            And: Performance is reduced but functionality is preserved
+            And: build_key continues generating consistent cache keys
+            And: get/set operations use memory-only caching through GenericRedisCache
             And: Performance monitoring tracks memory-only operation patterns
             
         Memory-Only Operation Verified:
-            - cache_response stores data in memory cache only
-            - get_cached_response retrieves from memory cache only  
+            - build_key generates keys regardless of Redis connection status
+            - set() stores data in memory cache only through parent class
+            - get() retrieves from memory cache only through parent class
             - Operations complete successfully without Redis
             - Performance monitoring tracks degraded mode operations
             

@@ -269,7 +269,7 @@ class TestAIResponseCacheInvalidation:
             
         Related Tests:
             - test_invalidate_by_operation_removes_operation_specific_entries()
-            - test_cache_response_raises_validation_error_for_invalid_input()
+            - test_build_key_raises_validation_error_for_invalid_input()
         """
         pass
 

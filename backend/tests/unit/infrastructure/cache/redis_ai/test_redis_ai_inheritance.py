@@ -154,8 +154,8 @@ class TestAIResponseCacheInheritance:
             AI cache leverages parent class event infrastructure
             
         Related Tests:
-            - test_cache_response_triggers_performance_callbacks()
-            - test_get_cached_response_triggers_hit_miss_callbacks()
+            - test_standard_cache_operations_trigger_performance_callbacks()
+            - test_build_key_integrates_with_callback_system()
         """
         pass
 
