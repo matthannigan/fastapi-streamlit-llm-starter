@@ -60,13 +60,11 @@ Examples:
             request: SummarizeRequest,
             ai_cache: CacheInterface = Depends(get_ai_cache_service)
         ):
-            # AI cache automatically handles operation-specific TTLs and text hashing
-            cached_result = await ai_cache.cache_response(
-                text=request.text,
-                operation="summarize",
-                options=request.options,
-                response=None  # Will check cache first
-            )
+            # Domain service handles caching logic (recommended pattern)
+            # Use TextProcessorService for business logic, not direct cache operations
+            # Direct usage shown for illustration only:
+            cache_key = ai_cache.build_key(request.text, "summarize", request.options)
+            cached_result = await ai_cache.get(cache_key)
             return cached_result
 
     Health check integration:
@@ -515,13 +513,12 @@ async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInter
             request: SummarizeRequest,
             ai_cache: CacheInterface = Depends(get_ai_cache_service)
         ):
-            # Cache optimized for AI operations with text hashing
-            result = await ai_cache.cache_response(
-                text=request.text,
-                operation="summarize",
-                options=request.options,
-                response=None
-            )
+            # Standard interface usage with AI-optimized cache
+            cache_key = ai_cache.build_key(request.text, "summarize", request.options)
+            result = await ai_cache.get(cache_key)
+            if not result:
+                result = {"summary": "Generated summary"}  # Process with AI
+                await ai_cache.set(cache_key, result, ttl=3600)
             return result
     """
     try:

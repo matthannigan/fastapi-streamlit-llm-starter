@@ -31,6 +31,35 @@ cache/
 
 ## Core Architecture
 
+### Architectural Patterns and Best Practices
+
+The cache infrastructure follows clean architecture principles with clear separation between infrastructure and domain layers:
+
+**Infrastructure Layer (this module):**
+- Provides generic, business-agnostic cache operations
+- Uses standard interface methods: `get()`, `set()`, `delete()`, `build_key()`
+- Contains zero domain-specific knowledge
+- Focuses on technical concerns: Redis connections, serialization, monitoring
+
+**Domain Layer (`app/services/`):**
+- Handles all business-specific cache logic
+- Builds cache keys with domain-specific parameters (questions, operation types)
+- Manages operation-specific TTL values
+- Uses infrastructure layer through dependency injection
+
+**Recommended Usage Pattern:**
+```python
+# ✅ Domain Service Pattern (Recommended)
+from app.services.text_processor import TextProcessorService
+
+service = TextProcessorService(settings=settings, cache=cache)
+result = await service.process_text(request)  # Handles all caching internally
+
+# ⚠️ Direct Infrastructure Usage (Advanced only)
+cache_key = cache.build_key(text, operation, options)
+await cache.set(cache_key, data, ttl)
+```
+
 ### `base.py` - The Foundation Interface
 
 The `CacheInterface` abstract base class defines the contract that all cache implementations must follow:
@@ -469,20 +498,20 @@ cache = AIResponseCache(
 
 await cache.connect()
 
-# Cache AI response
-await cache.cache_response(
+# Cache AI response using standard interface
+cache_key = cache.build_key(
     text="Long document to analyze...",
     operation="summarize", 
-    options={"max_length": 100, "model": "gpt-4"},
-    response={"summary": "Brief summary", "confidence": 0.95}
-)
-
-# Retrieve cached response  
-cached = await cache.get_cached_response(
-    text="Long document to analyze...",
-    operation="summarize",
     options={"max_length": 100, "model": "gpt-4"}
 )
+await cache.set(
+    key=cache_key,
+    value={"summary": "Brief summary", "confidence": 0.95},
+    ttl=3600
+)
+
+# Retrieve cached response using standard interface
+cached = await cache.get(cache_key)
 
 # Performance monitoring
 stats = await cache.get_cache_stats()
@@ -561,23 +590,22 @@ async def process_text(
     request: ProcessRequest,
     cache: AIResponseCache = Depends(get_cache_service)
 ):
-    cached_result = await cache.get_cached_response(
+    # Build cache key using standard interface  
+    cache_key = cache.build_key(
         text=request.text,
         operation=request.operation,
         options=request.options
     )
     
+    # Check for cached result
+    cached_result = await cache.get(cache_key)
     if cached_result:
         return cached_result
     
-    # Process and cache result
+    # Process and cache result using standard interface
     result = await ai_service.process(request)
-    await cache.cache_response(
-        text=request.text,
-        operation=request.operation,
-        options=request.options,
-        response=result
-    )
+    ttl = 3600  # 1 hour TTL - should be determined by operation type
+    await cache.set(cache_key, result, ttl=ttl)
     return result
 ```
 
