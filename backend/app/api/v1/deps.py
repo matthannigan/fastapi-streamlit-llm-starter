@@ -187,7 +187,7 @@ async def get_text_processor(
 
 def get_text_processor_service(
     settings: Settings = Depends(get_settings),
-    cache_service: AIResponseCache = Depends(get_cache_service)
+    cache: AIResponseCache = Depends(get_cache_service)
 ) -> TextProcessorService:
     """
     Synchronous domain service dependency provider for AI text processing with infrastructure composition.
@@ -200,7 +200,7 @@ def get_text_processor_service(
     Args:
         settings: Application configuration dependency providing AI model configuration, API keys,
                  processing parameters, and environment-specific settings for text processing operations
-        cache_service: AI response cache service dependency offering Redis-backed caching with graceful
+        cache: AI response cache service dependency offering Redis-backed caching with graceful
                       fallback to memory-only operation for performance optimization and cost reduction
     
     Returns:
@@ -291,4 +291,4 @@ def get_text_processor_service(
         the injected dependencies. Use the async variant `get_text_processor()` for async
         endpoints to maintain proper async context and optimal performance characteristics.
     """
-    return TextProcessorService(settings=settings, cache=cache_service)
+    return TextProcessorService(settings=settings, cache=cache)
