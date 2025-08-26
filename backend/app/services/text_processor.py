@@ -337,7 +337,8 @@ class TextProcessorService:
         
         # Try to get cached response first
         operation_value = operation.value if hasattr(operation, 'value') else operation
-        cached_response = await self.cache_service.get_cached_response(text, operation_value, {}, question)
+        cache_key = await self._build_cache_key(text, operation_value, {}, question)
+        cached_response = await self.cache_service.get(cache_key)
         
         if cached_response:
             logger.info(f"Using cached fallback for {operation}")
@@ -383,12 +384,13 @@ class TextProcessorService:
         
         # Check cache first
         operation_value = request.operation.value if hasattr(request.operation, 'value') else request.operation
-        cached_response = await self.cache_service.get_cached_response(
+        cache_key = await self._build_cache_key(
             request.text, 
             operation_value, 
             request.options or {}, 
             request.question
         )
+        cached_response = await self.cache_service.get(cache_key)
         
         if cached_response:
             logger.info(f"Cache hit for operation: {request.operation}")
@@ -403,7 +405,7 @@ class TextProcessorService:
                 return cached_response
             else:
                  # Handle cases where cache might return a simple string or other type not directly convertible
-                 # This part depends on how cache_response stores data. Assuming it stores a dict.
+                 # This part depends on how the cache stores data. Assuming it stores a dict.
                  logger.warning(f"Unexpected cache response type: {type(cached_response)}")
                  # Attempt to recreate response, or handle error
                  # For now, let's assume it's a dict as per Pydantic model usage
@@ -464,13 +466,9 @@ class TextProcessorService:
                 logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: FALLBACK_USED")
             
             # Cache the successful response (even fallback responses)
-            await self.cache_service.cache_response(
-                request.text,
-                operation_value,
-                request.options or {},
-                response.model_dump(),
-                request.question
-            )
+            # Reuse the cache_key from above to avoid redundant key generation
+            ttl = self._get_ttl_for_operation(operation_value)
+            await self.cache_service.set(cache_key, response.model_dump(), ttl)
                 
             processing_time = time.time() - start_time
             response.processing_time = processing_time
@@ -762,3 +760,95 @@ class TextProcessorService:
     def get_resilience_metrics(self) -> Dict[str, Any]:
         """Get resilience metrics for this service."""
         return ai_resilience.get_all_metrics()
+    
+    # =============================================================================
+    # DOMAIN CACHE KEY BUILDING LOGIC
+    # =============================================================================
+    
+    async def _build_cache_key(
+        self, 
+        text: str, 
+        operation: str, 
+        options: Dict[str, Any], 
+        question: Optional[str] = None
+    ) -> str:
+        """
+        Build cache key using domain-specific logic and question parameter handling.
+        
+        This method encapsulates domain-specific cache key building logic, properly
+        embedding question parameters in the options dictionary before delegating
+        to the infrastructure layer's generic key generation.
+        
+        Args:
+            text: Input text for key generation
+            operation: Operation type (summarize, sentiment, key_points, questions, qa)
+            options: Options dictionary containing operation-specific parameters
+            question: Question for Q&A operations, embedded in options if present
+            
+        Returns:
+            Generated cache key string
+            
+        Behavior:
+            - Embeds question parameter in options dictionary if present
+            - Delegates to infrastructure layer's build_key() method for actual generation
+            - Maintains backwards compatibility with existing key generation logic
+            - Handles all operation types with consistent key generation patterns
+            
+        Examples:
+            >>> # Standard operation without question
+            >>> key = await service._build_cache_key(
+            ...     text="Sample text",
+            ...     operation="summarize",
+            ...     options={"max_length": 100}
+            ... )
+            
+            >>> # Q&A operation with question embedded in options
+            >>> key = await service._build_cache_key(
+            ...     text="Document content",
+            ...     operation="qa",
+            ...     options={"max_tokens": 150},
+            ...     question="What are the main conclusions?"
+            ... )
+        """
+        # Embed question in options dictionary if present
+        if question:
+            options = {**options, 'question': question}
+        
+        # Use generic infrastructure cache key building
+        return self.cache_service.build_key(text, operation, options)
+    
+    def _get_ttl_for_operation(self, operation: str) -> Optional[int]:
+        """
+        Get operation-specific TTL for cache storage.
+        
+        This method provides domain-specific TTL logic for different operation types,
+        ensuring appropriate cache lifetimes based on the nature of each operation.
+        
+        Args:
+            operation: Operation type (summarize, sentiment, key_points, questions, qa)
+            
+        Returns:
+            TTL in seconds for the operation, or None to use cache default
+            
+        Behavior:
+            - Returns operation-specific TTL values based on content volatility
+            - Summarization has longer TTL as summaries change less frequently
+            - Q&A operations have shorter TTL as answers may need fresher context
+            - Sentiment analysis has moderate TTL balancing accuracy and performance
+            
+        Examples:
+            >>> ttl = service._get_ttl_for_operation("summarize")
+            >>> # Returns 7200 (2 hours) for summary operations
+            
+            >>> ttl = service._get_ttl_for_operation("qa") 
+            >>> # Returns 1800 (30 minutes) for Q&A operations
+        """
+        # Operation-specific TTL logic based on content characteristics
+        operation_ttls = {
+            'summarize': 7200,    # 2 hours - summaries change less frequently
+            'sentiment': 3600,    # 1 hour - sentiment relatively stable but contextual
+            'key_points': 5400,   # 1.5 hours - key points moderately stable
+            'questions': 3600,    # 1 hour - questions benefit from fresher context
+            'qa': 1800,           # 30 minutes - Q&A answers need fresher context
+        }
+        return operation_ttls.get(operation)
