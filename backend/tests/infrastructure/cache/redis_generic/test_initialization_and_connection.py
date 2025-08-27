@@ -43,7 +43,6 @@ Fixtures and Mocks:
 
 import pytest
 from typing import Dict, Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestGenericRedisCacheInitialization:
@@ -147,31 +146,7 @@ class TestRedisConnectionManagement:
     and handle connection failures with appropriate fallback behavior.
     """
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_successful_redis_connection(self, mock_redis_from_url, default_generic_redis_config, mock_redis_client):
-        """
-        Test successful connection to Redis server.
-        
-        Given: A valid Redis URL and accessible Redis server
-        When: connect() is called on the GenericRedisCache
-        Then: Connection should be established successfully
-        And: The method should return True
-        And: Redis client should be properly configured
-        """
-        pass
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_redis_connection_failure_graceful_degradation(self, mock_redis_from_url, default_generic_redis_config):
-        """
-        Test graceful degradation when Redis connection fails.
-        
-        Given: An inaccessible Redis server or invalid configuration
-        When: connect() is attempted
-        Then: Connection should fail gracefully
-        And: The method should return False
-        And: The cache should operate in memory-only mode
-        """
-        pass
 
     def test_disconnect_functionality(self, default_generic_redis_config, mock_redis_client):
         """
@@ -218,31 +193,7 @@ class TestSecurityIntegration:
     authentication, TLS encryption, and security validation.
     """
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_secure_connection_with_authentication(self, mock_redis_from_url, mock_security_config, mock_redis_client):
-        """
-        Test secure connection establishment with authentication.
-        
-        Given: Security configuration with authentication enabled
-        When: A secure connection is established
-        Then: Authentication should be properly configured
-        And: Connection should succeed with correct credentials
-        And: Security features should be active
-        """
-        pass
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_tls_connection_establishment(self, mock_redis_from_url, mock_tls_security_config, mock_redis_client):
-        """
-        Test connection establishment with TLS encryption.
-        
-        Given: Security configuration with TLS enabled
-        When: A secure connection is established
-        Then: TLS encryption should be properly configured
-        And: Certificate validation should be performed
-        And: Encrypted connection should be established
-        """
-        pass
 
     def test_security_configuration_validation(self, mock_security_config):
         """
@@ -289,44 +240,8 @@ class TestConnectionFailureScenarios:
     gracefully while maintaining functionality through fallback mechanisms.
     """
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_network_connection_failure(self, mock_redis_from_url, default_generic_redis_config):
-        """
-        Test handling of network connection failures.
-        
-        Given: Network connectivity issues preventing Redis connection
-        When: Connection is attempted
-        Then: Network errors should be handled gracefully
-        And: The cache should fall back to memory-only mode
-        And: No unhandled exceptions should propagate
-        """
-        pass
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_authentication_failure_handling(self, mock_redis_from_url, secure_generic_redis_config):
-        """
-        Test handling of authentication failures.
-        
-        Given: Security configuration with incorrect credentials
-        When: Secure connection is attempted
-        Then: Authentication errors should be properly handled
-        And: Connection should fail with appropriate error indication
-        And: The cache should handle authentication failure gracefully
-        """
-        pass
 
-    @patch('app.infrastructure.cache.redis_generic.redis.from_url')
-    def test_tls_certificate_validation_failure(self, mock_redis_from_url, mock_tls_security_config):
-        """
-        Test handling of TLS certificate validation failures.
-        
-        Given: TLS configuration with invalid certificates
-        When: Secure connection is attempted
-        Then: Certificate validation errors should be handled
-        And: TLS connection should fail with appropriate indication
-        And: Error handling should be secure and informative
-        """
-        pass
 
     def test_redis_server_unavailable(self, default_generic_redis_config):
         """

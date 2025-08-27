@@ -26,8 +26,8 @@ Test Organization:
 
 Fixtures and Mocks:
     From conftest.py:
-        - validation_error_class: ValidationError exception class
-        - configuration_error_class: ConfigurationError exception class
+        - mock_validation_error: Mock ValidationError exception class  
+        - mock_configuration_error: Mock ConfigurationError exception class
     
     Note: No additional mocking needed as parameter_mapping uses only standard
     library components (dataclasses, typing, logging) and internal exceptions
@@ -280,7 +280,7 @@ class TestParameterMapping:
         """
         pass
 
-    def test_invalid_parameter_handling(self, validation_error_class):
+    def test_invalid_parameter_handling(self, mock_validation_error):
         """
         Test handling of invalid parameters during mapping.
         
@@ -292,7 +292,7 @@ class TestParameterMapping:
         """
         pass
 
-    def test_configuration_error_scenarios(self, configuration_error_class):
+    def test_configuration_error_scenarios(self, mock_configuration_error):
         """
         Test handling of configuration errors during mapping.
         
