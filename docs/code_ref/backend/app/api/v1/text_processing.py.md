@@ -2,7 +2,7 @@
 sidebar_label: text_processing
 ---
 
-# Domain Service: AI Text Processing REST API
+# Domain Service: Comprehensive AI Text Processing REST API with Enterprise-Grade Infrastructure Integration
 
   file_path: `backend/app/api/v1/text_processing.py`
 
@@ -10,11 +10,35 @@ sidebar_label: text_processing
 💡 **Demonstrates infrastructure usage patterns**
 🔄 **Expected to be modified/replaced**
 
-This module provides comprehensive REST API endpoints for AI-powered text processing
-operations, demonstrating how to build domain services that leverage infrastructure
-services for AI processing, caching, resilience, and security. It serves as a complete
-example for implementing AI-powered domain APIs with proper error handling,
-authentication, and monitoring.
+This module provides a comprehensive REST API implementation for AI-powered text processing operations,
+serving as a complete reference implementation that demonstrates enterprise-grade patterns for building
+domain services with robust infrastructure integration. It showcases how to leverage infrastructure
+services for AI processing, caching, resilience patterns, security, and operational monitoring while
+maintaining clean separation of concerns between domain logic and infrastructure capabilities.
+
+The module implements production-ready patterns including authentication, validation, caching, resilience,
+monitoring, and error handling, providing a complete template for AI-powered API development that can be
+customized and extended for specific business requirements while maintaining operational excellence.
+
+## Architecture Overview
+
+### Domain Service Implementation Pattern
+This module demonstrates the **Domain Service** architectural pattern where business logic is implemented
+as services that orchestrate infrastructure capabilities. The text processing operations represent domain
+functionality that leverages infrastructure services for:
+
+- **AI Model Integration**: PydanticAI agents with Gemini models for text processing operations
+- **Caching Layer**: Redis-backed response caching with memory fallback for performance optimization
+- **Resilience Patterns**: Circuit breakers, retry mechanisms, and graceful degradation
+- **Security Integration**: API key authentication and input validation for secure operation
+- **Monitoring Capabilities**: Request tracing, performance metrics, and operational visibility
+
+### API Design Principles
+- **RESTful Design**: Standard HTTP methods and status codes with clear resource organization
+- **Comprehensive Validation**: Pydantic models for request/response validation and API documentation
+- **Error Handling**: Structured exception handling with appropriate HTTP status codes
+- **Authentication**: API key-based security with flexible access control patterns
+- **Documentation**: OpenAPI/Swagger integration with comprehensive endpoint documentation
 
 ## Core Components
 

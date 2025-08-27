@@ -70,13 +70,11 @@ async def summarize_text(
 request: SummarizeRequest,
 ai_cache: CacheInterface = Depends(get_ai_cache_service)
 ):
-# AI cache automatically handles operation-specific TTLs and text hashing
-cached_result = await ai_cache.cache_response(
-text=request.text,
-operation="summarize",
-options=request.options,
-response=None  # Will check cache first
-)
+# Domain service handles caching logic (recommended pattern)
+# Use TextProcessorService for business logic, not direct cache operations
+# Direct usage shown for illustration only:
+cache_key = ai_cache.build_key(request.text, "summarize", request.options)
+cached_result = await ai_cache.get(cache_key)
 return cached_result
 
 Health check integration:

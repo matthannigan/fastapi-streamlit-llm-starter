@@ -2,15 +2,32 @@
 sidebar_label: main
 ---
 
-# Main FastAPI application for AI Text Processing with comprehensive resilience features.
+# Main FastAPI Application Module - AI Text Processing Service with Production-Ready Architecture
 
   file_path: `backend/app/main.py`
 
-This module serves as the primary entry point for the AI Text Processing API, providing
-a robust and scalable FastAPI application with advanced text processing capabilities.
-The application implements a dual-API architecture with separate public and internal
-interfaces, comprehensive resilience patterns, intelligent caching, and extensive
-monitoring to deliver a production-ready service.
+This module serves as the primary entry point for the comprehensive AI Text Processing API,
+implementing a sophisticated dual-API architecture with advanced text processing capabilities,
+enterprise-grade resilience patterns, intelligent multi-tier caching, and comprehensive
+monitoring infrastructure designed for production deployment at scale.
+
+## Module Architecture
+
+This module implements a sophisticated multi-layered application architecture:
+
+### Application Layer Structure
+- **Main Application Factory**: Creates and configures the primary FastAPI application instance
+- **Dual-API Architecture**: Separate public and internal API applications with distinct responsibilities
+- **Lifecycle Management**: Comprehensive application startup and shutdown orchestration
+- **Custom Documentation**: Enhanced Swagger UI with cross-API navigation and security-aware features
+- **OpenAPI Customization**: Clean schema generation with security-optimized documentation
+
+### Integration Architecture
+- **Infrastructure Services**: Seamless integration with cache, resilience, AI, security, and monitoring infrastructure
+- **Middleware Stack**: Production-ready middleware pipeline with security, monitoring, and performance optimization
+- **Configuration Management**: Environment-aware configuration with preset-based resilience strategies
+- **Error Handling**: Global exception handling with structured error responses and security considerations
+- **Authentication Integration**: Multi-key API authentication with development and production modes
 
 ## Architecture
 

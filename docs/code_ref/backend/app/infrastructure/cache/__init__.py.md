@@ -23,6 +23,14 @@ functionality in the application.
 - RedisCacheSecurityManager: Redis security management and authentication
 - SecurityConfig: Security configuration for Redis connections
 
+Phase 3 Enhancements:
+- CacheFactory: Explicit cache creation with deterministic behavior
+- CacheConfig: Enhanced configuration management with validation
+- AICacheConfig: AI-specific configuration extensions
+- CacheConfigBuilder: Builder pattern for flexible configuration
+- EnvironmentPresets: Pre-configured settings for different environments
+- FastAPI Dependencies: Comprehensive dependency injection system with lifecycle management
+
 ## Cache Implementations
 
 - Redis-based caching with fallback to memory-only mode
@@ -46,37 +54,57 @@ functionality in the application.
 - Cache invalidation pattern analysis
 - Automatic threshold-based alerting
 
-## Usage Example
+Usage Example (Phase 3 Factory Pattern):
+```python
+from app.infrastructure.cache import CacheFactory, CacheConfigBuilder
+
+# Explicit cache creation for web applications
+web_cache = CacheFactory.for_web_app(redis_url="redis://localhost:6379")
+await web_cache.connect()
+
+# Explicit cache creation for AI applications
+ai_cache = CacheFactory.for_ai_app(redis_url="redis://localhost:6379")
+await ai_cache.connect()
+
+# Configuration-based cache creation
+config = (CacheConfigBuilder()
+          .for_environment("production")
+          .with_redis("redis://localhost:6379")
+          .with_ai_features()
+          .build())
+cache = CacheFactory.create_cache_from_config(config)
+
+# Testing cache creation
+test_cache = CacheFactory.for_testing("memory")
+
+# Standard interface usage (infrastructure layer)
+cache_key = ai_cache.build_key("Document to process", "summarize", {"max_length": 100})
+await ai_cache.set(cache_key, {"summary": "Brief summary"}, ttl=3600)
+
+# Get cached response using standard interface
+result = await ai_cache.get(cache_key)
+
+# Domain service usage (recommended pattern)
+from app.services.text_processor import TextProcessorService
+service = TextProcessorService(settings=settings, cache=ai_cache)
+# Domain service handles all cache logic internally using standard interface
+```
+
+## Direct Infrastructure Usage (Advanced)
 
 ```python
 from app.infrastructure.cache import AIResponseCache, GenericRedisCache, InMemoryCache
 from app.infrastructure.cache import AIResponseCacheConfig
 
-# AI-specific Redis cache with configuration
+# AI-specific Redis cache with configuration (uses standard interface)
 config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
 cache = AIResponseCache(**config.to_ai_cache_kwargs())
 await cache.connect()
 
-# Generic Redis cache for basic usage
-generic_cache = GenericRedisCache(redis_url="redis://localhost:6379")
-
-# In-memory cache for development/testing
-memory_cache = InMemoryCache(default_ttl=3600, max_size=1000)
-
-# Cache an AI response
-await cache.cache_response(
-    text="Document to process",
-    operation="summarize",
-    options={"max_length": 100},
-    response={"summary": "Brief summary"}
-)
-
-# Get cached response
-result = await cache.get_cached_response(
-    text="Document to process",
-    operation="summarize",
-    options={"max_length": 100}
-)
+# Standard interface methods only
+cache_key = cache.build_key("text", "operation", {"option": "value"})
+await cache.set(cache_key, data, ttl=3600)
+result = await cache.get(cache_key)
 
 # Security configuration for Redis
 from app.infrastructure.cache import SecurityConfig, RedisCacheSecurityManager

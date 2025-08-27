@@ -36,18 +36,18 @@ This refactored implementation follows the inheritance pattern where:
 
 ## Usage Examples
 
-Basic Usage (maintains backward compatibility):
+Basic Usage (uses standard cache interface):
 ```python
 cache = AIResponseCache(redis_url="redis://localhost:6379")
 await cache.connect()
 
-# Cache an AI response
-await cache.cache_response(
+# Cache an AI response using standard interface
+key = cache.build_key(
     text="Long document to summarize...",
     operation="summarize",
-    options={"max_length": 100},
-    response={"summary": "Brief summary", "confidence": 0.95}
+    options={"max_length": 100}
 )
+await cache.set(key, {"summary": "Brief summary", "confidence": 0.95}, ttl=3600)
 ```
 
 ### Advanced Configuration

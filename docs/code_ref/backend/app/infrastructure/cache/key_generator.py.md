@@ -57,6 +57,17 @@ key = generator.generate_cache_key(
 # Result: "ai_cache:op:summarize|txt:Document to summarize...|opts:abc12345"
 ```
 
+### Q&A Usage with Question in Options
+
+```python
+key = generator.generate_cache_key(
+    text="Document content",
+    operation="qa",
+    options={"question": "What is the main point?", "max_tokens": 150}
+)
+# Result: "ai_cache:op:qa|txt:Document content|opts:def12345|q:ghi67890"
+```
+
 ### With Performance Monitoring
 
 ```python
