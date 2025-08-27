@@ -1,27 +1,34 @@
 """
-[REFACTORED] Abstract cache interface defining the contract for cache implementations.
+**Abstract cache interface defining the standard contract for all cache implementations.**
 
-This module provides the base abstract class that defines the standard interface
-for all cache implementations in the application. It ensures consistent behavior
-across different caching backends through a common contract.
+This module provides the foundational abstract base class that ensures consistent
+behavior across different caching backends through a unified interface. All cache
+implementations must conform to this contract to enable seamless polymorphic usage.
 
-Classes:
-    CacheInterface: Abstract base class defining core cache operations that must
-                    be implemented by all concrete cache classes.
+## Classes
 
-Implementations:
-    This interface is implemented by:
-    - InMemoryCache (memory.py): Fast in-memory caching for development/testing
-    - AIResponseCache (redis.py): Redis-backed persistent caching for production
+**CacheInterface**: Abstract base class defining the essential cache operations
+that all concrete implementations must provide.
 
-Example:
-    ```python
-    # All cache implementations follow the same interface
-    >>> cache: CacheInterface = InMemoryCache()  # or AIResponseCache()
-    >>> await cache.set("key", {"data": "value"}, ttl=3600)
-    >>> result = await cache.get("key")
-    >>> await cache.delete("key")
-    ```
+## Implementations
+
+This interface is implemented by:
+
+- **InMemoryCache** (`memory.py`): Fast in-memory caching for development and testing
+- **AIResponseCache** (`redis_ai.py`): AI-optimized Redis cache for production
+- **GenericRedisCache** (`redis_generic.py`): General-purpose Redis cache
+
+## Usage Example
+
+```python
+# All cache implementations follow the same interface
+cache: CacheInterface = InMemoryCache()  # or AIResponseCache()
+
+# Standard cache operations
+await cache.set("user:123", {"name": "John", "active": True}, ttl=3600)
+result = await cache.get("user:123") 
+await cache.delete("user:123")
+```
 """
 
 from abc import ABC, abstractmethod

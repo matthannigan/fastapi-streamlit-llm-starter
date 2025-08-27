@@ -1,116 +1,46 @@
-"""
-Cache Infrastructure Module
+"""**Comprehensive cache infrastructure with multiple implementations and monitoring.**
 
-This module provides a comprehensive caching infrastructure with multiple implementations
-and monitoring capabilities. It serves as the single point of entry for all cache-related
-functionality in the application.
+This module serves as the central entry point for all cache-related functionality,
+providing multiple cache implementations, configuration management, and comprehensive
+monitoring capabilities for both web and AI applications.
 
-Main Components:
-    - CacheInterface: Abstract base class for all cache implementations
-    - AIResponseCache: AI-specific Redis cache with intelligent features
-    - GenericRedisCache: Generic Redis cache base implementation
-    - InMemoryCache: High-performance in-memory cache with TTL and LRU eviction
-    - CacheKeyGenerator: Optimized cache key generation for large texts
-    - CachePerformanceMonitor: Comprehensive performance monitoring and analytics
-    - AIResponseCacheConfig: Configuration management for AI cache
-    - CacheParameterMapper: Parameter mapping and validation utilities
-    - RedisCacheSecurityManager: Redis security management and authentication
-    - SecurityConfig: Security configuration for Redis connections
+## Directory Structure
 
-Phase 3 Enhancements:
-    - CacheFactory: Explicit cache creation with deterministic behavior
-    - CacheConfig: Enhanced configuration management with validation
-    - AICacheConfig: AI-specific configuration extensions
-    - CacheConfigBuilder: Builder pattern for flexible configuration
-    - EnvironmentPresets: Pre-configured settings for different environments
-    - FastAPI Dependencies: Comprehensive dependency injection system with lifecycle management
+The cache module is organized into specialized components:
 
-Cache Implementations:
-    - Redis-based caching with fallback to memory-only mode
-    - In-memory caching with TTL and LRU eviction
-    - Graceful degradation when Redis is unavailable
+- **Core Implementations**: `base.py`, `memory.py`, `redis_generic.py`, `redis_ai.py`
+- **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`  
+- **Utilities**: `factory.py`, `key_generator.py`, `parameter_mapping.py`
+- **Advanced Features**: `monitoring.py`, `security.py`, `migration.py`
+- **Benchmarking**: `benchmarks/` subdirectory with performance testing tools
 
-Security Features:
-    - TLS/SSL encryption for Redis connections
-    - Authentication support with username/password
-    - Redis AUTH command support
-    - Certificate-based authentication
-    - Security configuration validation
-    - Connection security management
+## Main Components
 
-Monitoring and Analytics:
-    - Real-time performance metrics
-    - Memory usage tracking
-    - Compression efficiency monitoring
-    - Cache invalidation pattern analysis
-    - Automatic threshold-based alerting
+- **CacheInterface**: Abstract base class for all cache implementations
+- **AIResponseCache**: AI-optimized Redis cache with intelligent key generation
+- **GenericRedisCache**: Flexible Redis cache with L1 memory cache
+- **InMemoryCache**: High-performance in-memory cache with TTL and LRU eviction
+- **CacheFactory**: Explicit cache creation with environment-optimized defaults
+- **CacheConfig**: Comprehensive configuration management with preset system
+- **CachePerformanceMonitor**: Real-time monitoring and analytics
+- **FastAPI Dependencies**: Complete dependency injection with lifecycle management
 
-Usage Example (Phase 3 Factory Pattern):
-    >>> from app.infrastructure.cache import CacheFactory, CacheConfigBuilder
-    >>> 
-    >>> # Explicit cache creation for web applications
-    >>> web_cache = CacheFactory.for_web_app(redis_url="redis://localhost:6379")
-    >>> await web_cache.connect()
-    >>> 
-    >>> # Explicit cache creation for AI applications
-    >>> ai_cache = CacheFactory.for_ai_app(redis_url="redis://localhost:6379")
-    >>> await ai_cache.connect()
-    >>> 
-    >>> # Configuration-based cache creation
-    >>> config = (CacheConfigBuilder()
-    ...           .for_environment("production")
-    ...           .with_redis("redis://localhost:6379")
-    ...           .with_ai_features()
-    ...           .build())
-    >>> cache = CacheFactory.create_cache_from_config(config)
-    >>> 
-    >>> # Testing cache creation
-    >>> test_cache = CacheFactory.for_testing("memory")
-    >>> 
-    >>> # Standard interface usage (infrastructure layer)
-    >>> cache_key = ai_cache.build_key("Document to process", "summarize", {"max_length": 100})
-    >>> await ai_cache.set(cache_key, {"summary": "Brief summary"}, ttl=3600)
-    >>> 
-    >>> # Get cached response using standard interface
-    >>> result = await ai_cache.get(cache_key)
-    >>> 
-    >>> # Domain service usage (recommended pattern)
-    >>> from app.services.text_processor import TextProcessorService
-    >>> service = TextProcessorService(settings=settings, cache=ai_cache)
-    >>> # Domain service handles all cache logic internally using standard interface
+## Quick Start
 
-Direct Infrastructure Usage (Advanced):
-    >>> from app.infrastructure.cache import AIResponseCache, GenericRedisCache, InMemoryCache
-    >>> from app.infrastructure.cache import AIResponseCacheConfig
-    >>> 
-    >>> # AI-specific Redis cache with configuration (uses standard interface)
-    >>> config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
-    >>> cache = AIResponseCache(**config.to_ai_cache_kwargs())
-    >>> await cache.connect()
-    >>> 
-    >>> # Standard interface methods only
-    >>> cache_key = cache.build_key("text", "operation", {"option": "value"})
-    >>> await cache.set(cache_key, data, ttl=3600)
-    >>> result = await cache.get(cache_key)
-    >>> 
-    >>> # Security configuration for Redis
-    >>> from app.infrastructure.cache import SecurityConfig, RedisCacheSecurityManager
-    >>> security_config = SecurityConfig(
-    ...     username="cache_user",
-    ...     password="secure_password",
-    ...     use_tls=True
-    ... )
-    >>> security_manager = RedisCacheSecurityManager(security_config)
+```python
+# Preset-based configuration (recommended)
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import CacheFactory
 
-Configuration:
-    The cache system supports extensive configuration for:
-    - TTL (Time-To-Live) settings per operation type
-    - Compression thresholds and levels
-    - Memory cache size limits
-    - Performance monitoring thresholds
-    - Redis connection settings
-    - Security settings (TLS, authentication, certificates)
-    - Migration and compatibility options
+config = get_cache_config()  # Uses CACHE_PRESET environment variable
+cache = CacheFactory.create_cache_from_config(config)
+
+# Standard cache operations  
+await cache.set("key", {"data": "value"}, ttl=3600)
+result = await cache.get("key")
+```
+
+See the component README.md for comprehensive usage examples and configuration details.
 """
 
 # Base interface
@@ -195,10 +125,8 @@ __all__ = [
     "CompressionMetric",
     "MemoryUsageMetric",
     "InvalidationMetric",
-    # Phase 3 enhancements
-    # Factory for explicit cache instantiation
+    # Factory and configuration
     "CacheFactory",
-    # Enhanced configuration management
     "CacheConfig",
     "AICacheConfig", 
     "CacheConfigBuilder",
@@ -227,7 +155,7 @@ __version__ = "3.0.0"
 __author__ = "FastAPI Streamlit LLM Starter"
 __description__ = (
     "Comprehensive caching infrastructure with Redis and in-memory implementations, "
-    "featuring Phase 3 enhancements: explicit cache factory patterns, enhanced "
-    "configuration management with builder pattern, and comprehensive FastAPI "
-    "dependency injection with lifecycle management"
+    "featuring explicit cache factory patterns, enhanced configuration management "
+    "with builder pattern, and comprehensive FastAPI dependency injection with "
+    "lifecycle management"
 )

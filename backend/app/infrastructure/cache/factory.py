@@ -1,63 +1,53 @@
-"""
-[REFACTORED] Cache Factory for Explicit Cache Instantiation
+"""**Factory for explicit cache instantiation with environment-optimized defaults.**
 
 This module provides a comprehensive factory system for creating cache instances
-with explicit configuration and deterministic behavior. It replaces auto-detection
-patterns with explicit factory methods that provide clear, predictable cache
-instantiation for different use cases.
+with explicit configuration and deterministic behavior. It offers clear factory
+methods for different use cases, eliminating ambiguity in cache selection.
 
-Classes:
-    CacheFactory: Main factory class providing explicit cache creation methods
-                 for web applications, AI applications, testing environments,
-                 and configuration-based instantiation.
+## Classes
 
-Key Features:
-    - **Explicit Cache Creation**: Clear, deterministic factory methods for specific use cases
-    - **Environment-Optimized Defaults**: Pre-configured settings for web apps, AI apps, and testing
-    - **Configuration-Based Creation**: Flexible cache creation from configuration objects
-    - **Graceful Fallback**: Automatic fallback to InMemoryCache when Redis unavailable
-    - **Comprehensive Validation**: Input validation with detailed error messages
-    - **Error Handling**: Robust error handling with contextual information
-    - **Type Safety**: Full type annotations for IDE support and static analysis
+**CacheFactory**: Main factory class providing explicit cache creation methods
+for web applications, AI applications, testing environments, and configuration-based
+instantiation.
 
-Factory Methods:
-    - for_web_app(): Optimized cache for web applications with balanced performance
-    - for_ai_app(): Specialized cache for AI applications with larger storage and compression
-    - for_testing(): Testing-optimized cache with short TTLs and Redis test databases
-    - create_cache_from_config(): Flexible configuration-based cache creation
+## Key Features
 
-Example Usage:
-    Basic web application cache:
-        >>> factory = CacheFactory()
-        >>> cache = await factory.for_web_app(redis_url="redis://localhost:6379")
-        >>> await cache.set("session:123", {"user_id": 456})
+- **Explicit Creation**: Clear, deterministic factory methods for specific use cases
+- **Environment Defaults**: Pre-configured settings optimized for different environments
+- **Configuration Support**: Flexible creation from configuration objects
+- **Graceful Fallback**: Automatic fallback to InMemoryCache when Redis unavailable
+- **Input Validation**: Comprehensive validation with detailed error messages
+- **Type Safety**: Full type annotations for IDE support
 
-    AI application cache with custom settings:
-        >>> cache = await factory.for_ai_app(
-        ...     redis_url="redis://ai-cache:6379",
-        ...     default_ttl=7200,
-        ...     enable_compression=True
-        ... )
+## Factory Methods
 
-    Testing cache with memory fallback:
-        >>> cache = await factory.for_testing(
-        ...     redis_url="redis://test:6379",
-        ...     fail_on_connection_error=False
-        ... )
+- `for_web_app()`: Web applications with balanced performance settings
+- `for_ai_app()`: AI applications with optimized storage and compression
+- `for_testing()`: Testing environments with short TTLs and test databases
+- `create_cache_from_config()`: Flexible configuration-based creation
 
-    Configuration-based cache creation:
-        >>> config = {
-        ...     "redis_url": "redis://production:6379",
-        ...     "default_ttl": 3600,
-        ...     "enable_l1_cache": True,
-        ...     "compression_threshold": 2000
-        ... }
-        >>> cache = await factory.create_cache_from_config(config)
+## Usage
 
-Architecture Context:
-    This factory is part of Phase 3 of the cache refactoring project, providing
-    explicit cache instantiation to replace auto-detection patterns. It enables
-    deterministic cache behavior while maintaining backward compatibility and
+```python
+factory = CacheFactory()
+
+# Web application cache
+cache = await factory.for_web_app(redis_url="redis://localhost:6379")
+await cache.set("session:123", {"user_id": 456})
+
+# AI application cache
+ai_cache = await factory.for_ai_app(
+    redis_url="redis://ai-cache:6379",
+    default_ttl=7200
+)
+
+# Configuration-based creation
+config = {
+    "redis_url": "redis://production:6379",
+    "default_ttl": 3600,
+    "compression_threshold": 2000
+}
+cache = await factory.create_cache_from_config(config)
     providing optimized defaults for different application types.
 
 Performance Considerations:

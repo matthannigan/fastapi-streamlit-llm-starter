@@ -1,33 +1,34 @@
-"""
-[REFACTORED] Cache Performance Monitoring and Analytics Module
+"""**Comprehensive cache performance monitoring and analytics.**
 
-This module provides comprehensive monitoring, analysis, and optimization capabilities for cache
-performance across multiple dimensions including timing, memory usage, compression efficiency,
-and invalidation patterns. It's designed to help identify bottlenecks, optimize cache strategies,
-and maintain optimal cache performance in production environments.
+This module provides real-time monitoring and analytics for cache performance across
+multiple dimensions including timing, memory usage, compression efficiency, and
+invalidation patterns. It helps identify bottlenecks and optimize cache strategies.
 
-Key Features:
-    - Real-time performance monitoring for cache operations
-    - Detailed timing analysis for key generation and cache operations
-    - Memory usage tracking with threshold-based alerting
-    - Compression efficiency monitoring and optimization recommendations
-    - Cache invalidation pattern analysis and frequency monitoring
-    - Automatic cleanup of historical data with configurable retention
-    - Comprehensive statistics and trend analysis
-    - Performance recommendations based on collected metrics
+## Key Features
 
-Core Components:
-    PerformanceMetric: Dataclass for individual performance measurements
-    CompressionMetric: Dataclass for compression performance tracking
-    MemoryUsageMetric: Dataclass for memory usage snapshots
-    InvalidationMetric: Dataclass for cache invalidation event tracking
-    CachePerformanceMonitor: Main monitoring class with comprehensive analytics
+- **Real-Time Monitoring**: Live performance tracking for cache operations
+- **Timing Analysis**: Detailed analysis for key generation and cache operations  
+- **Memory Tracking**: Usage monitoring with configurable threshold alerting
+- **Compression Analytics**: Efficiency monitoring and optimization recommendations
+- **Invalidation Analysis**: Pattern analysis and frequency monitoring
+- **Historical Data**: Automatic cleanup with configurable data retention
+- **Performance Insights**: Statistics, trends, and optimization recommendations
 
-Usage Example:
-    >>> # Initialize the monitor with custom thresholds
-    >>> monitor = CachePerformanceMonitor(
-    ...     retention_hours=2,
-    ...     memory_warning_threshold_bytes=100 * 1024 * 1024,  # 100MB
+## Core Components
+
+- **PerformanceMetric**: Individual performance measurements
+- **CompressionMetric**: Compression performance tracking
+- **MemoryUsageMetric**: Memory usage snapshots  
+- **InvalidationMetric**: Cache invalidation event tracking
+- **CachePerformanceMonitor**: Main monitoring class with comprehensive analytics
+
+## Usage
+
+```python
+# Initialize with custom thresholds
+monitor = CachePerformanceMonitor(
+    retention_hours=2,
+    memory_warning_threshold_bytes=100 * 1024 * 1024  # 100MB
     ...     memory_critical_threshold_bytes=200 * 1024 * 1024  # 200MB
     ... )
     

@@ -1,33 +1,36 @@
 """
-Enhanced Configuration Management with Builder Pattern
+**Enhanced configuration management with builder pattern and environment presets.**
 
-This module provides comprehensive cache configuration management using the builder pattern.
-It supports environment variable loading, validation, AI-specific configurations, and
-provides preset configurations for different environments.
+This module provides comprehensive cache configuration management using a fluent
+builder pattern. It supports environment variable loading, validation, AI-specific
+configurations, and preset configurations for different deployment environments.
 
-Classes:
-    ValidationResult: Dataclass for validation results with errors and warnings
-    CacheConfig: Main configuration dataclass with comprehensive cache settings
-    AICacheConfig: AI-specific configuration extensions
-    CacheConfigBuilder: Builder pattern implementation for flexible configuration
-    EnvironmentPresets: Pre-configured settings for different environments
+## Classes
 
-Key Features:
-    - **Builder Pattern**: Fluent interface for configuration construction
-    - **Environment Loading**: Automatic loading from environment variables
-    - **Comprehensive Validation**: Detailed validation with errors and warnings
-    - **AI Configuration**: Specialized settings for AI applications
-    - **Environment Presets**: Pre-configured settings for dev/test/prod
-    - **File Operations**: JSON serialization and deserialization
-    - **Type Safety**: Full type annotations for IDE support
+- **ValidationResult**: Validation results with detailed errors and warnings
+- **CacheConfig**: Main configuration dataclass with comprehensive cache settings  
+- **AICacheConfig**: AI-specific configuration extensions
+- **CacheConfigBuilder**: Builder pattern for flexible configuration construction
+- **EnvironmentPresets**: Pre-configured settings for common environments
 
-Example Usage:
-    Basic configuration:
-        >>> config = CacheConfigBuilder().for_environment("development").build()
-        
-    AI application configuration:
-        >>> config = (CacheConfigBuilder()
-        ...     .for_environment("production")
+## Key Features
+
+- **Builder Pattern**: Fluent interface for readable configuration construction
+- **Environment Loading**: Automatic detection and loading from environment variables
+- **Validation**: Comprehensive validation with detailed error reporting
+- **AI Extensions**: Specialized settings for AI workloads and text processing
+- **Environment Presets**: Pre-tested configurations for dev/test/prod environments
+- **File Operations**: JSON serialization for configuration persistence
+
+## Usage
+
+```python
+# Environment-based configuration
+config = CacheConfigBuilder().for_environment("development").build()
+
+# AI application configuration
+config = (CacheConfigBuilder()
+    .for_environment("production")
         ...     .with_redis("redis://prod:6379")
         ...     .with_ai_features(text_hash_threshold=2000)
         ...     .build())

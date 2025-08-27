@@ -1,28 +1,28 @@
-"""
-[REFACTORED] Parameter Mapping Module for Cache Inheritance Refactoring
+"""**Parameter mapping utilities for cache inheritance and validation.**
 
 This module provides comprehensive parameter mapping functionality to enable
-AIResponseCache to properly inherit from GenericRedisCache. It separates 
-AI-specific parameters from generic Redis parameters and provides validation
-to ensure compatibility between parameter sets.
+proper inheritance between cache implementations. It separates AI-specific
+parameters from generic cache parameters and validates compatibility.
 
-Classes:
-    ValidationResult: Dataclass for parameter validation results
-    CacheParameterMapper: Main parameter mapping and validation logic
+## Classes
 
-Key Features:
-    - Separates AI-specific parameters from generic Redis parameters
-    - Maps between AI parameter names and generic parameter equivalents  
-    - Validates parameter compatibility and identifies conflicts
-    - Provides detailed validation results with specific error messages
-    - Supports parameter transformation and value validation
-    - Comprehensive logging for debugging parameter mapping issues
+- **ValidationResult**: Parameter validation results with detailed error reporting
+- **CacheParameterMapper**: Main parameter mapping and validation logic
 
-Usage Examples:
-    Basic parameter mapping:
-        >>> mapper = CacheParameterMapper()
-        >>> ai_params = {
-        ...     'redis_url': 'redis://localhost:6379',
+## Key Features
+
+- **Parameter Separation**: Clean separation of AI-specific and generic parameters
+- **Parameter Mapping**: Intelligent mapping between different parameter naming schemes
+- **Validation**: Comprehensive compatibility validation with detailed error messages
+- **Transformation**: Parameter value transformation and normalization
+- **Debugging Support**: Detailed logging for parameter mapping troubleshooting
+
+## Usage
+
+```python
+mapper = CacheParameterMapper()
+ai_params = {
+    'redis_url': 'redis://localhost:6379',
         ...     'text_hash_threshold': 1000,
         ...     'memory_cache_size': 100,
         ...     'compression_threshold': 1000

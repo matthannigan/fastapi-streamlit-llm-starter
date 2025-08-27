@@ -1,35 +1,36 @@
 """
-[REFACTORED] Generic Redis cache implementation providing flexible caching capabilities.
+**Generic Redis cache implementation with L1 memory cache and advanced features.**
 
-This module implements a generic Redis-backed cache that can handle various data
-types and caching patterns. It extends the base cache interface with Redis-specific
-functionality while maintaining compatibility with the standard cache contract.
+This module provides a flexible Redis-backed cache implementation that serves as the
+foundation for specialized caches. It includes a two-tier architecture with memory
+cache (L1) and Redis persistence (L2), along with compression and monitoring.
 
-Classes:
-    GenericRedisCache: A flexible Redis cache implementation that supports
-                      multiple data types, custom serialization, and advanced
-                      Redis features like expiration, atomic operations, and
-                      pipeline operations.
+## Classes
 
-Key Features:
-    - Generic data type support with automatic serialization/deserialization
-    - TTL (Time To Live) management with Redis native expiration
-    - Pipeline operations for batch processing
-    - Atomic operations using Redis transactions
-    - Connection pooling and failover support
-    - Metrics and monitoring integration
+**GenericRedisCache**: Flexible Redis cache with L1 memory cache, compression,
+and comprehensive monitoring. Serves as the base class for specialized implementations
+like AIResponseCache.
 
-Example:
-    ```python
-    >>> cache = GenericRedisCache(redis_url="redis://localhost:6379")
-    >>> await cache.set("user:123", {"name": "John", "age": 30}, ttl=3600)
-    >>> user_data = await cache.get("user:123")
-    >>> await cache.delete("user:123")
-    ```
+## Key Features
 
-Note:
-    This is a Phase-1 scaffolding stub. Implementation will be added in
-    subsequent phases of the cache refactoring project.
+- **Two-Tier Architecture**: L1 memory cache + L2 Redis persistence
+- **Intelligent Compression**: Configurable compression with performance monitoring
+- **Graceful Degradation**: Falls back to memory-only mode when Redis unavailable  
+- **Advanced Monitoring**: Comprehensive metrics and performance analytics
+- **Flexible Serialization**: Support for JSON and pickle serialization
+- **Connection Management**: Robust Redis connection handling with retry logic
+
+## Usage
+
+```python
+cache = GenericRedisCache(redis_url="redis://localhost:6379")
+await cache.connect()
+
+# Standard cache operations
+await cache.set("user:123", {"name": "John", "age": 30}, ttl=3600)
+user_data = await cache.get("user:123")
+await cache.delete("user:123")
+```
 """
 
 import json

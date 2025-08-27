@@ -1,33 +1,31 @@
-"""
-FastAPI Dependency Integration with Lifecycle Management
+"""**FastAPI dependencies for cache infrastructure with lifecycle management.**
 
 This module provides comprehensive FastAPI dependency injection for cache services
 with lifecycle management, thread-safe registry, and health monitoring. It implements
-explicit cache creation patterns using CacheFactory methods and supports graceful
-degradation with fallback to InMemoryCache.
+explicit cache creation patterns and supports graceful degradation with fallback.
 
-Classes:
-    CacheDependencyManager: Core dependency manager for cache lifecycle and registry
-    
-Functions:
-    get_settings: Cached settings dependency for configuration access
-    get_cache_config: Configuration builder with environment detection
-    get_cache_service: Main cache service dependency with registry management
-    get_web_cache_service: Web-optimized cache service dependency
-    get_ai_cache_service: AI-optimized cache service dependency
-    get_test_cache: Testing cache dependency with memory fallback
-    get_test_redis_cache: Redis testing cache for integration tests
-    get_fallback_cache_service: Always returns InMemoryCache for degraded mode
-    validate_cache_configuration: Configuration validation dependency
-    get_cache_service_conditional: Conditional cache selection based on parameters
-    cleanup_cache_registry: Lifecycle cleanup for cache registry
-    get_cache_health_status: Comprehensive health check dependency
+## Classes
 
-Key Features:
-    - **Thread-Safe Registry**: Weak reference cache registry with asyncio.Lock
-    - **Explicit Factory Usage**: Uses CacheFactory.create_cache_from_config() for deterministic creation
-    - **Graceful Degradation**: Automatic fallback to InMemoryCache on Redis failures
-    - **Lifecycle Management**: Proper cache connection and cleanup handling
+**CacheDependencyManager**: Core dependency manager handling cache lifecycle and registry
+
+## Functions
+
+- **get_settings**: Cached settings dependency for configuration access
+- **get_cache_config**: Configuration builder with environment detection  
+- **get_cache_service**: Main cache service dependency with registry management
+- **get_web_cache_service**: Web-optimized cache service dependency
+- **get_ai_cache_service**: AI-optimized cache service dependency
+- **get_test_cache**: Testing cache dependency with memory fallback
+- **get_cache_health_status**: Comprehensive health check dependency
+- **validate_cache_configuration**: Configuration validation dependency
+- **cleanup_cache_registry**: Lifecycle cleanup for cache registry
+
+## Key Features
+
+- **Thread-Safe Registry**: Weak reference cache registry with asyncio locks
+- **Explicit Factory Usage**: Uses CacheFactory for deterministic creation
+- **Graceful Degradation**: Automatic fallback to InMemoryCache on Redis failures  
+- **Lifecycle Management**: Proper cache connection and cleanup handling
     - **Health Monitoring**: Comprehensive health checks with ping() method support
     - **Configuration Building**: Environment-aware configuration from settings
     - **Test Integration**: Specialized dependencies for testing scenarios

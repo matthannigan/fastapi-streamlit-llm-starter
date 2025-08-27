@@ -1,28 +1,22 @@
 """
-[REFACTORED] Cache key generation utilities for consistent and collision-free caching.
+**Optimized cache key generation with streaming hash support for large texts.**
 
-This module provides a standalone cache key generator that efficiently handles
-large texts by using streaming SHA-256 hashing strategies while preserving
-backward compatibility with existing key formats.
+This module provides efficient cache key generation that handles texts of any size
+using streaming SHA-256 hashing strategies while maintaining backward compatibility
+with existing key formats.
 
-Classes:
-    CacheKeyGenerator: Optimized cache key generator that efficiently handles large texts
-                      by using hashing strategies and metadata inclusion for uniqueness.
+## Classes
 
-Key Features:
-    - **Streaming Hash Generation**: Uses streaming SHA-256 hashing for large texts
-      to minimize memory usage and maximize performance.
-    
-    - **Backward Compatible Format**: Preserves existing cache key format to ensure
-      compatibility with existing cached data and implementations.
-    
-    - **Performance Monitoring**: Optional integration with performance monitoring
-      for tracking key generation metrics and timing.
-    
-    - **Intelligent Text Handling**: Efficiently processes texts of any size with
-      configurable thresholds for when to use hashing vs. direct inclusion.
-    
-    - **Redis-Free Design**: Completely independent of Redis dependencies, accepting
+**CacheKeyGenerator**: Optimized cache key generator with intelligent text handling
+and streaming hash generation for memory-efficient processing of large texts.
+
+## Key Features
+
+- **Streaming Hashing**: Memory-efficient SHA-256 hashing for large texts
+- **Performance Optimized**: Configurable thresholds for hash vs. direct inclusion
+- **Backward Compatible**: Preserves existing cache key formats
+- **Monitoring Integration**: Optional performance monitoring and metrics tracking
+- **Redis-Free Design**: Independent operation without Redis dependencies
       only optional performance monitor for tracking.
     
     - **Secure Hashing**: Uses SHA-256 for cryptographically secure hashing with

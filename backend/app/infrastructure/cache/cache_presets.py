@@ -1,28 +1,32 @@
-"""
-Cache Configuration Presets and Strategy Management
+"""**Cache configuration presets and strategy management system.**
 
-This module provides a comprehensive system for managing cache configurations
-in AI service applications. It includes:
+This module provides a comprehensive preset system for managing cache configurations
+across different deployment environments, reducing complexity by replacing dozens of
+individual environment variables with simple preset selections.
 
-**Core Components:**
-- CacheStrategy: Enum defining available cache strategies (fast, balanced, robust, ai_optimized)
-- CacheConfig: Main configuration class combining Redis settings, performance tuning, and AI features
-- CachePreset: Predefined configuration templates for different deployment scenarios
-- CachePresetManager: Advanced manager with validation, environment detection, and recommendation capabilities
+## Core Components
 
-**Preset System:**
-- Pre-defined presets for common scenarios (disabled, simple, development, production, ai-development, ai-production)
-- Environment-aware preset recommendations with confidence scoring
-- Automatic environment detection from system variables and indicators
-- Pattern-based environment classification for complex deployment names
+- **CacheStrategy**: Enum defining cache strategies (fast, balanced, robust, ai_optimized)
+- **CacheConfig**: Main configuration combining Redis settings and AI features
+- **CachePreset**: Predefined configuration templates for deployment scenarios
+- **CachePresetManager**: Advanced manager with validation and environment detection
 
-**Strategy Configurations:**
-- Default strategy presets with optimized TTL, compression, and connection parameters
-- AI-specific strategy configurations for text processing workloads
-- Validation system for configuration integrity
+## Preset System
 
-**Key Features:**
-- Simplified configuration through presets instead of 28+ environment variables
+- **Predefined Presets**: Common scenarios (disabled, development, production, ai-production)
+- **Environment Detection**: Automatic environment detection and recommendations
+- **Confidence Scoring**: Environment-aware preset recommendations with confidence levels
+- **Pattern Matching**: Intelligent environment classification for complex deployments
+
+## Strategy Configurations
+
+- **Optimized Defaults**: Strategy presets with optimal TTL, compression, and connection settings
+- **AI Optimizations**: Specialized configurations for text processing and AI workloads
+- **Validation**: Comprehensive configuration integrity validation
+
+## Key Features
+
+- **Simplified Setup**: Single preset replaces 28+ individual environment variables
 - Intelligent environment detection and preset recommendation
 - Comprehensive validation with fallback to basic validation
 - Pattern matching for complex environment naming schemes

@@ -1,53 +1,43 @@
-"""
-[REFACTORED] AI Response Cache Implementation with Generic Redis Cache Inheritance
+"""**AI-optimized Redis cache with intelligent key generation and compression.**
 
-This module provides the refactored AIResponseCache that properly inherits from 
-GenericRedisCache while maintaining all AI-specific features and backward compatibility.
+This module provides a specialized Redis cache implementation optimized for AI response
+caching. It extends GenericRedisCache with AI-specific features including intelligent
+key generation for large texts, operation-specific TTLs, and advanced monitoring.
 
-Classes:
-    AIResponseCache: Refactored AI cache implementation that extends GenericRedisCache
-                    with AI-specific functionality including intelligent key generation,
-                    operation-specific TTLs, and comprehensive AI metrics collection.
+## Classes
 
-Key Features:
-    - **Clean Inheritance**: Proper inheritance from GenericRedisCache for core functionality
-    - **Parameter Mapping**: Uses CacheParameterMapper for clean parameter separation
-    - **AI-Specific Features**: Maintains all original AI functionality including:
-        - Intelligent cache key generation with text hashing
-        - Operation-specific TTLs and text size tiers
-        - Comprehensive AI metrics and performance monitoring
-        - Graceful degradation and pattern-based invalidation
-    - **Backward Compatibility**: Maintains existing API contracts and functionality
+**AIResponseCache**: AI-optimized Redis cache that extends GenericRedisCache with
+specialized features for AI workloads including text processing and response caching.
 
-Architecture:
-    This refactored implementation follows the inheritance pattern where:
-    - GenericRedisCache provides core Redis functionality (L1 cache, compression, monitoring)
-    - AIResponseCache adds AI-specific features and customizations
-    - CacheParameterMapper handles parameter separation and validation
-    - AI-specific callbacks integrate with the generic cache event system
+## Key Features
 
-Usage Examples:
-    Basic Usage (uses standard cache interface):
-        >>> cache = AIResponseCache(redis_url="redis://localhost:6379")
-        >>> await cache.connect()
-        >>> 
-        >>> # Cache an AI response using standard interface
-        >>> key = cache.build_key(
-        ...     text="Long document to summarize...",
-        ...     operation="summarize", 
-        ...     options={"max_length": 100}
-        ... )
-        >>> await cache.set(key, {"summary": "Brief summary", "confidence": 0.95}, ttl=3600)
+- **Intelligent Key Generation**: Automatic text hashing for large inputs
+- **Operation-Specific TTLs**: Different expiration times per AI operation type
+- **Text Size Tiers**: Optimized handling based on input text size
+- **Advanced Compression**: Smart compression with configurable thresholds
+- **AI Metrics**: Specialized monitoring for AI response patterns
+- **Graceful Degradation**: Fallback to memory-only mode when Redis unavailable
 
-    Advanced Configuration:
-        >>> cache = AIResponseCache(
-        ...     redis_url="redis://production:6379",
-        ...     default_ttl=7200,
-        ...     text_hash_threshold=500,
-        ...     memory_cache_size=200,
-        ...     text_size_tiers={
-        ...         'small': 300,
-        ...         'medium': 3000, 
+## Architecture
+
+Inheritance pattern:
+- **GenericRedisCache**: Provides core Redis functionality and L1 memory cache
+- **AIResponseCache**: Adds AI-specific optimizations and intelligent features
+- **CacheParameterMapper**: Handles parameter validation and mapping
+
+## Usage
+
+```python
+cache = AIResponseCache(redis_url="redis://localhost:6379")
+await cache.connect()
+
+# AI response caching with intelligent key generation
+key = cache.build_key(
+    text="Long document to process...",
+    operation="summarize",
+    options={"max_length": 100}
+)
+await cache.set(key, {"summary": "Brief summary"}, ttl=3600) 
         ...         'large': 30000
         ...     }
         ... )

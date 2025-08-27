@@ -1,53 +1,43 @@
 """
-[REFACTORED] In-Memory Cache Implementation Module
+**High-performance in-memory cache with TTL support and LRU eviction.**
 
-This module provides a high-performance, thread-safe in-memory caching solution with
-advanced features including TTL (Time-To-Live) support, LRU (Least Recently Used)
-eviction, and comprehensive cache management capabilities.
+This module provides a lightweight, thread-safe in-memory caching solution optimized
+for development, testing, and scenarios where external cache dependencies are not
+available or desired.
 
-Overview:
----------
-The InMemoryCache class serves as a lightweight, fast caching solution that stores
-data directly in application memory. It's designed as a drop-in replacement for
-Redis or other external caching systems during development, testing, or in scenarios
-where external dependencies are not available or desired.
+## Key Features
 
-Key Features:
--------------
-- **TTL Support**: Automatic expiration of cache entries with configurable time-to-live
-- **LRU Eviction**: Intelligent memory management through least-recently-used eviction
-- **Async Interface**: Fully asynchronous API compatible with modern Python applications
-- **Memory Efficient**: Automatic cleanup of expired entries and configurable size limits
-- **Statistics & Monitoring**: Built-in metrics and cache performance monitoring
-- **Thread Safe**: Safe for use in concurrent environments (when used with asyncio)
+- **TTL Support**: Automatic expiration with configurable time-to-live
+- **LRU Eviction**: Intelligent memory management through least-recently-used eviction  
+- **Async Interface**: Full async/await compatibility
+- **Statistics**: Built-in performance metrics and monitoring
+- **Memory Efficient**: Automatic cleanup and configurable size limits
 
-Architecture:
--------------
-The cache implements a two-tier storage system:
+## Architecture
+
+Two-tier storage system:
+
 1. **Primary Storage**: Dictionary-based key-value store with metadata
 2. **Access Tracking**: LRU ordering for intelligent eviction decisions
 
-Each cache entry contains:
+Each entry includes:
 - `value`: The cached data
-- `expires_at`: Timestamp for TTL-based expiration (optional)
-- `created_at`: Entry creation timestamp for debugging/monitoring
+- `expires_at`: TTL expiration timestamp (optional)
+- `created_at`: Creation timestamp for monitoring
 
-Configuration:
---------------
+## Configuration
+
 - `default_ttl`: Default time-to-live in seconds (default: 3600)
-- `max_size`: Maximum number of entries before LRU eviction (default: 1000)
+- `max_size`: Maximum entries before LRU eviction (default: 1000)
 
-Usage Examples:
----------------
-Basic usage:
+## Usage
+
 ```python
 cache = InMemoryCache(default_ttl=1800, max_size=500)
 
-# Set a value with default TTL
+# Basic operations
 await cache.set("user:123", {"name": "John", "role": "admin"})
-
-# Set a value with custom TTL (5 minutes)
-await cache.set("session:abc", "active", ttl=300) 
+await cache.set("session:abc", "active", ttl=300)  # Custom TTL 
 
 # Get a value
 user_data = await cache.get("user:123")
