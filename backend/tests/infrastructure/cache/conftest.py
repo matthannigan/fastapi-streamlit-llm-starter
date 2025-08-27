@@ -418,6 +418,87 @@ def mock_memory_cache():
     return mock_cache
 
 
+@pytest.fixture
+def mock_generic_redis_cache():
+    """
+    Mock GenericRedisCache for testing inheritance and cache operations behavior.
+    
+    Provides comprehensive mock of the GenericRedisCache contract with all methods
+    returning successful behavior as documented in the public interface.
+    This is a stateful mock that maintains an internal dictionary for realistic
+    cache behavior where set values can be retrieved later.
+    Uses spec to ensure mock accuracy against the real class for core methods,
+    but adds factory-specific methods for backwards compatibility.
+    """
+    from app.infrastructure.cache.redis_generic import GenericRedisCache
+    from unittest.mock import patch
+    
+    with patch('app.infrastructure.cache.redis_generic.GenericRedisCache') as mock_class:
+        mock_instance = AsyncMock(spec=GenericRedisCache)
+        
+        # Create stateful internal storage (combining patterns from both existing mocks)
+        mock_instance._internal_storage = {}
+        mock_instance._callbacks = {}
+        
+        # Mock initialization parameters per contract
+        mock_instance.redis_url = "redis://localhost:6379"
+        mock_instance.default_ttl = 3600
+        mock_instance.enable_l1_cache = True
+        mock_instance.l1_cache_size = 100
+        mock_instance.compression_threshold = 1000
+        mock_instance.compression_level = 6
+        mock_instance.performance_monitor = None
+        mock_instance.security_config = None
+        
+        # Mock stateful cache operations with realistic behavior
+        async def mock_get(key):
+            return mock_instance._internal_storage.get(key)
+        
+        async def mock_set(key, value, ttl=None):
+            mock_instance._internal_storage[key] = value
+            
+        async def mock_delete(key):
+            if key in mock_instance._internal_storage:
+                del mock_instance._internal_storage[key]
+                return True
+            return False
+            
+        async def mock_exists(key):
+            return key in mock_instance._internal_storage
+        
+        # Assign stateful implementations
+        mock_instance.get.side_effect = mock_get
+        mock_instance.set.side_effect = mock_set
+        mock_instance.delete.side_effect = mock_delete
+        mock_instance.exists.side_effect = mock_exists
+        
+        # Mock connection methods per contract
+        mock_instance.connect.return_value = True  # Successful connection
+        mock_instance.disconnect.return_value = None
+        
+        # Mock callback system per contract
+        mock_instance.register_callback.return_value = None
+        
+        # Mock security methods per contract with realistic values
+        mock_instance.validate_security.return_value = None
+        mock_instance.get_security_status.return_value = {
+            "security_level": "basic",
+            "connection_encrypted": False,
+            "authentication_enabled": False,
+            "redis_connected": True
+        }
+        mock_instance.get_security_recommendations.return_value = []
+        mock_instance.generate_security_report.return_value = "Security report: basic configuration"
+        mock_instance.test_security_configuration.return_value = {
+            "overall_secure": True,
+            "errors": [],
+            "warnings": []
+        }
+        
+        mock_class.return_value = mock_instance
+        yield mock_instance
+
+
 # =============================================================================
 # Custom Exceptions
 # =============================================================================

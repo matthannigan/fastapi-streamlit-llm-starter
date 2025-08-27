@@ -231,62 +231,7 @@ def mock_key_generator():
 
 # Note: mock_performance_monitor fixture is now provided by the parent conftest.py
 
-
-@pytest.fixture
-def mock_generic_redis_cache():
-    """
-    Mock GenericRedisCache parent class for testing inheritance behavior.
-    
-    Provides 'happy path' mock of the GenericRedisCache contract with all methods
-    returning successful behavior as documented in the public interface.
-    Uses spec to ensure mock accuracy against the real class.
-    """
-    from app.infrastructure.cache.redis_generic import GenericRedisCache
-    
-    with patch('app.infrastructure.cache.redis_generic.GenericRedisCache') as mock_class:
-        mock_instance = AsyncMock(spec=GenericRedisCache)
-        
-        # Mock initialization parameters per contract
-        mock_instance.redis_url = "redis://localhost:6379"
-        mock_instance.default_ttl = 3600
-        mock_instance.enable_l1_cache = True
-        mock_instance.l1_cache_size = 100
-        mock_instance.compression_threshold = 1000
-        mock_instance.compression_level = 6
-        mock_instance.performance_monitor = None
-        mock_instance.security_config = None
-        
-        # Mock connection methods per contract
-        mock_instance.connect.return_value = True  # Successful connection
-        mock_instance.disconnect.return_value = None
-        
-        # Mock cache operations per contract - default to cache miss (None)
-        mock_instance.get.return_value = None  
-        mock_instance.set.return_value = None
-        mock_instance.delete.return_value = True
-        mock_instance.exists.return_value = False
-        
-        # Mock callback system per contract
-        mock_instance._callbacks = {}
-        mock_instance.register_callback.return_value = None
-        
-        # Mock security methods per contract
-        mock_instance.validate_security.return_value = None
-        mock_instance.get_security_status.return_value = {
-            "security_level": "basic",
-            "connection_encrypted": False,
-            "authentication_enabled": False
-        }
-        mock_instance.get_security_recommendations.return_value = []
-        mock_instance.generate_security_report.return_value = "Security report: basic configuration"
-        mock_instance.test_security_configuration.return_value = {
-            "overall_secure": True,
-            "errors": [],
-            "warnings": []
-        }
-        
-        mock_class.return_value = mock_instance
-        yield mock_instance
+# Note: mock_generic_redis_cache fixture is now provided by the parent conftest.py
 
 
 @pytest.fixture 

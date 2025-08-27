@@ -17,46 +17,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 
-@pytest.fixture
-def mock_generic_redis_cache():
-    """
-    Mock GenericRedisCache for testing factory cache creation behavior.
-    
-    Provides 'happy path' mock of the GenericRedisCache contract with all methods
-    returning successful cache operation behavior as documented in the public interface.
-    This is a stateful mock that maintains an internal dictionary for realistic
-    cache behavior where set values can be retrieved later.
-    Uses spec to ensure mock accuracy against the real class.
-    """
-    from app.infrastructure.cache.redis_generic import GenericRedisCache
-    
-    mock_cache = AsyncMock(spec=GenericRedisCache)
-    
-    # Create stateful internal storage
-    mock_cache._internal_storage = {}
-    
-    async def mock_get(key):
-        return mock_cache._internal_storage.get(key)
-    
-    async def mock_set(key, value, ttl=None):
-        mock_cache._internal_storage[key] = value
-        
-    async def mock_delete(key):
-        if key in mock_cache._internal_storage:
-            del mock_cache._internal_storage[key]
-            return True
-        return False
-    
-    # Assign mock implementations
-    mock_cache.get.side_effect = mock_get
-    mock_cache.set.side_effect = mock_set
-    mock_cache.delete.side_effect = mock_delete
-    
-    # Mock factory-relevant methods
-    mock_cache.is_connected.return_value = True
-    mock_cache.close = AsyncMock()
-    
-    return mock_cache
+# Note: mock_generic_redis_cache fixture is now provided by the parent conftest.py
 
 
 @pytest.fixture
@@ -111,8 +72,6 @@ def mock_ai_response_cache():
     mock_cache.delete.side_effect = mock_delete
     mock_cache.build_key.side_effect = mock_build_key
     
-    # Mock factory-relevant methods
-    mock_cache.is_connected.return_value = True
-    mock_cache.close = AsyncMock()
+    # Note: Removed is_connected and close methods as they are not part of the AIResponseCache contract
     
     return mock_cache
