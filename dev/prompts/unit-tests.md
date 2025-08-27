@@ -77,8 +77,27 @@ def test_mock_fixtures_are_configured_correctly(mock_key_generator, mock_perform
 
 #### **Step 3: Create the Test Suite Skeleton**
 
-Goal: Plan the entire test suite by defining what to test before writing any implementation code.  
-Action: Instruct the assistant to create the test file(s) with only test classes, empty test methods, and detailed docstrings. This "Docstring-Driven" approach forces a focus on the UUT's public contract and observable behaviors.
+**Goal**: Plan the entire test suite by defining what to test before writing any implementation code.  
+
+**Action**: Instruct the assistant to create the test file(s) with only test classes, empty test methods, and detailed docstrings. This "Docstring-Driven" approach forces a focus on the UUT's public contract and observable behaviors.
+
+**Prompt**
+Create a plan and execute the following prompt on these UUTs:
+- `factory`
+- `key_generator`
+- `migration`
+
+```
+Create a skeleton test suite for the UUT, `backend/contracts/infrastructure/cache/[UUT].pyi` in separate files within `backend/tests/unit/infrastructure/cache/[UUT]/`.
+1. Each test must verify an observable behavior described in the UUT's docstrings. Do not test private methods or implementation details. DO NOT write any test code right now. 
+2. Instead, create detailed docstrings using the guidance in `docs/guides/developer/DOCSTRINGS_TESTS.md` to describe the intended testing classes and methods.
+ - In the docstring for each test, describe the 'Given/When/Then' scenario in terms of observable behavior. For example, instead of saying 'the set method is called', describe the outcome: 'the data is successfully stored and can be retrieved'.
+ - In each docstring, identify which fixtures and mocks (if any) from `backend/tests/unit/infrastructure/cache/conftest.py` or `backend/tests/unit/infrastructure/cache/[UUT]]/conftest.py` should be used for each test.
+3. If necessary due to a large number of tests, group tests into major categories of testing and place them in separate classes, converting class names to snake case for file naming, e.g., `test_[UUT]_[class_name].py`. If multiple files are not necessary, place all tests in a single file named `test_[UUT].py`.
+```
+
+As a reference, see a completed example for `redis_ai` in `backend/tests/unit/infrastructure/cache/redis_ai/`.
+
 
 #### **Step 4: Write the Test Code**
 
