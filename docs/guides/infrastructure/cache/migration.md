@@ -1,5 +1,5 @@
 ---
-sidebar_label: Cache Migration
+sidebar_label: Migration
 ---
 
 # Cache Infrastructure Migration Guide
@@ -21,13 +21,16 @@ from app.infrastructure.cache import get_cache_instance
 cache = get_cache_instance()  # Automatically detects Redis/Memory
 ```
 
-**To: Explicit Factory Methods**
+**To: Explicit Factory Methods with Preset Configuration**
 ```python
-# New pattern - explicit cache factory methods
+# New pattern - explicit cache factory methods with preset-based configuration
 from app.infrastructure.cache import CacheFactory
 
-# Explicit cache creation with clear intent
+# Modern preset-based approach (CACHE_PRESET=production)
 factory = CacheFactory()
+cache = await factory.for_web_app()  # Uses preset + environment variables
+
+# Or explicit configuration for advanced usage
 cache = await factory.for_web_app(redis_url="redis://localhost:6379")
 ```
 
@@ -36,7 +39,7 @@ cache = await factory.for_web_app(redis_url="redis://localhost:6379")
 | Aspect | Legacy Approach | New Approach | Benefits |
 |--------|----------------|--------------|----------|
 | **Cache Creation** | Auto-detection via environment | Explicit factory methods | Deterministic behavior, clear intent |
-| **Configuration** | Scattered environment variables | Centralized `CacheConfig` with builder | Type safety, validation, easier testing |
+| **Configuration** | Scattered environment variables (28+) | Preset-based system (1-4 variables) + builder patterns | 96% configuration reduction, type safety, validation |
 | **Dependency Injection** | Direct instantiation in endpoints | FastAPI dependencies with lifecycle | Proper connection management, reusability |
 | **Testing** | Manual cache setup in tests | `for_testing()` factory method | Isolated test environment, predictable behavior |
 | **Error Handling** | Generic exceptions | Structured exception hierarchy | Better debugging, contextual error information |
@@ -46,7 +49,7 @@ cache = await factory.for_web_app(redis_url="redis://localhost:6379")
 ✅ **Improved Reliability**: Explicit cache creation eliminates configuration guessing  
 ✅ **Better Testing**: Dedicated test patterns with `for_testing()` method  
 ✅ **Enhanced Performance**: Optimized factory methods for specific use cases  
-✅ **Simplified Configuration**: Centralized configuration management with validation  
+✅ **Simplified Configuration**: Preset-based system reduces 28+ variables to 1-4 essential settings  
 ✅ **Backward Compatibility**: Legacy patterns continue to work during transition  
 
 ## Pre-Migration Assessment
@@ -143,9 +146,18 @@ ENABLE_COMPRESSION = os.getenv("ENABLE_COMPRESSION", "true").lower() == "true"
 
 **After (New Pattern)**:
 ```python
-from app.infrastructure.cache import CacheConfigBuilder
+from app.infrastructure.cache import CacheFactory
 
-# Centralized configuration with validation
+# Modern preset-based configuration (recommended)
+# Environment variables:
+# CACHE_PRESET=ai-production
+# CACHE_REDIS_URL=redis://production:6379
+
+factory = CacheFactory()
+cache = await factory.for_ai_app()  # Automatically uses preset configuration
+
+# Alternative: Explicit configuration builder (advanced usage)
+from app.infrastructure.cache import CacheConfigBuilder
 config = (CacheConfigBuilder()
     .for_environment("production")
     .with_redis("redis://production:6379")
@@ -153,7 +165,6 @@ config = (CacheConfigBuilder()
     .with_compression(threshold=1000, level=6)
     .build())
 
-factory = CacheFactory()
 cache = await factory.create_cache_from_config(config.to_dict())
 ```
 
@@ -333,7 +344,7 @@ except ConfigurationError as e:
 
 - [ ] **Update Imports**: Replace legacy imports with factory imports
 - [ ] **Replace Instantiation**: Convert direct cache creation to factory methods
-- [ ] **Configuration Migration**: Implement `CacheConfigBuilder` patterns
+- [ ] **Configuration Migration**: Implement preset-based configuration system or `CacheConfigBuilder` patterns for advanced usage
 - [ ] **Validation**: Add proper input validation and error handling
 - [ ] **Testing**: Update unit tests for new patterns
 
@@ -636,7 +647,14 @@ ValidationError: redis_url must start with 'redis://' or 'rediss://'
 
 **Solution**:
 ```python
-# Check configuration format
+# Option 1: Use preset-based configuration (recommended)
+# Set environment variable: CACHE_REDIS_URL=redis://localhost:6379
+from app.infrastructure.cache import CacheFactory
+
+factory = CacheFactory()
+cache = await factory.for_web_app()  # Automatically validates configuration
+
+# Option 2: Explicit configuration validation (advanced)
 from app.infrastructure.cache import CacheConfigBuilder
 
 try:
@@ -851,38 +869,45 @@ The migration from inheritance-based cache patterns to factory-based explicit ca
 ### Post-Migration Benefits
 
 - **Deterministic Behavior**: Explicit cache creation eliminates configuration guessing
+- **Simplified Configuration**: Preset-based system reduces 28+ environment variables to 1-4 essential settings
 - **Improved Testing**: Isolated test environments with predictable behavior
 - **Better Monitoring**: Comprehensive health checks and performance metrics
 - **Enhanced Reliability**: Structured error handling with graceful degradation
-- **Simplified Maintenance**: Centralized configuration and lifecycle management
+- **Streamlined Maintenance**: Centralized configuration and lifecycle management
 
-For additional support during migration, refer to:
-- **[Cache Infrastructure Guide](./CACHE.md)**: Comprehensive cache architecture documentation
-- **[Code Standards](../developer/CODE_STANDARDS.md)**: Patterns and best practices
-- **[Troubleshooting Guide](../operations/TROUBLESHOOTING.md)**: Common issues and solutions
+For additional support during migration, refer to the comprehensive cache documentation suite and related development guides listed in the Related Documentation section below.
 
 ## Related Documentation
 
-### Prerequisites
+### ❗️ Prerequisites
 > Complete these guides before proceeding with cache migration.
 
-- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation is crucial for proper cache usage
-- **[Cache Infrastructure Guide](./CACHE.md)**: Comprehensive understanding of the cache architecture and capabilities
+- **[Infrastructure vs Domain Services](../../reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation is crucial for proper cache usage patterns and migration planning
+- **[Cache Infrastructure Overview](./CACHE.md)**: Comprehensive understanding of the cache architecture, capabilities, and design principles is essential before attempting migration
 
-### Related Topics  
-> Explore these related guides for additional context and complementary information.
+### 🔗 Related Topics  
+> Explore these cache-specific and development guides for comprehensive migration support.
 
-- **[Code Standards & Patterns](../developer/CODE_STANDARDS.md)**: Follow established patterns when migrating cache implementations
-- **[Testing Strategy](../developer/TESTING.md)**: Maintain test coverage standards during cache migration
-- **[Exception Handling](../developer/EXCEPTION_HANDLING.md)**: Understand the new structured exception patterns used in cache factories
-- **[Monitoring Infrastructure](./MONITORING.md)**: Performance monitoring during and after migration
+**Cache Documentation Suite:**
+- **[Cache Usage Guide](./usage-guide.md)**: Modern usage patterns and factory methods that replace legacy patterns covered in this migration guide
+- **[Cache API Reference](./api-reference.md)**: Complete API documentation for all cache interfaces, factory methods, and configuration options
+- **[Cache Configuration Guide](./configuration.md)**: Configuration management, presets system, and environment-based setup patterns
+- **[Cache Testing Guide](./testing.md)**: Testing strategies and patterns for validating migrated cache implementations
+- **[Cache Performance Benchmarking Guide](./benchmarking.md)**: Performance validation tools for verifying successful migration without regression
 
-### Next Steps
-> Continue your journey with these advanced guides and practical applications.
+**Development & Operations:**
+- **[Code Standards & Patterns](../developer/CODE_STANDARDS.md)**: Follow established patterns when migrating cache implementations to maintain code quality
+- **[Exception Handling](../developer/EXCEPTION_HANDLING.md)**: Understand the new structured exception patterns used in cache factories and error handling
+- **[Testing Strategy](../developer/TESTING.md)**: Maintain comprehensive test coverage standards during cache migration processes
+- **[Monitoring Infrastructure](../MONITORING.md)**: Performance monitoring setup for tracking migration success and cache performance
 
-- **[Performance Optimization](../operations/PERFORMANCE_OPTIMIZATION.md)**: Optimize cache performance after migration completion
-- **[Troubleshooting Guide](../operations/TROUBLESHOOTING.md)**: Diagnose and resolve post-migration cache issues
-- **[Deployment Guide](../developer/DEPLOYMENT.md)**: Deploy migrated cache infrastructure to production environments
+### ➡️ Next Steps
+> Continue your migration journey with these advanced optimization and operational guides.
+
+- **[Performance Optimization](../operations/PERFORMANCE_OPTIMIZATION.md)**: Optimize cache performance after migration completion with advanced tuning strategies
+- **[Troubleshooting Guide](../operations/TROUBLESHOOTING.md)**: Diagnose and resolve post-migration cache issues using systematic approaches
+- **[Deployment Guide](../developer/DEPLOYMENT.md)**: Deploy migrated cache infrastructure to production environments with proper configuration
+- **[Monitoring Operations](../operations/MONITORING.md)**: Set up comprehensive monitoring for migrated cache infrastructure in production environments
 
 ---
 *💡 **Need help?** Check the [Documentation Index](../../DOCS_INDEX.md) for a complete overview of all available guides.*

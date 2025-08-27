@@ -607,5 +607,5 @@ This architecture enables teams to build production-ready applications quickly w
 ### Next Steps
 - **[Monitoring Infrastructure](../../guides/infrastructure/MONITORING.md)**: Comprehensive monitoring accessible through internal API
 - **[Resilience Infrastructure](../../guides/infrastructure/RESILIENCE.md)**: 38 administrative endpoints for resilience management
-- **[Cache Infrastructure](../../guides/infrastructure/CACHE.md)**: Cache management and monitoring via internal API
+- **[Cache Infrastructure](../../guides/infrastructure/cache/CACHE.md)**: Cache management and monitoring via internal API
 - **[Deployment Guide](../../guides/developer/DEPLOYMENT.md)**: Production deployment considerations for dual-API architecture

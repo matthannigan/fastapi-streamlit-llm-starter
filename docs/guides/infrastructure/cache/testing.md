@@ -1,3 +1,7 @@
+---
+sidebar_label: Testing
+---
+
 # Cache Infrastructure Testing Guide
 
 This comprehensive guide covers testing strategies, patterns, and best practices for the cache infrastructure, including unit tests, integration tests, performance benchmarks, and CI/CD configuration.
@@ -23,18 +27,17 @@ The cache infrastructure testing follows a layered approach aligned with the inf
 ```
 backend/tests/infrastructure/cache/
 ├── conftest.py                    # Shared fixtures and Redis configuration
-├── test_factory.py               # CacheFactory explicit instantiation tests
+├── test_factory.py               # CacheFactory consolidated approach tests
 ├── test_base.py                  # Abstract cache interface tests
 ├── test_memory.py                # InMemoryCache implementation tests
 ├── test_redis.py                 # Redis cache integration tests
 ├── test_monitoring.py            # Performance monitoring tests
 ├── test_ai_cache_integration.py  # AI-specific cache features
-├── benchmarks/                   # Performance benchmark suite
-│   ├── conftest.py              # Benchmark-specific fixtures
-│   ├── test_config.py           # Benchmark configuration tests
-│   ├── test_core.py             # Core benchmark engine tests
-│   └── test_integration.py      # End-to-end benchmark tests
-└── REDIS_TESTING.md             # Redis-specific testing guidance
+└── benchmarks/                   # Performance benchmark suite
+    ├── conftest.py              # Benchmark-specific fixtures
+    ├── test_config.py           # Benchmark configuration tests
+    ├── test_core.py             # Core benchmark engine tests
+    └── test_integration.py      # End-to-end benchmark tests
 ```
 
 ### Test Categories
@@ -195,10 +198,10 @@ async def benchmark_cache_pair():
 ### Factory Method Testing
 
 ```python
-# Test CacheFactory explicit instantiation patterns
+# Test CacheFactory consolidated approach with explicit instantiation patterns
 
 class TestCacheFactoryUnitTests:
-    """Unit tests for CacheFactory focusing on explicit instantiation patterns."""
+    """Unit tests for CacheFactory using the consolidated factory approach with explicit instantiation patterns."""
 
     @pytest.mark.asyncio
     async def test_for_web_app_memory_fallback(self):
@@ -1508,3 +1511,29 @@ Key principles demonstrated:
 - **CI/CD integration**: Automated testing with proper isolation and cleanup
 
 Use this guide as a reference for implementing comprehensive testing strategies for cache infrastructure that maintain high quality standards while enabling rapid development and deployment cycles.
+
+## Related Documentation
+
+### Cache Infrastructure
+- **[Cache Infrastructure Overview](./CACHE.md)** - Complete cache system architecture, components, integration patterns, and configuration management
+- **[Usage Guide](./usage-guide.md)** - Practical patterns for implementing cache in applications with configuration examples
+- **[API Reference](./api-reference.md)** - Complete API documentation with examples and best practices
+- **[Cache Performance Benchmarking Guide](./benchmarking.md)** - Performance testing tools that complement unit and integration testing strategies
+
+### Related Infrastructure Guides
+- **[AI Infrastructure](../AI.md)** - AI service integration patterns and caching strategies
+- **[Monitoring Infrastructure](../MONITORING.md)** - Performance monitoring and observability patterns
+- **[Resilience Patterns](../RESILIENCE.md)** - Error handling, failover, and recovery strategies
+- **[Security Guidelines](../SECURITY.md)** - Security considerations for infrastructure components
+
+### Developer Guidelines
+- **[Testing Guide](../../developer/TESTING.md)** - General testing standards and patterns across the project
+- **[Code Standards](../../developer/CODE_STANDARDS.md)** - Code quality, formatting, and development standards
+- **[Documentation Guidelines](../../developer/DOCUMENTATION_GUIDANCE.md)** - Documentation standards and best practices
+
+### Cross-References
+This testing guide complements the cache infrastructure documentation by providing:
+- **Implementation details** for the patterns described in the [Cache Infrastructure Overview](./CACHE.md)
+- **Testing strategies** for the usage patterns documented in the [Usage Guide](./usage-guide.md)
+- **Validation approaches** for the APIs detailed in the [API Reference](./api-reference.md)
+- **Quality assurance** for the resilience patterns covered in [Resilience Patterns](../RESILIENCE.md)

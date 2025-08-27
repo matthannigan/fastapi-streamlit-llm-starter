@@ -38,7 +38,7 @@
     "followups": [
       "guides/developer/CODE_STANDARDS.md",
       "guides/infrastructure/AI.md",
-      "guides/infrastructure/CACHE.md"
+      "guides/infrastructure/cache/CACHE.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
@@ -54,7 +54,7 @@
       "reference/key-concepts/DUAL_API_ARCHITECTURE.md",
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md",
       "guides/infrastructure/AI.md",
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/RESILIENCE.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
@@ -104,7 +104,7 @@
       "guides/application/API.md",
       "guides/developer/TESTING.md",
       "guides/infrastructure/AI.md",
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/RESILIENCE.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
@@ -150,27 +150,164 @@
       "guides/application/BACKEND.md"
     ],
     "followups": [
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/SECURITY.md",
       "guides/infrastructure/RESILIENCE.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
-  "guides/infrastructure/CACHE.md": {
+  "guides/infrastructure/cache/CACHE.md": {
     "title": "Cache Infrastructure Service",
     "topic_category": "infrastructure",
     "audience_level": "advanced",
-    "description": "Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation",
+    "description": "Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation - primary entry point for cache documentation",
     "dependencies": [
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
       "guides/application/BACKEND.md"
     ],
     "followups": [
+      "guides/infrastructure/cache/usage-guide.md",
+      "guides/infrastructure/cache/configuration.md",
+      "guides/infrastructure/cache/api-reference.md",
+      "guides/infrastructure/cache/testing.md",
+      "guides/infrastructure/cache/benchmarking.md",
       "guides/infrastructure/MONITORING.md",
       "guides/infrastructure/RESILIENCE.md",
       "guides/infrastructure/AI.md"
     ],
-    "last_analyzed": "2025-01-31T10:00:00Z"
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/usage-guide.md": {
+    "title": "Cache Infrastructure Comprehensive Usage Guide",
+    "topic_category": "infrastructure",
+    "audience_level": "intermediate",
+    "description": "Complete practical usage guide for the cache infrastructure - from 5-minute quickstart to advanced optimization patterns with preset-based configuration",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/cache/configuration.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/api-reference.md",
+      "guides/infrastructure/cache/testing.md",
+      "guides/infrastructure/cache/troubleshooting.md"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/api-reference.md": {
+    "title": "Cache Infrastructure API Reference",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Comprehensive API reference documentation for all public APIs and interfaces in the cache infrastructure including CacheFactory, configuration APIs, and dependency injection functions",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/cache/usage-guide.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/configuration.md",
+      "guides/infrastructure/cache/testing.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/configuration.md": {
+    "title": "Cache Infrastructure Configuration Guide",
+    "topic_category": "infrastructure", 
+    "audience_level": "intermediate",
+    "description": "Flexible, production-ready configuration through modern preset-based system that simplifies setup from 28+ environment variables to 1-4 essential settings",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/usage-guide.md",
+      "guides/infrastructure/cache/api-reference.md",
+      "guides/infrastructure/cache/migration.md",
+      "guides/developer/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/testing.md": {
+    "title": "Cache Infrastructure Testing Guide",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, performance benchmarks, and CI/CD configuration",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/cache/api-reference.md",
+      "guides/developer/TESTING.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/benchmarking.md",
+      "guides/infrastructure/cache/troubleshooting.md",
+      "guides/developer/CODE_STANDARDS.md",
+      "guides/operations/PERFORMANCE_OPTIMIZATION.md"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/migration.md": {
+    "title": "Cache Infrastructure Migration Guide",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced", 
+    "description": "Comprehensive migration guide for transitioning from inheritance-based cache patterns to callback composition and factory-based architecture with step-by-step upgrade instructions",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/cache/configuration.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/usage-guide.md",
+      "guides/infrastructure/cache/api-reference.md",
+      "guides/infrastructure/cache/troubleshooting.md"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/benchmarking.md": {
+    "title": "Cache Performance Benchmarking Guide",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Comprehensive cache performance benchmarking system with modular architecture, multi-format reporting, regression detection, and CI/CD integration for production-ready performance testing and optimization",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/cache/testing.md",
+      "guides/infrastructure/cache/configuration.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/troubleshooting.md",
+      "guides/operations/PERFORMANCE_OPTIMIZATION.md",
+      "guides/operations/MONITORING.md",
+      "guides/infrastructure/MONITORING.md",
+      "guides/developer/TESTING.md"
+    ],
+    "tags": [
+      "benchmarking",
+      "performance",
+      "testing",
+      "cache",
+      "regression-detection",
+      "ci-cd",
+      "monitoring",
+      "optimization",
+      "statistical-analysis",
+      "multi-format-reporting"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
+  },
+  "guides/infrastructure/cache/troubleshooting.md": {
+    "title": "Cache Infrastructure Performance & Troubleshooting Guide",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Systematic troubleshooting workflows, performance optimization strategies, and emergency procedures for cache infrastructure with debugging workflows and resolution procedures",
+    "dependencies": [
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/cache/configuration.md",
+      "guides/operations/MONITORING.md"
+    ],
+    "followups": [
+      "guides/infrastructure/cache/testing.md",
+      "guides/infrastructure/cache/benchmarking.md",
+      "guides/operations/PERFORMANCE_OPTIMIZATION.md",
+      "guides/operations/TROUBLESHOOTING.md",
+      "guides/infrastructure/MONITORING.md"
+    ],
+    "last_analyzed": "2025-08-27T10:00:00Z"
   },
   "guides/infrastructure/MONITORING.md": {
     "title": "Monitoring Infrastructure Service",
@@ -182,7 +319,7 @@
       "guides/application/BACKEND.md"
     ],
     "followups": [
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/RESILIENCE.md",
       "guides/developer/DEPLOYMENT.md"
     ],
@@ -200,7 +337,7 @@
     ],
     "followups": [
       "guides/infrastructure/MONITORING.md",
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/developer/DEPLOYMENT.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
@@ -269,7 +406,7 @@
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md",
       "guides/developer/AUTHENTICATION.md",
       "guides/infrastructure/AI.md",
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/RESILIENCE.md",
       "guides/operations/MIDDLEWARE.md"
     ],
@@ -374,7 +511,7 @@
     "description": "Comprehensive backup and recovery procedures, disaster recovery workflows, data backup strategies, and configuration preservation for business continuity",
     "dependencies": [
       "guides/operations/MONITORING.md",
-      "guides/infrastructure/CACHE.md"
+      "guides/infrastructure/cache/CACHE.md"
     ],
     "followups": [
       "guides/operations/LOGGING_STRATEGY.md",
@@ -425,7 +562,7 @@
     "dependencies": [
       "guides/infrastructure/MONITORING.md",
       "guides/infrastructure/RESILIENCE.md",
-      "guides/infrastructure/CACHE.md"
+      "guides/infrastructure/cache/CACHE.md"
     ],
     "followups": [
       "guides/operations/TROUBLESHOOTING.md",
@@ -443,7 +580,7 @@
     "dependencies": [
       "guides/operations/MONITORING.md",
       "guides/infrastructure/RESILIENCE.md",
-      "guides/infrastructure/CACHE.md"
+      "guides/infrastructure/cache/CACHE.md"
     ],
     "followups": [
       "guides/operations/TROUBLESHOOTING.md",
@@ -512,7 +649,7 @@
       "guides/domain-services/README.md",
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
       "guides/infrastructure/AI.md",
-      "guides/infrastructure/CACHE.md",
+      "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/RESILIENCE.md"
     ],
     "followups": [

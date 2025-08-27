@@ -245,8 +245,8 @@ echo $GEMINI_API_KEY
 ## 📚 What's Next?
 
 ### Learn More
-- **[Complete Preset Guide](../guides/infrastructure/CACHE_PRESET_GUIDE.md)**: Detailed preset documentation
-- **[Cache Usage Guide](../guides/infrastructure/CACHE_USAGE.md)**: Advanced usage patterns
+- **[Configuration Guide](../guides/infrastructure/cache/configuration.md)**: Detailed preset documentation and configuration management
+- **[Cache Usage Guide](../guides/infrastructure/cache/usage-guide.md)**: Advanced usage patterns and practical examples
 - **[Cache Infrastructure README](../../backend/app/infrastructure/cache/README.md)**: Technical details
 
 ### Try Examples

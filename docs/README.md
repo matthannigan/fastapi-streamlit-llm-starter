@@ -90,9 +90,9 @@ The backend follows a clear architectural distinction between **Infrastructure S
     └─────────────┘              └─────────────┘
 ```
 
-### 🚀 Phase 2 Cache Architecture (NEW)
+### 🚀 Phase 4 Cache Architecture with Preset System (LATEST)
 
-The template now features an **advanced inheritance-based cache architecture** that provides both generic and AI-specialized caching capabilities:
+The template now features an **advanced preset-based cache architecture** that dramatically simplifies configuration while providing both generic and AI-specialized caching capabilities:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -135,6 +135,32 @@ The template now features an **advanced inheritance-based cache architecture** t
 
 **📊 Enhanced Monitoring**: AI-specific performance analytics, text tier analysis, and intelligent optimization recommendations.
 
+#### 🌟 Phase 4 Preset System Benefits
+
+**🚀 Dramatic Simplification**: Reduced cache configuration complexity by **96%** - from 28+ environment variables to 1-4 variables:
+
+```bash
+# OLD WAY (28+ variables)
+CACHE_DEFAULT_TTL=3600
+CACHE_MEMORY_CACHE_SIZE=200
+CACHE_COMPRESSION_THRESHOLD=2000
+CACHE_COMPRESSION_LEVEL=6
+CACHE_TEXT_HASH_THRESHOLD=1000
+CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 1800}'
+# ... 22+ more variables
+
+# NEW WAY (1-4 variables)
+CACHE_PRESET=development                    # Choose preset for your use case
+CACHE_REDIS_URL=redis://localhost:6379     # Optional Redis override
+ENABLE_AI_CACHE=true                        # Optional AI features toggle
+```
+
+**🎯 Available Presets**: `disabled` | `minimal` | `simple` | `development` | `production` | `ai-development` | `ai-production`
+
+**⚡ Smart Defaults**: Each preset includes optimized settings for specific use cases (development debugging, production performance, AI workloads)
+
+**🔧 Flexible Overrides**: Maintain full customization power with `CACHE_CUSTOM_CONFIG` JSON overrides when needed
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -173,14 +199,28 @@ RESILIENCE_PRESET=simple      # General use, testing
 # RESILIENCE_PRESET=development # Local dev, fast feedback  
 # RESILIENCE_PRESET=production  # Production workloads
 
-# Optional: Redis for caching (falls back to memory cache)
-REDIS_URL=redis://localhost:6379
+# Cache Configuration (Choose one preset)
+CACHE_PRESET=development      # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
+
+# Optional: Redis override (auto-configured per preset if not specified)
+CACHE_REDIS_URL=redis://localhost:6379
+
+# Optional: AI cache features toggle  
+ENABLE_AI_CACHE=true
 ```
 
 **Available Resilience Presets:**
 - **simple**: 3 retries, 5 failure threshold, 60s recovery, balanced strategy
 - **development**: 2 retries, 3 failure threshold, 30s recovery, aggressive strategy
 - **production**: 5 retries, 10 failure threshold, 120s recovery, conservative strategy
+
+**Available Cache Presets:**
+- **development**: Debug-friendly, 30min TTL, monitoring enabled, ideal for local development
+- **production**: High-performance, 2hr TTL, optimized for production web applications
+- **ai-development**: AI features enabled, 30min TTL, optimized for AI app development
+- **ai-production**: AI-optimized, 4hr TTL, maximum performance for production AI workloads
+- **simple**: Basic caching, 1hr TTL, no AI features, good for small applications
+- **minimal**: Lightweight, 15min TTL, resource-constrained environments
 
 ### 3. Start the Application
 

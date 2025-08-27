@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-08-16*
+*Last updated on 2025-08-27*
 
 ## Application
 
@@ -62,7 +62,21 @@ This view organizes all documentation by topic category, providing an alternativ
 
 - **[AI Infrastructure Service](guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating
 
-- **[Cache Infrastructure Service](guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation
+- **[Cache Infrastructure API Reference](guides/infrastructure/cache/api-reference.md)**: Comprehensive API reference documentation for all public APIs and interfaces in the cache infrastructure including CacheFactory, configuration APIs, and dependency injection functions
+
+- **[Cache Infrastructure Comprehensive Usage Guide](guides/infrastructure/cache/usage-guide.md)**: Complete practical usage guide for the cache infrastructure - from 5-minute quickstart to advanced optimization patterns with preset-based configuration
+
+- **[Cache Infrastructure Configuration Guide](guides/infrastructure/cache/configuration.md)**: Flexible, production-ready configuration through modern preset-based system that simplifies setup from 28+ environment variables to 1-4 essential settings
+
+- **[Cache Infrastructure Migration Guide](guides/infrastructure/cache/migration.md)**: Comprehensive migration guide for transitioning from inheritance-based cache patterns to callback composition and factory-based architecture with step-by-step upgrade instructions
+
+- **[Cache Infrastructure Performance & Troubleshooting Guide](guides/infrastructure/cache/troubleshooting.md)**: Systematic troubleshooting workflows, performance optimization strategies, and emergency procedures for cache infrastructure with debugging workflows and resolution procedures
+
+- **[Cache Infrastructure Service](guides/infrastructure/cache/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation - primary entry point for cache documentation
+
+- **[Cache Infrastructure Testing Guide](guides/infrastructure/cache/testing.md)**: Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, performance benchmarks, and CI/CD configuration
+
+- **[Cache Performance Benchmarking Guide](guides/infrastructure/cache/benchmarking.md)**: Comprehensive cache performance benchmarking system with modular architecture, multi-format reporting, regression detection, and CI/CD integration for production-ready performance testing and optimization
 
 - **[Monitoring Infrastructure Service](guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection
 

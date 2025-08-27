@@ -15,7 +15,15 @@
 - **[Infrastructure vs Domain Services](./reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability *(Last updated 2025-07-30)*
 - **Infrastructure Services**:
   - **[AI](./guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating *(Last updated 2025-07-30)*
-  - **[Cache](./guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation *(Last updated 2025-07-30)*
+  - **Cache Infrastructure**: Comprehensive cache infrastructure with multi-tiered architecture, AI optimization, and production-ready patterns
+    - **[Cache Overview](./guides/infrastructure/cache/CACHE.md)**: Cache infrastructure architecture, key features, and navigation hub *(Last updated 2025-08-27)*
+    - **[Usage Guide](./guides/infrastructure/cache/usage-guide.md)**: Practical implementation patterns, factory methods, and developer productivity *(Last updated 2025-08-27)*
+    - **[API Reference](./guides/infrastructure/cache/api-reference.md)**: Complete API documentation for all cache interfaces and factory methods *(Last updated 2025-08-27)*
+    - **[Benchmarking Guide](./guides/infrastructure/cache/benchmarking.md)**: Comprehensive performance benchmarking system with statistical analysis, regression detection, and CI/CD integration *(Last updated 2025-08-27)*
+    - **[Configuration Guide](./guides/infrastructure/cache/configuration.md)**: Preset system, environment variables, and configuration management *(Last updated 2025-08-27)*
+    - **[Testing Guide](./guides/infrastructure/cache/testing.md)**: Testing strategies, fixtures, and performance benchmarks *(Last updated 2025-08-27)*
+    - **[Migration Guide](./guides/infrastructure/cache/migration.md)**: Migration workflows, data management, and upgrade procedures *(Last updated 2025-08-27)*
+    - **[Troubleshooting Guide](./guides/infrastructure/cache/troubleshooting.md)**: Performance optimization, debugging workflows, and operational guidance *(Last updated 2025-08-27)*
   - **[Monitoring](./guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection *(Last updated 2025-07-30)*
   - **[Resilience](./guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring *(Last updated 2025-07-30)*
   - **[Security](./guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection *(Last updated 2025-07-30)*

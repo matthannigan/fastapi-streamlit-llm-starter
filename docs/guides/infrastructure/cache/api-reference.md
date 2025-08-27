@@ -1,3 +1,7 @@
+---
+sidebar_label: API Reference
+---
+
 # Cache Infrastructure API Reference
 
 This document provides comprehensive API reference documentation for all public APIs and interfaces in the cache infrastructure. The cache infrastructure provides production-ready caching capabilities with Redis backend support, automatic fallback to memory cache, performance monitoring, and comprehensive configuration management.
@@ -58,6 +62,8 @@ async def for_web_app(
 
 Creates a cache optimized for web applications with balanced performance.
 
+> **💡 For practical examples**: See the [Cache Usage Guide](./usage-guide.md#web-application-patterns) for complete web application caching patterns.
+
 **Parameters:**
 - `redis_url` (str): Redis server URL. Default: "redis://redis:6379"
 - `default_ttl` (int): Default time-to-live in seconds. Default: 1800 (30 minutes)
@@ -109,6 +115,8 @@ async def for_ai_app(
 ```
 
 Creates a cache optimized for AI applications with enhanced storage and compression.
+
+> **💡 For practical examples**: See the [Cache Usage Guide](./usage-guide.md#ai-response-caching-patterns) for comprehensive AI response caching strategies.
 
 **Parameters:**
 - `redis_url` (str): Redis server URL. Default: "redis://redis:6379"
@@ -375,6 +383,8 @@ Validates AI configuration settings.
 ### Class: CacheConfigBuilder
 
 Builder pattern implementation for flexible configuration construction.
+
+> **💡 Configuration patterns**: See the [Cache Usage Guide](./usage-guide.md#configuration-patterns) for step-by-step configuration examples using the builder pattern.
 
 ```python
 from app.infrastructure.cache.config import CacheConfigBuilder
@@ -812,6 +822,8 @@ async def get_cache_service(
 
 Primary dependency function for general-purpose cache access.
 
+> **💡 Dependency injection patterns**: See the [Cache Usage Guide](./usage-guide.md#dependency-injection-patterns) for FastAPI dependency injection examples.
+
 **Parameters:**
 - `config` (CacheConfig): Cache configuration dependency
 
@@ -887,6 +899,8 @@ Dependency function for application settings.
 - `Settings`: Application settings instance
 
 ### Testing Dependencies
+
+> **💡 Testing strategies**: See the [Cache Testing Guide](../CACHE_TESTING.md) for comprehensive testing patterns, mocking strategies, and test utilities.
 
 #### get_test_cache()
 
@@ -996,6 +1010,8 @@ Dependency function for cache health status.
 ### Class: CachePerformanceBenchmark
 
 Main benchmarking orchestration class for comprehensive performance testing.
+
+> **💡 Performance optimization**: See the [Cache Usage Guide](./usage-guide.md#performance-monitoring-and-benchmarking) for practical benchmarking examples and performance optimization strategies.
 
 ```python
 from app.infrastructure.cache.benchmarks.core import CachePerformanceBenchmark
@@ -1396,13 +1412,33 @@ prod_cache = await factory.create_cache_from_config(prod_config.to_dict())
 
 ---
 
-## Cross-References
+## Related Documentation
 
-For more detailed information, see:
+### Cache Documentation
 
-- [Cache Infrastructure Guide](./CACHE.md) - Comprehensive usage guide
-- [Cache Migration Guide](./CACHE_MIGRATION.md) - Migration and upgrade procedures
-- [Cache Usage Examples](./CACHE_USAGE.md) - Practical implementation examples
-- [Monitoring Guide](./MONITORING.md) - Performance monitoring and alerting
+- **[Cache Infrastructure Guide](./CACHE.md)** - Comprehensive cache infrastructure overview with architecture, features, and configuration patterns
+- **[Cache Usage Guide](./usage-guide.md)** - Practical implementation examples with quickstart patterns and advanced optimization strategies
+- **[Cache Migration Guide](../CACHE_MIGRATION.md)** - Migration and upgrade procedures for existing cache implementations
+- **[Cache Testing Guide](../CACHE_TESTING.md)** - Testing patterns, mocking strategies, and test utilities for cache infrastructure
+- **[Cache Configuration Guide](../CACHE_ENVIRONMENT_CONFIG.md)** - Environment variable configuration and preset management
+- **[Cache Performance Benchmarking Guide](./benchmarking.md)** - Performance testing framework for API endpoints and comprehensive cache analysis
+
+### Related Infrastructure Documentation
+
+- **[Monitoring Guide](../MONITORING.md)** - Performance monitoring, metrics collection, and alerting strategies
+- **[AI Services Guide](../AI.md)** - AI service integration patterns that leverage cache infrastructure
+- **[Resilience Guide](../RESILIENCE.md)** - Resilience patterns including circuit breakers and fallback mechanisms
+- **[Security Guide](../SECURITY.md)** - Security considerations for cache infrastructure and data protection
+
+### Developer Resources
+
+- **[Cache Developer Experience Guide](../CACHE_DEVELOPER_EXPERIENCE.md)** - Development tools, debugging utilities, and performance optimization
+- **[Cache Presets Guide](../CACHE_PRESET_GUIDE.md)** - Pre-configured cache settings for different environments and use cases
+
+---
+
+## Getting Started
 
 This API reference provides the complete interface specification for the cache infrastructure. All APIs are designed to be type-safe, well-documented, and provide comprehensive error handling with contextual information for debugging and monitoring.
+
+**New to the cache infrastructure?** Start with the [Cache Infrastructure Guide](./CACHE.md) for an overview of the architecture and features, then explore the [Cache Usage Guide](./usage-guide.md) for practical implementation examples.
