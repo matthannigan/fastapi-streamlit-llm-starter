@@ -1,5 +1,5 @@
 """
-[REFACTORED] Comprehensive cache benchmarking data models with statistical analysis and comparison utilities.
+Comprehensive cache benchmarking data models with statistical analysis and comparison utilities.
 
 This module provides complete data model infrastructure for cache performance benchmarking
 including individual result containers, before/after comparison analysis, and benchmark
@@ -13,19 +13,19 @@ Classes:
 Key Features:
     - **Comprehensive Metrics**: Complete performance data including timing percentiles,
       memory usage, throughput, success rates, and optional cache-specific metrics.
-    
+
     - **Statistical Analysis**: Built-in performance grading, threshold validation,
       and comprehensive statistical analysis with percentile calculations.
-    
+
     - **Comparison Analysis**: Detailed before/after comparison with percentage changes,
       regression detection, and improvement/degradation area identification.
-    
+
     - **Suite Aggregation**: Collection-level analysis with overall scoring, performance
       grading, and operation-specific result retrieval.
-    
+
     - **Serialization Support**: Full JSON serialization support for data persistence,
       API integration, and report generation with datetime stamping.
-    
+
     - **Performance Grading**: Automated performance assessment using industry-standard
       thresholds with Excellent/Good/Acceptable/Poor/Critical classifications.
 
@@ -36,13 +36,13 @@ Data Model Structure:
     - Throughput and success rate analysis
     - Optional cache-specific metrics (hit rates, compression)
     - Metadata and timestamp information
-    
+
     ComparisonResult provides before/after analysis:
     - Performance change percentages
     - Regression detection flags
     - Improvement and degradation area identification
     - Strategic recommendations
-    
+
     BenchmarkSuite aggregates multiple results:
     - Overall performance grading
     - Suite-level scoring and pass rates
@@ -61,7 +61,7 @@ Usage Examples:
         >>> print(result.performance_grade())  # "Excellent"
         >>> print(result.meets_threshold(5.0))  # True
         >>> data = result.to_dict()  # For serialization
-        
+
     Before/After Comparison:
         >>> comparison = ComparisonResult(
         ...     original_cache_results=old_result,
@@ -71,7 +71,7 @@ Usage Examples:
         ... )
         >>> print(comparison.summary())  # "Performance improved by 15.2%..."
         >>> recommendations = comparison.generate_recommendations()
-        
+
     Suite Analysis:
         >>> suite = BenchmarkSuite(
         ...     name="Redis Cache Performance",
@@ -162,7 +162,7 @@ class BenchmarkResult:
         
         Args:
             threshold_ms: Maximum acceptable average duration in milliseconds
-            
+        
         Returns:
             True if average duration is within threshold, False otherwise
         """
@@ -174,7 +174,7 @@ class BenchmarkResult:
         
         Grade categories:
         - Excellent: ≤5ms average
-        - Good: ≤25ms average  
+        - Good: ≤25ms average
         - Acceptable: ≤50ms average
         - Poor: ≤100ms average
         - Critical: >100ms average
@@ -196,7 +196,7 @@ class ComparisonResult:
     
     Attributes:
         original_cache_results: Benchmark results from original implementation
-        new_cache_results: Benchmark results from new implementation  
+        new_cache_results: Benchmark results from new implementation
         performance_change_percent: Overall performance change percentage
         memory_change_percent: Memory usage change percentage
         operations_per_second_change: Throughput change
@@ -332,7 +332,7 @@ class BenchmarkSuite:
         
         Args:
             operation_type: The operation type to search for (e.g., "get", "set")
-            
+        
         Returns:
             BenchmarkResult for the operation if found, None otherwise
         """
@@ -344,7 +344,7 @@ class BenchmarkSuite:
         
         The score is a weighted combination of:
         - Timing performance (50% weight)
-        - Success rate (30% weight)  
+        - Success rate (30% weight)
         - Memory efficiency (20% weight)
         
         Returns:

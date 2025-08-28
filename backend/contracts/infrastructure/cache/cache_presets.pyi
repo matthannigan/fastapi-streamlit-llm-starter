@@ -1,5 +1,5 @@
 """
-**Cache configuration presets and strategy management system.**
+Cache configuration presets and strategy management system.
 
 This module provides a comprehensive preset system for managing cache configurations
 across different deployment environments, reducing complexity by replacing dozens of
@@ -47,7 +47,6 @@ and advanced customization capabilities.
 from dataclasses import dataclass, asdict, field
 from typing import Dict, List, Optional, Any, NamedTuple
 from enum import Enum
-import json
 import logging
 import os
 import re
@@ -78,22 +77,22 @@ class CacheStrategy(str, Enum):
         BALANCED: Production default with moderate TTLs (3600-7200s) and balanced performance
         ROBUST: High-reliability strategy with extended TTLs (7200-86400s) for stability
         AI_OPTIMIZED: AI workload strategy with text hashing and intelligent caching (1800-14400s)
-        
+    
     Behavior:
         - String enum supporting direct comparison and serialization
         - Each strategy maps to specific configuration parameters in DEFAULT_PRESETS
         - Provides consistent configuration across different deployment environments
         - Enables easy strategy switching without manual parameter tuning
-        
+    
     Examples:
         >>> strategy = CacheStrategy.BALANCED
         >>> print(f"Using {strategy} strategy")
         Using balanced strategy
-        
+    
         >>> # Strategy-based configuration
         >>> config = DEFAULT_PRESETS[CacheStrategy.AI_OPTIMIZED]
         >>> print(f"Default TTL: {config.default_ttl}s")
-        
+    
         >>> # Environment-based strategy selection
         >>> if is_production():
         ...     strategy = CacheStrategy.ROBUST
@@ -127,17 +126,17 @@ class CacheConfig:
         enable_ai_features: bool enable AI-specific caching optimizations
         text_hash_threshold: int character threshold for text hashing (500-10000)
         operation_specific_ttls: Dict[str, int] TTL overrides per operation type
-        
+    
     State Management:
         - Immutable configuration after creation for consistent behavior
         - Validation methods ensure configuration integrity
         - Strategy-based defaults provide production-ready configurations
         - Environment integration supports deployment-specific customization
-        
+    
     Usage:
         # Strategy-based configuration
         config = CacheConfig(strategy=CacheStrategy.AI_OPTIMIZED)
-        
+    
         # Custom configuration with overrides
         config = CacheConfig(
             strategy=CacheStrategy.BALANCED,
@@ -145,7 +144,7 @@ class CacheConfig:
             default_ttl=7200,
             enable_ai_features=True
         )
-        
+    
         # Production configuration with security
         config = CacheConfig(
             strategy=CacheStrategy.ROBUST,
@@ -187,23 +186,23 @@ class CachePreset:
         redis_settings: Dict[str, Any] Redis connection and performance parameters
         performance_settings: Dict[str, Any] caching performance and optimization settings
         ai_settings: Dict[str, Any] AI-specific configuration for text processing
-        
+    
     Public Methods:
         to_cache_config(): Convert preset to full CacheConfig instance
         validate(): Validate preset configuration integrity
         merge_with(): Merge with another preset for configuration inheritance
-        
+    
     State Management:
         - Immutable preset configuration after initialization
         - Comprehensive validation with detailed error reporting
         - Environment-specific parameter optimization
         - Strategy-based intelligent defaults
-        
+    
     Usage:
         # Access predefined presets
         preset = CACHE_PRESETS['production']
         config = preset.to_cache_config()
-        
+    
         # Custom preset creation
         custom_preset = CachePreset(
             name="high_performance",
@@ -214,7 +213,7 @@ class CachePreset:
                 "connection_timeout": 5
             }
         )
-        
+    
         # Preset validation and conversion
         if custom_preset.validate():
             cache_config = custom_preset.to_cache_config()
@@ -251,10 +250,10 @@ class CachePresetManager:
         
         Args:
             name: Preset name (disabled, simple, development, production, ai-development, ai-production)
-            
+        
         Returns:
             CachePreset object
-            
+        
         Raises:
             ValueError: If preset name is not found
         """
@@ -278,7 +277,7 @@ class CachePresetManager:
         
         Args:
             preset: Preset to validate
-            
+        
         Returns:
             True if valid, False otherwise
         """
@@ -291,7 +290,7 @@ class CachePresetManager:
         Args:
             environment: Environment name (dev, test, staging, prod, etc.)
             If None, will auto-detect from environment variables
-            
+        
         Returns:
             Recommended preset name
         """
@@ -303,7 +302,7 @@ class CachePresetManager:
         
         Args:
             environment: Environment name or None for auto-detection
-            
+        
         Returns:
             EnvironmentRecommendation with preset, confidence, and reasoning
         """

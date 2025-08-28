@@ -1,5 +1,5 @@
 """
-**Generic Redis cache implementation with L1 memory cache and advanced features.**
+Generic Redis cache implementation with L1 memory cache and advanced features.
 
 This module provides a flexible Redis-backed cache implementation that serves as the
 foundation for specialized caches. It includes a two-tier architecture with memory
@@ -15,7 +15,7 @@ like AIResponseCache.
 
 - **Two-Tier Architecture**: L1 memory cache + L2 Redis persistence
 - **Intelligent Compression**: Configurable compression with performance monitoring
-- **Graceful Degradation**: Falls back to memory-only mode when Redis unavailable  
+- **Graceful Degradation**: Falls back to memory-only mode when Redis unavailable
 - **Advanced Monitoring**: Comprehensive metrics and performance analytics
 - **Flexible Serialization**: Support for JSON and pickle serialization
 - **Connection Management**: Robust Redis connection handling with retry logic

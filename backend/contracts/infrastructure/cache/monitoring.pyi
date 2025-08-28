@@ -1,5 +1,5 @@
 """
-**Comprehensive cache performance monitoring and analytics.**
+Comprehensive cache performance monitoring and analytics.
 
 This module provides real-time monitoring and analytics for cache performance across
 multiple dimensions including timing, memory usage, compression efficiency, and
@@ -8,7 +8,7 @@ invalidation patterns. It helps identify bottlenecks and optimize cache strategi
 ## Key Features
 
 - **Real-Time Monitoring**: Live performance tracking for cache operations
-- **Timing Analysis**: Detailed analysis for key generation and cache operations  
+- **Timing Analysis**: Detailed analysis for key generation and cache operations
 - **Memory Tracking**: Usage monitoring with configurable threshold alerting
 - **Compression Analytics**: Efficiency monitoring and optimization recommendations
 - **Invalidation Analysis**: Pattern analysis and frequency monitoring
@@ -19,7 +19,7 @@ invalidation patterns. It helps identify bottlenecks and optimize cache strategi
 
 - **PerformanceMetric**: Individual performance measurements
 - **CompressionMetric**: Compression performance tracking
-- **MemoryUsageMetric**: Memory usage snapshots  
+- **MemoryUsageMetric**: Memory usage snapshots
 - **InvalidationMetric**: Cache invalidation event tracking
 - **CachePerformanceMonitor**: Main monitoring class with comprehensive analytics
 
@@ -32,7 +32,7 @@ monitor = CachePerformanceMonitor(
     memory_warning_threshold_bytes=100 * 1024 * 1024  # 100MB
     ...     memory_critical_threshold_bytes=200 * 1024 * 1024  # 200MB
     ... )
-    
+
     >>> # Record key generation performance
     >>> start_time = time.time()
     >>> # ... key generation code ...
@@ -42,7 +42,7 @@ monitor = CachePerformanceMonitor(
     ...     text_length=len(text),
     ...     operation_type="summarize"
     ... )
-    
+
     >>> # Record cache operation performance
     >>> start_time = time.time()
     >>> result = cache.get(key)
@@ -53,23 +53,23 @@ monitor = CachePerformanceMonitor(
     ...     cache_hit=result is not None,
     ...     text_length=len(text) if result else 0
     ... )
-    
+
     >>> # Monitor memory usage
     >>> memory_metric = monitor.record_memory_usage(
     ...     memory_cache=cache._memory_cache,
     ...     redis_stats={"memory_used_bytes": 50000000, "keys": 1000}
     ... )
-    
+
     >>> # Get comprehensive performance statistics
     >>> stats = monitor.get_performance_stats()
     >>> print(f"Cache hit rate: {stats['cache_hit_rate']:.1f}%")
     >>> print(f"Average key generation time: {stats['key_generation']['avg_duration']:.3f}s")
-    
+
     >>> # Check for performance issues and get recommendations
     >>> warnings = monitor.get_memory_warnings()
     >>> for warning in warnings:
     ...     print(f"{warning['severity'].upper()}: {warning['message']}")
-    
+
     >>> recommendations = monitor.get_invalidation_recommendations()
     >>> for rec in recommendations:
     ...     if rec['severity'] == 'critical':
@@ -81,26 +81,26 @@ Performance Monitoring Areas:
        - Text length correlation analysis
        - Operation type performance comparison
        - Slow operation detection and alerting
-    
+
     2. Cache Operations:
        - Get/Set operation timing
        - Hit/Miss ratio tracking
        - Operation type performance analysis
        - Bottleneck identification
-    
+
     3. Memory Usage:
        - Total cache memory consumption
        - Memory cache vs. Redis usage breakdown
        - Entry count and average size tracking
        - Threshold-based alerting (warning/critical)
        - Growth trend analysis
-    
+
     4. Compression Efficiency:
        - Compression ratio tracking
        - Compression time analysis
        - Size savings calculations
        - Performance vs. efficiency trade-offs
-    
+
     5. Cache Invalidation:
        - Invalidation frequency monitoring
        - Pattern analysis and optimization

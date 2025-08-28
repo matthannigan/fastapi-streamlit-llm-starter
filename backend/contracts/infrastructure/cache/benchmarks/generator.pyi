@@ -1,5 +1,5 @@
 """
-[REFACTORED] Comprehensive cache benchmark data generator with realistic workload simulation.
+Comprehensive cache benchmark data generator with realistic workload simulation.
 
 This module provides sophisticated test data generation for cache performance benchmarking
 with realistic workload patterns that closely simulate production cache usage scenarios.
@@ -12,19 +12,19 @@ Classes:
 Key Features:
     - **Realistic Data Patterns**: Multiple data types simulating real-world cache usage
       including small key-value pairs, medium text content, large documents, and JSON objects.
-    
+
     - **Size Variation**: Comprehensive size distribution from small (30 bytes) to large
       (multi-KB) entries with configurable scaling factors for memory pressure testing.
-    
+
     - **Content Diversity**: Natural language text, structured JSON data, repetitive content,
       and random data for comprehensive compression and performance testing.
-    
+
     - **Workload Simulation**: Memory pressure scenarios, concurrent access patterns,
       and operation type distribution matching production usage patterns.
-    
+
     - **Compression Testing**: Specialized data generation for compression efficiency analysis
       with varying compressibility characteristics from highly compressible to random content.
-    
+
     - **Configurable Generation**: Flexible data generation with customizable iteration counts,
       size distributions, and content complexity for different testing scenarios.
 
@@ -45,18 +45,18 @@ Usage Examples:
         >>> print(f"Generated {len(basic_data)} test items")
         >>> for item in basic_data[:3]:
         ...     print(f"Key: {item['key']}, Size: {item['expected_size_bytes']} bytes")
-        
+
     Memory Pressure Testing:
         >>> memory_data = generator.generate_memory_pressure_data(10.0)  # 10MB target
         >>> total_size = sum(item['size_bytes'] for item in memory_data)
         >>> print(f"Generated {total_size / (1024*1024):.1f}MB of test data")
-        
+
     Concurrent Access Simulation:
         >>> patterns = generator.generate_concurrent_access_patterns(5)
         >>> for pattern in patterns:
         ...     print(f"Pattern {pattern['pattern_id']}: {len(pattern['operations'])} ops, "
         ...           f"{pattern['concurrency_level']} threads")
-        
+
     Compression Efficiency Testing:
         >>> compression_data = generator.generate_compression_test_data()
         >>> for item in compression_data:
@@ -67,7 +67,7 @@ Performance Considerations:
     - Template-based text generation provides natural language characteristics
     - Memory-efficient generation for large datasets using streaming approaches
     - Configurable complexity allows balancing realism with generation speed
-    
+
 Thread Safety:
     The data generator is stateless and thread-safe for concurrent benchmark execution.
     Multiple generator instances can be used safely across threads without interference.
@@ -118,11 +118,11 @@ class CacheBenchmarkDataGenerator:
         
         Args:
             count: Number of test data items to generate
-            
+        
         Returns:
             List of dictionaries containing test data with keys, text, operations,
             and metadata suitable for cache benchmarking
-            
+        
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> data = generator.generate_basic_operations_data(50)
@@ -141,10 +141,10 @@ class CacheBenchmarkDataGenerator:
         
         Args:
             total_size_mb: Target total size of generated data in megabytes
-            
+        
         Returns:
             List of test data items that collectively approach the target size
-            
+        
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> data = generator.generate_memory_pressure_data(5.0)  # 5MB of data
@@ -163,11 +163,11 @@ class CacheBenchmarkDataGenerator:
         
         Args:
             num_patterns: Number of different access patterns to generate
-            
+        
         Returns:
             List of access pattern dictionaries, each containing operation
             sequences and concurrency parameters
-            
+        
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> patterns = generator.generate_concurrent_access_patterns(5)
@@ -192,7 +192,7 @@ class CacheBenchmarkDataGenerator:
         Returns:
             List of test data items with expected compression ratios and
             descriptions of their compression characteristics
-            
+        
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> compression_data = generator.generate_compression_test_data()

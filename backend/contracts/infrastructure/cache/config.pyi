@@ -1,5 +1,5 @@
 """
-**Enhanced configuration management with builder pattern and environment presets.**
+Enhanced configuration management with builder pattern and environment presets.
 
 This module provides comprehensive cache configuration management using a fluent
 builder pattern. It supports environment variable loading, validation, AI-specific
@@ -8,7 +8,7 @@ configurations, and preset configurations for different deployment environments.
 ## Classes
 
 - **ValidationResult**: Validation results with detailed errors and warnings
-- **CacheConfig**: Main configuration dataclass with comprehensive cache settings  
+- **CacheConfig**: Main configuration dataclass with comprehensive cache settings
 - **AICacheConfig**: AI-specific configuration extensions
 - **CacheConfigBuilder**: Builder pattern for flexible configuration construction
 - **EnvironmentPresets**: Pre-configured settings for common environments
@@ -34,10 +34,10 @@ config = (CacheConfigBuilder()
         ...     .with_redis("redis://prod:6379")
         ...     .with_ai_features(text_hash_threshold=2000)
         ...     .build())
-        
+
     Environment-based configuration:
         >>> config = CacheConfigBuilder().from_environment().build()
-        
+
     File-based configuration:
         >>> config = CacheConfigBuilder().from_file("cache_config.json").build()
 """
@@ -45,7 +45,6 @@ config = (CacheConfigBuilder()
 import hashlib
 import json
 import logging
-import os
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -179,10 +178,10 @@ class CacheConfigBuilder:
         
         Args:
             environment: Environment name (development, testing, production)
-            
+        
         Returns:
             Self for method chaining
-            
+        
         Raises:
             ValidationError: If environment is not supported
         """
@@ -196,7 +195,7 @@ class CacheConfigBuilder:
             redis_url: Redis connection URL
             password: Redis password (optional)
             use_tls: Enable TLS for connection
-            
+        
         Returns:
             Self for method chaining
         """
@@ -209,7 +208,7 @@ class CacheConfigBuilder:
         Args:
             tls_cert_path: Path to TLS certificate file
             tls_key_path: Path to TLS private key file
-            
+        
         Returns:
             Self for method chaining
         """
@@ -222,7 +221,7 @@ class CacheConfigBuilder:
         Args:
             threshold: Size threshold for enabling compression
             level: Compression level (1-9)
-            
+        
         Returns:
             Self for method chaining
         """
@@ -234,7 +233,7 @@ class CacheConfigBuilder:
         
         Args:
             size: Maximum size of memory cache
-            
+        
         Returns:
             Self for method chaining
         """
@@ -247,10 +246,10 @@ class CacheConfigBuilder:
         Args:
             **ai_options: AI configuration options (text_hash_threshold,
                          hash_algorithm, operation_ttls, etc.)
-            
+        
         Returns:
             Self for method chaining
-            
+        
         Raises:
             ValidationError: If unknown AI configuration options are provided
         """
@@ -262,10 +261,10 @@ class CacheConfigBuilder:
         
         Args:
             file_path: Path to JSON configuration file
-            
+        
         Returns:
             Self for method chaining
-            
+        
         Raises:
             ConfigurationError: If file cannot be read or parsed
         """
@@ -295,7 +294,7 @@ class CacheConfigBuilder:
         
         Returns:
             Validated CacheConfig instance
-            
+        
         Raises:
             ValidationError: If configuration validation fails
         """
@@ -317,7 +316,7 @@ class CacheConfigBuilder:
         Args:
             file_path: Path to save configuration file
             create_dirs: Whether to create parent directories if they don't exist
-            
+        
         Raises:
             ConfigurationError: If file cannot be written
         """
@@ -384,7 +383,7 @@ class EnvironmentPresets:
         
         Returns:
             CacheConfig optimized for testing from the new preset system
-            
+        
         Note: Uses 'development' preset as base since it's optimized for fast feedback
         """
         ...
@@ -436,7 +435,7 @@ class EnvironmentPresets:
         
         Args:
             preset_name: Name of the preset to get details for
-            
+        
         Returns:
             Dictionary with preset configuration details
         """
@@ -449,7 +448,7 @@ class EnvironmentPresets:
         
         Args:
             environment: Environment name (optional, auto-detects if None)
-            
+        
         Returns:
             Recommended preset name
         """

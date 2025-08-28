@@ -1,5 +1,5 @@
 """
-**AI-optimized Redis cache with intelligent key generation and compression.**
+AI-optimized Redis cache with intelligent key generation and compression.
 
 This module provides a specialized Redis cache implementation optimized for AI response
 caching. It extends GenericRedisCache with AI-specific features including intelligent
@@ -38,7 +38,7 @@ key = cache.build_key(
     operation="summarize",
     options={"max_length": 100}
 )
-await cache.set(key, {"summary": "Brief summary"}, ttl=3600) 
+await cache.set(key, {"summary": "Brief summary"}, ttl=3600)
         ...         'large': 30000
         ...     }
         ... )
@@ -83,7 +83,7 @@ class AIResponseCache(GenericRedisCache):
     """
     AI Response Cache with enhanced inheritance architecture.
     
-    This refactored implementation properly inherits from GenericRedisCache while 
+    This refactored implementation properly inherits from GenericRedisCache while
     maintaining all AI-specific functionality. It uses CacheParameterMapper for
     clean parameter separation and provides comprehensive AI metrics collection.
     
@@ -164,17 +164,16 @@ class AIResponseCache(GenericRedisCache):
             text: Input text for key generation
             operation: Operation type (generic string)
             options: Options dictionary containing all operation-specific data
-                    including any embedded question or other parameters
-                    
+        
         Returns:
             Generated cache key string
-            
+        
         Behavior:
             - Delegates to CacheKeyGenerator for actual key generation
             - No domain-specific logic or knowledge about operations
             - Generic interface suitable for any domain service usage
             - Maintains consistency with existing key generation patterns
-            
+        
         Examples:
             >>> # Basic operation key generation
             >>> key = cache.build_key(
@@ -182,7 +181,7 @@ class AIResponseCache(GenericRedisCache):
             ...     operation="process",
             ...     options={"param": "value"}
             ... )
-            
+        
             >>> # Key generation with embedded question
             >>> key = cache.build_key(
             ...     text="Document content",
@@ -230,8 +229,8 @@ class AIResponseCache(GenericRedisCache):
         """
         Invalidate cache entries for a specific operation type with comprehensive metrics tracking.
         
-        Removes all cached responses for a particular AI operation type while preserving 
-        other operation types intact. Uses the inherited invalidate_pattern method from 
+        Removes all cached responses for a particular AI operation type while preserving
+        other operation types intact. Uses the inherited invalidate_pattern method from
         GenericRedisCache for the actual invalidation work, but adds AI-specific pattern
         building, metrics recording, and enhanced logging.
         
@@ -414,7 +413,7 @@ class AIResponseCache(GenericRedisCache):
             Dict[str, Any]: Operation performance metrics containing:
                 - operations: Performance metrics per operation type with:
                     - avg_duration_ms: Average operation duration in milliseconds
-                    - min_duration_ms: Minimum operation duration 
+                    - min_duration_ms: Minimum operation duration
                     - max_duration_ms: Maximum operation duration
                     - percentiles: p50, p95, p99 percentile durations
                     - total_operations: Total number of operations performed

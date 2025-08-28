@@ -10,7 +10,7 @@ monitoring capabilities for both web and AI applications.
 The cache module is organized into specialized components:
 
 - **Core Implementations**: `base.py`, `memory.py`, `redis_generic.py`, `redis_ai.py`
-- **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`  
+- **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`
 - **Utilities**: `factory.py`, `key_generator.py`, `parameter_mapping.py`
 - **Advanced Features**: `monitoring.py`, `security.py`, `migration.py`
 - **Benchmarking**: `benchmarks/` subdirectory with performance testing tools
@@ -36,7 +36,7 @@ from app.infrastructure.cache import CacheFactory
 config = get_cache_config()  # Uses CACHE_PRESET environment variable
 cache = CacheFactory.create_cache_from_config(config)
 
-# Standard cache operations  
+# Standard cache operations
 await cache.set("key", {"data": "value"}, ttl=3600)
 result = await cache.get("key")
 ```
