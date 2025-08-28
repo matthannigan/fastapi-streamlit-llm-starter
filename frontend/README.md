@@ -1,1 +1,1 @@
-docs/guides/FRONTEND.md
+../docs/guides/application/FRONTEND.md

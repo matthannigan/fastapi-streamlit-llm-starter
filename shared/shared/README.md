@@ -1,0 +1,1 @@
+../../docs/guides/application/SHARED.md
