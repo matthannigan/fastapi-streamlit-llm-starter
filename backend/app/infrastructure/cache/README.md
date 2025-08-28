@@ -1,3 +1,7 @@
+---
+sidebar_label: cache
+---
+
 # Cache Infrastructure
 
 Comprehensive caching infrastructure for FastAPI applications with multiple implementations, preset-based configuration, and advanced monitoring. Supports both web applications and AI workloads with intelligent optimization.
