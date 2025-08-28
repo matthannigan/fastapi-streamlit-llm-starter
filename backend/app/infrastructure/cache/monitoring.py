@@ -1,4 +1,5 @@
-"""**Comprehensive cache performance monitoring and analytics.**
+"""
+Comprehensive cache performance monitoring and analytics.
 
 This module provides real-time monitoring and analytics for cache performance across
 multiple dimensions including timing, memory usage, compression efficiency, and
@@ -7,7 +8,7 @@ invalidation patterns. It helps identify bottlenecks and optimize cache strategi
 ## Key Features
 
 - **Real-Time Monitoring**: Live performance tracking for cache operations
-- **Timing Analysis**: Detailed analysis for key generation and cache operations  
+- **Timing Analysis**: Detailed analysis for key generation and cache operations
 - **Memory Tracking**: Usage monitoring with configurable threshold alerting
 - **Compression Analytics**: Efficiency monitoring and optimization recommendations
 - **Invalidation Analysis**: Pattern analysis and frequency monitoring
@@ -18,7 +19,7 @@ invalidation patterns. It helps identify bottlenecks and optimize cache strategi
 
 - **PerformanceMetric**: Individual performance measurements
 - **CompressionMetric**: Compression performance tracking
-- **MemoryUsageMetric**: Memory usage snapshots  
+- **MemoryUsageMetric**: Memory usage snapshots
 - **InvalidationMetric**: Cache invalidation event tracking
 - **CachePerformanceMonitor**: Main monitoring class with comprehensive analytics
 
@@ -31,7 +32,7 @@ monitor = CachePerformanceMonitor(
     memory_warning_threshold_bytes=100 * 1024 * 1024  # 100MB
     ...     memory_critical_threshold_bytes=200 * 1024 * 1024  # 200MB
     ... )
-    
+
     >>> # Record key generation performance
     >>> start_time = time.time()
     >>> # ... key generation code ...
@@ -41,7 +42,7 @@ monitor = CachePerformanceMonitor(
     ...     text_length=len(text),
     ...     operation_type="summarize"
     ... )
-    
+
     >>> # Record cache operation performance
     >>> start_time = time.time()
     >>> result = cache.get(key)
@@ -52,23 +53,23 @@ monitor = CachePerformanceMonitor(
     ...     cache_hit=result is not None,
     ...     text_length=len(text) if result else 0
     ... )
-    
+
     >>> # Monitor memory usage
     >>> memory_metric = monitor.record_memory_usage(
     ...     memory_cache=cache._memory_cache,
     ...     redis_stats={"memory_used_bytes": 50000000, "keys": 1000}
     ... )
-    
+
     >>> # Get comprehensive performance statistics
     >>> stats = monitor.get_performance_stats()
     >>> print(f"Cache hit rate: {stats['cache_hit_rate']:.1f}%")
     >>> print(f"Average key generation time: {stats['key_generation']['avg_duration']:.3f}s")
-    
+
     >>> # Check for performance issues and get recommendations
     >>> warnings = monitor.get_memory_warnings()
     >>> for warning in warnings:
     ...     print(f"{warning['severity'].upper()}: {warning['message']}")
-    
+
     >>> recommendations = monitor.get_invalidation_recommendations()
     >>> for rec in recommendations:
     ...     if rec['severity'] == 'critical':
@@ -80,26 +81,26 @@ Performance Monitoring Areas:
        - Text length correlation analysis
        - Operation type performance comparison
        - Slow operation detection and alerting
-    
+
     2. Cache Operations:
        - Get/Set operation timing
        - Hit/Miss ratio tracking
        - Operation type performance analysis
        - Bottleneck identification
-    
+
     3. Memory Usage:
        - Total cache memory consumption
        - Memory cache vs. Redis usage breakdown
        - Entry count and average size tracking
        - Threshold-based alerting (warning/critical)
        - Growth trend analysis
-    
+
     4. Compression Efficiency:
        - Compression ratio tracking
        - Compression time analysis
        - Size savings calculations
        - Performance vs. efficiency trade-offs
-    
+
     5. Cache Invalidation:
        - Invalidation frequency monitoring
        - Pattern analysis and optimization
@@ -622,8 +623,8 @@ class CachePerformanceMonitor:
         ]
 
         # Pattern analysis
-        pattern_counts = {}
-        type_counts = {}
+        pattern_counts: Dict[str, int] = {}
+        type_counts: Dict[str, int] = {}
         for event in recent_events:
             pattern_counts[event.pattern] = pattern_counts.get(event.pattern, 0) + 1
             type_counts[event.invalidation_type] = (
@@ -698,7 +699,7 @@ class CachePerformanceMonitor:
             ...     if rec['severity'] == 'critical':
             ...         print(f"CRITICAL: {rec['message']}")
         """
-        recommendations = []
+        recommendations: List[Dict[str, Any]] = []
 
         if not self.invalidation_events:
             return recommendations
@@ -950,7 +951,7 @@ class CachePerformanceMonitor:
             ...     print(f"{warning['severity'].upper()}: {warning['message']}")
             WARNING: Cache memory usage exceeding threshold
         """
-        warnings = []
+        warnings: List[Dict[str, Any]] = []
 
         if not self.memory_usage_measurements:
             return warnings
@@ -1002,7 +1003,8 @@ class CachePerformanceMonitor:
                 warnings.append(
                     {
                         "severity": "info",
-                        "message": f"Memory cache is {utilization:.1f}% full ({latest.memory_cache_entry_count}/{estimated_max_entries} entries)",
+                        "message": f"Memory cache is {utilization:.1f}% full "
+                                  f"({latest.memory_cache_entry_count}/{estimated_max_entries} entries)",
                         "recommendations": [
                             "Memory cache eviction is working properly",
                             "Consider increasing memory cache size if hit rates are good",
@@ -1108,7 +1110,7 @@ class CachePerformanceMonitor:
             cache_op_durations = [m.duration for m in self.cache_operation_times]
 
             # Group by operation type
-            ops_by_type = {}
+            ops_by_type: Dict[str, List[Any]] = {}
             for metric in self.cache_operation_times:
                 op_type = metric.operation_type
                 if op_type not in ops_by_type:
@@ -1238,7 +1240,7 @@ class CachePerformanceMonitor:
             ...     if operations:
             ...         print(f"{category}: {len(operations)} slow operations")
         """
-        slow_ops = {"key_generation": [], "cache_operations": [], "compression": []}
+        slow_ops: Dict[str, List[Any]] = {"key_generation": [], "cache_operations": [], "compression": []}
 
         # Analyze key generation times
         if self.key_generation_times:
@@ -1283,18 +1285,18 @@ class CachePerformanceMonitor:
             avg_duration = mean([m.compression_time for m in self.compression_ratios])
             threshold = avg_duration * threshold_multiplier
 
-            for metric in self.compression_ratios:
-                if metric.compression_time > threshold:
+            for compression_metric in self.compression_ratios:
+                if compression_metric.compression_time > threshold:
                     slow_ops["compression"].append(
                         {
-                            "compression_time": metric.compression_time,
-                            "original_size": metric.original_size,
-                            "compression_ratio": metric.compression_ratio,
-                            "operation_type": metric.operation_type,
+                            "compression_time": compression_metric.compression_time,
+                            "original_size": compression_metric.original_size,
+                            "compression_ratio": compression_metric.compression_ratio,
+                            "operation_type": compression_metric.operation_type,
                             "timestamp": datetime.fromtimestamp(
-                                metric.timestamp
+                                compression_metric.timestamp
                             ).isoformat(),
-                            "times_slower": metric.compression_time / avg_duration,
+                            "times_slower": compression_metric.compression_time / avg_duration,
                         }
                     )
 

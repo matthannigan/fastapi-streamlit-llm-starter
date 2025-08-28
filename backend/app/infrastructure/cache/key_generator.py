@@ -1,4 +1,5 @@
-"""**Optimized cache key generation with streaming hash support for large texts.**
+"""
+Optimized cache key generation with streaming hash support for large texts.
 
 This module provides efficient cache key generation that handles texts of any size
 using streaming SHA-256 hashing strategies while maintaining backward compatibility
@@ -17,13 +18,13 @@ and streaming hash generation for memory-efficient processing of large texts.
 - **Monitoring Integration**: Optional performance monitoring and metrics tracking
 - **Redis-Free Design**: Independent operation without Redis dependencies
       only optional performance monitor for tracking.
-    
+
     - **Secure Hashing**: Uses SHA-256 for cryptographically secure hashing with
       metadata inclusion for enhanced uniqueness.
 
 Configuration:
     The key generator supports extensive configuration:
-    
+
     - text_hash_threshold: Size threshold for text hashing (default: 1000 chars)
     - hash_algorithm: Hash algorithm to use (default: hashlib.sha256)
     - performance_monitor: Optional performance monitor for metrics tracking
@@ -37,15 +38,15 @@ Usage Examples:
         ...     options={"max_length": 100}
         ... )
         >>> # Result: "ai_cache:op:summarize|txt:Document to summarize...|opts:abc12345"
-        
+
     Q&A Usage with Question in Options:
         >>> key = generator.generate_cache_key(
-        ...     text="Document content", 
+        ...     text="Document content",
         ...     operation="qa",
         ...     options={"question": "What is the main point?", "max_tokens": 150}
         ... )
         >>> # Result: "ai_cache:op:qa|txt:Document content|opts:def12345|q:ghi67890"
-        
+
     With Performance Monitoring:
         >>> from app.infrastructure.cache.monitoring import CachePerformanceMonitor
         >>> monitor = CachePerformanceMonitor()
@@ -53,12 +54,12 @@ Usage Examples:
         >>> key = generator.generate_cache_key("text", "sentiment", {})
         >>> stats = generator.get_key_generation_stats()
         >>> print(f"Keys generated: {stats['total_keys_generated']}")
-        
+
     Large Text Handling:
         >>> large_text = "A" * 10000  # 10KB text
         >>> key = generator.generate_cache_key(large_text, "summarize", {})
         >>> # Result: "ai_cache:op:summarize|txt:hash:a1b2c3d4e5f6"
-        
+
     Custom Configuration:
         >>> generator = CacheKeyGenerator(
         ...     text_hash_threshold=500,  # Hash texts over 500 chars
@@ -91,35 +92,35 @@ except ImportError:
 class CacheKeyGenerator:
     """
     High-performance cache key generator with streaming hash algorithms and intelligent text processing.
-    
+
     Provides efficient cache key generation optimized for AI text processing workloads with
     configurable hashing thresholds, backward compatibility, and performance monitoring.
     Designed as a standalone component free of external cache dependencies.
-    
+
     Attributes:
         text_hash_threshold: int character count threshold (100-100000) for hash vs direct inclusion
         hash_algorithm: Callable hash algorithm function (default: hashlib.sha256)
         performance_monitor: Optional[CachePerformanceMonitor] metrics tracking instance
-        
+
     Public Methods:
         generate_cache_key(): Primary key generation method with intelligent text handling
         _hash_large_text(): Internal streaming hash method for memory efficiency
-        
+
     State Management:
         - Thread-safe key generation for concurrent cache operations
         - Consistent key format maintaining backward compatibility
         - Streaming hash processing for memory-efficient large text handling
         - Optional performance metrics collection without impacting generation speed
-        
+
     Usage:
         # Basic key generation
         generator = CacheKeyGenerator()
         key = generator.generate_cache_key("User input text", "summarize", {"max_length": 100})
-        
+
         # Large text optimization with custom threshold
         generator = CacheKeyGenerator(text_hash_threshold=2000)
         key = generator.generate_cache_key(large_document, "analyze", {})
-        
+
         # Production usage with monitoring
         monitor = CachePerformanceMonitor()
         generator = CacheKeyGenerator(
@@ -226,14 +227,14 @@ class CacheKeyGenerator:
             ... )
             >>> print(key)
             'ai_cache:op:summarize|txt:Sample document|opts:abc12345'
-            
+
             >>> # Q&A operation with question in options
             >>> key = generator.generate_cache_key(
             ...     text="Document content",
-            ...     operation="qa", 
+            ...     operation="qa",
             ...     options={"question": "What is the main point?", "max_tokens": 150}
             ... )
-            >>> print(key)  
+            >>> print(key)
             'ai_cache:op:qa|txt:Document content|opts:def67890|q:hij12345'
         """
         start_time = time.time()
@@ -341,7 +342,7 @@ class CacheKeyGenerator:
 
         # Operation distribution
         operations = [metric.operation_type for metric in key_times]
-        operation_counts = {}
+        operation_counts: Dict[str, int] = {}
         for op in operations:
             operation_counts[op] = operation_counts.get(op, 0) + 1
 

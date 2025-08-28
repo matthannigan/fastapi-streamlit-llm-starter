@@ -9,7 +9,7 @@ monitoring capabilities for both web and AI applications.
 The cache module is organized into specialized components:
 
 - **Core Implementations**: `base.py`, `memory.py`, `redis_generic.py`, `redis_ai.py`
-- **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`  
+- **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`
 - **Utilities**: `factory.py`, `key_generator.py`, `parameter_mapping.py`
 - **Advanced Features**: `monitoring.py`, `security.py`, `migration.py`
 - **Benchmarking**: `benchmarks/` subdirectory with performance testing tools
@@ -35,7 +35,7 @@ from app.infrastructure.cache import CacheFactory
 config = get_cache_config()  # Uses CACHE_PRESET environment variable
 cache = CacheFactory.create_cache_from_config(config)
 
-# Standard cache operations  
+# Standard cache operations
 await cache.set("key", {"data": "value"}, ttl=3600)
 result = await cache.get("key")
 ```
@@ -61,7 +61,7 @@ from .monitoring import (CachePerformanceMonitor, CompressionMetric,
                          PerformanceMetric)
 # AI-specific Redis implementation
 from .redis_ai import AIResponseCache
-# Generic Redis implementation  
+# Generic Redis implementation
 from .redis_generic import GenericRedisCache, REDIS_AVAILABLE, aioredis
 # Cache key generation
 from .key_generator import CacheKeyGenerator
@@ -70,21 +70,21 @@ from .ai_config import AIResponseCacheConfig
 # Parameter mapping utilities
 from .parameter_mapping import ValidationResult, CacheParameterMapper
 # Security components
-from .security import (RedisCacheSecurityManager, SecurityConfig, 
+from .security import (RedisCacheSecurityManager, SecurityConfig,
                        SecurityValidationResult, create_security_config_from_env)
 # Phase 3 enhancements
 # Factory for explicit cache instantiation
 from .factory import CacheFactory
 # Enhanced configuration management
-from .config import (CacheConfig, AICacheConfig, CacheConfigBuilder, 
+from .config import (CacheConfig, AICacheConfig, CacheConfigBuilder,
                      EnvironmentPresets, ValidationResult as ConfigValidationResult)
 # FastAPI dependency integration
-from .dependencies import (get_settings, get_cache_config, get_cache_service, 
-                          get_web_cache_service, get_ai_cache_service, 
-                          get_test_cache, get_test_redis_cache, 
-                          get_fallback_cache_service, validate_cache_configuration,
-                          get_cache_service_conditional, cleanup_cache_registry,
-                          get_cache_health_status, CacheDependencyManager)
+from .dependencies import (get_settings, get_cache_config, get_cache_service,
+                           get_web_cache_service, get_ai_cache_service,
+                           get_test_cache, get_test_redis_cache,
+                           get_fallback_cache_service, validate_cache_configuration,
+                           get_cache_service_conditional, cleanup_cache_registry,
+                           get_cache_health_status, CacheDependencyManager)
 
 # Export all public components
 __all__ = [
@@ -128,7 +128,7 @@ __all__ = [
     # Factory and configuration
     "CacheFactory",
     "CacheConfig",
-    "AICacheConfig", 
+    "AICacheConfig",
     "CacheConfigBuilder",
     "EnvironmentPresets",
     "ConfigValidationResult",

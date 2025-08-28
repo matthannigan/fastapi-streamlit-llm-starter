@@ -1,5 +1,5 @@
 """
-[REFACTORED] Comprehensive cache benchmarking data models with statistical analysis and comparison utilities.
+Comprehensive cache benchmarking data models with statistical analysis and comparison utilities.
 
 This module provides complete data model infrastructure for cache performance benchmarking
 including individual result containers, before/after comparison analysis, and benchmark
@@ -13,19 +13,19 @@ Classes:
 Key Features:
     - **Comprehensive Metrics**: Complete performance data including timing percentiles,
       memory usage, throughput, success rates, and optional cache-specific metrics.
-    
+
     - **Statistical Analysis**: Built-in performance grading, threshold validation,
       and comprehensive statistical analysis with percentile calculations.
-    
+
     - **Comparison Analysis**: Detailed before/after comparison with percentage changes,
       regression detection, and improvement/degradation area identification.
-    
+
     - **Suite Aggregation**: Collection-level analysis with overall scoring, performance
       grading, and operation-specific result retrieval.
-    
+
     - **Serialization Support**: Full JSON serialization support for data persistence,
       API integration, and report generation with datetime stamping.
-    
+
     - **Performance Grading**: Automated performance assessment using industry-standard
       thresholds with Excellent/Good/Acceptable/Poor/Critical classifications.
 
@@ -36,13 +36,13 @@ Data Model Structure:
     - Throughput and success rate analysis
     - Optional cache-specific metrics (hit rates, compression)
     - Metadata and timestamp information
-    
+
     ComparisonResult provides before/after analysis:
     - Performance change percentages
     - Regression detection flags
     - Improvement and degradation area identification
     - Strategic recommendations
-    
+
     BenchmarkSuite aggregates multiple results:
     - Overall performance grading
     - Suite-level scoring and pass rates
@@ -61,7 +61,7 @@ Usage Examples:
         >>> print(result.performance_grade())  # "Excellent"
         >>> print(result.meets_threshold(5.0))  # True
         >>> data = result.to_dict()  # For serialization
-        
+
     Before/After Comparison:
         >>> comparison = ComparisonResult(
         ...     original_cache_results=old_result,
@@ -71,7 +71,7 @@ Usage Examples:
         ... )
         >>> print(comparison.summary())  # "Performance improved by 15.2%..."
         >>> recommendations = comparison.generate_recommendations()
-        
+
     Suite Analysis:
         >>> suite = BenchmarkSuite(
         ...     name="Redis Cache Performance",
@@ -98,11 +98,11 @@ from typing import Any, Dict, List, Optional
 class BenchmarkResult:
     """
     Comprehensive result data for a single cache performance benchmark.
-    
+
     This class captures all metrics from a benchmark run including timing,
     memory usage, success rates, and optional cache-specific metrics like
     hit rates and compression ratios.
-    
+
     Attributes:
         operation_type: Type of cache operation (get, set, delete, etc.)
         duration_ms: Total duration in milliseconds
@@ -126,7 +126,7 @@ class BenchmarkResult:
         additional_metrics: Custom metrics dictionary
         metadata: Additional metadata about the benchmark
         timestamp: ISO format timestamp of benchmark execution
-    
+
     Example:
         >>> result = BenchmarkResult(
         ...     operation_type="get",
@@ -146,7 +146,7 @@ class BenchmarkResult:
         >>> print(result.performance_grade())
         >>> print(result.meets_threshold(1.0))
     """
-    
+
     operation_type: str
     duration_ms: float
     memory_peak_mb: float
@@ -170,39 +170,39 @@ class BenchmarkResult:
     additional_metrics: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert benchmark result to dictionary for serialization.
-        
+
         Returns:
             Dictionary representation of all benchmark data
         """
         return asdict(self)
-    
+
     def meets_threshold(self, threshold_ms: float) -> bool:
         """
         Check if benchmark result meets performance threshold.
-        
+
         Args:
             threshold_ms: Maximum acceptable average duration in milliseconds
-            
+
         Returns:
             True if average duration is within threshold, False otherwise
         """
         return self.avg_duration_ms <= threshold_ms
-    
+
     def performance_grade(self) -> str:
         """
         Calculate performance grade based on standard thresholds.
-        
+
         Grade categories:
         - Excellent: ≤5ms average
-        - Good: ≤25ms average  
+        - Good: ≤25ms average
         - Acceptable: ≤50ms average
         - Poor: ≤100ms average
         - Critical: >100ms average
-        
+
         Returns:
             Performance grade as string
         """
@@ -222,14 +222,14 @@ class BenchmarkResult:
 class ComparisonResult:
     """
     Result data for comparing performance between cache implementations.
-    
+
     This class provides comprehensive analysis when comparing two cache
     implementations, including performance deltas, regression detection,
     and improvement recommendations.
-    
+
     Attributes:
         original_cache_results: Benchmark results from original implementation
-        new_cache_results: Benchmark results from new implementation  
+        new_cache_results: Benchmark results from new implementation
         performance_change_percent: Overall performance change percentage
         memory_change_percent: Memory usage change percentage
         operations_per_second_change: Throughput change
@@ -246,7 +246,7 @@ class ComparisonResult:
         recommendation: Overall recommendation based on analysis
         recommendations: List of specific recommendations
         timestamp: ISO format timestamp of comparison
-    
+
     Example:
         >>> comparison = ComparisonResult(
         ...     original_cache_results=old_result,
@@ -258,7 +258,7 @@ class ComparisonResult:
         >>> print(comparison.summary())
         >>> print(f"Regression: {comparison.regression_detected}")
     """
-    
+
     original_cache_results: BenchmarkResult
     new_cache_results: BenchmarkResult
     performance_change_percent: float = 0.0
@@ -277,97 +277,97 @@ class ComparisonResult:
     recommendation: str = ""
     recommendations: List[str] = field(default_factory=list)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    
+
     @property
     def is_regression(self) -> bool:
         """
         Check if this comparison indicates a performance regression.
-        
+
         Returns:
             True if regression was detected, False otherwise
         """
         return self.regression_detected
-    
+
     @property
     def operation_type(self) -> str:
         """
         Get the operation type being compared.
-        
+
         Returns:
             The operation type from the new cache results
         """
         return self.new_cache_results.operation_type
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert comparison result to dictionary for serialization.
-        
+
         Returns:
             Dictionary representation of all comparison data
         """
         return asdict(self)
-    
+
     def summary(self) -> str:
         """
         Generate human-readable summary of comparison results.
-        
+
         Returns:
             Concise summary string describing the performance comparison
         """
         direction = "improved" if self.performance_change_percent < 0 else "degraded"
         abs_change = abs(self.performance_change_percent)
-        
+
         return (f"Performance {direction} by {abs_change:.1f}% "
                 f"(Memory: {self.memory_change_percent:+.1f}%, "
                 f"Throughput: {self.operations_per_second_change:+.1f}%)")
-    
+
     def generate_recommendations(self) -> List[str]:
         """
         Generate performance recommendations based on comparison results.
-        
+
         Returns:
             List of recommendation strings based on detected changes
         """
         recommendations = []
-        
+
         # Performance recommendations
         if self.performance_change_percent > 20:
             recommendations.append("Consider optimizing algorithms for better performance")
         elif self.performance_change_percent < -20:
             recommendations.append("Excellent performance improvement achieved")
-        
-        # Memory recommendations  
+
+        # Memory recommendations
         if self.memory_change_percent > 50:
             recommendations.append("Memory usage has increased significantly - investigate memory leaks")
         elif self.memory_change_percent > 20:
             recommendations.append("Monitor memory usage as it has increased")
         elif self.memory_change_percent < -20:
             recommendations.append("Good memory optimization achieved")
-        
+
         # Throughput recommendations
         if self.operations_per_second_change < -20:
             recommendations.append("Throughput has decreased - review performance bottlenecks")
         elif self.operations_per_second_change > 20:
             recommendations.append("Throughput improvement is excellent")
-        
+
         # Regression recommendations
         if self.regression_detected:
             recommendations.append("Address performance regressions before deployment")
-        
+
         # Success rate recommendations
-        if (hasattr(self.new_cache_results, 'success_rate') and 
-            hasattr(self.original_cache_results, 'success_rate')):
+        if (hasattr(self.new_cache_results, 'success_rate') and
+                hasattr(self.original_cache_results, 'success_rate')):
             success_rate_change = self.new_cache_results.success_rate - self.original_cache_results.success_rate
             if success_rate_change < -0.1:  # 10% degradation
                 recommendations.append("Success rate has decreased - investigate reliability issues")
-        
+
         # Default recommendation if no specific issues found
         if not recommendations:
             if self.performance_change_percent < 5 and self.memory_change_percent < 10:
                 recommendations.append("Performance changes are minimal - deployment ready")
             else:
                 recommendations.append("Review performance changes before deployment")
-        
+
         return recommendations
 
 
@@ -375,11 +375,11 @@ class ComparisonResult:
 class BenchmarkSuite:
     """
     Collection of benchmark results with comprehensive analysis.
-    
+
     This class aggregates multiple benchmark results into a cohesive
     analysis, providing overall performance grading, success rates,
     and suite-level metrics.
-    
+
     Attributes:
         name: Descriptive name for the benchmark suite
         results: List of individual benchmark results
@@ -390,7 +390,7 @@ class BenchmarkSuite:
         memory_efficiency_grade: Overall memory efficiency grade
         timestamp: ISO format timestamp of suite execution
         environment_info: Information about test environment
-    
+
     Example:
         >>> suite = BenchmarkSuite(
         ...     name="Redis Cache Performance",
@@ -404,7 +404,7 @@ class BenchmarkSuite:
         >>> score = suite.calculate_overall_score()
         >>> get_result = suite.get_operation_result("get")
     """
-    
+
     name: str
     results: List[BenchmarkResult]
     total_duration_ms: float
@@ -414,32 +414,32 @@ class BenchmarkSuite:
     memory_efficiency_grade: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     environment_info: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert benchmark suite to dictionary for serialization.
-        
+
         Returns:
             Dictionary representation of all benchmark suite data
         """
         return asdict(self)
-    
+
     def to_json(self) -> str:
         """
         Serialize benchmark suite to JSON string.
-        
+
         Returns:
             JSON string representation of the entire benchmark suite
         """
         return json.dumps(asdict(self), indent=2)
-    
+
     def get_operation_result(self, operation_type: str) -> Optional[BenchmarkResult]:
         """
         Get benchmark result for specific operation type.
-        
+
         Args:
             operation_type: The operation type to search for (e.g., "get", "set")
-            
+
         Returns:
             BenchmarkResult for the operation if found, None otherwise
         """
@@ -447,26 +447,26 @@ class BenchmarkSuite:
             if result.operation_type == operation_type:
                 return result
         return None
-    
+
     def calculate_overall_score(self) -> float:
         """
         Calculate overall performance score (0-100).
-        
+
         The score is a weighted combination of:
         - Timing performance (50% weight)
-        - Success rate (30% weight)  
+        - Success rate (30% weight)
         - Memory efficiency (20% weight)
-        
+
         Returns:
             Overall score from 0-100, where 100 is optimal performance
         """
         if not self.results:
             return 0.0
-        
+
         # Weight different aspects of performance
         timing_score = min(100, max(0, 100 - sum(r.avg_duration_ms for r in self.results) / len(self.results)))
         success_score = self.pass_rate * 100
         memory_score = min(100, max(0, 100 - sum(r.memory_usage_mb for r in self.results) / len(self.results)))
-        
+
         # Weighted average: timing 50%, success 30%, memory 20%
         return (timing_score * 0.5) + (success_score * 0.3) + (memory_score * 0.2)

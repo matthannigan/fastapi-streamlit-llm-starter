@@ -1,5 +1,5 @@
 """
-[REFACTORED] Comprehensive cache benchmark data generator with realistic workload simulation.
+Comprehensive cache benchmark data generator with realistic workload simulation.
 
 This module provides sophisticated test data generation for cache performance benchmarking
 with realistic workload patterns that closely simulate production cache usage scenarios.
@@ -12,19 +12,19 @@ Classes:
 Key Features:
     - **Realistic Data Patterns**: Multiple data types simulating real-world cache usage
       including small key-value pairs, medium text content, large documents, and JSON objects.
-    
+
     - **Size Variation**: Comprehensive size distribution from small (30 bytes) to large
       (multi-KB) entries with configurable scaling factors for memory pressure testing.
-    
+
     - **Content Diversity**: Natural language text, structured JSON data, repetitive content,
       and random data for comprehensive compression and performance testing.
-    
+
     - **Workload Simulation**: Memory pressure scenarios, concurrent access patterns,
       and operation type distribution matching production usage patterns.
-    
+
     - **Compression Testing**: Specialized data generation for compression efficiency analysis
       with varying compressibility characteristics from highly compressible to random content.
-    
+
     - **Configurable Generation**: Flexible data generation with customizable iteration counts,
       size distributions, and content complexity for different testing scenarios.
 
@@ -45,18 +45,18 @@ Usage Examples:
         >>> print(f"Generated {len(basic_data)} test items")
         >>> for item in basic_data[:3]:
         ...     print(f"Key: {item['key']}, Size: {item['expected_size_bytes']} bytes")
-        
+
     Memory Pressure Testing:
         >>> memory_data = generator.generate_memory_pressure_data(10.0)  # 10MB target
         >>> total_size = sum(item['size_bytes'] for item in memory_data)
         >>> print(f"Generated {total_size / (1024*1024):.1f}MB of test data")
-        
+
     Concurrent Access Simulation:
         >>> patterns = generator.generate_concurrent_access_patterns(5)
         >>> for pattern in patterns:
         ...     print(f"Pattern {pattern['pattern_id']}: {len(pattern['operations'])} ops, "
         ...           f"{pattern['concurrency_level']} threads")
-        
+
     Compression Efficiency Testing:
         >>> compression_data = generator.generate_compression_test_data()
         >>> for item in compression_data:
@@ -67,7 +67,7 @@ Performance Considerations:
     - Template-based text generation provides natural language characteristics
     - Memory-efficient generation for large datasets using streaming approaches
     - Configurable complexity allows balancing realism with generation speed
-    
+
 Thread Safety:
     The data generator is stateless and thread-safe for concurrent benchmark execution.
     Multiple generator instances can be used safely across threads without interference.
@@ -83,11 +83,11 @@ from typing import Any, Dict, List
 class CacheBenchmarkDataGenerator:
     """
     Generate realistic test data for cache performance benchmarking.
-    
+
     This class provides various methods to generate test data that closely
     matches real-world cache usage patterns. It supports different data sizes,
     types, and access patterns to comprehensively test cache performance.
-    
+
     The generator creates data with realistic characteristics including:
     - Variable text sizes (short, medium, long)
     - Different operation types (summarize, sentiment, etc.)
@@ -95,44 +95,46 @@ class CacheBenchmarkDataGenerator:
     - Compression-friendly and compression-resistant content
     - Concurrent access patterns
     - Memory pressure scenarios
-    
+
     Example:
         >>> generator = CacheBenchmarkDataGenerator()
         >>> basic_data = generator.generate_basic_operations_data(100)
         >>> memory_data = generator.generate_memory_pressure_data(10.0)
         >>> compression_data = generator.generate_compression_test_data()
     """
-    
+
     def __init__(self):
         """Initialize the data generator with predefined templates and patterns."""
         self.text_samples = [
             "Short text for basic testing.",
-            "Medium length text that represents typical cache content with some additional words to make it more realistic for testing purposes.",
-            "Long text content that simulates larger cache entries with substantial content that might be encountered in real-world applications. " * 10,
+            ("Medium length text that represents typical cache content with some "
+             "additional words to make it more realistic for testing purposes."),
+            ("Long text content that simulates larger cache entries with substantial content "
+             "that might be encountered in real-world applications. ") * 10,
             "Very long text content that tests the limits of cache performance with extensive data. " * 50
         ]
-        
+
         self.operation_types = ["summarize", "sentiment", "key_points", "questions", "qa"]
         self.sample_options = {
             "length": ["short", "medium", "long"],
             "style": ["formal", "casual", "technical"],
             "detail_level": ["brief", "detailed", "comprehensive"]
         }
-    
+
     def _generate_test_data_sets(self, test_operations: int = 100) -> Dict[str, List[Dict[str, Any]]]:
         """
         Generate varied test data sets for comprehensive benchmarking.
-        
+
         Creates five different types of test data sets:
         1. Small data: Simple key-value pairs for basic testing
         2. Medium data: Moderate-sized content with options
         3. Large data: Large content with lists and complex structure
         4. JSON data: Complex structured objects
         5. Realistic data: Generated using sentence templates for natural text
-        
+
         Args:
             test_operations: Total number of test operations to generate
-            
+
         Returns:
             Dictionary containing five data sets with different characteristics
         """
@@ -147,7 +149,7 @@ class CacheBenchmarkDataGenerator:
                 "expected_size_bytes": 30,
                 "cache_ttl": 300
             })
-        
+
         # Medium data set (100x repetitions)
         medium_data = []
         for i in range(min(50, test_operations // 2)):
@@ -160,7 +162,7 @@ class CacheBenchmarkDataGenerator:
                 "expected_size_bytes": len(text.encode('utf-8')),
                 "cache_ttl": random.randint(600, 1800)
             })
-        
+
         # Large data set (1000x repetitions with lists)
         large_data = []
         for i in range(min(20, test_operations // 5)):
@@ -174,7 +176,7 @@ class CacheBenchmarkDataGenerator:
                 "expected_size_bytes": len(text_with_lists.encode('utf-8')),
                 "cache_ttl": random.randint(1800, 3600)
             })
-        
+
         # JSON data set (complex objects)
         json_data = []
         for i in range(min(30, test_operations // 3)):
@@ -201,7 +203,7 @@ class CacheBenchmarkDataGenerator:
                 "expected_size_bytes": len(json_text.encode('utf-8')),
                 "cache_ttl": random.randint(900, 2700)
             })
-        
+
         # Realistic data generation using sentence-like patterns
         realistic_data = []
         sentence_templates = [
@@ -209,7 +211,7 @@ class CacheBenchmarkDataGenerator:
             "During {time_period}, we observed that {subject} {action} {object} with {result}.",
             "Analysis of {data_type} reveals {finding} which {implication} for {domain}."
         ]
-        
+
         vocab = {
             "adjective": ["complex", "efficient", "robust", "scalable", "innovative"],
             "noun": ["system", "algorithm", "process", "framework", "solution"],
@@ -226,7 +228,7 @@ class CacheBenchmarkDataGenerator:
             "implication": ["suggests optimization opportunities", "indicates successful refactoring"],
             "domain": ["AI applications", "web services", "data processing"]
         }
-        
+
         for i in range(min(25, test_operations // 4)):
             template = random.choice(sentence_templates)
             # Generate varied, sentence-like text
@@ -234,10 +236,10 @@ class CacheBenchmarkDataGenerator:
             for placeholder, options in vocab.items():
                 if f"{{{placeholder}}}" in filled_template:
                     filled_template = filled_template.replace(f"{{{placeholder}}}", random.choice(options))
-            
+
             # Create multiple sentences for more realistic content
             realistic_text = " ".join([filled_template for _ in range(random.randint(2, 5))])
-            
+
             realistic_data.append({
                 "key": f"realistic_key_{i}",
                 "text": realistic_text,
@@ -246,7 +248,7 @@ class CacheBenchmarkDataGenerator:
                 "expected_size_bytes": len(realistic_text.encode('utf-8')),
                 "cache_ttl": random.randint(300, 3600)
             })
-        
+
         return {
             "small": small_data,
             "medium": medium_data,
@@ -258,17 +260,17 @@ class CacheBenchmarkDataGenerator:
     def generate_basic_operations_data(self, count: int = 100) -> List[Dict[str, Any]]:
         """
         Generate test data for basic cache operations.
-        
+
         Creates a mixed dataset combining all data types (small, medium, large,
         JSON, and realistic) to provide comprehensive coverage of cache operations.
-        
+
         Args:
             count: Number of test data items to generate
-            
+
         Returns:
             List of dictionaries containing test data with keys, text, operations,
             and metadata suitable for cache benchmarking
-            
+
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> data = generator.generate_basic_operations_data(50)
@@ -277,31 +279,31 @@ class CacheBenchmarkDataGenerator:
         """
         # Use the new varied data generation but flatten for backward compatibility
         data_sets = self._generate_test_data_sets(count)
-        
+
         # Combine all data sets and shuffle
         all_data = []
         for data_set in data_sets.values():
             all_data.extend(data_set)
-        
+
         random.shuffle(all_data)
-        
+
         # Return the requested count
         return all_data[:count]
-    
+
     def generate_memory_pressure_data(self, total_size_mb: float = 10.0) -> List[Dict[str, Any]]:
         """
         Generate large dataset for memory cache pressure testing.
-        
+
         Creates a dataset that targets a specific total memory size to test
         how the cache performs under memory pressure. Varies entry sizes
         to simulate realistic memory usage patterns.
-        
+
         Args:
             total_size_mb: Target total size of generated data in megabytes
-            
+
         Returns:
             List of test data items that collectively approach the target size
-            
+
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> data = generator.generate_memory_pressure_data(5.0)  # 5MB of data
@@ -312,13 +314,13 @@ class CacheBenchmarkDataGenerator:
         test_data = []
         current_size = 0
         index = 0
-        
+
         while current_size < target_bytes:
             # Generate variable-sized content
             size_factor = random.randint(1, 20)
             text = "Large cache entry content for memory pressure testing. " * size_factor
             text_bytes = len(text.encode('utf-8'))
-            
+
             test_data.append({
                 "key": f"memory_test_{index}",
                 "text": text,
@@ -326,27 +328,27 @@ class CacheBenchmarkDataGenerator:
                 "size_bytes": text_bytes,
                 "priority": random.choice(["high", "medium", "low"])
             })
-            
+
             current_size += text_bytes
             index += 1
-        
+
         return test_data
-    
+
     def generate_concurrent_access_patterns(self, num_patterns: int = 10) -> List[Dict[str, Any]]:
         """
         Generate patterns for concurrent cache access testing.
-        
+
         Creates realistic concurrent access patterns that simulate multiple
         threads or processes accessing the cache simultaneously with different
         operation mixes and timing patterns.
-        
+
         Args:
             num_patterns: Number of different access patterns to generate
-            
+
         Returns:
             List of access pattern dictionaries, each containing operation
             sequences and concurrency parameters
-            
+
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> patterns = generator.generate_concurrent_access_patterns(5)
@@ -357,15 +359,15 @@ class CacheBenchmarkDataGenerator:
         """
         patterns = []
         base_keys = [f"concurrent_key_{i}" for i in range(20)]
-        
+
         for i in range(num_patterns):
-            pattern = {
+            pattern: Dict[str, Any] = {
                 "pattern_id": f"pattern_{i}",
                 "operations": [],
                 "concurrency_level": random.randint(5, 20),
                 "duration_seconds": random.randint(10, 60)
             }
-            
+
             # Generate sequence of operations for this pattern
             for j in range(random.randint(50, 200)):
                 operation = {
@@ -375,26 +377,26 @@ class CacheBenchmarkDataGenerator:
                     "text": random.choice(self.text_samples) if random.random() > 0.3 else None
                 }
                 pattern["operations"].append(operation)
-            
+
             patterns.append(pattern)
-        
+
         return patterns
-    
+
     def generate_compression_test_data(self) -> List[Dict[str, Any]]:
         """
         Generate diverse data for compression efficiency testing.
-        
+
         Creates different types of content that have varying compression
         characteristics to test cache compression performance:
         - Highly compressible (repetitive text)
         - Moderately compressible (natural language)
         - Poorly compressible (random content)
         - Structured data (JSON-like)
-        
+
         Returns:
             List of test data items with expected compression ratios and
             descriptions of their compression characteristics
-            
+
         Example:
             >>> generator = CacheBenchmarkDataGenerator()
             >>> compression_data = generator.generate_compression_test_data()
@@ -403,7 +405,7 @@ class CacheBenchmarkDataGenerator:
             >>>           f"expected ratio {item['expected_compression_ratio']}")
         """
         test_data = []
-        
+
         # Highly compressible data (repetitive text)
         repetitive_text = "This is a highly repetitive text pattern. " * 100
         test_data.append({
@@ -412,7 +414,7 @@ class CacheBenchmarkDataGenerator:
             "expected_compression_ratio": 0.1,  # Very good compression
             "description": "Repetitive text with high compression potential"
         })
-        
+
         # Moderately compressible data (natural text)
         natural_text = """
         Natural language text typically compresses moderately well due to patterns in
@@ -425,7 +427,7 @@ class CacheBenchmarkDataGenerator:
             "expected_compression_ratio": 0.4,  # Moderate compression
             "description": "Natural language with moderate compression potential"
         })
-        
+
         # Poorly compressible data (random-like content)
         random_text = ''.join(random.choices(string.ascii_letters + string.digits + string.punctuation, k=10000))
         test_data.append({
@@ -434,7 +436,7 @@ class CacheBenchmarkDataGenerator:
             "expected_compression_ratio": 0.9,  # Poor compression
             "description": "Random text with low compression potential"
         })
-        
+
         # JSON-like structured data
         json_like_text = '''{"users": [{"id": %d, "name": "User %d", "email": "user%d@example.com", "data": "%s"}''' % (
             random.randint(1, 1000), random.randint(1, 1000), random.randint(1, 1000), "x" * 100
@@ -445,5 +447,5 @@ class CacheBenchmarkDataGenerator:
             "expected_compression_ratio": 0.3,  # Good compression for structured data
             "description": "JSON-like structured data with good compression potential"
         })
-        
+
         return test_data
