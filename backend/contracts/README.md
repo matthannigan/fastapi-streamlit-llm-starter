@@ -1,3 +1,7 @@
+---
+sidebar_label: contracts
+---
+
 # Public Contract Stubs
 
 ## 🎯 Purpose of This Directory
