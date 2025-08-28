@@ -1,5 +1,5 @@
 """
-**Factory for explicit cache instantiation with environment-optimized defaults.**
+Factory for explicit cache instantiation with environment-optimized defaults.
 
 This module provides a comprehensive factory system for creating cache instances
 with explicit configuration and deterministic behavior. It offers clear factory
@@ -70,14 +70,14 @@ Dependencies:
         - app.infrastructure.cache.redis_ai.AIResponseCache: AI-specialized cache
         - app.infrastructure.cache.memory.InMemoryCache: Memory fallback cache
         - app.core.exceptions: Custom exception hierarchy
-    
+
     Optional:
         - redis.asyncio: Redis connectivity (graceful degradation if unavailable)
         - app.infrastructure.cache.monitoring.CachePerformanceMonitor: Performance tracking
 """
 
 import logging
-from typing import Any, Dict, Optional, Union, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.redis_generic import GenericRedisCache
@@ -158,14 +158,14 @@ class CacheFactory:
                 >>> factory = CacheFactory()
                 >>> cache = await factory.for_web_app()
                 >>> await cache.set("session:abc123", {"user_id": 456})
-            
+        
             Production web cache with custom Redis:
                 >>> cache = await factory.for_web_app(
                 ...     redis_url="redis://production:6379",
                 ...     default_ttl=3600,  # 1 hour
                 ...     fail_on_connection_error=True
                 ... )
-            
+        
             High-performance web cache:
                 >>> cache = await factory.for_web_app(
                 ...     l1_cache_size=500,
@@ -220,7 +220,7 @@ class CacheFactory:
                 >>> # Use standard interface for caching
                 >>> cache_key = cache.build_key("Document to analyze...", "summarize", {"max_length": 100})
                 >>> await cache.set(cache_key, {"summary": "Brief summary"}, ttl=3600)
-            
+        
             Production AI cache with custom settings:
                 >>> cache = await factory.for_ai_app(
                 ...     redis_url="redis://ai-production:6379",
@@ -231,7 +231,7 @@ class CacheFactory:
                 ...         "translate": 7200   # 2 hours
                 ...     }
                 ... )
-            
+        
             High-compression AI cache:
                 >>> cache = await factory.for_ai_app(
                 ...     compression_threshold=500,
@@ -281,17 +281,17 @@ class CacheFactory:
                 >>> factory = CacheFactory()
                 >>> cache = await factory.for_testing()
                 >>> await cache.set("test_key", "test_value")
-            
+        
             Memory-only testing cache:
                 >>> cache = await factory.for_testing(use_memory_cache=True)
                 >>> # Guaranteed to be InMemoryCache
-            
+        
             Custom test database:
                 >>> cache = await factory.for_testing(
                 ...     redis_url="redis://test-server:6379/10",
                 ...     default_ttl=30  # 30 seconds
                 ... )
-            
+        
             Strict testing with connection requirements:
                 >>> cache = await factory.for_testing(
                 ...     fail_on_connection_error=True,
@@ -330,7 +330,7 @@ class CacheFactory:
                 - l1_cache_size (int): Maximum L1 cache entries
                 - compression_threshold (int): Compress data above this size
                 - compression_level (int): Zlib compression level 1-9
-            
+        
             AI-specific parameters (triggers AIResponseCache):
                 - text_hash_threshold (int): Hash text above this length
                 - operation_ttls (Dict[str, int]): Custom TTLs per operation
@@ -355,7 +355,7 @@ class CacheFactory:
                 >>> cache = await factory.create_cache_from_config(config)
                 >>> isinstance(cache, GenericRedisCache)
                 True
-            
+        
             AI cache configuration:
                 >>> config = {
                 ...     "redis_url": "redis://ai-cache:6379",
@@ -366,7 +366,7 @@ class CacheFactory:
                 >>> cache = await factory.create_cache_from_config(config)
                 >>> isinstance(cache, AIResponseCache)
                 True
-            
+        
             Production configuration with strict error handling:
                 >>> config = {
                 ...     "redis_url": "redis://production:6379",
@@ -376,7 +376,7 @@ class CacheFactory:
                 ...     "l1_cache_size": 500
                 ... }
                 >>> cache = await factory.create_cache_from_config(
-                ...     config, 
+                ...     config,
                 ...     fail_on_connection_error=True
                 ... )
         """

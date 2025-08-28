@@ -36,11 +36,9 @@ validation across the application, providing both schema-based validation
 and template generation capabilities.
 """
 
-import json
 import logging
-import hashlib
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, NamedTuple
+from typing import Dict, List, Optional, Any
 from enum import Enum
 
 
@@ -130,7 +128,7 @@ class CacheValidator:
         
         Args:
             preset_dict: Preset configuration dictionary
-            
+        
         Returns:
             ValidationResult with validation status and messages
         """
@@ -142,7 +140,7 @@ class CacheValidator:
         
         Args:
             config_dict: Complete cache configuration dictionary
-            
+        
         Returns:
             ValidationResult with validation status and messages
         """
@@ -154,7 +152,7 @@ class CacheValidator:
         
         Args:
             overrides: Custom override dictionary
-            
+        
         Returns:
             ValidationResult with validation status and messages
         """
@@ -166,10 +164,10 @@ class CacheValidator:
         
         Args:
             template_name: Name of template (fast_development, robust_production, etc.)
-            
+        
         Returns:
             Configuration template dictionary
-            
+        
         Raises:
             ValueError: If template name is not found
         """
@@ -188,7 +186,7 @@ class CacheValidator:
         Args:
             config1: First configuration
             config2: Second configuration
-            
+        
         Returns:
             Dictionary with comparison results
         """

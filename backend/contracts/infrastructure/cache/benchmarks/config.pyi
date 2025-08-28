@@ -1,5 +1,5 @@
 """
-[REFACTORED] Comprehensive cache benchmark configuration management with environment-specific presets.
+Comprehensive cache benchmark configuration management with environment-specific presets.
 
 This module provides complete configuration infrastructure for cache performance benchmarking
 including performance thresholds, environment-specific presets, and flexible configuration
@@ -19,19 +19,19 @@ Functions:
 Key Features:
     - **Environment-Specific Presets**: Pre-configured settings optimized for development,
       testing, production, and CI environments with appropriate thresholds and iterations.
-    
+
     - **Flexible Configuration Sources**: Support for environment variables, JSON files,
       YAML files, and programmatic configuration with consistent validation.
-    
+
     - **Comprehensive Validation**: Built-in validation for all configuration parameters
       with clear error messages and consistency checks.
-    
+
     - **Performance Thresholds**: Configurable performance thresholds for basic operations,
       memory cache, compression, and regression detection with validation.
-    
+
     - **Threshold Validation**: Automatic validation of threshold relationships ensuring
       logical consistency (avg <= p95 <= p99, warning < critical, etc.).
-    
+
     - **Error Handling**: Robust error handling with descriptive ConfigurationError
       messages for troubleshooting configuration issues.
 
@@ -50,27 +50,27 @@ Environment Presets:
 Usage Examples:
     Environment-Specific Presets:
         >>> from app.infrastructure.cache.benchmarks.config import ConfigPresets
-        >>> 
+        >>>
         >>> # Development configuration
         >>> dev_config = ConfigPresets.development_config()
         >>> print(f"Iterations: {dev_config.default_iterations}")  # 50
-        >>> 
+        >>>
         >>> # Production configuration
         >>> prod_config = ConfigPresets.production_config()
         >>> print(f"Threshold: {prod_config.thresholds.basic_operations_avg_ms}")  # 25.0
-        
+
     Environment Variable Configuration:
         >>> import os
         >>> os.environ['BENCHMARK_DEFAULT_ITERATIONS'] = '200'
         >>> os.environ['BENCHMARK_THRESHOLD_BASIC_OPS_AVG_MS'] = '30.0'
         >>> config = load_config_from_env()
         >>> print(f"Loaded iterations: {config.default_iterations}")  # 200
-        
+
     File-Based Configuration:
         >>> # config.json contains: {"default_iterations": 150, "thresholds": {...}}
         >>> config = load_config_from_file('config.json')
         >>> config.validate()  # Ensures all settings are consistent
-        
+
     Validation and Error Handling:
         >>> try:
         ...     config = BenchmarkConfig(
@@ -92,7 +92,7 @@ Thread Safety:
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from app.core.exceptions import ConfigurationError
 
 
@@ -134,7 +134,7 @@ class CachePerformanceThresholds:
         
         Returns:
             True if all thresholds are valid and consistent
-            
+        
         Raises:
             ConfigurationError: If thresholds are invalid or inconsistent
         """
@@ -174,7 +174,7 @@ class BenchmarkConfig:
         
         Returns:
             True if configuration is valid
-            
+        
         Raises:
             ConfigurationError: If configuration is invalid
         """
@@ -281,7 +281,7 @@ def load_config_from_env() -> BenchmarkConfig:
     
     Returns:
         BenchmarkConfig loaded from environment variables
-        
+    
     Example:
         >>> os.environ['BENCHMARK_DEFAULT_ITERATIONS'] = '50'
         >>> config = load_config_from_env()
@@ -296,13 +296,13 @@ def load_config_from_file(file_path: str) -> BenchmarkConfig:
     
     Args:
         file_path: Path to configuration file (.json or .yaml/.yml)
-        
+    
     Returns:
         BenchmarkConfig loaded from file
-        
+    
     Raises:
         ConfigurationError: If file cannot be loaded or parsed
-        
+    
     Example:
         >>> config = load_config_from_file('config/benchmark.json')
         >>> config = load_config_from_file('config/benchmark.yaml')

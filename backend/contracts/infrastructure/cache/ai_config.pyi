@@ -1,5 +1,5 @@
 """
-[REFACTORED] AI Response Cache Configuration Module
+AI Response Cache Configuration Module
 
 This module provides comprehensive configuration management for the AI Response Cache
 with advanced validation, factory methods, and environment integration. It supports
@@ -275,7 +275,7 @@ import logging
 import os
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, Optional, Union
-from app.core.exceptions import ValidationError, ConfigurationError
+from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.parameter_mapping import ValidationResult
 
@@ -301,7 +301,7 @@ class AIResponseCacheConfig:
         operation_ttls: Dict[str, int] operation-specific TTL overrides
         performance_monitor: Optional cache performance monitor instance
         security_config: Optional security configuration for encrypted connections
-        
+    
     Public Methods:
         validate(): Comprehensive validation with detailed error reporting
         to_generic_config(): Convert to GenericRedisCache configuration
@@ -309,19 +309,19 @@ class AIResponseCacheConfig:
         from_environment(): Factory method loading from environment variables
         from_dict(): Factory method loading from dictionary data
         from_preset(): Factory method loading from preset configurations
-        
+    
     State Management:
         - Immutable configuration after validation for consistent behavior
         - Thread-safe parameter access for concurrent cache operations
         - Comprehensive validation with actionable error messages
         - Factory methods support various configuration sources
-        
+    
     Usage:
         # Basic configuration with defaults
         config = AIResponseCacheConfig(
             redis_url="redis://localhost:6379/0"
         )
-        
+    
         # Advanced configuration with AI optimizations
         config = AIResponseCacheConfig(
             redis_url="redis://ai-cache:6379/1",
@@ -333,13 +333,13 @@ class AIResponseCacheConfig:
                 "translate": 1800
             }
         )
-        
+    
         # Environment-based configuration
         config = AIResponseCacheConfig.from_environment(
             prefix="AI_CACHE_",
             fallback_redis_url="redis://localhost:6379"
         )
-        
+    
         # Validation and conversion
         validation_result = config.validate()
         if validation_result.is_valid:
@@ -406,14 +406,14 @@ class AIResponseCacheConfig:
         Returns:
             ValidationResult: Comprehensive validation results with errors, warnings,
                             and recommendations
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig(memory_cache_size=-10)
             >>> result = config.validate()
             >>> if not result.is_valid:
             ...     for error in result.errors:
             ...         print(f"Error: {error}")
-            
+        
             >>> config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
             >>> result = config.validate()
             >>> if result.recommendations:
@@ -436,12 +436,12 @@ class AIResponseCacheConfig:
         
         Returns:
             Dict[str, Any]: Complete parameter dictionary for AIResponseCache
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
             >>> kwargs = config.to_ai_cache_kwargs()
             >>> cache = AIResponseCache(**kwargs)  # Direct usage with constructor
-            
+        
             >>> # Or with parameter mapping
             >>> mapper = CacheParameterMapper()
             >>> generic_params, ai_params = mapper.map_ai_to_generic_params(kwargs)
@@ -457,7 +457,7 @@ class AIResponseCacheConfig:
         
         Returns:
             Dict[str, Any]: Complete parameter dictionary for GenericRedisCache
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig(redis_url="redis://localhost:6379")
             >>> kwargs = config.to_generic_cache_kwargs()
@@ -472,7 +472,7 @@ class AIResponseCacheConfig:
         
         Returns:
             AIResponseCacheConfig: Configuration with sensible defaults
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig.create_default()
             >>> cache = AIResponseCache(config)
@@ -486,10 +486,10 @@ class AIResponseCacheConfig:
         
         Args:
             redis_url: Production Redis connection URL
-            
+        
         Returns:
             AIResponseCacheConfig: Production-optimized configuration
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig.create_production("redis://prod:6379")
             >>> cache = AIResponseCache(config)
@@ -503,7 +503,7 @@ class AIResponseCacheConfig:
         
         Returns:
             AIResponseCacheConfig: Development-optimized configuration
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig.create_development()
             >>> cache = AIResponseCache(config)
@@ -517,7 +517,7 @@ class AIResponseCacheConfig:
         
         Returns:
             AIResponseCacheConfig: Testing-optimized configuration with fast operations
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig.create_testing()
             >>> cache = AIResponseCache(config)
@@ -531,13 +531,13 @@ class AIResponseCacheConfig:
         
         Args:
             config_dict: Dictionary containing configuration parameters
-            
+        
         Returns:
             AIResponseCacheConfig: Configuration instance created from dictionary
-            
+        
         Raises:
             ConfigurationError: If dictionary contains invalid parameters
-            
+        
         Examples:
             >>> config_data = {
             ...     'redis_url': 'redis://localhost:6379',
@@ -555,10 +555,10 @@ class AIResponseCacheConfig:
         
         Args:
             prefix: Prefix for environment variable names
-            
+        
         Returns:
             AIResponseCacheConfig: Configuration instance from environment
-            
+        
         DEPRECATED: Individual environment variables are no longer supported.
         Use CACHE_PRESET with preset-based configuration instead.
         
@@ -567,7 +567,7 @@ class AIResponseCacheConfig:
             CACHE_REDIS_URL: Optional Redis URL override
             ENABLE_AI_CACHE: Optional AI features toggle
             CACHE_CUSTOM_CONFIG: Optional JSON configuration override
-            
+        
         Examples:
             >>> os.environ['CACHE_PRESET'] = 'ai-development'
             >>> os.environ['CACHE_REDIS_URL'] = 'redis://localhost:6379'  # Optional
@@ -583,13 +583,13 @@ class AIResponseCacheConfig:
         
         Args:
             yaml_path: Path to YAML configuration file
-            
+        
         Returns:
             AIResponseCacheConfig: Configuration instance from YAML
-            
+        
         Raises:
             ConfigurationError: If YAML library is not available or file cannot be loaded
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig.from_yaml('config.yaml')
         """
@@ -602,10 +602,10 @@ class AIResponseCacheConfig:
         
         Args:
             json_path: Path to JSON configuration file
-            
+        
         Returns:
             AIResponseCacheConfig: Configuration instance from JSON
-            
+        
         Examples:
             >>> config = AIResponseCacheConfig.from_json('config.json')
         """
@@ -621,10 +621,10 @@ class AIResponseCacheConfig:
         
         Args:
             **overrides: Keyword arguments for values to override
-            
+        
         Returns:
             AIResponseCacheConfig: New configuration with merged values
-            
+        
         Example:
             >>> base_config = AIResponseCacheConfig(redis_url="redis://base:6379")
             >>> merged = base_config.merge_with(
@@ -640,14 +640,14 @@ class AIResponseCacheConfig:
         
         Args:
             other: Another configuration to merge with this one
-            
+        
         Returns:
             AIResponseCacheConfig: New configuration with merged values
-            
+        
         Note:
             Values from 'other' configuration take precedence over this configuration,
             but only if they differ from the default values.
-            
+        
         Examples:
             >>> base_config = AIResponseCacheConfig.create_default()
             >>> prod_config = AIResponseCacheConfig(redis_url='redis://prod:6379')

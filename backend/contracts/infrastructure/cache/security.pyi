@@ -1,5 +1,5 @@
 """
-**Redis security implementation with TLS, authentication, and validation.**
+Redis security implementation with TLS, authentication, and validation.
 
 This module provides comprehensive Redis security features for production cache
 deployments including TLS encryption, authentication, and connection validation.
@@ -17,7 +17,7 @@ deployments including TLS encryption, authentication, and connection validation.
 
 ```python
 from app.infrastructure.cache.security import SecurityConfig, RedisCacheSecurityManager
-    
+
     # Create security configuration
     config = SecurityConfig(
         redis_auth="your_password",
@@ -26,21 +26,18 @@ from app.infrastructure.cache.security import SecurityConfig, RedisCacheSecurity
         acl_username="cache_user",
         acl_password="user_password"
     )
-    
+
     # Initialize security manager
     security_manager = RedisCacheSecurityManager(config)
-    
+
     # Create secure Redis connection
     redis_client = await security_manager.create_secure_connection()
-    
+
     # Validate security status
     validation = await security_manager.validate_connection_security(redis_client)
     if not validation.is_secure:
         logger.warning(f"Security issues: {validation.vulnerabilities}")
-
-Author: Cache Infrastructure Team
-Created: 2024-08-12
-Version: 1.0.0
+```
 """
 
 import logging
@@ -49,7 +46,7 @@ import asyncio
 import time
 import inspect
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
@@ -81,7 +78,7 @@ class SecurityConfig:
     Examples:
         # Basic AUTH configuration
         config = SecurityConfig(redis_auth="mypassword")
-        
+    
         # TLS with certificate authentication
         config = SecurityConfig(
             use_tls=True,
@@ -89,13 +86,13 @@ class SecurityConfig:
             tls_key_path="/etc/ssl/redis-client.key",
             tls_ca_path="/etc/ssl/ca.crt"
         )
-        
+    
         # ACL authentication
         config = SecurityConfig(
             acl_username="cache_user",
             acl_password="secure_password"
         )
-        
+    
         # Combined security (recommended for production)
         config = SecurityConfig(
             redis_auth="fallback_password",
@@ -185,13 +182,13 @@ class RedisCacheSecurityManager:
         # Initialize with security configuration
         config = SecurityConfig(redis_auth="password", use_tls=True)
         manager = RedisCacheSecurityManager(config)
-        
+    
         # Create secure connection
         redis = await manager.create_secure_connection()
-        
+    
         # Validate security
         validation = await manager.validate_connection_security(redis)
-        
+    
         # Get security report
         report = manager.generate_security_report(validation)
     """
@@ -216,10 +213,10 @@ class RedisCacheSecurityManager:
         
         Args:
             redis_url: Redis connection URL
-            
+        
         Returns:
             Configured Redis client with security features
-            
+        
         Raises:
             RedisError: If connection cannot be established
             ConfigurationError: If security configuration is invalid
@@ -236,7 +233,7 @@ class RedisCacheSecurityManager:
         
         Args:
             redis_client: Redis client to validate
-            
+        
         Returns:
             Detailed security validation results
         """
@@ -257,7 +254,7 @@ class RedisCacheSecurityManager:
         
         Args:
             redis_url: Redis URL to test against
-            
+        
         Returns:
             Detailed test results
         """
@@ -269,7 +266,7 @@ class RedisCacheSecurityManager:
         
         Args:
             validation_result: Optional validation result, uses last validation if not provided
-            
+        
         Returns:
             Formatted security report
         """

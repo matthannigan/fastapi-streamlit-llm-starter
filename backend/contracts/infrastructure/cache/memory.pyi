@@ -1,5 +1,5 @@
 """
-**High-performance in-memory cache with TTL support and LRU eviction.**
+High-performance in-memory cache with TTL support and LRU eviction.
 
 This module provides a lightweight, thread-safe in-memory caching solution optimized
 for development, testing, and scenarios where external cache dependencies are not
@@ -8,7 +8,7 @@ available or desired.
 ## Key Features
 
 - **TTL Support**: Automatic expiration with configurable time-to-live
-- **LRU Eviction**: Intelligent memory management through least-recently-used eviction  
+- **LRU Eviction**: Intelligent memory management through least-recently-used eviction
 - **Async Interface**: Full async/await compatibility
 - **Statistics**: Built-in performance metrics and monitoring
 - **Memory Efficient**: Automatic cleanup and configurable size limits
@@ -37,7 +37,7 @@ cache = InMemoryCache(default_ttl=1800, max_size=500)
 
 # Basic operations
 await cache.set("user:123", {"name": "John", "role": "admin"})
-await cache.set("session:abc", "active", ttl=300)  # Custom TTL 
+await cache.set("session:abc", "active", ttl=300)  # Custom TTL
 
 # Get a value
 user_data = await cache.get("user:123")
@@ -138,7 +138,7 @@ Version Compatibility:
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from app.infrastructure.cache.base import CacheInterface
 
 
@@ -155,7 +155,7 @@ class InMemoryCache(CacheInterface):
         max_size: int maximum entries before LRU eviction triggers
         _cache: Dict[str, Dict[str, Any]] internal storage with metadata
         _access_order: List[str] LRU tracking for eviction decisions
-        
+    
     Public Methods:
         get(): Retrieve value by key with automatic expiration handling
         set(): Store value with optional TTL and LRU management
@@ -163,31 +163,31 @@ class InMemoryCache(CacheInterface):
         exists(): Check key existence without affecting LRU order
         clear(): Remove all cached entries for testing/cleanup
         get_stats(): Retrieve cache performance statistics
-        
+    
     State Management:
         - Thread-safe for single event loop concurrent access
         - Automatic cleanup of expired entries during operations
         - LRU eviction maintains memory bounds automatically
         - Statistics tracking for monitoring and debugging
-        
+    
     Usage:
         # Development and testing configuration
         cache = InMemoryCache(default_ttl=1800, max_size=500)
-        
+    
         # Basic caching operations
         await cache.set("user:123", {"name": "John", "active": True})
         user_data = await cache.get("user:123")
         await cache.delete("user:123")
-        
+    
         # Advanced usage with custom TTL
         await cache.set("session:abc", "active", ttl=300)  # 5 minutes
         if await cache.exists("session:abc"):
             print("Session still active")
-            
+    
         # Production monitoring
         stats = cache.get_stats()
         print(f"Cache hit rate: {stats['hit_rate']:.2%}")
-        
+    
         # Testing and cleanup
         cache.clear()  # Remove all entries for clean test state
     """
@@ -204,7 +204,7 @@ class InMemoryCache(CacheInterface):
                         set() called without explicit ttl parameter. Default 3600 (1 hour).
             max_size: Maximum cache entries (1-100000) before LRU eviction. Controls
                      memory usage by removing least-recently-used entries. Default 1000.
-                     
+        
         Behavior:
             - Initializes empty cache storage with metadata tracking
             - Sets up LRU access order tracking for intelligent eviction

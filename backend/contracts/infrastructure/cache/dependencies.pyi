@@ -1,5 +1,5 @@
 """
-**FastAPI dependencies for cache infrastructure with lifecycle management.**
+FastAPI dependencies for cache infrastructure with lifecycle management.
 
 This module provides comprehensive FastAPI dependency injection for cache services
 with lifecycle management, thread-safe registry, and health monitoring. It implements
@@ -12,7 +12,7 @@ explicit cache creation patterns and supports graceful degradation with fallback
 ## Functions
 
 - **get_settings**: Cached settings dependency for configuration access
-- **get_cache_config**: Configuration builder with environment detection  
+- **get_cache_config**: Configuration builder with environment detection
 - **get_cache_service**: Main cache service dependency with registry management
 - **get_web_cache_service**: Web-optimized cache service dependency
 - **get_ai_cache_service**: AI-optimized cache service dependency
@@ -25,7 +25,7 @@ explicit cache creation patterns and supports graceful degradation with fallback
 
 - **Thread-Safe Registry**: Weak reference cache registry with asyncio locks
 - **Explicit Factory Usage**: Uses CacheFactory for deterministic creation
-- **Graceful Degradation**: Automatic fallback to InMemoryCache on Redis failures  
+- **Graceful Degradation**: Automatic fallback to InMemoryCache on Redis failures
 - **Lifecycle Management**: Proper cache connection and cleanup handling
     - **Health Monitoring**: Comprehensive health checks with ping() method support
     - **Configuration Building**: Environment-aware configuration from settings
@@ -44,13 +44,13 @@ Examples:
     Basic cache dependency usage:
         @app.get("/api/data")
         async def get_data(cache: CacheInterface = Depends(get_cache_service)):
-            cached_data = await cache.get("api_data")
+            cached_data  =  await cache.get("api_data")
             if cached_data:
                 return cached_data
-            
+
             # Fetch fresh data
-            fresh_data = fetch_api_data()
-            await cache.set("api_data", fresh_data, ttl=300)
+            fresh_data  =  fetch_api_data()
+            await cache.set("api_data", fresh_data, ttl = 300)
             return fresh_data
 
     AI cache dependency usage:
@@ -62,8 +62,8 @@ Examples:
             # Domain service handles caching logic (recommended pattern)
             # Use TextProcessorService for business logic, not direct cache operations
             # Direct usage shown for illustration only:
-            cache_key = ai_cache.build_key(request.text, "summarize", request.options)
-            cached_result = await ai_cache.get(cache_key)
+            cache_key  =  ai_cache.build_key(request.text, "summarize", request.options)
+            cached_result  =  await ai_cache.get(cache_key)
             return cached_result
 
     Health check integration:
@@ -94,7 +94,7 @@ Dependencies:
         - app.core.config.Settings: Application settings access
         - app.core.exceptions: Custom exception hierarchy
         - fastapi.Depends: Dependency injection framework
-    
+
     Optional:
         - redis.asyncio: Redis connectivity for health checks
         - app.infrastructure.cache.monitoring: Performance monitoring
@@ -105,10 +105,10 @@ import logging
 import os
 import weakref
 from functools import lru_cache
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict
 from fastapi import Depends, HTTPException
 from app.core.config import Settings
-from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
+from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.factory import CacheFactory
 from app.infrastructure.cache.memory import InMemoryCache
@@ -149,7 +149,7 @@ def get_settings() -> Settings:
     
     Returns:
         Settings: Cached application settings instance
-        
+    
     Examples:
         @app.get("/config")
         async def get_config(settings: Settings = Depends(get_settings)):
@@ -178,14 +178,14 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
     
     Args:
         settings: Application settings dependency
-        
+    
     Returns:
         CacheConfig: Built and validated cache configuration from preset system
-        
+    
     Raises:
         ConfigurationError: Configuration building or validation failures
         InfrastructureError: Preset system failures
-        
+    
     Examples:
         @app.get("/cache/config")
         async def get_cache_configuration(
@@ -206,19 +206,19 @@ async def get_cache_service(config = Depends(get_cache_config)) -> CacheInterfac
     
     Args:
         config: Cache configuration dependency
-        
+    
     Returns:
         CacheInterface: Cache service instance (Redis or InMemory fallback)
-        
+    
     Raises:
         InfrastructureError: Critical cache creation failures
         ConfigurationError: Invalid configuration for cache creation
-        
+    
     Examples:
         @app.get("/api/data")
         async def get_data(cache: CacheInterface = Depends(get_cache_service)):
             # Cache will be GenericRedisCache or AIResponseCache based on config
-            result = await cache.get("data_key")
+            result  =  await cache.get("data_key")
             return result
     """
     ...
@@ -234,21 +234,21 @@ async def get_web_cache_service(config = Depends(get_cache_config)) -> CacheInte
     
     Args:
         config: Cache configuration dependency
-        
+    
     Returns:
         CacheInterface: Web-optimized cache service instance
-        
+    
     Raises:
         InfrastructureError: Cache creation failures
         ConfigurationError: Invalid web cache configuration
-        
+    
     Examples:
         @app.get("/web/sessions")
         async def get_session_data(
             cache: CacheInterface = Depends(get_web_cache_service)
         ):
             # Guaranteed to be optimized for web usage patterns
-            session_data = await cache.get("session:123")
+            session_data  =  await cache.get("session:123")
             return session_data
     """
     ...
@@ -264,14 +264,14 @@ async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInter
     
     Args:
         config: Cache configuration dependency
-        
+    
     Returns:
         CacheInterface: AI-optimized cache service instance
-        
+    
     Raises:
         ConfigurationError: Missing AI configuration
         InfrastructureError: AI cache creation failures
-        
+    
     Examples:
         @app.post("/ai/summarize")
         async def summarize_text(
@@ -279,11 +279,11 @@ async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInter
             ai_cache: CacheInterface = Depends(get_ai_cache_service)
         ):
             # Standard interface usage with AI-optimized cache
-            cache_key = ai_cache.build_key(request.text, "summarize", request.options)
-            result = await ai_cache.get(cache_key)
+            cache_key  =  ai_cache.build_key(request.text, "summarize", request.options)
+            result  =  await ai_cache.get(cache_key)
             if not result:
-                result = {"summary": "Generated summary"}  # Process with AI
-                await ai_cache.set(cache_key, result, ttl=3600)
+                result  =  {"summary": "Generated summary"}  # Process with AI
+                await ai_cache.set(cache_key, result, ttl = 3600)
             return result
     """
     ...
@@ -299,12 +299,12 @@ async def get_test_cache() -> CacheInterface:
     
     Returns:
         CacheInterface: Memory-based test cache instance
-        
+    
     Examples:
         @pytest.fixture
         async def test_cache():
             return await get_test_cache()
-            
+    
         async def test_cache_operations(test_cache):
             await test_cache.set("test_key", "test_value")
             assert await test_cache.get("test_key") == "test_value"
@@ -321,13 +321,13 @@ async def get_test_redis_cache() -> CacheInterface:
     
     Returns:
         CacheInterface: Redis-based test cache instance (or InMemory fallback)
-        
+    
     Examples:
         @pytest.mark.integration
         async def test_redis_operations():
-            cache = await get_test_redis_cache()
+            cache  =  await get_test_redis_cache()
             await cache.set("integration_test", {"data": "value"})
-            result = await cache.get("integration_test")
+            result  =  await cache.get("integration_test")
             assert result == {"data": "value"}
     """
     ...
@@ -342,14 +342,14 @@ async def get_fallback_cache_service() -> CacheInterface:
     
     Returns:
         CacheInterface: InMemoryCache instance with safe defaults
-        
+    
     Examples:
         @app.get("/fallback/data")
         async def get_fallback_data(
             cache: CacheInterface = Depends(get_fallback_cache_service)
         ):
             # Always uses InMemoryCache regardless of Redis availability
-            cached_data = await cache.get("fallback_key")
+            cached_data  =  await cache.get("fallback_key")
             return cached_data or "no_data"
     """
     ...
@@ -364,13 +364,13 @@ async def validate_cache_configuration(config = Depends(get_cache_config)):
     
     Args:
         config: Cache configuration dependency
-        
+    
     Returns:
         CacheConfig: Validated cache configuration
-        
+    
     Raises:
         HTTPException: HTTP 500 for invalid configuration
-        
+    
     Examples:
         @app.get("/config/validate")
         async def validate_config(
@@ -392,16 +392,16 @@ async def get_cache_service_conditional(enable_ai: bool = False, fallback_only: 
         enable_ai: Whether to use AI-optimized cache
         fallback_only: Whether to force fallback to InMemoryCache
         settings: Application settings dependency
-        
+    
     Returns:
         CacheInterface: Cache instance based on conditions
-        
+    
     Examples:
         @app.get("/api/data")
         async def get_conditional_data(
-            enable_ai: bool = Query(False),
+            enable_ai: bool  =  Query(False),
             cache: CacheInterface = Depends(
-                lambda: get_cache_service_conditional(enable_ai=enable_ai)
+                lambda: get_cache_service_conditional(enable_ai = enable_ai)
             )
         ):
             # Cache type depends on enable_ai parameter
@@ -420,11 +420,11 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
     
     Returns:
         Dict[str, Any]: Cleanup statistics and results
-        
+    
     Examples:
         @app.on_event("shutdown")
         async def shutdown_event():
-            cleanup_stats = await cleanup_cache_registry()
+            cleanup_stats  =  await cleanup_cache_registry()
             logger.info(f"Cache cleanup completed: {cleanup_stats}")
     """
     ...
@@ -440,17 +440,17 @@ async def get_cache_health_status(cache: CacheInterface = Depends(get_cache_serv
     
     Args:
         cache: Cache service dependency
-        
+    
     Returns:
         Dict[str, Any]: Comprehensive health status information
-        
+    
     Examples:
         @app.get("/health/cache")
         async def cache_health_check(
             health: Dict[str, Any] = Depends(get_cache_health_status)
         ):
             return health
-            
+    
         @app.get("/health/detailed")
         async def detailed_health(
             cache_health: Dict[str, Any] = Depends(get_cache_health_status)

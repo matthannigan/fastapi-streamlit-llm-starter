@@ -1,5 +1,5 @@
 """
-[REFACTORED] Advanced statistical analysis and memory tracking utilities for cache performance benchmarking.
+Advanced statistical analysis and memory tracking utilities for cache performance benchmarking.
 
 This module provides comprehensive statistical calculation and memory monitoring infrastructure
 extracted from the original monolithic benchmarks module for improved reusability, testability,
@@ -13,19 +13,19 @@ Classes:
 Key Features:
     - **Advanced Statistical Analysis**: Comprehensive statistical calculations including percentiles,
       standard deviation, outlier detection using IQR method, and confidence intervals.
-    
+
     - **Robust Error Handling**: Graceful handling of edge cases including empty datasets,
       infinite values, and missing dependencies with appropriate fallbacks.
-    
+
     - **Cross-Platform Memory Tracking**: Memory usage monitoring with multiple fallback
       mechanisms supporting psutil, /proc/self/status, and basic memory estimation.
-    
+
     - **Outlier Detection**: Interquartile Range (IQR) based outlier detection with
       configurable thresholds and clean data extraction for improved analysis accuracy.
-    
+
     - **Confidence Intervals**: Statistical confidence interval calculation supporting
       both normal distribution (large samples) and t-distribution approximation.
-    
+
     - **Performance Optimization**: Efficient algorithms with minimal overhead suitable
       for real-time benchmarking and continuous performance monitoring.
 
@@ -51,13 +51,13 @@ Usage Examples:
         >>> print(f"P95: {stats['p95']:.2f}ms")
         >>> print(f"Mean: {stats['mean']:.2f}ms")
         >>> print(f"Std Dev: {stats['std_dev']:.2f}ms")
-        >>> 
+        >>>
         >>> outliers = calc.detect_outliers(data)
         >>> print(f"Found {outliers['outlier_count']} outliers")
-        >>> 
+        >>>
         >>> ci = calc.calculate_confidence_intervals(data)
         >>> print(f"95% CI: [{ci['lower']:.2f}, {ci['upper']:.2f}]")
-        
+
     Memory Tracking:
         >>> tracker = MemoryTracker()
         >>> before = tracker.get_memory_usage()
@@ -65,7 +65,7 @@ Usage Examples:
         >>> after = tracker.get_memory_usage()
         >>> delta = tracker.calculate_memory_delta(before, after)
         >>> print(f"Memory increase: {delta['process_mb']:.1f}MB")
-        >>> 
+        >>>
         >>> # Peak memory tracking
         >>> measurements = []
         >>> for i in range(10):
@@ -81,7 +81,7 @@ Thread Safety:
 
 import math
 import statistics
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 import logging
 
 
@@ -115,10 +115,10 @@ class StatisticalCalculator:
         Args:
             data: List of numeric values
             percentile: Percentile to calculate (0-100)
-            
+        
         Returns:
             Calculated percentile value, or 0.0 if data is empty
-            
+        
         Example:
             >>> calc = StatisticalCalculator()
             >>> data = [1, 2, 3, 4, 5]
@@ -134,7 +134,7 @@ class StatisticalCalculator:
         
         Args:
             data: List of numeric values
-            
+        
         Returns:
             Standard deviation, or 0.0 if insufficient data or calculation fails
         """
@@ -150,7 +150,7 @@ class StatisticalCalculator:
         
         Args:
             data: List of numeric values
-            
+        
         Returns:
             Dictionary containing:
             - outliers: List of outlier values
@@ -159,7 +159,7 @@ class StatisticalCalculator:
             - lower_bound: Lower threshold for outliers
             - upper_bound: Upper threshold for outliers
             - iqr: Interquartile range value
-            
+        
         Example:
             >>> calc = StatisticalCalculator()
             >>> data = [1, 2, 3, 4, 5, 100]  # 100 is likely an outlier
@@ -179,13 +179,13 @@ class StatisticalCalculator:
         Args:
             data: List of numeric values
             confidence: Confidence level (default: 0.95 for 95% confidence)
-            
+        
         Returns:
             Dictionary containing:
             - lower: Lower bound of confidence interval
-            - upper: Upper bound of confidence interval  
+            - upper: Upper bound of confidence interval
             - margin_of_error: Half-width of the interval
-            
+        
         Example:
             >>> calc = StatisticalCalculator()
             >>> data = [1.5, 1.8, 2.1, 1.9, 1.7]
@@ -205,14 +205,14 @@ class StatisticalCalculator:
         
         Args:
             data: List of numeric values
-            
+        
         Returns:
             Dictionary containing all statistical measures:
             - mean, median, std_dev
-            - percentiles (p50, p95, p99)  
+            - percentiles (p50, p95, p99)
             - outlier analysis
             - confidence intervals
-            
+        
         Example:
             >>> calc = StatisticalCalculator()
             >>> data = [1.2, 1.5, 1.8, 2.1, 1.9, 1.7, 1.6, 1.4]
@@ -252,7 +252,7 @@ class MemoryTracker:
             - available_mb: Available system memory in MB (if available)
             - total_mb: Total system memory in MB (if available)
             - percent_used: System memory utilization percentage (if available)
-            
+        
         Example:
             >>> tracker = MemoryTracker()
             >>> memory = tracker.get_memory_usage()
@@ -273,7 +273,7 @@ class MemoryTracker:
         
         Returns:
             Process memory usage in megabytes, or 0.0 if measurement fails
-            
+        
         Example:
             >>> tracker = MemoryTracker()
             >>> memory_mb = tracker.get_process_memory_mb()
@@ -288,10 +288,10 @@ class MemoryTracker:
         Args:
             before: Memory measurement before operation
             after: Memory measurement after operation
-            
+        
         Returns:
             Dictionary containing memory deltas for all available metrics
-            
+        
         Example:
             >>> tracker = MemoryTracker()
             >>> before = tracker.get_memory_usage()
@@ -308,10 +308,10 @@ class MemoryTracker:
         
         Args:
             memory_measurements: List of memory measurement dictionaries
-            
+        
         Returns:
             Dictionary containing peak values for each memory metric
-            
+        
         Example:
             >>> tracker = MemoryTracker()
             >>> measurements = []

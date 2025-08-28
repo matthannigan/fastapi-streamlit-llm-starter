@@ -1,5 +1,5 @@
 """
-**Parameter mapping utilities for cache inheritance and validation.**
+Parameter mapping utilities for cache inheritance and validation.
 
 This module provides comprehensive parameter mapping functionality to enable
 proper inheritance between cache implementations. It separates AI-specific
@@ -54,8 +54,8 @@ Dependencies:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from app.core.exceptions import ValidationError, ConfigurationError
+from typing import Any, Dict, List, Set, Tuple
+from app.core.exceptions import ConfigurationError
 
 
 @dataclass
@@ -76,20 +76,20 @@ class ValidationResult:
         ai_specific_params: Set[str] of parameters identified as AI-specific
         generic_params (Set[str]): Set of parameters identified as generic Redis parameters
         context (Dict[str, Any]): Additional validation context information
-        
+    
     Behavior:
         - Aggregates validation results from multiple parameter checking phases
         - Provides actionable error messages with specific parameter references
         - Includes performance and security recommendations for configuration improvement
         - Maintains validation context for debugging and troubleshooting
         - Thread-safe result structure for concurrent validation operations
-        
+    
     Examples:
         >>> result = ValidationResult()
         >>> result.errors.append("redis_url cannot be empty")
         >>> result.warnings.append("Low TTL may impact performance")
         >>> result.recommendations.append("Consider enabling compression")
-        >>> 
+        >>>
         >>> if result.is_valid:
         ...     print("Configuration validated successfully")
         ... else:
@@ -146,19 +146,19 @@ class CacheParameterMapper:
         generic_params: Set[str] parameters inherited by generic Redis cache
         parameter_mappings: Dict[str, str] AI-to-generic parameter name mappings
         value_transformers: Dict[str, Callable] parameter value transformation functions
-        
+    
     Public Methods:
         map_ai_to_generic_params(): Separate and map AI parameters to generic equivalents
         validate_parameter_compatibility(): Comprehensive parameter validation with reporting
         get_parameter_classification(): Classify parameters by type and inheritance level
         transform_parameter_values(): Apply value transformations for compatibility
-        
+    
     State Management:
         - Immutable parameter classification for consistent behavior
         - Thread-safe mapping operations for concurrent cache initialization
         - Comprehensive validation with detailed error context
         - Extensible architecture for custom parameter types
-        
+    
     Usage:
         # Basic parameter mapping for inheritance
         mapper = CacheParameterMapper()
@@ -167,15 +167,15 @@ class CacheParameterMapper:
             'text_hash_threshold': 1000,
             'memory_cache_size': 100
         }
-        
+    
         generic_params, ai_only = mapper.map_ai_to_generic_params(ai_params)
-        
+    
         # Validation with detailed reporting
         result = mapper.validate_parameter_compatibility(ai_params)
         if not result.is_valid:
             for error in result.errors:
                 logger.error(f"Parameter error: {error}")
-        
+    
         # Production usage with error handling
         try:
             generic_config = mapper.create_generic_config(ai_params)
