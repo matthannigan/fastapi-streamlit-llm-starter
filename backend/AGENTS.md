@@ -228,38 +228,6 @@ def test_api_returns_proper_status_for_validation_error(client):
 
 **Common Agent Issues When Running Tests:**
 
-#### Directory Navigation Issues
-
-**Issue**: `make: *** No rule to make target 'help'. Stop.`
-**Agent Solution**: 
-```bash
-# Check current directory - Makefile is in project root
-pwd                           # Should show project root, not backend/
-cd ..                        # If in backend/, go to project root
-make help                    # Now this will work
-```
-
-**Issue**: `(eval):cd:1: no such file or directory: backend`
-**Agent Solution**:
-```bash
-# Verify directory structure
-pwd                          # Check where you are
-ls -la                       # Look for backend/ directory
-# If already in backend/, use relative paths:
-../.venv/bin/python -m pytest tests/ -v
-```
-
-**Issue**: `command not found: python` or virtual environment not found
-**Agent Solution**:
-```bash
-# Virtual environment is in project root, not backend/
-ls -la .venv/bin/python      # From project root
-ls -la ../.venv/bin/python   # From backend/ directory
-
-# Use full path if needed:
-../.venv/bin/python -m pytest tests/ -v
-```
-
 #### Recommended Testing Commands for Agents
 
 **1. Use Makefile (Preferred - handles environment automatically):**
