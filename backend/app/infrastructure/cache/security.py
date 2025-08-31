@@ -53,8 +53,8 @@ from app.core.exceptions import ConfigurationError
 
 # Optional Redis import for graceful degradation
 try:
-    import aioredis  # type: ignore
-    from aioredis import Redis, RedisError  # type: ignore
+    import redis.asyncio as aioredis  # type: ignore
+    from redis.asyncio import Redis, RedisError  # type: ignore
     AIOREDIS_AVAILABLE = True
 except ImportError:
     AIOREDIS_AVAILABLE = False
@@ -131,7 +131,7 @@ class SecurityConfig:
     tls_key_path: Optional[str] = None
     tls_ca_path: Optional[str] = None
     verify_certificates: bool = True
-    min_tls_version: float = ssl.TLSVersion.TLSv1_2.value
+    min_tls_version: int = ssl.TLSVersion.TLSv1_2.value
     cipher_suites: Optional[List[str]] = None
 
     # Connection settings
