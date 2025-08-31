@@ -46,6 +46,7 @@ class CacheInterface(ABC):
         get(): Retrieve cached value by key with type preservation
         set(): Store value with optional TTL for automatic expiration
         delete(): Remove cached entry immediately
+        exists(): Check if a key exists in cache without retrieving the value
 
     State Management:
         - Abstract class provides no state management (implementation-specific)
@@ -128,5 +129,23 @@ class CacheInterface(ABC):
             - May perform cleanup of related metadata or indexes
             - Thread/async-safe operation for concurrent access
             - Success regardless of key existence for idempotent behavior
+        """
+        pass
+
+    @abstractmethod
+    async def exists(self, key: str) -> bool:
+        """
+        Check if a key exists in cache without retrieving the value.
+        
+        Args:
+            key: Cache key string to check for existence.
+            
+        Returns:
+            True if key exists and is not expired, False otherwise.
+            
+        Behavior:
+            - Does not affect cache access patterns or LRU ordering
+            - Respects TTL expiration rules per implementation
+            - Thread/async-safe operation for concurrent access
         """
         pass
