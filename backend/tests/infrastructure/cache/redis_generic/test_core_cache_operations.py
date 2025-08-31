@@ -31,7 +31,7 @@ Fixtures and Mocks:
         - default_generic_redis_config: Standard configuration dictionary
         - compression_redis_config: Configuration optimized for compression
         - no_l1_redis_config: Configuration without L1 cache
-        - mock_redis_client: Stateful mock Redis client
+        - fakeredis: Stateful fake Redis client
         - sample_large_value: Large data for compression testing
         - bulk_test_data: Multiple key-value pairs for batch testing
         - compression_test_data: Data designed for compression testing
@@ -40,7 +40,6 @@ Fixtures and Mocks:
         - sample_cache_value: Standard cache value for testing
         - sample_ttl: Standard TTL value for testing
         - short_ttl: Short TTL for expiration testing
-        - mock_performance_monitor: Mock CachePerformanceMonitor instance
 """
 
 import pytest

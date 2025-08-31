@@ -51,8 +51,7 @@ class TestWebCacheServiceDependency:
         - Integration testing with web application dependency patterns
         
     External Dependencies:
-        - CacheFactory: For web-optimized cache creation (mocked)
-        - CacheConfig: For web configuration validation
+        - None
     """
 
     def test_get_web_cache_service_creates_web_optimized_cache_instance(self):
@@ -81,7 +80,6 @@ class TestWebCacheServiceDependency:
             
         Fixtures Used:
             - mock_cache_config_basic: Web-appropriate configuration without AI features
-            - mock_cache_factory: Factory for web-optimized cache creation
             
         Web Application Focus:
             Web cache service optimizes for web application caching requirements
@@ -118,7 +116,6 @@ class TestWebCacheServiceDependency:
             
         Fixtures Used:
             - mock_cache_config_ai_enabled: Configuration with AI features to be disabled
-            - mock_cache_factory: Factory that isolates web from AI features
             
         Performance Isolation:
             Web cache service isolates web performance from AI processing overhead
@@ -155,7 +152,6 @@ class TestWebCacheServiceDependency:
             
         Fixtures Used:
             - Invalid configuration scenarios for web cache testing
-            - mock_cache_factory: Factory configured to simulate web cache failures
             
         Web Configuration Safety:
             Web cache configuration errors prevent deployment with suboptimal web caching
@@ -187,8 +183,7 @@ class TestAICacheServiceDependency:
         - Integration testing with AI application dependency patterns
         
     External Dependencies:
-        - CacheFactory: For AI-optimized cache creation (mocked)
-        - CacheConfig: For AI configuration validation and features
+        - None
     """
 
     def test_get_ai_cache_service_creates_ai_optimized_cache_instance(self):
@@ -217,7 +212,6 @@ class TestAICacheServiceDependency:
             
         Fixtures Used:
             - mock_cache_config_ai_enabled: Configuration with AI features enabled
-            - mock_cache_factory: Factory for AI-optimized cache creation
             
         AI Application Focus:
             AI cache service optimizes for AI application caching and text processing
@@ -291,7 +285,6 @@ class TestAICacheServiceDependency:
             
         Fixtures Used:
             - mock_cache_config_ai_enabled: Comprehensive AI configuration
-            - mock_cache_factory: Factory that enables full AI feature set
             
         Complete AI Integration:
             AI cache service provides comprehensive AI functionality for applications
@@ -323,8 +316,7 @@ class TestTestingCacheDependencies:
         - Integration testing with pytest and testing frameworks
         
     External Dependencies:
-        - CacheFactory: For test-specific cache creation (mocked)
-        - InMemoryCache: For memory-only test cache instances
+        - None
     """
 
     def test_get_test_cache_creates_memory_only_cache_for_unit_testing(self):
@@ -352,8 +344,7 @@ class TestTestingCacheDependencies:
             - Test cache provides consistent behavior across test runs
             
         Fixtures Used:
-            - mock_cache_factory: Factory for test cache creation
-            - mock_memory_cache_fallback: Memory cache for test scenarios
+            - None
             
         Test Isolation:
             Test cache provides isolated caching for reliable unit testing
@@ -389,8 +380,7 @@ class TestTestingCacheDependencies:
             - Fallback to memory cache if Redis unavailable in test environment
             
         Fixtures Used:
-            - mock_cache_factory: Factory for Redis test cache creation
-            - mock_redis_cache_with_ping: Redis cache for integration testing
+            - None
             
         Integration Testing:
             Test Redis cache enables comprehensive Redis functionality testing
@@ -426,7 +416,6 @@ class TestTestingCacheDependencies:
             - Test isolation ensures reliable and predictable test behavior
             
         Fixtures Used:
-            - mock_cache_factory: Factory for isolated test cache instances
             - Multiple test scenarios for isolation verification
             
         Reliable Testing:
@@ -488,7 +477,6 @@ class TestFallbackAndConditionalCacheDependencies:
             - Fallback behavior ensures application continues functioning during outages
             
         Fixtures Used:
-            - mock_memory_cache_fallback: InMemoryCache for fallback scenarios
             - Various configuration states for fallback guarantee testing
             
         Guaranteed Functionality:
@@ -563,7 +551,6 @@ class TestFallbackAndConditionalCacheDependencies:
             
         Fixtures Used:
             - Error scenarios for fallback and conditional dependency testing
-            - mock_cache_factory: Factory configured to simulate various failure modes
             
         Application Resilience:
             Error handling in dependencies maintains application stability during failures

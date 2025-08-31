@@ -12,8 +12,9 @@ Coverage Focus:
     - Performance monitoring integration
 
 External Dependencies:
-    All external dependencies are mocked using fixtures from conftest.py following
-    the documented public contracts to ensure accurate behavior simulation.
+    - Redis client library (fakeredis): Redis connection simulation
+    - Settings configuration (mocked): Application configuration management
+    - Standard library components (hashlib): For hashing operations in cache key generation
 """
 
 import pytest
@@ -39,15 +40,14 @@ class TestAIResponseCacheInitialization:
         Initialization failures prevent cache functionality and break AI services
         
     Test Strategy:
-        - Unit tests for parameter mapping using mock_parameter_mapper
-        - Validation error scenarios using mock_parameter_mapper_with_validation_errors
+        - Unit tests for parameter mapping
+        - Validation error scenarios
         - Integration with parent GenericRedisCache initialization
         - Configuration edge cases and boundary conditions
         
     External Dependencies:
-        - CacheParameterMapper (mocked): Parameter separation and validation
-        - GenericRedisCache (mocked): Parent class initialization
-        - CachePerformanceMonitor (optional, mocked): Performance tracking
+        - Redis client library (fakeredis): Redis connection simulation
+        - Settings configuration (mocked): Application configuration management
     """
 
     def test_init_with_valid_parameters_maps_to_generic_cache(self):
@@ -75,9 +75,6 @@ class TestAIResponseCacheInitialization:
             
         Fixtures Used:
             - valid_ai_params: Complete set of valid initialization parameters
-            - mock_parameter_mapper: Simulates successful parameter mapping
-            - mock_generic_redis_cache: Parent class initialization mock
-            - mock_performance_monitor: Optional performance monitoring
             
         Related Tests:
             - test_init_with_invalid_parameters_raises_configuration_error()
@@ -110,7 +107,6 @@ class TestAIResponseCacheInitialization:
             
         Fixtures Used:
             - invalid_ai_params: Set of parameters that should fail validation
-            - mock_parameter_mapper_with_validation_errors: Returns validation failures
             
         Expected Error Context:
             Error message should include specific parameter names and validation rules
@@ -143,7 +139,6 @@ class TestAIResponseCacheInitialization:
             - Parameter mapping failures
             
         Fixtures Used:
-            - mock_parameter_mapper_with_validation_errors: Simulates mapping failures
             - valid_ai_params: Base parameters modified to cause validation issues
             
         Error Propagation Verified:
@@ -183,8 +178,7 @@ class TestAIResponseCacheInitialization:
             - text_size_tiers: default tier configuration
             
         Fixtures Used:
-            - mock_parameter_mapper: Captures parameters passed to mapping
-            - mock_generic_redis_cache: Verifies parent initialization
+            - None
             
         Verification Approach:
             Check parameter mapper mock calls to verify default values applied
@@ -219,7 +213,6 @@ class TestAIResponseCacheInitialization:
             
         Fixtures Used:
             - valid_ai_params: Contains explicit non-default values
-            - mock_parameter_mapper: Captures actual parameter values passed
             
         Verification Approach:
             Assert parameter mapper receives exact custom values, not defaults

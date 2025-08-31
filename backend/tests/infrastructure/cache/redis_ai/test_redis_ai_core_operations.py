@@ -12,8 +12,9 @@ Coverage Focus:
     - Performance monitoring integration
 
 External Dependencies:
-    All external dependencies are mocked using fixtures from conftest.py following
-    the documented public contracts to ensure accurate behavior simulation.
+    - Redis client library (fakeredis): Redis connection and data storage simulation
+    - Standard library components (hashlib): For key generation and hashing operations
+    - Settings configuration (mocked): Application configuration management
 """
 
 import pytest
@@ -46,9 +47,8 @@ class TestAIResponseCacheCoreOperations:
         - Error handling and graceful degradation scenarios
         
     External Dependencies:
-        - GenericRedisCache (mocked): Parent class standard cache operations (get/set/delete)
-        - CacheKeyGenerator (mocked): AI-specific cache key generation
-        - CachePerformanceMonitor (mocked): Performance metrics collection
+        - Redis client library (fakeredis): Redis connection and data storage simulation
+        - Standard library components (hashlib): For key generation testing
     """
 
     def test_build_key_generates_ai_optimized_cache_keys(self):
@@ -77,8 +77,6 @@ class TestAIResponseCacheCoreOperations:
         Fixtures Used:
             - sample_text: Typical AI processing input text
             - sample_options: AI processing options
-            - mock_key_generator: Cache key generation behavior
-            - mock_performance_monitor: Metrics collection (optional)
             
         Integration Points Verified:
             - CacheKeyGenerator receives all provided parameters
@@ -118,7 +116,6 @@ class TestAIResponseCacheCoreOperations:
         Fixtures Used:
             - sample_text: Base text for Q&A processing
             - ai_cache_test_data: Includes Q&A operation with embedded question
-            - mock_key_generator: Configured to extract questions from options
             
         Cache Key Uniqueness Verified:
             Same text with different embedded questions should generate different keys
@@ -155,8 +152,6 @@ class TestAIResponseCacheCoreOperations:
         Fixtures Used:
             - sample_long_text: Text content > 1000 characters (above hash threshold)
             - sample_options: Standard processing options
-            - mock_key_generator: Configured with hash threshold behavior
-            - mock_performance_monitor: Captures large text processing metrics
             
         Memory Efficiency Verified:
             Large text key generation doesn't cause memory issues
@@ -193,7 +188,6 @@ class TestAIResponseCacheCoreOperations:
         Fixtures Used:
             - sample_short_text: Text content < 500 characters (below hash threshold)  
             - sample_options: Standard processing options
-            - mock_key_generator: Configured with direct text inclusion behavior
             
         Cache Key Readability Verified:
             Small text cache keys are human-readable for debugging purposes
@@ -231,7 +225,6 @@ class TestAIResponseCacheCoreOperations:
             - sample_text: AI processing input text
             - sample_ai_response: AI response data for caching
             - sample_options: AI processing options
-            - mock_generic_redis_cache: Parent class standard operations
             
         Domain Service Usage Pattern Verified:
             AI cache supports the recommended domain service usage pattern
@@ -266,8 +259,7 @@ class TestAIResponseCacheCoreOperations:
             - Malformed options dictionary
             
         Fixtures Used:
-            - mock_key_generator: Should not receive calls for invalid input
-            - mock_performance_monitor: May capture validation error timing
+            - None
             
         Error Context Verified:
             - ValidationError includes specific field validation failures
@@ -307,8 +299,6 @@ class TestAIResponseCacheCoreOperations:
             - sample_text: Text content for cache lookup
             - sample_options: Processing options for cache lookup
             - sample_ai_response: Expected cached response content
-            - mock_generic_redis_cache: Configured to return cached data
-            - mock_performance_monitor: Captures cache hit metrics
             
         Standard Interface Flow Verified:
             - Key generation maintains consistency between set and get operations
@@ -345,9 +335,7 @@ class TestAIResponseCacheCoreOperations:
             
         Fixtures Used:
             - sample_text: Text content for cache lookup
-            - sample_options: Processing options for cache lookup  
-            - mock_generic_redis_cache: Configured to return None (cache miss)
-            - mock_performance_monitor: Captures cache miss metrics
+            - sample_options: Processing options for cache lookup
             
         Clean Miss Handling Verified:
             Cache misses are handled gracefully without exceptions
@@ -383,8 +371,6 @@ class TestAIResponseCacheCoreOperations:
             
         Fixtures Used:
             - ai_cache_test_data: Q&A operation with embedded question
-            - mock_generic_redis_cache: Standard cache operations
-            - mock_key_generator: Question-aware key generation
             
         Q&A Cache Isolation Verified:
             Different questions produce independent cache entries using standard interface
@@ -419,8 +405,7 @@ class TestAIResponseCacheCoreOperations:
             - Error context helps with debugging parameter issues
             
         Fixtures Used:
-            - mock_key_generator: Should not receive calls for invalid input
-            - mock_generic_redis_cache: Should not receive operations for invalid input
+            - None
             
         Clean Error Handling Verified:
             No side effects occur for invalid input across the standard interface

@@ -12,8 +12,9 @@ Coverage Focus:
     - Post-initialization hooks and environment loading
 
 External Dependencies:
-    All external dependencies are mocked using fixtures from conftest.py following
-    the documented public contracts to ensure accurate behavior simulation.
+    - Settings configuration (mocked): Application configuration management
+    - Standard library components (dataclasses, typing): For configuration data structures
+    - app.core.exceptions: Exception handling for configuration and validation errors
 """
 
 import pytest

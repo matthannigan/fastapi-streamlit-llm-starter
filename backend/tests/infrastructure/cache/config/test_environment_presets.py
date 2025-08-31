@@ -44,8 +44,7 @@ class TestEnvironmentPresetsBasicPresets:
         - Integration testing with new preset system architecture
         
     External Dependencies:
-        - New cache preset system: For preset configuration retrieval (mocked)
-        - CacheConfig: For configuration instance creation from presets
+        - None
     """
 
     def test_disabled_preset_creates_configuration_with_no_caching(self):

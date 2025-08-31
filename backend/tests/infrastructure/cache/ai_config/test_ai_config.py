@@ -45,8 +45,6 @@ class TestAIResponseCacheConfigValidation:
         - Recommendation generation testing for performance optimization
         
     External Dependencies:
-        - ValidationResult (mocked): Validation result container
-        - CacheParameterMapper (mocked): Parameter validation logic
         - logging module (real): For validation logging integration
     """
 
@@ -575,7 +573,7 @@ class TestAIResponseCacheConfigFactory:
             - Malformed complex parameters (operation_ttls, etc.) are rejected
             
         Fixtures Used:
-            - mock_configuration_error: ConfigurationError exception handling
+            - None
             
         Error Context Verified:
             ConfigurationError includes specific parameter validation failures for debugging

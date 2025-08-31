@@ -84,9 +84,30 @@ class TestSecurityConfigInitialization:
             - test_init_with_full_tls_creates_comprehensive_secure_configuration()
             - test_has_authentication_property_detects_auth_methods()
         """
-        pass
+        # Given: SecurityConfig initialized with redis_auth password only
+        redis_password = "test-password-123"
+        config = SecurityConfig(redis_auth=redis_password)
+        
+        # Then: Configuration is accepted as providing basic security
+        assert config.redis_auth == redis_password
+        assert config.use_tls is False  # TLS defaults to False
+        assert config.acl_username is None
+        assert config.acl_password is None
+        
+        # And: has_authentication property returns True
+        assert config.has_authentication is True
+        
+        # And: security_level reflects basic authentication level
+        assert config.security_level == "MEDIUM"  # AUTH without TLS = MEDIUM
+        
+        # And: Connection parameters receive reasonable timeout defaults
+        assert config.connection_timeout == 30
+        assert config.socket_timeout == 30
+        assert config.max_retries == 3
+        assert config.retry_delay == 1.0
 
-    def test_init_with_full_tls_creates_comprehensive_secure_configuration(self):
+    @patch('pathlib.Path.exists')
+    def test_init_with_full_tls_creates_comprehensive_secure_configuration(self, mock_path_exists):
         """
         Test that SecurityConfig with full TLS creates comprehensive secure configuration.
         
@@ -121,9 +142,43 @@ class TestSecurityConfigInitialization:
             - test_init_with_basic_auth_creates_minimal_secure_configuration()
             - test_security_level_property_reflects_configuration_strength()
         """
-        pass
+        # Mock certificate files exist
+        mock_path_exists.return_value = True
+        
+        # Given: SecurityConfig with TLS encryption, certificates, and ACL authentication
+        config = SecurityConfig(
+            redis_auth="fallback-password",
+            use_tls=True,
+            tls_cert_path="/etc/ssl/redis-client.crt",
+            tls_key_path="/etc/ssl/redis-client.key",
+            tls_ca_path="/etc/ssl/ca.crt",
+            acl_username="cache_user",
+            acl_password="secure-password",
+            verify_certificates=True,
+            min_tls_version=ssl.TLSVersion.TLSv1_3.value,
+            cipher_suites=["ECDHE+AESGCM", "ECDHE+CHACHA20"]
+        )
+        
+        # Then: All security features are properly configured
+        assert config.use_tls is True
+        assert config.tls_cert_path == "/etc/ssl/redis-client.crt"
+        assert config.tls_key_path == "/etc/ssl/redis-client.key"
+        assert config.tls_ca_path == "/etc/ssl/ca.crt"
+        assert config.verify_certificates is True
+        assert config.min_tls_version == ssl.TLSVersion.TLSv1_3.value
+        assert config.cipher_suites == ["ECDHE+AESGCM", "ECDHE+CHACHA20"]
+        
+        # And: has_authentication returns True for multiple auth methods
+        assert config.has_authentication is True
+        assert config.redis_auth == "fallback-password"
+        assert config.acl_username == "cache_user"
+        assert config.acl_password == "secure-password"
+        
+        # And: security_level reflects comprehensive level
+        assert config.security_level == "HIGH"  # TLS + AUTH + certificate verification = HIGH
 
-    def test_init_with_invalid_parameters_raises_configuration_error(self):
+    @patch('pathlib.Path.exists')
+    def test_init_with_invalid_parameters_raises_configuration_error(self, mock_path_exists):
         """
         Test that invalid security parameters raise ConfigurationError with detailed context.
         
@@ -158,44 +213,110 @@ class TestSecurityConfigInitialization:
             - test_certificate_path_validation_prevents_invalid_configurations()
             - test_post_init_validation_catches_configuration_conflicts()
         """
-        pass
-
-    def test_post_init_validation_catches_configuration_conflicts(self):
-        """
-        Test that __post_init__ validation catches configuration conflicts and issues.
+        # Test: TLS enabled but certificate file doesn't exist
+        mock_path_exists.return_value = False
         
-        Verifies:
-            Post-initialization validation identifies security configuration conflicts
-            
-        Business Impact:
-            Prevents subtle security configuration errors that could compromise connections
-            
-        Scenario:
-            Given: SecurityConfig with conflicting or incomplete security settings
-            When: __post_init__ validation is triggered after initialization
-            Then: Configuration conflicts are detected and reported appropriately
-            And: Warning or error messages indicate specific conflicts
-            And: Security recommendations are provided for conflict resolution
-            
-        Configuration Conflicts Detected:
-            - TLS enabled but required certificate parameters missing
-            - Certificate verification enabled without CA certificate
-            - ACL authentication partially configured (username without password)
-            - Security parameter combinations that reduce overall security
-            - Timeout and retry settings inappropriate for security requirements
-            
-        Fixtures Used:
-            - Mock configurations with deliberate conflicts
-            - valid_security_config_full_tls: Baseline for conflict comparison
-            
-        Conflict Detection:
-            Post-init validation prevents deployment with conflicting security settings
-            
-        Related Tests:
-            - test_init_with_invalid_parameters_raises_configuration_error()
-            - test_security_configuration_recommendations_provided()
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                use_tls=True,
+                tls_cert_path="/nonexistent/cert.pem"
+            )
+        
+        # Focus on exception type and context, not specific message text
+        assert isinstance(exc_info.value, ConfigurationError)
+        assert hasattr(exc_info.value, 'context')
+        assert ('cert_path' in exc_info.value.context or 
+                'tls_cert' in str(exc_info.value).lower() or
+                'certificate' in str(exc_info.value).lower())
+        
+        # Test: ACL username without password
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                acl_username="user"
+                # Missing acl_password
+            )
+        
+        assert "ACL password is required" in str(exc_info.value)
+        assert exc_info.value.context["validation_type"] == "acl_config"
+        
+        # Test: Invalid connection timeout
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(connection_timeout=-1)
+        
+        assert "Connection timeout must be positive" in str(exc_info.value)
+        assert exc_info.value.context["validation_type"] == "timeout"
+        
+        # Test: Invalid max_retries
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(max_retries=-5)
+        
+        assert "Max retries cannot be negative" in str(exc_info.value)
+        assert exc_info.value.context["validation_type"] == "retry_config"
+
+    @pytest.mark.no_parallel
+    def test_post_init_raises_error_for_missing_key_file(self, mock_path_exists):
         """
-        pass
+        Test that __post_init__ validation raises a ConfigurationError if the
+        TLS key file is missing when the cert file is present.
+        """
+        # Arrange: This function now correctly accepts a single Path object.
+        def path_exists_side_effect(path_obj):
+            if str(path_obj) == "/etc/ssl/cert.pem":
+                return True
+            if str(path_obj) == "/etc/ssl/key.pem":
+                return False
+            return True
+
+        mock_path_exists.side_effect = path_exists_side_effect
+
+        # Act & Assert
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                use_tls=True,
+                tls_cert_path="/etc/ssl/cert.pem",
+                tls_key_path="/etc/ssl/key.pem"
+            )
+        
+        assert "TLS key file not found" in str(exc_info.value)
+        assert "key_path" in exc_info.value.context
+
+    @pytest.mark.no_parallel
+    def test_post_init_raises_error_for_missing_ca_file(self, mock_path_exists):
+        """
+        Test that __post_init__ validation raises a ConfigurationError if the
+        TLS CA file is missing when certificate verification is enabled.
+        """
+        # Arrange: This function's signature is now correct.
+        def path_exists_side_effect(path_obj):
+            if str(path_obj) == "/etc/ssl/ca.pem":
+                return False
+            return True
+
+        mock_path_exists.side_effect = path_exists_side_effect
+
+        # Act & Assert
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                use_tls=True,
+                verify_certificates=True,
+                tls_ca_path="/etc/ssl/ca.pem"
+            )
+        
+        assert "TLS CA file not found" in str(exc_info.value)
+        assert "ca_path" in exc_info.value.context
+
+    def test_init_raises_error_for_invalid_retry_delay(self):
+        """
+        Test that __init__ validation raises a ConfigurationError for an
+        invalid retry_delay value.
+        """
+        # Act & Assert
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(retry_delay=-0.5)
+        
+        # Assert
+        assert "Retry delay cannot be negative" in str(exc_info.value)
+        assert exc_info.value.context["validation_type"] == "retry_config"
 
     def test_has_authentication_property_detects_auth_methods(self):
         """
@@ -233,9 +354,46 @@ class TestSecurityConfigInitialization:
             - test_security_level_property_reflects_configuration_strength()
             - test_authentication_configuration_validation()
         """
-        pass
+        # Test: redis_auth password authentication detected
+        config_auth = SecurityConfig(redis_auth="password123")
+        assert config_auth.has_authentication is True
+        
+        # Test: ACL username/password combination detected
+        config_acl = SecurityConfig(acl_username="user", acl_password="password")
+        assert config_acl.has_authentication is True
+        
+        # Test: Both AUTH and ACL configured detected
+        config_both = SecurityConfig(
+            redis_auth="auth_password",
+            acl_username="user",
+            acl_password="acl_password"
+        )
+        assert config_both.has_authentication is True
+        
+        # Test: No authentication methods configured
+        config_none = SecurityConfig()
+        assert config_none.has_authentication is False
+        
+        # Test: Empty authentication values detected as no authentication
+        config_empty_auth = SecurityConfig(redis_auth="")
+        assert config_empty_auth.has_authentication is False
+        
+        config_empty_acl = SecurityConfig(acl_username="", acl_password="")
+        assert config_empty_acl.has_authentication is False
+        
+        # Test: None authentication values detected as no authentication
+        config_none_auth = SecurityConfig(redis_auth=None)
+        assert config_none_auth.has_authentication is False
+        
+        # Test: Partial ACL configuration (username only) detected as no authentication
+        # This should raise ConfigurationError during init, but let's test the property logic
+        config_partial = SecurityConfig()
+        config_partial.acl_username = "user"
+        config_partial.acl_password = None
+        assert config_partial.has_authentication is False
 
-    def test_security_level_property_reflects_configuration_strength(self):
+    @patch('pathlib.Path.exists')
+    def test_security_level_property_reflects_configuration_strength(self, mock_path_exists):
         """
         Test that security_level property provides meaningful assessment of configuration strength.
         
@@ -271,9 +429,48 @@ class TestSecurityConfigInitialization:
             - test_has_authentication_property_detects_auth_methods()
             - test_security_configuration_provides_improvement_recommendations()
         """
-        pass
+        # Test: LOW level - No authentication or encryption configured
+        config_insecure = SecurityConfig()
+        assert config_insecure.security_level == "LOW"
+        
+        # Test: MEDIUM level - Basic authentication without encryption
+        config_basic_auth = SecurityConfig(redis_auth="password123")
+        assert config_basic_auth.security_level == "MEDIUM"
+        
+        # Test: MEDIUM level - TLS without authentication
+        mock_path_exists.return_value = True
+        config_tls_only = SecurityConfig(use_tls=True)
+        assert config_tls_only.security_level == "MEDIUM"
+        
+        # Test: HIGH level - Authentication with TLS encryption enabled
+        config_standard = SecurityConfig(
+            redis_auth="password123",
+            use_tls=True,
+            verify_certificates=True
+        )
+        assert config_standard.security_level == "HIGH"
+        
+        # Test: HIGH level - Multiple auth methods with TLS and certificate verification
+        config_comprehensive = SecurityConfig(
+            redis_auth="fallback_password",
+            use_tls=True,
+            tls_cert_path="/etc/ssl/cert.pem",
+            acl_username="user",
+            acl_password="password",
+            verify_certificates=True
+        )
+        assert config_comprehensive.security_level == "HIGH"
+        
+        # Test: MEDIUM level - TLS without certificate verification
+        config_tls_no_verify = SecurityConfig(
+            redis_auth="password123",
+            use_tls=True,
+            verify_certificates=False
+        )
+        assert config_tls_no_verify.security_level == "MEDIUM"
 
-    def test_certificate_path_validation_prevents_invalid_configurations(self):
+    @patch('pathlib.Path.exists')
+    def test_certificate_path_validation_prevents_invalid_configurations(self, mock_path_exists):
         """
         Test that certificate path validation prevents TLS configuration with invalid paths.
         
@@ -309,7 +506,68 @@ class TestSecurityConfigInitialization:
             - test_tls_configuration_requires_certificate_files()
             - test_certificate_verification_configuration_validation()
         """
-        pass
+        # Test: Valid certificate paths are accepted
+        mock_path_exists.return_value = True
+        
+        config_valid = SecurityConfig(
+            use_tls=True,
+            tls_cert_path="/etc/ssl/valid-cert.pem",
+            tls_key_path="/etc/ssl/valid-key.pem",
+            tls_ca_path="/etc/ssl/valid-ca.pem"
+        )
+        
+        assert config_valid.use_tls is True
+        assert config_valid.tls_cert_path == "/etc/ssl/valid-cert.pem"
+        assert config_valid.tls_key_path == "/etc/ssl/valid-key.pem"
+        assert config_valid.tls_ca_path == "/etc/ssl/valid-ca.pem"
+        
+        # Test: Non-existent certificate file causes error
+        mock_path_exists.return_value = False
+        
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                use_tls=True,
+                tls_cert_path="/nonexistent/cert.pem"
+            )
+        
+        # Focus on exception type and behavior, not specific message text
+        assert isinstance(exc_info.value, ConfigurationError)
+        # Should indicate certificate-related error
+        assert ('certificate' in str(exc_info.value).lower() or 
+                'cert' in str(exc_info.value).lower() or
+                'tls' in str(exc_info.value).lower())
+        
+        # Test: Non-existent key file causes error
+        mock_path_exists.reset_mock()
+        mock_path_exists.return_value = False
+        
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                use_tls=True,
+                tls_cert_path="/etc/ssl/cert.pem",
+                tls_key_path="/nonexistent/key.pem"
+            )
+        
+        # Focus on exception type and behavior, not specific message text
+        assert isinstance(exc_info.value, ConfigurationError)
+        assert ('key' in str(exc_info.value).lower() or 'tls' in str(exc_info.value).lower())
+        
+        # Test: Non-existent CA file causes error
+        mock_path_exists.reset_mock()
+        mock_path_exists.return_value = False
+        
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityConfig(
+                use_tls=True,
+                tls_ca_path="/nonexistent/ca.pem"
+            )
+        
+        assert "TLS CA file not found" in str(exc_info.value)
+        
+        # Test: TLS disabled doesn't require certificate paths
+        mock_path_exists.return_value = False
+        config_no_tls = SecurityConfig(use_tls=False)
+        assert config_no_tls.use_tls is False
 
 
 class TestSecurityConfigEnvironmentCreation:
@@ -335,7 +593,21 @@ class TestSecurityConfigEnvironmentCreation:
         - os.environ: Environment variable access (mocked for testing)
     """
 
-    def test_create_from_env_builds_secure_config_from_environment(self):
+    @patch.dict('os.environ', {
+        'REDIS_AUTH': 'secure-password-123',
+        'REDIS_USE_TLS': 'true',
+        'REDIS_TLS_CERT_PATH': '/etc/ssl/redis.crt',
+        'REDIS_TLS_KEY_PATH': '/etc/ssl/redis.key',
+        'REDIS_TLS_CA_PATH': '/etc/ssl/ca.crt',
+        'REDIS_ACL_USERNAME': 'redis_user',
+        'REDIS_ACL_PASSWORD': 'acl_password_123',
+        'REDIS_VERIFY_CERTIFICATES': 'true',
+        'REDIS_CONNECTION_TIMEOUT': '45',
+        'REDIS_MAX_RETRIES': '5',
+        'REDIS_RETRY_DELAY': '2.0'
+    })
+    @patch('pathlib.Path.exists')
+    def test_create_from_env_builds_secure_config_from_environment(self, mock_path_exists):
         """
         Test that create_security_config_from_env creates secure configuration from environment.
         
@@ -370,8 +642,37 @@ class TestSecurityConfigEnvironmentCreation:
             - test_create_from_env_returns_none_when_no_security_variables()
             - test_create_from_env_handles_invalid_environment_values()
         """
-        pass
+        # Mock certificate files exist
+        mock_path_exists.return_value = True
+        
+        # When: create_security_config_from_env() function is called
+        config = create_security_config_from_env()
+        
+        # Then: SecurityConfig is created with security features from environment
+        assert config is not None
+        
+        # And: Authentication credentials are properly extracted from environment
+        assert config.redis_auth == "secure-password-123"
+        assert config.acl_username == "redis_user"
+        assert config.acl_password == "acl_password_123"
+        
+        # And: TLS configuration is properly assembled from environment variables
+        assert config.use_tls is True
+        assert config.tls_cert_path == "/etc/ssl/redis.crt"
+        assert config.tls_key_path == "/etc/ssl/redis.key"
+        assert config.tls_ca_path == "/etc/ssl/ca.crt"
+        assert config.verify_certificates is True
+        
+        # And: Connection parameters extracted with appropriate type conversion
+        assert config.connection_timeout == 45
+        assert config.max_retries == 5
+        assert config.retry_delay == 2.0
+        
+        # Verify security properties
+        assert config.has_authentication is True
+        assert config.security_level == "HIGH"
 
+    @patch.dict('os.environ', {}, clear=True)
     def test_create_from_env_returns_none_when_no_security_variables(self):
         """
         Test that create_security_config_from_env returns None when no security variables present.
@@ -405,9 +706,22 @@ class TestSecurityConfigEnvironmentCreation:
             - test_create_from_env_builds_secure_config_from_environment()
             - test_insecure_environment_provides_appropriate_warnings()
         """
-        pass
+        # Given: Environment without Redis security configuration variables
+        # (Cleared by patch.dict)
+        
+        # When: create_security_config_from_env() function is called
+        config = create_security_config_from_env()
+        
+        # Then: None is returned indicating no security configuration available
+        assert config is None
+        
+        # Test with non-security environment variables present
+        with patch.dict('os.environ', {'OTHER_VAR': 'value', 'PATH': '/usr/bin'}):
+            config = create_security_config_from_env()
+            assert config is None
 
-    def test_create_from_env_handles_invalid_environment_values(self):
+    @patch('pathlib.Path.exists')
+    def test_create_from_env_handles_invalid_environment_values(self, mock_path_exists):
         """
         Test that create_security_config_from_env handles invalid environment variable values.
         
@@ -441,4 +755,54 @@ class TestSecurityConfigEnvironmentCreation:
             - test_environment_type_conversion_validation()
             - test_environment_security_validation_integration()
         """
-        pass
+        # Test: Invalid numeric timeout value causes ValueError during int conversion
+        with patch.dict('os.environ', {
+            'REDIS_AUTH': 'password',
+            'REDIS_CONNECTION_TIMEOUT': 'invalid_number'
+        }):
+            with pytest.raises(ValueError):
+                create_security_config_from_env()
+        
+        # Test: Invalid certificate paths cause ConfigurationError
+        mock_path_exists.return_value = False
+        
+        with patch.dict('os.environ', {
+            'REDIS_AUTH': 'password',
+            'REDIS_USE_TLS': 'true',
+            'REDIS_TLS_CERT_PATH': '/invalid/cert.pem'
+        }):
+            with pytest.raises(ConfigurationError) as exc_info:
+                create_security_config_from_env()
+            
+            assert "TLS certificate file not found" in str(exc_info.value)
+        
+        # Test: ACL username without password causes ConfigurationError
+        with patch.dict('os.environ', {
+            'REDIS_ACL_USERNAME': 'user'
+            # Missing REDIS_ACL_PASSWORD
+        }):
+            with pytest.raises(ConfigurationError) as exc_info:
+                create_security_config_from_env()
+            
+            assert "ACL password is required" in str(exc_info.value)
+        
+        # Test: Boolean values are properly converted (both true/false work)
+        mock_path_exists.return_value = True
+        
+        with patch.dict('os.environ', {
+            'REDIS_AUTH': 'password',
+            'REDIS_USE_TLS': 'false',
+            'REDIS_VERIFY_CERTIFICATES': 'false'
+        }):
+            config = create_security_config_from_env()
+            assert config.use_tls is False
+            assert config.verify_certificates is False
+        
+        with patch.dict('os.environ', {
+            'REDIS_AUTH': 'password',
+            'REDIS_USE_TLS': 'TRUE',
+            'REDIS_VERIFY_CERTIFICATES': 'True'
+        }):
+            config = create_security_config_from_env()
+            assert config.use_tls is True
+            assert config.verify_certificates is True

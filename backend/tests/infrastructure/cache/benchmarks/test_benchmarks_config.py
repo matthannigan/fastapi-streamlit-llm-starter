@@ -21,7 +21,7 @@ Test Strategy:
     - Error handling tests for invalid configurations and file operations
 
 External Dependencies:
-    - Uses mock_configuration_error fixture for testing error scenarios
+    - Uses ConfigurationError for testing error scenarios
     - No external services required (all configuration is local)
     - File loading tests use temporary files for isolation
 
@@ -108,7 +108,7 @@ class TestCachePerformanceThresholds:
             - Zero or negative threshold values
             
         Fixtures Used:
-            - mock_configuration_error: For error handling verification
+            - None
         """
         pass
     
@@ -131,7 +131,7 @@ class TestCachePerformanceThresholds:
             - Negative threshold values
             
         Fixtures Used:
-            - mock_configuration_error: For exception handling verification
+            - None
         """
         pass
     
@@ -155,7 +155,7 @@ class TestCachePerformanceThresholds:
             - Critical threshold greater than warning threshold
             
         Fixtures Used:
-            - mock_configuration_error: For boundary validation testing
+            - None
         """
         pass
     
@@ -252,7 +252,7 @@ class TestBenchmarkConfig:
             - timeout_seconds <= 0 (immediate timeout prevents execution)
             
         Fixtures Used:
-            - mock_configuration_error: For parameter validation testing
+            - None
         """
         pass
     
@@ -276,7 +276,7 @@ class TestBenchmarkConfig:
             - Non-string type (integer, list, etc.)
             
         Fixtures Used:
-            - mock_configuration_error: For environment validation testing
+            - None
         """
         pass
     
@@ -299,7 +299,7 @@ class TestBenchmarkConfig:
             - Valid complete configuration should pass both validations
             
         Fixtures Used:
-            - mock_configuration_error: For integrated validation testing
+            - None
         """
         pass
     
@@ -572,7 +572,6 @@ class TestConfigurationLoading:
             - Empty or malformed threshold values
             
         Fixtures Used:
-            - mock_configuration_error: For error handling verification
             - Mocked environment variables with invalid values
         """
         pass
@@ -620,7 +619,7 @@ class TestConfigurationLoading:
             - Permission issues preventing file access
             
         Fixtures Used:
-            - mock_configuration_error: For file error handling
+            - None
         """
         pass
     
@@ -644,7 +643,6 @@ class TestConfigurationLoading:
             - Encoding issues in file content
             
         Fixtures Used:
-            - mock_configuration_error: For JSON error handling
             - Temporary file with malformed JSON content
         """
         pass

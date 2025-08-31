@@ -45,10 +45,10 @@ class TestCacheDataValidation:
         - Comprehensive validation result interpretation testing
         
     External Dependencies:
-        - CacheInterface (mocked): Source and target caches for validation
+        - None
     """
 
-    def test_validate_data_consistency_compares_all_keys_between_caches(self, mock_cache_interface):
+    def test_validate_data_consistency_compares_all_keys_between_caches(self, default_memory_cache):
         """
         Test that validate_data_consistency() compares all keys between source and target caches.
         
@@ -70,7 +70,7 @@ class TestCacheDataValidation:
             - Empty cache validation scenarios
             
         Mocks Used:
-            - mock_cache_interface: Provides source and target cache data for comparison
+            - default_memory_cache: Provides source and target cache data for comparison
             
         Related Tests:
             - test_validate_data_consistency_identifies_missing_keys_accurately()
@@ -78,7 +78,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_identifies_missing_keys_accurately(self, mock_cache_interface):
+    def test_validate_data_consistency_identifies_missing_keys_accurately(self, default_memory_cache):
         """
         Test that validate_data_consistency() accurately identifies keys missing from either cache.
         
@@ -100,7 +100,7 @@ class TestCacheDataValidation:
             - Large numbers of missing keys
             
         Mocks Used:
-            - mock_cache_interface: Provides caches with different key sets
+            - default_memory_cache: Provides caches with different key sets
             
         Related Tests:
             - test_validate_data_consistency_compares_all_keys_between_caches()
@@ -108,7 +108,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_compares_values_for_matching_keys(self, mock_cache_interface):
+    def test_validate_data_consistency_compares_values_for_matching_keys(self, default_memory_cache):
         """
         Test that validate_data_consistency() compares values for keys present in both caches.
         
@@ -130,7 +130,7 @@ class TestCacheDataValidation:
             - Null or empty value handling
             
         Mocks Used:
-            - mock_cache_interface: Provides caches with matching keys and various values
+            - default_memory_cache: Provides caches with matching keys and various values
             
         Related Tests:
             - test_validate_data_consistency_analyzes_ttl_differences()
@@ -138,7 +138,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_analyzes_ttl_differences(self, mock_cache_interface):
+    def test_validate_data_consistency_analyzes_ttl_differences(self, default_memory_cache):
         """
         Test that validate_data_consistency() analyzes TTL differences between cache implementations.
         
@@ -160,7 +160,7 @@ class TestCacheDataValidation:
             - Expired key TTL analysis
             
         Mocks Used:
-            - mock_cache_interface: Provides caches with various TTL configurations
+            - default_memory_cache: Provides caches with various TTL configurations
             
         Related Tests:
             - test_validate_data_consistency_compares_values_for_matching_keys()
@@ -168,7 +168,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_handles_complex_data_types(self, mock_cache_interface):
+    def test_validate_data_consistency_handles_complex_data_types(self, default_memory_cache):
         """
         Test that validate_data_consistency() handles complex data types in cache values.
         
@@ -190,7 +190,7 @@ class TestCacheDataValidation:
             - Data type serialization differences
             
         Mocks Used:
-            - mock_cache_interface: Provides caches with complex data structures
+            - default_memory_cache: Provides caches with complex data structures
             
         Related Tests:
             - test_validate_data_consistency_compares_values_for_matching_keys()
@@ -198,7 +198,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_provides_comprehensive_statistics(self, mock_cache_interface):
+    def test_validate_data_consistency_provides_comprehensive_statistics(self, default_memory_cache):
         """
         Test that validate_data_consistency() provides comprehensive validation statistics.
         
@@ -220,7 +220,7 @@ class TestCacheDataValidation:
             - Validation timing and performance metrics
             
         Mocks Used:
-            - mock_cache_interface: Provides data for statistics calculation verification
+            - default_memory_cache: Provides data for statistics calculation verification
             
         Related Tests:
             - test_validate_data_consistency_calculates_match_percentage_accurately()
@@ -228,7 +228,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_calculates_match_percentage_accurately(self, mock_cache_interface):
+    def test_validate_data_consistency_calculates_match_percentage_accurately(self, default_memory_cache):
         """
         Test that validate_data_consistency() accurately calculates match percentage statistics.
         
@@ -250,7 +250,7 @@ class TestCacheDataValidation:
             - Statistical precision in percentage reporting
             
         Mocks Used:
-            - mock_cache_interface: Provides mixed validation outcome scenarios
+            - default_memory_cache: Provides mixed validation outcome scenarios
             
         Related Tests:
             - test_validate_data_consistency_provides_comprehensive_statistics()
@@ -258,7 +258,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_calculates_total_mismatches_correctly(self, mock_cache_interface):
+    def test_validate_data_consistency_calculates_total_mismatches_correctly(self, default_memory_cache):
         """
         Test that validate_data_consistency() calculates total mismatch count correctly.
         
@@ -280,7 +280,7 @@ class TestCacheDataValidation:
             - Complex mismatch combination scenarios
             
         Mocks Used:
-            - mock_cache_interface: Provides various mismatch scenarios
+            - default_memory_cache: Provides various mismatch scenarios
             
         Related Tests:
             - test_validate_data_consistency_calculates_match_percentage_accurately()
@@ -288,7 +288,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_includes_metadata_flags(self, mock_cache_interface):
+    def test_validate_data_consistency_includes_metadata_flags(self, default_memory_cache):
         """
         Test that validate_data_consistency() includes relevant metadata flags in results.
         
@@ -310,7 +310,7 @@ class TestCacheDataValidation:
             - Flag interpretation guidance
             
         Mocks Used:
-            - mock_cache_interface: Provides data requiring metadata context
+            - default_memory_cache: Provides data requiring metadata context
             
         Related Tests:
             - test_validate_data_consistency_provides_comprehensive_statistics()
@@ -318,7 +318,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_optimizes_performance_with_sampling(self, mock_cache_interface):
+    def test_validate_data_consistency_optimizes_performance_with_sampling(self, default_memory_cache):
         """
         Test that validate_data_consistency() optimizes performance using sample-based validation.
         
@@ -340,7 +340,7 @@ class TestCacheDataValidation:
             - Full validation vs. sample validation comparison
             
         Mocks Used:
-            - mock_cache_interface: Provides large datasets for sampling validation
+            - default_memory_cache: Provides large datasets for sampling validation
             
         Related Tests:
             - test_validate_data_consistency_handles_validation_errors_gracefully()
@@ -348,7 +348,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_tracks_validation_timing(self, mock_cache_interface):
+    def test_validate_data_consistency_tracks_validation_timing(self, default_memory_cache):
         """
         Test that validate_data_consistency() tracks validation operation timing accurately.
         
@@ -370,7 +370,7 @@ class TestCacheDataValidation:
             - Long-running validation timing
             
         Mocks Used:
-            - mock_cache_interface: Provides datasets for timing verification
+            - default_memory_cache: Provides datasets for timing verification
             
         Related Tests:
             - test_validate_data_consistency_optimizes_performance_with_sampling()
@@ -378,7 +378,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_handles_validation_errors_gracefully(self, mock_cache_interface):
+    def test_validate_data_consistency_handles_validation_errors_gracefully(self, default_memory_cache):
         """
         Test that validate_data_consistency() handles errors during validation operations gracefully.
         
@@ -400,7 +400,7 @@ class TestCacheDataValidation:
             - Partial validation results with error reporting
             
         Mocks Used:
-            - mock_cache_interface: Simulates various error conditions during validation
+            - default_memory_cache: Simulates various error conditions during validation
             
         Related Tests:
             - test_validate_data_consistency_tracks_validation_timing()
@@ -408,7 +408,7 @@ class TestCacheDataValidation:
         """
         pass
 
-    def test_validate_data_consistency_provides_validation_warnings(self, mock_cache_interface):
+    def test_validate_data_consistency_provides_validation_warnings(self, default_memory_cache):
         """
         Test that validate_data_consistency() provides appropriate validation warnings.
         
@@ -430,7 +430,7 @@ class TestCacheDataValidation:
             - Warning frequency and relevance
             
         Mocks Used:
-            - mock_cache_interface: Provides scenarios requiring validation warnings
+            - default_memory_cache: Provides scenarios requiring validation warnings
             
         Related Tests:
             - test_validate_data_consistency_handles_validation_errors_gracefully()

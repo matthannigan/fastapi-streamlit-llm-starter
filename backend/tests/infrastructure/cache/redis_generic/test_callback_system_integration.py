@@ -29,8 +29,7 @@ Test Organization:
 Fixtures and Mocks:
     From conftest.py:
         - default_generic_redis_config: Standard configuration dictionary
-        - mock_redis_client: Stateful mock Redis client
-        - mock_callback_registry: Mock callback registry system
+        - fakeredis: Stateful fake Redis client
         - sample_callback_functions: Test callback functions with tracking
         - bulk_test_data: Multiple key-value pairs for batch testing
     From parent conftest.py:
@@ -123,7 +122,7 @@ class TestMultipleCallbackHandling:
 
 
 
-    def test_callback_registry_state_management(self, default_generic_redis_config, mock_callback_registry):
+    def test_callback_registry_state_management(self, default_generic_redis_config):
         """
         Test callback registry state management with multiple callbacks.
         
@@ -147,7 +146,7 @@ class TestCallbackErrorHandling:
 
 
 
-    def test_callback_memory_leak_prevention(self, default_generic_redis_config, mock_callback_registry):
+    def test_callback_memory_leak_prevention(self, default_generic_redis_config):
         """
         Test prevention of memory leaks in callback registration.
         
@@ -160,7 +159,7 @@ class TestCallbackErrorHandling:
         pass
 
 
-    def test_callback_error_logging_and_monitoring(self, default_generic_redis_config, mock_callback_registry):
+    def test_callback_error_logging_and_monitoring(self, default_generic_redis_config):
         """
         Test error logging and monitoring for callback failures.
         

@@ -24,11 +24,7 @@ Test Organization:
     - TestParameterMapping: Core parameter mapping and separation logic
     - TestParameterValidation: Comprehensive validation scenarios and edge cases
 
-Fixtures and Mocks:
-    From conftest.py:
-        - mock_validation_error: Mock ValidationError exception class  
-        - mock_configuration_error: Mock ConfigurationError exception class
-    
+Fixtures and Mocks:    
     Note: No additional mocking needed as parameter_mapping uses only standard
     library components (dataclasses, typing, logging) and internal exceptions
     already available in shared cache conftest.py.
@@ -36,7 +32,7 @@ Fixtures and Mocks:
 
 import pytest
 from typing import Dict, Any
-
+from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
 
 class TestValidationResult:
     """
@@ -280,19 +276,36 @@ class TestParameterMapping:
         """
         pass
 
-    def test_invalid_parameter_handling(self, mock_validation_error):
+    def test_invalid_parameter_handling(self): # No mock fixture needed
         """
-        Test handling of invalid parameters during mapping.
+        Test that validate_parameter_compatibility identifies invalid parameters.
         
         Given: A parameter dictionary containing invalid parameters
-        When: Parameter mapping is attempted
-        Then: A ValidationError should be raised
-        And: The error should contain specific parameter information
-        And: The mapping operation should fail gracefully
+        When: Parameter validation is attempted
+        Then: The validation result should be marked as invalid
+        And: The errors list should contain specific parameter information
         """
-        pass
+        # 1. Arrange: Create a real mapper and define invalid parameters
+        mapper = CacheParameterMapper()
+        invalid_params = {
+            "redis_url": "redis://localhost",
+            "memory_cache_size": -10, # Invalid range
+            "text_hash_threshold": "this-should-be-an-integer" # Invalid type
+        }
+        
+        # 2. Act: Call the correct validation method
+        result = mapper.validate_parameter_compatibility(ai_params=invalid_params)
+            
+        # 3. Assert: Verify the ValidationResult object
+        assert result.is_valid is False
+        assert len(result.errors) > 0
+        
+        # Optional but recommended: Assert the error messages are helpful
+        error_string = " ".join(result.errors).lower()
+        assert "memory_cache_size" in error_string
+        assert "text_hash_threshold" in error_string
 
-    def test_configuration_error_scenarios(self, mock_configuration_error):
+    def test_configuration_error_scenarios(self):
         """
         Test handling of configuration errors during mapping.
         

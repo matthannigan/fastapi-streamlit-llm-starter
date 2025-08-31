@@ -12,8 +12,9 @@ Coverage Focus:
     - Key existence checking and validation
 
 External Dependencies:
-    All external dependencies are mocked using fixtures from conftest.py following
-    the documented public contracts to ensure accurate behavior simulation.
+    - Settings configuration (mocked): Application configuration management
+    - Standard library components (threading, collections): For thread-safe operations and data structures
+    - app.core.exceptions: Exception handling for configuration and validation errors
 """
 
 import pytest

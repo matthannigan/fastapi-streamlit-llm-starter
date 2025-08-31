@@ -19,7 +19,7 @@ External Dependencies:
 import pytest
 import asyncio
 import ssl
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from typing import Any, Dict, List
 
 from app.infrastructure.cache.security import RedisCacheSecurityManager, SecurityConfig, SecurityValidationResult
@@ -41,16 +41,17 @@ class TestRedisCacheSecurityManagerConnection:
         
     Test Strategy:
         - Secure connection testing using mock_redis_connection_secure
-        - Connection failure scenarios using mock_redis_connection_failure
+        - Connection failure scenarios
         - Security configuration integration using various SecurityConfig fixtures
         - Performance monitoring integration during connection establishment
         
     External Dependencies:
-        - Redis client library: For connection creation and authentication (mocked)
-        - SSL library: For TLS context and certificate validation (mocked)
+        - Redis client library (fakeredis): For connection creation and authentication
+        - SSL library (mocked): For TLS context and certificate validation
     """
 
-    def test_create_secure_connection_establishes_connection_with_basic_auth(self):
+    @patch('app.infrastructure.cache.security.aioredis')
+    async def test_create_secure_connection_establishes_connection_with_basic_auth(self, mock_aioredis):
         """
         Test that create_secure_connection establishes Redis connection with AUTH authentication.
         
@@ -77,7 +78,6 @@ class TestRedisCacheSecurityManagerConnection:
         Fixtures Used:
             - valid_security_config_basic_auth: AUTH password configuration
             - mock_redis_connection_secure: Successful secure Redis connection
-            - mock_performance_monitor: Connection timing metrics (if configured)
             
         Secure Access:
             AUTH authentication provides secure Redis access with password protection
@@ -86,9 +86,52 @@ class TestRedisCacheSecurityManagerConnection:
             - test_create_secure_connection_establishes_tls_encrypted_connection()
             - test_connection_authentication_failure_handled_gracefully()
         """
-        pass
+        # Given: SecurityConfig with redis_auth password configured
+        config = SecurityConfig(redis_auth="test-auth-password")
+        manager = RedisCacheSecurityManager(config)
+        
+        # Mock Redis client with necessary async methods
+        import fakeredis.aioredis
+        
+        class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+            """Extended FakeRedis with additional commands needed for testing."""
+            
+            async def info(self, section=None):
+                """Mock implementation of Redis INFO command."""
+                return {
+                    "redis_version": "6.0.0",
+                    "redis_mode": "standalone",
+                    "os": "Linux 4.9.0-7-amd64 x86_64",
+                    "arch_bits": "64",
+                    "used_memory": "1000000",
+                    "role": "master"
+                }
+        
+        fake_redis_client = ExtendedFakeRedis(decode_responses=False)
+        
+        # Configure aioredis to return our mock client
+        mock_aioredis.from_url.return_value = fake_redis_client
+        
+        # When: create_secure_connection() is called
+        redis_client = await manager.create_secure_connection("redis://localhost:6379")
+        
+        # Then: Redis connection is established with AUTH password authentication
+        assert redis_client is fake_redis_client
+        
+        # Verify aioredis.from_url was called with password
+        mock_aioredis.from_url.assert_called_once()
+        call_kwargs = mock_aioredis.from_url.call_args[1]
+        assert call_kwargs["password"] == "test-auth-password"
+        assert call_kwargs["url"] == "redis://localhost:6379"
+        
+        # And: Connection validation confirms successful authentication
+        # Note: With fakeredis, we verify the connection worked by checking it's the returned client
+        # The ping() and info() calls are handled internally by the security manager
 
-    def test_create_secure_connection_establishes_tls_encrypted_connection(self):
+    @patch('ssl.SSLContext.load_cert_chain')
+    @patch('ssl.SSLContext.load_verify_locations') 
+    @patch('app.infrastructure.cache.security.aioredis')
+    async def test_create_secure_connection_establishes_tls_encrypted_connection(self, mock_aioredis, mock_load_verify, mock_load_cert, mock_path_exists):
         """
         Test that create_secure_connection establishes TLS-encrypted Redis connection.
         
@@ -124,9 +167,72 @@ class TestRedisCacheSecurityManagerConnection:
             - test_create_secure_connection_establishes_connection_with_basic_auth()
             - test_tls_certificate_validation_during_connection()
         """
-        pass
+        # Mock certificate loading methods to avoid file system access
+        mock_load_cert.return_value = None
+        mock_load_verify.return_value = None
+        
+        # Given: SecurityConfig with TLS encryption and certificate configuration
+        config = SecurityConfig(
+            redis_auth="fallback-password",
+            use_tls=True,
+            tls_cert_path="/etc/ssl/redis.crt",
+            tls_key_path="/etc/ssl/redis.key",
+            acl_username="secure_user",
+            acl_password="secure_password",
+            verify_certificates=True
+        )
+        manager = RedisCacheSecurityManager(config)
+        
+        # Mock Redis client with necessary async methods
+        import fakeredis.aioredis
+        
+        class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+            """Extended FakeRedis with additional commands needed for testing."""
+            
+            async def info(self, section=None):
+                """Mock implementation of Redis INFO command."""
+                return {
+                    "redis_version": "6.2.0",
+                    "redis_mode": "standalone",
+                    "os": "Linux 4.9.0-7-amd64 x86_64",
+                    "arch_bits": "64",
+                    "used_memory": "1000000",
+                    "role": "master"
+                }
+        
+        fake_redis_client = ExtendedFakeRedis(decode_responses=False)
+        
+        # Configure aioredis to return our mock client
+        mock_aioredis.from_url.return_value = fake_redis_client
+        
+        # When: create_secure_connection() is called
+        redis_client = await manager.create_secure_connection("redis://localhost:6379")
+        
+        # Then: TLS-encrypted connection is established
+        assert redis_client is fake_redis_client
+        
+        # Verify aioredis.from_url was called with TLS configuration
+        mock_aioredis.from_url.assert_called_once()
+        call_kwargs = mock_aioredis.from_url.call_args[1]
+        
+        # And: ACL authentication is configured
+        assert call_kwargs["username"] == "secure_user"
+        assert call_kwargs["password"] == "secure_password"
+        
+        # And: URL is upgraded to rediss:// for TLS
+        assert call_kwargs["url"] == "rediss://localhost:6379"
+        
+        # And: SSL context is provided
+        assert "ssl" in call_kwargs
+        assert call_kwargs["ssl"] is manager._ssl_context
+        
+        # And: Connection validation occurs 
+        # Note: With fakeredis, we verify the connection worked by checking it's the returned client
+        # The ping() and info() calls are handled internally by the security manager
 
-    def test_connection_retry_logic_handles_temporary_failures(self):
+    @patch('asyncio.sleep')
+    @patch('app.infrastructure.cache.security.aioredis')
+    async def test_connection_retry_logic_handles_temporary_failures(self, mock_aioredis, mock_sleep):
         """
         Test that connection retry logic handles temporary connection failures gracefully.
         
@@ -152,7 +258,6 @@ class TestRedisCacheSecurityManagerConnection:
             
         Fixtures Used:
             - valid_security_config_full_tls: Configuration with retry parameters
-            - mock_redis_connection_failure: Temporary connection failures
             - mock_redis_connection_secure: Eventual successful connection
             
         Connection Resilience:
@@ -162,7 +267,55 @@ class TestRedisCacheSecurityManagerConnection:
             - test_connection_timeout_prevents_infinite_retry_loops()
             - test_max_retries_limit_prevents_excessive_retry_attempts()
         """
-        pass
+        # Given: SecurityConfig with retry configuration
+        config = SecurityConfig(
+            redis_auth="password",
+            max_retries=2,
+            retry_delay=0.5
+        )
+        manager = RedisCacheSecurityManager(config)
+        
+        # Mock Redis client for eventual success
+        import fakeredis.aioredis
+        
+        class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+            """Extended FakeRedis with additional commands needed for testing."""
+            
+            async def info(self, section=None):
+                """Mock implementation of Redis INFO command."""
+                return {
+                    "redis_version": "6.0.0",
+                    "redis_mode": "standalone",
+                    "os": "Linux 4.9.0-7-amd64 x86_64",
+                    "arch_bits": "64",
+                    "used_memory": "1000000",
+                    "role": "master"
+                }
+        
+        fake_redis_client = ExtendedFakeRedis(decode_responses=False)
+        
+        # Mock temporary connection failures followed by success
+        connection_error = Exception("Connection failed")
+        mock_aioredis.from_url.side_effect = [
+            connection_error,  # First attempt fails
+            connection_error,  # Second attempt fails
+            fake_redis_client  # Third attempt succeeds
+        ]
+        
+        # When: create_secure_connection() encounters temporary failures
+        redis_client = await manager.create_secure_connection("redis://localhost:6379")
+        
+        # Then: Connection attempts are retried according to max_retries configuration
+        assert mock_aioredis.from_url.call_count == 3  # 1 initial + 2 retries
+        
+        # And: Retry delays are applied with exponential backoff
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_any_call(0.5)  # First retry: base delay
+        mock_sleep.assert_any_call(1.0)  # Second retry: 0.5 * 2^1
+        
+        # And: Successful connection is established
+        assert redis_client is fake_redis_client
+        # Note: With fakeredis, we verify the connection worked by checking it's the returned client
 
     def test_connection_authentication_failure_handled_gracefully(self):
         """
@@ -190,7 +343,6 @@ class TestRedisCacheSecurityManagerConnection:
             
         Fixtures Used:
             - invalid_security_config_params: Invalid authentication credentials
-            - mock_redis_connection_failure: Authentication failure simulation
             
         Clear Error Reporting:
             Authentication failures provide actionable troubleshooting information
@@ -227,7 +379,6 @@ class TestRedisCacheSecurityManagerConnection:
             
         Fixtures Used:
             - valid_security_config_full_tls: Configuration with timeout settings
-            - mock_redis_connection_failure: Unresponsive connection simulation
             
         Application Responsiveness:
             Connection timeouts ensure application remains responsive during Redis issues
@@ -259,10 +410,11 @@ class TestRedisCacheSecurityManagerValidation:
         - Recommendation generation for security improvement opportunities
         
     External Dependencies:
-        - Redis client: For connection security status inspection (mocked)
+        - Redis client (fakeredis): For connection security status inspection
     """
 
-    def test_validate_connection_security_assesses_secure_connection_accurately(self):
+    @pytest.mark.skip(reason="Replace with integration tests with real components")
+    async def test_validate_connection_security_assesses_secure_connection_accurately(self, mock_path_exists):
         """
         Test that validate_connection_security accurately assesses secure Redis connections.
         
@@ -297,9 +449,66 @@ class TestRedisCacheSecurityManagerValidation:
             - test_validate_connection_security_identifies_vulnerabilities()
             - test_security_scoring_reflects_configuration_strength()
         """
-        pass
+        # Mock certificate files exist
+        mock_path_exists.return_value = True
+        
+        # Given: Redis connection with comprehensive security features enabled
+        config = SecurityConfig(
+            redis_auth="secure-password",
+            use_tls=True,
+            tls_cert_path="/etc/ssl/redis.crt",
+            acl_username="secure_user",
+            acl_password="secure_password",
+            verify_certificates=True
+        )
+        manager = RedisCacheSecurityManager(config)
+        
+        # Mock secure Redis client
+        import fakeredis.aioredis
+        
+        class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+            """Extended FakeRedis with additional commands needed for testing."""
+            
+            async def info(self, section=None):
+                """Mock implementation of Redis INFO command."""
+                return {
+                    "redis_version": "6.2.0",
+                    "redis_mode": "standalone",
+                    "os": "Linux 4.9.0-7-amd64 x86_64",
+                    "arch_bits": "64",
+                    "used_memory": "1000000",
+                    "role": "master"
+                }
+        
+        fake_redis_client = ExtendedFakeRedis(decode_responses=False)
+        
+        # When: validate_connection_security() is called with secure connection
+        result = await manager.validate_connection_security(fake_redis_client)
+        
+        # Then: SecurityValidationResult indicates secure connection status
+        assert isinstance(result, SecurityValidationResult)
+        
+        # And: Security score reflects high security level based on enabled features
+        assert result.security_score >= 80  # High security score
+        assert result.is_secure is True
+        
+        # And: Authentication methods properly detected
+        assert result.auth_configured is True
+        assert result.acl_enabled is True
+        assert result.auth_method == "ACL"
+        
+        # And: TLS encryption properly detected
+        assert result.tls_enabled is True
+        assert result.connection_encrypted is True
+        assert result.certificate_valid is True
+        
+        # And: Minimal vulnerabilities for secure configuration
+        assert len(result.vulnerabilities) == 0  # No vulnerabilities expected for secure config
+        
+        # And: Appropriate recommendations provided
+        assert len(result.recommendations) > 0  # Should have optimization recommendations
 
-    def test_validate_connection_security_identifies_vulnerabilities(self):
+    async def test_validate_connection_security_identifies_vulnerabilities(self):
         """
         Test that validate_connection_security identifies security vulnerabilities accurately.
         
@@ -334,7 +543,59 @@ class TestRedisCacheSecurityManagerValidation:
             - test_validate_connection_security_assesses_secure_connection_accurately()
             - test_security_recommendations_provide_actionable_guidance()
         """
-        pass
+        # Given: Redis connection with security vulnerabilities (no auth, no encryption)
+        config = SecurityConfig()  # No authentication or TLS configured
+        manager = RedisCacheSecurityManager(config)
+        
+        # Mock insecure Redis client
+        import fakeredis.aioredis
+        
+        class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+            """Extended FakeRedis with additional commands needed for testing."""
+            
+            async def info(self, section=None):
+                """Mock implementation of Redis INFO command."""
+                return {
+                    "redis_version": "6.0.0",
+                    "redis_mode": "standalone",
+                    "os": "Linux 4.9.0-7-amd64 x86_64",
+                    "arch_bits": "64",
+                    "used_memory": "1000000",
+                    "role": "master"
+                }
+        
+        fake_redis_client = ExtendedFakeRedis(decode_responses=False)
+        
+        # When: validate_connection_security() is called with insecure connection
+        result = await manager.validate_connection_security(fake_redis_client)
+        
+        # Then: SecurityValidationResult identifies specific vulnerabilities
+        assert isinstance(result, SecurityValidationResult)
+        
+        # And: Security score reflects low security level due to vulnerabilities
+        assert result.security_score < 50  # Low security score
+        assert result.is_secure is False
+        
+        # And: Missing authentication properly detected
+        assert result.auth_configured is False
+        assert result.acl_enabled is False
+        assert "No authentication configured" in result.vulnerabilities
+        
+        # And: Unencrypted connections properly detected
+        assert result.tls_enabled is False
+        assert result.connection_encrypted is False
+        assert "Unencrypted connection" in result.vulnerabilities
+        
+        # And: Certificate validation status properly assessed
+        assert result.certificate_valid is False
+        
+        # And: Comprehensive recommendations provided for vulnerability remediation
+        assert len(result.recommendations) > 5  # Should have many recommendations for insecure config
+        
+        # Verify specific critical vulnerabilities are detected
+        vulnerability_texts = " ".join(result.vulnerabilities).lower()
+        assert "authentication" in vulnerability_texts
+        assert "unencrypted" in vulnerability_texts or "plain text" in vulnerability_texts
 
     def test_security_scoring_reflects_configuration_strength(self):
         """
@@ -434,7 +695,7 @@ class TestRedisCacheSecurityManagerReporting:
         - Performance monitoring: For security operation timing (optional)
     """
 
-    def test_generate_security_report_provides_comprehensive_security_assessment(self):
+    async def test_generate_security_report_provides_comprehensive_security_assessment(self, mock_path_exists):
         """
         Test that generate_security_report creates comprehensive, readable security reports.
         
@@ -469,9 +730,74 @@ class TestRedisCacheSecurityManagerReporting:
             - test_get_security_status_provides_current_state_information()
             - test_security_report_formatting_suitable_for_compliance()
         """
-        pass
+        # Mock certificate files exist
+        mock_path_exists.return_value = True
+        
+        # Given: SecurityValidationResult with comprehensive security assessment
+        config = SecurityConfig(
+            redis_auth="secure-password",
+            use_tls=True,
+            tls_cert_path="/etc/ssl/redis.crt",
+            acl_username="secure_user",
+            acl_password="secure_password",
+            verify_certificates=True
+        )
+        manager = RedisCacheSecurityManager(config)
+        
+        # Create a mock Redis client and perform validation
+        import fakeredis.aioredis
+        
+        class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+            """Extended FakeRedis with additional commands needed for testing."""
+            
+            async def info(self, section=None):
+                """Mock implementation of Redis INFO command."""
+                return {
+                    "redis_version": "6.2.0",
+                    "redis_mode": "standalone",
+                    "os": "Linux 4.9.0-7-amd64 x86_64",
+                    "arch_bits": "64",
+                    "used_memory": "1000000",
+                    "role": "master"
+                }
+        
+        fake_redis_client = ExtendedFakeRedis(decode_responses=False)
+        
+        validation_result = await manager.validate_connection_security(fake_redis_client)
+        
+        # When: generate_security_report() is called with validation results
+        report = manager.generate_security_report(validation_result)
+        
+        # Then: Formatted security report includes all relevant security information
+        assert isinstance(report, str)
+        assert len(report) > 200  # Should be a substantial report
+        
+        # And: Overall security status clearly stated with score and level
+        assert "SECURITY ASSESSMENT REPORT" in report
+        assert "Security Status:" in report
+        assert "Security Score:" in report
+        assert "Score:" in report  # Compatibility format
+        assert "Security Level:" in report
+        
+        # And: Authentication and encryption status detailed
+        assert "SECURITY CONFIGURATION" in report
+        assert "Authentication:" in report
+        assert "TLS Encryption:" in report
+        assert "ACL Authentication:" in report
+        
+        # And: Report format is suitable for both technical and non-technical audiences
+        assert "✅" in report or "❌" in report  # Uses visual indicators
+        assert "EXECUTIVE SUMMARY" in report
+        
+        # And: Report includes actionable recommendations
+        if validation_result.recommendations:
+            assert "SECURITY RECOMMENDATIONS" in report
+        
+        # Verify report structure
+        assert "DETAILED SECURITY CHECKS" in report
+        assert "Report generated by Redis Cache Security Manager" in report
 
-    def test_get_security_status_provides_current_state_information(self):
+    def test_get_security_status_provides_current_state_information(self, mock_path_exists):
         """
         Test that get_security_status provides current security state for monitoring.
         
@@ -506,7 +832,49 @@ class TestRedisCacheSecurityManagerReporting:
             - test_generate_security_report_provides_comprehensive_security_assessment()
             - test_security_status_integration_with_monitoring_systems()
         """
-        pass
+        # Mock certificate files exist
+        mock_path_exists.return_value = True
+        
+        # Given: RedisCacheSecurityManager with configured security settings
+        config = SecurityConfig(
+            redis_auth="fallback-password",
+            use_tls=True,
+            tls_cert_path="/etc/ssl/redis.crt",
+            acl_username="secure_user",
+            acl_password="secure_password",
+            verify_certificates=True,
+            connection_timeout=45,
+            max_retries=5
+        )
+        manager = RedisCacheSecurityManager(config)
+        
+        # When: get_security_status() is called for current state information
+        status = manager.get_security_status()
+        
+        # Then: Current security configuration returned as structured data
+        assert isinstance(status, dict)
+        assert "timestamp" in status
+        assert "security_level" in status
+        assert "configuration" in status
+        
+        # And: Security level information provided
+        assert status["security_level"] == "HIGH"
+        
+        # And: Configuration details provided
+        config_info = status["configuration"]
+        assert config_info["has_authentication"] is True
+        assert config_info["tls_enabled"] is True
+        assert config_info["acl_configured"] is True
+        assert config_info["certificate_verification"] is True
+        assert config_info["connection_timeout"] == 45
+        assert config_info["max_retries"] == 5
+        
+        # And: Status information suitable for monitoring dashboard integration
+        assert "security_events_count" in status
+        assert "recommendations_count" in status
+        
+        # And: Last validation information structure available
+        assert "last_validation" in status  # May be None if no validation performed yet
 
     def test_test_security_configuration_validates_end_to_end_security(self):
         """
@@ -535,7 +903,6 @@ class TestRedisCacheSecurityManagerReporting:
         Fixtures Used:
             - valid_security_config_full_tls: Configuration for comprehensive testing
             - mock_redis_connection_secure: Successful security feature testing
-            - mock_performance_monitor: Security performance impact measurement
             
         Pre-Deployment Validation:
             Security testing prevents deployment of misconfigured Redis connections

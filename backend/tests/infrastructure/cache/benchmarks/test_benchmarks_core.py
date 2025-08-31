@@ -18,9 +18,7 @@ Test Strategy:
     - Memory tracking validation throughout benchmark execution lifecycle
 
 External Dependencies:
-    - Uses mock_cache_interface fixture for cache operation testing
-    - Uses mock_performance_monitor fixture for metrics collection testing
-    - Uses mock_configuration_error fixture for error scenario testing
+    - Uses default_memory_cache fixture for cache operation testing
     - Internal dependencies (models, utils, generator) are tested directly
 
 Test Data Requirements:
@@ -296,7 +294,7 @@ class TestCachePerformanceBenchmark:
         """
         pass
     
-    def test_benchmark_basic_operations_executes_complete_measurement_cycle(self, mock_cache_interface):
+    def test_benchmark_basic_operations_executes_complete_measurement_cycle(self, default_memory_cache):
         """
         Verify basic operations benchmark executes complete measurement cycle successfully.
         
@@ -330,11 +328,11 @@ class TestCachePerformanceBenchmark:
             - Contains metadata about test execution
             
         Fixtures Used:
-            - mock_cache_interface: For cache operation testing without external dependencies
+            - default_memory_cache: For cache operation testing without external dependencies
         """
         pass
     
-    def test_benchmark_handles_cache_operation_failures_gracefully(self, mock_cache_interface):
+    def test_benchmark_handles_cache_operation_failures_gracefully(self, default_memory_cache):
         """
         Verify benchmark execution handles cache operation failures without crashing.
         
@@ -367,11 +365,11 @@ class TestCachePerformanceBenchmark:
             - Memory tracking continues despite operation failures
             
         Fixtures Used:
-            - mock_cache_interface: Configured to simulate operation failures
+            - default_memory_cache: Configured to simulate operation failures
         """
         pass
     
-    def test_warmup_operations_prepare_cache_for_stable_measurements(self, mock_cache_interface):
+    def test_warmup_operations_prepare_cache_for_stable_measurements(self, default_memory_cache):
         """
         Verify warmup operations properly prepare cache for stable performance measurements.
         
@@ -402,11 +400,11 @@ class TestCachePerformanceBenchmark:
             - Warmup data generation uses same patterns as benchmark data
             
         Fixtures Used:
-            - mock_cache_interface: For warmup operation testing
+            - default_memory_cache: For warmup operation testing
         """
         pass
     
-    def test_run_comprehensive_benchmark_suite_aggregates_multiple_benchmarks(self, mock_cache_interface):
+    def test_run_comprehensive_benchmark_suite_aggregates_multiple_benchmarks(self, default_memory_cache):
         """
         Verify comprehensive benchmark suite executes and aggregates multiple benchmark types.
         
@@ -440,11 +438,11 @@ class TestCachePerformanceBenchmark:
             - Environment information includes configuration details
             
         Fixtures Used:
-            - mock_cache_interface: For comprehensive suite testing
+            - default_memory_cache: For comprehensive suite testing
         """
         pass
     
-    def test_compare_before_after_refactoring_provides_deployment_readiness_assessment(self, mock_cache_interface):
+    def test_compare_before_after_refactoring_provides_deployment_readiness_assessment(self, default_memory_cache):
         """
         Verify before/after comparison provides comprehensive refactoring impact assessment.
         
@@ -480,11 +478,11 @@ class TestCachePerformanceBenchmark:
             - Recommendations guide deployment and optimization decisions
             
         Fixtures Used:
-            - mock_cache_interface: For both original and refactored cache testing
+            - default_memory_cache: For both original and refactored cache testing
         """
         pass
     
-    def test_memory_tracking_captures_benchmark_execution_memory_impact(self, mock_cache_interface):
+    def test_memory_tracking_captures_benchmark_execution_memory_impact(self, default_memory_cache):
         """
         Verify memory tracking accurately captures memory usage throughout benchmark execution.
         
@@ -517,11 +515,11 @@ class TestCachePerformanceBenchmark:
             - Memory data supports regression detection and comparison analysis
             
         Fixtures Used:
-            - mock_cache_interface: For cache operations that affect memory usage
+            - default_memory_cache: For cache operations that affect memory usage
         """
         pass
     
-    def test_statistical_analysis_provides_comprehensive_performance_insights(self, mock_cache_interface):
+    def test_statistical_analysis_provides_comprehensive_performance_insights(self, default_memory_cache):
         """
         Verify statistical analysis provides comprehensive insights into performance data.
         
@@ -554,11 +552,11 @@ class TestCachePerformanceBenchmark:
             - Comprehensive statistics support regression detection
             
         Fixtures Used:
-            - mock_cache_interface: For generating realistic timing data for analysis
+            - default_memory_cache: For generating realistic timing data for analysis
         """
         pass
     
-    def test_benchmark_respects_timeout_configuration_and_prevents_hanging(self, mock_cache_interface):
+    def test_benchmark_respects_timeout_configuration_and_prevents_hanging(self, default_memory_cache):
         """
         Verify benchmark execution respects timeout configuration to prevent indefinite hanging.
         
@@ -588,6 +586,6 @@ class TestCachePerformanceBenchmark:
         This test verifies timeout-aware benchmark design principles.
             
         Fixtures Used:
-            - mock_cache_interface: Potentially configured for slow operations to test timeout
+            - default_memory_cache: Potentially configured for slow operations to test timeout
         """
         pass

@@ -47,8 +47,7 @@ class TestAIResponseCacheStatistics:
         - Error handling for statistics collection failures
         
     External Dependencies:
-        - GenericRedisCache (mocked): Parent class statistics
-        - CachePerformanceMonitor (mocked): Performance metrics collection
+        - None
         - Redis statistics (via parent class)
     """
 
@@ -77,8 +76,7 @@ class TestAIResponseCacheStatistics:
             
         Fixtures Used:
             - cache_statistics_sample: Expected comprehensive statistics structure
-            - mock_generic_redis_cache: Parent class statistics contribution
-            - mock_performance_monitor: Performance metrics contribution
+            - None
             
         Data Aggregation Verified:
             Statistics properly aggregate from multiple cache components
@@ -114,9 +112,7 @@ class TestAIResponseCacheStatistics:
             - Overall statistics collection succeeds despite Redis failure
             
         Fixtures Used:
-            - mock_redis_connection_failure: Simulates Redis unavailability
-            - mock_performance_monitor: Continues providing performance data
-            - mock_memory_cache: Provides memory cache statistics
+            - None
             
         Error Status Documentation:
             Redis failure is clearly indicated in returned statistics
@@ -151,7 +147,7 @@ class TestAIResponseCacheStatistics:
             - 0 operations total = 0.0% (no division by zero)
             
         Fixtures Used:
-            - mock_performance_monitor: Configured with specific hit/miss counts
+            - None
             
         Percentage Format Verified:
             Return value is float percentage (0.0-100.0), not ratio (0.0-1.0)
@@ -184,7 +180,7 @@ class TestAIResponseCacheStatistics:
             - Graceful handling documented in method contract
             
         Fixtures Used:
-            - mock_performance_monitor: Configured with zero operations
+            - None
             
         Edge Case Handling:
             Zero operations is valid scenario for new or cleared caches
@@ -221,7 +217,6 @@ class TestAIResponseCacheStatistics:
             - text_tier_distribution: text size distribution analysis
             
         Fixtures Used:
-            - mock_performance_monitor: Comprehensive performance data
             - cache_statistics_sample: Expected performance summary structure
             
         Metric Consolidation Verified:
@@ -261,8 +256,6 @@ class TestAIResponseCacheStatistics:
             - inherited_stats: parent cache statistics integration
             
         Fixtures Used:
-            - mock_performance_monitor: AI-specific performance data
-            - mock_key_generator: Key generation statistics
             - cache_statistics_sample: AI analytics structure
             
         AI-Specific Analytics:
@@ -303,7 +296,6 @@ class TestAIResponseCacheStatistics:
             - large: texts above large threshold (typically >5000 chars)
             
         Fixtures Used:
-            - mock_performance_monitor: Text tier performance data
             - cache_statistics_sample: Text tier distribution data
             - valid_ai_params: Text tier threshold configuration
             
@@ -349,7 +341,6 @@ class TestAIResponseCacheStatistics:
             - Comprehensive operation counting
             
         Fixtures Used:
-            - mock_performance_monitor: Detailed operation timing data
             - valid_ai_params: Operation TTL configurations
             
         Optimization Support:

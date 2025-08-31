@@ -24,6 +24,37 @@ from typing import Any, Optional
 from app.infrastructure.cache.base import CacheInterface
 
 
+# Import real cache implementations for polymorphism testing
+def cache_implementations():
+    """
+    Real cache implementations for polymorphism testing.
+    
+    Provides a list of actual cache implementations to test polymorphic
+    behavior and interface compliance across different cache types.
+    """
+    from app.infrastructure.cache.memory import InMemoryCache
+    from app.infrastructure.cache.redis_generic import GenericRedisCache
+    
+    implementations = [
+        InMemoryCache(max_size=100, default_ttl=3600)
+    ]
+    
+    # Add Redis implementations when available (graceful degradation)
+    try:
+        redis_cache = GenericRedisCache(
+            redis_url="redis://localhost:6379/15",  # Test database
+            default_ttl=3600,
+            enable_l1_cache=True,
+            fail_on_connection_error=False  # Allow fallback
+        )
+        implementations.append(redis_cache)
+    except Exception:
+        # Redis not available, continue with memory cache only
+        pass
+        
+    return implementations
+
+
 class TestCacheInterfaceContract:
     """
     Test suite for CacheInterface abstract contract verification.
@@ -284,7 +315,8 @@ class TestCacheInterfacePolymorphism:
         - Type checking verification (using typing module features)
     """
 
-    def test_cache_interface_supports_polymorphic_usage(self):
+    @pytest.mark.parametrize("cache_impl", cache_implementations())
+    async def test_cache_interface_supports_polymorphic_usage(self, cache_impl):
         """
         Test that CacheInterface supports polymorphic usage across different implementations.
         
@@ -295,7 +327,7 @@ class TestCacheInterfacePolymorphism:
             Enables flexible cache backend selection without changing service code
             
         Scenario:
-            Given: Multiple concrete cache implementations (InMemoryCache, AIResponseCache, etc.)
+            Given: Multiple concrete cache implementations (InMemoryCache, Redis caches)
             When: Services use CacheInterface type annotation for cache dependency
             Then: Any concrete implementation can be substituted without code changes
             And: All cache operations work consistently across implementations
@@ -308,8 +340,7 @@ class TestCacheInterfacePolymorphism:
             - Method calls work consistently across different implementations
             
         Fixtures Used:
-            - mock_cache_interface: Polymorphic cache implementation mock
-            - mock_memory_cache: InMemoryCache behavior mock
+            - cache_implementations: Real cache implementations for polymorphism testing
             
         Implementation Substitutability Verified:
             All CacheInterface implementations can be substituted transparently
@@ -318,9 +349,38 @@ class TestCacheInterfacePolymorphism:
             - test_dependency_injection_works_with_interface_type()
             - test_service_integration_supports_cache_switching()
         """
-        pass
+        from app.infrastructure.cache.base import CacheInterface
+        
+        # Given: Concrete cache implementation that should implement CacheInterface
+        assert isinstance(cache_impl, CacheInterface)
+        
+        # When: Using the cache through CacheInterface reference
+        cache: CacheInterface = cache_impl
+        
+        # Test basic operations work polymorphically
+        test_key = f"test:polymorphic:{type(cache).__name__}"
+        test_value = {"implementation": type(cache).__name__, "polymorphic": True}
+        
+        # Then: All cache operations work consistently across implementations
+        await cache.set(test_key, test_value)
+        retrieved_value = await cache.get(test_key)
+        assert retrieved_value == test_value
+        
+        # Test exists method
+        exists_result = await cache.exists(test_key)
+        assert exists_result is True
+        
+        # Test delete method
+        await cache.delete(test_key)
+        deleted_value = await cache.get(test_key)
+        assert deleted_value is None
+        
+        # Verify key no longer exists
+        exists_after_delete = await cache.exists(test_key)
+        assert exists_after_delete is False
 
-    def test_dependency_injection_works_with_interface_type(self):
+    @pytest.mark.parametrize("cache_impl", cache_implementations())
+    async def test_dependency_injection_works_with_interface_type(self, cache_impl):
         """
         Test that dependency injection works correctly with CacheInterface type annotations.
         
@@ -344,7 +404,7 @@ class TestCacheInterfacePolymorphism:
             - Service methods call cache operations through interface
             
         Fixtures Used:
-            - mock_cache_interface: General cache interface behavior
+            - cache_implementations: Real cache implementations for injection testing
             
         Clean Architecture Verified:
             Services depend on CacheInterface abstraction rather than concrete implementations
@@ -353,7 +413,48 @@ class TestCacheInterfacePolymorphism:
             - test_cache_interface_supports_polymorphic_usage()
             - test_type_checking_works_with_interface_assignments()
         """
-        pass
+        from app.infrastructure.cache.base import CacheInterface
+        
+        # Given: Service class with CacheInterface type annotation
+        class TestService:
+            def __init__(self, cache: CacheInterface):
+                self.cache = cache
+                
+            async def store_data(self, key: str, data: dict):
+                """Store data using injected cache."""
+                await self.cache.set(key, data)
+                
+            async def retrieve_data(self, key: str):
+                """Retrieve data using injected cache."""
+                return await self.cache.get(key)
+                
+            async def data_exists(self, key: str) -> bool:
+                """Check if data exists using injected cache."""
+                return await self.cache.exists(key)
+        
+        # When: Different concrete cache implementations are injected
+        service = TestService(cache_impl)
+        
+        # Then: Service accepts any valid CacheInterface implementation
+        assert isinstance(service.cache, CacheInterface)
+        
+        # And: Service methods work correctly with injected cache
+        test_key = f"test:service:{type(cache_impl).__name__}"
+        test_data = {"service_test": True, "cache_type": type(cache_impl).__name__}
+        
+        await service.store_data(test_key, test_data)
+        retrieved_data = await service.retrieve_data(test_key)
+        assert retrieved_data == test_data
+        
+        exists_result = await service.data_exists(test_key)
+        assert exists_result is True
+        
+        # Clean up
+        await service.cache.delete(test_key)
+        
+        # Verify cleanup worked
+        exists_after_cleanup = await service.data_exists(test_key)
+        assert exists_after_cleanup is False
 
     def test_service_integration_supports_cache_switching(self):
         """
@@ -379,8 +480,7 @@ class TestCacheInterfacePolymorphism:
             - Service behavior remains functionally consistent
             
         Fixtures Used:
-            - mock_memory_cache: InMemoryCache behavior simulation
-            - mock_cache_interface: Generic cache behavior for switching
+            - default_memory_cache: Generic cache behavior for switching
             
         Runtime Flexibility Verified:
             Cache implementations can be changed at runtime without service impact
@@ -450,7 +550,7 @@ class TestCacheInterfacePolymorphism:
             - Implementation-specific behavior doesn't break interface expectations
             
         Fixtures Used:
-            - mock_cache_interface: Interface contract verification
+            - default_memory_cache: Interface contract verification
             - Multiple mock implementations for substitution testing
             
         Contract Reliability Verified:
@@ -486,7 +586,7 @@ class TestCacheInterfacePolymorphism:
             - Async patterns work correctly with polymorphic dispatch
             
         Fixtures Used:
-            - mock_cache_interface: Polymorphic method call behavior
+            - default_memory_cache: Polymorphic method call behavior
             - sample_cache_key: Standard cache key for method testing
             - sample_cache_value: Standard cache value for method testing
             

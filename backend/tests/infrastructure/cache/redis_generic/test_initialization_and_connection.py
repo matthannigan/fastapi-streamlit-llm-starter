@@ -31,17 +31,14 @@ Fixtures and Mocks:
         - secure_generic_redis_config: Configuration with security enabled
         - compression_redis_config: Configuration optimized for compression
         - no_l1_redis_config: Configuration without L1 cache
-        - mock_security_config: Mock SecurityConfig for testing
         - mock_tls_security_config: Mock SecurityConfig with TLS
-        - mock_redis_client: Stateful mock Redis client
+        - fakeredis: Stateful fake Redis client
         - sample_redis_url: Standard Redis connection URL
         - sample_secure_redis_url: Secure Redis URL with TLS
-    From parent conftest.py:
-        - mock_memory_cache: Mock InMemoryCache instance
-        - mock_performance_monitor: Mock CachePerformanceMonitor instance
 """
 
 import pytest
+from unittest.mock import patch
 from typing import Dict, Any
 
 
@@ -65,7 +62,7 @@ class TestGenericRedisCacheInitialization:
         """
         pass
 
-    def test_custom_configuration_initialization(self, mock_performance_monitor, mock_security_config):
+    def test_custom_configuration_initialization(self):
         """
         Test initialization with custom configuration parameters.
         
@@ -148,7 +145,7 @@ class TestRedisConnectionManagement:
 
 
 
-    def test_disconnect_functionality(self, default_generic_redis_config, mock_redis_client):
+    def test_disconnect_functionality(self, default_generic_redis_config, fake_redis_client):
         """
         Test proper disconnection from Redis server.
         
@@ -160,7 +157,7 @@ class TestRedisConnectionManagement:
         """
         pass
 
-    def test_connection_state_management(self, default_generic_redis_config, mock_redis_client):
+    def test_connection_state_management(self, default_generic_redis_config, fake_redis_client):
         """
         Test connection state management throughout lifecycle.
         
@@ -172,7 +169,7 @@ class TestRedisConnectionManagement:
         """
         pass
 
-    def test_reconnection_behavior(self, default_generic_redis_config, mock_redis_client):
+    def test_reconnection_behavior(self, default_generic_redis_config, fake_redis_client):
         """
         Test reconnection behavior after connection loss.
         
@@ -195,7 +192,7 @@ class TestSecurityIntegration:
 
 
 
-    def test_security_configuration_validation(self, mock_security_config):
+    def test_security_configuration_validation(self):
         """
         Test validation of security configuration during initialization.
         
@@ -255,7 +252,7 @@ class TestConnectionFailureScenarios:
         """
         pass
 
-    def test_partial_redis_functionality_loss(self, default_generic_redis_config, mock_redis_client):
+    def test_partial_redis_functionality_loss(self, default_generic_redis_config, fake_redis_client):
         """
         Test handling of partial Redis functionality loss.
         

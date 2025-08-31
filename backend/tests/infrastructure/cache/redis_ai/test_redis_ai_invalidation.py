@@ -46,8 +46,7 @@ class TestAIResponseCacheInvalidation:
         - Error handling and graceful degradation for invalidation failures
         
     External Dependencies:
-        - GenericRedisCache (mocked): Parent class invalidation operations
-        - CachePerformanceMonitor (mocked): Invalidation metrics collection
+        - None
     """
 
     def test_invalidate_pattern_removes_matching_cache_entries(self):
@@ -74,8 +73,7 @@ class TestAIResponseCacheInvalidation:
             - AI cache namespace prefix is automatically applied
             
         Fixtures Used:
-            - mock_generic_redis_cache: Parent class handles pattern-based Redis operations
-            - mock_performance_monitor: Records invalidation metrics
+            - None
             
         Integration Points Verified:
             - GenericRedisCache handles actual Redis pattern operations
@@ -113,8 +111,7 @@ class TestAIResponseCacheInvalidation:
             - Zero matches are recorded (not treated as errors)
             
         Fixtures Used:
-            - mock_performance_monitor: Configured to capture invalidation events
-            - mock_generic_redis_cache: Returns count of invalidated entries
+            - None
             
         Performance Monitoring Integration:
             Monitor receives comprehensive invalidation event data
@@ -149,8 +146,7 @@ class TestAIResponseCacheInvalidation:
             - Operation context is preserved even for zero matches
             
         Fixtures Used:
-            - mock_generic_redis_cache: Returns zero count for pattern matching
-            - mock_performance_monitor: Records zero-match invalidation events
+            - None
             
         Graceful Handling Verified:
             Zero matches are handled as successful operations, not errors
@@ -186,8 +182,7 @@ class TestAIResponseCacheInvalidation:
             - AI-specific pattern building for operation targeting
             
         Fixtures Used:
-            - mock_generic_redis_cache: Handles pattern-based Redis invalidation
-            - mock_performance_monitor: Records operation-specific metrics
+            - None
             
         Pattern Building Verified:
             Operation name is properly incorporated into invalidation pattern
@@ -223,8 +218,7 @@ class TestAIResponseCacheInvalidation:
             - Integration with AI performance analytics
             
         Fixtures Used:
-            - mock_performance_monitor: Configured for detailed metrics collection
-            - mock_generic_redis_cache: Returns invalidation count
+            - None
             
         AI Analytics Integration:
             Operation-specific invalidation contributes to AI cache analytics
@@ -259,8 +253,7 @@ class TestAIResponseCacheInvalidation:
             - Operation names that don't match expected patterns
             
         Fixtures Used:
-            - mock_generic_redis_cache: Should not receive invalidation calls
-            - mock_performance_monitor: May record validation error timing
+            - None
             
         Error Context Verified:
             - ValidationError includes operation parameter requirements
@@ -297,8 +290,7 @@ class TestAIResponseCacheInvalidation:
             - Operation context preserved for analytics
             
         Fixtures Used:
-            - mock_generic_redis_cache: Returns zero count for operation pattern
-            - mock_performance_monitor: Records zero-match events
+            - None
             
         Graceful Handling Verified:
             Zero matches are successful operations with clear return value indication
@@ -334,8 +326,7 @@ class TestAIResponseCacheInvalidation:
             - Performance metrics capture complete clearing timing
             
         Fixtures Used:
-            - mock_generic_redis_cache: Handles namespace-based clearing
-            - mock_performance_monitor: Records complete clearing events
+            - None
             
         Namespace Targeting Verified:
             Only AI cache namespace entries are cleared, not entire Redis cache
@@ -370,8 +361,7 @@ class TestAIResponseCacheInvalidation:
             - Clearing scope (all AI cache entries) is documented
             
         Fixtures Used:
-            - mock_performance_monitor: Configured for maintenance event tracking
-            - mock_generic_redis_cache: Provides clearing confirmation
+            - None
             
         Maintenance Analytics Integration:
             Clear events contribute to cache maintenance and health monitoring

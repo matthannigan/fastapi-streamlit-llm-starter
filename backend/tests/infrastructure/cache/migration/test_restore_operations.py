@@ -47,12 +47,11 @@ class TestCacheRestoreOperations:
         - Error condition testing and recovery behavior verification
         
     External Dependencies:
-        - CacheInterface (mocked): Target cache for restore operations
         - File I/O operations (mocked): Backup file reading and decompression
         - gzip decompression (mocked): Backup data decompression for restore
     """
 
-    def test_restore_backup_loads_compressed_backup_file(self, mock_cache_interface, tmp_path):
+    def test_restore_backup_loads_compressed_backup_file(self, default_memory_cache, tmp_path):
         """
         Test that restore_backup() properly loads and decompresses backup files.
         
@@ -74,7 +73,7 @@ class TestCacheRestoreOperations:
             - Large backup file processing
             
         Mocks Used:
-            - mock_cache_interface: Target cache for restore operations
+            - default_memory_cache: Target cache for restore operations
             - File I/O mocking: Simulates backup file reading
             
         Related Tests:
@@ -83,7 +82,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_restores_keys_values_and_ttls(self, mock_cache_interface):
+    def test_restore_backup_restores_keys_values_and_ttls(self, default_memory_cache):
         """
         Test that restore_backup() restores all cache data including keys, values, and TTLs.
         
@@ -105,7 +104,7 @@ class TestCacheRestoreOperations:
             - Large value restoration handling
             
         Mocks Used:
-            - mock_cache_interface: Verifies data restoration to target cache
+            - default_memory_cache: Verifies data restoration to target cache
             
         Related Tests:
             - test_restore_backup_loads_compressed_backup_file()
@@ -113,7 +112,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_processes_restoration_in_chunks(self, mock_cache_interface):
+    def test_restore_backup_processes_restoration_in_chunks(self, default_memory_cache):
         """
         Test that restore_backup() processes restoration in configurable chunks.
         
@@ -135,7 +134,7 @@ class TestCacheRestoreOperations:
             - Progress tracking during chunked operations
             
         Mocks Used:
-            - mock_cache_interface: Receives chunked restoration data
+            - default_memory_cache: Receives chunked restoration data
             
         Related Tests:
             - test_restore_backup_restores_keys_values_and_ttls()
@@ -143,7 +142,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_handles_overwrite_protection(self, mock_cache_interface):
+    def test_restore_backup_handles_overwrite_protection(self, default_memory_cache):
         """
         Test that restore_backup() handles overwrite protection for existing cache keys.
         
@@ -165,7 +164,7 @@ class TestCacheRestoreOperations:
             - Overwrite behavior configuration
             
         Mocks Used:
-            - mock_cache_interface: Provides existing keys for overwrite testing
+            - default_memory_cache: Provides existing keys for overwrite testing
             
         Related Tests:
             - test_restore_backup_supports_overwrite_mode()
@@ -173,7 +172,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_supports_overwrite_mode(self, mock_cache_interface):
+    def test_restore_backup_supports_overwrite_mode(self, default_memory_cache):
         """
         Test that restore_backup() supports overwrite mode for replacing existing cache data.
         
@@ -195,7 +194,7 @@ class TestCacheRestoreOperations:
             - Data integrity during overwrite operations
             
         Mocks Used:
-            - mock_cache_interface: Verifies overwrite behavior on target cache
+            - default_memory_cache: Verifies overwrite behavior on target cache
             
         Related Tests:
             - test_restore_backup_handles_overwrite_protection()
@@ -203,7 +202,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_tracks_restoration_progress(self, mock_cache_interface):
+    def test_restore_backup_tracks_restoration_progress(self, default_memory_cache):
         """
         Test that restore_backup() provides progress tracking for long-running restore operations.
         
@@ -225,7 +224,7 @@ class TestCacheRestoreOperations:
             - Restoration success and failure rate tracking
             
         Mocks Used:
-            - mock_cache_interface: Target for progress tracking verification
+            - default_memory_cache: Target for progress tracking verification
             
         Related Tests:
             - test_restore_backup_processes_restoration_in_chunks()
@@ -233,7 +232,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_tracks_restoration_conflicts(self, mock_cache_interface):
+    def test_restore_backup_tracks_restoration_conflicts(self, default_memory_cache):
         """
         Test that restore_backup() tracks and reports restoration conflicts accurately.
         
@@ -255,7 +254,7 @@ class TestCacheRestoreOperations:
             - Multiple conflict type handling
             
         Mocks Used:
-            - mock_cache_interface: Provides existing keys for conflict testing
+            - default_memory_cache: Provides existing keys for conflict testing
             
         Related Tests:
             - test_restore_backup_handles_overwrite_protection()
@@ -263,7 +262,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_provides_comprehensive_statistics(self, mock_cache_interface):
+    def test_restore_backup_provides_comprehensive_statistics(self, default_memory_cache):
         """
         Test that restore_backup() provides comprehensive restoration statistics.
         
@@ -285,7 +284,7 @@ class TestCacheRestoreOperations:
             - Data volume and throughput measurement
             
         Mocks Used:
-            - mock_cache_interface: Provides data for statistics calculation verification
+            - default_memory_cache: Provides data for statistics calculation verification
             
         Related Tests:
             - test_restore_backup_tracks_restoration_progress()
@@ -293,7 +292,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_calculates_success_rate_accurately(self, mock_cache_interface):
+    def test_restore_backup_calculates_success_rate_accurately(self, default_memory_cache):
         """
         Test that restore_backup() accurately calculates restoration success rate.
         
@@ -315,7 +314,7 @@ class TestCacheRestoreOperations:
             - Statistical precision in success rate reporting
             
         Mocks Used:
-            - mock_cache_interface: Provides mixed success/failure scenarios
+            - default_memory_cache: Provides mixed success/failure scenarios
             
         Related Tests:
             - test_restore_backup_provides_comprehensive_statistics()
@@ -323,7 +322,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_validates_backup_file_format(self, mock_cache_interface):
+    def test_restore_backup_validates_backup_file_format(self, default_memory_cache):
         """
         Test that restore_backup() validates backup file format before attempting restoration.
         
@@ -345,7 +344,7 @@ class TestCacheRestoreOperations:
             - Version compatibility validation
             
         Mocks Used:
-            - mock_cache_interface: Target cache for validation testing
+            - default_memory_cache: Target cache for validation testing
             - File I/O mocking: Simulates various file format scenarios
             
         Related Tests:
@@ -354,7 +353,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_handles_restoration_errors(self, mock_cache_interface):
+    def test_restore_backup_handles_restoration_errors(self, default_memory_cache):
         """
         Test that restore_backup() handles errors during restoration operations gracefully.
         
@@ -376,7 +375,7 @@ class TestCacheRestoreOperations:
             - Network connectivity issues with target cache
             
         Mocks Used:
-            - mock_cache_interface: Simulates cache access errors during restoration
+            - default_memory_cache: Simulates cache access errors during restoration
             - File I/O mocking: Simulates file system errors
             
         Related Tests:
@@ -385,7 +384,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_validates_target_cache_compatibility(self, mock_cache_interface):
+    def test_restore_backup_validates_target_cache_compatibility(self, default_memory_cache):
         """
         Test that restore_backup() validates target cache compatibility with backup data.
         
@@ -407,7 +406,7 @@ class TestCacheRestoreOperations:
             - Interface compatibility confirmation
             
         Mocks Used:
-            - mock_cache_interface: Provides various cache implementation scenarios
+            - default_memory_cache: Provides various cache implementation scenarios
             
         Related Tests:
             - test_restore_backup_validates_backup_file_format()
@@ -415,7 +414,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_handles_large_backup_restoration(self, mock_cache_interface):
+    def test_restore_backup_handles_large_backup_restoration(self, default_memory_cache):
         """
         Test that restore_backup() efficiently handles restoration of large backup files.
         
@@ -437,7 +436,7 @@ class TestCacheRestoreOperations:
             - Streaming restoration techniques
             
         Mocks Used:
-            - mock_cache_interface: Receives large dataset restoration
+            - default_memory_cache: Receives large dataset restoration
             
         Related Tests:
             - test_restore_backup_processes_restoration_in_chunks()
@@ -445,7 +444,7 @@ class TestCacheRestoreOperations:
         """
         pass
 
-    def test_restore_backup_provides_restoration_warnings(self, mock_cache_interface):
+    def test_restore_backup_provides_restoration_warnings(self, default_memory_cache):
         """
         Test that restore_backup() provides appropriate restoration warnings.
         
@@ -467,7 +466,7 @@ class TestCacheRestoreOperations:
             - Warning frequency and relevance
             
         Mocks Used:
-            - mock_cache_interface: Provides scenarios requiring restoration warnings
+            - default_memory_cache: Provides scenarios requiring restoration warnings
             
         Related Tests:
             - test_restore_backup_handles_restoration_errors()

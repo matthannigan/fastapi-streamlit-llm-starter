@@ -28,19 +28,20 @@ Test Organization:
 
 Fixtures and Mocks:
     From conftest.py:
-        - mock_security_config: Mock SecurityConfig with basic authentication
         - mock_tls_security_config: Mock SecurityConfig with TLS encryption
         - secure_generic_redis_config: Configuration with security enabled
         - default_generic_redis_config: Standard configuration for comparison
-        - mock_redis_client: Stateful mock Redis client
+        - fakeredis: Stateful fake Redis client
     From parent conftest.py:
         - sample_cache_key: Standard cache key for testing
         - sample_cache_value: Standard cache value for testing
 """
 
 import pytest
+from unittest.mock import patch
 from typing import Dict, Any, List
-
+from app.infrastructure.cache.security import SecurityConfig
+from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 class TestSecurityStatusManagement:
     """
@@ -50,7 +51,7 @@ class TestSecurityStatusManagement:
     security configuration and operational status.
     """
 
-    def test_get_security_status_with_security_config(self, secure_generic_redis_config, mock_security_config):
+    def test_get_security_status_with_security_config(self, secure_generic_redis_config):
         """
         Test security status retrieval with security configuration.
         
@@ -74,19 +75,59 @@ class TestSecurityStatusManagement:
         """
         pass
 
-    def test_security_level_classification(self, mock_security_config, mock_tls_security_config):
+    @pytest.mark.parametrize(
+        "config_params, expected_level",
+        [
+            ({}, "LOW"), # No security features
+            (
+                {"redis_auth": "password"}, 
+                "MEDIUM" # Basic auth only
+            ),
+            (
+                {"use_tls": True},
+                "MEDIUM" # TLS only, no auth
+            ),
+            (
+                {"redis_auth": "password", "use_tls": True, "verify_certificates": True},
+                "HIGH" # TLS + Auth + Verification
+            ),
+            (
+                {
+                    "redis_auth": "password", 
+                    "use_tls": True, 
+                    "acl_username": "user", 
+                    "acl_password": "password", 
+                    "verify_certificates": True
+                },
+                "HIGH" # Multiple auth methods + TLS + Verification
+            ),
+        ]
+    )
+    def test_security_level_classification(self, mock_path_exists, config_params, expected_level):
         """
         Test security level classification based on configuration.
         
         Given: Caches with different security configurations
         When: Security status is retrieved for each configuration
         Then: Security levels should be accurately classified
-        And: Basic authentication should be classified as "basic"
-        And: TLS encryption should be classified as "enterprise" or higher
         """
-        pass
+        # 1. Arrange: Create a REAL SecurityConfig with the specified parameters
+        security_config = SecurityConfig(**config_params)
+        
+        # 2. Arrange: Create a REAL GenericRedisCache with this config
+        # We don't need a real connection for this test, just the configured instance.
+        cache = GenericRedisCache(
+            redis_url="redis://localhost",
+            security_config=security_config
+        )
 
-    def test_security_status_data_completeness(self, secure_generic_redis_config, mock_security_config):
+        # 3. Act: Call the public method to get the security status
+        status = cache.get_security_status()
+
+        # 4. Assert: Check the classification in the returned data
+        assert status["security_level"] == expected_level
+
+    def test_security_status_data_completeness(self, secure_generic_redis_config):
         """
         Test completeness of security status data.
         
@@ -98,7 +139,7 @@ class TestSecurityStatusManagement:
         """
         pass
 
-    def test_security_recommendations_generation(self, default_generic_redis_config, mock_security_config):
+    def test_security_recommendations_generation(self, default_generic_redis_config):
         """
         Test generation of security recommendations.
         

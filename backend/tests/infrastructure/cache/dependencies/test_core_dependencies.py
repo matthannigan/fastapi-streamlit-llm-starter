@@ -12,13 +12,13 @@ Coverage Focus:
     - Dependency integration and error handling
 
 External Dependencies:
-    All external dependencies are mocked using fixtures from conftest.py following
-    the documented public contracts to ensure accurate behavior simulation.
+    - Settings configuration (mocked): Application configuration management
+    - Standard library components (lru_cache): For function caching and performance optimization
+    - Redis client library (fakeredis): Redis connection simulation for cache service creation
 """
 
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, Dict, Optional
 
 from app.infrastructure.cache.dependencies import (
@@ -183,9 +183,8 @@ class TestGetCacheConfigDependency:
         - Validation testing using CacheConfig validation
         
     External Dependencies:
-        - Settings: For configuration parameter access (mocked)
-        - Preset system: For preset-based configuration building (mocked)
-        - CacheConfig: For configuration instance creation
+        - Settings configuration (mocked): Application configuration management
+        - Redis client library (fakeredis): Redis connection simulation
     """
 
     def test_get_cache_config_builds_configuration_from_settings_using_preset_system(self):
@@ -314,15 +313,14 @@ class TestGetCacheServiceDependency:
         Cache service dependency provides cache access throughout the application
         
     Test Strategy:
-        - Cache service creation testing using mock_cache_factory
+        - Cache service creation testing using CacheFactory
         - Registry management testing using mock cache registry
         - Fallback behavior testing with connection failures
         - Performance testing through cache instance reuse
         
     External Dependencies:
-        - CacheFactory: For cache instance creation (mocked)
-        - Cache registry: For instance lifecycle management (mocked)
-        - CacheConfig: For cache configuration parameters
+        - Settings configuration (mocked): Application configuration management
+        - Redis client library (fakeredis): Redis connection simulation
     """
 
     def test_get_cache_service_creates_cache_using_factory_with_registry_management(self):
@@ -351,7 +349,6 @@ class TestGetCacheServiceDependency:
             
         Fixtures Used:
             - mock_cache_config_basic: Configuration for cache creation
-            - mock_cache_factory: Factory for cache instance creation
             - mock_cache_service_registry: Registry for instance tracking
             
         Explicit Creation:
@@ -388,8 +385,7 @@ class TestGetCacheServiceDependency:
             - Fallback cache performance suitable for continued application operation
             
         Fixtures Used:
-            - mock_cache_factory: Factory configured to simulate Redis failures
-            - mock_memory_cache_fallback: InMemoryCache for fallback scenarios
+            - None
             
         Resilient Operation:
             Cache service maintains functionality despite external dependency failures
@@ -426,7 +422,6 @@ class TestGetCacheServiceDependency:
             
         Fixtures Used:
             - mock_cache_service_registry: Registry for instance management testing
-            - mock_cache_factory: Factory for multiple cache creation scenarios
             
         Resource Optimization:
             Registry management optimizes cache resource usage and lifecycle
@@ -462,7 +457,6 @@ class TestGetCacheServiceDependency:
             - Error handling balances application stability with failure visibility
             
         Fixtures Used:
-            - mock_cache_factory: Factory configured to simulate infrastructure failures
             - Configuration scenarios that trigger infrastructure errors
             
         Robust Error Management:

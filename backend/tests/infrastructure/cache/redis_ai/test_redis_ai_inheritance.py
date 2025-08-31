@@ -46,8 +46,7 @@ class TestAIResponseCacheInheritance:
         - Error propagation tests from parent to child class
         
     External Dependencies:
-        - GenericRedisCache (mocked): Parent class behavior
-        - CacheParameterMapper (mocked): Parameter mapping for inheritance
+        - None
     """
 
     def test_init_properly_initializes_parent_class_with_mapped_parameters(self):
@@ -76,8 +75,6 @@ class TestAIResponseCacheInheritance:
             
         Fixtures Used:
             - valid_ai_params: Complete parameter set for inheritance testing
-            - mock_parameter_mapper: Simulates parameter mapping behavior
-            - mock_generic_redis_cache: Captures parent class initialization
             
         Inheritance Chain Verified:
             Parent class constructor called with appropriate parameters
@@ -112,7 +109,7 @@ class TestAIResponseCacheInheritance:
             - AI cache doesn't duplicate connection logic
             
         Fixtures Used:
-            - mock_generic_redis_cache: Configured with connection behavior
+            - None
             
         Method Delegation Pattern:
             Connection management follows proper inheritance delegation
@@ -147,8 +144,7 @@ class TestAIResponseCacheInheritance:
             - Event data properly includes AI-specific context
             
         Fixtures Used:
-            - mock_generic_redis_cache: Callback system simulation
-            - mock_performance_monitor: Event tracking for callbacks
+            - None
             
         Event System Integration:
             AI cache leverages parent class event infrastructure
@@ -183,7 +179,7 @@ class TestAIResponseCacheInheritance:
             - Property access doesn't interfere with new inheritance architecture
             
         Fixtures Used:
-            - mock_generic_redis_cache: Parent class memory cache functionality
+            - None
             
         Legacy Support Pattern:
             Properties provide compatibility bridge while encouraging new patterns
@@ -218,7 +214,6 @@ class TestAIResponseCacheInheritance:
             
         Fixtures Used:
             - valid_ai_params: Includes memory_cache_size configuration
-            - mock_generic_redis_cache: Parent class cache size functionality
             
         Monitoring Compatibility:
             Legacy size monitoring continues to work through property access
@@ -252,7 +247,7 @@ class TestAIResponseCacheInheritance:
             - Indicates order tracking moved to parent class implementation
             
         Fixtures Used:
-            - mock_generic_redis_cache: Parent class handles access order
+            - None
             
         Compatibility Pattern:
             Property maintains interface while indicating implementation changes
