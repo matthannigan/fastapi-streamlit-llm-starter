@@ -20,6 +20,7 @@ Design Philosophy:
 """
 
 import pytest
+from unittest.mock import patch
 import hashlib
 from unittest.mock import AsyncMock, MagicMock
 from typing import Dict, Any, Optional
@@ -29,528 +30,300 @@ from typing import Dict, Any, Optional
 # Mock Dependency Fixtures
 # =============================================================================
 
-# TODO: move this to a parent `conftest.py` file as other unit tests beyond cache will need it
 @pytest.fixture
-def mock_settings():
+def test_settings():
     """
-    Mock Settings for testing configuration access behavior.
+    Real Settings instance with test configuration for testing actual configuration behavior.
     
-    Provides 'happy path' mock of the Settings contract with all methods
-    returning successful configuration behavior as documented in the public interface.
-    Uses spec to ensure mock accuracy against the real class.
+    Provides a Settings instance loaded from test configuration, enabling tests
+    to verify actual configuration loading, validation, and environment detection
+    instead of using hardcoded mock values.
+    
+    This fixture represents behavior-driven testing where we test the actual
+    Settings class functionality rather than mocking its behavior.
     """
+    import tempfile
+    import json
+    import os
     from app.core.config import Settings
     
-    mock_settings = MagicMock(spec=Settings)
-    
-    # Mock basic configuration attributes per contract
-    mock_settings.gemini_api_key = "test-gemini-api-key-12345"
-    mock_settings.ai_model = "gemini-2.0-flash-exp"
-    mock_settings.ai_temperature = 0.7
-    mock_settings.MAX_BATCH_REQUESTS_PER_CALL = 50
-    mock_settings.BATCH_AI_CONCURRENCY_LIMIT = 5
-    mock_settings.host = "0.0.0.0"
-    mock_settings.port = 8000
-    mock_settings.api_key = "test-api-key-12345"
-    mock_settings.additional_api_keys = "key1,key2,key3"
-    mock_settings.allowed_origins = ["http://localhost:3000", "http://localhost:8501"]
-    mock_settings.debug = False
-    mock_settings.log_level = "INFO"
-    mock_settings.cache_preset = "development"
-    mock_settings.cache_custom_config = None
-    mock_settings.resilience_preset = "simple"
-    mock_settings.resilience_custom_config = None
-    mock_settings.health_check_timeout_ms = 2000
-    mock_settings.health_check_enabled_components = ["ai_model", "cache", "resilience"]
-    
-    # Mock cache configuration method per contract with successful behavior
-    mock_cache_config = MagicMock()
-    mock_cache_config.redis_url = "redis://localhost:6379"
-    mock_cache_config.enable_ai_cache = True
-    mock_cache_config.default_ttl = 3600
-    mock_cache_config.compression_threshold = 1000
-    mock_cache_config.text_size_tiers = {"small": 300, "medium": 3000, "large": 30000}
-    mock_settings.get_cache_config.return_value = mock_cache_config
-    
-    # Mock resilience configuration method per contract with successful behavior
-    mock_resilience_config = MagicMock()
-    mock_resilience_config.strategy = MagicMock()
-    mock_resilience_config.strategy.name = "BALANCED"
-    mock_resilience_config.retry_config = MagicMock()
-    mock_resilience_config.retry_config.max_attempts = 3
-    mock_resilience_config.circuit_breaker_config = MagicMock()
-    mock_resilience_config.circuit_breaker_config.failure_threshold = 5
-    mock_resilience_config.enable_circuit_breaker = True
-    mock_resilience_config.enable_retry = True
-    mock_settings.get_resilience_config.return_value = mock_resilience_config
-    
-    # Mock operation strategy method per contract with successful behavior
-    mock_settings.get_operation_strategy.return_value = "balanced"
-    
-    # Mock custom config validation method per contract with successful behavior
-    mock_settings.validate_resilience_custom_config.return_value = {
-        "is_valid": True,
-        "errors": [],
-        "warnings": ["No custom configuration provided"]
+    # Create test configuration with realistic values
+    test_config = {
+        "gemini_api_key": "test-gemini-api-key-12345",
+        "ai_model": "gemini-2.0-flash-exp", 
+        "ai_temperature": 0.7,
+        "host": "0.0.0.0",
+        "port": 8000,
+        "api_key": "test-api-key-12345",
+        "additional_api_keys": "key1,key2,key3",
+        "debug": False,
+        "log_level": "INFO",
+        "cache_preset": "development",
+        "resilience_preset": "simple",
+        "health_check_timeout_ms": 2000
     }
     
-    # Mock API keys method per contract with successful behavior
-    mock_settings.get_valid_api_keys.return_value = ["test-api-key-12345", "key1", "key2", "key3"]
+    # Create temporary config file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        json.dump(test_config, f, indent=2)
+        config_file = f.name
     
-    # Mock development mode property per contract with successful behavior
-    mock_settings.is_development = True
-    
-    # Mock additional compatibility methods per contract
-    mock_settings.get_registered_operations.return_value = ["summarize", "sentiment", "key_points", "questions", "qa"]
-    mock_settings.register_operation.return_value = None
-    mock_settings.is_legacy_config = False
-    mock_settings.get_operation_configs.return_value = {
-        "summarize": {"strategy": "balanced"},
-        "sentiment": {"strategy": "balanced"},
-        "key_points": {"strategy": "balanced"},
-        "questions": {"strategy": "balanced"},
-        "qa": {"strategy": "balanced"}
-    }
-    mock_settings.get_preset_operations.return_value = ["summarize", "sentiment", "key_points", "questions", "qa"]
-    mock_settings.get_all_operation_strategies.return_value = {
-        "summarize": "balanced",
-        "sentiment": "balanced", 
-        "key_points": "balanced",
-        "questions": "balanced",
-        "qa": "balanced"
-    }
-    
-    return mock_settings
+    try:
+        # Create Settings instance with test config
+        # Override environment variables to ensure test isolation
+        test_env = {
+            "GEMINI_API_KEY": "test-gemini-api-key-12345",
+            "API_KEY": "test-api-key-12345",
+            "CACHE_PRESET": "development",
+            "RESILIENCE_PRESET": "simple"
+        }
+        
+        # Temporarily set test environment variables
+        original_env = {}
+        for key, value in test_env.items():
+            original_env[key] = os.environ.get(key)
+            os.environ[key] = value
+        
+        # Create real Settings instance
+        settings = Settings()
+        
+        # Restore original environment
+        for key, original_value in original_env.items():
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value
+        
+        return settings
+        
+    finally:
+        # Clean up temporary config file
+        os.unlink(config_file)
 
 
 @pytest.fixture
-def mock_cache_factory():
+def development_settings():
     """
-    Mock CacheFactory for testing cache creation behavior.
+    Real Settings instance configured for development environment testing.
     
-    Provides 'happy path' mock of the CacheFactory contract with all methods
-    returning successful cache creation behavior as documented in the public interface.
-    Uses spec to ensure mock accuracy against the real class.
+    Provides Settings with development preset for testing development-specific behavior.
     """
-    from app.infrastructure.cache.factory import CacheFactory
-    from app.infrastructure.cache.memory import InMemoryCache
+    import os
     
-    mock_factory = MagicMock(spec=CacheFactory)
-    
-    # Create a mock cache to return from factory methods
-    mock_cache = AsyncMock(spec=InMemoryCache)
-    mock_cache._internal_storage = {}
-    
-    async def mock_get(key):
-        return mock_cache._internal_storage.get(key)
-    
-    async def mock_set(key, value, ttl=None):
-        mock_cache._internal_storage[key] = value
-        
-    async def mock_delete(key):
-        if key in mock_cache._internal_storage:
-            del mock_cache._internal_storage[key]
-            return True
-        return False
-    
-    mock_cache.get.side_effect = mock_get
-    mock_cache.set.side_effect = mock_set
-    mock_cache.delete.side_effect = mock_delete
-    
-    # Mock factory methods per contract with successful cache creation
-    mock_factory.for_web_app = AsyncMock(return_value=mock_cache)
-    mock_factory.for_ai_app = AsyncMock(return_value=mock_cache)
-    mock_factory.for_testing = AsyncMock(return_value=mock_cache)
-    mock_factory.create_cache_from_config = AsyncMock(return_value=mock_cache)
-    
-    return mock_factory
-
-
-@pytest.fixture
-def mock_cache_interface():
-    """
-    Mock CacheInterface for testing cache operation behavior.
-    
-    Provides 'happy path' mock of the CacheInterface contract with all methods
-    returning successful cache operation behavior as documented in the public interface.
-    This is a stateful mock that maintains an internal dictionary for realistic
-    cache behavior where set values can be retrieved later.
-    """
-    from app.infrastructure.cache.base import CacheInterface
-    
-    mock_cache = AsyncMock(spec=CacheInterface)
-    
-    # Create stateful internal storage
-    mock_cache._internal_storage = {}
-    
-    async def mock_get(key):
-        return mock_cache._internal_storage.get(key)
-    
-    async def mock_set(key, value, ttl=None):
-        mock_cache._internal_storage[key] = value
-        
-    async def mock_delete(key):
-        if key in mock_cache._internal_storage:
-            del mock_cache._internal_storage[key]
-            return True
-        return False
-    
-    # Assign mock implementations
-    mock_cache.get.side_effect = mock_get
-    mock_cache.set.side_effect = mock_set
-    mock_cache.delete.side_effect = mock_delete
-    
-    return mock_cache
-
-
-@pytest.fixture
-def mock_performance_monitor():
-    """
-    Mock CachePerformanceMonitor for testing metrics collection behavior.
-    
-    Provides 'happy path' mock of the CachePerformanceMonitor contract with all methods
-    returning successful/normal behavior as documented in the public interface.
-    Uses spec to ensure mock accuracy against the real class.
-    """
-    from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-    
-    monitor = MagicMock(spec=CachePerformanceMonitor)
-    
-    # Mock initialization behavior per contract
-    monitor.retention_hours = 1
-    monitor.max_measurements = 1000
-    monitor.memory_warning_threshold_bytes = 50 * 1024 * 1024  # 50MB
-    monitor.memory_critical_threshold_bytes = 100 * 1024 * 1024  # 100MB
-    
-    # Mock performance tracking methods per contract
-    monitor.record_key_generation_time.return_value = None
-    monitor.record_cache_operation_time.return_value = None
-    monitor.record_compression_ratio.return_value = None
-    monitor.record_memory_usage.return_value = None
-    monitor.record_invalidation_event.return_value = None
-    
-    # Mock async operation recording per contract
-    monitor.record_operation = AsyncMock(return_value=None)
-    
-    # Mock statistics methods per contract with typical successful values
-    monitor.get_performance_stats.return_value = {
-        "timestamp": "2023-01-01T12:00:00Z",
-        "cache_hit_rate": 75.0,
-        "key_generation": {
-            "avg_duration": 0.001,
-            "total_operations": 100
-        },
-        "cache_operations": {
-            "get": {"avg_duration": 0.002, "total_operations": 80},
-            "set": {"avg_duration": 0.003, "total_operations": 75}
-        },
-        "compression": {
-            "avg_ratio": 0.65,
-            "total_compressed": 25
-        },
-        "memory_usage": {
-            "total_cache_size_mb": 15.5,
-            "entries": 100
-        },
-        "invalidation": {
-            "hourly_rate": 5.2,
-            "efficiency": 8.5
-        }
+    # Set development environment variables
+    test_env = {
+        "GEMINI_API_KEY": "test-dev-api-key",
+        "API_KEY": "test-dev-api-key", 
+        "CACHE_PRESET": "development",
+        "RESILIENCE_PRESET": "development",
+        "DEBUG": "true"
     }
     
-    monitor.get_invalidation_frequency_stats.return_value = {
-        "rates": {
-            "last_hour": 5.2,
-            "last_day": 45.8,
-            "average": 6.1
-        },
-        "thresholds": {
-            "warning_threshold": 50,
-            "critical_threshold": 100,
-            "current_alert_level": "normal"
-        },
-        "patterns": {
-            "most_common_pattern": "summarize",
-            "most_common_type": "manual"
-        },
-        "efficiency": {
-            "avg_keys_per_invalidation": 8.5,
-            "avg_duration": 0.025
-        }
-    }
-    
-    monitor.get_invalidation_recommendations.return_value = []
-    
-    monitor.get_memory_usage_stats.return_value = {
-        "current": {
-            "total_cache_size_mb": 15.5,
-            "memory_cache_size_mb": 5.2,
-            "redis_cache_size_mb": 10.3,
-            "entry_count": 100,
-            "avg_entry_size_bytes": 160
-        },
-        "thresholds": {
-            "warning_threshold_bytes": 50 * 1024 * 1024,
-            "critical_threshold_bytes": 100 * 1024 * 1024,
-            "warning_threshold_reached": False,
-            "critical_threshold_reached": False
-        },
-        "trends": {
-            "growth_rate_mb_per_hour": 0.5,
-            "projected_warning_time_hours": 69.0
-        }
-    }
-    
-    monitor.get_memory_warnings.return_value = []
-    
-    monitor.get_recent_slow_operations.return_value = {
-        "key_generation": [],
-        "cache_operations": [],
-        "compression": []
-    }
-    
-    monitor.reset_stats.return_value = None
-    
-    monitor.export_metrics.return_value = {
-        "key_generation_times": [],
-        "cache_operation_times": [],
-        "compression_ratios": [],
-        "memory_usage_measurements": [],
-        "invalidation_events": [],
-        "cache_hits": 75,
-        "cache_misses": 25,
-        "total_operations": 100,
-        "export_timestamp": "2023-01-01T12:00:00Z"
-    }
-    
-    return monitor
-
-
-@pytest.fixture
-def mock_memory_cache():
-    """
-    Mock InMemoryCache for testing memory cache behavior.
-    
-    Provides 'happy path' mock of the InMemoryCache contract with all methods
-    returning successful behavior as documented in the public interface.
-    This is a stateful mock that maintains an internal dictionary for realistic
-    cache behavior where set values can be retrieved later.
-    """
-    from app.infrastructure.cache.memory import InMemoryCache
-    
-    mock_cache = AsyncMock(spec=InMemoryCache)
-    
-    # Create stateful internal storage
-    mock_cache._internal_storage = {}
-    mock_cache._internal_stats = {
-        "hits": 0,
-        "misses": 0,
-        "sets": 0,
-        "deletes": 0
-    }
-    
-    # Mock initialization parameters per contract
-    mock_cache.default_ttl = 3600
-    mock_cache.max_size = 100
-    
-    async def mock_get(key):
-        if key in mock_cache._internal_storage:
-            mock_cache._internal_stats["hits"] += 1
-            return mock_cache._internal_storage[key]
-        mock_cache._internal_stats["misses"] += 1
-        return None
-    
-    async def mock_set(key, value, ttl=None):
-        mock_cache._internal_storage[key] = value
-        mock_cache._internal_stats["sets"] += 1
+    original_env = {}
+    for key, value in test_env.items():
+        original_env[key] = os.environ.get(key)
+        os.environ[key] = value
         
-    async def mock_delete(key):
-        if key in mock_cache._internal_storage:
-            del mock_cache._internal_storage[key]
-            mock_cache._internal_stats["deletes"] += 1
-            return True
-        return False
-        
-    async def mock_exists(key):
-        return key in mock_cache._internal_storage
-        
-    async def mock_get_ttl(key):
-        return 3600 if key in mock_cache._internal_storage else None
-    
-    def mock_clear():
-        mock_cache._internal_storage.clear()
-        
-    def mock_size():
-        return len(mock_cache._internal_storage)
-        
-    def mock_get_keys():
-        return list(mock_cache._internal_storage.keys())
-        
-    def mock_get_active_keys():
-        return list(mock_cache._internal_storage.keys())
-        
-    def mock_get_stats():
-        return {
-            "active_entries": len(mock_cache._internal_storage),
-            "expired_entries": 0,
-            "total_entries": len(mock_cache._internal_storage),
-            "max_size": mock_cache.max_size,
-            "utilization_percent": (len(mock_cache._internal_storage) / mock_cache.max_size) * 100,
-            "hit_rate": mock_cache._internal_stats["hits"] / max(1, mock_cache._internal_stats["hits"] + mock_cache._internal_stats["misses"]),
-            "hits": mock_cache._internal_stats["hits"],
-            "misses": mock_cache._internal_stats["misses"],
-            "evictions": 0,
-            "memory_usage_bytes": len(str(mock_cache._internal_storage))
-        }
-    
-    # Assign mock implementations
-    mock_cache.get.side_effect = mock_get
-    mock_cache.set.side_effect = mock_set
-    mock_cache.delete.side_effect = mock_delete
-    mock_cache.exists.side_effect = mock_exists
-    mock_cache.get_ttl.side_effect = mock_get_ttl
-    mock_cache.clear.side_effect = mock_clear
-    mock_cache.size.side_effect = mock_size
-    mock_cache.get_keys.side_effect = mock_get_keys
-    mock_cache.get_active_keys.side_effect = mock_get_active_keys
-    mock_cache.get_stats.side_effect = mock_get_stats
-    
-    return mock_cache
-
-
-@pytest.fixture
-def mock_generic_redis_cache():
-    """
-    Mock GenericRedisCache for testing inheritance and cache operations behavior.
-    
-    Provides comprehensive mock of the GenericRedisCache contract with all methods
-    returning successful behavior as documented in the public interface.
-    This is a stateful mock that maintains an internal dictionary for realistic
-    cache behavior where set values can be retrieved later.
-    Uses spec to ensure mock accuracy against the real class for core methods,
-    but adds factory-specific methods for backwards compatibility.
-    """
-    from app.infrastructure.cache.redis_generic import GenericRedisCache
-    from unittest.mock import patch
-    
-    with patch('app.infrastructure.cache.redis_generic.GenericRedisCache') as mock_class:
-        mock_instance = AsyncMock(spec=GenericRedisCache)
-        
-        # Create stateful internal storage (combining patterns from both existing mocks)
-        mock_instance._internal_storage = {}
-        mock_instance._callbacks = {}
-        
-        # Mock initialization parameters per contract
-        mock_instance.redis_url = "redis://localhost:6379"
-        mock_instance.default_ttl = 3600
-        mock_instance.enable_l1_cache = True
-        mock_instance.l1_cache_size = 100
-        mock_instance.compression_threshold = 1000
-        mock_instance.compression_level = 6
-        mock_instance.performance_monitor = None
-        mock_instance.security_config = None
-        
-        # Mock stateful cache operations with realistic behavior
-        async def mock_get(key):
-            return mock_instance._internal_storage.get(key)
-        
-        async def mock_set(key, value, ttl=None):
-            mock_instance._internal_storage[key] = value
-            
-        async def mock_delete(key):
-            if key in mock_instance._internal_storage:
-                del mock_instance._internal_storage[key]
-                return True
-            return False
-            
-        async def mock_exists(key):
-            return key in mock_instance._internal_storage
-        
-        # Assign stateful implementations
-        mock_instance.get.side_effect = mock_get
-        mock_instance.set.side_effect = mock_set
-        mock_instance.delete.side_effect = mock_delete
-        mock_instance.exists.side_effect = mock_exists
-        
-        # Mock connection methods per contract
-        mock_instance.connect.return_value = True  # Successful connection
-        mock_instance.disconnect.return_value = None
-        
-        # Mock callback system per contract
-        mock_instance.register_callback.return_value = None
-        
-        # Mock security methods per contract with realistic values
-        mock_instance.validate_security.return_value = None
-        mock_instance.get_security_status.return_value = {
-            "security_level": "basic",
-            "connection_encrypted": False,
-            "authentication_enabled": False,
-            "redis_connected": True
-        }
-        mock_instance.get_security_recommendations.return_value = []
-        mock_instance.generate_security_report.return_value = "Security report: basic configuration"
-        mock_instance.test_security_configuration.return_value = {
-            "overall_secure": True,
-            "errors": [],
-            "warnings": []
-        }
-        
-        mock_class.return_value = mock_instance
-        yield mock_instance
-
-
-# =============================================================================
-# Custom Exceptions
-# =============================================================================
-
-@pytest.fixture
-def mock_validation_error():
-    """
-    Mock ValidationError for testing validation error handling behavior.
-    
-    Provides 'happy path' mock of the ValidationError contract as documented
-    in the public interface. Uses spec to ensure mock accuracy.
-    """
-    from app.core.exceptions import ValidationError
-    
-    mock_error = MagicMock(spec=ValidationError)
-    mock_error.__str__.return_value = "Validation failed"
-    
-    return mock_error
+    try:
+        from app.core.config import Settings
+        settings = Settings()
+        yield settings
+    finally:
+        # Restore environment
+        for key, original_value in original_env.items():
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value
 
 
 @pytest.fixture  
-def mock_configuration_error():
+def production_settings():
     """
-    Mock ConfigurationError for testing configuration error handling behavior.
+    Real Settings instance configured for production environment testing.
     
-    Provides 'happy path' mock of the ConfigurationError contract as documented
-    in the public interface. Uses spec to ensure mock accuracy.
+    Provides Settings with production preset for testing production-specific behavior.
     """
-    from app.core.exceptions import ConfigurationError
+    import os
     
-    mock_error = MagicMock(spec=ConfigurationError)
-    mock_error.__str__.return_value = "Configuration error"
+    # Set production environment variables
+    test_env = {
+        "GEMINI_API_KEY": "test-prod-api-key",
+        "API_KEY": "test-prod-api-key",
+        "CACHE_PRESET": "production", 
+        "RESILIENCE_PRESET": "production",
+        "DEBUG": "false"
+    }
     
-    return mock_error
+    original_env = {}
+    for key, value in test_env.items():
+        original_env[key] = os.environ.get(key)
+        os.environ[key] = value
+        
+    try:
+        from app.core.config import Settings
+        settings = Settings()
+        yield settings
+    finally:
+        # Restore environment
+        for key, original_value in original_env.items():
+            if original_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original_value
+
+
+# =============================================================================
+# Real Factory Fixtures (Replace Mock-Based Fixtures)
+# =============================================================================
+
+@pytest.fixture
+async def real_cache_factory():
+    """
+    Real CacheFactory instance for testing factory behavior.
+    
+    Provides an actual CacheFactory instance to test real factory logic,
+    parameter mapping, and cache creation behavior rather than mocking
+    the factory's internal operations.
+    
+    This enables behavior-driven testing of the factory's actual logic.
+    """
+    from app.infrastructure.cache.factory import CacheFactory
+    return CacheFactory()
 
 
 @pytest.fixture
-def mock_infrastructure_error():
+async def factory_memory_cache(real_cache_factory):
     """
-    Mock InfrastructureError for testing infrastructure error handling behavior.
+    Cache created via real factory using memory cache for testing.
     
-    Provides 'happy path' mock of the InfrastructureError contract as documented
-    in the public interface. Uses spec to ensure mock accuracy.
+    Creates a cache through the real factory using memory cache option,
+    enabling testing of factory integration while avoiding Redis dependencies.
     """
-    from app.core.exceptions import InfrastructureError
-    
-    mock_error = MagicMock(spec=InfrastructureError)
-    mock_error.__str__.return_value = "Infrastructure error"
-    
-    return mock_error
+    cache = await real_cache_factory.for_testing(use_memory_cache=True)
+    yield cache
+    await cache.clear()
 
 
+@pytest.fixture
+async def factory_web_cache(real_cache_factory):
+    """
+    Cache created via real factory for web application testing.
+    
+    Creates a cache through the real factory for web application use case,
+    with graceful fallback to memory cache if Redis is unavailable.
+    """
+    cache = await real_cache_factory.for_web_app(fail_on_connection_error=False)
+    yield cache
+    if hasattr(cache, 'clear'):
+        await cache.clear()
+
+
+@pytest.fixture
+async def factory_ai_cache(real_cache_factory):
+    """
+    Cache created via real factory for AI application testing.
+    
+    Creates a cache through the real factory for AI application use case,
+    with graceful fallback to memory cache if Redis is unavailable.
+    """
+    cache = await real_cache_factory.for_ai_app(fail_on_connection_error=False)
+    yield cache
+    if hasattr(cache, 'clear'):
+        await cache.clear()
+
+
+@pytest.fixture  
+async def real_performance_monitor():
+    """
+    Real performance monitor instance for integration testing.
+    
+    Provides an actual CachePerformanceMonitor instance to test real
+    monitoring behavior, metric accuracy, and integration patterns
+    rather than mocking monitoring operations.
+    """
+    from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+    return CachePerformanceMonitor()
+
+
+@pytest.fixture
+def cache_implementations():
+    """
+    Real cache implementations for polymorphism testing.
+    
+    Provides a list of actual cache implementations to test polymorphic
+    behavior and interface compliance across different cache types.
+    
+    Uses real implementations rather than mocked interfaces to verify
+    actual polymorphic behavior and interface adherence.
+    """
+    from app.infrastructure.cache.memory import InMemoryCache
+    from app.infrastructure.cache.redis_generic import GenericRedisCache
+    
+    implementations = [
+        InMemoryCache(max_size=100, default_ttl=3600)
+    ]
+    
+    # Add Redis implementations when available (graceful degradation)
+    # In CI/testing environments without Redis, this will only test InMemoryCache
+    # which is still valuable for polymorphism verification
+    try:
+        redis_cache = GenericRedisCache(
+            redis_url="redis://localhost:6379/15",  # Test database
+            default_ttl=3600,
+            enable_l1_cache=True,
+            fail_on_connection_error=False  # Allow fallback
+        )
+        implementations.append(redis_cache)
+    except Exception:
+        # Redis not available, continue with memory cache only
+        pass
+        
+    return implementations
+
+
+# =============================================================================
+# Utilities
+# =============================================================================
+
+@pytest.fixture
+def default_memory_cache():
+    """
+    InMemoryCache instance with default configuration for standard testing.
+    
+    Provides a fresh InMemoryCache instance with default settings
+    suitable for most test scenarios. This represents the 'happy path'
+    configuration that should work reliably.
+    
+    Configuration:
+        - default_ttl: 3600 seconds (1 hour)
+        - max_size: 1000 entries
+    """
+    from app.infrastructure.cache.memory import InMemoryCache
+    return InMemoryCache()
+
+
+@pytest.fixture
+def mock_path_exists():
+    """
+    Fixture that mocks pathlib.Path.exists.
+    
+    Uses autospec=True to ensure the mock's signature matches the real
+    method, which is crucial for using side_effect correctly. The default
+    return_value is True for "happy path" tests.
+
+    Note:
+        This is a prime example of a **good mock** because it isolates the test 
+        from an external system boundary—the filesystem. By mocking 
+        `pathlib.Path.exists`, tests for `SecurityConfig` can run reliably and 
+        quickly without requiring actual certificate files to be present on the 
+        testing machine.
+    """
+    # The key is adding autospec=True here.
+    with patch('pathlib.Path.exists', autospec=True) as mock_patch:
+        # Set a default return value for tests that don't need to control it.
+        mock_patch.return_value = True
+        yield mock_patch
 
 
 # =============================================================================

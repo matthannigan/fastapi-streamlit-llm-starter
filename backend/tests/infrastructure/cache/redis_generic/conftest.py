@@ -21,10 +21,11 @@ Design Philosophy:
 
 import pytest
 import hashlib
-import time
 from typing import Any, Dict, List, Optional, Callable
-from unittest.mock import AsyncMock, MagicMock, patch
-from collections import defaultdict
+from unittest.mock import patch
+import ssl
+from app.infrastructure.cache.security import SecurityConfig
+
 
 
 @pytest.fixture
@@ -77,151 +78,105 @@ def sample_large_value():
 # Note: sample_ttl and short_ttl fixtures are now provided by the parent conftest.py
 
 
-# Note: mock_memory_cache fixture is now provided by the parent conftest.py
-
-
-# Note: mock_performance_monitor fixture is now provided by the parent conftest.py
-
-
 @pytest.fixture
-def mock_security_config():
+def fake_redis_client():
     """
-    Mock SecurityConfig for testing secure Redis connections.
+    Fake Redis client for testing Redis operations.
     
-    Provides 'happy path' mock of the SecurityConfig contract with all properties
-    returning secure configuration values as documented in the public interface.
-    This is a stateless mock representing basic authentication configuration.
+    Provides a fakeredis instance that behaves like a real Redis server,
+    including proper Redis operations, data types, expiration, and error handling.
+    This provides more realistic testing than mocks while not requiring a real Redis instance.
     """
-    from app.infrastructure.cache.security import SecurityConfig
+    import fakeredis.aioredis
     
-    config = MagicMock(spec=SecurityConfig)
+    class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
+        """Extended FakeRedis with additional commands needed for testing."""
+        
+        async def info(self, section=None):
+            """Mock implementation of Redis INFO command."""
+            return {
+                "redis_version": "6.2.0",
+                "redis_git_sha1": "00000000",
+                "redis_git_dirty": "0",
+                "redis_build_id": "test",
+                "redis_mode": "standalone",
+                "os": "Linux 4.9.0-7-amd64 x86_64",
+                "arch_bits": "64",
+                "multiplexing_api": "epoll",
+                "gcc_version": "6.3.0",
+                "process_id": "1",
+                "run_id": "test-run-id",
+                "tcp_port": "6379",
+                "uptime_in_seconds": "1000",
+                "uptime_in_days": "0",
+                "hz": "10",
+                "configured_hz": "10",
+                "lru_clock": "12345",
+                "executable": "/usr/local/bin/redis-server",
+                "config_file": "",
+                "connected_clients": "1",
+                "client_recent_max_input_buffer": "2",
+                "client_recent_max_output_buffer": "0",
+                "blocked_clients": "0",
+                "used_memory": "1000000",
+                "used_memory_human": "976.56K",
+                "used_memory_rss": "2000000",
+                "used_memory_rss_human": "1.91M",
+                "used_memory_peak": "1500000",
+                "used_memory_peak_human": "1.43M",
+                "total_system_memory": "8000000000",
+                "total_system_memory_human": "7.45G",
+                "used_memory_lua": "37888",
+                "used_memory_lua_human": "37.00K",
+                "maxmemory": "0",
+                "maxmemory_human": "0B",
+                "maxmemory_policy": "noeviction",
+                "mem_fragmentation_ratio": "2.00",
+                "mem_allocator": "jemalloc-4.0.3",
+                "loading": "0",
+                "rdb_changes_since_last_save": "0",
+                "rdb_bgsave_in_progress": "0",
+                "rdb_last_save_time": "1234567890",
+                "rdb_last_bgsave_status": "ok",
+                "rdb_last_bgsave_time_sec": "0",
+                "rdb_current_bgsave_time_sec": "-1",
+                "aof_enabled": "0",
+                "aof_rewrite_in_progress": "0",
+                "aof_rewrite_scheduled": "0",
+                "aof_last_rewrite_time_sec": "-1",
+                "aof_current_rewrite_time_sec": "-1",
+                "total_connections_received": "1",
+                "total_commands_processed": "1",
+                "instantaneous_ops_per_sec": "0",
+                "total_net_input_bytes": "14",
+                "total_net_output_bytes": "0",
+                "instantaneous_input_kbps": "0.00",
+                "instantaneous_output_kbps": "0.00",
+                "rejected_connections": "0",
+                "sync_full": "0",
+                "sync_partial_ok": "0",
+                "sync_partial_err": "0",
+                "expired_keys": "0",
+                "evicted_keys": "0",
+                "keyspace_hits": "0",
+                "keyspace_misses": "0",
+                "pubsub_channels": "0",
+                "pubsub_patterns": "0",
+                "latest_fork_usec": "0",
+                "migrate_cached_sockets": "0",
+                "role": "master",
+                "connected_slaves": "0",
+                "master_repl_offset": "0",
+                "repl_backlog_active": "0",
+                "repl_backlog_size": "1048576",
+                "repl_backlog_first_byte_offset": "0",
+                "repl_backlog_histlen": "0"
+            }
     
-    # Mock basic security configuration per contract
-    config.redis_auth = "secure_password"
-    config.use_tls = False
-    config.tls_cert_path = None
-    config.tls_key_path = None
-    config.tls_ca_path = None
-    config.acl_username = None
-    config.acl_password = None
-    config.connection_timeout = 10
-    config.max_retries = 3
-    config.retry_delay = 1
-    config.verify_certificates = True
-    config.min_tls_version = None
-    config.cipher_suites = None
+    # Create extended fakeredis instance that behaves like real Redis
+    fake_redis = ExtendedFakeRedis(decode_responses=False)
     
-    # Mock property methods per contract
-    config.has_authentication = True
-    config.security_level = "basic"
-    
-    return config
-
-
-@pytest.fixture
-def mock_tls_security_config():
-    """
-    Mock SecurityConfig with TLS configuration for testing encrypted connections.
-    
-    Provides a SecurityConfig mock with TLS encryption enabled for testing
-    secure Redis connection behavior.
-    """
-    from app.infrastructure.cache.security import SecurityConfig
-    
-    config = MagicMock(spec=SecurityConfig)
-    
-    # Mock TLS security configuration per contract
-    config.redis_auth = "secure_password"
-    config.use_tls = True
-    config.tls_cert_path = "/etc/ssl/certs/redis-client.crt"
-    config.tls_key_path = "/etc/ssl/private/redis-client.key" 
-    config.tls_ca_path = "/etc/ssl/certs/ca.crt"
-    config.acl_username = "cache_user"
-    config.acl_password = "acl_password"
-    config.connection_timeout = 10
-    config.max_retries = 3
-    config.retry_delay = 1
-    config.verify_certificates = True
-    config.min_tls_version = "TLSv1.2"
-    config.cipher_suites = ["ECDHE-RSA-AES256-GCM-SHA384"]
-    
-    # Mock property methods per contract
-    config.has_authentication = True
-    config.security_level = "enterprise"
-    
-    return config
-
-
-@pytest.fixture
-def mock_redis_client():
-    """
-    Mock Redis client for testing Redis operations.
-    
-    Provides a stateful mock Redis client that simulates Redis behavior
-    including get/set operations, expiration, and connection management.
-    This allows testing of Redis integration without requiring a real Redis instance.
-    """
-    mock_client = AsyncMock()
-    
-    # Create stateful internal storage for Redis simulation
-    mock_client._storage = {}
-    mock_client._ttl_storage = {}
-    mock_client._connected = False
-    
-    async def mock_ping():
-        if not mock_client._connected:
-            raise Exception("Redis connection failed")
-        return b"PONG"
-    
-    async def mock_get(key):
-        if key in mock_client._storage:
-            # Check TTL
-            if key in mock_client._ttl_storage:
-                if time.time() > mock_client._ttl_storage[key]:
-                    del mock_client._storage[key]
-                    del mock_client._ttl_storage[key]
-                    return None
-            return mock_client._storage[key]
-        return None
-    
-    async def mock_set(key, value, ex=None):
-        mock_client._storage[key] = value
-        if ex:
-            mock_client._ttl_storage[key] = time.time() + ex
-        return True
-    
-    async def mock_delete(key):
-        deleted = key in mock_client._storage
-        if deleted:
-            del mock_client._storage[key]
-            if key in mock_client._ttl_storage:
-                del mock_client._ttl_storage[key]
-        return 1 if deleted else 0
-    
-    async def mock_exists(key):
-        # Check TTL first
-        if key in mock_client._ttl_storage:
-            if time.time() > mock_client._ttl_storage[key]:
-                del mock_client._storage[key]
-                del mock_client._ttl_storage[key]
-                return 0
-        return 1 if key in mock_client._storage else 0
-    
-    def mock_close():
-        mock_client._connected = False
-    
-    # Assign mock implementations
-    mock_client.ping.side_effect = mock_ping
-    mock_client.get.side_effect = mock_get
-    mock_client.set.side_effect = mock_set
-    mock_client.delete.side_effect = mock_delete
-    mock_client.exists.side_effect = mock_exists
-    mock_client.close.side_effect = mock_close
-    
-    # Mark as connected by default
-    mock_client._connected = True
-    
-    return mock_client
+    return fake_redis
 
 
 @pytest.fixture
@@ -245,13 +200,35 @@ def default_generic_redis_config():
 
 
 @pytest.fixture
-def secure_generic_redis_config(mock_security_config):
+def secure_generic_redis_config(mock_path_exists):
     """
     Secure GenericRedisCache configuration for security testing.
     
     Provides a configuration with security features enabled for testing
     secure Redis connections and security validation.
     """
+    # Create a real SecurityConfig instance with test data.
+    # Assuming 'mock_path_exists' is defined in a shared conftest file
+    # Note: Tests that use this fixture will likely need to mock `pathlib.Path.exists`
+    # to simulate the existence of these certificate files.
+    secure_config = SecurityConfig(
+        redis_auth="secure_password",
+        use_tls=True,
+        tls_cert_path="/etc/ssl/certs/redis-client.crt",
+        tls_key_path="/etc/ssl/private/redis-client.key",
+        tls_ca_path="/etc/ssl/certs/ca.crt",
+        acl_username="cache_user",
+        acl_password="acl_password",
+        connection_timeout=10,
+        max_retries=3,
+        retry_delay=1,
+        verify_certificates=True,
+        # Use the correct integer value from the ssl module, just like the default.
+        # This is the most runtime-safe approach.
+        min_tls_version=ssl.TLSVersion.TLSv1_2.value, # type: ignore
+        cipher_suites=["ECDHE-RSA-AES256-GCM-SHA384"]
+    )
+
     return {
         "redis_url": "redis://localhost:6379",
         "default_ttl": 3600,
@@ -260,7 +237,7 @@ def secure_generic_redis_config(mock_security_config):
         "compression_threshold": 1000,
         "compression_level": 6,
         "performance_monitor": None,
-        "security_config": mock_security_config
+        "security_config": secure_config
     }
 
 
@@ -302,49 +279,6 @@ def no_l1_redis_config():
         "performance_monitor": None,
         "security_config": None
     }
-
-
-@pytest.fixture
-def mock_callback_registry():
-    """
-    Mock callback registry for testing callback system functionality.
-    
-    Provides a mock callback registry that simulates the callback system
-    described in the GenericRedisCache contract. This is stateful to track
-    registered callbacks and their invocations.
-    """
-    registry = {
-        "callbacks": defaultdict(list),
-        "call_history": []
-    }
-    
-    def register_callback(event: str, callback: Callable):
-        registry["callbacks"][event].append(callback)
-    
-    def trigger_callbacks(event: str, *args, **kwargs):
-        for callback in registry["callbacks"][event]:
-            try:
-                callback(*args, **kwargs)
-                registry["call_history"].append({
-                    "event": event,
-                    "args": args,
-                    "kwargs": kwargs,
-                    "timestamp": time.time()
-                })
-            except Exception as e:
-                registry["call_history"].append({
-                    "event": event,
-                    "error": str(e),
-                    "timestamp": time.time()
-                })
-    
-    mock_registry = MagicMock()
-    mock_registry.register = register_callback
-    mock_registry.trigger = trigger_callbacks
-    mock_registry.callbacks = registry["callbacks"]
-    mock_registry.call_history = registry["call_history"]
-    
-    return mock_registry
 
 
 @pytest.fixture

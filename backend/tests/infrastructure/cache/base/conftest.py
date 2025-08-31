@@ -26,48 +26,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 
 @pytest.fixture
-def mock_cache_implementation():
-    """
-    Mock CacheInterface implementation for polymorphism testing.
-    
-    Provides a mock implementation of the CacheInterface contract that
-    can be used to test polymorphic behavior and verify that code
-    correctly works with any CacheInterface implementation.
-    
-    This is a stateful mock that maintains an internal dictionary
-    to simulate realistic cache behavior where set values can be
-    retrieved later in the same test.
-    """
-    from app.infrastructure.cache.base import CacheInterface
-    
-    mock_cache = AsyncMock(spec=CacheInterface)
-    
-    # Create stateful internal storage to simulate cache behavior
-    mock_cache._internal_storage = {}
-    
-    async def mock_get(key: str) -> Any:
-        """Mock get implementation following CacheInterface contract."""
-        return mock_cache._internal_storage.get(key, None)
-    
-    async def mock_set(key: str, value: Any, ttl: Optional[int] = None) -> None:
-        """Mock set implementation following CacheInterface contract."""
-        mock_cache._internal_storage[key] = value
-        # Note: TTL handling is implementation-specific, so we just store the value
-        
-    async def mock_delete(key: str) -> None:
-        """Mock delete implementation following CacheInterface contract."""
-        # CacheInterface contract: "Success regardless of key existence for idempotent behavior"
-        mock_cache._internal_storage.pop(key, None)
-    
-    # Assign mock implementations
-    mock_cache.get.side_effect = mock_get
-    mock_cache.set.side_effect = mock_set
-    mock_cache.delete.side_effect = mock_delete
-    
-    return mock_cache
-
-
-@pytest.fixture
 def interface_test_keys():
     """
     Set of diverse cache keys for interface compliance testing.

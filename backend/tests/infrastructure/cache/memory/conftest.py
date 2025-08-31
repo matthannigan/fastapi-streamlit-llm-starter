@@ -44,21 +44,7 @@ def sample_simple_value():
 # Note: sample_ttl and short_ttl fixtures are now provided by the parent conftest.py
 
 
-@pytest.fixture
-def default_memory_cache():
-    """
-    InMemoryCache instance with default configuration for standard testing.
-    
-    Provides a fresh InMemoryCache instance with default settings
-    suitable for most test scenarios. This represents the 'happy path'
-    configuration that should work reliably.
-    
-    Configuration:
-        - default_ttl: 3600 seconds (1 hour)
-        - max_size: 1000 entries
-    """
-    from app.infrastructure.cache.memory import InMemoryCache
-    return InMemoryCache()
+# Note: default_memory_cache fixture is now provided by the parent conftest.py
 
 
 @pytest.fixture
@@ -125,6 +111,11 @@ def populated_memory_cache():
         - "user:2": {"id": 2, "name": "Bob"} 
         - "session:abc": "active_session"
         - "config:app": {"theme": "dark", "version": "1.0"}
+    
+    Note:
+        This fixture is useful for testing the 'read' and 'delete' paths of a 
+        component's logic without cluttering the test with setup code. It provides 
+        a cache that is already in a known state.
     """
     from app.infrastructure.cache.memory import InMemoryCache
     import asyncio
@@ -213,6 +204,13 @@ def mock_time_provider():
         mock_time.current_time = 1000  # Set base time
         mock_time.advance(3600)        # Advance by 1 hour
         assert mock_time.current_time == 4600
+
+    Note:
+        This fixture is crucial for creating **deterministic tests** for 
+        time-dependent logic like TTL expiration. Instead of using `asyncio.sleep()`
+        which slows down the test suite and can lead to flaky results, this mock 
+        allows the test to instantly advance time, ensuring that expiration can be 
+        tested quickly and reliably.
     """
     mock_time = MagicMock()
     mock_time.current_time = time.time()  # Start with real current time
