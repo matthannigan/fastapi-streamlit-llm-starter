@@ -43,6 +43,7 @@ from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+from app.core.exceptions import InfrastructureError
 
 
 class GenericRedisCache(CacheInterface):
@@ -62,6 +63,9 @@ class GenericRedisCache(CacheInterface):
     - `compression_threshold` (int): Data size in bytes above which to compress.
     - `compression_level` (int): Zlib compression level (1-9).
     - `performance_monitor` (CachePerformanceMonitor): Instance for tracking metrics.
+    - `security_config` (SecurityConfig): Optional security configuration.
+    - `fail_on_connection_error` (bool): If True, raise InfrastructureError when Redis unavailable.
+                                        If False (default), gracefully fallback to memory-only mode.
     
     ### Returns
     A `GenericRedisCache` instance.
@@ -83,7 +87,7 @@ class GenericRedisCache(CacheInterface):
     ```
     """
 
-    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None):
+    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False):
         ...
 
     def register_callback(self, event: str, callback: Callable):

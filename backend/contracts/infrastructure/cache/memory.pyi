@@ -192,7 +192,7 @@ class InMemoryCache(CacheInterface):
         cache.clear()  # Remove all entries for clean test state
     """
 
-    def __init__(self, default_ttl: int = 3600, max_size: int = 1000):
+    def __init__(self, default_ttl: int = 3600, max_size: int = 1000, fail_on_connection_error: bool = False):
         """
         Initialize in-memory cache with TTL and LRU eviction configuration.
         
@@ -204,6 +204,8 @@ class InMemoryCache(CacheInterface):
                         set() called without explicit ttl parameter. Default 3600 (1 hour).
             max_size: Maximum cache entries (1-100000) before LRU eviction. Controls
                      memory usage by removing least-recently-used entries. Default 1000.
+            fail_on_connection_error: Parameter for interface consistency with Redis caches.
+                                     Always ignored for InMemoryCache since no connection is required.
         
         Behavior:
             - Initializes empty cache storage with metadata tracking

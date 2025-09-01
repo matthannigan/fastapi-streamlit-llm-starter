@@ -56,6 +56,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing-only imports
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+from app.core.exceptions import InfrastructureError
 
 # Optional security imports for production environments
 try:
@@ -86,6 +87,9 @@ class GenericRedisCache(CacheInterface):
     - `compression_threshold` (int): Data size in bytes above which to compress.
     - `compression_level` (int): Zlib compression level (1-9).
     - `performance_monitor` (CachePerformanceMonitor): Instance for tracking metrics.
+    - `security_config` (SecurityConfig): Optional security configuration.
+    - `fail_on_connection_error` (bool): If True, raise InfrastructureError when Redis unavailable.
+                                        If False (default), gracefully fallback to memory-only mode.
 
     ### Returns
     A `GenericRedisCache` instance.
@@ -117,18 +121,20 @@ class GenericRedisCache(CacheInterface):
         compression_level: int = 6,
         performance_monitor: Optional[CachePerformanceMonitor] = None,
         security_config: Optional["SecurityConfig"] = None,
+        fail_on_connection_error: bool = False,
     ):
         self.redis_url = redis_url
         self.default_ttl = default_ttl
         self.enable_l1_cache = enable_l1_cache
         self.compression_threshold = compression_threshold
         self.compression_level = compression_level
+        self.fail_on_connection_error = fail_on_connection_error
         self.redis: Optional["RedisClient"] = None
 
         self.l1_cache: Optional[InMemoryCache] = None
         if self.enable_l1_cache:
             self.l1_cache = InMemoryCache(
-                default_ttl=default_ttl, max_size=l1_cache_size
+                default_ttl=default_ttl, max_size=l1_cache_size, fail_on_connection_error=fail_on_connection_error
             )
 
         self.performance_monitor = performance_monitor or CachePerformanceMonitor()
@@ -291,7 +297,10 @@ class GenericRedisCache(CacheInterface):
         ```
         """
         if not REDIS_AVAILABLE:
-            logger.warning("Redis not available - operating in memory-only mode")
+            error_msg = "Redis not available - Python redis package not installed"
+            logger.warning(f"{error_msg} - operating in memory-only mode")
+            if self.fail_on_connection_error:
+                raise InfrastructureError(error_msg)
             return False
 
         # Throttle repeated failed connection attempts for performance
@@ -322,10 +331,13 @@ class GenericRedisCache(CacheInterface):
                     self._last_connect_ts = time.time()
                     return True
             except Exception as e:
-                logger.warning(f"Redis connection failed: {e} - using memory-only mode")
+                error_msg = f"Redis connection failed: {e}"
+                logger.warning(f"{error_msg} - using memory-only mode")
                 self.redis = None
                 self._last_connect_result = False
                 self._last_connect_ts = time.time()
+                if self.fail_on_connection_error:
+                    raise InfrastructureError(error_msg) from e
                 return False
         return True
 

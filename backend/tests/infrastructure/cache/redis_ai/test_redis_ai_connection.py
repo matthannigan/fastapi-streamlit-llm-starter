@@ -172,8 +172,8 @@ class TestAIResponseCacheConnection:
             assert result == "connection_test"
             
             # Verify monitoring integration if cache has monitor access
-            if hasattr(cache, '_performance_monitor') and cache._performance_monitor is not None:
-                assert cache._performance_monitor is real_performance_monitor
+            if hasattr(cache, 'performance_monitor') and cache.performance_monitor is not None:
+                assert cache.performance_monitor is real_performance_monitor
                 
             # Clean up
             await cache.delete("test:monitoring:connection")

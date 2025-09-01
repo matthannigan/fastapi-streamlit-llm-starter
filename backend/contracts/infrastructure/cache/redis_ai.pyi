@@ -125,7 +125,7 @@ class AIResponseCache(GenericRedisCache):
     ```
     """
 
-    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: int = 100, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None):
+    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: Optional[int] = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False):
         """
         Initialize AIResponseCache with parameter mapping and inheritance.
         
@@ -141,13 +141,21 @@ class AIResponseCache(GenericRedisCache):
             compression_threshold: Size threshold in bytes for compressing cache data
             compression_level: Compression level (1-9, where 9 is highest compression)
             text_size_tiers: Text size tiers for caching strategy optimization
-            memory_cache_size: Maximum number of items in the in-memory cache
+            memory_cache_size: DEPRECATED. Use l1_cache_size instead. Maximum number of items 
+                              in the in-memory cache. If provided, overrides l1_cache_size for backward compatibility.
+            l1_cache_size: Maximum number of items in the L1 in-memory cache (modern parameter)
+            enable_l1_cache: Enable/disable L1 in-memory cache for performance optimization
             performance_monitor: Optional performance monitor for tracking cache metrics
             operation_ttls: TTL values per AI operation type
+            security_config: Optional security configuration for secure Redis connections,
+                           including authentication, TLS encryption, and security validation
+            fail_on_connection_error: If True, raise InfrastructureError when Redis unavailable.
+                                     If False (default), gracefully fallback to memory-only mode.
         
         Raises:
             ConfigurationError: If parameter mapping fails or invalid configuration
             ValidationError: If parameter validation fails
+            InfrastructureError: If Redis connection fails and fail_on_connection_error=True
         """
         ...
 
