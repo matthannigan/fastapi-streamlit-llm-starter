@@ -4,7 +4,7 @@
 
 This project promotes **docstring-driven test development**, where comprehensive function and class docstrings serve as specifications for generating focused, behavior-based tests. This approach creates tests that verify what functions *should do* rather than how they *currently work*.
 
-> **📖 Comprehensive Docstring Guidance**: See **[DOCSTRINGS_CODE.md](./DOCSTRINGS_CODE.md)** for production code docstring standards and **[DOCSTRINGS_TESTS.md](./DOCSTRINGS_TESTS.md)** for test documentation templates and philosophy.
+> **📖 Comprehensive Docstring Guidance**: See **[DOCSTRINGS_CODE.md](../developer/DOCSTRINGS_CODE.md)** for production code docstring standards and **[DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)** for test documentation templates and philosophy.
 
 ### Core Principles
 
@@ -223,6 +223,10 @@ To ensure all new tests adhere to our behavior-driven philosophy, we follow a sy
 
 ## Traditional Test Examples with Rich Documentation
 
+> **📋 Component-Specific Examples**: 
+> - **Backend Testing**: See [Backend Development Guide](../../backend/AGENTS.md) for FastAPI-specific test examples, infrastructure service patterns, and domain service testing
+> - **Frontend Testing**: See [Frontend Development Guide](../../frontend/AGENTS.md) for Streamlit test examples, API client patterns, and async testing strategies
+
 ### Backend Test Example
 ```python
 class TestNewFeature:
@@ -326,7 +330,7 @@ class TestNewComponent:
             assert result["result"] == "success"
 ```
 
-> **📖 Test Documentation Templates**: See **[DOCSTRINGS_TESTS.md](./DOCSTRINGS_TESTS.md)** for comprehensive test docstring templates including unit tests, integration tests, API tests, security tests, and performance tests.
+> **📖 Test Documentation Templates**: See **[DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)** for comprehensive test docstring templates including unit tests, integration tests, API tests, security tests, and performance tests.
 
 ## Test Generation Guidelines
 
@@ -337,23 +341,48 @@ class TestNewComponent:
 - **Behavior section** → Observable outcome tests for each documented behavior
 - **Examples section** → Convert to executable test cases
 
-### Test Documentation Standards
+### Unified Test Documentation Standards
 
-When writing test docstrings, focus on **WHY** the test exists rather than **HOW** it works:
+All tests in this project follow these documentation standards to ensure consistency and clarity:
 
-**Essential Elements for Test Documentation:**
-- **Behavior Being Verified**: What specific functionality is being tested
-- **Business Impact**: Why this test matters to users/stakeholders  
-- **Test Scenario**: Given/When/Then or specific conditions being tested
-- **Success Criteria**: What constitutes a passing test
-- **Failure Impact**: What breaks if this test starts failing
+> **📖 Comprehensive Templates**: For detailed test docstring templates, see [DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)
 
-**Quick Example:**
+#### **Essential Elements for All Test Documentation:**
+
+**1. Test Purpose** - What specific behavior is being verified
+**2. Business Impact** - Why this test matters to users/stakeholders  
+**3. Test Scenario** - Given/When/Then or specific conditions
+**4. Success Criteria** - What constitutes a passing test
+
+#### **Test Type-Specific Standards:**
+
+**Unit Tests:**
+```python
+def test_cache_stores_and_retrieves_data(self):
+    """
+    Test that cache service stores and retrieves data correctly.
+    
+    Behavior Under Test:
+        Cache service should store values and retrieve them by key
+        
+    Business Impact:
+        Core functionality that affects all cached operations in the system
+        
+    Success Criteria:
+        - Stored values are retrievable with the same key
+        - Retrieved values match original values exactly
+    """
+```
+
+**API Tests:**
 ```python
 def test_api_returns_400_for_missing_required_field(self, client):
     """
     Test that API validates required fields and returns proper error codes.
     
+    API Contract:
+        POST /api/process should validate required 'text' field
+        
     Business Impact:
         Provides clear feedback to API consumers about request format errors
         
@@ -363,6 +392,46 @@ def test_api_returns_400_for_missing_required_field(self, client):
     Success Criteria:
         - Returns 400 status code for validation errors
         - Error response includes field-specific validation message
+    """
+```
+
+**Integration Tests:**
+```python
+def test_cache_integration_with_resilience_patterns(self):
+    """
+    Test that cache service integrates correctly with resilience patterns.
+    
+    Integration Scope:
+        Cache service + circuit breaker + retry logic working together
+        
+    Business Impact:
+        Ensures system remains responsive even when cache is experiencing issues
+        
+    Success Criteria:
+        - Cache failures trigger circuit breaker appropriately
+        - Retry logic works with cache recovery
+        - System degrades gracefully during cache outages
+    """
+```
+
+**Fixture Documentation:**
+```python
+@pytest.fixture
+def authenticated_user():
+    """
+    Provides a fully authenticated user for testing protected endpoints.
+    
+    User Profile:
+        - Standard user permissions (not admin)
+        - Active account status
+        - Email verified
+        
+    Use Cases:
+        - Testing endpoints that require authentication
+        - Verifying user-specific data access
+        
+    Cleanup:
+        User session is automatically cleaned up after test completion
     """
 ```
 

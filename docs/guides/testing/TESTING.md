@@ -7,6 +7,38 @@ sidebar_position: 0
 
 This document provides a high-level overview of the testing philosophy for this project. For detailed, practical guidance, please refer to the in-depth guides linked at the end of this document.
 
+## Quick Navigation
+
+### Core Testing Guides
+- **[Writing Tests](./1_WRITING_TESTS.md)** - Docstring-driven test development and 5-step workflow
+- **[Mocking Strategy](./2_MOCKING_GUIDE.md)** - Fakes over mocks, boundary mocking patterns
+- **[Coverage Strategy](./3_COVERAGE_STRATEGY.md)** - Tiered coverage approach and meaningful metrics
+- **[Test Structure](./4_TEST_STRUCTURE.md)** - Organization, fixtures, and test categories
+- **[Test Execution](./5_TEST_EXECUTION_GUIDE.md)** - Running tests, debugging, and troubleshooting
+- **[Contributing Tests](./6_CONTRIBUTING_TESTS.md)** - Guidelines for adding new tests
+
+- ### Quick Start Commands
+```bash
+# Setup and run all tests
+make install && make test
+
+# Backend tests only
+make test-backend
+
+# Frontend tests only  
+make test-frontend
+
+# Tests with coverage
+make test-coverage
+```
+
+### Find What You Need
+- **New to the project?** → Start with [Test Execution Guide](./5_TEST_EXECUTION_GUIDE.md)
+- **Writing new features?** → See [Writing Tests](./1_WRITING_TESTS.md)
+- **Struggling with mocks?** → Check [Mocking Strategy](./2_MOCKING_GUIDE.md)
+- **Coverage questions?** → Review [Coverage Strategy](./3_COVERAGE_STRATEGY.md)
+- **Test failing?** → See [Troubleshooting](./5_TEST_EXECUTION_GUIDE.md#troubleshooting)
+
 ## Overview
 
 > **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
@@ -323,46 +355,30 @@ def test_gemini_integration_smoke():
     assert data["success"] is True
     assert len(data["result"]) > 10  # Got some meaningful response
 ```
-
------
-
-## In-Depth Testing Guides
-
-For more detailed information, refer to the following guides:
-
-- **[1. Writing Tests](./1_WRITING_TESTS.md)**: A step-by-step guide to writing tests, including our 5-step workflow and docstring-driven development process.
-- **[2. Mocking Guide](./2_MOCKING_GUIDE.md)**: Our complete strategy for using fakes and mocks, including the decision framework for when mocking is acceptable.
-- **[3. Coverage Strategy](./3_COVERAGE_STRATEGY.md)**: Details on our tiered approach to test coverage, including specific targets for different component types.
-- **[4. Test Structure](./4_TEST_STRUCTURE.md)**: Guidelines for organizing test files, directories, and fixtures.
-- **[5. Test Execution Guide](./5_TEST_EXECUTION_GUIDE.md)**: A comprehensive reference for running, debugging, and configuring the test suite.
-
------
-
 ## Related Documentation
 
-### **Core Testing Documentation**
-- **[DOCSTRINGS_CODE.md](./DOCSTRINGS_CODE.md)**: Production code docstring standards that serve as test specifications for behavior-driven testing
-- **[DOCSTRINGS_TESTS.md](./DOCSTRINGS_TESTS.md)**: Comprehensive test documentation templates, including unit tests, integration tests, API tests, security tests, and fixture documentation
+### Core Testing Documentation
+- **[DOCSTRINGS_CODE.md](../developer/DOCSTRINGS_CODE.md)**: Production code docstring standards that serve as test specifications for behavior-driven testing
+- **[DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)**: Comprehensive test documentation templates, including unit tests, integration tests, API tests, security tests, and fixture documentation
 
-### **Prerequisites**
-- **[Backend Guide](./BACKEND.md)**: Understanding backend architecture and components being tested
-- **[Frontend Guide](./FRONTEND.md)**: Understanding frontend architecture and testing patterns
+### Component-Specific Testing Guidance
+- **[Backend Testing](../../backend/AGENTS.md)**: FastAPI-specific testing patterns, infrastructure services, domain services
+- **[Frontend Testing](../../frontend/AGENTS.md)**: Streamlit testing patterns, API client testing, UI component testing
 
-### **Related Topics**
-- **[Code Standards](./CODE_STANDARDS.md)**: Code quality standards that complement testing requirements
-- **[Exception Handling](./EXCEPTION_HANDLING.md)**: Exception testing patterns that complement docstring-driven testing
-- **[Docker Setup](./DOCKER.md)**: Docker environments used for consistent testing across systems
-- **[Virtual Environment Guide](./VIRTUAL_ENVIRONMENT_GUIDE.md)**: Environment management for test execution
+### Related Topics
+- **[Code Standards](../developer/CODE_STANDARDS.md)**: Code quality standards that complement testing requirements
+- **[Exception Handling](../developer/EXCEPTION_HANDLING.md)**: Exception testing patterns that complement docstring-driven testing
+- **[Docker Setup](../developer/DOCKER.md)**: Docker environments used for consistent testing across systems
 
-### **Next Steps**
-- **[Deployment Guide](./DEPLOYMENT.md)**: Production deployment with comprehensive testing validation
-- **[Infrastructure Testing](./infrastructure/MONITORING.md)**: Advanced monitoring and performance testing patterns
-- **[Authentication Testing](./AUTHENTICATION.md)**: Security and authentication testing approaches
+### Next Steps
+- **[Deployment Guide](../deployment/DEPLOYMENT.md)**: Production deployment with comprehensive testing validation
+- **[Infrastructure Testing](../infrastructure/MONITORING.md)**: Advanced monitoring and performance testing patterns
+- **[Authentication Testing](../developer/AUTHENTICATION.md)**: Security and authentication testing approaches
 
-### **Documentation Integration Workflow**
+### Documentation Integration Workflow
 
 For comprehensive test development:
-1. **Start with DOCSTRINGS_CODE.md** - Write rich production code docstrings with Args, Returns, Raises, and Behavior sections
+1. **Start with [DOCSTRINGS_CODE.md](../developer/DOCSTRINGS_CODE.md)** - Write rich production code docstrings with Args, Returns, Raises, and Behavior sections
 2. **Use this TESTING.md guide** - Apply docstring-driven test development principles to generate behavior-focused tests
-3. **Apply DOCSTRINGS_TESTS.md templates** - Document test intent, business impact, and success criteria using our test documentation standards
-4. **Follow CODE_STANDARDS.md** - Ensure overall code quality and documentation consistency 
+3. **Apply [DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md) templates** - Document test intent, business impact, and success criteria using our test documentation standards
+4. **Follow [CODE_STANDARDS.md](../developer/CODE_STANDARDS.md)** - Ensure overall code quality and documentation consistency 

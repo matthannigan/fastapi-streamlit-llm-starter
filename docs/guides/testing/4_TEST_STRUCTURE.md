@@ -8,6 +8,10 @@ The testing architecture follows both the infrastructure vs domain service separ
 
 ## Current Test Structure
 
+> **📋 Component-Specific Testing Patterns**: 
+> - **Backend Testing**: See [Backend Development Guide](../../backend/AGENTS.md) for FastAPI-specific testing patterns, infrastructure service testing, and domain service examples
+> - **Frontend Testing**: See [Frontend Development Guide](../../frontend/AGENTS.md) for Streamlit testing patterns, API client testing, and UI component validation
+
 ```
 ├── backend/
 │   ├── tests/
@@ -193,35 +197,9 @@ def test_gemini_api_integration_smoke():
 - `sample_request`: Sample processing request
 - `sample_response`: Sample API response
 
-#### Fixture Documentation Best Practices
+#### Fixture Documentation Standards
 
-Fixtures should include comprehensive docstrings explaining their purpose, scope, and usage patterns:
+All fixtures follow the unified documentation standards outlined in the [Writing Tests Guide](./1_WRITING_TESTS.md#unified-test-documentation-standards).
 
-```python
-@pytest.fixture
-def authenticated_user():
-    """
-    Provides a fully authenticated user for testing protected endpoints.
-    
-    User Profile:
-        - Standard user permissions (not admin)
-        - Active account status
-        - Email verified
-        - No special role assignments
-        
-    Use Cases:
-        - Testing endpoints that require authentication
-        - Verifying user-specific data access
-        - Testing standard user workflows
-        
-    Cleanup:
-        User session is automatically cleaned up after test completion
-        
-    Related Fixtures:
-        - admin_user: For testing admin-only functionality
-        - unverified_user: For testing email verification flows
-    """
-```
-
-> **📖 Fixture Documentation Templates**: See **[DOCSTRINGS_TESTS.md](./DOCSTRINGS_TESTS.md)** section on "Fixture Documentation" for comprehensive fixture docstring patterns and examples.
+> **📖 Fixture Documentation Templates**: See **[DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)** section on "Fixture Documentation" for comprehensive fixture docstring patterns and examples.
 

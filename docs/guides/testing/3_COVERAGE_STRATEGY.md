@@ -94,66 +94,105 @@ def get_timestamp() -> str:
 - **Third-party library wrappers** - Covered by library tests
 - **Configuration constants** - Static values
 
-## Component-Specific Coverage Requirements
+## Coverage-to-Test-Structure Mapping
 
-### Backend Infrastructure Services (70-90% coverage)
-- **AI Infrastructure** (`app/infrastructure/ai/`) - 85% target
-  - Input sanitization and prompt injection protection
-  - Prompt builder utilities and AI provider abstractions
-  - Focus on security-critical validation logic
+This table maps our tiered coverage strategy to the actual test directory structure, making it easy to understand where to focus testing effort:
 
-- **Cache Infrastructure** (`app/infrastructure/cache/`) - 80% target
-  - Redis and memory cache implementations
-  - Cache monitoring and performance metrics
-  - Graceful degradation patterns and fallback logic
+| **Coverage Tier** | **Target** | **Test Directory** | **Components** | **Focus** |
+|-------------------|------------|-------------------|----------------|-----------|
+| **🔴 Critical (90-95%)** | 90-95% | `tests/api/v1/` | Public API endpoints | User-facing contracts |
+| **🔴 Critical (95-100%)** | 95-100% | `tests/core/` | Config, dependencies, exceptions | System integrity |
+| **🔴 Critical (95-100%)** | 95-100% | `tests/shared_schemas/` | Pydantic models | Data contracts |
+| **🟡 Important (85-90%)** | 85-90% | `tests/infrastructure/ai/` | AI infrastructure | Security validation |
+| **🟡 Important (85-90%)** | 85-90% | `tests/infrastructure/resilience/` | Circuit breakers, retry logic | System resilience |
+| **🟡 Important (80-85%)** | 80-85% | `tests/infrastructure/cache/` | Cache implementations | Performance systems |
+| **🟡 Important (90-95%)** | 90-95% | `tests/api/internal/` | Internal API endpoints | Admin operations |
+| **🟡 Important (75-80%)** | 75-80% | `tests/infrastructure/monitoring/` | Health checks, metrics | Operational visibility |
+| **🟢 Supporting (60-75%)** | 60-75% | `tests/services/` | Domain services | Business logic examples |
+| **🟢 Supporting (70-80%)** | 70-80% | `tests/integration/` | Component interactions | End-to-end workflows |
+| **⚪ Optional (40-60%)** | 40-60% | `tests/performance/` | Load testing, benchmarks | Performance validation |
+| **⚪ Optional (Manual)** | Manual | `tests/manual/` | Real service integration | Smoke testing |
 
-- **Resilience Infrastructure** (`app/infrastructure/resilience/`) - 85% target
-  - Circuit breaker pattern implementation
-  - Retry mechanisms with exponential backoff
-  - Orchestrator and configuration presets
-  - Performance benchmarks
+### Component-Specific Coverage Requirements
 
-- **Security Infrastructure** (`app/infrastructure/security/`) - 90% target
-  - Multi-key authentication system
-  - Security validation and protection mechanisms
+#### 🔴 **Critical Components (90-100% coverage)**
 
-- **Monitoring Infrastructure** (`app/infrastructure/monitoring/`) - 75% target
-  - Health check implementations
-  - Metrics collection and alerting
-
-### Domain Services (60-75% coverage) 
-*Educational examples - replace with your business logic*
-
-- **Text Processing Service** (`app/services/text_processor.py`) - 70% target
-  - AI text processing using PydanticAI agents
-  - Business-specific processing logic (educational examples)
-
-- **Response Validator** (`app/services/response_validator.py`) - 65% target
-  - Business-specific response validation logic
-
-### API Endpoints (90-95% coverage)
-- **Public API** (`/v1/`) - 95% target
+**API Endpoints** - `tests/api/`:
+- **Public API** (`tests/api/v1/`) - 95% target
   - Authentication validation and user-facing contracts
   - Health checks and core processing operations
   - Error handling and CORS configuration
-
-- **Internal API** (`/internal/`) - 90% target
+- **Internal API** (`tests/api/internal/`) - 90% target
   - Cache management endpoints (38 resilience endpoints)
   - Monitoring and metrics collection
   - Resilience management across 8 modules
 
-### Core Components (90-95% coverage)
-- **Configuration Management** (`app/core/config.py`) - 95% target
+**Core Components** - `tests/core/`:
+- **Configuration Management** (`test_config.py`) - 95% target
   - Dual-API configuration and preset-based resilience system
   - Security and infrastructure settings
-
-- **Dependency Injection** (`app/dependencies.py`) - 90% target
+- **Dependency Injection** (`test_dependencies.py`) - 90% target
   - Service provider patterns and preset-based configuration loading
 
-### Shared Models (95-100% coverage)
-- **Pydantic Models** (`shared/models.py` and `app/schemas/`) - 100% target
+**Shared Models** - `tests/shared_schemas/`:
+- **Pydantic Models** - 100% target
   - Cross-service data models and field validation
   - Serialization/deserialization contracts
+
+#### 🟡 **Important Components (70-90% coverage)**
+
+**Infrastructure Services** - `tests/infrastructure/`:
+- **AI Infrastructure** (`tests/infrastructure/ai/`) - 85% target
+  - Input sanitization and prompt injection protection
+  - Prompt builder utilities and AI provider abstractions
+  - Focus on security-critical validation logic
+
+- **Cache Infrastructure** (`tests/infrastructure/cache/`) - 80% target
+  - Redis and memory cache implementations
+  - Cache monitoring and performance metrics
+  - Graceful degradation patterns and fallback logic
+
+- **Resilience Infrastructure** (`tests/infrastructure/resilience/`) - 85% target
+  - Circuit breaker pattern implementation
+  - Retry mechanisms with exponential backoff
+  - Orchestrator and configuration presets
+
+- **Security Infrastructure** (`tests/infrastructure/security/`) - 90% target
+  - Multi-key authentication system
+  - Security validation and protection mechanisms
+
+- **Monitoring Infrastructure** (`tests/infrastructure/monitoring/`) - 75% target
+  - Health check implementations
+  - Metrics collection and alerting
+
+#### 🟢 **Supporting Components (60-80% coverage)**
+
+**Domain Services** - `tests/services/` (60-75% coverage):
+*Educational examples - replace with your business logic*
+
+- **Text Processing Service** (`test_text_processing.py`) - 70% target
+  - AI text processing using PydanticAI agents
+  - Business-specific processing logic (educational examples)
+
+- **Response Validator** (`test_response_validator.py`) - 65% target
+  - Business-specific response validation logic
+
+**Integration Tests** - `tests/integration/` (70-80% coverage):
+- Cross-component workflows and service interactions
+- End-to-end business process validation
+- Real infrastructure integration patterns
+
+#### ⚪ **Optional Components (40-60% coverage)**
+
+**Performance Tests** - `tests/performance/` (40-60% coverage):
+- Load testing scenarios and benchmarks
+- Performance regression testing
+- Resource utilization validation
+
+**Manual Tests** - `tests/manual/` (Manual execution):
+- Real service integration testing
+- Smoke tests with actual API keys
+- End-to-end workflow validation
 
 ## Practical Coverage Targets
 

@@ -56,7 +56,7 @@ make clean-all
 ### Backend Tests
 
 ```bash
-# Using Makefile (recommended - handles virtual environment automatically)
+# Using Makefile (Recommended - handles virtual environment automatically)
 make test-backend                       # Run fast tests (default)
 make test-backend-all                   # Run all tests including slow ones
 make test-backend-manual                # Run manual tests (requires running server)
@@ -69,8 +69,14 @@ make test-backend-infrastructure        # Infrastructure service tests
 make test-backend-services              # Domain service tests
 make test-backend-integration           # Integration tests
 make test-backend-performance           # Performance tests
+```
 
-# Manual commands with virtual environment
+**Advanced/Debugging Commands** (when Makefile doesn't meet your needs):
+
+<details>
+<summary>Manual pytest commands with virtual environment</summary>
+
+```bash
 cd backend
 
 # Default: Run fast tests in parallel (excludes slow and manual tests)
@@ -105,13 +111,23 @@ cd backend
 ../.venv/bin/python -m pytest tests/ -v -m "no_parallel"                  # Tests that must run sequentially
 ```
 
+</details>
+
 ### Frontend Tests
 
 ```bash
-# Using Makefile (recommended - handles virtual environment automatically)
+# Using Makefile (Recommended - handles virtual environment automatically)
 make test-frontend
 
-# Or manually with virtual environment
+# Run with coverage
+make test-frontend-coverage
+```
+
+**Manual Commands** (for debugging):
+<details>
+<summary>Manual pytest commands with virtual environment</summary>
+
+```bash
 cd frontend
 ../.venv/bin/python -m pytest tests/ -v
 
@@ -119,25 +135,39 @@ cd frontend
 ../.venv/bin/python -m pytest tests/ --cov=app --cov-report=html
 ```
 
+</details>
+
 ### Integration Tests
 
 ```bash
-# Using Makefile (recommended - handles Docker availability detection)
-make test
+# Using Makefile (Recommended - handles Docker availability detection)
+make test                               # Full test suite with Docker if available
+make test-local                         # Local testing without Docker
 
-# Using the test runner script with virtual environment
-.venv/bin/python run_tests.py
+# Using the test runner script
+make run-test-script                    # Uses .venv/bin/python run_tests.py
+```
 
-# Manual Docker Compose testing
+**Manual Docker Testing** (for advanced scenarios):
+<details>
+<summary>Manual Docker Compose testing</summary>
+
+```bash
+# Start services
 docker-compose up -d
+
 # Wait for services to start
 curl http://localhost:8000/health
 curl http://localhost:8501/_stcore/health
-docker-compose down
 
-# Local testing without Docker
-make test-local
+# Run tests against running services
+make test-manual
+
+# Clean up
+docker-compose down
 ```
+
+</details>
 
 ## Test Configuration
 

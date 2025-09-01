@@ -10,7 +10,7 @@ sidebar_label: Contributing
 2. **Maintain coverage**: Aim for >90% test coverage
 3. **Test edge cases**: Include tests for error conditions and edge cases
 
-> **📖 For comprehensive exception testing patterns**, see the **[Exception Handling Guide](./EXCEPTION_HANDLING.md)** which covers:
+> **📖 For comprehensive exception testing patterns**, see the **[Exception Handling Guide](../developer/EXCEPTION_HANDLING.md)** which covers:
 > - Testing exception hierarchy and classification
 > - Unit testing patterns for exception handling
 > - API testing with proper status code validation
