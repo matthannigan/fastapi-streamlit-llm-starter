@@ -283,6 +283,130 @@ def cache_implementations():
 
 
 # =============================================================================
+# Additional Test Data Fixtures
+# =============================================================================
+
+@pytest.fixture
+def sample_empty_value():
+    """
+    Empty cache value for testing edge cases.
+    
+    Provides an empty dictionary value to test cache behavior
+    with empty data structures and edge case handling.
+    """
+    return {}
+
+
+@pytest.fixture
+def sample_unicode_value():
+    """
+    Unicode cache value for testing international character support.
+    
+    Provides a dictionary containing various Unicode characters,
+    emojis, and international text for testing proper encoding
+    and decoding of cached values.
+    """
+    return {
+        "id": 789,
+        "emoji_text": "Testing with emojis! 🚀 🌟 ✨ 🎯",
+        "international": {
+            "chinese": "测试文本",
+            "japanese": "テストテキスト",
+            "russian": "тестовый текст",
+            "arabic": "نص الاختبار",
+            "emoji_mixed": "Hello 世界 🌍 Привет мир!"
+        },
+        "special_chars": "Special chars: àáâãäåæçèéêëìíîïñòóôõöøùúûüý",
+        "mathematical": "Math symbols: ∑∏∫∮∆∇∂∞≠≤≥±×÷√∝∈∉∪∩"
+    }
+
+
+@pytest.fixture
+def sample_null_value():
+    """
+    Null cache value for testing None handling.
+    
+    Provides None value to test cache behavior with null values,
+    ensuring proper distinction between "key not found" and
+    "key exists but value is None".
+    """
+    return None
+
+
+@pytest.fixture
+def sample_whitespace_key():
+    """
+    Cache key with whitespace for testing key validation.
+    
+    Provides a key containing various whitespace characters
+    to test key normalization and validation logic.
+    """
+    return "test:  key  :with:whitespace  "
+
+
+@pytest.fixture
+def sample_large_key():
+    """
+    Large cache key for testing key length limits.
+    
+    Provides a very long key to test cache behavior with
+    keys that might exceed typical length limits.
+    """
+    return "test:" + "x" * 500 + ":large_key"
+
+
+# =============================================================================
+# Shared Sample Data Integration
+# =============================================================================
+
+@pytest.fixture
+def shared_sample_texts():
+    """
+    Sample texts from shared module for consistent cross-component testing.
+    
+    Provides access to standardized sample texts used across frontend
+    and backend components for consistent testing patterns.
+    """
+    from shared.sample_data import get_all_sample_texts
+    return get_all_sample_texts()
+
+
+@pytest.fixture
+def shared_unicode_text():
+    """
+    Unicode-rich text from shared data for international testing.
+    
+    Combines shared sample data with additional Unicode content
+    for comprehensive international character testing.
+    """
+    from shared.sample_data import get_sample_text
+    base_text = get_sample_text("ai_technology")
+    return f"{base_text} 🤖 国际化测试 Тестирование التجربة"
+
+
+@pytest.fixture
+def shared_empty_text():
+    """
+    Empty text value for testing empty input handling.
+    
+    Provides empty string to test how cache components handle
+    empty text inputs in AI processing contexts.
+    """
+    return ""
+
+
+@pytest.fixture
+def shared_whitespace_text():
+    """
+    Text containing only whitespace for edge case testing.
+    
+    Provides whitespace-only string to test text normalization
+    and validation in cache key generation and AI processing.
+    """
+    return "   \n\t   \r\n   "
+
+
+# =============================================================================
 # Utilities
 # =============================================================================
 
