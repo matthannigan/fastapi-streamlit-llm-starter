@@ -122,7 +122,7 @@ class TestAIResponseCacheErrorHandling:
         """
         pass
 
-    @pytest.mark.skip(reason="Replace with integration tests with real components")
+    @pytest.mark.skip(reason="Replace with integration test using real components")
     def test_build_key_remains_functional_during_redis_failures(self):
         """
         Test that build_key continues working even when Redis is unavailable.

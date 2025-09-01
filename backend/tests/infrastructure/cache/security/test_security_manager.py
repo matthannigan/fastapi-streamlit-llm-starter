@@ -413,7 +413,7 @@ class TestRedisCacheSecurityManagerValidation:
         - Redis client (fakeredis): For connection security status inspection
     """
 
-    @pytest.mark.skip(reason="Replace with integration tests with real components")
+    @pytest.mark.skip(reason="Replace with integration test using real components")
     async def test_validate_connection_security_assesses_secure_connection_accurately(self, mock_path_exists):
         """
         Test that validate_connection_security accurately assesses secure Redis connections.
