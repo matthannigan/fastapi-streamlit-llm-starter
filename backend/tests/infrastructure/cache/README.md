@@ -173,7 +173,7 @@ The test suite is built using a systematic, 5-step process with a coding assista
 ### Step 1: Context Alignment (The "Why")
 
 ```markdown
-You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read the attached `TESTING.md` file. Summarize the 3 most important principles and the 3 most important anti-patterns from this document.
+You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read `docs/guides/testing/1_WRITING_TESTS.md` and `backend/tests/infrastructure/cache/README.md`. Summarize the 3 most important principles and the 3 most important anti-patterns from the documents.
 ```
 
 To align the AI assistant with the project's testing philosophy, we begin by instructing it to read `TESTING.md` and summarize its core principles and anti-patterns. This forces it to internalize the "why" before it begins coding.
@@ -220,6 +220,10 @@ Before any test code is written, we generate a complete test plan using a "Docst
 * **Specification as Docstring**: Each docstring details the test's `Given/When/Then` scenario, its business impact, and the specific fixtures required for its implementation, creating a clear blueprint for the final step.
 
 ### Step 4: Test Implementation (The "Build")
+
+```markdown
+Search `backend/tests/infrastructure/cache/redis_ai/*.py` to identify all skeleton test files for the `redis_ai` module of the `cache` infrastructure component that require implementation. Then, create a new plan to faithfully execute the prompt described by `docs/prompts/unit-tests/step4-implementation.md` for the discovered test files using the @agent-unit-test-supervisor and @agent-unit-test-implementer agents.
+```
 
 > full prompt: `docs/prompts/unit-tests/step4-implementation.md`
 
