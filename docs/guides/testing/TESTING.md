@@ -1,0 +1,368 @@
+---
+sidebar_label: Overview
+sidebar_position: 0
+---
+
+# Testing Guide
+
+This document provides a high-level overview of the testing philosophy for this project. For detailed, practical guidance, please refer to the in-depth guides linked at the end of this document.
+
+## Overview
+
+> **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
+
+The test suite covers both backend and frontend components with the following types of tests:
+
+- **Unit Tests**: Test a single component (e.g., a service or infrastructure module) as the **Unit Under Test (UUT)**, validating its behavior through its public contract while treating its internals as a black box. This also includes tests for individual pure functions and classes where appropriate.
+- **Integration Tests**: Test component interactions and API endpoints.
+- **End-to-End Tests**: Test complete user workflows.
+- **Code Quality**: Linting, type checking, and formatting validation.
+
+### Testing Philosophy: Maintainable, Behavior-Driven Testing
+
+This project emphasizes **maintainability over exhaustiveness** and **behavior over implementation** to create robust test suites that provide real confidence while remaining maintainable over time.
+
+#### Core Testing Principles
+
+Our testing strategy prioritizes tests that give us confidence that the system works correctly for users, not that every internal function executes in a specific way.
+
+1. **Test Behavior, Not Implementation** - Focus on what the system should accomplish from an external observer's perspective.
+2. **Maintainability Over Exhaustiveness** - Better to have fewer, high-value tests than comprehensive low-value tests.
+3. **Mock Only at System Boundaries** - Minimize mocking to reduce test brittleness.
+4. **Fast Feedback Loops** - Tests should run quickly to enable continuous development.
+
+#### Defining the Public Contract
+
+To rigorously enforce our behavior-driven approach, we formally define a component's "public contract" using stub files (`.pyi`).
+
+- **Source of Truth**: These stub files are automatically generated from the production code via `make generate-contracts` and are located in `backend/contracts`.
+- **Implementation-Agnostic**: Each `.pyi` file contains the public interface—class definitions, method signatures, type hints, and docstrings—but all internal implementation logic is removed.
+- **Test Development**: All tests should be written and debugged by referencing only these contract files. This provides a clean, focused, and implementation-agnostic context that ensures we test *what* a component does, not *how* it does it.
+
+### The Modern Testing Pyramid
+
+Our approach reshapes the classic testing pyramid into a modern, multi-layered verification strategy that prioritizes resilience to refactoring.
+
+```
+      / \
+     /I&E\      <- Small number of Integration & End-to-End tests
+    /-----\
+   /  B&C  \    <- Focused suite of Behavioral & Contract tests
+  /---------\
+ /   Static  \  <- Largest base: Static Analysis (MyPy, Linters)
+/-------------\
+```
+
+- **Base: Static Analysis**: We place a heavy reliance on static analysis tools like `MyPy` and linters as our foundational layer of defense.
+- **Middle: Behavioral and Contract Tests**: This layer consists of a "small and focused" suite of tests that exercise the public contract of a component from the outside in.
+- **Peak: Integration and End-to-End Tests**: The peak is a small number of tests that verify critical user flows and true wire-level interactions between components.
+
+### Behavior-Focused Testing ✅ vs. Implementation-Focused Testing ❌
+
+The following examples illustrate our core philosophy in practice.
+
+#### Behavior-Focused Testing ✅
+
+**Tests what the code should accomplish from an external observer's perspective:**
+
+```python
+# ✅ GOOD: Tests observable behavior
+def test_user_service_creates_valid_user():
+    """Test that user creation produces a valid user with required fields."""
+    user_data = {"name": "John Doe", "email": "john@example.com"}
+    
+    user = user_service.create_user(user_data)
+    
+    # Tests external contract/behavior
+    assert user.id is not None
+    assert user.is_active is True
+```
+
+**Characteristics:**
+- Tests external contracts and interfaces
+- Focuses on inputs, outputs, and side effects
+- Survives implementation changes
+- Provides confidence that features work as intended
+- Documents expected behavior for other developers
+
+#### Implementation-Focused Testing ❌
+
+**Tests how the code currently works internally:**
+
+```python
+# ❌ BAD: Tests internal implementation details  
+def test_user_service_calls_validator_internally():
+    """Test that create_user calls EmailValidator internally."""
+    user_data = {"name": "John", "email": "john@example.com"}
+    
+    with patch('user_service.EmailValidator') as mock_validator:
+        user_service.create_user(user_data)
+        
+        # Tests internal implementation, not external behavior
+        mock_validator.validate.assert_called_once_with("john@example.com")
+```
+
+**Problems:**
+- Breaks when refactoring internal code
+- Tests private methods and attributes
+- Doesn't verify external functionality
+- Creates brittle test suites
+- Makes refactoring painful and expensive
+
+### Test Maintenance Guidelines
+
+Before writing or keeping a test, ask these critical questions:
+
+1. **Fragility Check**: Will this test break if I refactor the implementation?
+2. **Value Check**: Does this test verify behavior that users depend on?
+3. **Deletion Test**: Would removing this test reduce our confidence in the system?
+4. **Mock Check**: Am I mocking more than necessary to isolate the behavior?
+
+If a test fails these checks, refactor or remove it.
+
+## Testing Metrics That Matter
+
+Focus on actionable metrics that drive quality improvements rather than vanity metrics that don't correlate with system reliability.
+
+### Meaningful Metrics ✅
+
+| Metric | Target | Why It Matters | How to Measure |
+|--------|--------|----------------|----------------|
+| **Critical Path Coverage** | 90%+ | User-facing features must work | Coverage on API endpoints, core workflows |
+| **Test Execution Time** | <60s | Fast feedback loop essential for development | Total time for fast test suite |
+| **Test Maintenance Time** | <10% dev time | Tests shouldn't slow development | Time spent fixing broken tests vs writing features |
+| **False Positive Rate** | <5% | Tests should be reliable indicators | % of test failures not indicating real issues |
+| **Mean Time to Fix** | <30min | Quick resolution of test failures | Time from test failure to fix deployment |
+| **Bug Detection Rate** | 80%+ | Tests should catch issues before production | % of production bugs caught by tests first |
+
+### Vanity Metrics to Ignore ❌
+
+Avoid optimizing for these metrics as they don't correlate with system quality:
+
+- **Total number of tests** - More tests ≠ better coverage
+- **Line coverage percentage** - High coverage ≠ meaningful testing
+- **Number of assertions** - More assertions ≠ better validation
+- **Cyclomatic complexity scores** - Arbitrary thresholds don't improve code
+- **Docstring coverage percentage** - Documentation for documentation's sake
+
+### Actionable Quality Indicators
+
+**Green Flags (System is Healthy):**
+- Tests run in under 60 seconds for fast feedback
+- Less than 5% of test failures are false positives
+- New features rarely break existing tests
+- Developers feel confident deploying after tests pass
+- Most production issues are caught by tests first
+
+**Red Flags (System Needs Attention):**
+- Tests take >5 minutes to run (developers avoid running them)
+- Frequent test breakage during refactoring (implementation testing)
+- Tests pass but production issues occur (poor test coverage of critical paths)
+- Developers frequently skip or disable tests (tests are more burden than help)
+
+## Code Quality Checks
+
+### Linting
+
+```bash
+# Backend linting
+cd backend
+python -m flake8 app/
+python -m mypy app/ --ignore-missing-imports
+
+# Frontend linting
+cd frontend
+python -m flake8 app/
+```
+
+### Code Formatting
+
+```bash
+# Format all code (uses virtual environment automatically)
+make format
+
+# Manual formatting with virtual environment
+cd backend
+../.venv/bin/python -m black app/ tests/
+../.venv/bin/python -m isort app/ tests/
+
+cd ../frontend
+../.venv/bin/python -m black app/ tests/
+../.venv/bin/python -m isort app/ tests/
+```
+
+## Continuous Integration
+
+### GitHub Actions
+
+The project uses GitHub Actions for CI/CD with the following workflow:
+
+1. **Test Matrix**: Tests run on Python 3.9, 3.10, and 3.11
+2. **Dependency Installation**: Install both runtime and development dependencies
+3. **Unit Tests**: Run all unit tests with coverage
+4. **Code Quality**: Run linting and type checking
+5. **Integration Tests**: Build and test with Docker Compose
+6. **Coverage Upload**: Upload coverage reports to Codecov
+
+### Local CI Simulation
+
+```bash
+# Run the same checks as CI (uses virtual environment automatically)
+make ci-test
+
+# Or manually with virtual environment:
+cd backend
+../.venv/bin/python -m pytest tests/ -v --cov=app --cov-report=xml
+../.venv/bin/python -m flake8 app/
+../.venv/bin/python -m mypy app/ --ignore-missing-imports
+
+cd ../frontend
+../.venv/bin/python -m pytest tests/ -v --cov=app --cov-report=xml
+../.venv/bin/python -m flake8 app/
+```
+
+## Performance Testing
+
+### Load Testing
+
+For performance testing, consider using:
+
+```bash
+# Install load testing tools
+pip install locust
+
+# Run load tests (if implemented)
+locust -f tests/load_tests.py --host=http://localhost:8000
+```
+
+### Benchmarking
+
+```bash
+# Run tests with timing (using virtual environment)
+.venv/bin/python -m pytest tests/ --durations=10
+
+# Profile specific tests
+.venv/bin/python -m pytest tests/test_main.py --profile
+```
+
+## Handling LLM Non-Determinism
+
+LLM outputs are inherently non-deterministic, requiring specialized testing strategies:
+
+### 1. Mock LLM Calls in Most Tests
+Use predictable responses for testing application logic:
+
+```python
+@pytest.fixture
+def mock_llm():
+    """Mock LLM for predictable testing."""
+    with patch('app.services.ai_provider.call') as mock:
+        # Return predictable, valid responses
+        mock.return_value = "Mocked LLM response for testing"
+        yield mock
+
+def test_text_processing_workflow(client, mock_llm):
+    """Test processing workflow with predictable LLM response."""
+    response = client.post("/v1/process", json={
+        "text": "Sample input text", 
+        "operation": "summarize"
+    })
+    
+    assert response.status_code == 200
+    assert "result" in response.json()
+    # Can test exact response structure since LLM is mocked
+```
+
+### 2. Evaluation-Based Testing
+For real LLM tests, check properties rather than exact matches:
+
+```python
+@pytest.mark.manual
+def test_llm_summarization_properties(real_llm_client):
+    """Test that real LLM summarization has expected properties."""
+    long_text = "Very long article text..." * 100
+    
+    result = real_llm_client.summarize(long_text, max_length=100)
+    
+    # Test properties, not exact content
+    assert len(result) <= 100
+    assert len(result) >= 50  # Not too short
+    assert "summary" in result.lower() or any(word in result for word in ["main", "key", "important"])
+    assert result != long_text  # Actually summarized
+```
+
+### 3. Snapshot Testing
+Save and compare outputs for regression detection:
+
+```python
+def test_llm_response_format_stability(snapshot, mock_llm):
+    """Test that LLM response format remains stable."""
+    mock_llm.return_value = "Consistent test response"
+    
+    response = process_text("test input", "summarize")
+    
+    # Will fail if response structure changes
+    snapshot.assert_match(response.dict(), "llm_response_format.json")
+```
+
+### 4. Manual Verification Tests
+Small set of tests with real LLM calls for smoke testing:
+
+```python
+@pytest.mark.manual
+def test_gemini_integration_smoke():
+    """Smoke test to verify Gemini integration works end-to-end."""
+    # Requires GEMINI_API_KEY and running server
+    response = requests.post("http://localhost:8000/v1/process", json={
+        "text": "This is a simple test of the AI integration.",
+        "operation": "summarize"
+    })
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert len(data["result"]) > 10  # Got some meaningful response
+```
+
+-----
+
+## In-Depth Testing Guides
+
+For more detailed information, refer to the following guides:
+
+- **[1. Writing Tests](./1_WRITING_TESTS.md)**: A step-by-step guide to writing tests, including our 5-step workflow and docstring-driven development process.
+- **[2. Mocking Guide](./2_MOCKING_GUIDE.md)**: Our complete strategy for using fakes and mocks, including the decision framework for when mocking is acceptable.
+- **[3. Coverage Strategy](./3_COVERAGE_STRATEGY.md)**: Details on our tiered approach to test coverage, including specific targets for different component types.
+- **[4. Test Structure](./4_TEST_STRUCTURE.md)**: Guidelines for organizing test files, directories, and fixtures.
+- **[5. Test Execution Guide](./5_TEST_EXECUTION_GUIDE.md)**: A comprehensive reference for running, debugging, and configuring the test suite.
+
+-----
+
+## Related Documentation
+
+### **Core Testing Documentation**
+- **[DOCSTRINGS_CODE.md](./DOCSTRINGS_CODE.md)**: Production code docstring standards that serve as test specifications for behavior-driven testing
+- **[DOCSTRINGS_TESTS.md](./DOCSTRINGS_TESTS.md)**: Comprehensive test documentation templates, including unit tests, integration tests, API tests, security tests, and fixture documentation
+
+### **Prerequisites**
+- **[Backend Guide](./BACKEND.md)**: Understanding backend architecture and components being tested
+- **[Frontend Guide](./FRONTEND.md)**: Understanding frontend architecture and testing patterns
+
+### **Related Topics**
+- **[Code Standards](./CODE_STANDARDS.md)**: Code quality standards that complement testing requirements
+- **[Exception Handling](./EXCEPTION_HANDLING.md)**: Exception testing patterns that complement docstring-driven testing
+- **[Docker Setup](./DOCKER.md)**: Docker environments used for consistent testing across systems
+- **[Virtual Environment Guide](./VIRTUAL_ENVIRONMENT_GUIDE.md)**: Environment management for test execution
+
+### **Next Steps**
+- **[Deployment Guide](./DEPLOYMENT.md)**: Production deployment with comprehensive testing validation
+- **[Infrastructure Testing](./infrastructure/MONITORING.md)**: Advanced monitoring and performance testing patterns
+- **[Authentication Testing](./AUTHENTICATION.md)**: Security and authentication testing approaches
+
+### **Documentation Integration Workflow**
+
+For comprehensive test development:
+1. **Start with DOCSTRINGS_CODE.md** - Write rich production code docstrings with Args, Returns, Raises, and Behavior sections
+2. **Use this TESTING.md guide** - Apply docstring-driven test development principles to generate behavior-focused tests
+3. **Apply DOCSTRINGS_TESTS.md templates** - Document test intent, business impact, and success criteria using our test documentation standards
+4. **Follow CODE_STANDARDS.md** - Ensure overall code quality and documentation consistency 
