@@ -101,10 +101,21 @@ As a reference, see a completed example for `redis_ai` in `backend/tests/unit/in
 
 #### **Step 4: Write the Test Code**
 
-Goal: Implement the planned tests, focusing on observable outcomes.  
-Action: Instruct the assistant to fill in the code for the skeleton created in Step 3.
+Create a plan and execute the following prompt on these UUTs:
+- `factory`
+- `key_generator`
+- `security`
+
+```
+Build out the unit test skeletons located at `backend/tests/infrastructure/cache/[UUT]/` using @agent-unit-test-supervisor and @agent-unit-test-implementer . The public contract for [UUT] is located at `backend/contracts/infrastructure/cache/[UUT].pyi`. Tests should be built using behavior-driven principles as outlined in `docs/guides/developer/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md` using spec'd mocks located in `backend/tests/infrastructure/cache/conftest.py` or `backend/tests/infrastructure/cache/[UUT]/conftest.py`.
+```
+
+**Goal:** Implement the planned tests, focusing on observable outcomes.  
+
+**Action:** Instruct the assistant to fill in the code for the skeleton created in Step 3.
 
 * **Configure Mocks Locally:** The "happy path" fixtures from conftest.py are the default. For any test that requires a failure or edge case, configure the mock's behavior (return_value or side_effect) *inside that specific test function*.  
+
 * **Assert the Outcome:** The assertions must verify the final result, not the intermediate steps.  
 ```python
   # test_my_module.py  
