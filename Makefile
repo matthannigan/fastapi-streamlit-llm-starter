@@ -85,6 +85,12 @@ else
     PYTHON_CMD := $(VENV_PYTHON)
 endif
 
+# Use custom repomix command if present in .env
+REPOMIX_CMD ?= npx repomix
+ifeq ($(strip $(REPOMIX_CMD)),)
+REPOMIX_CMD := npx repomix
+endif
+
 ##################################################################################################
 # Help and Documentation
 ##################################################################################################
@@ -374,10 +380,11 @@ test-backend-infra-ai:
 
 # Run infrastructure service tests
 test-backend-infra-cache:
-	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q --retries 2 --retry-delay 5
-	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -n auto -q --retries 2 --retry-delay 5
+#	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
+#	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q --retries 2 --retry-delay 5
+#	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
+	@echo "🧪 Running backend cache infrastructure service tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --tb=no
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
@@ -700,11 +707,11 @@ restore:
 code_ref:
 	@cp README.md docs/README.md
 	@echo "✅ Repository README copied to docs/README"
-	@rm -Rf docs/code_ref/backend/  && mkdir docs/code_ref/backend/  && $(PYTHON_CMD) scripts/generate_code_docs.py backend/  docs/code_ref/backend/
-	@rm -Rf docs/code_ref/frontend/ && mkdir docs/code_ref/frontend/ && $(PYTHON_CMD) scripts/generate_code_docs.py frontend/ docs/code_ref/frontend/
-	@rm -Rf docs/code_ref/shared/   && mkdir docs/code_ref/shared/   && $(PYTHON_CMD) scripts/generate_code_docs.py shared/   docs/code_ref/shared/
-	@rm -Rf docs/code_ref/examples/ && mkdir docs/code_ref/examples/ && $(PYTHON_CMD) scripts/generate_code_docs.py examples/ docs/code_ref/examples/
-	@rm -Rf docs/code_ref/scripts/  && mkdir docs/code_ref/scripts/  && $(PYTHON_CMD) scripts/generate_code_docs.py scripts/  docs/code_ref/scripts/
+	@rm -Rf docs/code_ref/backend/  && mkdir docs/code_ref/backend/  && $(PYTHON_CMD) scripts/generate_code_docs.py backend/  --md-output-dir docs/code_ref/backend/
+	@rm -Rf docs/code_ref/frontend/ && mkdir docs/code_ref/frontend/ && $(PYTHON_CMD) scripts/generate_code_docs.py frontend/ --md-output-dir docs/code_ref/frontend/
+	@rm -Rf docs/code_ref/shared/   && mkdir docs/code_ref/shared/   && $(PYTHON_CMD) scripts/generate_code_docs.py shared/shared/   --md-output-dir docs/code_ref/shared/
+	@rm -Rf docs/code_ref/examples/ && mkdir docs/code_ref/examples/ && $(PYTHON_CMD) scripts/generate_code_docs.py examples/ --md-output-dir docs/code_ref/examples/
+	@rm -Rf docs/code_ref/scripts/  && mkdir docs/code_ref/scripts/  && $(PYTHON_CMD) scripts/generate_code_docs.py scripts/  --md-output-dir docs/code_ref/scripts/
 	@echo "✅ docstrings copied to docs/code_ref/"
 
 # Generate alternative documentation views from metadata
@@ -716,7 +723,7 @@ generate-doc-views:
 # Generate public contracts
 generate-contracts:
 	@echo "📄 Generating .pyi public contracts for backend..."
-	@find backend/contracts -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + && $(PYTHON_CMD) scripts/generate_contract.py backend/app/ -o backend/contracts/
+	@find backend/contracts -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + && $(PYTHON_CMD) scripts/generate_code_docs.py backend/app/ --pyi-output-dir backend/contracts/
 
 ##################################################################################################
 # Documentation Website (via Docusaurus)
@@ -767,10 +774,10 @@ mkdocs-build:
 repomix:
 	@echo "📄 Generating comprehensive repository documentation..."
 	@mkdir -p repomix-output
-	@echo "📝 Creating uncompressed documentation..."
-	@npx repomix --quiet --ignore "docs/code_ref*/**/*,backend/contracts/**/*" --output repomix-output/repomix_all-uncompressed.md
-	@echo "📝 Creating compressed documentation..."
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --ignore "docs/code_ref*/**/*,backend/contracts/**/*" --compress --output repomix-output/repomix_all-compressed.md
+	@echo "📝 Creating full repository uncompressed documentation..."
+	@$(REPOMIX_CMD) --output repomix-output/repomix_ALL_U.md --quiet --ignore "docs/code_ref*/**/*,**/contracts/**/*"
+	@echo "📝 Creating full repository compressed documentation..."
+	@$(REPOMIX_CMD) --output repomix-output/repomix_ALL_C.md --quiet --ignore "docs/code_ref*/**/*,**/contracts/**/*" --compress
 	@$(MAKE) repomix-backend
 	@$(MAKE) repomix-frontend  
 	@$(MAKE) repomix-docs
@@ -780,54 +787,62 @@ repomix:
 repomix-backend:
 	@echo "📄 Generating backend documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "backend/scripts/**/*,backend/tests/**/*,backend/contracts/**/*" --output repomix-output/repomix-backend.md
-	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*" --output repomix-output/repomix-backend_all_uncompressed.md
-	@npx repomix --quiet --include "backend/**/*,shared/**/*,.env.example,README.md" --ignore "backend/contracts/**/*,backend/tests/**/*" --output repomix-output/repomix-backend_no-tests_uncompressed.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-ALL_U.md --quiet --include "backend/**/*,shared/**/*,.env.example*,docs/guides/application/BACKEND.md" --ignore "backend/contracts/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-app_U.md --quiet --include "backend/**/*,shared/**/*,.env.example*,docs/guides/application/BACKEND.md" --ignore "backend/contracts/**/*,backend/examples/**/*,backend/scripts/**/*,backend/tests/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-app_C.md --quiet --include "backend/**/*,shared/**/*,.env.example*,docs/guides/application/BACKEND.md" --ignore "backend/contracts/**/*,backend/examples/**/*,backend/scripts/**/*,backend/tests/**/*" --compress
 
 # Generate backend tests documentation
 repomix-backend-tests:
 	@echo "📄 Generating backend tests documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/tests/**/*" --compress --output repomix-output/repomix_backend-tests.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-test_U.md --quiet --include "backend/tests/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-test_C.md --quiet --include "backend/tests/**/*" --compress
 
 # Generate backend cache documentation 
 repomix-backend-cache:
 	@echo "📄 Generating backend cache documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,README.md"  --ignore "backend/contracts/**/*" --output repomix-output/repomix_backend-cache-all_uncompressed.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache_U.md --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/cache/**/*,docs/**/*cache*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache_C.md --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/cache/**/*,docs/**/*cache*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*" --compress
 
-# Generate backend cache documentation 
+# Generate backend contracts documentation 
 repomix-backend-contracts:
 	@echo "📄 Generating backend cache documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*,.env.example,README.md" --output repomix-output/repomix_backend-contracts.md
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*,.env.example" --output repomix-output/repomix_backend-contracts-cache.md
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*,.env.example" --output repomix-output/repomix_backend-contracts-resilience.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts_U.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache_U.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience_U.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*"
 
-repomix-backend-tests-unit-conftest:
-	@echo "📄 Generating backend tests conftest documentation..."
+repomix-backend-tests-cache:
+	@echo "📄 Generating backend tests cache documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --quiet  --no-file-summary --include "backend/tests/unit/**/conftest.py" --output repomix-output/repomix_backend-tests-unit-conftest.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-tests-cache_U.md --quiet --include "backend/tests/**/cache/**/*,backend/tests/**/*cache*.*"
+
+repomix-backend-tests-cache-fixtures:
+	@echo "📄 Generating backend tests cache fixtures documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-tests-cache-fixtures_U.md --quiet --include "backend/tests/infrastructure/cache/**/conftest.py"
 
 # Generate frontend-only documentation
 repomix-frontend:
 	@echo "📄 Generating frontend documentation..."
 	@mkdir -p repomix-output
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "frontend/**/*,shared/**/*,.env.example,README.md" --compress --ignore "frontend/tests/**/*" --output repomix-output/repomix_frontend.md
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "frontend/**/*,shared/**/*,.env.example,README.md" --output repomix-output/repomix_frontend-all_uncompressed.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_frontend-ALL_U.md --quiet --include "frontend/**/*,shared/**/*,.env.example,frontend/README.md"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_frontend-app_C.md --quiet --include "frontend/**/*,shared/**/*,.env.example,frontend/README.md" --ignore "frontend/tests/**/*"  --compress
+	@$(REPOMIX_CMD) --output repomix-output/repomix_frontend-app_U.md --quiet --include "frontend/**/*,shared/**/*,.env.example,frontend/README.md" --ignore "frontend/tests/**/*"
 
 # Generate frontend tests documentation
 repomix-frontend-tests:
 	@echo "📄 Generating frontend tests documentation..."
 	@mkdir -p repomix-output
-	@npx repomix --quiet --include "frontend/tests/**/*" --compress --output repomix-output/repomix_frontend-tests.md
+	@$(REPOMIX_CMD) --output repomix-output/repomix_frontend-tests_U.md --quiet --include "frontend/tests/**/*"
 
 # Generate documentation for code_ref, READMEs and docs/
 repomix-docs: generate-doc-views
 	@echo "📄 Generating documentation for READMEs and docs/..."
 	@mkdir -p repomix-output
-#	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "docs/code_ref/**/*" --output repomix-output/repomix_code-ref.md
-	@npx --prefix /Users/matth/Github/MGH/repomix repomix --quiet --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*" --output repomix-output/repomix_docs.md
+#	@$(REPOMIX_CMD) --output repomix-output/repomix_code-ref.md --quiet --include "docs/code_ref/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_docs.md --quiet --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*,docs/reference/deep-dives/**/*"
 
 ##################################################################################################
 # CI/CD and Dependencies
