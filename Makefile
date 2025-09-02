@@ -712,6 +712,7 @@ code_ref:
 	@rm -Rf docs/code_ref/shared/   && mkdir docs/code_ref/shared/   && $(PYTHON_CMD) scripts/generate_code_docs.py shared/shared/   --md-output-dir docs/code_ref/shared/
 	@rm -Rf docs/code_ref/examples/ && mkdir docs/code_ref/examples/ && $(PYTHON_CMD) scripts/generate_code_docs.py examples/ --md-output-dir docs/code_ref/examples/
 	@rm -Rf docs/code_ref/scripts/  && mkdir docs/code_ref/scripts/  && $(PYTHON_CMD) scripts/generate_code_docs.py scripts/  --md-output-dir docs/code_ref/scripts/
+	@rm -f docs/code_ref/backend/index.md && rm -f docs/code_ref/backend/app/api/index.md && rm -f docs/code_ref/frontend/index.md && rm -f docs/code_ref/shared/index.md
 	@echo "✅ docstrings copied to docs/code_ref/"
 
 # Generate alternative documentation views from metadata
