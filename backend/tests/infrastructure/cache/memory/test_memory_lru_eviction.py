@@ -48,7 +48,8 @@ class TestInMemoryCacheLRUEviction:
         - asyncio: For asynchronous cache operation testing
     """
 
-    def test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded(self):
+    @pytest.mark.asyncio
+    async def test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded(self, small_memory_cache: InMemoryCache):
         """
         Test that LRU eviction removes the least recently used entry when cache reaches max_size.
         
@@ -85,9 +86,21 @@ class TestInMemoryCacheLRUEviction:
             - test_lru_eviction_updates_access_order_on_get_operations()
             - test_cache_size_never_exceeds_configured_max_size()
         """
-        pass
+        # Given: A cache with max_size 3
+        # When: Four items are added
+        await small_memory_cache.set('key1', 'value1')
+        await small_memory_cache.set('key2', 'value2')
+        await small_memory_cache.set('key3', 'value3')
+        await small_memory_cache.set('key4', 'value4')
 
-    def test_lru_eviction_updates_access_order_on_get_operations(self):
+        # Then: The least recently used item ('key1') is evicted
+        assert await small_memory_cache.exists('key1') is False
+        assert await small_memory_cache.exists('key2') is True
+        assert await small_memory_cache.exists('key3') is True
+        assert await small_memory_cache.exists('key4') is True
+
+    @pytest.mark.asyncio
+    async def test_lru_eviction_updates_access_order_on_get_operations(self, small_memory_cache: InMemoryCache):
         """
         Test that get() operations update LRU access order and affect eviction decisions.
         
@@ -123,9 +136,23 @@ class TestInMemoryCacheLRUEviction:
             - test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded()
             - test_set_operations_affect_lru_ordering()
         """
-        pass
+        # Given: Cache is filled, LRU order is key1, key2, key3
+        await small_memory_cache.set('key1', 'value1')
+        await small_memory_cache.set('key2', 'value2')
+        await small_memory_cache.set('key3', 'value3')
 
-    def test_set_operations_affect_lru_ordering(self):
+        # When: The least recently used item is accessed
+        await small_memory_cache.get('key1')  # LRU order is now key2, key3, key1
+        
+        # And: A new item is added, forcing an eviction
+        await small_memory_cache.set('key4', 'value4')
+
+        # Then: The new LRU item ('key2') is evicted
+        assert await small_memory_cache.exists('key2') is False
+        assert await small_memory_cache.exists('key1') is True
+
+    @pytest.mark.asyncio
+    async def test_set_operations_affect_lru_ordering(self, small_memory_cache: InMemoryCache):
         """
         Test that set() operations (both new and update) properly affect LRU access ordering.
         
@@ -161,9 +188,22 @@ class TestInMemoryCacheLRUEviction:
             - test_lru_eviction_updates_access_order_on_get_operations()
             - test_cache_operations_maintain_consistent_lru_state()
         """
-        pass
+        # Given: Cache is filled
+        await small_memory_cache.set('key1', 'value1')
+        await small_memory_cache.set('key2', 'value2')
+        await small_memory_cache.set('key3', 'value3')  # LRU order: key1, key2, key3
+        
+        # When: An existing key is updated
+        await small_memory_cache.set('key1', 'new_value1')  # LRU order: key2, key3, key1
+        
+        # And: A new item is added, forcing eviction
+        await small_memory_cache.set('key4', 'value4')
 
-    def test_cache_size_never_exceeds_configured_max_size(self):
+        # Then: The least recently used item ('key2') is evicted
+        assert await small_memory_cache.exists('key2') is False
+
+    @pytest.mark.asyncio
+    async def test_cache_size_never_exceeds_configured_max_size(self, small_memory_cache: InMemoryCache):
         """
         Test that cache size is strictly enforced and never exceeds max_size configuration.
         
@@ -198,9 +238,16 @@ class TestInMemoryCacheLRUEviction:
             - test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded()
             - test_statistics_reflect_eviction_operations()
         """
-        pass
+        # When: More items than max_size are added
+        for i in range(small_memory_cache.max_size + 5):
+            await small_memory_cache.set(f'key{i}', f'value{i}')
 
-    def test_eviction_operations_are_logged_for_monitoring(self):
+        # Then: The cache size does not exceed max_size
+        assert small_memory_cache.size() <= small_memory_cache.max_size
+
+    @patch('app.infrastructure.cache.memory.logger')
+    @pytest.mark.asyncio
+    async def test_eviction_operations_are_logged_for_monitoring(self, mock_logger, small_memory_cache: InMemoryCache):
         """
         Test that eviction operations are properly logged for operational monitoring.
         
@@ -236,9 +283,17 @@ class TestInMemoryCacheLRUEviction:
             - test_cache_operations_maintain_statistics_accuracy()
             - test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded()
         """
-        pass
+        # When: An eviction is triggered
+        await small_memory_cache.set('key1', 'value1')
+        await small_memory_cache.set('key2', 'value2')
+        await small_memory_cache.set('key3', 'value3')
+        await small_memory_cache.set('key4', 'value4')  # Evicts key1
 
-    def test_statistics_reflect_eviction_operations(self):
+        # Then: The eviction is logged
+        mock_logger.debug.assert_called_with("Evicting key %s (LRU)", 'key1')
+
+    @pytest.mark.asyncio
+    async def test_statistics_reflect_eviction_operations(self, small_memory_cache: InMemoryCache):
         """
         Test that cache statistics accurately reflect eviction operations and counts.
         
@@ -273,9 +328,18 @@ class TestInMemoryCacheLRUEviction:
             - test_get_stats_provides_comprehensive_cache_metrics()
             - test_cache_size_never_exceeds_configured_max_size()
         """
-        pass
+        # Given: No evictions have occurred
+        assert small_memory_cache.get_stats()['evictions'] == 0
 
-    def test_cache_operations_maintain_consistent_lru_state(self):
+        # When: An eviction is triggered
+        for i in range(small_memory_cache.max_size + 1):
+            await small_memory_cache.set(f'key{i}', f'value{i}')
+
+        # Then: The eviction count is updated
+        assert small_memory_cache.get_stats()['evictions'] == 1
+
+    @pytest.mark.asyncio
+    async def test_cache_operations_maintain_consistent_lru_state(self, small_memory_cache: InMemoryCache):
         """
         Test that mixed cache operations maintain consistent and accurate LRU state.
         
@@ -312,9 +376,23 @@ class TestInMemoryCacheLRUEviction:
             - test_set_operations_affect_lru_ordering()
             - test_delete_operations_update_lru_order_correctly()
         """
-        pass
+        # Given: A sequence of mixed operations
+        await small_memory_cache.set('key1', 'value1')
+        await small_memory_cache.set('key2', 'value2')
+        await small_memory_cache.set('key3', 'value3')  # Order: 1, 2, 3
+        await small_memory_cache.get('key1')           # Order: 2, 3, 1
+        await small_memory_cache.delete('key2')        # Order: 3, 1
+        await small_memory_cache.set('key4', 'value4')  # Order: 3, 1, 4
 
-    def test_delete_operations_update_lru_order_correctly(self):
+        # When: An eviction is triggered
+        await small_memory_cache.set('key5', 'value5')
+
+        # Then: The correct item ('key3') is evicted based on the complex history
+        assert await small_memory_cache.exists('key3') is False
+        assert await small_memory_cache.exists('key1') is True
+
+    @pytest.mark.asyncio
+    async def test_delete_operations_update_lru_order_correctly(self, small_memory_cache: InMemoryCache):
         """
         Test that delete() operations properly remove entries from LRU access order tracking.
         
@@ -350,4 +428,15 @@ class TestInMemoryCacheLRUEviction:
             - test_cache_operations_maintain_consistent_lru_state()
             - test_delete_removes_existing_key_successfully() (from core operations)
         """
-        pass
+        # Given: A full cache
+        await small_memory_cache.set('key1', 'value1')
+        await small_memory_cache.set('key2', 'value2')
+        await small_memory_cache.set('key3', 'value3')  # Order: 1, 2, 3
+        
+        # When: The middle item in the LRU order is deleted
+        await small_memory_cache.delete('key2')
+        
+        # Then: The remaining items maintain their relative order
+        await small_memory_cache.set('key4', 'value4')  # Should evict key1, not key3
+        assert await small_memory_cache.exists('key1') is False
+        assert await small_memory_cache.exists('key3') is True

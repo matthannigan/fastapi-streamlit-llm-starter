@@ -85,7 +85,16 @@ class TestInMemoryCacheInitialization:
             - test_init_with_default_parameters_applies_documented_defaults()
             - test_init_with_invalid_parameters_raises_configuration_error()
         """
-        pass
+        # Given
+        valid_ttl = 60
+        valid_max_size = 50
+        
+        # When
+        cache = InMemoryCache(default_ttl=valid_ttl, max_size=valid_max_size)
+        
+        # Then
+        assert cache.default_ttl == valid_ttl
+        assert cache.max_size == valid_max_size
 
     def test_init_with_default_parameters_applies_documented_defaults(self):
         """
@@ -120,7 +129,12 @@ class TestInMemoryCacheInitialization:
             - test_init_with_explicit_parameters_overrides_defaults()
             - test_init_with_valid_parameters_creates_cache_with_correct_configuration()
         """
-        pass
+        # When
+        cache = InMemoryCache()
+        
+        # Then
+        assert cache.default_ttl == 3600
+        assert cache.max_size == 1000
 
     def test_init_with_explicit_parameters_overrides_defaults(self):
         """
@@ -155,7 +169,16 @@ class TestInMemoryCacheInitialization:
             - test_init_with_default_parameters_applies_documented_defaults()
             - test_init_parameter_validation_enforces_documented_ranges()
         """
-        pass
+        # Given
+        custom_ttl = 120
+        custom_max_size = 200
+        
+        # When
+        cache = InMemoryCache(default_ttl=custom_ttl, max_size=custom_max_size)
+        
+        # Then
+        assert cache.default_ttl == custom_ttl
+        assert cache.max_size == custom_max_size
 
     def test_init_with_invalid_parameters_raises_configuration_error(self):
         """
@@ -193,7 +216,19 @@ class TestInMemoryCacheInitialization:
             - test_init_with_valid_parameters_creates_cache_with_correct_configuration()
             - test_init_parameter_boundary_conditions()
         """
-        pass
+        invalid_params = [
+            {'default_ttl': 0},
+            {'default_ttl': -1},
+            {'default_ttl': 86401},
+            {'max_size': 0},
+            {'max_size': -1},
+            {'max_size': 100001},
+            {'default_ttl': 'invalid'},
+            {'max_size': 100.5},
+        ]
+        for params in invalid_params:
+            with pytest.raises(ConfigurationError):
+                InMemoryCache(**params)
 
     def test_init_parameter_boundary_conditions(self):
         """
@@ -229,7 +264,22 @@ class TestInMemoryCacheInitialization:
             - test_init_with_invalid_parameters_raises_configuration_error()
             - test_cache_operations_respect_configured_limits()
         """
-        pass
+        # Test valid boundaries (should not raise error)
+        try:
+            InMemoryCache(default_ttl=1, max_size=1)
+            InMemoryCache(default_ttl=86400, max_size=100000)
+        except ConfigurationError:
+            pytest.fail("Valid boundary conditions raised ConfigurationError unexpectedly.")
+
+        # Test invalid boundaries (should raise error)
+        with pytest.raises(ConfigurationError):
+            InMemoryCache(default_ttl=0)
+        with pytest.raises(ConfigurationError):
+            InMemoryCache(max_size=0)
+        with pytest.raises(ConfigurationError):
+            InMemoryCache(default_ttl=86401)
+        with pytest.raises(ConfigurationError):
+            InMemoryCache(max_size=100001)
 
     def test_init_storage_structures_properly_initialized(self):
         """
@@ -266,4 +316,14 @@ class TestInMemoryCacheInitialization:
             - test_cache_operations_use_initialized_structures()
             - test_statistics_start_from_clean_state()
         """
-        pass
+        # When
+        cache = InMemoryCache()
+        
+        # Then
+        stats = cache.get_stats()
+        assert stats['total_entries'] == 0
+        assert stats['active_entries'] == 0
+        assert stats['hits'] == 0
+        assert stats['misses'] == 0
+        assert stats['evictions'] == 0
+        assert stats['utilization_percent'] == 0.0

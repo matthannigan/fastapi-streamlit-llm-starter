@@ -51,7 +51,8 @@ class TestInMemoryCacheCoreOperations:
         - time: For TTL calculations and expiration timing (can be mocked)
     """
 
-    def test_get_returns_stored_value_when_key_exists_and_not_expired(self):
+    @pytest.mark.asyncio
+    async def test_get_returns_stored_value_when_key_exists_and_not_expired(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
         """
         Test that get() returns the original stored value for valid, non-expired cache entries.
         
@@ -69,7 +70,7 @@ class TestInMemoryCacheCoreOperations:
             And: No side effects occur during retrieval (no modification)
             
         Data Integrity Verified:
-            - Complex data structures (dictionaries, lists) returned unchanged
+            - Complex data structures (dictionaries, lists) returned unchanged by value, not by reference
             - String values returned with original content and encoding
             - Numeric values returned with original precision
             - Boolean and None values returned correctly
@@ -88,9 +89,15 @@ class TestInMemoryCacheCoreOperations:
             - test_get_returns_none_when_key_expired()
             - test_set_stores_value_successfully_for_retrieval()
         """
-        pass
+        # Given: a value is stored
+        await default_memory_cache.set(sample_cache_key, sample_cache_value)
+        # When: we get the value before expiration
+        retrieved_value = await default_memory_cache.get(sample_cache_key)
+        # Then: the value matches exactly
+        assert retrieved_value == sample_cache_value
 
-    def test_get_returns_none_when_key_does_not_exist(self):
+    @pytest.mark.asyncio
+    async def test_get_returns_none_when_key_does_not_exist(self, default_memory_cache: InMemoryCache, sample_cache_key: str):
         """
         Test that get() returns None for non-existent cache keys.
         
@@ -124,9 +131,11 @@ class TestInMemoryCacheCoreOperations:
             - test_get_returns_stored_value_when_key_exists_and_not_expired()
             - test_exists_returns_false_for_non_existent_key()
         """
-        pass
+        retrieved_value = await default_memory_cache.get(sample_cache_key)
+        assert retrieved_value is None
 
-    def test_get_returns_none_when_key_expired(self):
+    @pytest.mark.asyncio
+    async def test_get_returns_none_when_key_expired(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any, mock_time_provider):
         """
         Test that get() returns None for expired cache entries and cleans up expired data.
         
@@ -150,10 +159,10 @@ class TestInMemoryCacheCoreOperations:
             - No stale data is ever returned after expiration
             
         Fixtures Used:
-            - fast_expiry_memory_cache: Cache with short TTL for expiration testing
+            - default_memory_cache: Cache for expiration testing
             - sample_cache_key: Key for storing entry that will expire
             - sample_cache_value: Value to store and verify expiration
-            - mock_time_provider: For controlling time advancement (if needed)
+            - mock_time_provider: For controlling time advancement without delays
             
         Automatic Cleanup Verification:
             Expired entries are removed automatically without manual intervention
@@ -162,9 +171,18 @@ class TestInMemoryCacheCoreOperations:
             - test_get_returns_stored_value_when_key_exists_and_not_expired()
             - test_automatic_cleanup_removes_expired_entries()
         """
-        pass
+        # Given: Value was stored with TTL and time is mocked
+        with mock_time_provider.patch():
+            await default_memory_cache.set(sample_cache_key, sample_cache_value, ttl=60)
 
-    def test_set_stores_value_successfully_for_retrieval(self):
+            # When: Time advances past TTL expiration
+            mock_time_provider.advance(61)  # Advance 61 seconds
+            retrieved_value = await default_memory_cache.get(sample_cache_key)
+        
+        assert retrieved_value is None
+
+    @pytest.mark.asyncio
+    async def test_set_stores_value_successfully_for_retrieval(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
         """
         Test that set() stores values correctly and makes them available for get() operations.
         
@@ -200,9 +218,17 @@ class TestInMemoryCacheCoreOperations:
             - test_get_returns_stored_value_when_key_exists_and_not_expired()
             - test_set_with_custom_ttl_applies_expiration()
         """
-        pass
+        # When: set() is called with key, value
+        await default_memory_cache.set(sample_cache_key, sample_cache_value)
 
-    def test_set_with_custom_ttl_applies_expiration(self):
+        # Then: Value is stored and immediately available via get()
+        retrieved_value = await default_memory_cache.get(sample_cache_key)
+        
+        # And: Stored value matches original exactly
+        assert retrieved_value == sample_cache_value
+
+    @pytest.mark.asyncio
+    async def test_set_with_custom_ttl_applies_expiration(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any, mock_time_provider):
         """
         Test that set() with custom TTL parameter applies correct expiration timing.
         
@@ -229,7 +255,7 @@ class TestInMemoryCacheCoreOperations:
             - default_memory_cache: Cache with known default TTL for comparison
             - sample_cache_key: Key for custom TTL testing
             - sample_cache_value: Value for TTL expiration testing
-            - short_ttl: Custom TTL value different from default
+            - mock_time_provider: For deterministic TTL testing without delays
             
         TTL Flexibility:
             Cache supports per-entry TTL customization for diverse use cases
@@ -238,9 +264,19 @@ class TestInMemoryCacheCoreOperations:
             - test_set_stores_value_successfully_for_retrieval()
             - test_get_returns_none_when_key_expired()
         """
-        pass
+        # When: set() is called with a custom TTL and time is mocked
+        custom_ttl = 30  # 30 seconds
+        with mock_time_provider.patch():
+            await default_memory_cache.set(sample_cache_key, sample_cache_value, ttl=custom_ttl)
 
-    def test_set_with_none_ttl_uses_default_ttl(self):
+            # Then: The entry expires according to the custom TTL
+            mock_time_provider.advance(custom_ttl + 1)  # Advance past expiration
+            retrieved_value = await default_memory_cache.get(sample_cache_key)
+        
+        assert retrieved_value is None
+
+    @pytest.mark.asyncio
+    async def test_set_with_none_ttl_uses_default_ttl(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any, mock_time_provider):
         """
         Test that set() with None TTL parameter applies the configured default TTL.
         
@@ -267,6 +303,7 @@ class TestInMemoryCacheCoreOperations:
             - default_memory_cache: Cache with known default TTL configuration
             - sample_cache_key: Key for default TTL testing
             - sample_cache_value: Value for TTL behavior verification
+            - mock_time_provider: For deterministic TTL testing without delays
             
         Parameter Consistency:
             None TTL parameter provides predictable default TTL application
@@ -275,9 +312,19 @@ class TestInMemoryCacheCoreOperations:
             - test_set_with_custom_ttl_applies_expiration()
             - test_set_stores_value_successfully_for_retrieval()
         """
-        pass
+        # Given: A cache with a default TTL and time is mocked
+        # When: set() is called with ttl=None
+        with mock_time_provider.patch():
+            await default_memory_cache.set(sample_cache_key, sample_cache_value, ttl=None)
 
-    def test_delete_removes_existing_key_successfully(self):
+            # Then: The entry expires according to the default TTL (3600 seconds)
+            mock_time_provider.advance(3601)  # Advance past default TTL
+            retrieved_value = await default_memory_cache.get(sample_cache_key)
+            
+        assert retrieved_value is None
+
+    @pytest.mark.asyncio
+    async def test_delete_removes_existing_key_successfully(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
         """
         Test that delete() removes existing cache entries and frees memory.
         
@@ -314,9 +361,18 @@ class TestInMemoryCacheCoreOperations:
             - test_delete_non_existent_key_handles_gracefully()
             - test_get_returns_none_when_key_does_not_exist()
         """
-        pass
+        # Given: A cache entry exists
+        await default_memory_cache.set(sample_cache_key, sample_cache_value)
+        assert await default_memory_cache.exists(sample_cache_key) is True
 
-    def test_delete_non_existent_key_handles_gracefully(self):
+        # When: delete() is called
+        await default_memory_cache.delete(sample_cache_key)
+
+        # Then: The entry is removed
+        assert await default_memory_cache.exists(sample_cache_key) is False
+
+    @pytest.mark.asyncio
+    async def test_delete_non_existent_key_handles_gracefully(self, default_memory_cache: InMemoryCache, sample_cache_key: str):
         """
         Test that delete() handles non-existent keys gracefully without errors.
         
@@ -350,9 +406,14 @@ class TestInMemoryCacheCoreOperations:
             - test_delete_removes_existing_key_successfully()
             - test_exists_returns_false_for_non_existent_key()
         """
-        pass
+        # When: delete() is called with a non-existent key
+        # Then: No exception should be raised
+        await default_memory_cache.delete(sample_cache_key)
+        # And: Cache state remains unchanged
+        assert await default_memory_cache.exists(sample_cache_key) is False
 
-    def test_exists_returns_true_for_valid_non_expired_entry(self):
+    @pytest.mark.asyncio
+    async def test_exists_returns_true_for_valid_non_expired_entry(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
         """
         Test that exists() returns True for stored, non-expired cache entries.
         
@@ -387,9 +448,15 @@ class TestInMemoryCacheCoreOperations:
             - test_exists_returns_false_for_non_existent_key()
             - test_exists_returns_false_for_expired_entry()
         """
-        pass
+        # Given: A value has been stored
+        await default_memory_cache.set(sample_cache_key, sample_cache_value)
 
-    def test_exists_returns_false_for_non_existent_key(self):
+        # When: exists() is called
+        # Then: True is returned
+        assert await default_memory_cache.exists(sample_cache_key) is True
+
+    @pytest.mark.asyncio
+    async def test_exists_returns_false_for_non_existent_key(self, default_memory_cache: InMemoryCache, sample_cache_key: str):
         """
         Test that exists() returns False for keys that have never been stored.
         
@@ -416,6 +483,7 @@ class TestInMemoryCacheCoreOperations:
             - default_memory_cache: Fresh cache instance for non-existence testing
             - sample_cache_key: Key that has not been stored
             
+            
         Accurate Detection:
             Existence checks provide reliable information about cache state
             
@@ -423,9 +491,13 @@ class TestInMemoryCacheCoreOperations:
             - test_exists_returns_true_for_valid_non_expired_entry()
             - test_get_returns_none_when_key_does_not_exist()
         """
-        pass
+        # Given: The key has never been stored
+        # When: exists() is called
+        # Then: False is returned
+        assert await default_memory_cache.exists(sample_cache_key) is False
 
-    def test_exists_returns_false_for_expired_entry(self):
+    @pytest.mark.asyncio
+    async def test_exists_returns_false_for_expired_entry(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any, mock_time_provider):
         """
         Test that exists() returns False for expired cache entries and triggers cleanup.
         
@@ -449,9 +521,10 @@ class TestInMemoryCacheCoreOperations:
             - Behavior consistent with get() method expiration handling
             
         Fixtures Used:
-            - fast_expiry_memory_cache: Cache with short TTL for expiration testing
+            - default_memory_cache: Cache for expiration testing
             - sample_cache_key: Key for entry that will expire
             - sample_cache_value: Value to store and verify expiration
+            - mock_time_provider: For deterministic expiration testing without delays
             
         Automatic Maintenance:
             Cache automatically maintains accuracy through expiration cleanup
@@ -460,4 +533,12 @@ class TestInMemoryCacheCoreOperations:
             - test_exists_returns_true_for_valid_non_expired_entry()
             - test_get_returns_none_when_key_expired()
         """
-        pass
+        # Given: A value was stored with a TTL and time is mocked
+        with mock_time_provider.patch():
+            await default_memory_cache.set(sample_cache_key, sample_cache_value, ttl=60)
+
+            # When: Time advances past expiration
+            mock_time_provider.advance(61)  # Advance past TTL
+
+            # Then: exists() returns False
+            assert await default_memory_cache.exists(sample_cache_key) is False

@@ -99,7 +99,7 @@ def large_memory_cache():
 
 
 @pytest.fixture
-def populated_memory_cache():
+async def populated_memory_cache():
     """
     Pre-populated InMemoryCache instance for testing operations on existing data.
     
@@ -118,29 +118,14 @@ def populated_memory_cache():
         a cache that is already in a known state.
     """
     from app.infrastructure.cache.memory import InMemoryCache
-    import asyncio
     
     cache = InMemoryCache(default_ttl=3600, max_size=100)
     
     # Pre-populate with test data
-    async def populate():
-        await cache.set("user:1", {"id": 1, "name": "Alice"})
-        await cache.set("user:2", {"id": 2, "name": "Bob"})
-        await cache.set("session:abc", "active_session")
-        await cache.set("config:app", {"theme": "dark", "version": "1.0"})
-    
-    # Run population in event loop if one exists, otherwise create one
-    try:
-        loop = asyncio.get_running_loop()
-        # If we have a running loop, we need to use it
-        task = loop.create_task(populate())
-        # We can't await here since we're in a sync function, 
-        # so we'll return a cache that needs to be populated by the test
-        cache._needs_population = True
-        cache._populate_task = populate
-    except RuntimeError:
-        # No running loop, we can create one
-        asyncio.run(populate())
+    await cache.set("user:1", {"id": 1, "name": "Alice"})
+    await cache.set("user:2", {"id": 2, "name": "Bob"})
+    await cache.set("session:abc", "active_session")
+    await cache.set("config:app", {"theme": "dark", "version": "1.0"})
     
     return cache
 
@@ -201,9 +186,16 @@ def mock_time_provider():
     This is a stateful mock that maintains an internal time counter.
     
     Usage:
-        mock_time.current_time = 1000  # Set base time
-        mock_time.advance(3600)        # Advance by 1 hour
-        assert mock_time.current_time == 4600
+        with mock_time_provider.patch():
+            cache.set("key", "value", ttl=60)
+            mock_time_provider.advance(61)  # Advance by 61 seconds
+            assert cache.get("key") is None  # Should be expired
+    
+    Context Manager Methods:
+        - patch(): Returns context manager that patches time.time()
+        - advance(seconds): Advance time by specified seconds
+        - set_time(timestamp): Set absolute time
+        - reset(): Reset to current real time
 
     Note:
         This fixture is crucial for creating **deterministic tests** for 
@@ -212,19 +204,35 @@ def mock_time_provider():
         allows the test to instantly advance time, ensuring that expiration can be 
         tested quickly and reliably.
     """
-    mock_time = MagicMock()
-    mock_time.current_time = time.time()  # Start with real current time
+    from unittest.mock import patch
+    from contextlib import contextmanager
     
-    def get_time():
-        return mock_time.current_time
-    
-    def advance_time(seconds):
-        mock_time.current_time += seconds
+    class MockTimeProvider:
+        def __init__(self):
+            self.current_time = time.time()  # Start with real current time
         
-    mock_time.time = get_time
-    mock_time.advance = advance_time
+        def get_time(self):
+            return self.current_time
+        
+        def advance(self, seconds):
+            """Advance time by specified seconds."""
+            self.current_time += seconds
+        
+        def set_time(self, timestamp):
+            """Set absolute time."""
+            self.current_time = timestamp
+        
+        def reset(self):
+            """Reset to current real time."""
+            self.current_time = time.time()
+            
+        @contextmanager
+        def patch(self):
+            """Context manager that patches time.time() with mock time."""
+            with patch('time.time', side_effect=self.get_time):
+                yield self
     
-    return mock_time
+    return MockTimeProvider()
 
 
 # Note: cache_statistics_sample fixture is now provided by the parent conftest.py

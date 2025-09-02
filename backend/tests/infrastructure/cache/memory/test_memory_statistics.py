@@ -50,7 +50,8 @@ class TestInMemoryCacheStatistics:
         - asyncio: For asynchronous method testing
     """
 
-    def test_get_stats_provides_comprehensive_cache_metrics(self):
+    @pytest.mark.asyncio
+    async def test_get_stats_provides_comprehensive_cache_metrics(self, populated_memory_cache: InMemoryCache, cache_statistics_sample: Dict[str, Any]):
         """
         Test that get_stats() returns comprehensive cache performance and usage metrics.
         
@@ -90,9 +91,16 @@ class TestInMemoryCacheStatistics:
             - test_statistics_update_correctly_after_cache_operations()
             - test_utilization_percentage_calculated_accurately()
         """
-        pass
+        # When
+        stats = populated_memory_cache.get_stats()
 
-    def test_statistics_update_correctly_after_cache_operations(self):
+        # Then
+        expected_keys = cache_statistics_sample['memory'].keys()
+        for key in expected_keys:
+            assert key in stats, f"Key '{key}' not found in stats"
+
+    @pytest.mark.asyncio
+    async def test_statistics_update_correctly_after_cache_operations(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
         """
         Test that cache statistics update accurately as operations are performed.
         
@@ -128,9 +136,26 @@ class TestInMemoryCacheStatistics:
             - test_get_stats_provides_comprehensive_cache_metrics()
             - test_hit_rate_calculation_reflects_actual_operation_outcomes()
         """
-        pass
+        # Initial state
+        initial_stats = default_memory_cache.get_stats()
+        assert initial_stats['hits'] == 0
+        assert initial_stats['misses'] == 0
 
-    def test_utilization_percentage_calculated_accurately(self):
+        # Cache Miss
+        await default_memory_cache.get("non_existent_key")
+        miss_stats = default_memory_cache.get_stats()
+        assert miss_stats['misses'] == 1
+        assert miss_stats['hits'] == 0
+        
+        # Cache Hit
+        await default_memory_cache.set(sample_cache_key, sample_cache_value)
+        await default_memory_cache.get(sample_cache_key)
+        hit_stats = default_memory_cache.get_stats()
+        assert hit_stats['misses'] == 1
+        assert hit_stats['hits'] == 1
+
+    @pytest.mark.asyncio
+    async def test_utilization_percentage_calculated_accurately(self, small_memory_cache: InMemoryCache):
         """
         Test that utilization percentage in statistics reflects accurate cache fullness.
         
@@ -163,11 +188,22 @@ class TestInMemoryCacheStatistics:
             
         Related Tests:
             - test_get_stats_provides_comprehensive_cache_metrics()
-            - test_active_entries_count_excludes_expired_entries()
+            - test_active_entries_count_excludes_expired entries()
         """
-        pass
+        # Given: An empty cache (max_size=3)
+        assert small_memory_cache.get_stats()['utilization_percent'] == 0.0
+        
+        # When: One item is added
+        await small_memory_cache.set("key1", "value1")
+        assert small_memory_cache.get_stats()['utilization_percent'] == pytest.approx(33.33, rel=0.01)
 
-    def test_hit_rate_calculation_reflects_actual_operation_outcomes(self):
+        # When: Cache is filled
+        await small_memory_cache.set("key2", "value2")
+        await small_memory_cache.set("key3", "value3")
+        assert small_memory_cache.get_stats()['utilization_percent'] == 100.0
+
+    @pytest.mark.asyncio
+    async def test_hit_rate_calculation_reflects_actual_operation_outcomes(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
         """
         Test that hit rate calculation in statistics accurately reflects cache performance.
         
@@ -203,9 +239,25 @@ class TestInMemoryCacheStatistics:
             - test_statistics_update_correctly_after_cache_operations()
             - test_cache_hits_and_misses_tracked_accurately()
         """
-        pass
+        # Given: No operations
+        assert default_memory_cache.get_stats()['hit_rate'] == 0.0
 
-    def test_get_keys_returns_all_cache_keys_including_expired(self):
+        # Scenario: 1 hit, 1 miss (50%)
+        await default_memory_cache.set(sample_cache_key, sample_cache_value)
+        await default_memory_cache.get(sample_cache_key)  # Hit
+        await default_memory_cache.get("non_existent_key")  # Miss
+        assert default_memory_cache.get_stats()['hit_rate'] == 50.0
+
+        # Scenario: 2 hits, 1 miss (~66.7%)
+        await default_memory_cache.get(sample_cache_key)  # Hit
+        assert default_memory_cache.get_stats()['hit_rate'] == pytest.approx(66.67, rel=0.01)
+
+        # Scenario: Additional miss drops to 50.0%
+        await default_memory_cache.get("another_miss")
+        assert default_memory_cache.get_stats()['hit_rate'] == pytest.approx(50.0, rel=0.01)
+
+    @pytest.mark.asyncio
+    async def test_get_keys_returns_all_cache_keys_including_expired(self, default_memory_cache: InMemoryCache, mock_time_provider):
         """
         Test that get_keys() returns all cache keys including expired entries.
         
@@ -230,9 +282,9 @@ class TestInMemoryCacheStatistics:
             - Empty cache returns empty key list
             
         Fixtures Used:
-            - fast_expiry_memory_cache: Cache for expired entry testing
+            - default_memory_cache: Cache for expired entry testing
             - mixed_ttl_test_data: Entries with various expiration states
-            - cache_test_keys: Known keys for inventory verification
+            - mock_time_provider: For deterministic expiration testing without delays
             
         Complete Visibility:
             All stored cache keys are accessible for analysis regardless of expiration
@@ -241,9 +293,21 @@ class TestInMemoryCacheStatistics:
             - test_get_active_keys_returns_only_non_expired_keys()
             - test_expired_entries_remain_until_cleanup()
         """
-        pass
+        # Given: A mix of soon-to-be-expired and non-expired keys
+        with mock_time_provider.patch():
+            await default_memory_cache.set("expired_key", "value1", ttl=60)  # Short TTL
+            await default_memory_cache.set("active_key", "value2", ttl=3600)  # Long TTL
 
-    def test_get_active_keys_returns_only_non_expired_keys(self):
+            # When: Time passes, making one key expire
+            mock_time_provider.advance(61)  # Advance past first key's TTL
+
+            # Then: get_keys() returns both
+            keys = default_memory_cache.get_keys()
+            assert "expired_key" in keys
+            assert "active_key" in keys
+
+    @pytest.mark.asyncio
+    async def test_get_active_keys_returns_only_non_expired_keys(self, default_memory_cache: InMemoryCache, mock_time_provider):
         """
         Test that get_active_keys() returns only currently valid, non-expired keys.
         
@@ -268,9 +332,9 @@ class TestInMemoryCacheStatistics:
             - Empty active list when all entries expired
             
         Fixtures Used:
-            - fast_expiry_memory_cache: Cache for expiration filtering testing
+            - default_memory_cache: Cache for expiration filtering testing
             - mixed_ttl_test_data: Entries with known expiration states
-            - sample_cache_key: Active key for positive verification
+            - mock_time_provider: For deterministic expiration testing without delays
             
         Accurate Filtering:
             Active key list precisely reflects currently accessible cache content
@@ -279,9 +343,21 @@ class TestInMemoryCacheStatistics:
             - test_get_keys_returns_all_cache_keys_including_expired()
             - test_active_vs_expired_key_distinction()
         """
-        pass
+        # Given: A mix of soon-to-be-expired and non-expired keys
+        with mock_time_provider.patch():
+            await default_memory_cache.set("expired_key", "value1", ttl=60)  # Short TTL
+            await default_memory_cache.set("active_key", "value2", ttl=3600)  # Long TTL
 
-    def test_size_method_returns_accurate_current_entry_count(self):
+            # When: Time passes
+            mock_time_provider.advance(61)  # Advance past first key's TTL
+
+            # Then: get_active_keys() returns only the non-expired key
+            active_keys = default_memory_cache.get_active_keys()
+            assert "expired_key" not in active_keys
+            assert "active_key" in active_keys
+
+    @pytest.mark.asyncio
+    async def test_size_method_returns_accurate_current_entry_count(self, default_memory_cache: InMemoryCache):
         """
         Test that size() method returns accurate count of current cache entries.
         
@@ -317,9 +393,19 @@ class TestInMemoryCacheStatistics:
             - test_cache_size_never_exceeds_configured_max_size() (from LRU tests)
             - test_size_decreases_after_delete_operations()
         """
-        pass
+        # Given an empty cache
+        assert default_memory_cache.size() == 0
+        
+        # When items are added
+        await default_memory_cache.set("key1", "value1")
+        await default_memory_cache.set("key2", "value2")
+        assert default_memory_cache.size() == 2
 
-    def test_get_ttl_returns_accurate_remaining_time_for_entries(self):
+        await default_memory_cache.delete("key1")
+        assert default_memory_cache.size() == 1
+
+    @pytest.mark.asyncio
+    async def test_get_ttl_returns_accurate_remaining_time_for_entries(self, default_memory_cache: InMemoryCache, sample_cache_key: str):
         """
         Test that get_ttl() method returns accurate remaining TTL for cache entries.
         
@@ -353,11 +439,20 @@ class TestInMemoryCacheStatistics:
             
         Related Tests:
             - test_ttl_expiration_behavior_matches_get_ttl_predictions()
-            - test_get_ttl_handles_edge_cases_correctly()
+            - test_get_ttl_handles_edge cases correctly()
         """
-        pass
+        # When: an item is set with a TTL
+        await default_memory_cache.set(sample_cache_key, "value", ttl=60)
+        
+        # Then: get_ttl returns the remaining time
+        ttl = await default_memory_cache.get_ttl(sample_cache_key)
+        assert 59 <= ttl <= 60
 
-    def test_memory_usage_statistics_reflect_actual_storage_requirements(self):
+        # And: Returns None for non-existent keys
+        assert await default_memory_cache.get_ttl("non_existent") is None
+
+    @pytest.mark.asyncio
+    async def test_memory_usage_statistics_reflect_actual_storage_requirements(self, default_memory_cache: InMemoryCache):
         """
         Test that memory usage statistics accurately estimate actual cache memory consumption.
         
@@ -393,9 +488,21 @@ class TestInMemoryCacheStatistics:
             - test_get_stats_provides_comprehensive_cache_metrics()
             - test_memory_usage_decreases_after_evictions()
         """
-        pass
+        # Given: An empty cache
+        initial_usage = default_memory_cache.get_stats()['memory_usage_bytes']
+        
+        # When: A small item is added
+        await default_memory_cache.set("small", "a")
+        small_item_usage = default_memory_cache.get_stats()['memory_usage_bytes']
+        assert small_item_usage > initial_usage
 
-    def test_statistics_remain_consistent_across_async_operations(self):
+        # When: A large item is added
+        await default_memory_cache.set("large", "a" * 1000)
+        large_item_usage = default_memory_cache.get_stats()['memory_usage_bytes']
+        assert large_item_usage > small_item_usage
+
+    @pytest.mark.asyncio
+    async def test_statistics_remain_consistent_across_async_operations(self, default_memory_cache: InMemoryCache, cache_test_keys: List[str]):
         """
         Test that cache statistics remain consistent and accurate during concurrent async operations.
         
@@ -431,4 +538,24 @@ class TestInMemoryCacheStatistics:
             - test_statistics_update_correctly_after_cache_operations()
             - test_cache_operations_maintain_consistent_internal_state()
         """
-        pass
+        # Given: A set of concurrent operations
+        num_ops = 20
+        tasks = []
+        for i in range(num_ops):
+            key = cache_test_keys[i % len(cache_test_keys)]
+            if i % 2 == 0:
+                tasks.append(default_memory_cache.set(f"set_key_{i}", "value"))
+            else:
+                tasks.append(default_memory_cache.get(f"get_key_{i}"))
+        
+        # When: The operations are run concurrently
+        await asyncio.gather(*tasks)
+
+        # Then: The statistics are consistent
+        stats = default_memory_cache.get_stats()
+        
+        # The number of set operations should be reflected in the size
+        assert stats['active_entries'] == num_ops / 2
+        # The number of get operations should be reflected in misses (since keys didn't exist)
+        assert stats['misses'] == num_ops / 2
+        assert stats['hits'] == 0
