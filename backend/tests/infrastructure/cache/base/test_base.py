@@ -17,6 +17,7 @@ External Dependencies:
 """
 
 import pytest
+import inspect
 from unittest.mock import MagicMock, AsyncMock
 from abc import ABC
 from typing import Any, Optional
@@ -112,7 +113,27 @@ class TestCacheInterfaceContract:
             - test_incomplete_implementation_cannot_be_instantiated()
             - test_complete_implementation_can_be_instantiated()
         """
-        pass
+        # Given: CacheInterface abstract base class
+        # When: Direct instantiation is attempted
+        with pytest.raises(TypeError) as exc_info:
+            CacheInterface()
+        
+        # Then: TypeError is raised with appropriate message
+        error_message = str(exc_info.value)
+        assert "abstract class" in error_message.lower() or "can't instantiate" in error_message.lower()
+        
+        # And: Error message identifies abstract methods that must be implemented
+        expected_methods = ["get", "set", "delete", "exists"]
+        for method_name in expected_methods:
+            assert method_name in error_message
+        
+        # Verify CacheInterface inherits from ABC properly
+        assert issubclass(CacheInterface, ABC)
+        
+        # Verify all required methods are marked as @abstractmethod
+        abstract_methods = CacheInterface.__abstractmethods__
+        for method_name in expected_methods:
+            assert method_name in abstract_methods
 
     def test_incomplete_implementation_cannot_be_instantiated(self):
         """
@@ -147,7 +168,69 @@ class TestCacheInterfaceContract:
             - test_cache_interface_cannot_be_instantiated_directly()
             - test_complete_implementation_can_be_instantiated()
         """
-        pass
+        # Test incomplete implementation missing get() method
+        class MissingGetMethod(CacheInterface):
+            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+                pass
+            async def delete(self, key: str):
+                pass
+            async def exists(self, key: str) -> bool:
+                return False
+        
+        with pytest.raises(TypeError) as exc_info:
+            MissingGetMethod()
+        assert "get" in str(exc_info.value)
+        
+        # Test incomplete implementation missing set() method
+        class MissingSetMethod(CacheInterface):
+            async def get(self, key: str):
+                return None
+            async def delete(self, key: str):
+                pass
+            async def exists(self, key: str) -> bool:
+                return False
+        
+        with pytest.raises(TypeError) as exc_info:
+            MissingSetMethod()
+        assert "set" in str(exc_info.value)
+        
+        # Test incomplete implementation missing delete() method
+        class MissingDeleteMethod(CacheInterface):
+            async def get(self, key: str):
+                return None
+            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+                pass
+            async def exists(self, key: str) -> bool:
+                return False
+        
+        with pytest.raises(TypeError) as exc_info:
+            MissingDeleteMethod()
+        assert "delete" in str(exc_info.value)
+        
+        # Test incomplete implementation missing exists() method
+        class MissingExistsMethod(CacheInterface):
+            async def get(self, key: str):
+                return None
+            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+                pass
+            async def delete(self, key: str):
+                pass
+        
+        with pytest.raises(TypeError) as exc_info:
+            MissingExistsMethod()
+        assert "exists" in str(exc_info.value)
+        
+        # Test multiple missing methods
+        class MultipleMissingMethods(CacheInterface):
+            async def get(self, key: str):
+                return None
+        
+        with pytest.raises(TypeError) as exc_info:
+            MultipleMissingMethods()
+        error_message = str(exc_info.value)
+        missing_methods = ["set", "delete", "exists"]
+        for method_name in missing_methods:
+            assert method_name in error_message
 
     def test_complete_implementation_can_be_instantiated(self):
         """
@@ -182,7 +265,38 @@ class TestCacheInterfaceContract:
             - test_implemented_methods_maintain_async_signatures()
             - test_implemented_methods_accept_correct_parameter_types()
         """
-        pass
+        # Given: Class inheriting from CacheInterface with all abstract methods implemented
+        class CompleteImplementation(CacheInterface):
+            async def get(self, key: str):
+                return f"value_for_{key}"
+            
+            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+                pass
+            
+            async def delete(self, key: str):
+                pass
+            
+            async def exists(self, key: str) -> bool:
+                return True
+        
+        # When: Instantiation is attempted
+        # Then: Instance is created successfully
+        cache_instance = CompleteImplementation()
+        
+        # And: Instance passes isinstance() check for CacheInterface
+        assert isinstance(cache_instance, CacheInterface)
+        
+        # And: All abstract methods are callable on the instance
+        required_methods = ["get", "set", "delete", "exists"]
+        for method_name in required_methods:
+            assert hasattr(cache_instance, method_name)
+            method = getattr(cache_instance, method_name)
+            assert callable(method)
+            # All methods maintain proper async signatures
+            assert inspect.iscoroutinefunction(method)
+        
+        # Verify that the instance satisfies CacheInterface contract
+        assert issubclass(type(cache_instance), CacheInterface)
 
     def test_abstract_methods_require_async_signatures(self):
         """
@@ -217,7 +331,38 @@ class TestCacheInterfaceContract:
             - test_implemented_methods_maintain_async_signatures()
             - test_async_method_calls_work_with_await()
         """
-        pass
+        # Given: CacheInterface abstract method definitions
+        abstract_methods = ["get", "set", "delete", "exists"]
+        
+        for method_name in abstract_methods:
+            # When: Method signatures are examined
+            method = getattr(CacheInterface, method_name)
+            
+            # Then: All abstract methods are defined as async def
+            assert inspect.iscoroutinefunction(method), f"{method_name} should be an async method"
+        
+        # Verify specific method signatures match expected patterns
+        get_signature = inspect.signature(CacheInterface.get)
+        assert "key" in get_signature.parameters
+        assert get_signature.parameters["key"].annotation == str
+        
+        set_signature = inspect.signature(CacheInterface.set)
+        assert "key" in set_signature.parameters
+        assert "value" in set_signature.parameters
+        assert "ttl" in set_signature.parameters
+        assert set_signature.parameters["key"].annotation == str
+        assert set_signature.parameters["value"].annotation == Any
+        assert set_signature.parameters["ttl"].annotation == Optional[int]
+        assert set_signature.parameters["ttl"].default is None
+        
+        delete_signature = inspect.signature(CacheInterface.delete)
+        assert "key" in delete_signature.parameters
+        assert delete_signature.parameters["key"].annotation == str
+        
+        exists_signature = inspect.signature(CacheInterface.exists)
+        assert "key" in exists_signature.parameters
+        assert exists_signature.parameters["key"].annotation == str
+        assert exists_signature.return_annotation == bool
 
     def test_abstract_method_parameter_types_are_correctly_annotated(self):
         """
@@ -253,7 +398,49 @@ class TestCacheInterfaceContract:
             - test_abstract_method_return_types_are_correctly_annotated()
             - test_type_annotations_support_polymorphic_usage()
         """
-        pass
+        # Test get() method parameter type annotations
+        get_signature = inspect.signature(CacheInterface.get)
+        get_params = get_signature.parameters
+        
+        assert "self" in get_params
+        assert "key" in get_params
+        assert get_params["key"].annotation == str, "get() key parameter should be annotated as str"
+        
+        # Test set() method parameter type annotations
+        set_signature = inspect.signature(CacheInterface.set)
+        set_params = set_signature.parameters
+        
+        assert "self" in set_params
+        assert "key" in set_params
+        assert "value" in set_params
+        assert "ttl" in set_params
+        
+        assert set_params["key"].annotation == str, "set() key parameter should be annotated as str"
+        assert set_params["value"].annotation == Any, "set() value parameter should be annotated as Any"
+        assert set_params["ttl"].annotation == Optional[int], "set() ttl parameter should be annotated as Optional[int]"
+        assert set_params["ttl"].default is None, "set() ttl parameter should have default None"
+        
+        # Test delete() method parameter type annotations
+        delete_signature = inspect.signature(CacheInterface.delete)
+        delete_params = delete_signature.parameters
+        
+        assert "self" in delete_params
+        assert "key" in delete_params
+        assert delete_params["key"].annotation == str, "delete() key parameter should be annotated as str"
+        
+        # Test exists() method parameter type annotations
+        exists_signature = inspect.signature(CacheInterface.exists)
+        exists_params = exists_signature.parameters
+        
+        assert "self" in exists_params
+        assert "key" in exists_params
+        assert exists_params["key"].annotation == str, "exists() key parameter should be annotated as str"
+        
+        # Verify all methods have proper parameter count (excluding self)
+        assert len([p for p in get_params if p != "self"]) == 1, "get() should have exactly 1 parameter (plus self)"
+        assert len([p for p in set_params if p != "self"]) == 3, "set() should have exactly 3 parameters (plus self)"
+        assert len([p for p in delete_params if p != "self"]) == 1, "delete() should have exactly 1 parameter (plus self)"
+        assert len([p for p in exists_params if p != "self"]) == 1, "exists() should have exactly 1 parameter (plus self)"
 
     def test_abstract_method_return_types_are_correctly_annotated(self):
         """
@@ -288,7 +475,38 @@ class TestCacheInterfaceContract:
             - test_abstract_method_parameter_types_are_correctly_annotated()
             - test_return_type_annotations_enable_type_checking()
         """
-        pass
+        # Test that methods have return type annotations where expected
+        get_signature = inspect.signature(CacheInterface.get)
+        set_signature = inspect.signature(CacheInterface.set)
+        delete_signature = inspect.signature(CacheInterface.delete)
+        exists_signature = inspect.signature(CacheInterface.exists)
+        
+        # get() method should not have explicit return annotation in abstract method
+        # (implementations will define specific return types)
+        # This is acceptable for abstract methods as concrete implementations will specify
+        
+        # set() method should not have explicit return annotation in abstract method
+        # (implementations may return None or other values)
+        
+        # delete() method should not have explicit return annotation in abstract method
+        # (implementations may return None or other values)
+        
+        # exists() method should have bool return annotation as specified in contract
+        assert exists_signature.return_annotation == bool, "exists() method should return bool"
+        
+        # Verify all methods are properly marked as coroutine functions
+        # which ensures they return coroutines (compatible with async/await)
+        assert inspect.iscoroutinefunction(CacheInterface.get)
+        assert inspect.iscoroutinefunction(CacheInterface.set)
+        assert inspect.iscoroutinefunction(CacheInterface.delete)
+        assert inspect.iscoroutinefunction(CacheInterface.exists)
+        
+        # Verify methods can be awaited by checking they are coroutine functions
+        # This ensures return types are compatible with async/await patterns
+        async_methods = ["get", "set", "delete", "exists"]
+        for method_name in async_methods:
+            method = getattr(CacheInterface, method_name)
+            assert inspect.iscoroutinefunction(method), f"{method_name} should be awaitable"
 
 
 class TestCacheInterfacePolymorphism:
@@ -456,7 +674,7 @@ class TestCacheInterfacePolymorphism:
         exists_after_cleanup = await service.data_exists(test_key)
         assert exists_after_cleanup is False
 
-    def test_service_integration_supports_cache_switching(self):
+    async def test_service_integration_supports_cache_switching(self):
         """
         Test that service integration supports switching between cache implementations.
         
@@ -489,7 +707,62 @@ class TestCacheInterfacePolymorphism:
             - test_cache_performance_characteristics_may_vary_across_implementations()
             - test_cache_switching_maintains_functional_consistency()
         """
-        pass
+        # Given: Service class that uses cache through CacheInterface
+        class FlexibleCacheService:
+            def __init__(self, cache: CacheInterface):
+                self.cache = cache
+            
+            async def store_item(self, key: str, item: dict):
+                """Store an item using the configured cache."""
+                await self.cache.set(key, item)
+            
+            async def retrieve_item(self, key: str):
+                """Retrieve an item using the configured cache."""
+                return await self.cache.get(key)
+            
+            async def item_exists(self, key: str) -> bool:
+                """Check if item exists using the configured cache."""
+                return await self.cache.exists(key)
+            
+            async def remove_item(self, key: str):
+                """Remove an item using the configured cache."""
+                await self.cache.delete(key)
+        
+        # Get different cache implementations to test switching
+        available_caches = cache_implementations()
+        if len(available_caches) < 1:
+            pytest.skip("No cache implementations available for switching test")
+        
+        test_data = {
+            "switching_test": True,
+            "data": "consistent behavior across implementations"
+        }
+        
+        # Test that service works consistently across different cache implementations
+        for i, cache_impl in enumerate(available_caches):
+            # When: Service is configured with different cache implementation
+            service = FlexibleCacheService(cache_impl)
+            
+            test_key = f"switch:test:{i}:{type(cache_impl).__name__}"
+            
+            # Then: Service continues to work without modification
+            await service.store_item(test_key, test_data)
+            
+            # And: All cache operations maintain expected behavior
+            exists_result = await service.item_exists(test_key)
+            assert exists_result is True, f"Item should exist with {type(cache_impl).__name__}"
+            
+            retrieved_data = await service.retrieve_item(test_key)
+            assert retrieved_data == test_data, f"Data consistency failed with {type(cache_impl).__name__}"
+            
+            await service.remove_item(test_key)
+            
+            # Verify removal worked
+            exists_after_removal = await service.item_exists(test_key)
+            assert exists_after_removal is False, f"Item should be removed with {type(cache_impl).__name__}"
+            
+            # Service behavior remains functionally consistent
+            # (same interface, same results, implementation details may vary)
 
     def test_type_checking_works_with_interface_assignments(self):
         """
@@ -524,9 +797,47 @@ class TestCacheInterfacePolymorphism:
             - test_method_calls_are_type_checked_through_interface()
             - test_invalid_cache_assignments_are_rejected_by_type_checker()
         """
-        pass
+        # Test that concrete implementations can be assigned to CacheInterface variables
+        available_caches = cache_implementations()
+        if len(available_caches) == 0:
+            pytest.skip("No cache implementations available for type checking test")
+        
+        # Given: Different concrete cache implementations
+        for cache_impl in available_caches:
+            # When: Assigned to CacheInterface type variable
+            cache_interface_var: CacheInterface = cache_impl
+            
+            # Then: Type checker accepts all valid CacheInterface implementations
+            assert isinstance(cache_interface_var, CacheInterface)
+            assert hasattr(cache_interface_var, 'get')
+            assert hasattr(cache_interface_var, 'set')
+            assert hasattr(cache_interface_var, 'delete')
+            assert hasattr(cache_interface_var, 'exists')
+            
+            # And: Method calls on interface variable have proper signatures
+            assert callable(cache_interface_var.get)
+            assert callable(cache_interface_var.set)
+            assert callable(cache_interface_var.delete)
+            assert callable(cache_interface_var.exists)
+            
+            # Verify all methods are async (type-checkable as coroutines)
+            assert inspect.iscoroutinefunction(cache_interface_var.get)
+            assert inspect.iscoroutinefunction(cache_interface_var.set)
+            assert inspect.iscoroutinefunction(cache_interface_var.delete)
+            assert inspect.iscoroutinefunction(cache_interface_var.exists)
+        
+        # Test that invalid assignments would be rejected by type checking
+        # (This test verifies the type structure, not runtime type checking)
+        class NotACache:
+            def some_method(self):
+                pass
+        
+        invalid_cache = NotACache()
+        # Runtime isinstance check confirms this is not a valid CacheInterface
+        assert not isinstance(invalid_cache, CacheInterface)
+        # Static type checker would reject: cache_interface_var: CacheInterface = invalid_cache
 
-    def test_liskov_substitution_principle_compliance(self):
+    async def test_liskov_substitution_principle_compliance(self):
         """
         Test that CacheInterface implementations comply with Liskov Substitution Principle.
         
@@ -560,9 +871,71 @@ class TestCacheInterfacePolymorphism:
             - test_implementations_honor_interface_contracts()
             - test_polymorphic_behavior_remains_consistent()
         """
-        pass
+        # Test function that works with any CacheInterface implementation
+        async def cache_workflow(cache: CacheInterface, test_id: str):
+            """Generic workflow that should work with any CacheInterface implementation."""
+            test_key = f"lsp:test:{test_id}"
+            test_value = {"lsp_test": True, "implementation": type(cache).__name__}
+            
+            # Basic workflow: set, check exists, get, delete
+            await cache.set(test_key, test_value)
+            
+            # Check exists should return True for existing key
+            exists_result = await cache.exists(test_key)
+            assert exists_result is True, "exists() should return True for stored key"
+            
+            # Get should return the stored value
+            retrieved_value = await cache.get(test_key)
+            assert retrieved_value == test_value, "get() should return stored value"
+            
+            # Delete should remove the key
+            await cache.delete(test_key)
+            
+            # After delete, exists should return False
+            exists_after_delete = await cache.exists(test_key)
+            assert exists_after_delete is False, "exists() should return False after delete"
+            
+            # Get after delete should return None
+            value_after_delete = await cache.get(test_key)
+            assert value_after_delete is None, "get() should return None for deleted key"
+            
+            return "workflow_completed"
+        
+        # Given: Code written against CacheInterface type
+        available_caches = cache_implementations()
+        if len(available_caches) == 0:
+            pytest.skip("No cache implementations available for LSP compliance test")
+        
+        # When: Any concrete cache implementation is substituted
+        for i, cache_impl in enumerate(available_caches):
+            # Then: Code behavior remains consistent and correct
+            try:
+                result = await cache_workflow(cache_impl, str(i))
+                assert result == "workflow_completed", f"Workflow should complete with {type(cache_impl).__name__}"
+            except Exception as e:
+                pytest.fail(f"LSP violation: {type(cache_impl).__name__} failed workflow: {e}")
+        
+        # Test that all implementations handle the same operations consistently
+        test_key = "lsp:consistency:test"
+        test_value = "consistent_value"
+        
+        for cache_impl in available_caches:
+            # All implementations should handle None returns for missing keys
+            missing_value = await cache_impl.get("nonexistent:lsp:key")
+            assert missing_value is None, f"{type(cache_impl).__name__} should return None for missing keys"
+            
+            # All implementations should handle exists() for missing keys
+            missing_exists = await cache_impl.exists("nonexistent:lsp:key")
+            assert missing_exists is False, f"{type(cache_impl).__name__} should return False for missing keys"
+            
+            # All implementations should handle delete of non-existent keys gracefully
+            try:
+                await cache_impl.delete("nonexistent:lsp:key")
+                # Should not raise an exception (idempotent behavior)
+            except Exception as e:
+                pytest.fail(f"LSP violation: {type(cache_impl).__name__} should handle delete of missing keys gracefully: {e}")
 
-    def test_interface_method_calls_work_through_polymorphic_references(self):
+    async def test_interface_method_calls_work_through_polymorphic_references(self):
         """
         Test that interface method calls work correctly through polymorphic references.
         
@@ -597,4 +970,84 @@ class TestCacheInterfacePolymorphism:
             - test_async_await_patterns_work_through_interface()
             - test_method_parameters_are_passed_correctly_through_interface()
         """
-        pass
+        # Get available cache implementations for polymorphic testing
+        available_caches = cache_implementations()
+        if len(available_caches) == 0:
+            pytest.skip("No cache implementations available for polymorphic method dispatch test")
+        
+        # Test data for polymorphic method calls
+        test_values = [
+            "string_value",
+            42,
+            3.14,
+            True,
+            ["list", "of", "items"],
+            {"dict": "value", "nested": {"key": "value"}},
+            None
+        ]
+        
+        for i, cache_impl in enumerate(available_caches):
+            # Given: CacheInterface reference pointing to concrete implementation
+            cache_interface: CacheInterface = cache_impl
+            
+            # Verify the reference is properly typed
+            assert isinstance(cache_interface, CacheInterface)
+            
+            # Test polymorphic method dispatch for each test value
+            for j, test_value in enumerate(test_values):
+                test_key = f"polymorphic:dispatch:{i}:{j}"
+                
+                # When: Interface methods are called through polymorphic reference
+                # Then: Calls are properly dispatched to concrete implementation
+                
+                # Test set() method dispatch
+                await cache_interface.set(test_key, test_value)
+                
+                # Test exists() method dispatch
+                exists_result = await cache_interface.exists(test_key)
+                assert exists_result is True, f"exists() dispatch failed for {type(cache_impl).__name__} with value {test_value}"
+                
+                # Test get() method dispatch
+                retrieved_value = await cache_interface.get(test_key)
+                assert retrieved_value == test_value, f"get() dispatch failed for {type(cache_impl).__name__} with value {test_value}"
+                
+                # Test delete() method dispatch
+                await cache_interface.delete(test_key)
+                
+                # Verify delete worked through polymorphic dispatch
+                exists_after_delete = await cache_interface.exists(test_key)
+                assert exists_after_delete is False, f"delete() dispatch failed for {type(cache_impl).__name__}"
+                
+                # Verify get after delete returns None
+                value_after_delete = await cache_interface.get(test_key)
+                assert value_after_delete is None, f"get() after delete dispatch failed for {type(cache_impl).__name__}"
+            
+            # Test that async/await patterns work correctly through polymorphic calls
+            test_key = f"async:pattern:{i}"
+            test_value = {"async_test": True, "implementation": type(cache_impl).__name__}
+            
+            # All method calls should be awaitable through interface reference
+            await cache_interface.set(test_key, test_value)
+            retrieved = await cache_interface.get(test_key)
+            exists = await cache_interface.exists(test_key)
+            await cache_interface.delete(test_key)
+            
+            # Verify async patterns worked correctly
+            assert retrieved == test_value, f"Async get() pattern failed for {type(cache_impl).__name__}"
+            assert exists is True, f"Async exists() pattern failed for {type(cache_impl).__name__}"
+        
+        # Test method signatures remain consistent through polymorphic references
+        for cache_impl in available_caches:
+            cache_interface: CacheInterface = cache_impl
+            
+            # Verify method signatures are accessible and consistent
+            get_method = getattr(cache_interface, 'get')
+            set_method = getattr(cache_interface, 'set')
+            delete_method = getattr(cache_interface, 'delete')
+            exists_method = getattr(cache_interface, 'exists')
+            
+            # All methods should be callable and async
+            assert callable(get_method) and inspect.iscoroutinefunction(get_method)
+            assert callable(set_method) and inspect.iscoroutinefunction(set_method)
+            assert callable(delete_method) and inspect.iscoroutinefunction(delete_method)
+            assert callable(exists_method) and inspect.iscoroutinefunction(exists_method)
