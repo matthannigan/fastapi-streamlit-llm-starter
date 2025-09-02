@@ -46,7 +46,7 @@ External Dependencies:
 ### test_init_properly_initializes_parent_class_with_mapped_parameters()
 
 ```python
-def test_init_properly_initializes_parent_class_with_mapped_parameters(self):
+def test_init_properly_initializes_parent_class_with_mapped_parameters(self, valid_ai_params):
 ```
 
 Test that AIResponseCache initialization properly calls parent class constructor.
@@ -84,7 +84,7 @@ Related Tests:
 ### test_connect_delegates_to_parent_class()
 
 ```python
-def test_connect_delegates_to_parent_class(self):
+async def test_connect_delegates_to_parent_class(self, valid_ai_params):
 ```
 
 Test that connect method properly delegates to parent GenericRedisCache.
@@ -121,7 +121,7 @@ Related Tests:
 ### test_callback_system_integrates_with_parent_class()
 
 ```python
-def test_callback_system_integrates_with_parent_class(self):
+async def test_callback_system_integrates_with_parent_class(self, valid_ai_params):
 ```
 
 Test that AI cache integrates properly with parent class callback system.
@@ -158,7 +158,7 @@ Related Tests:
 ### test_memory_cache_property_provides_backward_compatibility()
 
 ```python
-def test_memory_cache_property_provides_backward_compatibility(self):
+def test_memory_cache_property_provides_backward_compatibility(self, valid_ai_params):
 ```
 
 Test that memory_cache property provides legacy compatibility access.
@@ -195,7 +195,7 @@ Related Tests:
 ### test_memory_cache_size_property_provides_legacy_access()
 
 ```python
-def test_memory_cache_size_property_provides_legacy_access(self):
+def test_memory_cache_size_property_provides_legacy_access(self, valid_ai_params):
 ```
 
 Test that memory_cache_size property provides legacy size information.
@@ -231,7 +231,7 @@ Related Tests:
 ### test_memory_cache_order_property_provides_compatibility()
 
 ```python
-def test_memory_cache_order_property_provides_compatibility(self):
+def test_memory_cache_order_property_provides_compatibility(self, valid_ai_params):
 ```
 
 Test that memory_cache_order property provides legacy compatibility.

@@ -47,7 +47,7 @@ External Dependencies:
 ### test_get_stats_provides_comprehensive_cache_metrics()
 
 ```python
-def test_get_stats_provides_comprehensive_cache_metrics(self):
+async def test_get_stats_provides_comprehensive_cache_metrics(self, populated_memory_cache: InMemoryCache, cache_statistics_sample: Dict[str, Any]):
 ```
 
 Test that get_stats() returns comprehensive cache performance and usage metrics.
@@ -91,7 +91,7 @@ Related Tests:
 ### test_statistics_update_correctly_after_cache_operations()
 
 ```python
-def test_statistics_update_correctly_after_cache_operations(self):
+async def test_statistics_update_correctly_after_cache_operations(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
 ```
 
 Test that cache statistics update accurately as operations are performed.
@@ -131,7 +131,7 @@ Related Tests:
 ### test_utilization_percentage_calculated_accurately()
 
 ```python
-def test_utilization_percentage_calculated_accurately(self):
+async def test_utilization_percentage_calculated_accurately(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that utilization percentage in statistics reflects accurate cache fullness.
@@ -165,12 +165,12 @@ Mathematical Accuracy:
     
 Related Tests:
     - test_get_stats_provides_comprehensive_cache_metrics()
-    - test_active_entries_count_excludes_expired_entries()
+    - test_active_entries_count_excludes_expired entries()
 
 ### test_hit_rate_calculation_reflects_actual_operation_outcomes()
 
 ```python
-def test_hit_rate_calculation_reflects_actual_operation_outcomes(self):
+async def test_hit_rate_calculation_reflects_actual_operation_outcomes(self, default_memory_cache: InMemoryCache, sample_cache_key: str, sample_cache_value: Any):
 ```
 
 Test that hit rate calculation in statistics accurately reflects cache performance.
@@ -210,7 +210,7 @@ Related Tests:
 ### test_get_keys_returns_all_cache_keys_including_expired()
 
 ```python
-def test_get_keys_returns_all_cache_keys_including_expired(self):
+async def test_get_keys_returns_all_cache_keys_including_expired(self, default_memory_cache: InMemoryCache, mock_time_provider):
 ```
 
 Test that get_keys() returns all cache keys including expired entries.
@@ -236,9 +236,9 @@ Key Inventory Completeness Verified:
     - Empty cache returns empty key list
     
 Fixtures Used:
-    - fast_expiry_memory_cache: Cache for expired entry testing
+    - default_memory_cache: Cache for expired entry testing
     - mixed_ttl_test_data: Entries with various expiration states
-    - cache_test_keys: Known keys for inventory verification
+    - mock_time_provider: For deterministic expiration testing without delays
     
 Complete Visibility:
     All stored cache keys are accessible for analysis regardless of expiration
@@ -250,7 +250,7 @@ Related Tests:
 ### test_get_active_keys_returns_only_non_expired_keys()
 
 ```python
-def test_get_active_keys_returns_only_non_expired_keys(self):
+async def test_get_active_keys_returns_only_non_expired_keys(self, default_memory_cache: InMemoryCache, mock_time_provider):
 ```
 
 Test that get_active_keys() returns only currently valid, non-expired keys.
@@ -276,9 +276,9 @@ Active Key Filtering Verified:
     - Empty active list when all entries expired
     
 Fixtures Used:
-    - fast_expiry_memory_cache: Cache for expiration filtering testing
+    - default_memory_cache: Cache for expiration filtering testing
     - mixed_ttl_test_data: Entries with known expiration states
-    - sample_cache_key: Active key for positive verification
+    - mock_time_provider: For deterministic expiration testing without delays
     
 Accurate Filtering:
     Active key list precisely reflects currently accessible cache content
@@ -290,7 +290,7 @@ Related Tests:
 ### test_size_method_returns_accurate_current_entry_count()
 
 ```python
-def test_size_method_returns_accurate_current_entry_count(self):
+async def test_size_method_returns_accurate_current_entry_count(self, default_memory_cache: InMemoryCache):
 ```
 
 Test that size() method returns accurate count of current cache entries.
@@ -330,7 +330,7 @@ Related Tests:
 ### test_get_ttl_returns_accurate_remaining_time_for_entries()
 
 ```python
-def test_get_ttl_returns_accurate_remaining_time_for_entries(self):
+async def test_get_ttl_returns_accurate_remaining_time_for_entries(self, default_memory_cache: InMemoryCache, sample_cache_key: str):
 ```
 
 Test that get_ttl() method returns accurate remaining TTL for cache entries.
@@ -365,12 +365,12 @@ Time Sensitivity:
     
 Related Tests:
     - test_ttl_expiration_behavior_matches_get_ttl_predictions()
-    - test_get_ttl_handles_edge_cases_correctly()
+    - test_get_ttl_handles_edge cases correctly()
 
 ### test_memory_usage_statistics_reflect_actual_storage_requirements()
 
 ```python
-def test_memory_usage_statistics_reflect_actual_storage_requirements(self):
+async def test_memory_usage_statistics_reflect_actual_storage_requirements(self, default_memory_cache: InMemoryCache):
 ```
 
 Test that memory usage statistics accurately estimate actual cache memory consumption.
@@ -410,7 +410,7 @@ Related Tests:
 ### test_statistics_remain_consistent_across_async_operations()
 
 ```python
-def test_statistics_remain_consistent_across_async_operations(self):
+async def test_statistics_remain_consistent_across_async_operations(self, default_memory_cache: InMemoryCache, cache_test_keys: List[str]):
 ```
 
 Test that cache statistics remain consistent and accurate during concurrent async operations.

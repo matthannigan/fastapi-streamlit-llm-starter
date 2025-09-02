@@ -159,7 +159,7 @@ Related Tests:
 ### test_standard_cache_operations_work_without_redis_connection()
 
 ```python
-def test_standard_cache_operations_work_without_redis_connection(self):
+def test_standard_cache_operations_work_without_redis_connection(self, sample_text, sample_ai_response):
 ```
 
 Test that standard cache operations continue working without Redis connection.

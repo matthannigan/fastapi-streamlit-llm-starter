@@ -47,7 +47,7 @@ External Dependencies:
 ### test_init_with_valid_parameters_maps_to_generic_cache()
 
 ```python
-def test_init_with_valid_parameters_maps_to_generic_cache(self):
+def test_init_with_valid_parameters_maps_to_generic_cache(self, valid_ai_params):
 ```
 
 Test that AIResponseCache constructor properly maps parameters to GenericRedisCache.
@@ -81,7 +81,7 @@ Related Tests:
 ### test_init_with_invalid_parameters_raises_configuration_error()
 
 ```python
-def test_init_with_invalid_parameters_raises_configuration_error(self):
+def test_init_with_invalid_parameters_raises_configuration_error(self, invalid_ai_params):
 ```
 
 Test that invalid parameters raise ConfigurationError with detailed context.
@@ -118,7 +118,7 @@ Related Tests:
 ### test_init_with_parameter_validation_errors_raises_validation_error()
 
 ```python
-def test_init_with_parameter_validation_errors_raises_validation_error(self):
+def test_init_with_parameter_validation_errors_raises_validation_error(self, valid_ai_params):
 ```
 
 Test that parameter mapping failures raise ValidationError.
@@ -194,7 +194,7 @@ Related Tests:
 ### test_init_with_explicit_parameters_overrides_defaults()
 
 ```python
-def test_init_with_explicit_parameters_overrides_defaults(self):
+def test_init_with_explicit_parameters_overrides_defaults(self, valid_ai_params):
 ```
 
 Test that explicitly provided parameters override default values.

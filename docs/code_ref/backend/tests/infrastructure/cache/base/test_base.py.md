@@ -366,7 +366,7 @@ Related Tests:
 ### test_service_integration_supports_cache_switching()
 
 ```python
-def test_service_integration_supports_cache_switching(self):
+async def test_service_integration_supports_cache_switching(self):
 ```
 
 Test that service integration supports switching between cache implementations.
@@ -440,7 +440,7 @@ Related Tests:
 ### test_liskov_substitution_principle_compliance()
 
 ```python
-def test_liskov_substitution_principle_compliance(self):
+async def test_liskov_substitution_principle_compliance(self):
 ```
 
 Test that CacheInterface implementations comply with Liskov Substitution Principle.
@@ -478,7 +478,7 @@ Related Tests:
 ### test_interface_method_calls_work_through_polymorphic_references()
 
 ```python
-def test_interface_method_calls_work_through_polymorphic_references(self):
+async def test_interface_method_calls_work_through_polymorphic_references(self):
 ```
 
 Test that interface method calls work correctly through polymorphic references.

@@ -46,7 +46,7 @@ External Dependencies:
 ### test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded()
 
 ```python
-def test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded(self):
+async def test_lru_eviction_removes_least_recently_used_entry_when_max_size_exceeded(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that LRU eviction removes the least recently used entry when cache reaches max_size.
@@ -87,7 +87,7 @@ Related Tests:
 ### test_lru_eviction_updates_access_order_on_get_operations()
 
 ```python
-def test_lru_eviction_updates_access_order_on_get_operations(self):
+async def test_lru_eviction_updates_access_order_on_get_operations(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that get() operations update LRU access order and affect eviction decisions.
@@ -127,7 +127,7 @@ Related Tests:
 ### test_set_operations_affect_lru_ordering()
 
 ```python
-def test_set_operations_affect_lru_ordering(self):
+async def test_set_operations_affect_lru_ordering(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that set() operations (both new and update) properly affect LRU access ordering.
@@ -167,7 +167,7 @@ Related Tests:
 ### test_cache_size_never_exceeds_configured_max_size()
 
 ```python
-def test_cache_size_never_exceeds_configured_max_size(self):
+async def test_cache_size_never_exceeds_configured_max_size(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that cache size is strictly enforced and never exceeds max_size configuration.
@@ -206,7 +206,7 @@ Related Tests:
 ### test_eviction_operations_are_logged_for_monitoring()
 
 ```python
-def test_eviction_operations_are_logged_for_monitoring(self):
+async def test_eviction_operations_are_logged_for_monitoring(self, mock_logger, small_memory_cache: InMemoryCache):
 ```
 
 Test that eviction operations are properly logged for operational monitoring.
@@ -246,7 +246,7 @@ Related Tests:
 ### test_statistics_reflect_eviction_operations()
 
 ```python
-def test_statistics_reflect_eviction_operations(self):
+async def test_statistics_reflect_eviction_operations(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that cache statistics accurately reflect eviction operations and counts.
@@ -285,7 +285,7 @@ Related Tests:
 ### test_cache_operations_maintain_consistent_lru_state()
 
 ```python
-def test_cache_operations_maintain_consistent_lru_state(self):
+async def test_cache_operations_maintain_consistent_lru_state(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that mixed cache operations maintain consistent and accurate LRU state.
@@ -326,7 +326,7 @@ Related Tests:
 ### test_delete_operations_update_lru_order_correctly()
 
 ```python
-def test_delete_operations_update_lru_order_correctly(self):
+async def test_delete_operations_update_lru_order_correctly(self, small_memory_cache: InMemoryCache):
 ```
 
 Test that delete() operations properly remove entries from LRU access order tracking.

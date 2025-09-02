@@ -2,23 +2,35 @@
 sidebar_label: test_redis_ai_error_handling
 ---
 
-# Unit tests for AIResponseCache refactored implementation.
+# Unit tests for AIResponseCache error handling and resilience behavior.
 
   file_path: `backend/tests/infrastructure/cache/redis_ai/test_redis_ai_error_handling.py`
 
-This test suite verifies the observable behaviors documented in the
-AIResponseCache public contract (redis_ai.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+This test suite verifies the observable error handling behaviors documented in the
+AIResponseCache public contract. Tests focus on behavior-driven testing principles
+described in docs/guides/developer/TESTING.md.
 
 Coverage Focus:
-    - Infrastructure service (>90% test coverage requirement)
-    - Behavior verification per docstring specifications
     - Error handling and graceful degradation patterns
-    - Performance monitoring integration
+    - Parameter validation with detailed error context  
+    - Infrastructure failure resilience
+    - Performance monitoring integration during errors
+
+Implementation Notes:
+    - Tests focus on observable behavior rather than implementation details
+    - Infrastructure tests verify actual error conditions rather than mocking internal components
+    - Parameter validation tests are based on observed behavior of the key generation system
+    - Some integration-level tests are skipped in favor of proper integration test coverage
+
+Error Handling Philosophy:
+    - Infrastructure errors should provide meaningful context for debugging
+    - Parameter validation should give clear feedback for fixing issues
+    - Performance monitoring should continue during error conditions
+    - Cache operations should degrade gracefully without breaking domain services
 
 External Dependencies:
-    All external dependencies are mocked using fixtures from conftest.py following
-    the documented public contracts to ensure accurate behavior simulation.
+    All external dependencies are real components where possible, following
+    the behavior-driven testing approach of testing actual observable outcomes.
 
 ## TestAIResponseCacheErrorHandling
 
@@ -46,7 +58,7 @@ External Dependencies:
 ### test_standard_cache_set_handles_infrastructure_error_gracefully()
 
 ```python
-def test_standard_cache_set_handles_infrastructure_error_gracefully(self):
+async def test_standard_cache_set_handles_infrastructure_error_gracefully(self, sample_text, sample_ai_response):
 ```
 
 Test that standard cache set() handles InfrastructureError with graceful degradation.
@@ -85,7 +97,7 @@ Related Tests:
 ### test_standard_cache_get_handles_infrastructure_error_gracefully()
 
 ```python
-def test_standard_cache_get_handles_infrastructure_error_gracefully(self):
+async def test_standard_cache_get_handles_infrastructure_error_gracefully(self, sample_text, sample_options):
 ```
 
 Test that standard cache get() handles InfrastructureError with graceful degradation.

@@ -84,7 +84,7 @@ Configuration:
 ## populated_memory_cache()
 
 ```python
-def populated_memory_cache():
+async def populated_memory_cache():
 ```
 
 Pre-populated InMemoryCache instance for testing operations on existing data.
@@ -140,9 +140,16 @@ time passage for TTL expiration testing without actually waiting.
 This is a stateful mock that maintains an internal time counter.
 
 Usage:
-    mock_time.current_time = 1000  # Set base time
-    mock_time.advance(3600)        # Advance by 1 hour
-    assert mock_time.current_time == 4600
+    with mock_time_provider.patch():
+        cache.set("key", "value", ttl=60)
+        mock_time_provider.advance(61)  # Advance by 61 seconds
+        assert cache.get("key") is None  # Should be expired
+
+Context Manager Methods:
+    - patch(): Returns context manager that patches time.time()
+    - advance(seconds): Advance time by specified seconds
+    - set_time(timestamp): Set absolute time
+    - reset(): Reset to current real time
 
 Note:
     This fixture is crucial for creating **deterministic tests** for 
