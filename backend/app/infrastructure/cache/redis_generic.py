@@ -392,12 +392,13 @@ class GenericRedisCache(CacheInterface):
             l1_value = await self.l1_cache.get(key)
             if l1_value is not None:
                 duration = time.time() - start_time
-                self.performance_monitor.record_cache_operation_time(
-                    operation="get",
-                    duration=duration,
-                    cache_hit=True,
-                    additional_data={"cache_tier": "l1"},
-                )
+                if self.performance_monitor is not None:
+                    self.performance_monitor.record_cache_operation_time(
+                        operation="get",
+                        duration=duration,
+                        cache_hit=True,
+                        additional_data={"cache_tier": "l1"},
+                    )
                 self._fire_callback("get_success", key, l1_value)
                 logger.debug(f"L1 cache hit for key: {key}")
                 return l1_value
@@ -405,15 +406,16 @@ class GenericRedisCache(CacheInterface):
         # Check Redis
         if not await self.connect():
             duration = time.time() - start_time
-            self.performance_monitor.record_cache_operation_time(
-                operation="get",
-                duration=duration,
-                cache_hit=False,
-                additional_data={
-                    "cache_tier": "redis_unavailable",
-                    "reason": "connection_failed",
-                },
-            )
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=duration,
+                    cache_hit=False,
+                    additional_data={
+                        "cache_tier": "redis_unavailable",
+                        "reason": "connection_failed",
+                    },
+                )
             self._fire_callback("get_miss", key)
             return None
 
@@ -430,38 +432,41 @@ class GenericRedisCache(CacheInterface):
                 if self.l1_cache:
                     await self.l1_cache.set(key, value)
 
-                self.performance_monitor.record_cache_operation_time(
-                    operation="get",
-                    duration=duration,
-                    cache_hit=True,
-                    additional_data={"cache_tier": "redis"},
-                )
+                if self.performance_monitor is not None:
+                    self.performance_monitor.record_cache_operation_time(
+                        operation="get",
+                        duration=duration,
+                        cache_hit=True,
+                        additional_data={"cache_tier": "redis"},
+                    )
                 self._fire_callback("get_success", key, value)
                 logger.debug(f"Redis cache hit for key: {key}")
                 return value
             else:
-                self.performance_monitor.record_cache_operation_time(
-                    operation="get",
-                    duration=duration,
-                    cache_hit=False,
-                    additional_data={"cache_tier": "redis", "reason": "key_not_found"},
-                )
+                if self.performance_monitor is not None:
+                    self.performance_monitor.record_cache_operation_time(
+                        operation="get",
+                        duration=duration,
+                        cache_hit=False,
+                        additional_data={"cache_tier": "redis", "reason": "key_not_found"},
+                    )
                 self._fire_callback("get_miss", key)
                 logger.debug(f"Cache miss for key: {key}")
                 return None
 
         except Exception as e:
             duration = time.time() - start_time
-            self.performance_monitor.record_cache_operation_time(
-                operation="get",
-                duration=duration,
-                cache_hit=False,
-                additional_data={
-                    "cache_tier": "redis",
-                    "reason": "error",
-                    "error": str(e),
-                },
-            )
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=duration,
+                    cache_hit=False,
+                    additional_data={
+                        "cache_tier": "redis",
+                        "reason": "error",
+                        "error": str(e),
+                    },
+                )
             logger.warning(f"Cache get error for key {key}: {e}")
             self._fire_callback("get_miss", key)
             return None
@@ -495,12 +500,13 @@ class GenericRedisCache(CacheInterface):
                 try:
                     await self.l1_cache.set(key, value, ttl=effective_ttl)
                     duration = time.time() - start_time
-                    self.performance_monitor.record_cache_operation_time(
-                        operation="set",
-                        duration=duration,
-                        cache_hit=True,
-                        additional_data={"reason": "l1_only", "ttl": effective_ttl},
-                    )
+                    if self.performance_monitor is not None:
+                        self.performance_monitor.record_cache_operation_time(
+                            operation="set",
+                            duration=duration,
+                            cache_hit=True,
+                            additional_data={"reason": "l1_only", "ttl": effective_ttl},
+                        )
                     self._fire_callback("set_success", key, value)
                     logger.debug(
                         f"Set key {key} in L1 cache only (Redis unavailable), TTL {effective_ttl}s"
@@ -508,22 +514,24 @@ class GenericRedisCache(CacheInterface):
                     return
                 except Exception as e:
                     duration = time.time() - start_time
-                    self.performance_monitor.record_cache_operation_time(
-                        operation="set",
-                        duration=duration,
-                        cache_hit=False,
-                        additional_data={"reason": "l1_only_failed", "error": str(e)},
-                    )
+                    if self.performance_monitor is not None:
+                        self.performance_monitor.record_cache_operation_time(
+                            operation="set",
+                            duration=duration,
+                            cache_hit=False,
+                            additional_data={"reason": "l1_only_failed", "error": str(e)},
+                        )
                     logger.warning(f"Failed to set L1 cache for key {key}: {e}")
                     return
             # No L1 cache; record and return
             duration = time.time() - start_time
-            self.performance_monitor.record_cache_operation_time(
-                operation="set",
-                duration=duration,
-                cache_hit=False,
-                additional_data={"reason": "redis_unavailable_no_l1"},
-            )
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="set",
+                    duration=duration,
+                    cache_hit=False,
+                    additional_data={"reason": "redis_unavailable_no_l1"},
+                )
             logger.debug(f"Skipped set for key {key} (Redis unavailable, no L1 cache)")
             return
 
@@ -536,11 +544,12 @@ class GenericRedisCache(CacheInterface):
             # Record compression metrics if compression was used
             original_size = len(str(value))
             if len(cache_data) < original_size:  # Compression occurred
-                self.performance_monitor.record_compression_ratio(
-                    original_size=original_size,
-                    compressed_size=len(cache_data),
-                    compression_time=compression_time,
-                )
+                if self.performance_monitor is not None:
+                    self.performance_monitor.record_compression_ratio(
+                        original_size=original_size,
+                        compressed_size=len(cache_data),
+                        compression_time=compression_time,
+                    )
 
             assert self.redis is not None
             await self.redis.setex(key, effective_ttl, cache_data)
@@ -550,27 +559,29 @@ class GenericRedisCache(CacheInterface):
                 await self.l1_cache.set(key, value, ttl=effective_ttl)
 
             duration = time.time() - start_time
-            self.performance_monitor.record_cache_operation_time(
-                operation="set",
-                duration=duration,
-                cache_hit=True,  # Successful set
-                additional_data={
-                    "ttl": effective_ttl,
-                    "data_size": len(cache_data),
-                    "compression_time": compression_time,
-                },
-            )
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="set",
+                    duration=duration,
+                    cache_hit=True,  # Successful set
+                    additional_data={
+                        "ttl": effective_ttl,
+                        "data_size": len(cache_data),
+                        "compression_time": compression_time,
+                    },
+                )
             self._fire_callback("set_success", key, value)
             logger.debug(f"Set cache key {key} with TTL {effective_ttl}s")
 
         except Exception as e:
             duration = time.time() - start_time
-            self.performance_monitor.record_cache_operation_time(
-                operation="set",
-                duration=duration,
-                cache_hit=False,
-                additional_data={"error": str(e)},
-            )
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="set",
+                    duration=duration,
+                    cache_hit=False,
+                    additional_data={"error": str(e)},
+                )
             logger.warning(f"Cache set error for key {key}: {e}")
 
     async def delete(self, key: str) -> bool:
@@ -613,12 +624,13 @@ class GenericRedisCache(CacheInterface):
                 logger.warning(f"Cache delete error for key {key}: {e}")
 
         duration = time.time() - start_time
-        self.performance_monitor.record_cache_operation_time(
-            operation="delete",
-            duration=duration,
-            cache_hit=existed,
-            additional_data={"key_existed": existed},
-        )
+        if self.performance_monitor is not None:
+            self.performance_monitor.record_cache_operation_time(
+                operation="delete",
+                duration=duration,
+                cache_hit=existed,
+                additional_data={"key_existed": existed},
+            )
 
         if existed:
             self._fire_callback("delete_success", key)

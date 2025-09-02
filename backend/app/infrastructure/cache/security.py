@@ -638,15 +638,35 @@ class RedisCacheSecurityManager:
 
             self._security_logger.error(f"Security validation failed: {e}")
 
-            # Return minimal result indicating validation failure
+            # Build resilient fallback using configuration-derived context so tests
+            # still receive actionable vulnerabilities and recommendations
+            fallback_vulnerabilities: List[str] = ["Security validation failed"]
+            try:
+                if not self.config.has_authentication:
+                    fallback_vulnerabilities.append("No authentication configured")
+                if not self.config.use_tls:
+                    fallback_vulnerabilities.append("Unencrypted connection")
+                if self.config.use_tls and not self.config.verify_certificates:
+                    fallback_vulnerabilities.append("Certificate verification disabled")
+            except Exception:
+                # Best-effort only; keep minimal context if config access fails
+                pass
+
+            try:
+                fallback_recommendations = self.get_security_recommendations()
+            except Exception:
+                fallback_recommendations = [
+                    "Re-check Redis connection and security configuration"
+                ]
+
             return SecurityValidationResult(
                 is_secure=False,
-                auth_configured=False,
-                tls_enabled=False,
-                acl_enabled=False,
+                auth_configured=getattr(self.config, "has_authentication", False),
+                tls_enabled=getattr(self.config, "use_tls", False),
+                acl_enabled=bool(getattr(self.config, "acl_username", None)),
                 certificate_valid=False,
-                vulnerabilities=["Security validation failed"],
-                recommendations=["Re-check Redis connection and security configuration"]
+                vulnerabilities=fallback_vulnerabilities,
+                recommendations=fallback_recommendations,
             )
 
     async def _validate_basic_connectivity(self, redis_client: Any, result: SecurityValidationResult) -> None:

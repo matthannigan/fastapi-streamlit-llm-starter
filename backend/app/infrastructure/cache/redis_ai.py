@@ -1042,16 +1042,17 @@ class AIResponseCache(GenericRedisCache):
         if not await self.connect():
             # Record invalidation that only affected L1 cache
             duration = time.time() - start_time
-            self.performance_monitor.record_invalidation_event(
-                pattern=pattern,
-                keys_invalidated=l1_invalidated,
-                duration=duration,
-                invalidation_type="manual",
-                operation_context=operation_context,
-                additional_data={
-                    "status": "partial",
-                    "reason": "redis_connection_failed",
-                    "l1_invalidated": l1_invalidated,
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_invalidation_event(
+                    pattern=pattern,
+                    keys_invalidated=l1_invalidated,
+                    duration=duration,
+                    invalidation_type="manual",
+                    operation_context=operation_context,
+                    additional_data={
+                        "status": "partial",
+                        "reason": "redis_connection_failed",
+                        "l1_invalidated": l1_invalidated,
                 },
             )
             return
@@ -1077,15 +1078,16 @@ class AIResponseCache(GenericRedisCache):
 
             # Record successful invalidation (include L1 count)
             duration = time.time() - start_time
-            self.performance_monitor.record_invalidation_event(
-                pattern=pattern,
-                keys_invalidated=keys_count + l1_invalidated,
-                duration=duration,
-                invalidation_type="manual",
-                operation_context=operation_context,
-                additional_data={
-                    "status": "success",
-                    "search_pattern": f"ai_cache:*{pattern}*",
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_invalidation_event(
+                    pattern=pattern,
+                    keys_invalidated=keys_count + l1_invalidated,
+                    duration=duration,
+                    invalidation_type="manual",
+                    operation_context=operation_context,
+                    additional_data={
+                        "status": "success",
+                        "search_pattern": f"ai_cache:*{pattern}*",
                     "l1_invalidated": l1_invalidated,
                 },
             )
@@ -1093,18 +1095,19 @@ class AIResponseCache(GenericRedisCache):
         except Exception as e:
             # Record failed invalidation
             duration = time.time() - start_time
-            self.performance_monitor.record_invalidation_event(
-                pattern=pattern,
-                keys_invalidated=l1_invalidated,
-                duration=duration,
-                invalidation_type="manual",
-                operation_context=operation_context,
-                additional_data={
-                    "status": "partial",
-                    "reason": "redis_error",
-                    "error": str(e),
-                    "l1_invalidated": l1_invalidated,
-                },
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_invalidation_event(
+                    pattern=pattern,
+                    keys_invalidated=l1_invalidated,
+                    duration=duration,
+                    invalidation_type="manual",
+                    operation_context=operation_context,
+                    additional_data={
+                        "status": "partial",
+                        "reason": "redis_error",
+                        "error": str(e),
+                        "l1_invalidated": l1_invalidated,
+                    },
             )
             logger.warning(f"Cache invalidation error: {e}")
 
@@ -1182,19 +1185,20 @@ class AIResponseCache(GenericRedisCache):
             if not await self.connect():
                 logger.warning(f"Cannot invalidate operation {operation} - Redis unavailable")
                 duration = time.time() - start_time
-                self.performance_monitor.record_invalidation_event(
-                    pattern=pattern,
-                    keys_invalidated=total_invalidated,
-                    duration=duration,
-                    invalidation_type="operation_specific",
-                    operation_context=operation_context,
-                    additional_data={
-                        "operation": operation,
-                        "status": "partial",
-                        "reason": "redis_connection_failed",
-                        "l1_invalidated": total_invalidated,
-                    }
-                )
+                if self.performance_monitor is not None:
+                    self.performance_monitor.record_invalidation_event(
+                        pattern=pattern,
+                        keys_invalidated=total_invalidated,
+                        duration=duration,
+                        invalidation_type="operation_specific",
+                        operation_context=operation_context,
+                        additional_data={
+                            "operation": operation,
+                            "status": "partial",
+                            "reason": "redis_connection_failed",
+                            "l1_invalidated": total_invalidated,
+                        }
+                    )
                 return total_invalidated
 
             try:
@@ -1228,11 +1232,12 @@ class AIResponseCache(GenericRedisCache):
                 # Record invalidation metrics if any tier invalidated keys
                 if unique_invalidated > 0:
                     duration = time.time() - start_time
-                    self.performance_monitor.record_invalidation_event(
-                        pattern=pattern,
-                        keys_invalidated=unique_invalidated,
-                        duration=duration,
-                        invalidation_type="operation_specific",
+                    if self.performance_monitor is not None:
+                        self.performance_monitor.record_invalidation_event(
+                            pattern=pattern,
+                            keys_invalidated=unique_invalidated,
+                            duration=duration,
+                            invalidation_type="operation_specific",
                         operation_context=operation_context,
                         additional_data={
                             "operation": operation,
@@ -1260,11 +1265,12 @@ class AIResponseCache(GenericRedisCache):
             except Exception as e:
                 # Gracefully handle Redis errors by returning L1-only invalidation count
                 duration = time.time() - start_time
-                self.performance_monitor.record_invalidation_event(
-                    pattern=pattern,
-                    keys_invalidated=total_invalidated,
-                    duration=duration,
-                    invalidation_type="operation_specific",
+                if self.performance_monitor is not None:
+                    self.performance_monitor.record_invalidation_event(
+                        pattern=pattern,
+                        keys_invalidated=total_invalidated,
+                        duration=duration,
+                        invalidation_type="operation_specific",
                     operation_context=operation_context,
                     additional_data={
                         "operation": operation,
@@ -1366,11 +1372,12 @@ class AIResponseCache(GenericRedisCache):
         # Record metrics
         duration = time.time() - start_time
         try:
-            self.performance_monitor.record_invalidation_event(
-                pattern="ai_cache:*",
-                keys_invalidated=redis_invalidated + l1_invalidated,
-                duration=duration,
-                invalidation_type="clear",
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_invalidation_event(
+                    pattern="ai_cache:*",
+                    keys_invalidated=redis_invalidated + l1_invalidated,
+                    duration=duration,
+                    invalidation_type="clear",
                 operation_context=operation_context,
                 additional_data={
                     "status": "success",
@@ -1531,7 +1538,7 @@ class AIResponseCache(GenericRedisCache):
         }
 
         # Add performance statistics
-        performance_stats = self.performance_monitor.get_performance_stats()
+        performance_stats = self.performance_monitor.get_performance_stats() if self.performance_monitor is not None else {}
 
         return {
             "redis": redis_stats,
@@ -1558,7 +1565,7 @@ class AIResponseCache(GenericRedisCache):
             >>> print(f"Cache hit ratio: {hit_ratio:.1f}%")
             Cache hit ratio: 75.3%
         """
-        return self.performance_monitor._calculate_hit_rate()
+        return self.performance_monitor._calculate_hit_rate() if self.performance_monitor is not None else 0.0
 
     def get_performance_summary(self) -> Dict[str, Any]:
         """
@@ -1586,9 +1593,9 @@ class AIResponseCache(GenericRedisCache):
         """
         summary = {
             "hit_ratio": self.get_cache_hit_ratio(),
-            "total_operations": self.performance_monitor.total_operations,
-            "cache_hits": self.performance_monitor.cache_hits,
-            "cache_misses": self.performance_monitor.cache_misses,
+            "total_operations": self.performance_monitor.total_operations if self.performance_monitor is not None else 0,
+            "cache_hits": self.performance_monitor.cache_hits if self.performance_monitor is not None else 0,
+            "cache_misses": self.performance_monitor.cache_misses if self.performance_monitor is not None else 0,
             "recent_avg_cache_operation_time": self._get_recent_avg_cache_operation_time(),
             "ai_operation_metrics": dict(self.ai_metrics['cache_hits_by_operation']),
             "ai_miss_metrics": dict(self.ai_metrics['cache_misses_by_operation']),
@@ -1613,7 +1620,7 @@ class AIResponseCache(GenericRedisCache):
             Only considers the 10 most recent measurements to provide
             current performance rather than historical averages.
         """
-        if not self.performance_monitor.cache_operation_times:
+        if self.performance_monitor is None or not self.performance_monitor.cache_operation_times:
             return 0.0
 
         recent_times = [
@@ -1703,7 +1710,7 @@ class AIResponseCache(GenericRedisCache):
                     "text_tier_distribution": {},
                     "key_generation_stats": self.key_generator.get_key_generation_stats(),
                     "optimization_recommendations": [],
-                    "inherited_stats": self.performance_monitor.get_performance_stats() if hasattr(self, 'performance_monitor') else {}
+                    "inherited_stats": self.performance_monitor.get_performance_stats() if self.performance_monitor is not None else {}
                 }
 
             # Calculate overall hit rate
@@ -1749,7 +1756,7 @@ class AIResponseCache(GenericRedisCache):
             # Include inherited stats from parent GenericRedisCache
             inherited_stats = {}
             try:
-                if hasattr(self, 'performance_monitor'):
+                if self.performance_monitor is not None:
                     inherited_stats = self.performance_monitor.get_performance_stats()
             except Exception as e:
                 logger.warning(f"Could not retrieve inherited stats: {e}")
@@ -2201,15 +2208,16 @@ class AIResponseCache(GenericRedisCache):
                 return
 
             # Call performance_monitor.record_cache_operation with "hit"
-            self.performance_monitor.record_cache_operation_time(
-                operation="get",
-                duration=0.001,  # Minimal duration for hit recording
-                cache_hit=True,
-                text_length=len(text) if text else 0,
-                additional_data={
-                    "cache_type": cache_type,
-                    "ai_operation": operation,
-                    "text_tier": text_tier,
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=0.001,  # Minimal duration for hit recording
+                    cache_hit=True,
+                    text_length=len(text) if text else 0,
+                    additional_data={
+                        "cache_type": cache_type,
+                        "ai_operation": operation,
+                        "text_tier": text_tier,
                     "cache_result": "hit",
                     "hit_source": cache_type
                 }
@@ -2267,13 +2275,14 @@ class AIResponseCache(GenericRedisCache):
                 return
 
             # Call performance_monitor.record_cache_operation with "miss"
-            self.performance_monitor.record_cache_operation_time(
-                operation="get",
-                duration=0.001,  # Minimal duration for miss recording
-                cache_hit=False,
-                text_length=len(text) if text else 0,
-                additional_data={
-                    "ai_operation": operation,
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=0.001,  # Minimal duration for miss recording
+                    cache_hit=False,
+                    text_length=len(text) if text else 0,
+                    additional_data={
+                        "ai_operation": operation,
                     "text_tier": text_tier,
                     "cache_result": "miss",
                     "miss_reason": "key_not_found"
@@ -2588,7 +2597,7 @@ class AIResponseCache(GenericRedisCache):
 
             # Compression recommendations (if compression stats are available)
             try:
-                compression_stats = self.performance_monitor.get_performance_stats().get('compression', {})
+                compression_stats = self.performance_monitor.get_performance_stats().get('compression', {}) if self.performance_monitor is not None else {}
                 if compression_stats and compression_stats.get('total_compressions', 0) > 10:
                     avg_ratio = compression_stats.get('avg_compression_ratio', 1.0)
                     if avg_ratio > 0.8:  # Poor compression ratio
