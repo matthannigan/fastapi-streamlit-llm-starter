@@ -795,8 +795,8 @@ class TestSecurityConfigEnvironmentCreation:
             'REDIS_VERIFY_CERTIFICATES': 'false'
         }):
             config = create_security_config_from_env()
-            assert config.use_tls is False
-            assert config.verify_certificates is False
+            assert config.use_tls is False  # type: ignore
+            assert config.verify_certificates is False  # type: ignore
         
         with patch.dict('os.environ', {
             'REDIS_AUTH': 'password',
@@ -804,5 +804,5 @@ class TestSecurityConfigEnvironmentCreation:
             'REDIS_VERIFY_CERTIFICATES': 'True'
         }):
             config = create_security_config_from_env()
-            assert config.use_tls is True
-            assert config.verify_certificates is True
+            assert config.use_tls is True  # type: ignore
+            assert config.verify_certificates is True  # type: ignore   
