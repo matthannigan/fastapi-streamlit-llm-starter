@@ -96,10 +96,10 @@ from app.infrastructure.security import verify_api_key
 # FastAPI dependency injection
 @app.get("/protected")
 async def endpoint(
-cache=Depends(get_ai_cache_service),
-api_key=Depends(verify_api_key)
+    cache=Depends(get_ai_cache_service),
+    api_key=Depends(verify_api_key)
 ):
-return await cache.get_cached_response(...)
+    return await cache.get_cached_response(...)
 ```
 
 ### Direct Service Usage
@@ -120,8 +120,8 @@ from app.infrastructure.resilience import with_operation_resilience
 
 @with_operation_resilience("summarize")
 async def ai_operation(text: str):
-# Automatic circuit breaker, retry, and monitoring
-return await ai_service.summarize(text)
+    # Automatic circuit breaker, retry, and monitoring
+    return await ai_service.summarize(text)
 ```
 
 ### Configuration-Based Setup
@@ -130,11 +130,11 @@ from app.infrastructure.cache import CacheConfigBuilder, CacheFactory
 
 # Builder pattern for complex configurations
 config = (CacheConfigBuilder()
-.for_environment("production")
-.with_redis("redis://localhost:6379")
-.with_ai_features()
-.with_security(use_tls=True)
-.build())
+          .for_environment("production")
+          .with_redis("redis://localhost:6379")
+          .with_ai_features()
+          .with_security(use_tls=True)
+          .build())
 cache = CacheFactory.create_cache_from_config(config)
 ```
 

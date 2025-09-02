@@ -42,3 +42,95 @@ from app.core.config import settings
 
 app.add_middleware(RateLimitMiddleware, settings=settings)
 ```
+
+## RateLimitExceeded
+
+Deprecated alias. Prefer using RateLimitError from app.core.exceptions.
+
+### __init__()
+
+```python
+def __init__(self, message: str, retry_after: int = 60):
+```
+
+## RedisRateLimiter
+
+Redis-backed distributed rate limiter.
+
+### __init__()
+
+```python
+def __init__(self, redis_client: redis.Redis, requests_per_minute: int = 60, window_seconds: int = 60):
+```
+
+### is_allowed()
+
+```python
+async def is_allowed(self, key: str, weight: int = 1) -> bool:
+```
+
+Check if request is allowed under rate limit.
+
+## LocalRateLimiter
+
+Local in-memory rate limiter fallback.
+
+### __init__()
+
+```python
+def __init__(self, requests_per_minute: int = 60, window_seconds: int = 60):
+```
+
+### is_allowed()
+
+```python
+def is_allowed(self, key: str, weight: int = 1) -> bool:
+```
+
+Check if request is allowed under rate limit.
+
+## RateLimitMiddleware
+
+Production-ready rate limiting middleware with multiple strategies.
+
+Features:
+- Multiple rate limiting strategies (sliding window, token bucket, fixed window)
+- Redis-backed distributed rate limiting
+- Per-endpoint and per-user rate limits
+- Graceful degradation when Redis is unavailable
+- Custom rate limit headers in responses
+- Configurable rate limit rules
+
+### __init__()
+
+```python
+def __init__(self, app: ASGIApp, settings: Settings):
+```
+
+### dispatch()
+
+```python
+async def dispatch(self, request: Request, call_next):
+```
+
+Process request with rate limiting.
+
+## RateLimitSettings
+
+Rate limiting configuration settings.
+
+## get_client_identifier()
+
+```python
+def get_client_identifier(request: Request) -> str:
+```
+
+Get unique client identifier for rate limiting.
+
+## get_endpoint_classification()
+
+```python
+def get_endpoint_classification(request: Request) -> str:
+```
+
+Get endpoint classification for rate limiting.

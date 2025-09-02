@@ -7,7 +7,7 @@ sidebar_label: conftest
   file_path: `backend/tests/infrastructure/cache/benchmarks/conftest.py`
 
 This module provides reusable fixtures specific to cache benchmark testing.
-All fixtures provide 'happy path' behavior based on public contracts from
+All fixtures provide 'happy path' behavior based on public contracts from 
 backend/contracts/infrastructure/cache/benchmarks/ directory.
 
 Note: The benchmarks modules have very few external dependencies that aren't already
@@ -15,25 +15,24 @@ covered by the shared cache conftest.py file. Most dependencies are either inter
 to the benchmarks package or are standard library modules.
 
 Dependencies covered by shared cache conftest.py:
-- ConfigurationError (from app.core.exceptions)
-- CacheInterface (from app.infrastructure.cache.base)
-- CachePerformanceMonitor (from app.infrastructure.cache.monitoring)
+    - ConfigurationError (from app.core.exceptions)
+    - CacheInterface (from app.infrastructure.cache.base)
+    - CachePerformanceMonitor (from app.infrastructure.cache.monitoring)
 
 Internal benchmarks dependencies (no mocking needed):
-- BenchmarkResult, BenchmarkSuite, ComparisonResult (from .models)
-- StatisticalCalculator, MemoryTracker (from .utils)
-- CacheBenchmarkDataGenerator (from .generator)
-- BenchmarkConfig, ConfigPresets, CachePerformanceThresholds (from .config)
-- ReporterFactory and reporter classes (from .reporting)
+    - BenchmarkResult, BenchmarkSuite, ComparisonResult (from .models)
+    - StatisticalCalculator, MemoryTracker (from .utils)
+    - CacheBenchmarkDataGenerator (from .generator)
+    - BenchmarkConfig, ConfigPresets, CachePerformanceThresholds (from .config)
+    - ReporterFactory and reporter classes (from .reporting)
 
 Standard library dependencies (no mocking needed):
-- json, random, string, datetime, typing, math, statistics, logging
-- dataclasses, abc, asyncio, time
+    - json, random, string, datetime, typing, math, statistics, logging
+    - dataclasses, abc, asyncio, time
 
-## Design Philosophy
-
-- Fixtures represent 'happy path' successful behavior only
-- Error scenarios are configured within individual test functions
-- All fixtures use public contracts from backend/contracts/ directory
-- Mock dependencies are spec'd against real classes for accuracy
-- Mock only at system boundaries (external dependencies)
+Design Philosophy:
+    - Fixtures represent 'happy path' successful behavior only
+    - Error scenarios are configured within individual test functions
+    - All fixtures use public contracts from backend/contracts/ directory
+    - Mock dependencies are spec'd against real classes for accuracy
+    - Mock only at system boundaries (external dependencies)

@@ -9,11 +9,26 @@ sidebar_label: health_check_resilience
 Lightweight health check for Docker containers to verify resilience configuration
 is loaded correctly and functioning.
 
-## Usage
+Usage:
+    python health_check_resilience.py
+    
+Exit codes:
+    0: Healthy - resilience configuration is valid and loaded
+    1: Unhealthy - resilience configuration has issues
 
-python health_check_resilience.py
+## check_resilience_health()
 
-## Exit codes
+```python
+def check_resilience_health():
+```
 
-0: Healthy - resilience configuration is valid and loaded
-1: Unhealthy - resilience configuration has issues
+Perform a quick health check of the resilience configuration.
+Returns True if healthy, False if unhealthy.
+
+## main()
+
+```python
+def main():
+```
+
+Main entry point for health check.

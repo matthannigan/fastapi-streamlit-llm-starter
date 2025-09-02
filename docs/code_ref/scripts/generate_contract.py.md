@@ -15,25 +15,23 @@ omitting implementation details.
 Features
 --------
 - **Robust signature builder**: Handles positional-only, keyword-only, varargs,
-kwargs, defaults, annotations, and async functions.
+  kwargs, defaults, annotations, and async functions.
 - **Class method emission**: Emits methods nested within classes; nested classes
-are supported.
+  are supported.
 - **Empty class handling**: Emits a configurable placeholder when a class body
-would otherwise be empty.
+  would otherwise be empty.
 - **Docstrings**: Preserves and indents module, class, and function docstrings
-as multi-line blocks.
+  as multi-line blocks.
 - **Imports**: Collects and emits only top-level imports (deduplicated, order
-preserved) near the module top.
+  preserved) near the module top.
 - **Stable ordering**: Module docstring → imports → classes → functions.
 - **Filtering**: Control inclusion of private names and dunder methods.
 - **Directory mode**: Recursively process a directory tree, mirroring structure
-into an output directory and generating ``.pyi`` files.
+  into an output directory and generating ``.pyi`` files.
 
 Usage
 -----
-
-## Single file
-
+Single file:
 ```bash
 python generate_contract.py backend/app/main.py -o backend/contracts/main.pyi
 ```
@@ -48,16 +46,16 @@ python generate_contract.py --input-dir backend/app --output-dir backend/contrac
 CLI Options
 -----------
 - ``input_path``: Positional path to a source ``.py`` file or a directory
-(smart-detected). If ``--input-dir`` is supplied, it takes precedence.
+  (smart-detected). If ``--input-dir`` is supplied, it takes precedence.
 - ``-o, --output_file``: Output file (single-file mode) or output directory
-(directory mode). In single-file mode, if this points to a directory, the
-output name is derived from the input and written as ``.pyi``.
+  (directory mode). In single-file mode, if this points to a directory, the
+  output name is derived from the input and written as ``.pyi``.
 - ``--input-dir``: Explicit directory mode input. Preferred for CI/scripts.
 - ``--output-dir``: Explicit output directory for directory mode.
 - ``--include-private``: Include names starting with a single underscore.
 - ``--exclude-dunder``: Exclude ``__dunder__`` names (keeps ``__init__`` for methods).
 - ``--body-placeholder {ellipsis,pass}``: Placeholder for generated bodies.
-Defaults to ``ellipsis`` (``...``), recommended for ``.pyi`` stubs.
+  Defaults to ``ellipsis`` (``...``), recommended for ``.pyi`` stubs.
 - ``--encoding``: File encoding for reading source (default: ``utf-8``).
 
 Behavior
@@ -77,5 +75,76 @@ Exit Codes
 Notes
 -----
 - For contract snapshots used in tests and static analysis, prefer ``.pyi`` with
-``...`` bodies. Use ``pass`` only if you truly need executable skeletons.
+  ``...`` bodies. Use ``pass`` only if you truly need executable skeletons.
 - The generator targets Python 3.9+ (uses ``ast.unparse``).
+
+## PublicContractGenerator
+
+Traverses a Python AST and generates a public contract file.
+
+### __init__()
+
+```python
+def __init__(self, *, include_private: bool = False, exclude_dunder: bool = False, body_placeholder: str = '...', public_object_types: Optional[List[str]] = None):
+```
+
+### visit_Assign()
+
+```python
+def visit_Assign(self, node: ast.Assign):
+```
+
+Captures public module-level constants AND common public objects
+like FastAPI Routers, Blueprints, etc.
+
+### visit_Import()
+
+```python
+def visit_Import(self, node: ast.Import):
+```
+
+### visit_ImportFrom()
+
+```python
+def visit_ImportFrom(self, node: ast.ImportFrom):
+```
+
+### visit_AnnAssign()
+
+```python
+def visit_AnnAssign(self, node: ast.AnnAssign):
+```
+
+Capture top-level annotated assignments if they look public/constant objects and pass filters.
+
+### visit_ClassDef()
+
+```python
+def visit_ClassDef(self, node: ast.ClassDef):
+```
+
+### visit_FunctionDef()
+
+```python
+def visit_FunctionDef(self, node: ast.FunctionDef):
+```
+
+### visit_AsyncFunctionDef()
+
+```python
+def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+```
+
+### generate_contract()
+
+```python
+def generate_contract(self, source_code: str, is_init_file: bool = False) -> str:
+```
+
+Parses source code and returns the public contract.
+
+## main()
+
+```python
+def main():
+```

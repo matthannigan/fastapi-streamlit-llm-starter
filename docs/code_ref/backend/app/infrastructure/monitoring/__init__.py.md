@@ -14,7 +14,7 @@ and configuration tracking across all infrastructure services.
 
 The monitoring system follows a layered observability approach:
 - **Metrics Layer**: Real-time performance and operational metrics collection
-- **Health Layer**: Component and system health monitoring with async-first design
+- **Health Layer**: Component and system health monitoring with async-first design  
 - **Configuration Layer**: Configuration change tracking and validation monitoring
 - **Alerting Layer**: Threshold-based alerting and notification system (future)
 
@@ -99,7 +99,7 @@ alerts = config_metrics_collector.get_active_alerts()
 
 # Track configuration changes
 config_metrics_collector.record_config_change(
-"resilience_preset", old_value="development", new_value="production"
+    "resilience_preset", old_value="development", new_value="production"
 )
 ```
 
@@ -108,12 +108,12 @@ config_metrics_collector.record_config_change(
 from app.infrastructure.monitoring import HealthChecker, HealthStatus
 
 async def check_external_service_health() -> HealthStatus:
-try:
-# Your health check logic
-response = await external_service.ping()
-return HealthStatus.healthy("External service responding")
-except Exception as e:
-return HealthStatus.unhealthy(f"External service failed: {e}")
+    try:
+        # Your health check logic
+        response = await external_service.ping()
+        return HealthStatus.healthy("External service responding")
+    except Exception as e:
+        return HealthStatus.unhealthy(f"External service failed: {e}")
 
 # Register custom check
 checker.register_check("external_service", check_external_service_health)

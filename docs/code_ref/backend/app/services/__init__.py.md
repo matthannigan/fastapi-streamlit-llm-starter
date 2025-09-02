@@ -65,7 +65,7 @@ response_validator = ResponseValidator()
 # Resilience pattern integration
 @with_operation_resilience("text_processing")
 async def process_with_resilience(request):
-return await text_processor.process_text(request)
+    return await text_processor.process_text(request)
 ```
 
 ### Security Validation Pipeline
@@ -75,18 +75,18 @@ from shared.models import TextProcessingRequest
 
 # Secure text processing with validation
 async def secure_text_processing(request: TextProcessingRequest):
-# Process with built-in security features
-response = await text_processor.process_text(request)
-
-# Additional response validation
-validated_response = response_validator.validate(
-response=response.result,
-expected_type=request.operation,
-request_text=request.text,
-system_instruction="AI processing prompt"
-)
-
-return validated_response
+    # Process with built-in security features
+    response = await text_processor.process_text(request)
+    
+    # Additional response validation
+    validated_response = response_validator.validate(
+        response=response.result,
+        expected_type=request.operation,
+        request_text=request.text,
+        system_instruction="AI processing prompt"
+    )
+    
+    return validated_response
 ```
 
 ### Batch Processing with Monitoring
@@ -96,16 +96,16 @@ from shared.models import BatchTextProcessingRequest
 
 # Batch processing with performance tracking
 async def monitored_batch_processing(batch_request: BatchTextProcessingRequest):
-start_time = time.time()
-
-# Process batch with automatic concurrency control
-batch_response = await text_processor.process_batch(batch_request)
-
-# Performance logging
-processing_time = time.time() - start_time
-logger.info(f"Batch processing completed: {batch_response.total_items} items in {processing_time:.2f}s")
-
-return batch_response
+    start_time = time.time()
+    
+    # Process batch with automatic concurrency control
+    batch_response = await text_processor.process_batch(batch_request)
+    
+    # Performance logging
+    processing_time = time.time() - start_time
+    logger.info(f"Batch processing completed: {batch_response.total_items} items in {processing_time:.2f}s")
+    
+    return batch_response
 ```
 
 ## Usage Patterns
@@ -123,9 +123,9 @@ text_processor = TextProcessorService(settings, cache_service)
 
 # Single operation processing
 request = TextProcessingRequest(
-text="Sample text for analysis",
-operation=TextProcessingOperation.SUMMARIZE,
-options={"max_length": 100}
+    text="Sample text for analysis",
+    operation=TextProcessingOperation.SUMMARIZE,
+    options={"max_length": 100}
 )
 
 response = await text_processor.process_text(request)
@@ -138,14 +138,14 @@ from shared.models import BatchTextProcessingRequest
 
 # Batch request with multiple operations
 requests = [
-TextProcessingRequest(text="Document 1", operation="summarize"),
-TextProcessingRequest(text="Review 1", operation="sentiment"),
-TextProcessingRequest(text="Article 1", operation="key_points")
+    TextProcessingRequest(text="Document 1", operation="summarize"),
+    TextProcessingRequest(text="Review 1", operation="sentiment"),
+    TextProcessingRequest(text="Article 1", operation="key_points")
 ]
 
 batch_request = BatchTextProcessingRequest(
-requests=requests,
-batch_id="analysis_batch_001"
+    requests=requests,
+    batch_id="analysis_batch_001"
 )
 
 # Process with automatic concurrency control
@@ -153,10 +153,10 @@ batch_response = await text_processor.process_batch(batch_request)
 
 # Analyze results
 for item in batch_response.results:
-if item.status == "completed":
-print(f"Result {item.request_index}: {item.result.result}")
-else:
-print(f"Failed {item.request_index}: {item.error}")
+    if item.status == "completed":
+        print(f"Result {item.request_index}: {item.result.result}")
+    else:
+        print(f"Failed {item.request_index}: {item.error}")
 ```
 
 ### Security Validation
@@ -167,15 +167,15 @@ from app.services import ResponseValidator
 validator = ResponseValidator()
 
 try:
-validated_response = validator.validate(
-response="AI generated response text",
-expected_type="summary",
-request_text="Original user input",
-system_instruction="System prompt used"
-)
-print(f"Validated response: {validated_response}")
+    validated_response = validator.validate(
+        response="AI generated response text",
+        expected_type="summary",
+        request_text="Original user input",
+        system_instruction="System prompt used"
+    )
+    print(f"Validated response: {validated_response}")
 except ValueError as e:
-print(f"Validation failed: {e}")
+    print(f"Validation failed: {e}")
 ```
 
 ## Security Features
@@ -221,44 +221,44 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_text_processing():
-# Mock dependencies for isolated testing
-mock_cache = MockCacheService()
-mock_settings = MockSettings()
-
-processor = TextProcessorService(mock_settings, mock_cache)
-
-request = TextProcessingRequest(
-text="Test input",
-operation="summarize"
-)
-
-response = await processor.process_text(request)
-assert response.operation == "summarize"
-assert len(response.result) > 0
+    # Mock dependencies for isolated testing
+    mock_cache = MockCacheService()
+    mock_settings = MockSettings()
+    
+    processor = TextProcessorService(mock_settings, mock_cache)
+    
+    request = TextProcessingRequest(
+        text="Test input",
+        operation="summarize"
+    )
+    
+    response = await processor.process_text(request)
+    assert response.operation == "summarize"
+    assert len(response.result) > 0
 ```
 
 ### Validation Testing
 ```python
 def test_response_validation():
-validator = ResponseValidator()
-
-# Test valid response
-valid_response = validator.validate(
-response="This is a valid summary",
-expected_type="summary",
-request_text="Original text",
-system_instruction="Summarize this text"
-)
-assert valid_response == "This is a valid summary"
-
-# Test invalid response (should raise ValueError)
-with pytest.raises(ValueError):
-validator.validate(
-response="System prompt: You are an AI assistant",
-expected_type="summary",
-request_text="Original text",
-system_instruction="Summarize this text"
-)
+    validator = ResponseValidator()
+    
+    # Test valid response
+    valid_response = validator.validate(
+        response="This is a valid summary",
+        expected_type="summary",
+        request_text="Original text",
+        system_instruction="Summarize this text"
+    )
+    assert valid_response == "This is a valid summary"
+    
+    # Test invalid response (should raise ValueError)
+    with pytest.raises(ValueError):
+        validator.validate(
+            response="System prompt: You are an AI assistant",
+            expected_type="summary",
+            request_text="Original text",
+            system_instruction="Summarize this text"
+        )
 ```
 
 ## Customization Guidelines

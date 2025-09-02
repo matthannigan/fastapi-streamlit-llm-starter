@@ -2,7 +2,7 @@
 sidebar_label: reporting
 ---
 
-# [REFACTORED] Comprehensive cache benchmark reporting with multi-format output and detailed analysis.
+# Comprehensive cache benchmark reporting with multi-format output and detailed analysis.
 
   file_path: `backend/app/infrastructure/cache/benchmarks/reporting.py`
 
@@ -10,108 +10,265 @@ This module provides sophisticated report generation infrastructure for cache pe
 supporting multiple output formats including human-readable text, structured JSON, GitHub-compatible
 markdown, and CI/CD optimized reports with performance badges and automated insights.
 
-## Classes
+Classes:
+    BenchmarkReporter: Abstract base class defining reporting interface with analysis utilities
+    TextReporter: Human-readable console/log reports with configurable verbosity levels
+    CIReporter: CI/CD pipeline optimized reports with badges, tables, and concise insights
+    JSONReporter: Structured JSON output for API integration and programmatic processing
+    MarkdownReporter: GitHub-flavored markdown with collapsible sections and performance tables
+    ReporterFactory: Factory pattern for creating appropriate reporters with auto-detection
 
-BenchmarkReporter: Abstract base class defining reporting interface with analysis utilities
-TextReporter: Human-readable console/log reports with configurable verbosity levels
-CIReporter: CI/CD pipeline optimized reports with badges, tables, and concise insights
-JSONReporter: Structured JSON output for API integration and programmatic processing
-MarkdownReporter: GitHub-flavored markdown with collapsible sections and performance tables
-ReporterFactory: Factory pattern for creating appropriate reporters with auto-detection
+Key Features:
+    - **Multi-Format Support**: Text, JSON, Markdown, and CI-specific formats with consistent
+      analysis across all output types for different audiences and use cases.
 
-## Key Features
+    - **Performance Analysis**: Automated performance insights including threshold analysis,
+      memory efficiency assessment, success rate evaluation, and variability detection.
 
-- **Multi-Format Support**: Text, JSON, Markdown, and CI-specific formats with consistent
-analysis across all output types for different audiences and use cases.
+    - **Actionable Recommendations**: Context-aware optimization recommendations based on
+      performance patterns, memory usage, reliability metrics, and cache efficiency.
 
-- **Performance Analysis**: Automated performance insights including threshold analysis,
-memory efficiency assessment, success rate evaluation, and variability detection.
+    - **CI/CD Integration**: Performance badges, GitHub Actions annotations, automated
+      pass/fail determination, and concise insights optimized for pipeline integration.
 
-- **Actionable Recommendations**: Context-aware optimization recommendations based on
-performance patterns, memory usage, reliability metrics, and cache efficiency.
+    - **Configurable Verbosity**: Multiple detail levels from summary to comprehensive
+      with customizable section inclusion for different reporting needs.
 
-- **CI/CD Integration**: Performance badges, GitHub Actions annotations, automated
-pass/fail determination, and concise insights optimized for pipeline integration.
+    - **Environment Detection**: Automatic format detection based on CI environment
+      variables and configuration preferences for seamless integration.
 
-- **Configurable Verbosity**: Multiple detail levels from summary to comprehensive
-with customizable section inclusion for different reporting needs.
+Report Format Capabilities:
+    **Text Reports**: Console-friendly output with sections for header, results, analysis,
+    recommendations, and failures. Supports summary, standard, and detailed verbosity.
 
-- **Environment Detection**: Automatic format detection based on CI environment
-variables and configuration preferences for seamless integration.
+    **JSON Reports**: Structured data with schema versioning, computed metrics, analysis
+    metadata, and complete benchmark preservation for API integration.
 
-## Report Format Capabilities
+    **Markdown Reports**: GitHub-compatible format with performance tables, collapsible
+    details, environment information, and emoji indicators for visual clarity.
 
-**Text Reports**: Console-friendly output with sections for header, results, analysis,
-recommendations, and failures. Supports summary, standard, and detailed verbosity.
+    **CI Reports**: Pipeline-optimized format with performance badges, concise insights,
+    summary tables, and quick assessment for automated deployment decisions.
 
-**JSON Reports**: Structured data with schema versioning, computed metrics, analysis
-metadata, and complete benchmark preservation for API integration.
+Usage Examples:
+    Multi-Format Report Generation:
+        >>> from app.infrastructure.cache.benchmarks.reporting import ReporterFactory
+        >>>
+        >>> # Text report for console output
+        >>> text_reporter = ReporterFactory.get_reporter("text")
+        >>> text_report = text_reporter.generate_report(suite)
+        >>> print(text_report)
+        >>>
+        >>> # CI report with badges
+        >>> ci_reporter = ReporterFactory.get_reporter("ci")
+        >>> ci_report = ci_reporter.generate_report(suite)
+        >>>
+        >>> # JSON for API integration
+        >>> json_reporter = ReporterFactory.get_reporter("json")
+        >>> json_report = json_reporter.generate_report(suite)
 
-**Markdown Reports**: GitHub-compatible format with performance tables, collapsible
-details, environment information, and emoji indicators for visual clarity.
+    Environment-Based Auto-Detection:
+        >>> # Automatically detects CI environment
+        >>> format = ReporterFactory.detect_format_from_environment()
+        >>> reporter = ReporterFactory.get_reporter(format)
+        >>>
+        >>> # Generate all formats
+        >>> all_reports = ReporterFactory.generate_all_reports(suite)
+        >>> for format_name, report in all_reports.items():
+        ...     with open(f"report.{format_name}", "w") as f:
+        ...         f.write(report)
 
-**CI Reports**: Pipeline-optimized format with performance badges, concise insights,
-summary tables, and quick assessment for automated deployment decisions.
+    Custom Configuration:
+        >>> # Detailed text report with specific sections
+        >>> text_reporter = TextReporter(
+        ...     verbosity="detailed",
+        ...     include_sections=["header", "results", "analysis"]
+        ... )
+        >>>
+        >>> # JSON with metadata inclusion
+        >>> json_reporter = JSONReporter(
+        ...     include_metadata=True,
+        ...     schema_version="2.0"
+        ... )
 
-## Usage Examples
+Performance Considerations:
+    - Report generation is optimized for minimal overhead during benchmark execution
+    - Large dataset formatting is handled efficiently with streaming approaches
+    - Multiple format generation uses shared analysis to minimize computation
+    - Badge generation includes caching for repeated use in CI environments
 
-### Multi-Format Report Generation
+Thread Safety:
+    All reporter classes are stateless and thread-safe for concurrent report generation.
+    Factory methods are safe for concurrent use across multiple benchmark executions.
+
+## BenchmarkReporter
+
+Base class for benchmark reporters.
+
+This abstract base class defines the interface for all benchmark reporters
+and provides common utilities for generating insights and recommendations.
+
+### __init__()
 
 ```python
-from app.infrastructure.cache.benchmarks.reporting import ReporterFactory
-
-# Text report for console output
-text_reporter = ReporterFactory.get_reporter("text")
-text_report = text_reporter.generate_report(suite)
-print(text_report)
-
-# CI report with badges
-ci_reporter = ReporterFactory.get_reporter("ci")
-ci_report = ci_reporter.generate_report(suite)
-
-# JSON for API integration
-json_reporter = ReporterFactory.get_reporter("json")
-json_report = json_reporter.generate_report(suite)
+def __init__(self, thresholds: Optional[CachePerformanceThresholds] = None):
 ```
 
-### Environment-Based Auto-Detection
+Initialize reporter with performance thresholds.
+
+Args:
+    thresholds: Performance thresholds for pass/fail determination
+
+### generate_report()
 
 ```python
-# Automatically detects CI environment
-format = ReporterFactory.detect_format_from_environment()
-reporter = ReporterFactory.get_reporter(format)
-
-# Generate all formats
-all_reports = ReporterFactory.generate_all_reports(suite)
-for format_name, report in all_reports.items():
-    with open(f"report.{format_name}", "w") as f:
-        f.write(report)
+def generate_report(self, suite: BenchmarkSuite) -> str:
 ```
 
-### Custom Configuration
+Generate report from benchmark suite.
+
+## TextReporter
+
+Human-readable text report generator.
+
+Generates comprehensive text reports suitable for console output,
+log files, and human review. Supports multiple verbosity levels
+and customizable sections.
+
+### __init__()
 
 ```python
-# Detailed text report with specific sections
-text_reporter = TextReporter(
-    verbosity="detailed",
-    include_sections=["header", "results", "analysis"]
-)
-
-# JSON with metadata inclusion
-json_reporter = JSONReporter(
-    include_metadata=True,
-    schema_version="2.0"
-)
+def __init__(self, thresholds: Optional[CachePerformanceThresholds] = None, verbosity: str = 'standard', include_sections: Optional[List[str]] = None):
 ```
 
-## Performance Considerations
+Initialize text reporter with options.
 
-- Report generation is optimized for minimal overhead during benchmark execution
-- Large dataset formatting is handled efficiently with streaming approaches
-- Multiple format generation uses shared analysis to minimize computation
-- Badge generation includes caching for repeated use in CI environments
+Args:
+    thresholds: Performance thresholds for analysis
+    verbosity: Report detail level ("summary", "standard", "detailed")
+    include_sections: List of sections to include, None for all
 
-## Thread Safety
+### generate_report()
 
-All reporter classes are stateless and thread-safe for concurrent report generation.
-Factory methods are safe for concurrent use across multiple benchmark executions.
+```python
+def generate_report(self, suite: BenchmarkSuite) -> str:
+```
+
+Generate comprehensive text report.
+
+## CIReporter
+
+CI/CD pipeline optimized reporter.
+
+Generates concise reports suitable for CI environments with
+performance badges, GitHub Actions annotations, and GitLab CI artifacts.
+
+### generate_report()
+
+```python
+def generate_report(self, suite: BenchmarkSuite) -> str:
+```
+
+Generate CI-optimized report.
+
+### create_performance_badges()
+
+```python
+def create_performance_badges(self, results: Union[BenchmarkResult, BenchmarkSuite]) -> Dict[str, str]:
+```
+
+Create performance badges for CI display.
+
+## JSONReporter
+
+Structured JSON report generator.
+
+Generates machine-readable JSON reports suitable for programmatic
+processing, data analysis, and integration with other tools.
+
+### __init__()
+
+```python
+def __init__(self, thresholds: Optional[CachePerformanceThresholds] = None, include_metadata: bool = True, schema_version: str = '1.0'):
+```
+
+Initialize JSON reporter with options.
+
+Args:
+    thresholds: Performance thresholds for analysis
+    include_metadata: Whether to include analysis metadata
+    schema_version: JSON schema version for compatibility
+
+### generate_report()
+
+```python
+def generate_report(self, suite: BenchmarkSuite) -> str:
+```
+
+Generate structured JSON report.
+
+## MarkdownReporter
+
+GitHub-flavored markdown report generator.
+
+Generates markdown reports suitable for GitHub README files,
+pull request comments, and documentation sites.
+
+### generate_report()
+
+```python
+def generate_report(self, suite: BenchmarkSuite) -> str:
+```
+
+Generate GitHub-flavored markdown report.
+
+## ReporterFactory
+
+Factory for creating appropriate reporters.
+
+Provides a centralized way to create reporters with proper configuration
+and supports format auto-detection based on environment or context.
+
+### get_reporter()
+
+```python
+def get_reporter(format: str, **kwargs) -> BenchmarkReporter:
+```
+
+Get reporter for specified format.
+
+Args:
+    format: Report format ("text", "ci", "json", "markdown")
+    **kwargs: Additional arguments passed to reporter constructor
+
+Returns:
+    Configured reporter instance
+
+Raises:
+    ValueError: If format is not supported
+
+### generate_all_reports()
+
+```python
+def generate_all_reports(suite: BenchmarkSuite, thresholds: Optional[CachePerformanceThresholds] = None) -> Dict[str, str]:
+```
+
+Generate reports in all supported formats.
+
+Args:
+    suite: Benchmark suite to generate reports for
+    thresholds: Performance thresholds for analysis
+
+Returns:
+    Dictionary mapping format names to generated reports
+
+### detect_format_from_environment()
+
+```python
+def detect_format_from_environment() -> str:
+```
+
+Auto-detect appropriate report format based on environment.
+
+Returns:
+    Detected format name

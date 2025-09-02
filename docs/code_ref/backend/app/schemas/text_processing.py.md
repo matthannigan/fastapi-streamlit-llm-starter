@@ -17,7 +17,7 @@ validation in mind:
 
 ### Schema Integration Strategy
 - **Shared Model Re-exports**: Schemas are re-exported from the shared.models package to
-ensure consistent data contracts between FastAPI backend and Streamlit frontend
+  ensure consistent data contracts between FastAPI backend and Streamlit frontend
 - **Type Safety**: Full type annotations and Pydantic validation for all operations
 - **API Documentation**: Rich schema descriptions for automatic OpenAPI generation
 - **Validation**: Comprehensive input validation with clear error messages
@@ -32,7 +32,7 @@ ensure consistent data contracts between FastAPI backend and Streamlit frontend
 - **TextProcessingRequest**: Single operation request with optional parameters and validation
 - **BatchTextProcessingRequest**: Multi-operation batch processing with concurrency limits
 
-#### Response Models
+#### Response Models  
 - **TextProcessingResponse**: Operation results with metadata and performance tracking
 - **BatchTextProcessingResponse**: Batch results with aggregated status and individual tracking
 - **BatchTextProcessingItem**: Individual batch item status within batch responses
@@ -78,57 +78,57 @@ from app.schemas.text_processing import TextProcessingRequest, TextProcessingOpe
 
 # Basic summarization request
 summary_request = TextProcessingRequest(
-text="Long document content to be summarized...",
-operation=TextProcessingOperation.SUMMARIZE,
-options={"max_length": 150}
+    text="Long document content to be summarized...",
+    operation=TextProcessingOperation.SUMMARIZE,
+    options={"max_length": 150}
 )
 
 # Sentiment analysis request
 sentiment_request = TextProcessingRequest(
-text="Customer feedback text to analyze sentiment...",
-operation=TextProcessingOperation.SENTIMENT
+    text="Customer feedback text to analyze sentiment...",
+    operation=TextProcessingOperation.SENTIMENT
 )
 
 # Question-answering request with required question parameter
 qa_request = TextProcessingRequest(
-text="Document content to analyze for answers...",
-operation=TextProcessingOperation.QA,
-question="What are the main conclusions from this analysis?"
+    text="Document content to analyze for answers...",
+    operation=TextProcessingOperation.QA,
+    question="What are the main conclusions from this analysis?"
 )
 ```
 
 ### Batch Processing Operations
 ```python
 from app.schemas.text_processing import (
-BatchTextProcessingRequest,
-BatchTextProcessingResponse,
-BatchTextProcessingStatus
+    BatchTextProcessingRequest,
+    BatchTextProcessingResponse,
+    BatchTextProcessingStatus
 )
 
 # Batch request with multiple operations
 batch_request = BatchTextProcessingRequest(
-requests=[
-TextProcessingRequest(text="Document 1", operation="summarize"),
-TextProcessingRequest(text="Review 1", operation="sentiment"),
-TextProcessingRequest(text="Article 1", operation="key_points")
-],
-batch_id="analysis_batch_20250112_001"
+    requests=[
+        TextProcessingRequest(text="Document 1", operation="summarize"),
+        TextProcessingRequest(text="Review 1", operation="sentiment"),
+        TextProcessingRequest(text="Article 1", operation="key_points")
+    ],
+    batch_id="analysis_batch_20250112_001"
 )
 
 # Batch status tracking
 batch_response = BatchTextProcessingResponse(
-batch_id="analysis_batch_20250112_001",
-status=BatchTextProcessingStatus.IN_PROGRESS,
-total_items=3,
-completed_items=1,
-failed_items=0,
-results=[
-BatchTextProcessingItem(
-request_index=0,
-status="completed",
-result=TextProcessingResponse(...)
-)
-]
+    batch_id="analysis_batch_20250112_001",
+    status=BatchTextProcessingStatus.IN_PROGRESS,
+    total_items=3,
+    completed_items=1,
+    failed_items=0,
+    results=[
+        BatchTextProcessingItem(
+            request_index=0,
+            status="completed",
+            result=TextProcessingResponse(...)
+        )
+    ]
 )
 ```
 
@@ -136,24 +136,24 @@ result=TextProcessingResponse(...)
 ```python
 # Customized key point extraction
 key_points_request = TextProcessingRequest(
-text="Research paper content...",
-operation="key_points",
-options={
-"max_points": 5,
-"include_supporting_evidence": True,
-"focus_area": "methodology"
-}
+    text="Research paper content...",
+    operation="key_points",
+    options={
+        "max_points": 5,
+        "include_supporting_evidence": True,
+        "focus_area": "methodology"
+    }
 )
 
 # Question generation with constraints
 questions_request = TextProcessingRequest(
-text="Educational content...",
-operation="questions",
-options={
-"max_questions": 10,
-"difficulty_level": "intermediate",
-"question_types": ["multiple_choice", "short_answer"]
-}
+    text="Educational content...",
+    operation="questions",
+    options={
+        "max_questions": 10,
+        "difficulty_level": "intermediate",
+        "question_types": ["multiple_choice", "short_answer"]
+    }
 )
 ```
 
@@ -163,15 +163,15 @@ options={
 ```python
 # Example TextProcessingResponse structure
 {
-"operation": "summarize",
-"result": "Generated summary text...",
-"metadata": {
-"processing_time_ms": 1250,
-"model_used": "gemini-2.0-flash-exp",
-"cache_hit": False,
-"confidence_score": 0.95
-},
-"timestamp": "2025-01-12T10:30:45.123456Z"
+    "operation": "summarize",
+    "result": "Generated summary text...",
+    "metadata": {
+        "processing_time_ms": 1250,
+        "model_used": "gemini-2.0-flash-exp", 
+        "cache_hit": False,
+        "confidence_score": 0.95
+    },
+    "timestamp": "2025-01-12T10:30:45.123456Z"
 }
 ```
 
@@ -179,14 +179,14 @@ options={
 ```python
 # SentimentResult for sentiment analysis
 {
-"polarity": "positive",
-"confidence": 0.87,
-"scores": {
-"positive": 0.87,
-"negative": 0.08,
-"neutral": 0.05
-},
-"dominant_emotions": ["joy", "satisfaction"]
+    "polarity": "positive",
+    "confidence": 0.87,
+    "scores": {
+        "positive": 0.87,
+        "negative": 0.08,
+        "neutral": 0.05
+    },
+    "dominant_emotions": ["joy", "satisfaction"]
 }
 ```
 
@@ -202,13 +202,13 @@ options={
 ```python
 # Validation errors integrate with ErrorResponse schema
 {
-"success": False,
-"error": "Question is required for Q&A operation",
-"error_code": "VALIDATION_ERROR",
-"details": {
-"operation": "qa",
-"missing_field": "question"
-}
+    "success": False,
+    "error": "Question is required for Q&A operation",
+    "error_code": "VALIDATION_ERROR",
+    "details": {
+        "operation": "qa",
+        "missing_field": "question"
+    }
 }
 ```
 

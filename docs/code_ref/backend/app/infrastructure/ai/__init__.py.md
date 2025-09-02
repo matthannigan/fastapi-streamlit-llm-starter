@@ -58,10 +58,10 @@ from app.infrastructure.ai import sanitize_input
 # Quick sanitization for general use
 clean_input = sanitize_input(user_text)
 
-# Advanced sanitization with custom options
+# Advanced sanitization with custom options  
 clean_input = sanitize_input_advanced(
-user_text,
-options={"security_level": "high", "preserve_formatting": True}
+    user_text, 
+    options={"security_level": "high", "preserve_formatting": True}
 )
 ```
 
@@ -108,7 +108,7 @@ AI_PROMPT_INJECTION_DETECTION=true # Enable/disable injection detection
 AI_PRESERVE_FORMATTING=false       # Preserve original text formatting
 AI_CUSTOM_FILTERS=[]               # Custom sanitization rules
 
-# Performance Configuration
+# Performance Configuration  
 AI_SANITIZATION_TIMEOUT_MS=5000   # Timeout for sanitization operations
 AI_TEMPLATE_CACHE_SIZE=100         # Number of templates to cache
 AI_ENABLE_METRICS=true             # Enable performance monitoring

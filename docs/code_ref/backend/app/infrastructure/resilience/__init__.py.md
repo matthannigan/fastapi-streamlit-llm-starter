@@ -105,23 +105,23 @@ from app.infrastructure.resilience import with_operation_resilience
 
 @with_operation_resilience("summarize")
 async def summarize_text(text: str) -> Dict[str, Any]:
-# Your AI service call here
-return await ai_service.summarize(text)
+    # Your AI service call here
+    return await ai_service.summarize(text)
 ```
 
 ### Custom Configuration
 ```python
 from app.infrastructure.resilience import (
-AIServiceResilience,
-ResilienceConfig,
-ResilienceStrategy
+    AIServiceResilience,
+    ResilienceConfig,
+    ResilienceStrategy
 )
 
 config = ResilienceConfig(
-strategy=ResilienceStrategy.BALANCED,
-retry_attempts=3,
-circuit_breaker_threshold=5,
-circuit_breaker_recovery_timeout=60
+    strategy=ResilienceStrategy.BALANCED,
+    retry_attempts=3,
+    circuit_breaker_threshold=5,
+    circuit_breaker_recovery_timeout=60
 )
 
 resilience = AIServiceResilience(config)

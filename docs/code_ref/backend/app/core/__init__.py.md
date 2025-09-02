@@ -21,7 +21,7 @@ infrastructure and domain services:
 - **Exception Hierarchy**: Comprehensive error classification and handling
 - **Middleware Stack**: Request/response processing pipeline
 
-### Integration Layer
+### Integration Layer  
 - **Infrastructure Integration**: Seamless integration with cache, resilience, AI, security
 - **Domain Service Support**: Foundation for business logic implementation
 - **Cross-Cutting Concerns**: Logging, monitoring, performance tracking
@@ -41,7 +41,7 @@ Comprehensive configuration system with environment variable support:
 ### Exception Hierarchy (`exceptions.py`)
 Sophisticated exception classification system for error handling:
 - **ApplicationError Hierarchy**: Business logic, validation, and authentication errors
-- **InfrastructureError Hierarchy**: External system, network, and service errors
+- **InfrastructureError Hierarchy**: External system, network, and service errors  
 - **AI Service Exceptions**: Comprehensive AI service error classification with retry logic
 - **Classification Utilities**: Intelligent exception classification for resilience patterns
 - **HTTP Status Mapping**: Consistent HTTP status code mapping for API responses
@@ -71,13 +71,13 @@ resilience_config = settings.get_resilience_config()
 
 # Exception-driven error handling
 try:
-result = await ai_operation()
+    result = await ai_operation()
 except Exception as e:
-if classify_ai_exception(e):
-# Apply retry logic
-pass
-else:
-raise ValidationError("Permanent failure") from e
+    if classify_ai_exception(e):
+        # Apply retry logic
+        pass
+    else:
+        raise ValidationError("Permanent failure") from e
 ```
 
 ### Domain Service Integration
@@ -86,26 +86,24 @@ from app.core import settings, ApplicationError
 from app.core.middleware import setup_middleware
 
 # Domain service with core configuration
-
-## class TextProcessor
-
-def __init__(self):
-self.ai_model = settings.ai_model
-self.temperature = settings.ai_temperature
-
-async def process(self, text: str):
-if not text.strip():
-raise ValidationError("Text cannot be empty")
-# Processing logic here
+class TextProcessor:
+    def __init__(self):
+        self.ai_model = settings.ai_model
+        self.temperature = settings.ai_temperature
+    
+    async def process(self, text: str):
+        if not text.strip():
+            raise ValidationError("Text cannot be empty")
+        # Processing logic here
 ```
 
 ### Middleware Integration
 ```python
 from fastapi import FastAPI
 from app.core.middleware import (
-setup_cors_middleware,
-setup_security_middleware,
-setup_logging_middleware
+    setup_cors_middleware,
+    setup_security_middleware,
+    setup_logging_middleware
 )
 
 app = FastAPI()
@@ -167,10 +165,10 @@ debug_mode = settings.debug
 
 # Exception handling
 try:
-validate_input(data)
+    validate_input(data)
 except ValidationError as e:
-logger.error(f"Validation failed: {e}")
-raise
+    logger.error(f"Validation failed: {e}")
+    raise
 ```
 
 ### Advanced Configuration
@@ -180,9 +178,9 @@ import json
 
 # Custom resilience configuration
 custom_config = {
-"retry_attempts": 5,
-"circuit_breaker_threshold": 10,
-"timeout_seconds": 30
+    "retry_attempts": 5,
+    "circuit_breaker_threshold": 10,
+    "timeout_seconds": 30
 }
 settings.RESILIENCE_CUSTOM_CONFIG = json.dumps(custom_config)
 
@@ -196,13 +194,13 @@ operation_strategy = settings.get_operation_strategy("summarize")
 from app.core.exceptions import classify_ai_exception, get_http_status_for_exception
 
 try:
-await risky_ai_operation()
+    await risky_ai_operation()
 except Exception as e:
-if classify_ai_exception(e):
-# Retry logic
-await retry_operation()
-else:
-# Handle permanent failure
-status_code = get_http_status_for_exception(e)
-return error_response(status_code, str(e))
+    if classify_ai_exception(e):
+        # Retry logic
+        await retry_operation()
+    else:
+        # Handle permanent failure
+        status_code = get_http_status_for_exception(e)
+        return error_response(status_code, str(e))
 ```

@@ -13,51 +13,86 @@ optimized for Streamlit applications.
 The client handles all text processing operations, health checks, and configuration retrieval
 with graceful error handling and user-friendly error messages displayed through Streamlit.
 
-## Classes
+Classes:
+    APIClient: Async HTTP client for backend API communication
 
-APIClient: Async HTTP client for backend API communication
+Functions:
+    run_async: Helper function to execute async code in Streamlit's synchronous context
 
-## Functions
+Attributes:
+    api_client: Global APIClient instance for use throughout the application
 
-run_async: Helper function to execute async code in Streamlit's synchronous context
+Features:
+    - Async HTTP requests with configurable timeouts
+    - Automatic JSON serialization/deserialization using Pydantic models
+    - Comprehensive error handling with user feedback
+    - Health check monitoring for backend connectivity
+    - Request timeout handling with graceful degradation
 
-## Attributes
+Example:
+    ```python
+    from utils.api_client import api_client, run_async
+    from shared.models import TextProcessingRequest, TextProcessingOperation
+    
+    # Check API health
+    is_healthy = run_async(api_client.health_check())
+    
+    # Process text
+    request = TextProcessingRequest(
+        text="Sample text",
+        operation=TextProcessingOperation.SUMMARIZE
+    )
+    response = run_async(api_client.process_text(request))
+    ```
 
-api_client: Global APIClient instance for use throughout the application
+Dependencies:
+    httpx: Modern async HTTP client for Python
+    streamlit: For displaying user feedback and error messages
+    shared.models: Pydantic models for request/response validation
 
-## Features
+Note:
+    All API methods are async and should be called using the `run_async` helper function
+    when used in Streamlit's synchronous context. The client automatically handles
+    timeout errors and displays appropriate user feedback.
 
-- Async HTTP requests with configurable timeouts
-- Automatic JSON serialization/deserialization using Pydantic models
-- Comprehensive error handling with user feedback
-- Health check monitoring for backend connectivity
-- Request timeout handling with graceful degradation
+## APIClient
 
-## Example
+Client for communicating with the backend API.
+
+### __init__()
 
 ```python
-from utils.api_client import api_client, run_async
-from shared.models import TextProcessingRequest, TextProcessingOperation
-
-# Check API health
-is_healthy = run_async(api_client.health_check())
-
-# Process text
-request = TextProcessingRequest(
-text="Sample text",
-operation=TextProcessingOperation.SUMMARIZE
-)
-response = run_async(api_client.process_text(request))
+def __init__(self):
 ```
 
-## Dependencies
+### health_check()
 
-httpx: Modern async HTTP client for Python
-streamlit: For displaying user feedback and error messages
-shared.models: Pydantic models for request/response validation
+```python
+async def health_check(self) -> bool:
+```
 
-## Note
+Check if the API is healthy.
 
-All API methods are async and should be called using the `run_async` helper function
-when used in Streamlit's synchronous context. The client automatically handles
-timeout errors and displays appropriate user feedback.
+### get_operations()
+
+```python
+async def get_operations(self) -> Optional[Dict[str, Any]]:
+```
+
+Get available processing operations.
+
+### process_text()
+
+```python
+async def process_text(self, request: TextProcessingRequest) -> Optional[TextProcessingResponse]:
+```
+
+Process text using the backend API.
+
+## run_async()
+
+```python
+def run_async(coro):
+```
+
+Run async code in Streamlit.

@@ -52,7 +52,7 @@ Robust authentication system with flexible configuration:
 ## Performance Characteristics
 
 - **Authentication**: < 1ms per authentication check
-- **Key Validation**: O(1) lookup time for all supported keys
+- **Key Validation**: O(1) lookup time for all supported keys  
 - **Memory Efficient**: Minimal memory overhead for key storage
 - **High Throughput**: Supports thousands of authentications per second
 - **Non-blocking**: Async-first design for optimal performance
@@ -66,12 +66,12 @@ from app.infrastructure.security import verify_api_key
 
 @app.get("/protected")
 async def protected_endpoint(api_key: str = Depends(verify_api_key)):
-return {"message": "Access granted", "authenticated": True}
+    return {"message": "Access granted", "authenticated": True}
 
 @app.post("/admin")
 async def admin_endpoint(api_key: str = Depends(verify_api_key)):
-# Automatically authenticated with any valid API key
-return {"message": "Admin access", "user": api_key}
+    # Automatically authenticated with any valid API key
+    return {"message": "Admin access", "user": api_key}
 ```
 
 ### Optional Authentication
@@ -80,15 +80,15 @@ from app.infrastructure.security import optional_verify_api_key
 
 @app.get("/public-or-private")
 async def flexible_endpoint(api_key: Optional[str] = Depends(optional_verify_api_key)):
-if api_key:
-return {"message": "Authenticated user", "user": api_key, "premium": True}
-return {"message": "Public access", "premium": False}
+    if api_key:
+        return {"message": "Authenticated user", "user": api_key, "premium": True}
+    return {"message": "Public access", "premium": False}
 
 @app.get("/content")
 async def content_endpoint(api_key: Optional[str] = Depends(optional_verify_api_key)):
-# Return different content based on authentication
-is_authenticated = api_key is not None
-return {"content": get_content(is_authenticated)}
+    # Return different content based on authentication
+    is_authenticated = api_key is not None
+    return {"content": get_content(is_authenticated)}
 ```
 
 ### Authentication Status Checking
@@ -97,12 +97,12 @@ from app.infrastructure.security import get_auth_status
 
 @app.get("/status")
 async def status_endpoint():
-auth_status = get_auth_status()
-return {
-"authentication": auth_status,
-"development_mode": auth_status.get("development_mode", False),
-"available_keys": len(auth_status.get("available_keys", []))
-}
+    auth_status = get_auth_status()
+    return {
+        "authentication": auth_status,
+        "development_mode": auth_status.get("development_mode", False),
+        "available_keys": len(auth_status.get("available_keys", []))
+    }
 ```
 
 ### Custom Authentication Validation
@@ -111,14 +111,14 @@ from app.infrastructure.security import verify_api_key
 from fastapi import HTTPException, Depends
 
 async def admin_only_auth(api_key: str = Depends(verify_api_key)):
-# Add additional validation for admin endpoints
-if not is_admin_key(api_key):
-raise HTTPException(status_code=403, detail="Admin access required")
-return api_key
+    # Add additional validation for admin endpoints
+    if not is_admin_key(api_key):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return api_key
 
 @app.delete("/admin/users/{user_id}")
 async def delete_user(user_id: str, admin_key: str = Depends(admin_only_auth)):
-return {"message": f"User {user_id} deleted", "admin": admin_key}
+    return {"message": f"User {user_id} deleted", "admin": admin_key}
 ```
 
 ## Integration with Other Infrastructure

@@ -1,10 +1,14 @@
+---
+sidebar_label: contracts
+---
+
 # Public Contract Stubs
 
 ## 🎯 Purpose of This Directory
 
 This directory contains "public contract" stub files automatically generated from the production codebase located in `backend/app`.
 
-Each `.py` file here represents the public-facing interface of its corresponding source file. It includes:
+Each `.pyi` file here represents the public-facing interface of its corresponding source file. It includes:
 * All necessary `import` statements.
 * Class definitions, including inheritance.
 * Public method signatures (including `__init__`) with full type hints.
