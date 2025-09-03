@@ -3,7 +3,7 @@ Unit tests for CacheConfig and ValidationResult core functionality.
 
 This test suite verifies the observable behaviors documented in the
 CacheConfig and ValidationResult public contracts (config.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - CacheConfig initialization and validation behavior
@@ -81,7 +81,18 @@ class TestValidationResult:
             - test_add_error_sets_validation_to_invalid_state()
             - test_add_warning_preserves_valid_state()
         """
-        pass
+        # Given: ValidationResult is initialized without parameters
+        # When: ValidationResult instance is created
+        result = ValidationResult(is_valid=True)
+        
+        # Then: is_valid property returns True indicating successful validation
+        assert result.is_valid is True
+        
+        # And: errors list is empty indicating no validation failures
+        assert result.errors == []
+        
+        # And: warnings list is empty indicating no validation concerns
+        assert result.warnings == []
 
     def test_add_error_sets_validation_to_invalid_state(self):
         """
@@ -117,7 +128,30 @@ class TestValidationResult:
             - test_validation_result_initializes_with_valid_state_by_default()
             - test_add_warning_preserves_valid_state()
         """
-        pass
+        # Given: ValidationResult instance with valid initial state
+        result = ValidationResult(is_valid=True)
+        assert result.is_valid is True
+        assert result.errors == []
+        
+        # When: add_error() method is called with error message
+        error_message = "Configuration parameter is invalid"
+        result.add_error(error_message)
+        
+        # Then: Error message is added to errors list
+        assert error_message in result.errors
+        assert len(result.errors) == 1
+        
+        # And: is_valid property changes to False indicating validation failure
+        assert result.is_valid is False
+        
+        # And: Multiple error messages can be accumulated
+        second_error = "Another validation error"
+        result.add_error(second_error)
+        
+        assert len(result.errors) == 2
+        assert error_message in result.errors
+        assert second_error in result.errors
+        assert result.is_valid is False
 
     def test_add_warning_preserves_valid_state(self):
         """
@@ -153,9 +187,32 @@ class TestValidationResult:
             - test_add_error_sets_validation_to_invalid_state()
             - test_validation_result_tracks_mixed_errors_and_warnings()
         """
-        pass
+        # Given: ValidationResult instance with valid initial state
+        result = ValidationResult(is_valid=True)
+        assert result.is_valid is True
+        assert result.warnings == []
+        
+        # When: add_warning() method is called with warning message
+        warning_message = "Configuration could be optimized"
+        result.add_warning(warning_message)
+        
+        # Then: Warning message is added to warnings list
+        assert warning_message in result.warnings
+        assert len(result.warnings) == 1
+        
+        # And: is_valid property remains True indicating validation success
+        assert result.is_valid is True
+        
+        # And: Multiple warnings can be accumulated without affecting validity
+        second_warning = "Parameter value is suboptimal"
+        result.add_warning(second_warning)
+        
+        assert len(result.warnings) == 2
+        assert warning_message in result.warnings
+        assert second_warning in result.warnings
+        assert result.is_valid is True
 
-    def test_validation_result_tracks_mixed_errors_and_warnings(self):
+    def test_validation_result_tracks_mixed_errors_and_warnings(self, sample_validation_result_invalid):
         """
         Test that ValidationResult correctly tracks both errors and warnings simultaneously.
         
@@ -189,7 +246,32 @@ class TestValidationResult:
             - test_add_error_sets_validation_to_invalid_state()
             - test_add_warning_preserves_valid_state()
         """
-        pass
+        # Given: ValidationResult instance with mixed errors and warnings from fixture
+        result = sample_validation_result_invalid
+        
+        # Then: Errors are tracked in errors list
+        assert len(result.errors) == 2
+        assert "Configuration parameter is invalid" in result.errors
+        assert "Required field is missing" in result.errors
+        
+        # And: Warnings are tracked in warnings list
+        assert len(result.warnings) == 2
+        assert "Configuration could be optimized" in result.warnings
+        assert "Parameter value is suboptimal" in result.warnings
+        
+        # And: is_valid reflects error presence (False) regardless of warnings
+        assert result.is_valid is False
+        
+        # Test that we can also create our own mixed scenario
+        new_result = ValidationResult(is_valid=True)
+        new_result.add_warning("First warning")
+        assert new_result.is_valid is True
+        
+        new_result.add_error("First error")
+        assert new_result.is_valid is False
+        
+        new_result.add_warning("Second warning")
+        assert new_result.is_valid is False  # Still invalid due to error
 
 
 class TestCacheConfig:
@@ -216,7 +298,7 @@ class TestCacheConfig:
         - ValidationResult: For validation result management
     """
 
-    def test_cache_config_initializes_with_valid_basic_parameters(self):
+    def test_cache_config_initializes_with_valid_basic_parameters(self, valid_basic_config_params):
         """
         Test that CacheConfig initializes correctly with basic valid parameters.
         
@@ -250,9 +332,30 @@ class TestCacheConfig:
             - test_cache_config_initializes_with_comprehensive_parameters()
             - test_cache_config_initialization_with_invalid_parameters_raises_error()
         """
-        pass
+        # Given: Valid basic configuration parameters
+        params = valid_basic_config_params
+        
+        # When: CacheConfig is initialized with these parameters
+        config = CacheConfig(**params)
+        
+        # Then: CacheConfig instance is created with specified configuration
+        assert config is not None
+        
+        # And: All provided parameters are accessible as instance attributes
+        assert config.redis_url == params["redis_url"]
+        assert config.default_ttl == params["default_ttl"]
+        assert config.memory_cache_size == params["memory_cache_size"]
+        assert config.environment == params["environment"]
+        
+        # And: Default values are applied for non-specified parameters
+        assert config.redis_password is None
+        assert config.use_tls is False
+        assert config.compression_level == 6  # Default compression level
+        assert config.compression_threshold == 1000  # Default threshold
+        assert config.ai_config is None  # No AI config by default
+        assert config.enable_ai_cache is False
 
-    def test_cache_config_initializes_with_comprehensive_parameters(self):
+    def test_cache_config_initializes_with_comprehensive_parameters(self, valid_comprehensive_config_params):
         """
         Test that CacheConfig initializes correctly with comprehensive parameters including AI features.
         
@@ -286,9 +389,39 @@ class TestCacheConfig:
             - test_cache_config_initializes_with_valid_basic_parameters()
             - test_cache_config_validates_ai_configuration_integration()
         """
-        pass
+        # Given: Comprehensive configuration parameters including security and AI features
+        params = valid_comprehensive_config_params.copy()
+        ai_config_data = params.pop("ai_config")
+        ai_config = AICacheConfig(**ai_config_data)
+        params["ai_config"] = ai_config
+        
+        # When: CacheConfig is initialized with full parameter set
+        config = CacheConfig(**params)
+        
+        # Then: All advanced features are properly configured and accessible
+        # Redis connection with authentication and TLS
+        assert config.redis_url == "redis://prod-redis:6379"
+        assert config.redis_password == "secure-password"
+        assert config.use_tls is True
+        assert config.tls_cert_path == "/certs/redis.crt"
+        assert config.tls_key_path == "/certs/redis.key"
+        
+        # And: Compression settings properly applied
+        assert config.compression_threshold == 1000
+        assert config.compression_level == 6
+        
+        # And: AI configuration is properly integrated and validated
+        assert config.ai_config is not None
+        assert config.ai_config.text_hash_threshold == 1500
+        assert config.ai_config.hash_algorithm == "sha256"
+        assert config.enable_ai_cache is True
+        
+        # And: Security settings are properly stored and available
+        assert config.environment == "production"
+        assert config.default_ttl == 7200
+        assert config.memory_cache_size == 200
 
-    def test_cache_config_post_init_hook_processes_environment_loading(self):
+    def test_cache_config_post_init_hook_processes_environment_loading(self, valid_basic_config_params, environment_variables_basic):
         """
         Test that __post_init__ hook properly processes environment-specific configuration loading.
         
@@ -323,9 +456,28 @@ class TestCacheConfig:
             - test_cache_config_validates_configuration_with_environment_context()
             - test_cache_config_environment_loading_integration()
         """
-        pass
+        # Given: CacheConfig initialization with environment specification
+        params = valid_basic_config_params.copy()
+        
+        # When: CacheConfig is initialized normally
+        config = CacheConfig(**params)
+        
+        # Then: Post-init hook executes without errors
+        assert config.environment == "development"
+        assert config._from_env is False  # Default value
+        
+        # And: Configuration is properly initialized
+        assert config.redis_url == params["redis_url"]
+        assert config.default_ttl == params["default_ttl"]
+        
+        # Test triggering the environment loading path
+        config._from_env = True  # Set the flag manually
+        config._load_from_environment()  # Call the method directly to test it
+        
+        # Verify the deprecation path still works (logs warning but doesn't crash)
+        assert config.environment == "development"  # Should remain unchanged due to deprecation
 
-    def test_cache_config_validate_method_returns_comprehensive_validation_result(self):
+    def test_cache_config_validate_method_returns_comprehensive_validation_result(self, valid_comprehensive_config_params, mock_path_exists):
         """
         Test that validate() method returns comprehensive ValidationResult with detailed feedback.
         
@@ -360,9 +512,39 @@ class TestCacheConfig:
             - test_cache_config_validation_identifies_parameter_conflicts()
             - test_cache_config_validation_provides_improvement_recommendations()
         """
-        pass
+        # Mock filesystem to simulate certificates exist
+        mock_path_exists.return_value = True
+        
+        # Given: CacheConfig instance with various configuration parameters
+        params = valid_comprehensive_config_params.copy()
+        ai_config_data = params.pop("ai_config")
+        ai_config = AICacheConfig(**ai_config_data)
+        params["ai_config"] = ai_config
+        config = CacheConfig(**params)
+        
+        # When: validate() method is called for configuration assessment
+        result = config.validate()
+        
+        # Then: ValidationResult is returned with comprehensive validation feedback
+        assert isinstance(result, ValidationResult)
+        
+        # And: All configuration parameters are validated successfully
+        assert result.is_valid is True
+        
+        # Verify that validation checks various aspects
+        # Test with invalid config to see validation in action
+        invalid_config = CacheConfig(
+            redis_url="invalid-scheme://localhost",  # Invalid scheme
+            default_ttl=-100,  # Invalid TTL
+            memory_cache_size=-50,  # Invalid size
+            compression_level=15  # Invalid level
+        )
+        
+        invalid_result = invalid_config.validate()
+        assert invalid_result.is_valid is False
+        assert len(invalid_result.errors) >= 4  # Should have multiple validation errors
 
-    def test_cache_config_to_dict_method_produces_complete_serialization(self):
+    def test_cache_config_to_dict_method_produces_complete_serialization(self, valid_comprehensive_config_params):
         """
         Test that to_dict() method produces complete dictionary representation of configuration.
         
@@ -396,9 +578,50 @@ class TestCacheConfig:
             - test_cache_config_serialization_supports_round_trip_conversion()
             - test_cache_config_dictionary_format_suitable_for_persistence()
         """
-        pass
+        # Given: CacheConfig instance with comprehensive configuration
+        params = valid_comprehensive_config_params.copy()
+        ai_config_data = params.pop("ai_config")
+        ai_config = AICacheConfig(**ai_config_data)
+        params["ai_config"] = ai_config
+        config = CacheConfig(**params)
+        
+        # When: to_dict() method is called for serialization
+        config_dict = config.to_dict()
+        
+        # Then: Complete dictionary representation is returned
+        assert isinstance(config_dict, dict)
+        
+        # And: All configuration parameters are included in dictionary
+        assert "redis_url" in config_dict
+        assert "redis_password" in config_dict
+        assert "use_tls" in config_dict
+        assert "tls_cert_path" in config_dict
+        assert "tls_key_path" in config_dict
+        assert "default_ttl" in config_dict
+        assert "memory_cache_size" in config_dict
+        assert "compression_threshold" in config_dict
+        assert "compression_level" in config_dict
+        assert "environment" in config_dict
+        assert "enable_ai_cache" in config_dict
+        
+        # And: Nested AI configuration is properly serialized
+        assert "ai_config" in config_dict
+        assert config_dict["ai_config"] is not None
+        ai_dict = config_dict["ai_config"]
+        assert "text_hash_threshold" in ai_dict
+        assert "hash_algorithm" in ai_dict
+        assert "text_size_tiers" in ai_dict
+        assert "operation_ttls" in ai_dict
+        
+        # And: Internal fields are excluded
+        assert "_from_env" not in config_dict
+        
+        # Verify values match original configuration
+        assert config_dict["redis_url"] == config.redis_url
+        assert config_dict["default_ttl"] == config.default_ttl
+        assert config_dict["ai_config"]["text_hash_threshold"] == config.ai_config.text_hash_threshold
 
-    def test_cache_config_initialization_with_invalid_parameters_raises_error(self):
+    def test_cache_config_initialization_with_invalid_parameters_raises_error(self, invalid_config_params):
         """
         Test that CacheConfig initialization with invalid parameters raises appropriate errors.
         
@@ -432,7 +655,39 @@ class TestCacheConfig:
             - test_cache_config_initializes_with_valid_basic_parameters()
             - test_cache_config_validation_provides_detailed_error_context()
         """
-        pass
+        # Note: CacheConfig itself doesn't validate parameters at initialization time.
+        # It only validates when validate() method is called.
+        # This test verifies that validation catches invalid parameters when validate() is called.
+        
+        # Given: Invalid configuration parameters
+        params = invalid_config_params
+        
+        # When: CacheConfig is initialized (this succeeds)
+        config = CacheConfig(**params)
+        
+        # Then: Configuration validation detects errors when validate() is called
+        result = config.validate()
+        assert result.is_valid is False
+        assert len(result.errors) > 0
+        
+        # Verify specific validation errors
+        error_messages = result.errors
+        
+        # Check for Redis URL validation error
+        redis_url_error = any("redis_url must start with" in error for error in error_messages)
+        assert redis_url_error, f"Expected Redis URL validation error. Errors: {error_messages}"
+        
+        # Check for TTL validation error  
+        ttl_error = any("default_ttl must be positive" in error for error in error_messages)
+        assert ttl_error, f"Expected TTL validation error. Errors: {error_messages}"
+        
+        # Check for memory cache size error
+        memory_error = any("memory_cache_size must be positive" in error for error in error_messages)
+        assert memory_error, f"Expected memory cache size error. Errors: {error_messages}"
+        
+        # Check for compression level error
+        compression_error = any("compression_level must be between 1 and 9" in error for error in error_messages)
+        assert compression_error, f"Expected compression level error. Errors: {error_messages}"
 
 
 class TestAICacheConfig:
@@ -458,7 +713,7 @@ class TestAICacheConfig:
         - ValidationResult: For AI configuration validation results
     """
 
-    def test_ai_cache_config_initializes_with_valid_ai_parameters(self):
+    def test_ai_cache_config_initializes_with_valid_ai_parameters(self, valid_ai_config_params):
         """
         Test that AICacheConfig initializes correctly with valid AI-specific parameters.
         
@@ -492,9 +747,39 @@ class TestAICacheConfig:
             - test_ai_cache_config_validates_ai_parameter_ranges()
             - test_ai_cache_config_integration_with_parent_config()
         """
-        pass
+        # Given: Valid AI configuration parameters
+        params = valid_ai_config_params
+        
+        # When: AICacheConfig is initialized with these parameters
+        ai_config = AICacheConfig(**params)
+        
+        # Then: AI configuration instance is created with specified settings
+        assert ai_config is not None
+        
+        # And: All AI-specific parameters are accessible as instance attributes
+        assert ai_config.text_hash_threshold == params["text_hash_threshold"]
+        assert ai_config.hash_algorithm == params["hash_algorithm"]
+        assert ai_config.enable_smart_promotion == params["enable_smart_promotion"]
+        assert ai_config.max_text_length == params["max_text_length"]
+        
+        # Text size tiers properly structured
+        assert ai_config.text_size_tiers == params["text_size_tiers"]
+        assert ai_config.text_size_tiers["small"] == 1000
+        assert ai_config.text_size_tiers["medium"] == 10000
+        assert ai_config.text_size_tiers["large"] == 100000
+        
+        # Operation-specific TTLs properly configured
+        assert ai_config.operation_ttls == params["operation_ttls"]
+        assert ai_config.operation_ttls["summarize"] == 7200
+        assert ai_config.operation_ttls["sentiment"] == 3600
+        
+        # Test with minimal parameters (using defaults)
+        minimal_config = AICacheConfig()
+        assert minimal_config.text_hash_threshold == 1000  # Default
+        assert minimal_config.hash_algorithm == "sha256"  # Default
+        assert minimal_config.enable_smart_promotion is True  # Default
 
-    def test_ai_cache_config_validate_method_checks_ai_parameter_validity(self):
+    def test_ai_cache_config_validate_method_checks_ai_parameter_validity(self, valid_ai_config_params, invalid_ai_config_params):
         """
         Test that validate() method performs comprehensive AI parameter validation.
         
@@ -529,4 +814,49 @@ class TestAICacheConfig:
             - test_ai_cache_config_initializes_with_valid_ai_parameters()
             - test_ai_cache_config_validation_provides_optimization_recommendations()
         """
-        pass
+        # Test valid configuration
+        # Given: AICacheConfig instance with valid AI parameter combinations
+        valid_config = AICacheConfig(**valid_ai_config_params)
+        
+        # When: validate() method is called for AI parameter assessment
+        valid_result = valid_config.validate()
+        
+        # Then: ValidationResult is returned indicating success
+        assert isinstance(valid_result, ValidationResult)
+        assert valid_result.is_valid is True
+        assert len(valid_result.errors) == 0
+        
+        # Test invalid configuration
+        # Given: AICacheConfig with invalid parameters
+        invalid_params = invalid_ai_config_params.copy()
+        # Fix the invalid text_size_tiers to have proper structure for initialization
+        invalid_params["text_size_tiers"] = {"small": 0}  # Keep only zero size for validation error
+        
+        invalid_config = AICacheConfig(
+            text_hash_threshold=invalid_params["text_hash_threshold"],
+            max_text_length=invalid_params["max_text_length"],
+            text_size_tiers=invalid_params["text_size_tiers"],
+            operation_ttls=invalid_params["operation_ttls"]
+        )
+        
+        # When: validate() method is called
+        invalid_result = invalid_config.validate()
+        
+        # Then: ValidationResult indicates validation failures
+        assert invalid_result.is_valid is False
+        assert len(invalid_result.errors) > 0
+        
+        # Verify specific validation errors
+        error_messages = invalid_result.errors
+        
+        # Check for text_hash_threshold validation
+        threshold_error = any("text_hash_threshold must be positive" in error for error in error_messages)
+        assert threshold_error, f"Expected threshold validation error. Errors: {error_messages}"
+        
+        # Check for max_text_length validation
+        length_error = any("max_text_length must be positive" in error for error in error_messages)
+        assert length_error, f"Expected max_text_length validation error. Errors: {error_messages}"
+        
+        # Check for text_size_tiers validation
+        tiers_error = any("text_size_tiers['small'] must be a positive integer" in error for error in error_messages)
+        assert tiers_error, f"Expected text_size_tiers validation error. Errors: {error_messages}"

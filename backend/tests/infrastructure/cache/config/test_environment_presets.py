@@ -3,7 +3,7 @@ Unit tests for EnvironmentPresets and preset system integration.
 
 This test suite verifies the observable behaviors documented in the
 EnvironmentPresets public contract (config.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - EnvironmentPresets static methods for various environment configurations
@@ -81,7 +81,36 @@ class TestEnvironmentPresetsBasicPresets:
             - test_minimal_preset_creates_ultra_lightweight_configuration()
             - test_preset_configuration_validation_ensures_functional_configs()
         """
-        pass
+        # Given: EnvironmentPresets.disabled() is called
+        # When: Disabled preset configuration is created
+        config = EnvironmentPresets.disabled()
+        
+        # Then: Configuration disables all caching features
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        
+        # And: No Redis connection is configured
+        assert config.redis_url is None
+        assert config.redis_password is None
+        assert config.use_tls is False
+        
+        # And: Memory cache is set to minimal state
+        assert config.memory_cache_size == 10  # Very small memory cache from disabled preset
+        
+        # And: TTL values set to minimal for no persistent caching behavior
+        assert config.default_ttl == 300  # 5 minutes - minimal but functional
+        
+        # And: All advanced features (compression, AI) disabled
+        assert config.ai_config is None
+        assert config.enable_ai_cache is False
+        
+        # And: Compression configured for minimal usage
+        assert config.compression_threshold == 10000  # High threshold, minimal compression
+        assert config.compression_level == 1  # Minimal compression level
+        
+        # And: Configuration suitable for cache-free operation
+        validation_result = config.validate()
+        assert validation_result.is_valid
 
     def test_minimal_preset_creates_ultra_lightweight_configuration(self):
         """
@@ -117,7 +146,36 @@ class TestEnvironmentPresetsBasicPresets:
             - test_disabled_preset_creates_configuration_with_no_caching()
             - test_simple_preset_creates_balanced_configuration()
         """
-        pass
+        # Given: EnvironmentPresets.minimal() is called
+        # When: Minimal preset configuration is created
+        config = EnvironmentPresets.minimal()
+        
+        # Then: Configuration minimizes resource usage while maintaining functionality
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        
+        # And: Memory cache size is minimal but functional
+        assert config.memory_cache_size == 25  # Small but functional memory cache
+        
+        # And: TTL values are short to limit memory consumption
+        assert config.default_ttl == 900  # 15 minutes - short for resource efficiency
+        
+        # And: Compression configured for minimal CPU usage
+        assert config.compression_threshold == 5000  # High threshold, minimal compression usage
+        assert config.compression_level == 1  # Fastest compression level
+        
+        # And: AI features disabled to minimize processing overhead
+        assert config.ai_config is None
+        assert config.enable_ai_cache is False
+        
+        # And: Configuration functional but extremely lightweight
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        # And: Resource usage is minimized compared to other presets
+        # Verify this is truly minimal by comparing key resource indicators
+        assert config.memory_cache_size < 50  # Less than simple preset
+        assert config.default_ttl < 3600  # Shorter than typical hour-long TTL
 
     def test_simple_preset_creates_balanced_configuration(self):
         """
@@ -153,7 +211,37 @@ class TestEnvironmentPresetsBasicPresets:
             - test_minimal_preset_creates_ultra_lightweight_configuration()
             - test_development_preset_optimizes_for_development_workflow()
         """
-        pass
+        # Given: EnvironmentPresets.simple() is called
+        # When: Simple preset configuration is created
+        config = EnvironmentPresets.simple()
+        
+        # Then: Configuration provides balanced cache behavior suitable for most use cases
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        
+        # And: Memory cache size is reasonable for typical workloads
+        assert config.memory_cache_size == 100  # Balanced size for typical usage
+        
+        # And: TTL values provide effective caching without excessive retention
+        assert config.default_ttl == 3600  # 1 hour - balanced caching duration
+        
+        # And: Basic features enabled without advanced complexity
+        assert config.compression_threshold == 1000  # Moderate threshold
+        assert config.compression_level == 6  # Balanced compression
+        
+        # And: AI features disabled for simplicity (basic configuration)
+        assert config.ai_config is None
+        assert config.enable_ai_cache is False
+        
+        # And: Configuration suitable for straightforward cache requirements
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        # And: Performance optimized for common usage scenarios
+        # Verify balanced approach - not too minimal, not too aggressive
+        assert config.memory_cache_size > 25  # Larger than minimal
+        assert config.memory_cache_size < 500  # Smaller than production
+        assert config.default_ttl >= 3600  # At least 1 hour for effectiveness
 
 
 class TestEnvironmentPresetsEnvironmentSpecific:
@@ -214,7 +302,37 @@ class TestEnvironmentPresetsEnvironmentSpecific:
             - test_testing_preset_optimizes_for_testing_scenarios()
             - test_production_preset_optimizes_for_production_performance()
         """
-        pass
+        # Given: EnvironmentPresets.development() is called
+        # When: Development preset configuration is created
+        config = EnvironmentPresets.development()
+        
+        # Then: Configuration optimizes for development workflow requirements
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        assert config.environment == "development"
+        
+        # And: TTL values are reduced for rapid feedback during development
+        assert config.default_ttl == 600  # 10 minutes - quick cache invalidation
+        
+        # And: Cache sizes are appropriate for development resource constraints
+        assert config.memory_cache_size == 50  # Smaller cache for development
+        
+        # And: Performance tuned for development iteration speed over throughput
+        assert config.compression_threshold == 2000  # Higher threshold, less CPU usage
+        assert config.compression_level == 3  # Lower compression for speed
+        
+        # And: AI features disabled for simplicity in development (basic dev preset)
+        assert config.ai_config is None
+        assert config.enable_ai_cache is False
+        
+        # And: Configuration supports rapid development cycle requirements
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        # And: Development-optimized compared to production
+        # Verify development optimizations are present
+        assert config.default_ttl < 3600  # Shorter than simple/production presets
+        assert config.memory_cache_size <= 100  # Efficient resource usage
 
     def test_testing_preset_optimizes_for_testing_scenarios(self):
         """
@@ -250,7 +368,39 @@ class TestEnvironmentPresetsEnvironmentSpecific:
             - test_development_preset_optimizes_for_development_workflow()
             - test_production_preset_optimizes_for_production_performance()
         """
-        pass
+        # Given: EnvironmentPresets.testing() is called
+        # When: Testing preset configuration is created
+        config = EnvironmentPresets.testing()
+        
+        # Then: Configuration optimizes for testing requirements and reliability
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        assert config.environment == "development"  # Testing uses development preset as base
+        
+        # And: TTL values are minimal for test isolation and predictability
+        assert config.default_ttl == 600  # 10 minutes - fast cache expiration for tests
+        
+        # And: Memory cache sizes appropriate for test execution environments
+        assert config.memory_cache_size == 50  # Small cache for test efficiency
+        
+        # And: Configuration provides deterministic behavior for test consistency
+        assert config.compression_threshold == 2000  # Higher threshold for fast operations
+        assert config.compression_level == 3  # Lower compression for speed
+        
+        # And: AI features disabled for test simplicity and predictability
+        assert config.ai_config is None
+        assert config.enable_ai_cache is False
+        
+        # And: Fast cache operations to minimize test execution time
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        # And: Configuration supports test cleanup and isolation requirements
+        # Testing preset should be identical to development for consistency
+        dev_config = EnvironmentPresets.development()
+        assert config.default_ttl == dev_config.default_ttl
+        assert config.memory_cache_size == dev_config.memory_cache_size
+        assert config.compression_threshold == dev_config.compression_threshold
 
     def test_production_preset_optimizes_for_production_performance(self):
         """
@@ -286,7 +436,38 @@ class TestEnvironmentPresetsEnvironmentSpecific:
             - test_development_preset_optimizes_for_development_workflow()
             - test_testing_preset_optimizes_for_testing_scenarios()
         """
-        pass
+        # Given: EnvironmentPresets.production() is called
+        # When: Production preset configuration is created
+        config = EnvironmentPresets.production()
+        
+        # Then: Configuration maximizes production performance and reliability
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        assert config.environment == "production"
+        
+        # And: TTL values are optimized for production cache efficiency
+        assert config.default_ttl == 7200  # 2 hours - production efficiency
+        
+        # And: Memory cache sizes scaled for production workload requirements
+        assert config.memory_cache_size == 500  # Large memory cache for performance
+        
+        # And: Compression and advanced features enabled for production optimization
+        assert config.compression_threshold == 500  # Low threshold, aggressive compression
+        assert config.compression_level == 9  # Maximum compression for network efficiency
+        
+        # And: AI features disabled for basic production (non-AI workloads)
+        assert config.ai_config is None
+        assert config.enable_ai_cache is False
+        
+        # And: Performance tuned for production throughput and response times
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        # And: Production optimization compared to development
+        dev_config = EnvironmentPresets.development()
+        assert config.default_ttl > dev_config.default_ttl  # Longer cache retention
+        assert config.memory_cache_size > dev_config.memory_cache_size  # Larger cache
+        assert config.compression_level > dev_config.compression_level  # Better compression
 
 
 class TestEnvironmentPresetsAISpecific:
@@ -347,7 +528,42 @@ class TestEnvironmentPresetsAISpecific:
             - test_ai_production_preset_optimizes_ai_features_for_production()
             - test_ai_preset_configuration_includes_comprehensive_ai_features()
         """
-        pass
+        # Given: EnvironmentPresets.ai_development() is called
+        # When: AI development preset configuration is created
+        config = EnvironmentPresets.ai_development()
+        
+        # Then: Configuration enables AI features with development optimization
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        assert config.environment == "development"  # AI development uses development context
+        
+        # And: AI-specific parameters are configured for development workflow
+        assert config.ai_config is not None
+        assert config.enable_ai_cache is True
+        
+        # And: Text processing features are enabled with development-friendly settings
+        assert config.ai_config.text_hash_threshold == 500  # Lower threshold for development
+        assert config.ai_config.hash_algorithm == "sha256"
+        assert config.ai_config.enable_smart_promotion is True
+        assert config.ai_config.max_text_length == 50000  # Development-sized text limit
+        
+        # And: AI cache features enabled with text hashing and intelligent promotion
+        assert config.ai_config.text_size_tiers["small"] == 500
+        assert config.ai_config.text_size_tiers["medium"] == 2000
+        assert config.ai_config.text_size_tiers["large"] == 10000
+        
+        # And: Operation-specific TTLs optimized for AI development iteration
+        assert config.ai_config.operation_ttls["summarize"] == 1800  # 30 minutes for development
+        assert config.ai_config.operation_ttls["sentiment"] == 900   # 15 minutes
+        assert config.ai_config.operation_ttls["key_points"] == 1200  # 20 minutes
+        
+        # And: Configuration provides optimal AI development experience
+        assert config.default_ttl == 1800  # 30 minutes for AI development
+        assert config.memory_cache_size == 100  # Moderate cache for AI data
+        
+        # And: Configuration validation passes
+        validation_result = config.validate()
+        assert validation_result.is_valid
 
     def test_ai_production_preset_optimizes_ai_features_for_production(self):
         """
@@ -383,7 +599,48 @@ class TestEnvironmentPresetsAISpecific:
             - test_ai_development_preset_enables_ai_features_for_development()
             - test_ai_preset_configuration_provides_comprehensive_text_processing()
         """
-        pass
+        # Given: EnvironmentPresets.ai_production() is called
+        # When: AI production preset configuration is created
+        config = EnvironmentPresets.ai_production()
+        
+        # Then: Configuration optimizes AI features for production performance
+        assert config is not None
+        assert isinstance(config, CacheConfig)
+        assert config.environment == "production"  # AI production uses production context
+        
+        # And: AI parameters are tuned for production-scale AI workloads
+        assert config.ai_config is not None
+        assert config.enable_ai_cache is True
+        
+        # And: Text processing is optimized for production AI operation volumes
+        assert config.ai_config.text_hash_threshold == 1000  # Production threshold
+        assert config.ai_config.hash_algorithm == "sha256"
+        assert config.ai_config.enable_smart_promotion is True
+        assert config.ai_config.max_text_length == 200000  # Production-scale text limit
+        
+        # And: AI cache features configured for production-scale text processing
+        assert config.ai_config.text_size_tiers["small"] == 1000
+        assert config.ai_config.text_size_tiers["medium"] == 5000
+        assert config.ai_config.text_size_tiers["large"] == 25000
+        
+        # And: Operation TTLs configured for production AI operation patterns
+        assert config.ai_config.operation_ttls["summarize"] == 14400  # 4 hours for production
+        assert config.ai_config.operation_ttls["sentiment"] == 7200  # 2 hours
+        assert config.ai_config.operation_ttls["key_points"] == 10800  # 3 hours
+        
+        # And: Configuration maximizes cache hit rates for AI operations
+        assert config.default_ttl == 14400  # 4 hours for production AI workloads
+        assert config.memory_cache_size == 1000  # Large memory cache for AI data
+        
+        # And: Configuration validation passes
+        validation_result = config.validate()
+        assert validation_result.is_valid
+        
+        # And: Production AI optimization compared to AI development
+        ai_dev_config = EnvironmentPresets.ai_development()
+        assert config.default_ttl > ai_dev_config.default_ttl  # Longer cache retention
+        assert config.memory_cache_size > ai_dev_config.memory_cache_size  # Larger cache
+        assert config.ai_config.max_text_length > ai_dev_config.ai_config.max_text_length  # Larger text capacity
 
 
 class TestEnvironmentPresetsUtilityMethods:
@@ -444,7 +701,39 @@ class TestEnvironmentPresetsUtilityMethods:
             - test_get_preset_details_provides_comprehensive_preset_information()
             - test_preset_name_consistency_with_method_names()
         """
-        pass
+        # Given: EnvironmentPresets.get_preset_names() is called
+        # When: Available presets are retrieved from preset system
+        preset_names = EnvironmentPresets.get_preset_names()
+        
+        # Then: Complete list of available preset names is returned
+        assert preset_names is not None
+        assert isinstance(preset_names, list)
+        assert len(preset_names) > 0
+        
+        # And: List includes all basic, environment, and AI-specific presets
+        expected_presets = [
+            "disabled", "minimal", "simple",  # Basic presets
+            "development", "production",       # Environment presets (testing uses development)
+            "ai-development", "ai-production"  # AI presets
+        ]
+        
+        for expected_preset in expected_presets:
+            assert expected_preset in preset_names, f"Expected preset '{expected_preset}' not found in {preset_names}"
+        
+        # And: Preset names are consistent with preset method names
+        # Verify the preset names can be used to call the actual methods
+        for preset_name in preset_names:
+            assert isinstance(preset_name, str)
+            assert len(preset_name) > 0
+            # Preset names should be valid identifiers (no spaces, special chars)
+            assert preset_name.replace("-", "_").replace("_", "").isalnum()
+        
+        # And: List is comprehensive and reflects current preset system capabilities
+        # Should include all known presets from the cache preset system
+        assert len(preset_names) >= 6  # At minimum the expected presets
+        
+        # And: No duplicate preset names
+        assert len(preset_names) == len(set(preset_names))
 
     def test_get_preset_details_provides_comprehensive_preset_information(self):
         """
@@ -480,7 +769,51 @@ class TestEnvironmentPresetsUtilityMethods:
             - test_get_preset_names_returns_available_preset_list()
             - test_recommend_preset_suggests_appropriate_configuration()
         """
-        pass
+        # Given: EnvironmentPresets.get_preset_details() is called with preset name
+        # When: Preset details are retrieved for specified preset
+        details = EnvironmentPresets.get_preset_details("production")
+        
+        # Then: Comprehensive preset information is returned
+        assert details is not None
+        assert isinstance(details, dict)
+        
+        # And: Details include configuration parameters and optimization focus
+        required_fields = ["name", "description", "configuration", "environment_contexts"]
+        for field in required_fields:
+            assert field in details, f"Required field '{field}' not found in details"
+        
+        # And: Configuration parameters included with values and explanations
+        config_section = details["configuration"]
+        assert isinstance(config_section, dict)
+        
+        expected_config_fields = [
+            "strategy", "default_ttl", "max_connections", 
+            "memory_cache_size", "enable_ai_cache", "enable_monitoring", "log_level"
+        ]
+        for field in expected_config_fields:
+            assert field in config_section, f"Configuration field '{field}' not found"
+        
+        # And: Optimization focus and use case descriptions provided
+        assert isinstance(details["name"], str) and len(details["name"]) > 0
+        assert isinstance(details["description"], str) and len(details["description"]) > 0
+        
+        # And: Environment suitability and deployment context explained
+        assert isinstance(details["environment_contexts"], list)
+        assert len(details["environment_contexts"]) > 0
+        
+        # And: Details sufficient for informed preset selection decisions
+        # Verify production preset has production-appropriate values
+        assert details["name"] == "Production"
+        assert "production" in details["description"].lower()
+        assert "production" in details["environment_contexts"]
+        assert config_section["default_ttl"] >= 3600  # At least 1 hour for production
+        assert config_section["memory_cache_size"] >= 100  # Reasonable production cache size
+        
+        # Test AI preset details include AI optimizations
+        ai_details = EnvironmentPresets.get_preset_details("ai-production")
+        assert ai_details["configuration"]["enable_ai_cache"] is True
+        assert "ai_optimizations" in ai_details
+        assert ai_details["ai_optimizations"] is not None
 
     def test_recommend_preset_suggests_appropriate_configuration(self):
         """
@@ -516,7 +849,57 @@ class TestEnvironmentPresetsUtilityMethods:
             - test_get_preset_details_provides_comprehensive_preset_information()
             - test_recommendation_logic_considers_environment_characteristics()
         """
-        pass
+        # Given: EnvironmentPresets.recommend_preset() is called with environment context
+        # When: Environment analysis determines optimal preset
+        
+        # Test development environment recommendation
+        dev_recommendation = EnvironmentPresets.recommend_preset("development")
+        # Then: Appropriate preset name is recommended based on deployment context
+        assert dev_recommendation == "development"
+        
+        # Test production environment recommendation
+        prod_recommendation = EnvironmentPresets.recommend_preset("production")
+        assert prod_recommendation == "production"
+        
+        # Test staging environment recommendation (should map to production)
+        staging_recommendation = EnvironmentPresets.recommend_preset("staging")
+        assert staging_recommendation == "production"  # Staging mirrors production
+        
+        # Test testing environment recommendation (should map to development)
+        test_recommendation = EnvironmentPresets.recommend_preset("testing")
+        assert test_recommendation == "development"  # Testing uses development base
+        
+        # Test AI environment recommendations
+        ai_dev_recommendation = EnvironmentPresets.recommend_preset("ai-development")
+        assert ai_dev_recommendation == "ai-development"
+        
+        ai_prod_recommendation = EnvironmentPresets.recommend_preset("ai-production")
+        assert ai_prod_recommendation == "ai-production"
+        
+        # Test unknown environment (should default to simple)
+        unknown_recommendation = EnvironmentPresets.recommend_preset("unknown-environment")
+        assert unknown_recommendation == "simple"  # Safe default
+        
+        # Test auto-detection (no environment specified)
+        auto_recommendation = EnvironmentPresets.recommend_preset(None)
+        # Should return a valid preset name
+        assert auto_recommendation is not None
+        assert isinstance(auto_recommendation, str)
+        assert auto_recommendation in EnvironmentPresets.get_preset_names()
+        
+        # And: Recommendations align with environment characteristics and requirements
+        # Verify the recommended presets actually exist and can be used
+        for env, expected_preset in [
+            ("development", "development"),
+            ("production", "production"), 
+            ("ai-development", "ai-development"),
+            ("ai-production", "ai-production")
+        ]:
+            recommended = EnvironmentPresets.recommend_preset(env)
+            assert recommended == expected_preset
+            # Verify the preset can actually be retrieved
+            details = EnvironmentPresets.get_preset_details(recommended)
+            assert details is not None
 
     def test_preset_system_integration_provides_consistent_configuration(self):
         """
@@ -552,4 +935,72 @@ class TestEnvironmentPresetsUtilityMethods:
             - test_preset_configuration_validation_ensures_functional_configs()
             - test_preset_error_handling_provides_consistent_feedback()
         """
-        pass
+        # Given: Various EnvironmentPresets methods are called
+        preset_methods = [
+            EnvironmentPresets.disabled,
+            EnvironmentPresets.minimal, 
+            EnvironmentPresets.simple,
+            EnvironmentPresets.development,
+            EnvironmentPresets.testing,
+            EnvironmentPresets.production,
+            EnvironmentPresets.ai_development,
+            EnvironmentPresets.ai_production
+        ]
+        
+        # When: Preset configurations are created through different methods
+        configs = []
+        for preset_method in preset_methods:
+            config = preset_method()
+            configs.append(config)
+        
+        # Then: All presets integrate consistently with new preset system
+        for config in configs:
+            assert config is not None
+            assert isinstance(config, CacheConfig)
+            
+            # And: Configuration parameters follow consistent patterns and validation
+            # All configs should have consistent basic structure
+            assert hasattr(config, 'default_ttl')
+            assert hasattr(config, 'memory_cache_size')
+            assert hasattr(config, 'compression_threshold')
+            assert hasattr(config, 'compression_level')
+            assert hasattr(config, 'environment')
+            
+            # And: Configuration validation behavior consistent across presets
+            validation_result = config.validate()
+            assert validation_result is not None
+            assert hasattr(validation_result, 'is_valid')
+            assert hasattr(validation_result, 'errors')
+            assert hasattr(validation_result, 'warnings')
+            
+            # All preset configurations should be valid
+            assert validation_result.is_valid, f"Preset configuration validation failed: {validation_result.errors}"
+        
+        # And: Preset system integration provides uniform configuration creation
+        # Verify all presets can be serialized to dictionary consistently
+        for config in configs:
+            config_dict = config.to_dict()
+            assert isinstance(config_dict, dict)
+            assert len(config_dict) > 0
+            
+            # Common fields should be present in all configurations
+            common_fields = ['default_ttl', 'memory_cache_size', 'environment']
+            for field in common_fields:
+                assert field in config_dict, f"Common field '{field}' missing from configuration"
+        
+        # And: Error handling and validation consistent for all preset types
+        # Test that all configurations have reasonable parameter ranges
+        for config in configs:
+            assert config.default_ttl > 0
+            assert config.memory_cache_size > 0
+            assert config.compression_level >= 1 and config.compression_level <= 9
+            assert config.compression_threshold >= 0
+            
+        # And: Configuration serialization and inspection uniform across presets
+        # Verify AI configurations follow consistent patterns
+        ai_configs = [config for config in configs if config.ai_config is not None]
+        for ai_config in ai_configs:
+            assert ai_config.enable_ai_cache is True
+            assert ai_config.ai_config.text_hash_threshold > 0
+            assert ai_config.ai_config.max_text_length > 0
+            assert len(ai_config.ai_config.operation_ttls) > 0
