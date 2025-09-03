@@ -47,7 +47,7 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Template Customization](/guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic
 
-- **[Testing Guide](guides/developer/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
+- **[Testing Guide](guides/testing/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
 
 - **[Troubleshooting Guide](guides/operations/TROUBLESHOOTING.md)**: Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures
 

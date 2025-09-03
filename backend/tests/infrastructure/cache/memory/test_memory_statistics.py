@@ -3,7 +3,7 @@ Unit tests for InMemoryCache statistics and monitoring capabilities.
 
 This test suite verifies the observable behaviors documented in the
 InMemoryCache public contract (memory.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - get_stats() method providing comprehensive cache metrics

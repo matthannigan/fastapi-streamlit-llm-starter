@@ -107,7 +107,7 @@ Create a plan and execute the following prompt on these UUTs:
 - `security`
 
 ```
-Build out the unit test skeletons located at `backend/tests/infrastructure/cache/[UUT]/` using @agent-unit-test-supervisor and @agent-unit-test-implementer . The public contract for [UUT] is located at `backend/contracts/infrastructure/cache/[UUT].pyi`. Tests should be built using behavior-driven principles as outlined in `docs/guides/developer/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md` using spec'd mocks located in `backend/tests/infrastructure/cache/conftest.py` or `backend/tests/infrastructure/cache/[UUT]/conftest.py`.
+Build out the unit test skeletons located at `backend/tests/infrastructure/cache/[UUT]/` using @agent-unit-test-supervisor and @agent-unit-test-implementer . The public contract for [UUT] is located at `backend/contracts/infrastructure/cache/[UUT].pyi`. Tests should be built using behavior-driven principles as outlined in `docs/guides/testing/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md` using spec'd mocks located in `backend/tests/infrastructure/cache/conftest.py` or `backend/tests/infrastructure/cache/[UUT]/conftest.py`.
 ```
 
 **Goal:** Implement the planned tests, focusing on observable outcomes.  

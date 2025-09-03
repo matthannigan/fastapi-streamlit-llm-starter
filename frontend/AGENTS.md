@@ -169,6 +169,6 @@ def test_config_validation_for_required_fields():
 ## See Also
 
 - **Backend API Integration**: `../backend/AGENTS.md` for API endpoint details
-- **Testing Methodology**: `../docs/guides/developer/TESTING.md` for comprehensive testing guidance
+- **Testing Methodology**: `../docs/guides/testing/TESTING.md` for comprehensive testing guidance
 - **Configuration Management**: `../AGENTS.md` for environment variable patterns
 - **Template Customization**: `../AGENTS.template-users.md` for customization guidance

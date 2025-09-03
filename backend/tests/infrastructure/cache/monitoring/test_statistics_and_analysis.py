@@ -3,7 +3,7 @@ Unit tests for CachePerformanceMonitor statistics and analysis functionality.
 
 This test suite verifies the observable behaviors documented in the
 CachePerformanceMonitor statistics methods (monitoring.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Statistics calculation accuracy and performance analysis

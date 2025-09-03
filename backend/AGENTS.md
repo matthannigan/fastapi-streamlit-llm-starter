@@ -325,7 +325,7 @@ pytest -v -s -m "manual" --run-manual
 2. **IGNORE IMPLEMENTATION** - Test behavior, not internal details
 3. **DOCUMENT TEST PURPOSE** - Explain business impact and failure scenarios
 
-**Detailed guidance:** `docs/guides/developer/TESTING.md`
+**Detailed guidance:** `docs/guides/testing/TESTING.md`
 
 **Agent Testing Checklist:**
 - [ ] Tests run from correct directory (use `make` commands when possible)
@@ -347,7 +347,7 @@ pytest -v -s -m "manual" --run-manual
 **Key Backend Documentation:**
 - **Architecture Concepts**: `../docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md` - Critical architectural distinction
 - **API Design**: `../docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md` - Public vs Internal API patterns
-- **Testing Methodology**: `../docs/guides/developer/TESTING.md` - Comprehensive testing guidance and patterns
+- **Testing Methodology**: `../docs/guides/testing/TESTING.md` - Comprehensive testing guidance and patterns
 - **Exception Handling**: `../docs/guides/developer/EXCEPTION_HANDLING.md` - Custom exception patterns and testing
 - **Code Standards**: `../docs/guides/developer/CODE_STANDARDS.md` - Backend development standards and patterns
 

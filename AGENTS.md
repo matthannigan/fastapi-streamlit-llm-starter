@@ -36,7 +36,7 @@ This `AGENTS.md` file contains **general instructions** for the repository. For 
 
 **Testing:**
 - Follow docstring-driven test development
-- Reference: `docs/guides/developer/TESTING.md`
+- Reference: `docs/guides/testing/TESTING.md`
 - Reference: `docs/guides/developer/DOCSTRINGS_TESTS.md` 
 
 **API Design:**
@@ -110,7 +110,7 @@ ls -la ../.venv/bin/python   # From backend/ directory
 - **Mock only at system boundaries** - Minimize mocking to reduce test brittleness
 - **Fast feedback loops** - Quick test execution for continuous development
 
-**Reference:** `docs/guides/developer/TESTING.md` for comprehensive testing methodology, patterns, and examples.
+**Reference:** `docs/guides/testing/TESTING.md` for comprehensive testing methodology, patterns, and examples.
 
 **For practical testing guidance, troubleshooting, and detailed commands:**
 - **Backend testing**: See `backend/AGENTS.md` 

@@ -65,7 +65,7 @@ When replacing domain services:
 
 - [Infrastructure vs Domain Services](/docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)
 - [Core Module Integration](/docs/guides/developer/CORE_MODULE_INTEGRATION.md)
-- [Testing Guide](/docs/guides/developer/TESTING.md)
+- [Testing Guide](/docs/guides/testing/TESTING.md)
 
 ## Future Extensibility
 

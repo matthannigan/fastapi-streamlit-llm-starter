@@ -9,7 +9,7 @@
       "get-started/CHECKLIST.md",
       "guides/application/BACKEND.md",
       "guides/application/FRONTEND.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
@@ -102,7 +102,7 @@
     ],
     "followups": [
       "guides/application/API.md",
-      "guides/developer/TESTING.md",
+      "guides/testing/TESTING.md",
       "guides/infrastructure/AI.md",
       "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/RESILIENCE.md"
@@ -119,7 +119,7 @@
       "guides/application/BACKEND.md"
     ],
     "followups": [
-      "guides/developer/TESTING.md",
+      "guides/testing/TESTING.md",
       "guides/application/SHARED.md",
       "guides/developer/DOCKER.md"
     ],
@@ -136,7 +136,7 @@
     ],
     "followups": [
       "guides/developer/CODE_STANDARDS.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
@@ -233,7 +233,7 @@
     "dependencies": [
       "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/cache/api-reference.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "followups": [
       "guides/infrastructure/cache/benchmarking.md",
@@ -274,7 +274,7 @@
       "guides/operations/PERFORMANCE_OPTIMIZATION.md",
       "guides/operations/MONITORING.md",
       "guides/infrastructure/MONITORING.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "tags": [
       "benchmarking",
@@ -385,7 +385,7 @@
     "followups": [
       "guides/developer/CORE_MODULE_INTEGRATION.md",
       "guides/developer/EXCEPTION_HANDLING.md",
-      "guides/developer/TESTING.md",
+      "guides/testing/TESTING.md",
       "guides/developer/DOCUMENTATION_GUIDANCE.md",
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md"
     ],
@@ -420,7 +420,7 @@
     "dependencies": [
       "guides/application/BACKEND.md",
       "guides/application/FRONTEND.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "followups": [
       "guides/developer/DOCKER.md",
@@ -439,7 +439,7 @@
     ],
     "followups": [
       "guides/developer/DEPLOYMENT.md",
-      "guides/developer/TESTING.md",
+      "guides/testing/TESTING.md",
       "guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
@@ -466,14 +466,14 @@
       "guides/developer/CORE_MODULE_INTEGRATION.md"
     ],
     "followups": [
-      "guides/developer/TESTING.md",
+      "guides/testing/TESTING.md",
       "guides/infrastructure/RESILIENCE.md",
       "guides/infrastructure/MONITORING.md",
       "guides/developer/AUTHENTICATION.md"
     ],
     "last_analyzed": "2025-08-05T10:00:00Z"
   },
-  "guides/developer/TESTING.md": {
+  "guides/testing/TESTING.md": {
     "title": "Testing Guide",
     "topic_category": "developer",
     "audience_level": "intermediate",
@@ -500,7 +500,7 @@
     ],
     "followups": [
       "guides/developer/DOCKER.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
@@ -655,7 +655,7 @@
     "followups": [
       "guides/application/API#text-processing-operations",
       "guides/get-started/TEMPLATE_CUSTOMIZATION.md",
-      "guides/developer/TESTING.md"
+      "guides/testing/TESTING.md"
     ],
     "last_analyzed": "2025-08-03T10:00:00Z"
   }

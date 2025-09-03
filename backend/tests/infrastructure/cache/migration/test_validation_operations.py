@@ -3,7 +3,7 @@ Unit tests for CacheMigrationManager validation operations.
 
 This test suite verifies the observable behaviors documented in the
 CacheMigrationManager validation methods (migration.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Data consistency validation between cache implementations

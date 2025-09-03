@@ -3,7 +3,7 @@ Unit tests for AIResponseCache error handling and resilience behavior.
 
 This test suite verifies the observable error handling behaviors documented in the
 AIResponseCache public contract. Tests focus on behavior-driven testing principles
-described in docs/guides/developer/TESTING.md.
+described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Error handling and graceful degradation patterns

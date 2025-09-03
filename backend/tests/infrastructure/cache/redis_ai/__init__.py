@@ -3,7 +3,7 @@ Unit tests for AIResponseCache refactored implementation with standard cache int
 
 This test suite verifies the observable behaviors documented in the
 AIResponseCache public contract (redis_ai.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Test Organization:
     - TestAIResponseCacheInitialization: Constructor and parameter mapping behavior

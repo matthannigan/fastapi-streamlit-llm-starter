@@ -3,7 +3,7 @@ Unit tests for SecurityConfig initialization and validation behavior.
 
 This test suite verifies the observable behaviors documented in the
 SecurityConfig public contract (security.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - SecurityConfig initialization and parameter validation

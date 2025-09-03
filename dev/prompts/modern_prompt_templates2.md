@@ -5,7 +5,7 @@
 ### **Template 1: Initial Philosophy Alignment**
 
 ```
-I need to generate unit tests following our project's docstring-driven testing philosophy as described in `docs/guides/developer/TESTING.md`.
+I need to generate unit tests following our project's docstring-driven testing philosophy as described in `docs/guides/testing/TESTING.md`.
 
 **Core Project Principles** (please confirm understanding):
 

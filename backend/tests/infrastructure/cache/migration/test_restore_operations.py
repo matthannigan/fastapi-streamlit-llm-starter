@@ -3,7 +3,7 @@ Unit tests for CacheMigrationManager restore operations.
 
 This test suite verifies the observable behaviors documented in the
 CacheMigrationManager restore methods (migration.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Backup restoration to cache implementations

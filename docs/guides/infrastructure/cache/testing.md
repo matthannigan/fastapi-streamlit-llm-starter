@@ -1527,7 +1527,7 @@ Use this guide as a reference for implementing comprehensive testing strategies 
 - **[Security Guidelines](../SECURITY.md)** - Security considerations for infrastructure components
 
 ### Developer Guidelines
-- **[Testing Guide](../../developer/TESTING.md)** - General testing standards and patterns across the project
+- **[Testing Guide](../../testing/TESTING.md)** - General testing standards and patterns across the project
 - **[Code Standards](../../developer/CODE_STANDARDS.md)** - Code quality, formatting, and development standards
 - **[Documentation Guidelines](../../developer/DOCUMENTATION_GUIDANCE.md)** - Documentation standards and best practices
 

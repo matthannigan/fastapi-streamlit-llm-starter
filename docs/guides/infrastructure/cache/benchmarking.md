@@ -564,7 +564,7 @@ config = BenchmarkConfig(
 
 ### Development Guidelines
 - **[Code Standards](../../developer/CODE_STANDARDS.md)** - Development patterns and quality standards
-- **[Testing Strategy](../../developer/TESTING.md)** - Comprehensive testing approaches across the application
+- **[Testing Strategy](../../testing/TESTING.md)** - Comprehensive testing approaches across the application
 - **[CI/CD Integration](../../operations/CICD.md)** - Automated testing and deployment patterns
 
 ### Infrastructure Integration

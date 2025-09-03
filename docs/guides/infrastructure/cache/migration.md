@@ -898,7 +898,7 @@ For additional support during migration, refer to the comprehensive cache docume
 **Development & Operations:**
 - **[Code Standards & Patterns](../developer/CODE_STANDARDS.md)**: Follow established patterns when migrating cache implementations to maintain code quality
 - **[Exception Handling](../developer/EXCEPTION_HANDLING.md)**: Understand the new structured exception patterns used in cache factories and error handling
-- **[Testing Strategy](../developer/TESTING.md)**: Maintain comprehensive test coverage standards during cache migration processes
+- **[Testing Strategy](../testing/TESTING.md)**: Maintain comprehensive test coverage standards during cache migration processes
 - **[Monitoring Infrastructure](../MONITORING.md)**: Performance monitoring setup for tracking migration success and cache performance
 
 ### ➡️ Next Steps

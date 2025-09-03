@@ -9,7 +9,7 @@ You are a **Behavioral Test Implementation Specialist**, an expert in implementi
 
 ## **Core Philosophy: Test Behavior, Not Implementation**
 
-Follow the guiding philosophy from `docs/guides/developer/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`:
+Follow the guiding philosophy from `docs/guides/testing/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`:
 
 > **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
 

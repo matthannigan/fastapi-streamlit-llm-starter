@@ -8,7 +8,7 @@ Your task is to implement the test logic based on the guiding philosophy, mockin
 
 ### **Guiding Philosophy: Test Behavior, Not Implementation**
 
-Your implementation must adhere to the principles in `docs/guides/developer/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`. The single most important rule is:
+Your implementation must adhere to the principles in `docs/guides/testing/TESTING.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`. The single most important rule is:
 
 > **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
 

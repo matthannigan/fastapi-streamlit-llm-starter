@@ -157,7 +157,7 @@ External Dependencies:
 - Appropriate categorization (mocked, real, simulated)
 
 #### Task 4.2: Alignment with Testing Philosophy
-**Action:** Verify revised docstrings align with behavior-driven testing philosophy documented in `docs/guides/developer/TESTING.md`:
+**Action:** Verify revised docstrings align with behavior-driven testing philosophy documented in `docs/guides/testing/TESTING.md`:
 - Focus on external boundaries only
 - Avoid mentioning internal implementation details
 - Emphasize behavior verification over implementation testing

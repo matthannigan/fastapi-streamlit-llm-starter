@@ -3,7 +3,7 @@ Unit tests for specialized cache service dependency functions.
 
 This test suite verifies the observable behaviors documented in the
 cache dependencies public contract (dependencies.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - get_web_cache_service() web-optimized cache dependency

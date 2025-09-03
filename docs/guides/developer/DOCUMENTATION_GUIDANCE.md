@@ -361,7 +361,7 @@ When adding new documentation files or updating existing ones, first update the 
       "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md"
     ],
     "followups": [
-      "guides/developer/TESTING.md",
+      "guides/testing/TESTING.md",
       "guides/developer/DEPLOYMENT.md"
     ],
     "last_analyzed": "2025-01-31T12:00:00Z"
