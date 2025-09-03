@@ -8,7 +8,7 @@ sidebar_label: test_redis_ai_error_handling
 
 This test suite verifies the observable error handling behaviors documented in the
 AIResponseCache public contract. Tests focus on behavior-driven testing principles
-described in docs/guides/developer/TESTING.md.
+described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Error handling and graceful degradation patterns

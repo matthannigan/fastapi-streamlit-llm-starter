@@ -8,7 +8,7 @@ sidebar_label: test_redis_ai_inheritance
 
 This test suite verifies the observable behaviors documented in the
 AIResponseCache public contract (redis_ai.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Infrastructure service (>90% test coverage requirement)

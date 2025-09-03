@@ -8,7 +8,7 @@ sidebar_label: test_memory_initialization
 
 This test suite verifies the observable behaviors documented in the
 InMemoryCache public contract (memory.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Constructor parameter validation and configuration setup

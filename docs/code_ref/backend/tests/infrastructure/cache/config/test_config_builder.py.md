@@ -8,7 +8,7 @@ sidebar_label: test_config_builder
 
 This test suite verifies the observable behaviors documented in the
 CacheConfigBuilder public contract (config.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - CacheConfigBuilder fluent interface and method chaining
@@ -121,7 +121,7 @@ Related Tests:
 ### test_builder_accumulates_configuration_through_method_calls()
 
 ```python
-def test_builder_accumulates_configuration_through_method_calls(self):
+def test_builder_accumulates_configuration_through_method_calls(self, builder_with_basic_config):
 ```
 
 Test that builder properly accumulates configuration parameters through method calls.
@@ -317,7 +317,7 @@ External Dependencies:
 ### test_with_redis_configures_basic_redis_connection()
 
 ```python
-def test_with_redis_configures_basic_redis_connection(self):
+def test_with_redis_configures_basic_redis_connection(self, valid_basic_config_params):
 ```
 
 Test that with_redis() configures basic Redis connection with URL parameter.
@@ -355,7 +355,7 @@ Related Tests:
 ### test_with_redis_configures_authenticated_redis_connection()
 
 ```python
-def test_with_redis_configures_authenticated_redis_connection(self):
+def test_with_redis_configures_authenticated_redis_connection(self, valid_comprehensive_config_params):
 ```
 
 Test that with_redis() properly configures Redis connection with authentication parameters.
@@ -393,7 +393,7 @@ Related Tests:
 ### test_with_redis_validates_redis_url_format()
 
 ```python
-def test_with_redis_validates_redis_url_format(self):
+def test_with_redis_validates_redis_url_format(self, invalid_config_params):
 ```
 
 Test that with_redis() validates Redis URL format and rejects invalid URLs.
@@ -454,7 +454,7 @@ External Dependencies:
 ### test_from_file_loads_valid_json_configuration_file()
 
 ```python
-def test_from_file_loads_valid_json_configuration_file(self):
+def test_from_file_loads_valid_json_configuration_file(self, temp_config_file, sample_config_file_content):
 ```
 
 Test that from_file() loads and integrates valid JSON configuration file.
@@ -493,7 +493,7 @@ Related Tests:
 ### test_from_file_handles_invalid_json_configuration_gracefully()
 
 ```python
-def test_from_file_handles_invalid_json_configuration_gracefully(self):
+def test_from_file_handles_invalid_json_configuration_gracefully(self, invalid_config_file):
 ```
 
 Test that from_file() handles invalid JSON configuration files with clear error messages.
@@ -531,7 +531,7 @@ Related Tests:
 ### test_from_environment_loads_configuration_from_environment_variables()
 
 ```python
-def test_from_environment_loads_configuration_from_environment_variables(self):
+def test_from_environment_loads_configuration_from_environment_variables(self, environment_variables_comprehensive):
 ```
 
 Test that from_environment() loads and converts environment variables to configuration.
@@ -569,7 +569,7 @@ Related Tests:
 ### test_from_environment_handles_missing_environment_variables_gracefully()
 
 ```python
-def test_from_environment_handles_missing_environment_variables_gracefully(self):
+def test_from_environment_handles_missing_environment_variables_gracefully(self, environment_variables_basic):
 ```
 
 Test that from_environment() handles missing environment variables with appropriate defaults.
@@ -630,7 +630,7 @@ External Dependencies:
 ### test_build_method_creates_validated_cache_config_from_builder_state()
 
 ```python
-def test_build_method_creates_validated_cache_config_from_builder_state(self):
+def test_build_method_creates_validated_cache_config_from_builder_state(self, builder_with_comprehensive_config):
 ```
 
 Test that build() method creates validated CacheConfig instance from accumulated builder state.
@@ -668,7 +668,7 @@ Related Tests:
 ### test_build_method_raises_validation_error_for_invalid_configuration()
 
 ```python
-def test_build_method_raises_validation_error_for_invalid_configuration(self):
+def test_build_method_raises_validation_error_for_invalid_configuration(self, invalid_config_params):
 ```
 
 Test that build() method raises ValidationError when builder contains invalid configuration.
@@ -706,7 +706,7 @@ Related Tests:
 ### test_validate_method_provides_comprehensive_builder_validation()
 
 ```python
-def test_validate_method_provides_comprehensive_builder_validation(self):
+def test_validate_method_provides_comprehensive_builder_validation(self, builder_with_basic_config, sample_validation_result_valid):
 ```
 
 Test that validate() method provides comprehensive validation of current builder state.

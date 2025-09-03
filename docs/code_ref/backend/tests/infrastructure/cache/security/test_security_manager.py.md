@@ -8,7 +8,7 @@ sidebar_label: test_security_manager
 
 This test suite verifies the observable behaviors documented in the
 RedisCacheSecurityManager public contract (security.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - create_secure_connection() method behavior with various security configurations

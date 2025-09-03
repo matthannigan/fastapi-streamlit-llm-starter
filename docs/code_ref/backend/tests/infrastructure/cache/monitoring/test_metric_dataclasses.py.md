@@ -8,7 +8,7 @@ sidebar_label: test_metric_dataclasses
 
 This test suite verifies the observable behaviors documented in the
 monitoring metric dataclasses (monitoring.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Dataclass initialization and post-initialization validation

@@ -8,7 +8,7 @@ sidebar_label: test_config_core
 
 This test suite verifies the observable behaviors documented in the
 CacheConfig and ValidationResult public contracts (config.pyi). Tests focus on the
-behavior-driven testing principles described in docs/guides/developer/TESTING.md.
+behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - CacheConfig initialization and validation behavior
@@ -159,7 +159,7 @@ Related Tests:
 ### test_validation_result_tracks_mixed_errors_and_warnings()
 
 ```python
-def test_validation_result_tracks_mixed_errors_and_warnings(self):
+def test_validation_result_tracks_mixed_errors_and_warnings(self, sample_validation_result_invalid):
 ```
 
 Test that ValidationResult correctly tracks both errors and warnings simultaneously.
@@ -220,7 +220,7 @@ External Dependencies:
 ### test_cache_config_initializes_with_valid_basic_parameters()
 
 ```python
-def test_cache_config_initializes_with_valid_basic_parameters(self):
+def test_cache_config_initializes_with_valid_basic_parameters(self, valid_basic_config_params):
 ```
 
 Test that CacheConfig initializes correctly with basic valid parameters.
@@ -258,7 +258,7 @@ Related Tests:
 ### test_cache_config_initializes_with_comprehensive_parameters()
 
 ```python
-def test_cache_config_initializes_with_comprehensive_parameters(self):
+def test_cache_config_initializes_with_comprehensive_parameters(self, valid_comprehensive_config_params):
 ```
 
 Test that CacheConfig initializes correctly with comprehensive parameters including AI features.
@@ -296,7 +296,7 @@ Related Tests:
 ### test_cache_config_post_init_hook_processes_environment_loading()
 
 ```python
-def test_cache_config_post_init_hook_processes_environment_loading(self):
+def test_cache_config_post_init_hook_processes_environment_loading(self, valid_basic_config_params, environment_variables_basic):
 ```
 
 Test that __post_init__ hook properly processes environment-specific configuration loading.
@@ -335,7 +335,7 @@ Related Tests:
 ### test_cache_config_validate_method_returns_comprehensive_validation_result()
 
 ```python
-def test_cache_config_validate_method_returns_comprehensive_validation_result(self):
+def test_cache_config_validate_method_returns_comprehensive_validation_result(self, valid_comprehensive_config_params, mock_path_exists):
 ```
 
 Test that validate() method returns comprehensive ValidationResult with detailed feedback.
@@ -374,7 +374,7 @@ Related Tests:
 ### test_cache_config_to_dict_method_produces_complete_serialization()
 
 ```python
-def test_cache_config_to_dict_method_produces_complete_serialization(self):
+def test_cache_config_to_dict_method_produces_complete_serialization(self, valid_comprehensive_config_params):
 ```
 
 Test that to_dict() method produces complete dictionary representation of configuration.
@@ -412,7 +412,7 @@ Related Tests:
 ### test_cache_config_initialization_with_invalid_parameters_raises_error()
 
 ```python
-def test_cache_config_initialization_with_invalid_parameters_raises_error(self):
+def test_cache_config_initialization_with_invalid_parameters_raises_error(self, invalid_config_params):
 ```
 
 Test that CacheConfig initialization with invalid parameters raises appropriate errors.
@@ -472,7 +472,7 @@ External Dependencies:
 ### test_ai_cache_config_initializes_with_valid_ai_parameters()
 
 ```python
-def test_ai_cache_config_initializes_with_valid_ai_parameters(self):
+def test_ai_cache_config_initializes_with_valid_ai_parameters(self, valid_ai_config_params):
 ```
 
 Test that AICacheConfig initializes correctly with valid AI-specific parameters.
@@ -510,7 +510,7 @@ Related Tests:
 ### test_ai_cache_config_validate_method_checks_ai_parameter_validity()
 
 ```python
-def test_ai_cache_config_validate_method_checks_ai_parameter_validity(self):
+def test_ai_cache_config_validate_method_checks_ai_parameter_validity(self, valid_ai_config_params, invalid_ai_config_params):
 ```
 
 Test that validate() method performs comprehensive AI parameter validation.
