@@ -8,7 +8,7 @@
     # via -r requirements.txt
 annotated-types==0.7.0
     # via pydantic
-anthropic==0.64.0
+anthropic==0.66.0
     # via pydantic-ai-slim
 anyio==4.10.0
     # via
@@ -28,9 +28,9 @@ attrs==25.3.0
     # via
     #   jsonschema
     #   referencing
-boto3==1.40.21
+boto3==1.40.23
     # via pydantic-ai-slim
-botocore==1.40.21
+botocore==1.40.23
     # via
     #   boto3
     #   s3transfer
@@ -74,7 +74,7 @@ fastavro==1.12.0
     # via cohere
 filelock==3.19.1
     # via huggingface-hub
-fsspec==2025.7.0
+fsspec==2025.9.0
     # via huggingface-hub
 google-auth==2.40.3
     # via
@@ -149,9 +149,9 @@ mcp==1.12.4
     # via pydantic-ai-slim
 mdurl==0.1.2
     # via markdown-it-py
-mistralai==1.9.9
+mistralai==1.9.10
     # via pydantic-ai-slim
-openai==1.102.0
+openai==1.105.0
     # via pydantic-ai-slim
 opentelemetry-api==1.36.0
     # via
