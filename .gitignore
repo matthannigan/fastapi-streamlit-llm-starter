@@ -232,3 +232,5 @@ backend/app.old/
 
 .mkdocs/
 docs-mkdocs/
+backend/tests/infrastructure/cache/failures.txt
+backend/tests/infrastructure/cache/failures.json
