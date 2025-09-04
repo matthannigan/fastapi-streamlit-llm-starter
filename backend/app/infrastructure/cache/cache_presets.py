@@ -397,7 +397,8 @@ class CachePreset:
             environment=self.environment_contexts[0] if self.environment_contexts else "development",
 
             # AI configuration (nested structure)
-            ai_config=ai_config
+            ai_config=ai_config,
+            enable_ai_cache=self.enable_ai_cache
         )
 
         return config
