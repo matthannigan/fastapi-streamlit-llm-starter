@@ -64,15 +64,11 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Cache Infrastructure API Reference](guides/infrastructure/cache/api-reference.md)**: Comprehensive API reference documentation for all public APIs and interfaces in the cache infrastructure including CacheFactory, configuration APIs, and dependency injection functions
 
-- **[Cache Infrastructure Migration Guide](guides/infrastructure/cache/migration.md)**: Comprehensive migration guide for transitioning from inheritance-based cache patterns to callback composition and factory-based architecture with step-by-step upgrade instructions
-
 - **[Cache Infrastructure Performance & Troubleshooting Guide](guides/infrastructure/cache/troubleshooting.md)**: Systematic troubleshooting workflows, performance optimization strategies, and emergency procedures for cache infrastructure with debugging workflows and resolution procedures
 
 - **[Cache Infrastructure Service](guides/infrastructure/cache/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation - primary entry point for cache documentation
 
-- **[Cache Infrastructure Testing Guide](guides/infrastructure/cache/testing.md)**: Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, performance benchmarks, and CI/CD configuration
-
-- **[Cache Performance Benchmarking Guide](guides/infrastructure/cache/benchmarking.md)**: Comprehensive cache performance benchmarking system with modular architecture, multi-format reporting, regression detection, and CI/CD integration for production-ready performance testing and optimization
+- **[Cache Infrastructure Testing Guide](guides/infrastructure/cache/testing.md)**: Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, and CI/CD configuration
 
 - **[Core Module Integration Guide](guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and enhanced middleware patterns
 

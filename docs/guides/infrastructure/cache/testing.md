@@ -4,7 +4,7 @@ sidebar_label: Testing
 
 # Cache Infrastructure Testing Guide
 
-This comprehensive guide covers testing strategies, patterns, and best practices for the cache infrastructure, including unit tests, integration tests, performance benchmarks, and CI/CD configuration.
+This comprehensive guide covers testing strategies, patterns, and best practices for the cache infrastructure, including unit tests, integration tests, and CI/CD configuration.
 
 ## Table of Contents
 
@@ -12,13 +12,12 @@ This comprehensive guide covers testing strategies, patterns, and best practices
 2. [Test Fixture Patterns](#test-fixture-patterns)  
 3. [Unit Testing Strategies](#unit-testing-strategies)
 4. [Integration Testing with Redis](#integration-testing-with-redis)
-5. [Performance Testing Setup](#performance-testing-setup)
-6. [Mock Callback Patterns](#mock-callback-patterns)
-7. [CI/CD Testing Configuration](#cicd-testing-configuration)
-8. [Test Isolation and Cleanup](#test-isolation-and-cleanup)
-9. [Async Testing Best Practices](#async-testing-best-practices)
-10. [Error Handling Test Scenarios](#error-handling-test-scenarios)
-11. [Multi-Environment Testing](#multi-environment-testing)
+5. [Mock Callback Patterns](#mock-callback-patterns)
+6. [CI/CD Testing Configuration](#cicd-testing-configuration)
+7. [Test Isolation and Cleanup](#test-isolation-and-cleanup)
+8. [Async Testing Best Practices](#async-testing-best-practices)
+9.  [Error Handling Test Scenarios](#error-handling-test-scenarios)
+10. [Multi-Environment Testing](#multi-environment-testing)
 
 ## Test Architecture Overview
 
@@ -32,12 +31,7 @@ backend/tests/infrastructure/cache/
 ├── test_memory.py                # InMemoryCache implementation tests
 ├── test_redis.py                 # Redis cache integration tests
 ├── test_monitoring.py            # Performance monitoring tests
-├── test_ai_cache_integration.py  # AI-specific cache features
-└── benchmarks/                   # Performance benchmark suite
-    ├── conftest.py              # Benchmark-specific fixtures
-    ├── test_config.py           # Benchmark configuration tests
-    ├── test_core.py             # Core benchmark engine tests
-    └── test_integration.py      # End-to-end benchmark tests
+└── test_ai_cache_integration.py  # AI-specific cache features
 ```
 
 ### Test Categories
@@ -53,12 +47,6 @@ backend/tests/infrastructure/cache/
 - Test cache fallback mechanisms
 - Validate configuration-based instantiation
 - Use Redis test databases with cleanup
-
-**Performance Tests** (`@pytest.mark.slow`):
-- Benchmark cache operations under load
-- Memory usage and compression efficiency
-- Regression detection for performance
-- Configurable thresholds for CI/CD
 
 ## Test Fixture Patterns
 
@@ -138,59 +126,6 @@ if HAS_PYTEST_REDIS:
         # Cleanup: flush the test database
         await cache.clear()
         redis_db.flushdb()
-```
-
-### Performance Testing Fixtures
-
-```python
-# backend/tests/infrastructure/cache/benchmarks/conftest.py
-
-@pytest.fixture
-def performance_test_data():
-    """Generate test data for performance benchmarks."""
-    return [
-        {
-            "key": f"test_key_{i}", 
-            "value": f"test_value_{i}" * 10, 
-            "size_kb": 0.1
-        }
-        for i in range(50)
-    ]
-
-@pytest.fixture
-def benchmark_config():
-    """Create benchmark configuration for testing."""
-    from app.infrastructure.cache.benchmarks.config import BenchmarkConfig
-    
-    return BenchmarkConfig(
-        default_iterations=25,
-        warmup_iterations=3,
-        timeout_seconds=30,
-        enable_memory_tracking=True,
-        enable_compression_tests=False
-    )
-
-@pytest.fixture
-async def benchmark_cache_pair():
-    """Create cache pair for benchmark comparison testing."""
-    factory = CacheFactory()
-    
-    baseline_cache = await factory.for_testing(
-        use_memory_cache=True,
-        default_ttl=3600,
-        l1_cache_size=50
-    )
-    
-    optimized_cache = await factory.for_testing(
-        use_memory_cache=True,
-        default_ttl=3600,
-        l1_cache_size=100  # Larger cache for comparison
-    )
-    
-    yield baseline_cache, optimized_cache
-    
-    await baseline_cache.clear()
-    await optimized_cache.clear()
 ```
 
 ## Unit Testing Strategies
@@ -407,127 +342,6 @@ async def test_cache_monitoring_integration():
         assert monitor.cache_misses >= 1
 ```
 
-## Performance Testing Setup
-
-### Benchmark Configuration
-
-```python
-# Performance testing with configurable thresholds
-
-@pytest.mark.slow
-class TestCachePerformance:
-    """Performance tests for cache operations."""
-
-    @pytest.mark.asyncio
-    async def test_bulk_operations_performance(self, benchmark_config, performance_test_data):
-        """Test performance of bulk cache operations."""
-        from app.infrastructure.cache.benchmarks.core import CacheBenchmarkRunner
-        
-        factory = CacheFactory()
-        cache = await factory.for_testing(use_memory_cache=True, l1_cache_size=200)
-        
-        runner = CacheBenchmarkRunner(benchmark_config)
-        
-        # Run bulk set operations benchmark
-        set_results = await runner.run_bulk_set_benchmark(
-            cache=cache,
-            test_data=performance_test_data,
-            iterations=benchmark_config.default_iterations
-        )
-        
-        # Verify performance thresholds
-        assert set_results.avg_duration_ms < 50.0  # Average < 50ms
-        assert set_results.success_rate == 1.0      # 100% success
-        assert set_results.operations_per_second > 20  # Minimum throughput
-
-    @pytest.mark.asyncio
-    async def test_memory_usage_monitoring(self, memory_cache):
-        """Test memory usage tracking during cache operations."""
-        import psutil
-        import os
-        
-        process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss / 1024 / 1024  # MB
-        
-        # Perform memory-intensive operations
-        large_data = "x" * (1024 * 100)  # 100KB strings
-        for i in range(100):
-            await memory_cache.set(f"large_key_{i}", large_data)
-        
-        peak_memory = process.memory_info().rss / 1024 / 1024  # MB
-        memory_increase = peak_memory - initial_memory
-        
-        # Verify memory usage is reasonable (< 50MB increase)
-        assert memory_increase < 50.0
-        
-        # Cleanup and verify memory release
-        await memory_cache.clear()
-        
-    @pytest.mark.asyncio
-    async def test_compression_performance(self):
-        """Test compression performance and efficiency."""
-        factory = CacheFactory()
-        cache = await factory.for_ai_app(
-            use_memory_cache=True,
-            compression_threshold=1000,  # Enable compression for data > 1KB
-            fail_on_connection_error=False
-        )
-        
-        # Create compressible data
-        compressible_data = "This is repeated text. " * 100  # ~2.3KB
-        
-        start_time = time.time()
-        await cache.set("compression_test", compressible_data)
-        compression_time = time.time() - start_time
-        
-        # Verify compression performance
-        assert compression_time < 0.1  # Compression should be fast
-        
-        # Verify data integrity
-        result = await cache.get("compression_test")
-        assert result == compressible_data
-```
-
-### Regression Testing
-
-```python
-@pytest.mark.slow
-class TestPerformanceRegression:
-    """Regression tests for cache performance."""
-
-    @pytest.mark.asyncio
-    async def test_performance_regression_detection(self):
-        """Test automatic detection of performance regressions."""
-        from app.infrastructure.cache.benchmarks.core import CacheBenchmarkRunner
-        from app.infrastructure.cache.benchmarks.config import ConfigPresets
-        
-        # Use CI configuration for consistent results
-        config = ConfigPresets.ci_config()
-        runner = CacheBenchmarkRunner(config)
-        
-        # Create baseline and current caches
-        factory = CacheFactory()
-        baseline_cache = await factory.for_testing(
-            use_memory_cache=True,
-            l1_cache_size=50  # Smaller cache
-        )
-        current_cache = await factory.for_testing(
-            use_memory_cache=True,
-            l1_cache_size=100  # Larger cache (should be faster)
-        )
-        
-        # Run comparison benchmark
-        comparison = await runner.run_cache_comparison(
-            original_cache=baseline_cache,
-            new_cache=current_cache,
-            test_suite_name="regression_test"
-        )
-        
-        # Verify regression detection
-        assert not comparison.regression_detected
-        assert comparison.performance_change_percent < 0  # Improvement expected
-```
-
 ## Mock Callback Patterns
 
 ### Callback Composition Testing
@@ -631,11 +445,6 @@ test-backend-infra-cache:
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q --retries 2 --retry-delay 5
 	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "not redis" -n 0 -q --retries 2 --retry-delay 5
-
-# Run cache performance tests
-test-backend-cache-performance:
-	@echo "🧪 Running cache performance benchmarks..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/benchmarks/ --run-slow -q
 
 # Run cache integration tests
 test-backend-cache-integration:
@@ -750,18 +559,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         make install
-    
-    - name: Run performance benchmarks
-      run: make test-backend-cache-performance
-      env:
-        BENCHMARK_ENV: ci
-        BENCHMARK_ENABLE_REGRESSION_DETECTION: true
-    
-    - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
-      with:
-        name: cache-benchmarks
-        path: backend/benchmark_results/
 ```
 
 ### Docker Testing Configuration
@@ -785,7 +582,6 @@ COPY backend/ ./
 # Set environment variables for testing
 ENV PYTHONPATH=/app
 ENV PYTEST_REDIS_PROC_PORT=6380
-ENV BENCHMARK_ENV=docker
 
 # Run cache tests
 CMD ["python", "-m", "pytest", "tests/infrastructure/cache/", "-v", "--tb=short"]
@@ -896,7 +692,7 @@ def clean_environment(monkeypatch):
     # Clear cache-related environment variables
     cache_env_vars = [
         'REDIS_URL', 'CACHE_TTL', 'CACHE_SIZE', 'ENABLE_CACHE_COMPRESSION',
-        'CACHE_MONITORING_ENABLED', 'BENCHMARK_DEFAULT_ITERATIONS'
+        'CACHE_MONITORING_ENABLED'
     ]
     
     for var in cache_env_vars:
@@ -905,8 +701,7 @@ def clean_environment(monkeypatch):
     # Set test-specific defaults
     test_env = {
         'CACHE_ENV': 'test',
-        'CACHE_TTL': '60',
-        'BENCHMARK_DEFAULT_ITERATIONS': '10'
+        'CACHE_TTL': '60'
     }
     
     for key, value in test_env.items():
@@ -1349,35 +1144,6 @@ class TestCrossEnvironmentCompatibility:
     """Test cache compatibility across different environments."""
 
     @pytest.mark.asyncio
-    async def test_cache_migration_between_environments(self):
-        """Test cache data migration between different environments."""
-        # Create development cache with data
-        factory = CacheFactory()
-        dev_cache = await factory.for_testing(
-            use_memory_cache=True,
-            default_ttl=300
-        )
-        
-        # Store test data
-        test_data = {"env": "development", "timestamp": "2024-01-01"}
-        await dev_cache.set("migration_test", test_data)
-        
-        # Simulate migration to production cache
-        prod_cache = await factory.for_testing(
-            use_memory_cache=True,
-            default_ttl=3600  # Production TTL
-        )
-        
-        # Migrate data (in practice, this would be more complex)
-        migrated_data = await dev_cache.get("migration_test")
-        if migrated_data:
-            await prod_cache.set("migration_test", migrated_data)
-        
-        # Verify migration
-        result = await prod_cache.get("migration_test")
-        assert result == test_data
-
-    @pytest.mark.asyncio
     async def test_configuration_validation_across_environments(self):
         """Test configuration validation for different environments."""
         factory = CacheFactory()
@@ -1492,13 +1258,12 @@ This comprehensive testing guide provides:
 2. **Practical fixture patterns** for memory, Redis, and performance testing
 3. **Unit testing strategies** with >90% coverage patterns for factory methods
 4. **Integration testing** with real Redis instances and cleanup automation
-5. **Performance benchmarking** with configurable thresholds and regression detection
-6. **Mock callback patterns** for monitoring and error simulation
-7. **CI/CD configuration** with GitHub Actions and Docker integration
-8. **Test isolation** with automatic cleanup and environment management
-9. **Async testing best practices** for concurrent operations and error handling
-10. **Comprehensive error scenarios** covering configuration, connection, and data corruption
-11. **Multi-environment testing** with environment-specific configurations and load patterns
+5. **Mock callback patterns** for monitoring and error simulation
+6. **CI/CD configuration** with GitHub Actions and Docker integration
+7. **Test isolation** with automatic cleanup and environment management
+8. **Async testing best practices** for concurrent operations and error handling
+9.  **Comprehensive error scenarios** covering configuration, connection, and data corruption
+10. **Multi-environment testing** with environment-specific configurations and load patterns
 
 The guide demonstrates practical, production-ready testing patterns that developers can use immediately to build robust cache infrastructure with confidence in reliability and performance.
 
@@ -1507,7 +1272,6 @@ Key principles demonstrated:
 - **Comprehensive coverage**: Unit, integration, and performance testing
 - **Environment awareness**: Different configurations for different contexts  
 - **Error resilience**: Extensive error handling and recovery testing
-- **Performance monitoring**: Built-in benchmarking and regression detection
 - **CI/CD integration**: Automated testing with proper isolation and cleanup
 
 Use this guide as a reference for implementing comprehensive testing strategies for cache infrastructure that maintain high quality standards while enabling rapid development and deployment cycles.
@@ -1518,7 +1282,6 @@ Use this guide as a reference for implementing comprehensive testing strategies 
 - **[Cache Infrastructure Overview](./CACHE.md)** - Complete cache system architecture, components, integration patterns, and configuration management
 - **[Usage Guide](./usage-guide.md)** - Practical patterns for implementing cache in applications with configuration examples
 - **[API Reference](./api-reference.md)** - Complete API documentation with examples and best practices
-- **[Cache Performance Benchmarking Guide](./benchmarking.md)** - Performance testing tools that complement unit and integration testing strategies
 
 ### Related Infrastructure Guides
 - **[AI Infrastructure](../AI.md)** - AI service integration patterns and caching strategies

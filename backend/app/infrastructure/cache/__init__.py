@@ -11,8 +11,7 @@ The cache module is organized into specialized components:
 - **Core Implementations**: `base.py`, `memory.py`, `redis_generic.py`, `redis_ai.py`
 - **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`
 - **Utilities**: `factory.py`, `key_generator.py`, `parameter_mapping.py`
-- **Advanced Features**: `monitoring.py`, `security.py`, `migration.py`
-- **Benchmarking**: `benchmarks/` subdirectory with performance testing tools
+- **Advanced Features**: `monitoring.py`, `security.py`
 
 ## Main Components
 
@@ -45,16 +44,8 @@ See the component README.md for comprehensive usage examples and configuration d
 
 # Base interface
 from .base import CacheInterface
-# Performance benchmarking
-from .benchmarks import (BenchmarkResult, BenchmarkSuite,
-                         CacheBenchmarkDataGenerator, CachePerformanceBenchmark,
-                         CachePerformanceThresholds, ComparisonResult,
-                         PerformanceRegressionDetector)
-# Compatibility wrapper (removed - no longer needed)
 # Memory implementation
 from .memory import InMemoryCache
-# Migration utilities
-from .migration import CacheMigrationManager
 # Monitoring and metrics
 from .monitoring import (CachePerformanceMonitor, CompressionMetric,
                          InvalidationMetric, MemoryUsageMetric,
@@ -107,16 +98,6 @@ __all__ = [
     "SecurityConfig",
     "SecurityValidationResult",
     "create_security_config_from_env",
-    # Performance benchmarking
-    "CachePerformanceBenchmark",
-    "BenchmarkResult",
-    "BenchmarkSuite",
-    "ComparisonResult",
-    "CacheBenchmarkDataGenerator",
-    "PerformanceRegressionDetector",
-    "CachePerformanceThresholds",
-    # Migration utilities
-    "CacheMigrationManager",
     # Memory implementation
     "InMemoryCache",
     # Monitoring and metrics

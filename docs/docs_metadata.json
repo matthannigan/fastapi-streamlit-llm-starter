@@ -170,7 +170,6 @@
       "guides/infrastructure/cache/configuration.md",
       "guides/infrastructure/cache/api-reference.md",
       "guides/infrastructure/cache/testing.md",
-      "guides/infrastructure/cache/benchmarking.md",
       "guides/infrastructure/MONITORING.md",
       "guides/infrastructure/RESILIENCE.md",
       "guides/infrastructure/AI.md"
@@ -220,7 +219,6 @@
     "followups": [
       "guides/infrastructure/cache/usage-guide.md",
       "guides/infrastructure/cache/api-reference.md",
-      "guides/infrastructure/cache/migration.md",
       "guides/developer/DEPLOYMENT.md"
     ],
     "last_analyzed": "2025-08-27T10:00:00Z"
@@ -236,57 +234,9 @@
       "guides/testing/TESTING.md"
     ],
     "followups": [
-      "guides/infrastructure/cache/benchmarking.md",
       "guides/infrastructure/cache/troubleshooting.md",
       "guides/developer/CODE_STANDARDS.md",
       "guides/operations/PERFORMANCE_OPTIMIZATION.md"
-    ],
-    "last_analyzed": "2025-08-27T10:00:00Z"
-  },
-  "guides/infrastructure/cache/migration.md": {
-    "title": "Cache Infrastructure Migration Guide",
-    "topic_category": "infrastructure",
-    "audience_level": "advanced", 
-    "description": "Comprehensive migration guide for transitioning from inheritance-based cache patterns to callback composition and factory-based architecture with step-by-step upgrade instructions",
-    "dependencies": [
-      "guides/infrastructure/cache/CACHE.md",
-      "guides/infrastructure/cache/configuration.md"
-    ],
-    "followups": [
-      "guides/infrastructure/cache/usage-guide.md",
-      "guides/infrastructure/cache/api-reference.md",
-      "guides/infrastructure/cache/troubleshooting.md"
-    ],
-    "last_analyzed": "2025-08-27T10:00:00Z"
-  },
-  "guides/infrastructure/cache/benchmarking.md": {
-    "title": "Cache Performance Benchmarking Guide",
-    "topic_category": "infrastructure",
-    "audience_level": "advanced",
-    "description": "Comprehensive cache performance benchmarking system with modular architecture, multi-format reporting, regression detection, and CI/CD integration for production-ready performance testing and optimization",
-    "dependencies": [
-      "guides/infrastructure/cache/CACHE.md",
-      "guides/infrastructure/cache/testing.md",
-      "guides/infrastructure/cache/configuration.md"
-    ],
-    "followups": [
-      "guides/infrastructure/cache/troubleshooting.md",
-      "guides/operations/PERFORMANCE_OPTIMIZATION.md",
-      "guides/operations/MONITORING.md",
-      "guides/infrastructure/MONITORING.md",
-      "guides/testing/TESTING.md"
-    ],
-    "tags": [
-      "benchmarking",
-      "performance",
-      "testing",
-      "cache",
-      "regression-detection",
-      "ci-cd",
-      "monitoring",
-      "optimization",
-      "statistical-analysis",
-      "multi-format-reporting"
     ],
     "last_analyzed": "2025-08-27T10:00:00Z"
   },
@@ -302,7 +252,6 @@
     ],
     "followups": [
       "guides/infrastructure/cache/testing.md",
-      "guides/infrastructure/cache/benchmarking.md",
       "guides/operations/PERFORMANCE_OPTIMIZATION.md",
       "guides/operations/TROUBLESHOOTING.md",
       "guides/infrastructure/MONITORING.md"

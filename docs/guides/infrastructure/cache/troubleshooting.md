@@ -6,7 +6,7 @@ description: Comprehensive troubleshooting guide for cache infrastructure perfor
 
 # Cache Infrastructure Performance & Troubleshooting Guide
 
-This guide provides systematic troubleshooting workflows, performance optimization strategies, and emergency procedures for the cache infrastructure. It consolidates debugging workflows, performance benchmarking, and resolution procedures for operational teams and developers.
+This guide provides systematic troubleshooting workflows, performance optimization strategies, and emergency procedures for the cache infrastructure. It consolidates debugging workflows, and resolution procedures for operational teams and developers.
 
 ## Table of Contents
 
@@ -18,9 +18,8 @@ This guide provides systematic troubleshooting workflows, performance optimizati
 6. [Configuration Troubleshooting](#configuration-troubleshooting)
 7. [Redis Connection Issues](#redis-connection-issues)
 8. [Memory Management](#memory-management)
-9. [Performance Benchmarking](#performance-benchmarking)
-10. [Health Check Integration](#health-check-integration)
-11. [Emergency Procedures](#emergency-procedures)
+9.  [Health Check Integration](#health-check-integration)
+10. [Emergency Procedures](#emergency-procedures)
 
 ## Quick Diagnostic Checklist
 
@@ -721,19 +720,6 @@ curl -X POST "http://localhost:8000/internal/cache/config/apply-preset" \
 curl -s "http://localhost:8000/internal/cache/config/validate" | jq '.is_valid'
 ```
 
-#### Configuration Migration
-```bash
-# Migrate from legacy configuration
-curl -X POST "http://localhost:8000/internal/cache/config/migrate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "source": "legacy",
-    "target": "current",
-    "preserve_custom_settings": true,
-    "validate_after_migration": true
-  }'
-```
-
 ## Redis Connection Issues
 
 ### Connection Failure Diagnosis
@@ -889,90 +875,6 @@ curl -X POST "http://localhost:8000/internal/cache/memory/pressure-config" \
     "emergency_eviction_threshold": 90,
     "monitoring_interval_seconds": 30
   }'
-```
-
-## Performance Benchmarking
-
-### Benchmark Test Suites
-
-#### Cache Operation Benchmarks
-```bash
-# Run comprehensive cache benchmarks
-curl -X POST "http://localhost:8000/internal/cache/benchmark/comprehensive" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test_scenarios": [
-      "small_data_operations",
-      "large_data_operations", 
-      "mixed_workload",
-      "high_concurrency",
-      "memory_pressure"
-    ],
-    "iterations": 100,
-    "concurrent_clients": 10,
-    "warmup_iterations": 10
-  }' | jq '{
-    overall_score: .benchmark_score,
-    operation_results: .detailed_results,
-    performance_grade: .performance_classification,
-    bottlenecks: .identified_bottlenecks
-  }'
-```
-
-#### Redis vs Memory Performance Comparison
-```bash
-# Compare Redis and memory cache performance
-curl -X POST "http://localhost:8000/internal/cache/benchmark/redis-vs-memory" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test_data_sizes": [1024, 10240, 102400],
-    "operations": ["get", "set", "delete"],
-    "iterations_per_test": 50
-  }' | jq '{
-    redis_performance: .redis_results,
-    memory_performance: .memory_results,
-    performance_comparison: .comparative_analysis,
-    recommendations: .optimization_recommendations
-  }'
-```
-
-### Performance Regression Detection
-
-#### Automated Performance Testing
-```bash
-# Run regression detection suite
-curl -X POST "http://localhost:8000/internal/cache/benchmark/regression-test" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "baseline_comparison": true,
-    "alert_threshold_percent": 15,
-    "test_duration_minutes": 5,
-    "comprehensive_analysis": true
-  }' | jq '{
-    regression_detected: .has_regression,
-    performance_delta_percent: .performance_change,
-    affected_operations: .regressed_operations,
-    root_cause_analysis: .likely_causes
-  }'
-```
-
-#### Performance Baseline Management
-```bash
-# Update performance baseline after optimizations
-curl -X POST "http://localhost:8000/internal/cache/benchmark/update-baseline" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "capture_current_performance": true,
-    "include_configuration": true,
-    "environment_metadata": true
-  }'
-
-# Compare with historical baselines
-curl -s "http://localhost:8000/internal/cache/benchmark/baseline-history" | jq '{
-  current_vs_baseline: .performance_comparison,
-  trend_analysis: .performance_trends,
-  optimization_impact: .improvement_tracking
-}'
 ```
 
 ## Health Check Integration
@@ -1170,9 +1072,8 @@ curl -X POST "http://localhost:8000/internal/cache/analysis/post-incident" \
 ### 🔗 Related Topics
 > Explore these related guides for additional context and complementary information.
 
-- **[Cache Testing Guide](./testing.md)**: Performance testing patterns and benchmarking procedures
+- **[Cache Testing Guide](./testing.md)**: Unit and integration tests
 - **[Cache API Reference](./api-reference.md)**: Detailed API endpoints for diagnostics and management
-- **[Cache Performance Benchmarking Guide](./benchmarking.md)**: Advanced performance diagnostics, regression analysis, and optimization tools for troubleshooting scenarios
 - **[Monitoring Infrastructure](../MONITORING.md)**: Comprehensive monitoring that includes cache performance analytics
 - **[Resilience Infrastructure](../RESILIENCE.md)**: Fault tolerance patterns that complement cache reliability
 - **[General Troubleshooting Guide](../../operations/TROUBLESHOOTING.md)**: System-wide troubleshooting procedures
@@ -1181,7 +1082,6 @@ curl -X POST "http://localhost:8000/internal/cache/analysis/post-incident" \
 > Continue your journey with these advanced guides and practical applications.
 
 - **[Performance Optimization Guide](../../operations/PERFORMANCE_OPTIMIZATION.md)**: Advanced cache optimization and tuning procedures
-- **[Cache Migration Guide](./migration.md)**: Safe data migration tools and procedures for cache transitions
 - **[Backup & Recovery Guide](../../operations/BACKUP_RECOVERY.md)**: Data backup and recovery procedures including cache data
 - **[Security Guide](../../operations/SECURITY.md)**: Production security considerations for cache infrastructure
 - **[Deployment Guide](../../developer/DEPLOYMENT.md)**: Production deployment considerations for caching infrastructure

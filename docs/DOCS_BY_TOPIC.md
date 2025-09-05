@@ -68,15 +68,11 @@ This view organizes all documentation by topic category, providing an alternativ
 
 - **[Cache Infrastructure Configuration Guide](guides/infrastructure/cache/configuration.md)**: Flexible, production-ready configuration through modern preset-based system that simplifies setup from 28+ environment variables to 1-4 essential settings
 
-- **[Cache Infrastructure Migration Guide](guides/infrastructure/cache/migration.md)**: Comprehensive migration guide for transitioning from inheritance-based cache patterns to callback composition and factory-based architecture with step-by-step upgrade instructions
-
 - **[Cache Infrastructure Performance & Troubleshooting Guide](guides/infrastructure/cache/troubleshooting.md)**: Systematic troubleshooting workflows, performance optimization strategies, and emergency procedures for cache infrastructure with debugging workflows and resolution procedures
 
 - **[Cache Infrastructure Service](guides/infrastructure/cache/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation - primary entry point for cache documentation
 
-- **[Cache Infrastructure Testing Guide](guides/infrastructure/cache/testing.md)**: Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, performance benchmarks, and CI/CD configuration
-
-- **[Cache Performance Benchmarking Guide](guides/infrastructure/cache/benchmarking.md)**: Comprehensive cache performance benchmarking system with modular architecture, multi-format reporting, regression detection, and CI/CD integration for production-ready performance testing and optimization
+- **[Cache Infrastructure Testing Guide](guides/infrastructure/cache/testing.md)**: Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, and CI/CD configuration
 
 - **[Monitoring Infrastructure Service](guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection
 

@@ -1217,7 +1217,6 @@ if not settings.debug:
 - **[Cache API Reference](../CACHE_API_REFERENCE.md)**: Detailed API documentation for all cache methods
 - **[Cache Configuration](../CACHE_PRESETS.md)**: Complete preset system and configuration options
 - **[Cache Testing](../CACHE_TESTING.md)**: Testing patterns and test utilities
-- **[Cache Performance Benchmarking Guide](./benchmarking.md)**: Performance evaluation, optimization strategies, and regression detection tools
 
 ### Operations & Monitoring
 - **[Monitoring Infrastructure](./MONITORING.md)**: Comprehensive monitoring setup and metrics
