@@ -356,26 +356,6 @@ class TestCacheParameterMapperInitialization:
         assert isinstance(parameter_mappings, dict)
         # Should have at least some parameter mappings (AI -> generic)
 
-    def test_thread_safety_initialization(self):
-        """
-        Test thread-safe initialization of mapper components.
-        
-        Given: Multiple threads attempting to initialize CacheParameterMapper
-        When: Concurrent initialization occurs
-        Then: All mapper instances should be properly initialized
-        And: Parameter classifications should remain consistent
-        And: No race conditions should occur during setup
-        """
-        import pytest
-        import threading
-        import time
-        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
-        
-        # Skip this test as it requires integration testing approach
-        # Thread safety testing is better suited for integration tests
-        # where we can test with real concurrent scenarios
-        pytest.skip("Thread safety testing requires integration test approach with real concurrency scenarios")
-
     def test_immutable_parameter_definitions(self):
         """
         Test immutability of core parameter definitions after initialization.

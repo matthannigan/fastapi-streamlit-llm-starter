@@ -101,82 +101,6 @@ class TestCacheDependencyManagerLifecycle:
         # From the actual result, we can see it includes total_entries, active_caches, etc.
         assert 'total_entries' in cleanup_result or 'active_caches' in cleanup_result or 'dead_references' in cleanup_result
 
-    @pytest.mark.skip(reason="Registry cleanup statistics testing requires mocking internal registry implementation details which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify cleanup effectiveness through observable registry behavior.")
-    async def test_registry_cleanup_provides_comprehensive_cleanup_statistics(self):
-        """
-        Test that registry cleanup provides comprehensive statistics about cleanup operations.
-        
-        Verifies:
-            Registry cleanup returns detailed information about cleanup results
-            
-        Business Impact:
-            Enables monitoring and troubleshooting of cache registry management
-            
-        Scenario:
-            Given: Cache registry requiring cleanup with various reference states
-            When: cleanup_registry() performs comprehensive registry cleanup
-            Then: Detailed cleanup statistics are returned with operation results
-            And: Statistics include counts of cleaned, remaining, and processed entries
-            And: Cleanup duration and performance metrics included in statistics
-            
-        Cleanup Statistics Verified:
-            - Count of cleaned entries removed during cleanup operation
-            - Count of remaining active entries after cleanup
-            - Total entries processed during cleanup operation
-            - Cleanup operation duration for performance monitoring
-            - Memory recovery statistics from dead reference removal
-            
-        Fixtures Used:
-            - mock_cache_dependency_manager: Manager for statistics testing
-            - Registry scenarios with known reference counts for verification
-            
-        Operational Visibility:
-            Cleanup statistics enable monitoring and optimization of registry management
-            
-        Related Tests:
-            - test_cache_dependency_manager_cleanup_registry_removes_dead_references()
-            - test_cleanup_registry_handles_concurrent_access_safely()
-        """
-        pass
-
-    @pytest.mark.skip(reason="Thread safety testing requires mocking internal asyncio.Lock behavior and registry concurrency mechanisms which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify concurrent access safety through real concurrent operations.")
-    async def test_registry_operations_are_thread_safe_with_async_lock(self):
-        """
-        Test that cache registry operations are thread-safe using asyncio.Lock for concurrent access.
-        
-        Verifies:
-            Registry operations handle concurrent access safely through proper locking
-            
-        Business Impact:
-            Ensures registry integrity during concurrent cache operations in async applications
-            
-        Scenario:
-            Given: Multiple concurrent cache registry operations
-            When: Registry cleanup and access occur simultaneously
-            Then: asyncio.Lock ensures thread-safe access to registry
-            And: Registry state remains consistent during concurrent operations
-            And: No race conditions occur during registry modification
-            
-        Thread Safety Verified:
-            - asyncio.Lock acquired before registry modification operations
-            - Concurrent registry access serialized through lock mechanism
-            - Registry state consistency maintained during concurrent operations
-            - Lock release ensures other operations can proceed after completion
-            - No registry corruption occurs during high-concurrency scenarios
-            
-        Fixtures Used:
-            - mock_asyncio_lock: Lock for thread safety testing
-            - mock_cache_service_registry: Registry for concurrent operation testing
-            
-        Concurrent Safety:
-            Registry locking ensures safe concurrent access in async environments
-            
-        Related Tests:
-            - test_cache_dependency_manager_cleanup_registry_removes_dead_references()
-            - test_registry_cleanup_performance_under_load()
-        """
-        pass
-
 
 class TestCleanupCacheRegistryFunction:
     """
@@ -298,44 +222,6 @@ class TestCleanupCacheRegistryFunction:
         # Cleanup function should complete without raising exceptions
         # This verifies that cleanup process is functional
 
-    @pytest.mark.skip(reason="FastAPI application lifecycle integration testing requires mocking application lifecycle events and shutdown handlers which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify cleanup behavior in real FastAPI application contexts.")
-    async def test_cleanup_registry_integrates_with_application_lifecycle_events(self):
-        """
-        Test that cleanup_cache_registry() integrates properly with FastAPI application lifecycle.
-        
-        Verifies:
-            Registry cleanup function works correctly as FastAPI shutdown event handler
-            
-        Business Impact:
-            Ensures proper cache cleanup during application shutdown and deployment lifecycle
-            
-        Scenario:
-            Given: FastAPI application with cache dependencies and shutdown events
-            When: Application shutdown triggers cleanup_cache_registry() as event handler
-            Then: Registry cleanup executes properly during application shutdown
-            And: Cleanup completes before application termination
-            And: Resource cleanup enables clean application shutdown
-            
-        Lifecycle Integration Verified:
-            - cleanup_cache_registry() executes correctly as FastAPI shutdown handler
-            - Cleanup completes within application shutdown timeout constraints
-            - Resource cleanup enables graceful application termination
-            - Error handling during cleanup doesn't prevent application shutdown
-            - Cleanup results available for shutdown monitoring and logging
-            
-        Fixtures Used:
-            - Mock FastAPI application lifecycle for integration testing
-            - mock_cache_service_registry: Registry for lifecycle cleanup testing
-            
-        Application Integration:
-            Registry cleanup integrates seamlessly with application lifecycle management
-            
-        Related Tests:
-            - test_cleanup_cache_registry_provides_detailed_cleanup_results()
-            - test_cleanup_registry_handles_shutdown_errors_gracefully()
-        """
-        pass
-
 
 class TestCacheHealthStatusDependency:
     """
@@ -418,44 +304,6 @@ class TestCacheHealthStatusDependency:
         for key, value in health_status.items():
             assert key is not None  # All keys should be valid
             # Values can be various types (strings, numbers, bools, dicts, etc.)
-
-    @pytest.mark.skip(reason="Ping method optimization testing requires mocking internal ping() method behavior and performance monitoring which would violate behavior-driven testing principles. This test should verify health check efficiency through observable response times in integration tests.")
-    async def test_cache_health_status_uses_ping_method_for_efficient_checks(self):
-        """
-        Test that get_cache_health_status() uses ping() method for efficient health checks when available.
-        
-        Verifies:
-            Health monitoring optimizes performance by using lightweight ping operations
-            
-        Business Impact:
-            Minimizes health check overhead while providing reliable connectivity verification
-            
-        Scenario:
-            Given: Cache instance with ping() method available for lightweight health checks
-            When: get_cache_health_status() performs health assessment
-            Then: ping() method is used for efficient connectivity verification
-            And: Health check completes quickly with minimal resource usage
-            And: ping() results integrated into comprehensive health status
-            
-        Efficient Health Checking Verified:
-            - ping() method called when available for lightweight connectivity check
-            - Health check performance optimized through ping() usage
-            - ping() response time included in health status metrics
-            - Fallback to full operations when ping() method not available
-            - Health check efficiency suitable for high-frequency monitoring
-            
-        Fixtures Used:
-            - mock_redis_cache_with_ping: Cache with ping method for efficiency testing
-            - Performance metrics for health check timing verification
-            
-        Performance Optimization:
-            Health checks use efficient ping operations to minimize monitoring overhead
-            
-        Related Tests:
-            - test_get_cache_health_status_performs_comprehensive_cache_health_checks()
-            - test_cache_health_status_fallback_for_caches_without_ping()
-        """
-        pass
 
     async def test_cache_health_status_handles_unhealthy_cache_states_appropriately(self, test_settings):
         """
@@ -589,44 +437,6 @@ class TestValidateCacheConfigurationDependency:
         assert validated_config is not None
         assert hasattr(validated_config, 'validate')
         assert hasattr(validated_config, 'to_dict')
-
-    @pytest.mark.skip(reason="Validation error to HTTP exception conversion testing requires creating invalid configurations and mocking HTTPException behavior which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify error handling through real invalid configuration scenarios.")
-    async def test_validate_cache_configuration_converts_validation_errors_to_http_exceptions(self):
-        """
-        Test that validate_cache_configuration() converts validation errors to appropriate HTTPExceptions.
-        
-        Verifies:
-            Configuration validation errors are converted to proper HTTP error responses
-            
-        Business Impact:
-            Provides clear HTTP error responses for invalid cache configurations
-            
-        Scenario:
-            Given: Invalid CacheConfig with validation errors
-            When: validate_cache_configuration() validates invalid configuration
-            Then: ValidationError is caught and converted to HTTPException
-            And: HTTP 500 status code returned for configuration validation failure
-            And: Error details included in HTTP response for troubleshooting
-            
-        HTTP Error Conversion Verified:
-            - ValidationError caught during configuration validation
-            - HTTPException raised with HTTP 500 status for configuration errors
-            - Error details from validation included in HTTP response
-            - HTTP error response format suitable for API error handling
-            - Configuration validation prevents invalid config exposure via HTTP
-            
-        Fixtures Used:
-            - Invalid configuration for validation error testing
-            - mock_fastapi_http_exception: HTTPException for error conversion testing
-            
-        API Error Handling:
-            Configuration validation provides proper HTTP error responses for invalid configs
-            
-        Related Tests:
-            - test_validate_cache_configuration_validates_configuration_and_returns_config()
-            - test_validation_dependency_provides_appropriate_error_context()
-        """
-        pass
 
     async def test_configuration_validation_integrates_with_fastapi_dependency_system(self, test_settings):
         """

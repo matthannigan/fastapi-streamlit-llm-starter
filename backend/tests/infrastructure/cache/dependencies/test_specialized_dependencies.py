@@ -168,43 +168,6 @@ class TestWebCacheServiceDependency:
         session_data = await web_cache.get('session:123')
         assert session_data['user_id'] == 456
 
-    @pytest.mark.skip(reason="Web configuration error testing requires mocking internal factory methods which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify error handling through real configuration failure scenarios.")
-    async def test_web_cache_service_handles_configuration_errors_appropriately(self):
-        """
-        Test that get_web_cache_service() handles web configuration errors with appropriate error reporting.
-        
-        Verifies:
-            Web cache configuration errors are handled with clear error context
-            
-        Business Impact:
-            Enables troubleshooting of web cache configuration issues
-            
-        Scenario:
-            Given: Invalid configuration for web cache requirements
-            When: get_web_cache_service() attempts web cache creation
-            Then: ConfigurationError is raised with web-specific error context
-            And: Error context indicates web cache requirements and validation failures
-            And: Error provides guidance for web cache configuration correction
-            
-        Web Configuration Error Handling:
-            - Web-specific configuration validation errors clearly reported
-            - Error context includes web application requirements and constraints
-            - Configuration guidance specific to web cache optimization
-            - Error handling prevents invalid web cache deployment
-            - Error messages enable effective web cache troubleshooting
-            
-        Fixtures Used:
-            - Invalid configuration scenarios for web cache testing
-            
-        Web Configuration Safety:
-            Web cache configuration errors prevent deployment with suboptimal web caching
-            
-        Related Tests:
-            - test_get_web_cache_service_creates_web_optimized_cache_instance()
-            - test_web_cache_service_provides_web_specific_error_context()
-        """
-        pass
-
 
 class TestAICacheServiceDependency:
     """
@@ -287,44 +250,6 @@ class TestAICacheServiceDependency:
         await ai_cache.set(ai_key, ai_result, ttl=3600)
         cached_result = await ai_cache.get(ai_key)
         assert cached_result['summary'] == 'This is a test summary'
-
-    @pytest.mark.skip(reason="AI configuration validation testing requires mocking internal factory validation logic which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify validation through real configuration scenarios.")
-    async def test_ai_cache_service_validates_required_ai_configuration(self):
-        """
-        Test that get_ai_cache_service() validates that required AI configuration is present.
-        
-        Verifies:
-            AI cache service ensures AI features are properly configured before creation
-            
-        Business Impact:
-            Prevents AI applications from running with non-functional AI cache configuration
-            
-        Scenario:
-            Given: CacheConfig missing required AI configuration features
-            When: get_ai_cache_service() attempts AI cache creation
-            Then: ConfigurationError is raised indicating missing AI configuration
-            And: Error context specifies required AI configuration parameters
-            And: Error provides guidance for enabling AI cache features
-            
-        AI Configuration Validation Verified:
-            - Missing AI configuration causes ConfigurationError with specific context
-            - AI feature requirements clearly specified in error messages
-            - Configuration validation prevents AI applications with incomplete AI cache
-            - Error context includes guidance for enabling AI cache features
-            - Validation ensures AI cache functionality before application use
-            
-        Fixtures Used:
-            - mock_cache_config_basic: Configuration without AI features for validation
-            - Mock factory configured to validate AI requirements
-            
-        AI Configuration Safety:
-            AI configuration validation ensures functional AI cache deployment
-            
-        Related Tests:
-            - test_get_ai_cache_service_creates_ai_optimized_cache_instance()
-            - test_ai_cache_service_provides_ai_specific_error_context()
-        """
-        pass
 
     async def test_ai_cache_service_enables_comprehensive_ai_features(self, test_settings):
         """
@@ -740,40 +665,3 @@ class TestFallbackAndConditionalCacheDependencies:
         assert await default_cache.get('default_test') == 'default_value'
         assert await ai_cache.get('ai_test') == 'ai_value'
         assert await fallback_cache.get('fallback_test') == 'fallback_value'
-
-    @pytest.mark.skip(reason="Error handling testing for fallback and conditional dependencies requires simulating internal error conditions which would require extensive mocking of system boundaries. This test should be replaced with integration tests that verify error handling through real failure scenarios.")
-    async def test_fallback_and_conditional_dependencies_handle_errors_gracefully(self):
-        """
-        Test that fallback and conditional dependencies handle errors gracefully with appropriate fallback behavior.
-        
-        Verifies:
-            Error scenarios in fallback and conditional dependencies maintain application stability
-            
-        Business Impact:
-            Ensures application resilience during cache configuration or infrastructure errors
-            
-        Scenario:
-            Given: Error conditions in cache creation or parameter validation
-            When: Fallback or conditional cache dependencies encounter errors
-            Then: Graceful error handling maintains cache functionality when possible
-            And: Fallback behavior activates appropriately during error conditions
-            And: Error context provides useful information for troubleshooting
-            
-        Graceful Error Handling Verified:
-            - Infrastructure errors trigger appropriate fallback behavior
-            - Invalid parameters handled with clear validation error messages
-            - Cache creation failures result in fallback to memory cache when appropriate
-            - Error context includes specific failure information for debugging
-            - Application stability maintained during various error scenarios
-            
-        Fixtures Used:
-            - Error scenarios for fallback and conditional dependency testing
-            
-        Application Resilience:
-            Error handling in dependencies maintains application stability during failures
-            
-        Related Tests:
-            - test_get_fallback_cache_service_always_returns_memory_cache()
-            - test_get_cache_service_conditional_selects_cache_based_on_parameters()
-        """
-        pass
