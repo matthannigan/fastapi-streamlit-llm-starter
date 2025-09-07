@@ -132,44 +132,6 @@ Related Tests:
     - test_standard_cache_set_handles_infrastructure_error_gracefully()
     - test_build_key_remains_functional_during_redis_failures()
 
-### test_build_key_remains_functional_during_redis_failures()
-
-```python
-def test_build_key_remains_functional_during_redis_failures(self):
-```
-
-Test that build_key continues working even when Redis is unavailable.
-
-Verifies:
-    Key generation doesn't depend on Redis connectivity and remains functional
-    
-Business Impact:
-    Domain services can generate cache keys even during Redis outages
-    
-Scenario:
-    Given: AI cache with Redis connectivity issues
-    When: build_key is called during Redis failure
-    Then: Key generation completes successfully using CacheKeyGenerator
-    And: Generated keys maintain consistency for future cache operations
-    And: Performance monitor records key generation timing (independent of Redis)
-    And: Domain services can prepare for cache operations when Redis recovers
-    
-Key Generation Resilience Verified:
-    - build_key() operates independently of Redis connection status
-    - Key generation maintains consistency during Redis outages
-    - Performance monitoring continues for key generation operations
-    - Generated keys remain valid for future cache operations
-    
-Fixtures Used:
-    - None
-    
-Infrastructure Independence:
-    Key generation provides consistent behavior regardless of Redis status
-    
-Related Tests:
-    - test_standard_cache_set_handles_infrastructure_error_gracefully()
-    - test_standard_cache_get_handles_infrastructure_error_gracefully()
-
 ### test_build_key_validation_error_with_detailed_context()
 
 ```python

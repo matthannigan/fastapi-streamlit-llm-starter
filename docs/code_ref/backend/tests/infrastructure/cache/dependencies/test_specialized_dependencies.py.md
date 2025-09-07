@@ -45,7 +45,7 @@ External Dependencies:
 ### test_get_web_cache_service_creates_web_optimized_cache_instance()
 
 ```python
-def test_get_web_cache_service_creates_web_optimized_cache_instance(self):
+async def test_get_web_cache_service_creates_web_optimized_cache_instance(self, test_settings):
 ```
 
 Test that get_web_cache_service() creates cache instance optimized for web applications.
@@ -83,7 +83,7 @@ Related Tests:
 ### test_web_cache_service_ensures_no_ai_configuration_interference()
 
 ```python
-def test_web_cache_service_ensures_no_ai_configuration_interference(self):
+async def test_web_cache_service_ensures_no_ai_configuration_interference(self, test_settings):
 ```
 
 Test that get_web_cache_service() ensures AI configuration doesn't interfere with web caching.
@@ -118,44 +118,6 @@ Related Tests:
     - test_get_web_cache_service_creates_web_optimized_cache_instance()
     - test_web_cache_service_maintains_interface_consistency()
 
-### test_web_cache_service_handles_configuration_errors_appropriately()
-
-```python
-def test_web_cache_service_handles_configuration_errors_appropriately(self):
-```
-
-Test that get_web_cache_service() handles web configuration errors with appropriate error reporting.
-
-Verifies:
-    Web cache configuration errors are handled with clear error context
-    
-Business Impact:
-    Enables troubleshooting of web cache configuration issues
-    
-Scenario:
-    Given: Invalid configuration for web cache requirements
-    When: get_web_cache_service() attempts web cache creation
-    Then: ConfigurationError is raised with web-specific error context
-    And: Error context indicates web cache requirements and validation failures
-    And: Error provides guidance for web cache configuration correction
-    
-Web Configuration Error Handling:
-    - Web-specific configuration validation errors clearly reported
-    - Error context includes web application requirements and constraints
-    - Configuration guidance specific to web cache optimization
-    - Error handling prevents invalid web cache deployment
-    - Error messages enable effective web cache troubleshooting
-    
-Fixtures Used:
-    - Invalid configuration scenarios for web cache testing
-    
-Web Configuration Safety:
-    Web cache configuration errors prevent deployment with suboptimal web caching
-    
-Related Tests:
-    - test_get_web_cache_service_creates_web_optimized_cache_instance()
-    - test_web_cache_service_provides_web_specific_error_context()
-
 ## TestAICacheServiceDependency
 
 Test suite for get_ai_cache_service() specialized dependency.
@@ -181,7 +143,7 @@ External Dependencies:
 ### test_get_ai_cache_service_creates_ai_optimized_cache_instance()
 
 ```python
-def test_get_ai_cache_service_creates_ai_optimized_cache_instance(self):
+async def test_get_ai_cache_service_creates_ai_optimized_cache_instance(self, test_settings):
 ```
 
 Test that get_ai_cache_service() creates cache instance optimized for AI applications.
@@ -216,49 +178,10 @@ Related Tests:
     - test_ai_cache_service_validates_required_ai_configuration()
     - test_ai_cache_service_enables_ai_specific_features()
 
-### test_ai_cache_service_validates_required_ai_configuration()
-
-```python
-def test_ai_cache_service_validates_required_ai_configuration(self):
-```
-
-Test that get_ai_cache_service() validates that required AI configuration is present.
-
-Verifies:
-    AI cache service ensures AI features are properly configured before creation
-    
-Business Impact:
-    Prevents AI applications from running with non-functional AI cache configuration
-    
-Scenario:
-    Given: CacheConfig missing required AI configuration features
-    When: get_ai_cache_service() attempts AI cache creation
-    Then: ConfigurationError is raised indicating missing AI configuration
-    And: Error context specifies required AI configuration parameters
-    And: Error provides guidance for enabling AI cache features
-    
-AI Configuration Validation Verified:
-    - Missing AI configuration causes ConfigurationError with specific context
-    - AI feature requirements clearly specified in error messages
-    - Configuration validation prevents AI applications with incomplete AI cache
-    - Error context includes guidance for enabling AI cache features
-    - Validation ensures AI cache functionality before application use
-    
-Fixtures Used:
-    - mock_cache_config_basic: Configuration without AI features for validation
-    - Mock factory configured to validate AI requirements
-    
-AI Configuration Safety:
-    AI configuration validation ensures functional AI cache deployment
-    
-Related Tests:
-    - test_get_ai_cache_service_creates_ai_optimized_cache_instance()
-    - test_ai_cache_service_provides_ai_specific_error_context()
-
 ### test_ai_cache_service_enables_comprehensive_ai_features()
 
 ```python
-def test_ai_cache_service_enables_comprehensive_ai_features(self):
+async def test_ai_cache_service_enables_comprehensive_ai_features(self, test_settings):
 ```
 
 Test that get_ai_cache_service() enables comprehensive AI features for text processing.
@@ -318,7 +241,7 @@ External Dependencies:
 ### test_get_test_cache_creates_memory_only_cache_for_unit_testing()
 
 ```python
-def test_get_test_cache_creates_memory_only_cache_for_unit_testing(self):
+async def test_get_test_cache_creates_memory_only_cache_for_unit_testing(self):
 ```
 
 Test that get_test_cache() creates memory-only cache instance for isolated unit testing.
@@ -356,7 +279,7 @@ Related Tests:
 ### test_get_test_redis_cache_provides_redis_for_integration_testing()
 
 ```python
-def test_get_test_redis_cache_provides_redis_for_integration_testing(self):
+async def test_get_test_redis_cache_provides_redis_for_integration_testing(self):
 ```
 
 Test that get_test_redis_cache() provides Redis cache for integration testing scenarios.
@@ -394,7 +317,7 @@ Related Tests:
 ### test_test_cache_dependencies_provide_isolated_testing_environment()
 
 ```python
-def test_test_cache_dependencies_provide_isolated_testing_environment(self):
+async def test_test_cache_dependencies_provide_isolated_testing_environment(self):
 ```
 
 Test that test cache dependencies provide isolated environment for reliable testing.
@@ -455,7 +378,7 @@ External Dependencies:
 ### test_get_fallback_cache_service_always_returns_memory_cache()
 
 ```python
-def test_get_fallback_cache_service_always_returns_memory_cache(self):
+async def test_get_fallback_cache_service_always_returns_memory_cache(self):
 ```
 
 Test that get_fallback_cache_service() always returns InMemoryCache regardless of configuration.
@@ -493,7 +416,7 @@ Related Tests:
 ### test_get_cache_service_conditional_selects_cache_based_on_parameters()
 
 ```python
-def test_get_cache_service_conditional_selects_cache_based_on_parameters(self):
+async def test_get_cache_service_conditional_selects_cache_based_on_parameters(self, test_settings):
 ```
 
 Test that get_cache_service_conditional() selects appropriate cache type based on runtime parameters.
@@ -528,41 +451,3 @@ Dynamic Selection:
 Related Tests:
     - test_conditional_cache_parameter_validation_and_error_handling()
     - test_conditional_cache_integrates_with_settings_based_configuration()
-
-### test_fallback_and_conditional_dependencies_handle_errors_gracefully()
-
-```python
-def test_fallback_and_conditional_dependencies_handle_errors_gracefully(self):
-```
-
-Test that fallback and conditional dependencies handle errors gracefully with appropriate fallback behavior.
-
-Verifies:
-    Error scenarios in fallback and conditional dependencies maintain application stability
-    
-Business Impact:
-    Ensures application resilience during cache configuration or infrastructure errors
-    
-Scenario:
-    Given: Error conditions in cache creation or parameter validation
-    When: Fallback or conditional cache dependencies encounter errors
-    Then: Graceful error handling maintains cache functionality when possible
-    And: Fallback behavior activates appropriately during error conditions
-    And: Error context provides useful information for troubleshooting
-    
-Graceful Error Handling Verified:
-    - Infrastructure errors trigger appropriate fallback behavior
-    - Invalid parameters handled with clear validation error messages
-    - Cache creation failures result in fallback to memory cache when appropriate
-    - Error context includes specific failure information for debugging
-    - Application stability maintained during various error scenarios
-    
-Fixtures Used:
-    - Error scenarios for fallback and conditional dependency testing
-    
-Application Resilience:
-    Error handling in dependencies maintains application stability during failures
-    
-Related Tests:
-    - test_get_fallback_cache_service_always_returns_memory_cache()
-    - test_get_cache_service_conditional_selects_cache_based_on_parameters()

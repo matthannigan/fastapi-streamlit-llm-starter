@@ -17,8 +17,7 @@ The cache module is organized into specialized components:
 - **Core Implementations**: `base.py`, `memory.py`, `redis_generic.py`, `redis_ai.py`
 - **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`
 - **Utilities**: `factory.py`, `key_generator.py`, `parameter_mapping.py`
-- **Advanced Features**: `monitoring.py`, `security.py`, `migration.py`
-- **Benchmarking**: `benchmarks/` subdirectory with performance testing tools
+- **Advanced Features**: `monitoring.py`, `security.py`
 
 ## Main Components
 

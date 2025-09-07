@@ -174,20 +174,6 @@ Then: AI-specific parameters should be correctly identified
 And: Generic parameters should be properly categorized
 And: Parameter mappings should be accurately configured
 
-### test_thread_safety_initialization()
-
-```python
-def test_thread_safety_initialization(self):
-```
-
-Test thread-safe initialization of mapper components.
-
-Given: Multiple threads attempting to initialize CacheParameterMapper
-When: Concurrent initialization occurs
-Then: All mapper instances should be properly initialized
-And: Parameter classifications should remain consistent
-And: No race conditions should occur during setup
-
 ### test_immutable_parameter_definitions()
 
 ```python

@@ -222,7 +222,7 @@ Before any test code is written, we generate a complete test plan using a "Docst
 ### Step 4: Test Implementation (The "Build")
 
 ```markdown
-Search `backend/tests/infrastructure/cache/redis_ai/*.py` to identify all skeleton test files for the `redis_ai` module of the `cache` infrastructure component that require implementation. Then, create a new plan to faithfully execute the prompt described by `docs/prompts/unit-tests/step4-implementation.md` for the discovered test files using the @agent-unit-test-supervisor and @agent-unit-test-implementer agents.
+Search `backend/tests/infrastructure/cache/parameter_mapping/test_parameter_mapping.py` to identify all skeleton tests for the `parameter_mapping` module of the `cache` infrastructure component that require implementation. These testing intentions were created using the guidance in `docs/guides/developer/DOCSTRINGS_TESTS.md`. Then, create a new plan to faithfully execute the prompt described by `docs/prompts/unit-tests/step4-implementation.md` for the discovered test files using the @agent-unit-test-supervisor and @agent-unit-test-implementer agents.
 ```
 
 > full prompt: `docs/prompts/unit-tests/step4-implementation.md`

@@ -281,27 +281,6 @@ cache = GenericRedisCache(
 )
 ```
 
-### Benchmarking
-
-```python
-from app.infrastructure.cache import CachePerformanceBenchmark
-
-benchmark = CachePerformanceBenchmark()
-
-# Compare implementations
-memory_cache = InMemoryCache()
-redis_cache = GenericRedisCache(redis_url="redis://localhost:6379")
-
-comparison = await benchmark.compare_caches(
-    baseline_cache=memory_cache,
-    comparison_cache=redis_cache,
-    test_operations=1000
-)
-
-print(f"Redis performance: {comparison.overall_performance_change:+.1f}%")
-print(f"Recommendation: {comparison.recommendation}")
-```
-
 ## Integration Patterns
 
 ### Domain Service Pattern (Recommended)
@@ -357,43 +336,6 @@ async def test_caching_behavior(test_cache):
     await test_cache.set("test_key", {"data": "value"})
     result = await test_cache.get("test_key")
     assert result == {"data": "value"}
-```
-
-## Migration Guide
-
-### Environment Variable Migration
-
-**Before** (28+ variables):
-```bash
-CACHE_REDIS_URL=redis://localhost:6379
-CACHE_DEFAULT_TTL=3600
-CACHE_COMPRESSION_THRESHOLD=1000
-CACHE_COMPRESSION_LEVEL=6
-CACHE_MEMORY_CACHE_SIZE=500
-# ... 20+ more variables
-```
-
-**After** (1 variable):
-```bash
-CACHE_PRESET=production
-```
-
-### Code Migration
-
-**Before** (manual configuration):
-```python
-cache = AIResponseCache(
-    redis_url=settings.redis_url,
-    default_ttl=settings.cache_ttl,
-    compression_threshold=settings.compression_threshold,
-    # ... many more parameters
-)
-```
-
-**After** (preset-based):
-```python
-from app.infrastructure.cache.dependencies import get_cache_service
-cache: CacheInterface = Depends(get_cache_service)  # Auto-configured
 ```
 
 ## Documentation Links

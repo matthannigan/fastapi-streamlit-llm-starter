@@ -598,9 +598,7 @@ fastapi-streamlit-llm-starter/
 │   │   │   │   ├── ai_config.py      #   AI cache configuration management
 │   │   │   │   ├── parameter_mapping.py # Parameter validation and mapping
 │   │   │   │   ├── security.py       #   Redis security management
-│   │   │   │   ├── migration.py      #   Data migration utilities
-│   │   │   │   ├── monitoring.py     #   Performance monitoring and analytics
-│   │   │   │   └── benchmarks.py     #   Performance benchmarking tools
+│   │   │   │   └── monitoring.py     #   Performance monitoring and analytics
 │   │   │   ├── resilience/           # Circuit breakers, retry, orchestration
 │   │   │   ├── security/             # Authentication & authorization
 │   │   │   └── monitoring/           # Health checks & metrics

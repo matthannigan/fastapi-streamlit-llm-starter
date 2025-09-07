@@ -184,7 +184,7 @@ External Dependencies:
 ### test_get_cache_config_builds_configuration_from_settings_using_preset_system()
 
 ```python
-def test_get_cache_config_builds_configuration_from_settings_using_preset_system(self):
+async def test_get_cache_config_builds_configuration_from_settings_using_preset_system(self, test_settings):
 ```
 
 Test that get_cache_config() builds CacheConfig from Settings using new preset system.
@@ -220,49 +220,10 @@ Related Tests:
     - test_get_cache_config_handles_configuration_building_errors()
     - test_get_cache_config_validates_built_configuration()
 
-### test_get_cache_config_handles_configuration_building_errors()
-
-```python
-def test_get_cache_config_handles_configuration_building_errors(self):
-```
-
-Test that get_cache_config() handles configuration building errors with appropriate exceptions.
-
-Verifies:
-    Configuration building failures are properly handled and reported
-    
-Business Impact:
-    Prevents application startup with invalid cache configurations
-    
-Scenario:
-    Given: Settings with invalid or conflicting cache configuration
-    When: get_cache_config() attempts to build configuration
-    Then: ConfigurationError is raised with specific building failure details
-    And: Error context includes preset system issues or validation failures
-    And: Error provides actionable guidance for configuration correction
-    
-Error Handling Verified:
-    - Preset system failures cause ConfigurationError with preset context
-    - Configuration validation failures cause appropriate error types
-    - Custom configuration parsing errors handled with file/format context
-    - Error messages provide specific guidance for configuration correction
-    - Build failures prevent invalid cache configuration deployment
-    
-Fixtures Used:
-    - Settings with invalid configuration for error testing
-    - Mock preset system configured to simulate failures
-    
-Robust Error Handling:
-    Configuration building errors prevent deployment with invalid cache settings
-    
-Related Tests:
-    - test_get_cache_config_builds_configuration_from_settings_using_preset_system()
-    - test_get_cache_config_provides_fallback_configuration_on_errors()
-
 ### test_get_cache_config_integrates_environment_detection_and_optimization()
 
 ```python
-def test_get_cache_config_integrates_environment_detection_and_optimization(self):
+async def test_get_cache_config_integrates_environment_detection_and_optimization(self, development_settings, production_settings):
 ```
 
 Test that get_cache_config() integrates environment detection for configuration optimization.
@@ -324,7 +285,7 @@ External Dependencies:
 ### test_get_cache_service_creates_cache_using_factory_with_registry_management()
 
 ```python
-def test_get_cache_service_creates_cache_using_factory_with_registry_management(self):
+async def test_get_cache_service_creates_cache_using_factory_with_registry_management(self, test_settings):
 ```
 
 Test that get_cache_service() creates cache using CacheFactory with proper registry management.
@@ -363,7 +324,7 @@ Related Tests:
 ### test_get_cache_service_provides_graceful_fallback_on_redis_failures()
 
 ```python
-def test_get_cache_service_provides_graceful_fallback_on_redis_failures(self):
+async def test_get_cache_service_provides_graceful_fallback_on_redis_failures(self, test_settings):
 ```
 
 Test that get_cache_service() provides graceful fallback to InMemoryCache on Redis failures.
@@ -397,79 +358,3 @@ Resilient Operation:
 Related Tests:
     - test_get_cache_service_creates_cache_using_factory_with_registry_management()
     - test_cache_service_fallback_provides_full_interface_compatibility()
-
-### test_cache_service_registry_enables_efficient_instance_management()
-
-```python
-def test_cache_service_registry_enables_efficient_instance_management(self):
-```
-
-Test that cache service registry enables efficient cache instance management and reuse.
-
-Verifies:
-    Cache registry optimizes performance through instance reuse and lifecycle management
-    
-Business Impact:
-    Reduces resource consumption and improves performance through cache instance optimization
-    
-Scenario:
-    Given: Multiple requests for cache service with similar configurations
-    When: get_cache_service() manages cache instances through registry
-    Then: Appropriate cache instance reuse occurs for performance optimization
-    And: Registry prevents resource leaks through proper lifecycle management
-    And: Cache instance management optimizes memory and connection usage
-    
-Registry Management Verified:
-    - Cache instances appropriately managed through registry system
-    - Resource optimization through intelligent instance reuse
-    - Memory leak prevention through proper cache lifecycle management
-    - Connection pool optimization for Redis-based cache instances
-    - Registry cleanup prevents accumulation of unused cache references
-    
-Fixtures Used:
-    - mock_cache_service_registry: Registry for instance management testing
-    
-Resource Optimization:
-    Registry management optimizes cache resource usage and lifecycle
-    
-Related Tests:
-    - test_get_cache_service_creates_cache_using_factory_with_registry_management()
-    - test_cache_registry_cleanup_for_lifecycle_management()
-
-### test_get_cache_service_handles_infrastructure_errors_appropriately()
-
-```python
-def test_get_cache_service_handles_infrastructure_errors_appropriately(self):
-```
-
-Test that get_cache_service() handles infrastructure errors with appropriate error reporting.
-
-Verifies:
-    Infrastructure failures are handled with clear error reporting and fallback behavior
-    
-Business Impact:
-    Enables troubleshooting and maintains application stability during infrastructure issues
-    
-Scenario:
-    Given: Cache creation failures due to infrastructure issues
-    When: get_cache_service() encounters infrastructure errors during creation
-    Then: InfrastructureError is raised with detailed error context
-    And: Error context includes specific failure information for troubleshooting
-    And: Fallback behavior activates when appropriate for continued operation
-    
-Infrastructure Error Handling:
-    - Critical infrastructure failures cause InfrastructureError with context
-    - Error context includes specific failure details for operational response
-    - Fallback behavior enables continued application operation when possible
-    - Error reporting provides actionable information for infrastructure teams
-    - Error handling balances application stability with failure visibility
-    
-Fixtures Used:
-    - Configuration scenarios that trigger infrastructure errors
-    
-Robust Error Management:
-    Infrastructure error handling maintains application stability during failures
-    
-Related Tests:
-    - test_get_cache_service_provides_graceful_fallback_on_redis_failures()
-    - test_cache_service_error_context_for_troubleshooting()
