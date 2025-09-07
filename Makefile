@@ -386,6 +386,11 @@ test-backend-infra-cache:
 	@echo "🧪 Running backend cache infrastructure service tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --tb=no
 
+update-tests-progress:
+	@echo "🧪 Updating tests progress..."
+	@-$(PYTHON_CMD) -m pytest backend/tests/infrastructure/cache/ -n auto -q --json-report --json-report-file=backend/tests/infrastructure/cache/failures.json
+	@$(PYTHON_CMD) scripts/update_tests_progress_w_failures.py backend/tests/infrastructure/cache/ --failures backend/tests/infrastructure/cache/failures.json --output backend/tests/infrastructure/cache/PROGRESS.md
+
 # Run infrastructure service tests
 test-backend-infra-monitoring:
 	@echo "🧪 Running backend monitoring infrastructure service tests..."
