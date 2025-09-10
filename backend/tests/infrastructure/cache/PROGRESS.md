@@ -64,12 +64,14 @@
 | 🟢 | `factory/test_factory.py` | TestConfigurationBasedCacheCreation | 8 | 8 | 8 | 8 |
 | 🟢 | `factory/test_factory.py` | TestTestingCacheCreation | 7 | 7 | 7 | 7 |
 | 🟢 | `factory/test_factory.py` | TestWebApplicationCacheCreation | 6 | 6 | 6 | 6 |
-| 🟢 | `integration/test_cache_integration.py` | ExtendedFakeRedis | 1 | 1 | 1 | 1 |
-| 🟢 | `integration/test_cache_integration.py` | TestCacheComponentInteroperability | 1 | 1 | 1 | 1 |
+| 🟢 | `integration/test_cache_integration.py` | TestCacheComponentInteroperability | 8 | 8 | 8 | 8 |
 | 🟢 | `integration/test_cache_integration.py` | TestCacheFactoryIntegration | 2 | 2 | 2 | 2 |
 | 🟢 | `integration/test_cache_integration.py` | TestCacheKeyGeneratorIntegration | 1 | 1 | 1 | 1 |
 | 🟢 | `integration/test_cache_integration.py` | TestEndToEndCacheWorkflows | 2 | 2 | 2 | 2 |
-| 🟢 | `integration/test_cache_integration.py` | [Standalone Functions] | 14 | 1 | 2 | 2 |
+| 🟢 | `integration/test_cache_lifecycle_health.py` | TestCacheLifecycleHealth | 9 | 9 | 9 | 9 |
+| 🟢 | `integration/test_cache_mgmt_api.py` | TestCacheManagementAPIIntegration | 4 | 4 | 4 | 4 |
+| 🟢 | `integration/test_cache_preset_behavior.py` | TestCachePresetBehavior | 6 | 6 | 6 | 6 |
+| 🟢 | `integration/test_cache_security.py` | TestCacheSecurityIntegration | 11 | 11 | 11 | 11 |
 | 🟢 | `key_generator/test_key_generator.py` | TestCacheKeyGeneration | 8 | 8 | 8 | 8 |
 | 🟢 | `key_generator/test_key_generator.py` | TestCacheKeyGeneratorInitialization | 6 | 6 | 6 | 6 |
 | 🟢 | `key_generator/test_key_generator.py` | TestKeyGenerationEdgeCases | 9 | 9 | 9 | 9 |
@@ -93,13 +95,13 @@
 | 🟠 | `parameter_mapping/test_parameter_mapping.py` | TestParameterMapping | 9 | 9 | 1 | 1 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestParameterValidation | 10 | 10 | 10 | 10 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestValidationResult | 7 | 7 | 7 | 7 |
-| 🟢 | `redis_ai/test_redis_ai_connection.py` | TestAIResponseCacheConnection | 4 | 2 | 2 | 2 |
-| 🟢 | `redis_ai/test_redis_ai_core_operations.py` | TestAIResponseCacheCoreOperations | 10 | 5 | 10 | 10 |
+| 🟠 | `redis_ai/test_redis_ai_connection.py` | TestAIResponseCacheConnection | 4 | 4 | 2 | 2 |
+| 🟢 | `redis_ai/test_redis_ai_core_operations.py` | TestAIResponseCacheCoreOperations | 10 | 10 | 10 | 10 |
 | 🟢 | `redis_ai/test_redis_ai_error_handling.py` | TestAIResponseCacheErrorHandling | 4 | 4 | 4 | 4 |
 | 🟢 | `redis_ai/test_redis_ai_inheritance.py` | TestAIResponseCacheInheritance | 8 | 8 | 8 | 8 |
 | 🟢 | `redis_ai/test_redis_ai_initialization.py` | TestAIResponseCacheInitialization | 5 | 5 | 5 | 5 |
-| 🔴 | `redis_ai/test_redis_ai_invalidation.py` | TestAIResponseCacheInvalidation | 9 | 0 | 9 | 9 |
-| 🟢 | `redis_ai/test_redis_ai_statistics.py` | TestAIResponseCacheStatistics | 8 | 3 | 3 | 3 |
+| 🟢 | `redis_ai/test_redis_ai_invalidation.py` | TestAIResponseCacheInvalidation | 9 | 9 | 9 | 9 |
+| 🟠 | `redis_ai/test_redis_ai_statistics.py` | TestAIResponseCacheStatistics | 8 | 8 | 3 | 3 |
 | 🟠 | `redis_generic/test_callback_system_integration.py` | TestCallbackErrorHandling | 8 | 8 | 6 | 6 |
 | 🟠 | `redis_generic/test_callback_system_integration.py` | TestCallbackRegistration | 12 | 12 | 11 | 11 |
 | 🟢 | `redis_generic/test_callback_system_integration.py` | TestMultipleCallbackHandling | 4 | 4 | 4 | 4 |
