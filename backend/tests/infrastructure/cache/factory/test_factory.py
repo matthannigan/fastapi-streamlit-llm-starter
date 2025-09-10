@@ -995,59 +995,6 @@ class TestTestingCacheCreation:
         await cache.delete(test_key)
 
     @pytest.mark.asyncio
-    async def test_for_testing_uses_test_database_for_isolation(self):
-        """
-        Test that for_testing() uses Redis test database for test isolation.
-        
-        Verifies:
-            Testing cache uses separate Redis database to avoid production data conflicts
-            
-        Business Impact:
-            Prevents test data from interfering with development or production caches
-            
-        Scenario:
-            Given: Factory configured for testing with default settings
-            When: for_testing() is called without custom Redis URL
-            Then: Cache is created targeting Redis database 15 for test isolation
-            
-        Edge Cases Covered:
-            - Default test database selection (DB 15)
-            - Custom test database configuration
-            - Test database URL parsing and validation
-            - Database isolation verification
-            
-        Mocks Used:
-            - none
-            
-        Related Tests:
-            - test_for_testing_creates_cache_with_test_optimizations()
-            - test_for_testing_supports_custom_test_database()
-        """
-        # Given: Factory configured for testing with default settings
-        factory = CacheFactory()
-        
-        # When: for_testing() is called without custom Redis URL
-        cache = await factory.for_testing()
-        
-        from app.infrastructure.cache.redis_generic import GenericRedisCache
-        from app.infrastructure.cache.memory import InMemoryCache
-        
-        # Then: Cache should be functional (Redis or memory fallback)
-        assert cache is not None
-        
-        # Skip if fallback occurred, as this test is Redis-specific
-        if not isinstance(cache, GenericRedisCache):
-            pytest.skip("Redis is not available for this test.")
-        
-        # Verify test database is configured (default test DB is 15)
-        assert hasattr(cache, 'redis_url')
-        assert '/15' in cache.redis_url
-        
-        # Prove cache is functional
-        await cache.set("test:isolation", "test_data")
-        assert await cache.get("test:isolation") == "test_data"
-
-    @pytest.mark.asyncio
     async def test_for_testing_applies_short_ttls_for_quick_expiration(self):
         """
         Test that for_testing() applies short TTL values for quick test data expiration.

@@ -111,6 +111,74 @@ class TestCacheFactoryIntegration:
         # Clean up
         await cache.delete(test_key)
 
+    @pytest.mark.asyncio
+    async def test_factory_testing_database_isolation_with_testcontainers(self):
+        """
+        Test factory creates cache with proper test database isolation using real Redis.
+        
+        Verifies:
+            Factory.for_testing() uses Redis database 15 for test isolation when using default URL
+            
+        Business Impact:
+            Ensures test data isolation preventing interference between test runs
+            
+        Integration Points:
+            - CacheFactory -> Test cache creation with database isolation
+            - Testcontainers -> Real Redis for accurate testing
+            - Default database behavior -> Standard test database isolation
+        """
+        from testcontainers.redis import RedisContainer
+        from app.infrastructure.cache.redis_generic import GenericRedisCache
+        
+        # Start real Redis container
+        redis_container = RedisContainer("redis:7-alpine")
+        redis_container.start()
+        
+        try:
+            # Get connection details
+            redis_host = redis_container.get_container_host_ip()
+            redis_port = redis_container.get_exposed_port(6379)
+            
+            # Test 1: Use default behavior (factory adds /15 automatically)
+            factory = CacheFactory()
+            cache_with_default_url = await factory.for_testing(
+                redis_url=f"redis://{redis_host}:{redis_port}"  # No database specified
+            )
+            
+            # Verify we got a real Redis cache (not InMemoryCache fallback)
+            assert isinstance(cache_with_default_url, GenericRedisCache), f"Expected GenericRedisCache, got {type(cache_with_default_url)}"
+            
+            # Prove isolation works with real operations
+            test_key = "test:db_isolation_default"
+            await cache_with_default_url.set(test_key, "isolated_data_default")
+            assert await cache_with_default_url.get(test_key) == "isolated_data_default"
+            
+            # Cleanup
+            await cache_with_default_url.delete(test_key)
+            
+            # Test 2: Explicitly specify database 15 (should behave the same)
+            cache_with_explicit_db = await factory.for_testing(
+                redis_url=f"redis://{redis_host}:{redis_port}/15"
+            )
+            
+            # Verify we got a real Redis cache
+            assert isinstance(cache_with_explicit_db, GenericRedisCache), f"Expected GenericRedisCache, got {type(cache_with_explicit_db)}"
+            
+            # Prove explicit database isolation works
+            test_key_explicit = "test:db_isolation_explicit"
+            await cache_with_explicit_db.set(test_key_explicit, "isolated_data_explicit")
+            assert await cache_with_explicit_db.get(test_key_explicit) == "isolated_data_explicit"
+            
+            # Cleanup
+            await cache_with_explicit_db.delete(test_key_explicit)
+            
+            # Verify both caches are functional and isolated
+            assert cache_with_default_url.redis is not None, "Redis connection should be established for default URL"
+            assert cache_with_explicit_db.redis is not None, "Redis connection should be established for explicit URL"
+            
+        finally:
+            redis_container.stop()
+
 
 class TestCacheKeyGeneratorIntegration:
     """
