@@ -137,10 +137,12 @@ Version Compatibility:
 """
 
 import logging
+import sys
 import time
 from typing import Any, Dict, List, Optional
 
 from app.infrastructure.cache.base import CacheInterface
+from app.core.exceptions import ConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +220,26 @@ class InMemoryCache(CacheInterface):
             - Validates configuration parameters for safe operation
             - Prepares thread-safe data structures for concurrent access
         """
+        # Validate parameters per public contract
+        if not isinstance(default_ttl, int):
+            raise ConfigurationError("default_ttl must be an integer", {"default_ttl": default_ttl})
+        if not isinstance(max_size, int):
+            raise ConfigurationError("max_size must be an integer", {"max_size": max_size})
+        if not (1 <= default_ttl <= 86400):
+            raise ConfigurationError("default_ttl must be between 1 and 86400 seconds", {"default_ttl": default_ttl})
+        if not (1 <= max_size <= 100000):
+            raise ConfigurationError("max_size must be between 1 and 100000 entries", {"max_size": max_size})
+
         self.default_ttl = default_ttl
         self.max_size = max_size
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._access_order: List[str] = []  # Track access order for LRU eviction
+
+        # Statistics counters
+        self._hits: int = 0
+        self._misses: int = 0
+        self._evictions: int = 0
+        self._memory_usage_bytes: int = 0
 
         logger.info(
             f"InMemoryCache initialized with default_ttl={default_ttl}s, max_size={max_size}"
@@ -256,9 +274,15 @@ class InMemoryCache(CacheInterface):
                 expired_keys.append(key)
 
         for key in expired_keys:
-            del self._cache[key]
-            if key in self._access_order:
-                self._access_order.remove(key)
+            # adjust memory usage before removing
+            try:
+                entry = self._cache.get(key)
+                if entry is not None:
+                    self._memory_usage_bytes -= entry.get("size_bytes", 0)
+            finally:
+                del self._cache[key]
+                if key in self._access_order:
+                    self._access_order.remove(key)
 
         if expired_keys:
             logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
@@ -281,8 +305,12 @@ class InMemoryCache(CacheInterface):
         while len(self._cache) >= self.max_size and self._access_order:
             lru_key = self._access_order.pop(0)
             if lru_key in self._cache:
-                del self._cache[lru_key]
-                logger.debug(f"Evicted LRU cache entry: {lru_key}")
+                # adjust memory usage
+                entry = self._cache.pop(lru_key)
+                self._memory_usage_bytes -= entry.get("size_bytes", 0)
+                self._evictions += 1
+                # Log in a stable, testable format without f-string interpolation for the message template
+                logger.debug("Evicting key %s (LRU)", lru_key)
 
     async def get(self, key: str) -> Any:
         """
@@ -299,6 +327,7 @@ class InMemoryCache(CacheInterface):
             self._cleanup_expired()
 
             if key not in self._cache:
+                self._misses += 1
                 logger.debug(f"Cache miss for key: {key}")
                 return None
 
@@ -306,15 +335,19 @@ class InMemoryCache(CacheInterface):
 
             # Check if entry has expired
             if self._is_expired(entry):
+                # adjust memory usage before removing
+                self._memory_usage_bytes -= entry.get("size_bytes", 0)
                 del self._cache[key]
                 if key in self._access_order:
                     self._access_order.remove(key)
+                self._misses += 1
                 logger.debug(f"Cache entry expired for key: {key}")
                 return None
 
             # Update access order for LRU
             self._update_access_order(key)
 
+            self._hits += 1
             logger.debug(f"Cache hit for key: {key}")
             return entry["value"]
 
@@ -347,12 +380,26 @@ class InMemoryCache(CacheInterface):
             elif self.default_ttl > 0:
                 expires_at = time.time() + self.default_ttl
 
+            # Estimate value size (best-effort)
+            try:
+                size_bytes = sys.getsizeof(value)
+            except Exception:
+                size_bytes = 0
+
+            # If overwriting, adjust memory usage by removing old size first
+            old_entry = self._cache.get(key)
+            if old_entry is not None:
+                self._memory_usage_bytes -= old_entry.get("size_bytes", 0)
+
             # Store the entry
-            self._cache[key] = {
+            entry = {
                 "value": value,
                 "expires_at": expires_at,
                 "created_at": time.time(),
+                "size_bytes": size_bytes,
             }
+            self._cache[key] = entry
+            self._memory_usage_bytes += size_bytes
 
             # Update access order
             self._update_access_order(key)
@@ -360,7 +407,8 @@ class InMemoryCache(CacheInterface):
             ttl_info = (
                 f"TTL={ttl or self.default_ttl}s" if expires_at else "no expiration"
             )
-            logger.debug(f"Set cache key {key} ({ttl_info})")
+            # Log at INFO to keep DEBUG reserved for hits/misses/evictions per contract
+            logger.info(f"Set cache key {key} ({ttl_info})")
 
         except Exception as e:
             logger.warning(f"Cache set error for key {key}: {e}")
@@ -376,7 +424,8 @@ class InMemoryCache(CacheInterface):
             existed = key in self._cache
 
             if existed:
-                del self._cache[key]
+                entry = self._cache.pop(key)
+                self._memory_usage_bytes -= entry.get("size_bytes", 0)
                 if key in self._access_order:
                     self._access_order.remove(key)
 
@@ -394,6 +443,10 @@ class InMemoryCache(CacheInterface):
         entries_count = len(self._cache)
         self._cache.clear()
         self._access_order.clear()
+        self._hits = 0
+        self._misses = 0
+        self._evictions = 0
+        self._memory_usage_bytes = 0
         logger.info(f"Cleared {entries_count} entries from memory cache")
 
     def size(self) -> int:
@@ -420,17 +473,43 @@ class InMemoryCache(CacheInterface):
             if entry.get("expires_at") and current_time > entry["expires_at"]
         )
 
-        return {
+        active_entries = len(self._cache) - expired_count
+        total_lookups = self._hits + self._misses
+        hit_rate = (self._hits / total_lookups) * 100 if total_lookups > 0 else 0.0
+
+        stats = {
             "total_entries": len(self._cache),
             "expired_entries": expired_count,
-            "active_entries": len(self._cache) - expired_count,
+            "active_entries": active_entries,
             "max_size": self.max_size,
-            "utilization": f"{len(self._cache)}/{self.max_size}",
-            "utilization_percent": (len(self._cache) / self.max_size) * 100
-            if self.max_size > 0
-            else 0,
+            "utilization": f"{active_entries}/{self.max_size}",
+            "utilization_percent": (active_entries / self.max_size) * 100 if self.max_size > 0 else 0.0,
             "default_ttl": self.default_ttl,
+            # Monitoring metrics per public contract
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": hit_rate,
+            "evictions": self._evictions,
+            "memory_usage_bytes": max(self._memory_usage_bytes, 0),
         }
+
+        # Back-compat fields expected by shared statistics fixtures
+        # Human-readable memory usage string (simple KB/MB formatting)
+        bytes_val = stats["memory_usage_bytes"]
+        if bytes_val >= 1024 * 1024:
+            mem_str = f"{bytes_val / (1024 * 1024):.1f}MB"
+        elif bytes_val >= 1024:
+            mem_str = f"{bytes_val / 1024:.1f}KB"
+        else:
+            mem_str = f"{bytes_val}B"
+
+        stats.update({
+            "memory_cache_entries": active_entries,
+            "memory_cache_size": self.max_size,
+            "memory_usage": mem_str,
+        })
+
+        return stats
 
     def get_keys(self) -> list:
         """
