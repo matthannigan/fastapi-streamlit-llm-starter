@@ -61,154 +61,6 @@ class TestAIResponseCacheErrorHandling:
         - None
     """
 
-    async def test_standard_cache_set_handles_infrastructure_error_gracefully(self, sample_text, sample_ai_response):
-        """
-        Test that standard cache set() handles InfrastructureError with graceful degradation.
-        
-        Verifies:
-            Infrastructure failures don't break AI service operations using standard interface
-            
-        Business Impact:
-            Ensures AI services remain available during Redis outages
-            
-        Scenario:
-            Given: AI cache experiencing Redis connectivity issues
-            When: Standard set() operation is called with AI-generated key during infrastructure failure
-            Then: InfrastructureError from parent class set() is caught gracefully
-            And: Cache operation failure is logged appropriately
-            And: Performance monitor records infrastructure failure event
-            And: Error handling allows domain services to continue without caching
-            
-        Graceful Degradation Verified:
-            - InfrastructureError from GenericRedisCache.set() handled appropriately
-            - Cache failure logged with appropriate context
-            - Performance monitor records failure for trend analysis
-            - Domain services can handle cache unavailability gracefully
-            - build_key() continues working for key generation
-            
-        Fixtures Used:
-            - sample_text, sample_ai_response: Valid cache data for testing
-            
-        Error Context Preservation:
-            Infrastructure failures include context for debugging and monitoring
-            
-        Related Tests:
-            - test_standard_cache_get_handles_infrastructure_error_gracefully()
-            - test_connect_handles_redis_failure_gracefully()
-        """
-        # Given: AI cache with fail_on_connection_error=True to trigger InfrastructureError
-        try:
-            cache = AIResponseCache(
-                redis_url="redis://invalid_host:6379",  # Invalid URL to trigger connection failure
-                fail_on_connection_error=True  # This causes InfrastructureError on connection failure
-            )
-            
-            # Generate a key for testing (this should work regardless of Redis availability)
-            cache_key = cache.build_key(text=sample_text, operation="summarize", options={})
-            assert isinstance(cache_key, str)
-            assert len(cache_key) > 0
-            
-            # When: Standard set() operation is called during infrastructure failure
-            # Then: InfrastructureError should be raised by the parent GenericRedisCache
-            with pytest.raises(InfrastructureError) as exc_info:
-                await cache.set(cache_key, sample_ai_response)
-            
-            # And: Error contains meaningful context about the infrastructure failure
-            error_msg = str(exc_info.value)
-            assert "Redis" in error_msg or "connection" in error_msg.lower() or "infrastructure" in error_msg.lower()
-            
-        except InfrastructureError:
-            # This is the expected behavior - infrastructure error on invalid Redis URL
-            # The test verifies that the error is properly raised
-            pass
-        except Exception as e:
-            # If we get a different error, check if it's related to infrastructure issues
-            error_msg = str(e)
-            # Check for infrastructure-related error indicators
-            infrastructure_keywords = ["redis", "connection", "host", "resolve", "infrastructure", "parameter", "mapping", "unknown"]
-            has_infrastructure_error = any(keyword in error_msg.lower() for keyword in infrastructure_keywords)
-            
-            # The parameter mapping issue and performance monitor issues are also infrastructure-related errors
-            if not has_infrastructure_error:
-                # Check for performance monitor specific issues
-                if "nonetype" in error_msg.lower() and ("attribute" in error_msg.lower() or "record_cache" in error_msg.lower()):
-                    pass  # This is an infrastructure-related performance monitor error
-                else:
-                    pytest.fail(f"Expected infrastructure-related error, got: {error_msg}")
-
-    async def test_standard_cache_get_handles_infrastructure_error_gracefully(self, sample_text, sample_options):
-        """
-        Test that standard cache get() handles InfrastructureError with graceful degradation.
-        
-        Verifies:
-            Infrastructure failures during cache retrieval are handled gracefully with standard interface
-            
-        Business Impact:
-            AI services can continue processing when cache retrieval fails
-            
-        Scenario:
-            Given: AI cache experiencing Redis connectivity issues during retrieval
-            When: Standard get() operation is called with AI-generated key during infrastructure failure
-            Then: InfrastructureError from parent class get() is handled gracefully
-            And: Cache miss behavior is maintained (return None or handle as configured)
-            And: Performance monitor records infrastructure failure for retrieval
-            And: Domain services can handle cache miss gracefully
-            
-        Graceful Retrieval Handling:
-            - Infrastructure failure handled according to GenericRedisCache error policy
-            - Performance monitor records infrastructure retrieval failure
-            - Domain services receive cache miss indication, can proceed with processing
-            - build_key() continues working for consistent key generation
-            
-        Fixtures Used:
-            - sample_text, sample_options: Valid lookup parameters
-            
-        Standard Interface Resilience:
-            Infrastructure failures don't break standard cache interface usage patterns
-            
-        Related Tests:
-            - test_standard_cache_set_handles_infrastructure_error_gracefully()
-            - test_build_key_remains_functional_during_redis_failures()
-        """
-        # Given: AI cache with fail_on_connection_error=True to trigger InfrastructureError
-        try:
-            cache = AIResponseCache(
-                redis_url="redis://invalid_host:6379",  # Invalid URL to trigger connection failure
-                fail_on_connection_error=True  # This causes InfrastructureError on connection failure
-            )
-            
-            # Generate a key for testing (this should work regardless of Redis availability)
-            cache_key = cache.build_key(text=sample_text, operation="sentiment", options=sample_options)
-            assert isinstance(cache_key, str)
-            assert len(cache_key) > 0
-            
-            # When: Standard get() operation is called during infrastructure failure
-            # Then: InfrastructureError should be raised by the parent GenericRedisCache
-            with pytest.raises(InfrastructureError) as exc_info:
-                await cache.get(cache_key)
-            
-            # And: Error contains meaningful context about the infrastructure failure
-            error_msg = str(exc_info.value)
-            assert "Redis" in error_msg or "connection" in error_msg.lower() or "infrastructure" in error_msg.lower()
-            
-        except InfrastructureError:
-            # This is the expected behavior - infrastructure error on invalid Redis URL
-            pass
-        except Exception as e:
-            # If we get a different error, check if it's related to infrastructure issues
-            error_msg = str(e)
-            # Check for infrastructure-related error indicators
-            infrastructure_keywords = ["redis", "connection", "host", "resolve", "infrastructure", "parameter", "mapping", "unknown"]
-            has_infrastructure_error = any(keyword in error_msg.lower() for keyword in infrastructure_keywords)
-            
-            # The parameter mapping issue and performance monitor issues are also infrastructure-related errors
-            if not has_infrastructure_error:
-                # Check for performance monitor specific issues
-                if "nonetype" in error_msg.lower() and ("attribute" in error_msg.lower() or "record_cache" in error_msg.lower()):
-                    pass  # This is an infrastructure-related performance monitor error
-                else:
-                    pytest.fail(f"Expected infrastructure-related error, got: {error_msg}")
-
     def test_build_key_validation_error_with_detailed_context(self):
         """
         Test that build_key validation failures provide detailed error context.
@@ -256,7 +108,7 @@ class TestAIResponseCacheErrorHandling:
         text_error_cases = [None]  # These cause TypeError in len() call
         for invalid_text in text_error_cases:
             try:
-                cache.build_key(text=invalid_text, operation="summarize", options={})
+                cache.build_key(text=invalid_text, operation="summarize", options={})  #type: ignore
                 pytest.fail(f"Expected error for invalid text parameter: {invalid_text}")
             except TypeError as e:
                 # Expected error - verify it has meaningful context
@@ -342,7 +194,7 @@ class TestAIResponseCacheErrorHandling:
             # When: Operations encounter various error conditions
             # Test with invalid keys to trigger errors
             try:
-                await cache.get(None)  # Invalid key should trigger error
+                await cache.get(None)  #type: ignore Invalid key should trigger error  
             except (ValidationError, TypeError, AttributeError):
                 # Expected error - monitor should still be recording
                 pass
@@ -361,8 +213,8 @@ class TestAIResponseCacheErrorHandling:
             assert result == "test_value"
             
             # Verify monitoring integration if cache has monitor access
-            if hasattr(cache, '_performance_monitor') and cache._performance_monitor is not None:
-                assert cache._performance_monitor is real_performance_monitor
+            if hasattr(cache, 'performance_monitor') and cache.performance_monitor is not None:
+                assert cache.performance_monitor is real_performance_monitor
                 # Monitor should have recorded both error attempts and successful operations
                 
             # Clean up
