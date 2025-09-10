@@ -421,11 +421,11 @@ class CacheValidator:
     def _validate_config_fields(self, config_dict: Dict[str, Any], result: ValidationResult) -> None:
         """Validate configuration field types."""
         # This is a simplified version - could be expanded with full schema validation
-        required_fields = ["strategy"]
-
-        for field_name in required_fields:
-            if field_name not in config_dict:
-                result.add_error(f"Missing required field: {field_name}", field_path=field_name)
+        
+        # Accept either 'strategy' or 'cache_strategy' for backward compatibility
+        # CacheConfig.to_dict() maps strategy -> cache_strategy for factory usage
+        if "strategy" not in config_dict and "cache_strategy" not in config_dict:
+            result.add_error("Missing required field: strategy (or cache_strategy)", field_path="strategy")
 
     def _validate_redis_config(self, config_dict: Dict[str, Any], result: ValidationResult) -> None:
         """Validate Redis configuration."""
@@ -456,9 +456,47 @@ class CacheValidator:
 
     def _validate_performance_config(self, config_dict: Dict[str, Any], result: ValidationResult) -> None:
         """Validate performance-related configuration."""
+        # Validate max_connections range
         max_conn = config_dict.get("max_connections", 10)
+        if max_conn < 1 or max_conn > 100:
+            result.add_error(
+                f"max_connections must be between 1 and 100, got {max_conn}",
+                field_path="max_connections"
+            )
+        
+        # Validate connection_timeout range
         timeout = config_dict.get("connection_timeout", 5)
-
+        if timeout < 1 or timeout > 60:
+            result.add_error(
+                f"connection_timeout must be between 1 and 60 seconds, got {timeout}",
+                field_path="connection_timeout"
+            )
+        
+        # Validate default_ttl range
+        ttl = config_dict.get("default_ttl", 3600)
+        if ttl < 60 or ttl > 604800:  # 60 seconds to 1 week
+            result.add_error(
+                f"default_ttl must be between 60 and 604800 seconds, got {ttl}",
+                field_path="default_ttl"
+            )
+        
+        # Validate compression_level range
+        comp_level = config_dict.get("compression_level", 6)
+        if comp_level < 1 or comp_level > 9:
+            result.add_error(
+                f"compression_level must be between 1 and 9, got {comp_level}",
+                field_path="compression_level"
+            )
+        
+        # Validate memory_cache_size range
+        cache_size = config_dict.get("memory_cache_size") or config_dict.get("l1_cache_size", 100)
+        if cache_size < 1 or cache_size > 10000:
+            result.add_error(
+                f"memory_cache_size must be between 1 and 10000, got {cache_size}",
+                field_path="memory_cache_size"
+            )
+        
+        # Performance warnings (existing logic)
         if max_conn > 50 and timeout < 10:
             result.add_warning(
                 "High connection count with low timeout may cause connection issues",
