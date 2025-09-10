@@ -359,7 +359,6 @@ class TestCacheConfigValidation:
         - Validation logic (internal): Configuration validation rules
     """
 
-    @pytest.mark.skip(reason="CacheConfig validation needs architectural review - strategy field not recognized")
     def test_cache_config_validate_returns_valid_result_for_good_configuration(self):
         """
         Test that validate() returns valid ValidationResult for properly configured cache.
@@ -433,7 +432,6 @@ class TestCacheConfigValidation:
         assert minimal_result.is_valid is True, f"Minimal valid configuration should pass. Got errors: {minimal_result.messages}"
         assert len(minimal_result.messages) == 0, f"Minimal configuration should have no errors. Got: {minimal_result.messages}"
 
-    @pytest.mark.skip(reason="CacheConfig validation needs architectural review - strategy field not recognized")
     def test_cache_config_validate_identifies_invalid_redis_connection_parameters(self):
         """
         Test that validate() identifies invalid Redis connection parameters.
@@ -511,7 +509,6 @@ class TestCacheConfigValidation:
         assert len(result_timeout_high.errors) > 0, "Should have validation errors"
         assert any("connection_timeout" in error for error in result_timeout_high.errors), "Should mention connection_timeout in error"
 
-    @pytest.mark.skip(reason="CacheConfig validation needs architectural review - strategy field not recognized")
     def test_cache_config_validate_identifies_invalid_performance_parameters(self):
         """
         Test that validate() identifies invalid cache performance parameters.
@@ -600,7 +597,6 @@ class TestCacheConfigValidation:
         assert len(result_cache_size_low.errors) > 0, "Should have validation errors"
         assert any("memory_cache_size" in error for error in result_cache_size_low.errors), "Should mention memory_cache_size in error"
 
-    @pytest.mark.skip(reason="CacheConfig validation needs architectural review - strategy field not recognized")
     def test_cache_config_validate_identifies_strategy_specific_violations(self):
         """
         Test that validate() identifies strategy-specific parameter violations.
@@ -634,20 +630,19 @@ class TestCacheConfigValidation:
             - test_cache_config_validate_provides_strategy_alignment_recommendations()
             - test_cache_config_validate_enforces_ai_strategy_requirements()
         """
-        # Note: The current implementation uses basic validation which doesn't enforce 
-        # strategy-specific rules. This test demonstrates expected behavior but may not 
-        # fail until full validator is implemented.
+        # Note: The current implementation uses configuration validation which doesn't currently enforce 
+        # strategy-specific rules. This test demonstrates expected behavior for future enhancement.
         
-        # Test AI_OPTIMIZED strategy behavior (basic validation doesn't enforce AI requirements)
+        # Test AI_OPTIMIZED strategy behavior (configuration validation doesn't enforce AI requirements yet)
         ai_config = CacheConfig(
             strategy=CacheStrategy.AI_OPTIMIZED,
             enable_ai_cache=False  # Typically should be True for AI strategy
         )
         
-        # With basic validation, this may still pass - that's expected
+        # With current configuration validation, this may still pass - that's expected
         result = ai_config.validate()
-        # Note: Basic validator doesn't enforce strategy-specific rules
-        # Full validator would require enable_ai_cache=True for AI_OPTIMIZED
+        # Note: Configuration validator doesn't yet enforce strategy-specific rules
+        # Future enhancement could require enable_ai_cache=True for AI_OPTIMIZED
         
         # Test valid configuration to ensure no false positives
         valid_config = CacheConfig(
@@ -671,7 +666,6 @@ class TestCacheConfigValidation:
         assert invalid_result.is_valid is False, "Invalid parameters should fail validation"
         assert len(invalid_result.errors) > 0, "Should have validation errors"
 
-    @pytest.mark.skip(reason="CacheConfig validation needs architectural review - strategy field not recognized")
     def test_cache_config_validate_provides_comprehensive_error_context(self):
         """
         Test that validate() provides comprehensive error context for debugging.
@@ -731,20 +725,20 @@ class TestCacheConfigValidation:
         assert "max_connections" in error_text, "Should mention max_connections parameter"
         assert "connection_timeout" in error_text, "Should mention connection_timeout parameter"
         
-        # Verify error messages include acceptable ranges (basic validation provides ranges)
+        # Verify error messages include acceptable ranges (configuration validation provides ranges)
         ttl_error = next((error for error in error_messages if "default_ttl" in error), None)
         if ttl_error:
-            # Basic validation shows range in error message
+            # Configuration validation shows range in error message
             assert "60" in ttl_error and "604800" in ttl_error, "TTL error should show acceptable range"
         
         connections_error = next((error for error in error_messages if "max_connections" in error), None)
         if connections_error:
-            # Basic validation shows range in error message
+            # Configuration validation shows range in error message
             assert "1" in connections_error and "100" in connections_error, "Connections error should show acceptable range"
         
         # Verify ValidationResult provides access to structured error information
         assert hasattr(result, "validation_type"), "Should have validation_type attribute"
-        assert result.validation_type == "basic", "Should indicate basic validation was used"
+        assert result.validation_type == "configuration", "Should indicate configuration validation was used"
         
         # Test that valid config provides no errors for comparison
         valid_config = CacheConfig(

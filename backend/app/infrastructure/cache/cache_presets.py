@@ -753,138 +753,124 @@ class CachePresetManager:
 
     def _auto_detect_environment(self) -> EnvironmentRecommendation:
         """
-        Auto-detect environment from environment variables and system context.
+        Auto-detect environment from environment variables with deterministic precedence.
+        
+        Uses explicit environment signals with strict precedence to avoid contamination
+        from parallel test execution. Falls back to file system indicators only when
+        no explicit environment variables are present.
 
         Returns:
             EnvironmentRecommendation based on detected environment
         """
-        # Check for explicit CACHE_PRESET first (highest priority)
-        cache_preset = os.getenv('CACHE_PRESET')
-        if cache_preset and cache_preset in self.presets:
-            return EnvironmentRecommendation(
-                preset_name=cache_preset,
-                confidence=0.95,
-                reasoning=f"Explicit CACHE_PRESET={cache_preset} environment variable",
-                environment_detected=f"{cache_preset} (CACHE_PRESET)"
-            )
-
-        # Honor explicit ENVIRONMENT value when present
-        env_environment = os.getenv('ENVIRONMENT')
-        if env_environment:
-            env_val = env_environment.lower().strip()
-            if env_val in {'staging', 'stage', 'production', 'prod'}:
-                return EnvironmentRecommendation(
-                    preset_name='production',
-                    confidence=0.70,
-                    reasoning=f"Explicit ENVIRONMENT={env_environment} maps to production preset",
-                    environment_detected=f"{env_environment} (auto-detected)"
-                )
-            if env_val in {'development', 'dev', 'testing', 'test'}:
-                return EnvironmentRecommendation(
-                    preset_name='development',
-                    confidence=0.70,
-                    reasoning=f"Explicit ENVIRONMENT={env_environment} detected",
-                    environment_detected=f"{env_environment} (auto-detected)"
-                )
-            # Check for AI environments
-            if 'ai' in env_val:
-                if any(prod_indicator in env_val for prod_indicator in ['prod', 'production']):
-                    return EnvironmentRecommendation(
-                        preset_name='ai-production',
-                        confidence=0.75,
-                        reasoning=f"AI production environment detected from ENVIRONMENT={env_environment}",
-                        environment_detected=f"{env_environment} (auto-detected)"
-                    )
-                else:
-                    return EnvironmentRecommendation(
-                        preset_name='ai-development',
-                        confidence=0.75,
-                        reasoning=f"AI development environment detected from ENVIRONMENT={env_environment}",
-                        environment_detected=f"{env_environment} (auto-detected)"
-                    )
-
-        # Check for AI cache enablement
+        # Check for AI cache enablement first
         enable_ai = os.getenv('ENABLE_AI_CACHE', '').lower() in ('true', '1', 'yes')
 
-        # Check common environment variables
-        env_vars_to_check = [
-            'NODE_ENV',
-            'ENV',
-            'DEPLOYMENT_ENV',
-            'DJANGO_SETTINGS_MODULE',
-            'FLASK_ENV',
-            'RAILS_ENV',
-            'APP_ENV'
+        # Define explicit environment variables in strict precedence order
+        # Only consider the highest priority variable that is present
+        env_sources = [
+            ('ENVIRONMENT', os.getenv('ENVIRONMENT')),
+            ('NODE_ENV', os.getenv('NODE_ENV')),
+            ('FLASK_ENV', os.getenv('FLASK_ENV')),
+            ('APP_ENV', os.getenv('APP_ENV')),
+            ('ENV', os.getenv('ENV')),
+            ('DEPLOYMENT_ENV', os.getenv('DEPLOYMENT_ENV')),
+            ('DJANGO_SETTINGS_MODULE', os.getenv('DJANGO_SETTINGS_MODULE')),
+            ('RAILS_ENV', os.getenv('RAILS_ENV'))
         ]
 
-        detected_env = None
-        for var in env_vars_to_check:
-            value = os.getenv(var)
-            if value:
-                detected_env = value
-                break
-
-        if detected_env:
-            logger.info(f"Auto-detected environment from {var}={detected_env}")
-            recommendation = self.recommend_preset_with_details(detected_env)
-
-            # Adjust for AI if needed
-            if enable_ai and not recommendation.preset_name.startswith('ai-'):
-                ai_preset = f"ai-{recommendation.preset_name}"
+        # Find the first (highest priority) explicit environment signal
+        for source_name, env_value in env_sources:
+            if not env_value:
+                continue
+                
+            env_lower = env_value.lower().strip()
+            
+            # Handle AI-specific environment values (ENVIRONMENT with "ai")
+            if source_name == 'ENVIRONMENT' and 'ai' in env_lower:
+                if any(prod_indicator in env_lower for prod_indicator in ['prod', 'production', 'live']):
+                    base_preset = 'ai-production'
+                    reasoning = f"Explicit AI production environment from {source_name}={env_value}"
+                    confidence = 0.90
+                else:
+                    base_preset = 'ai-development'
+                    reasoning = f"Explicit AI development environment from {source_name}={env_value}"
+                    confidence = 0.90
+                    
+                return EnvironmentRecommendation(
+                    preset_name=base_preset,
+                    confidence=confidence,
+                    reasoning=reasoning,
+                    environment_detected=f"{env_value} (auto-detected)"
+                )
+            
+            # Handle standard environment values
+            # Use the pattern matching logic for the detected environment
+            details = self.recommend_preset_with_details(env_lower)
+            base_rec = EnvironmentRecommendation(
+                preset_name=details.preset_name,
+                confidence=min(0.90, details.confidence),  # Cap at 0.90 for explicit env vars
+                reasoning=f"{details.reasoning} (from {source_name}={env_value})",
+                environment_detected=f"{env_value} (auto-detected)"
+            )
+            
+            # Apply AI override if enabled and not already AI preset
+            if enable_ai and not base_rec.preset_name.startswith('ai-'):
+                ai_preset = f"ai-{base_rec.preset_name}"
                 if ai_preset in self.presets:
                     return EnvironmentRecommendation(
                         preset_name=ai_preset,
-                        confidence=recommendation.confidence * 0.9,  # Slightly lower confidence for AI adjustment
-                        reasoning=f"{recommendation.reasoning} with AI features enabled",
-                        environment_detected=f"{detected_env} (auto-detected, AI-enabled)"
+                        confidence=base_rec.confidence,
+                        reasoning=f"{base_rec.reasoning} with ENABLE_AI_CACHE=true",
+                        environment_detected=f"{env_value} (auto-detected, AI-enabled)"
                     )
+            
+            return base_rec
 
-            return EnvironmentRecommendation(
-                preset_name=recommendation.preset_name,
-                confidence=recommendation.confidence,
-                reasoning=recommendation.reasoning,
-                environment_detected=f"{detected_env} (auto-detected)"
-            )
-
-        # Check for development indicators
-        host = os.getenv('HOST', '') or ''
-        dev_indicators = [
-            os.getenv('DEBUG') == 'true',
-            os.getenv('DEBUG') == '1',
-            os.path.exists('.env'),
-            os.path.exists('docker-compose.dev.yml'),
-            os.path.exists('.git'),  # Local development
-            'localhost' in host,
-            '127.0.0.1' in host
-        ]
-
-        if any(dev_indicators):
-            preset_name = "ai-development" if enable_ai else "development"
-            return EnvironmentRecommendation(
-                preset_name=preset_name,
-                confidence=0.75,
-                reasoning="Development indicators detected (DEBUG=true, .env file, localhost, etc.)",
-                environment_detected="development (auto-detected)"
-            )
-
-        # Check for production indicators
-        database_url = os.getenv('DATABASE_URL', '') or ''
+        # Only if NO explicit environment variables found, check system indicators
+        # This prevents contamination from stray environment variables in parallel tests
+        
+        # Check for production indicators first (higher precedence)
         prod_indicators = [
-            os.getenv('PROD') == 'true',
-            os.getenv('PRODUCTION') == 'true',
-            os.getenv('DEBUG') == 'false',
+            os.getenv('PRODUCTION', '').lower() == 'true',
+            os.getenv('PROD', '').lower() == 'true',  
+            os.getenv('DEBUG', '').lower() == 'false',
             os.getenv('DEBUG') == '0',
-            'prod' in host.lower(),
-            'production' in database_url.lower()
         ]
 
         if any(prod_indicators):
             preset_name = "ai-production" if enable_ai else "production"
             return EnvironmentRecommendation(
                 preset_name=preset_name,
-                confidence=0.70,
-                reasoning="Production indicators detected (PROD=true, DEBUG=false, production URLs, etc.)",
-                environment_detected="production (auto-detected)"
+                confidence=0.65,  # Moderate confidence for generic indicators
+                reasoning="Production indicators detected (PRODUCTION=true, DEBUG=false, etc.)",
+                environment_detected="production (auto-detected from system flags)"
+            )
+        
+        # Check for development indicators (only basic, reliable indicators)
+        dev_indicators = [
+            os.getenv('DEBUG', '').lower() == 'true',
+            os.getenv('DEBUG') == '1',
+            os.path.exists('.env'),  # Local development file
+            os.path.exists('.git'),  # Local development repository
+        ]
+
+        if any(dev_indicators):
+            preset_name = "ai-development" if enable_ai else "development"
+            return EnvironmentRecommendation(
+                preset_name=preset_name,
+                confidence=0.60,  # Lower confidence for file-based detection
+                reasoning="Development indicators detected (DEBUG=true, .env file, .git directory)",
+                environment_detected="development (auto-detected from system flags)"
+            )
+
+        # Fallback to simple cache preset if no other signals
+        cache_preset = os.getenv('CACHE_PRESET')
+        if cache_preset and cache_preset in self.presets:
+            return EnvironmentRecommendation(
+                preset_name=cache_preset,
+                confidence=0.60,
+                reasoning=f"Using explicit CACHE_PRESET={cache_preset} as fallback override",
+                environment_detected=f"{cache_preset} (CACHE_PRESET)"
             )
 
         # Default fallback
