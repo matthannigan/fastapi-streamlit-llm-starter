@@ -213,7 +213,7 @@ class TestGenericRedisCacheInitialization:
         # And: Compression level should be correctly set
         assert cache.compression_level == 9
 
-    def test_security_configuration_initialization(self, secure_generic_redis_config):
+    def test_security_configuration_initialization(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
         """
         Test initialization with security configuration.
         
@@ -223,30 +223,26 @@ class TestGenericRedisCacheInitialization:
         And: Security features should be available and configured
         And: The cache should be ready for secure operations
         """
-        try:
-            # Given: Configuration with security features enabled
-            config = secure_generic_redis_config
-            assert config["security_config"] is not None
-            
-            # When: The cache is initialized with security configuration
-            cache = GenericRedisCache(**config)
-            
-            # Then: Security configuration should be properly integrated
-            assert cache.security_config is not None
-            assert cache.security_config.redis_auth == "secure_password"
-            assert cache.security_config.use_tls == True
-            
-            # And: Security features should be available and configured
-            assert hasattr(cache, 'validate_security')
-            assert hasattr(cache, 'get_security_status')
-            
-            # And: The cache should be ready for secure operations
-            assert cache.security_config.acl_username == "cache_user"
-            assert cache.security_config.verify_certificates == True
-            
-        except (ImportError, FileNotFoundError):
-            # Security module or certificates not available - test graceful handling
-            pytest.skip("Security configuration not available in test environment")
+        # Given: Configuration with security features enabled using the fixture
+        # mock_path_exists ensures certificate file existence is mocked
+        config = secure_generic_redis_config
+        assert config["security_config"] is not None
+        
+        # When: The cache is initialized with security configuration
+        cache = GenericRedisCache(**config)
+        
+        # Then: Security configuration should be properly integrated
+        assert cache.security_config is not None
+        assert cache.security_config.redis_auth == "secure_password"
+        assert cache.security_config.use_tls == True
+        
+        # And: Security features should be available and configured
+        assert hasattr(cache, 'validate_security')
+        assert hasattr(cache, 'get_security_status')
+        
+        # And: The cache should be ready for secure operations
+        assert cache.security_config.acl_username == "cache_user"
+        assert cache.security_config.verify_certificates == True
 
     def test_invalid_configuration_handling(self):
         """
@@ -485,7 +481,7 @@ class TestSecurityIntegration:
                 assert cache.security_config is None
                 assert cache.security_manager is None
 
-    async def test_security_feature_availability(self, secure_generic_redis_config):
+    async def test_security_feature_availability(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
         """
         Test availability of security features when configured.
         
@@ -495,46 +491,42 @@ class TestSecurityIntegration:
         And: Security status should be accurately reported
         And: Security operations should work as expected
         """
+        # Given: A cache instance with security configuration using the fixture
+        # mock_path_exists ensures certificate file existence is mocked
+        config = secure_generic_redis_config
+        cache = GenericRedisCache(**config)
+        
+        # When: Security features are accessed
+        # Then: Security methods should be available and functional
+        assert hasattr(cache, 'validate_security')
+        assert hasattr(cache, 'get_security_status')
+        assert hasattr(cache, 'get_security_recommendations')
+        assert hasattr(cache, 'generate_security_report')
+        assert hasattr(cache, 'test_security_configuration')
+        
+        # And: Security status should be accurately reported
+        security_status = cache.get_security_status()
+        assert isinstance(security_status, dict)
+        
+        # And: Security operations should work as expected
+        security_recommendations = cache.get_security_recommendations()
+        assert isinstance(security_recommendations, list)
+        
+        # Test security report generation
         try:
-            # Given: A cache instance with security configuration
-            config = secure_generic_redis_config
-            cache = GenericRedisCache(**config)
+            security_report = await cache.generate_security_report()
+            assert isinstance(security_report, str)
+        except Exception:
+            # If security features not fully available, should not crash
+            pass
             
-            # When: Security features are accessed
-            # Then: Security methods should be available and functional
-            assert hasattr(cache, 'validate_security')
-            assert hasattr(cache, 'get_security_status')
-            assert hasattr(cache, 'get_security_recommendations')
-            assert hasattr(cache, 'generate_security_report')
-            assert hasattr(cache, 'test_security_configuration')
-            
-            # And: Security status should be accurately reported
-            security_status = cache.get_security_status()
-            assert isinstance(security_status, dict)
-            
-            # And: Security operations should work as expected
-            security_recommendations = cache.get_security_recommendations()
-            assert isinstance(security_recommendations, list)
-            
-            # Test security report generation
-            try:
-                security_report = await cache.generate_security_report()
-                assert isinstance(security_report, str)
-            except Exception:
-                # If security features not fully available, should not crash
-                pass
-                
-            # Test security configuration testing
-            try:
-                test_results = await cache.test_security_configuration()
-                assert isinstance(test_results, dict)
-            except Exception:
-                # If security features not fully available, should not crash
-                pass
-                
-        except (ImportError, FileNotFoundError):
-            # Security module or certificates not available - test graceful handling
-            pytest.skip("Security features not available in test environment")
+        # Test security configuration testing
+        try:
+            test_results = await cache.test_security_configuration()
+            assert isinstance(test_results, dict)
+        except Exception:
+            # If security features not fully available, should not crash
+            pass
 
     async def test_fallback_without_security_manager(self, default_generic_redis_config):
         """

@@ -206,11 +206,11 @@ def secure_generic_redis_config(mock_path_exists):
     
     Provides a configuration with security features enabled for testing
     secure Redis connections and security validation.
+    
+    Creates the security configuration on-demand to ensure mock_path_exists
+    is active during SecurityConfig creation.
     """
-    # Create a real SecurityConfig instance with test data.
-    # Assuming 'mock_path_exists' is defined in a shared conftest file
-    # Note: Tests that use this fixture will likely need to mock `pathlib.Path.exists`
-    # to simulate the existence of these certificate files.
+    # Create SecurityConfig with mocked certificate paths (mock_path_exists handles file existence)
     secure_config = SecurityConfig(
         redis_auth="secure_password",
         use_tls=True,
@@ -223,8 +223,6 @@ def secure_generic_redis_config(mock_path_exists):
         max_retries=3,
         retry_delay=1,
         verify_certificates=True,
-        # Use the correct integer value from the ssl module, just like the default.
-        # This is the most runtime-safe approach.
         min_tls_version=ssl.TLSVersion.TLSv1_2.value, # type: ignore
         cipher_suites=["ECDHE-RSA-AES256-GCM-SHA384"]
     )
@@ -239,6 +237,42 @@ def secure_generic_redis_config(mock_path_exists):
         "performance_monitor": None,
         "security_config": secure_config
     }
+
+@pytest.fixture
+def mock_path_exists():
+    """
+    Fixture that mocks pathlib.Path.exists for certificate file validation.
+    
+    Uses autospec=True to ensure the mock's signature matches the real
+    method, which is crucial for using side_effect correctly. The default
+    return_value is True for "happy path" tests.
+    
+    Note: This fixture is now redundant since it's already defined in parent conftest,
+    but kept here for clarity in the redis_generic test module context.
+    """
+    with patch('pathlib.Path.exists', autospec=True) as mock_patch:
+        mock_patch.return_value = True
+        yield mock_patch
+
+
+@pytest.fixture
+def mock_ssl_context():
+    """
+    Fixture that mocks SSL certificate loading operations for security testing.
+    
+    Mocks ssl.SSLContext.load_cert_chain and ssl.SSLContext.load_verify_locations
+    to prevent actual file system access during testing. Essential for security
+    tests that require TLS configuration without real certificate files.
+    """
+    with patch('ssl.SSLContext.load_cert_chain') as mock_load_cert, \
+         patch('ssl.SSLContext.load_verify_locations') as mock_load_verify:
+        # Mock successful certificate loading
+        mock_load_cert.return_value = None
+        mock_load_verify.return_value = None
+        yield {
+            'load_cert_chain': mock_load_cert,
+            'load_verify_locations': mock_load_verify
+        }
 
 
 @pytest.fixture
