@@ -48,7 +48,6 @@ class TestAIResponseCacheInvalidation:
         - None
     """
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache.set() calls performance_monitor.record_cache_operation_time() without null check (line 498 in GenericRedisCache). This prevents testing invalidation behavior as cache.set() fails when performance_monitor=None. Bug also exists in invalidate_pattern() around lines 1045, 1080, 1096.")
     async def test_invalidate_pattern_removes_matching_cache_entries(self, sample_text, ai_cache_test_data):
         """
         Test that invalidate_pattern removes entries matching specified patterns.
@@ -135,7 +134,6 @@ class TestAIResponseCacheInvalidation:
         assert await cache.get(sentiment_key) == sentiment_data["response"]  # Should remain
         assert await cache.get(questions_key) == questions_data["response"]  # Should remain
 
-    @pytest.mark.skip(reason="Implementation bug: invalidate_pattern calls performance_monitor.record_invalidation_event() without null check. Fix needed in AIResponseCache.invalidate_pattern() around line 1045, 1080, 1096 to check 'if self.performance_monitor is not None' before calling monitor methods.")
     async def test_invalidate_pattern_records_performance_metrics(self, sample_text, sample_options, sample_ai_response, real_performance_monitor):
         """
         Test that invalidate_pattern records comprehensive performance metrics.
@@ -198,7 +196,6 @@ class TestAIResponseCacheInvalidation:
         # Performance metrics recording is an internal implementation detail
         # that we verify by ensuring the operation succeeds
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache.set() calls performance_monitor.record_cache_operation_time() without null check (line 498 in GenericRedisCache). This prevents testing invalidation behavior as cache.set() fails when performance_monitor=None. Bug also exists in invalidate_pattern().")
     async def test_invalidate_pattern_handles_no_matches_gracefully(self, sample_text, sample_options, sample_ai_response):
         """
         Test that invalidate_pattern handles zero matches without errors.
@@ -262,7 +259,6 @@ class TestAIResponseCacheInvalidation:
         # And: Original cache entry remains unaffected
         assert await cache.get(test_key) == sample_ai_response
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache.set() calls performance_monitor.record_cache_operation_time() without null check (line 498 in GenericRedisCache). This prevents testing invalidation behavior as cache.set() fails when performance_monitor=None. Bug also exists in invalidate_by_operation().")
     async def test_invalidate_by_operation_removes_operation_specific_entries(self, ai_cache_test_data):
         """
         Test that invalidate_by_operation removes all entries for specific AI operations.
@@ -364,7 +360,6 @@ class TestAIResponseCacheInvalidation:
         assert isinstance(invalidated_count, int)
         assert invalidated_count >= 0  # Should return non-negative count
 
-    @pytest.mark.skip(reason="Implementation bug: invalidate_by_operation calls performance_monitor.record_invalidation_event() without null check. Fix needed in AIResponseCache.invalidate_by_operation() to check 'if self.performance_monitor is not None' before calling monitor methods.")
     async def test_invalidate_by_operation_records_comprehensive_metrics(self, sample_text, sample_options, sample_ai_response, real_performance_monitor):
         """
         Test that invalidate_by_operation records detailed performance metrics.
@@ -431,7 +426,6 @@ class TestAIResponseCacheInvalidation:
         # The internal metrics recording is verified by successful operation completion
         # as the method documents that it "records comprehensive metrics tracking"
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache.set() calls performance_monitor.record_cache_operation_time() without null check (line 498 in GenericRedisCache). This prevents testing invalidation behavior as cache.set() fails when performance_monitor=None. Bug also exists in invalidate_by_operation().")
     async def test_invalidate_by_operation_raises_validation_error_for_invalid_operation(self, sample_text, sample_options, sample_ai_response):
         """
         Test that invalidate_by_operation validates operation parameter.
@@ -502,7 +496,6 @@ class TestAIResponseCacheInvalidation:
         # Verify original cache entry remains unaffected by invalid operations
         assert await cache.get(valid_key) == sample_ai_response
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache.set() calls performance_monitor.record_cache_operation_time() without null check (line 498 in GenericRedisCache). This prevents testing invalidation behavior as cache.set() fails when performance_monitor=None. Bug also exists in invalidate_by_operation().")
     async def test_invalidate_by_operation_handles_no_matches_gracefully(self, sample_text, sample_options, sample_ai_response):
         """
         Test that invalidate_by_operation handles zero matches without errors.
@@ -568,7 +561,6 @@ class TestAIResponseCacheInvalidation:
         # And: No exceptions are raised for zero matches
         # (successful completion of the method call demonstrates this)
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache.set() calls performance_monitor.record_cache_operation_time() without null check (line 498 in GenericRedisCache). This prevents testing invalidation behavior as cache.set() fails when performance_monitor=None. Bug also exists in clear().")
     async def test_clear_removes_all_ai_cache_entries(self, ai_cache_test_data):
         """
         Test that clear removes all AI cache entries from both Redis and L1 cache.
@@ -653,7 +645,6 @@ class TestAIResponseCacheInvalidation:
         # And: Clear operation completes without raising exceptions
         # (successful completion of the method call demonstrates this)
 
-    @pytest.mark.skip(reason="Implementation bug: clear calls performance_monitor.record_invalidation_event() without null check. Fix needed in AIResponseCache.clear() around line 1369 to check 'if self.performance_monitor is not None' before calling monitor methods.")
     async def test_clear_records_maintenance_metrics(self, sample_text, sample_options, sample_ai_response, real_performance_monitor):
         """
         Test that clear records comprehensive maintenance and performance metrics.

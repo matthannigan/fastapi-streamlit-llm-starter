@@ -189,7 +189,6 @@ class TestAIResponseCacheConnection:
                 # Even with exception, cache should still be usable in memory-only mode
                 assert cache is not None
 
-    @pytest.mark.skip(reason="Performance monitor null reference issue discovered in AIResponseCache operations. The cache operations are accessing a null performance_monitor attribute causing 'NoneType' object has no attribute 'record_cache_operation_time' errors. This is the same issue identified in previous test runs and requires performance monitor initialization fixes in the main codebase before this test can be implemented properly.")
     async def test_connect_integrates_with_performance_monitoring(self, real_performance_monitor):
         """
         Test that connect method integrates with performance monitoring system.
@@ -225,7 +224,6 @@ class TestAIResponseCacheConnection:
         """
         pass
 
-    @pytest.mark.skip(reason="Performance monitor null reference issue discovered in AIResponseCache operations. When Redis connection fails and cache operations are attempted, the performance monitor is null causing 'NoneType' object has no attribute 'record_cache_operation_time' errors. This indicates the AIResponseCache does not properly handle performance monitor initialization in degraded mode scenarios. The same issue was found in the performance monitoring integration test.")
     def test_standard_cache_operations_work_without_redis_connection(self, sample_text, sample_ai_response):
         """
         Test that standard cache operations continue working without Redis connection.

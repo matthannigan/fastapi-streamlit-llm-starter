@@ -64,7 +64,6 @@ class TestAIResponseCacheStatistics:
         - Redis statistics (via parent class)
     """
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache statistics methods depend on performance_monitor which can be None, causing AttributeError. The cache is initialized without a performance monitor in many cases, but statistics methods like get_cache_stats() call self.performance_monitor.get_performance_stats() without null checks. This needs fixing in the AIResponseCache implementation.")
     def test_get_cache_stats_returns_comprehensive_statistics(self):
         """
         Test that get_cache_stats returns comprehensive cache statistics as documented.
@@ -101,7 +100,6 @@ class TestAIResponseCacheStatistics:
         """
         pass
 
-    @pytest.mark.skip(reason="Implementation bug: AIResponseCache statistics methods depend on performance_monitor which can be None, causing AttributeError. The graceful degradation for Redis failures cannot be tested until the performance monitor null checks are implemented.")
     def test_get_cache_stats_handles_redis_failure_gracefully(self):
         """
         Test that get_cache_stats handles Redis connection failures gracefully.
@@ -138,7 +136,6 @@ class TestAIResponseCacheStatistics:
         """
         pass
 
-    @pytest.mark.skip(reason="Implementation bug: get_cache_hit_ratio() calls self.performance_monitor._calculate_hit_rate() without null check. When performance_monitor is None (common in testing), this raises AttributeError. Need to add 'if self.performance_monitor is not None' check and return 0.0 as fallback.")
     def test_get_cache_hit_ratio_calculates_percentage_correctly(self):
         """
         Test that get_cache_hit_ratio returns accurate hit ratio percentage.
@@ -174,7 +171,6 @@ class TestAIResponseCacheStatistics:
         """
         pass
 
-    @pytest.mark.skip(reason="Implementation bug: get_cache_hit_ratio() calls self.performance_monitor._calculate_hit_rate() without null check. Cannot test zero operations scenario when performance_monitor is None, which is the typical case for newly initialized caches.")
     def test_get_cache_hit_ratio_handles_zero_operations(self):
         """
         Test that get_cache_hit_ratio handles zero operations without division errors.
@@ -208,7 +204,6 @@ class TestAIResponseCacheStatistics:
         """
         pass
 
-    @pytest.mark.skip(reason="Implementation bug: get_performance_summary() depends on performance_monitor methods without null checks. The method consolidates data from performance_monitor.get_performance_stats() and other monitor methods, but these fail when performance_monitor is None.")
     def test_get_performance_summary_includes_hit_ratio(self):
         """
         Test that get_performance_summary includes hit ratio and comprehensive metrics.

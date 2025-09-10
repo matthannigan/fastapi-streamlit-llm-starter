@@ -312,7 +312,6 @@ class TestAIResponseCacheCoreOperations:
         # And: For small text, the key may contain readable text portions
         # (This depends on CacheKeyGenerator implementation - we just verify it works)
 
-    @pytest.mark.skip(reason="Test requires proper performance monitor configuration which depends on internal implementation details")
     async def test_standard_cache_interface_integration(self, sample_text, sample_ai_response, sample_options):
         """
         Test that AIResponseCache properly integrates with standard cache interface.
@@ -453,7 +452,6 @@ class TestAIResponseCacheCoreOperations:
             # If infrastructure level does validate, that's also acceptable
             assert isinstance(e, (ValidationError, ValueError, TypeError))
 
-    @pytest.mark.skip(reason="Test requires proper performance monitor configuration which depends on internal implementation details")
     async def test_standard_cache_interface_cache_hit_scenario(self, sample_text, sample_options, sample_ai_response):
         """
         Test that standard cache interface properly handles cache hit scenarios.
@@ -528,7 +526,6 @@ class TestAIResponseCacheCoreOperations:
             if hasattr(cache, 'close'):
                 await cache.close()
 
-    @pytest.mark.skip(reason="Test requires proper performance monitor configuration which depends on internal implementation details")
     async def test_standard_cache_interface_cache_miss_scenario(self, sample_text, sample_options):
         """
         Test that standard cache interface properly handles cache miss scenarios.
@@ -599,7 +596,6 @@ class TestAIResponseCacheCoreOperations:
             if hasattr(cache, 'close'):
                 await cache.close()
 
-    @pytest.mark.skip(reason="Test requires proper performance monitor configuration which depends on internal implementation details")
     async def test_standard_cache_interface_with_qa_operations(self, ai_cache_test_data):
         """
         Test that standard cache interface works correctly with Q&A operations.
@@ -686,7 +682,6 @@ class TestAIResponseCacheCoreOperations:
             if hasattr(cache, 'close'):
                 await cache.close()
 
-    @pytest.mark.skip(reason="Test requires proper performance monitor configuration which depends on internal implementation details")
     async def test_standard_cache_interface_validation_integration(self, sample_ai_response):
         """
         Test that validation errors are properly handled with standard cache interface.
