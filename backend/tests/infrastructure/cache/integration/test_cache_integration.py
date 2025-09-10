@@ -303,618 +303,378 @@ class TestEndToEndCacheWorkflows:
 
 class TestCacheComponentInteroperability:
     """
-    Tests for cache component interoperability and compatibility.
+    Shared Contract Tests for cache component interoperability and compatibility.
     
-    Verifies different cache implementations can be used interchangeably.
+    Verifies different cache implementations can be used interchangeably by testing
+    actual cache instances rather than factory method variations. This implements
+    the "Shared Contract Tests" pattern to ensure all cache implementations adhere
+    to the same behavioral contract.
+    
+    This test suite runs the exact same test code against both a high-fidelity 
+    Redis instance (using Testcontainers) and a fast in-memory fake (using FakeRedis). 
+    This guarantees that any cache backend will adhere to the exact same behavioral contract.
+    
+    Testing Approach:
+        - Direct GenericRedisCache instantiation for focused contract testing
+        - Real Redis via Testcontainers for complete fidelity
+        - FakeRedis for fast, Redis-compatible behavior without external dependencies
+        - Identical test logic ensures true behavioral equivalence
     """
+    
+    def _create_fakeredis_backed_cache(self, performance_monitor=None):
+        """
+        Helper function to create a GenericRedisCache backed by FakeRedis.
+        
+        This encapsulates the "hot-swap" pattern where we create a real GenericRedisCache
+        instance and replace its Redis client with a FakeRedis client. This provides
+        Redis-compatible behavior for testing without requiring an external Redis server.
+        
+        Args:
+            performance_monitor: Optional performance monitor for the cache
+            
+        Returns:
+            GenericRedisCache instance backed by FakeRedis
+        """
+        import fakeredis.aioredis
+        from app.infrastructure.cache.redis_generic import GenericRedisCache
+        
+        # Create a real GenericRedisCache instance
+        cache = GenericRedisCache(
+            redis_url="redis://localhost:6379/15",  # URL for interface consistency
+            performance_monitor=performance_monitor,
+            enable_l1_cache=False,  # Test pure Redis behavior
+            fail_on_connection_error=False
+        )
+        
+        # Hot-swap the Redis client with FakeRedis for testing
+        cache.redis = fakeredis.aioredis.FakeRedis(
+            decode_responses=False,
+            connection_pool=None
+        )
+        
+        return cache
+    
+    @pytest.fixture
+    async def cache_instances_via_factory(self):
+        """
+        Alternative fixture demonstrating factory-based cache instance creation.
+        
+        This approach uses CacheFactory.for_testing() to create cache instances,
+        then performs hot-swapping for the FakeRedis variant. This provides broader
+        scope testing that includes the factory's assembly logic.
+        
+        Use this fixture when you want to test:
+        - The complete service assembly process via CacheFactory
+        - Factory configuration handling and parameter mapping
+        - Integration between factory, cache, and monitoring components
+        
+        The trade-off is slightly less isolation compared to direct instantiation,
+        but broader coverage of the service creation pipeline.
+        """
+        from testcontainers.redis import RedisContainer
+        import fakeredis.aioredis
+        from app.infrastructure.cache.factory import CacheFactory
+        
+        # Start real Redis container for high-fidelity testing
+        redis_container = RedisContainer("redis:7-alpine")
+        redis_container.start()
+        
+        cache_instances = []
+        
+        try:
+            # Create factory for service assembly
+            factory = CacheFactory()
+            
+            # 1. Real Redis cache via factory
+            redis_host = redis_container.get_container_host_ip()
+            redis_port = redis_container.get_exposed_port(6379)
+            redis_url = f"redis://{redis_host}:{redis_port}"
+            
+            real_redis_cache = await factory.for_testing(
+                redis_url=redis_url,
+                enable_l1_cache=False,
+                fail_on_connection_error=True
+            )
+            
+            # 2. Factory-created cache with FakeRedis hot-swap
+            fakeredis_cache = await factory.for_testing(
+                redis_url="redis://localhost:6379/15",
+                enable_l1_cache=False, 
+                fail_on_connection_error=False
+            )
+            
+            # Hot-swap the factory-created cache's Redis client with FakeRedis
+            if hasattr(fakeredis_cache, 'redis'):
+                fakeredis_cache.redis = fakeredis.aioredis.FakeRedis(  #type: ignore
+                    decode_responses=False,
+                    connection_pool=None
+                )
+            
+            cache_instances = [
+                ("factory_real_redis", real_redis_cache),
+                ("factory_fake_redis", fakeredis_cache)
+            ]
+            
+            yield cache_instances
+            
+        finally:
+            # Cleanup: Clear caches and stop container
+            for cache_name, cache in cache_instances:
+                try:
+                    if hasattr(cache, 'disconnect'):
+                        await cache.disconnect()  #type: ignore
+                    if hasattr(cache, 'redis') and cache.redis:  #type: ignore
+                        if hasattr(cache.redis, 'flushall'):  #type: ignore
+                            await cache.redis.flushall()  #type: ignore
+                        if hasattr(cache.redis, 'close'):  #type: ignore
+                            await cache.redis.close()  #type: ignore
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Cache cleanup error for {cache_name}: {e}")
+            
+            # Stop Redis container
+            try:
+                redis_container.stop()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Redis container cleanup error: {e}")
+    
+    @pytest.fixture
+    async def cache_instances(self):
+        """
+        Provides actual cache instances for shared contract testing.
+        
+        Creates two cache instances for behavioral equivalence testing:
+        1. Real Redis cache using Testcontainers for full Redis fidelity
+        2. Fast in-memory fake using FakeRedis for Redis-compatible behavior
+        
+        Both instances are fully-formed, real cache objects that implement the
+        CacheInterface contract, ensuring identical behavioral contracts.
+        This is a true "Shared Contract Test" - the exact same test code runs
+        against both backends to guarantee behavioral equivalence.
+        
+        Design Choice: Direct GenericRedisCache Instantiation
+            This fixture uses direct instantiation for focused contract testing
+            of the GenericRedisCache class itself.
+            
+            Alternative Approach: Could use CacheFactory.for_testing() for broader
+            scope testing that includes factory assembly logic, then perform the
+            hot-swap on factory-created instances. Both approaches are valid:
+            - Current (direct): Better for isolated GenericRedisCache contract testing
+            - Alternative (factory): Better for testing fully assembled service contracts
+        """
+        from testcontainers.redis import RedisContainer
+        from app.infrastructure.cache.redis_generic import GenericRedisCache
+        from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+        
+        # Create performance monitor for both caches
+        performance_monitor = CachePerformanceMonitor()
+        
+        # Start real Redis container for high-fidelity testing
+        redis_container = RedisContainer("redis:7-alpine")
+        redis_container.start()
+        
+        cache_instances = []
+        
+        try:
+            # 1. Real Redis cache using Testcontainers
+            # This provides complete Redis fidelity including all Redis features
+            redis_host = redis_container.get_container_host_ip()
+            redis_port = redis_container.get_exposed_port(6379)
+            redis_url = f"redis://{redis_host}:{redis_port}"
+            real_redis_cache = GenericRedisCache(
+                redis_url=redis_url,
+                performance_monitor=performance_monitor,
+                enable_l1_cache=False,  # Test pure Redis behavior
+                fail_on_connection_error=True  # Should connect to real Redis
+            )
+            
+            # Connect to the real Redis instance
+            await real_redis_cache.connect()
+            
+            # 2. Fast in-memory fake using FakeRedis (via helper function)
+            # This provides Redis-compatible behavior without external dependencies
+            fakeredis_cache = self._create_fakeredis_backed_cache(performance_monitor)
+            
+            cache_instances = [
+                ("real_redis", real_redis_cache),
+                ("fake_redis", fakeredis_cache)
+            ]
+            
+            yield cache_instances
+            
+        finally:
+            # Cleanup: Clear caches and stop container
+            for cache_name, cache in cache_instances:
+                try:
+                    if hasattr(cache, 'disconnect'):
+                        await cache.disconnect()
+                    if hasattr(cache, 'redis') and cache.redis:
+                        if hasattr(cache.redis, 'flushall'):
+                            await cache.redis.flushall()
+                        if hasattr(cache.redis, 'close'):
+                            await cache.redis.close()
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Cache cleanup error for {cache_name}: {e}")
+            
+            # Stop Redis container
+            try:
+                redis_container.stop()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Redis container cleanup error: {e}")
     
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("cache_type", ["memory", "web", "ai"])
-    async def test_cache_interoperability_across_factory_methods(self, cache_type):
+    async def test_cache_shared_contract_basic_operations(self, cache_instances):
         """
-        Test that caches created by different factory methods are interoperable.
+        Shared contract test for basic cache operations across implementations.
         
-        Verifies:
-            All factory-created caches support the same basic operations
+        Verifies that all cache implementations provide identical behavior for
+        the core CacheInterface contract: get, set, exists, delete operations.
+        
+        This test ensures behavioral equivalence between different cache backends,
+        making them truly interchangeable in production applications.
+        
+        Contract Verification:
+            - set() stores values correctly
+            - get() retrieves exact values
+            - exists() reports key presence accurately  
+            - delete() removes keys completely
+            - All operations maintain consistent behavior across implementations
+        """
+        for cache_name, cache in cache_instances:
+            # Given: A cache implementation and test data
+            test_key = f"contract:basic:{cache_name}"
+            test_value = {"cache_type": cache_name, "contract_test": True}
             
-        Integration Points:
-            - Factory methods -> Different cache creation paths
-            - CacheInterface -> Consistent behavior across implementations
+            # When: Performing basic operations
+            await cache.set(test_key, test_value)
+            retrieved = await cache.get(test_key)
+            exists_before_delete = await cache.exists(test_key)
+            
+            await cache.delete(test_key)
+            exists_after_delete = await cache.exists(test_key)
+            retrieved_after_delete = await cache.get(test_key)
+            
+            # Then: All implementations must behave identically
+            assert retrieved == test_value, f"get() failed for {cache_name}"
+            assert exists_before_delete is True, f"exists() before delete failed for {cache_name}"
+            assert exists_after_delete is False, f"exists() after delete failed for {cache_name}"
+            assert retrieved_after_delete is None, f"get() after delete failed for {cache_name}"
+            
+    @pytest.mark.asyncio
+    async def test_cache_shared_contract_ttl_behavior(self, cache_instances):
         """
-        # Given: Factory creating different types of caches
-        factory = CacheFactory()
+        Shared contract test for TTL (time-to-live) behavior across implementations.
         
-        if cache_type == "memory":
-            cache = await factory.for_testing(use_memory_cache=True)
-        elif cache_type == "web":
-            cache = await factory.for_web_app(fail_on_connection_error=False)
-        elif cache_type == "ai":
-            cache = await factory.for_ai_app(fail_on_connection_error=False)
+        Verifies that all cache implementations handle TTL consistently:
+        - Keys with TTL are stored correctly
+        - TTL values are respected during storage
+        - Key existence behavior is consistent
         
-        # When: Using cache for basic operations
-        test_key = f"interop:test:{cache_type}"
-        test_value = {"cache_type": cache_type, "interoperability": True}
-        
-        await cache.set(test_key, test_value)
-        retrieved = await cache.get(test_key)
-        
-        # Then: All caches should support consistent operations
-        assert retrieved == test_value
-        assert await cache.exists(test_key) is True
-        
-        await cache.delete(test_key)
-        assert await cache.exists(test_key) is False
-        
-        # Verify cache supports basic CacheInterface contract
-        assert hasattr(cache, 'get')
-        assert hasattr(cache, 'set')
-        assert hasattr(cache, 'delete')
-        assert hasattr(cache, 'exists')
-
-# These were unit tests that are now integration tests; they need to be built out and put in classes
-
-def test_thread_safety_initialization(self):
-    """
-    Test thread-safe initialization of mapper components.
+        Note: This test focuses on TTL setting behavior rather than expiration
+        timing to avoid test flakiness while still verifying contract compliance.
+        """
+        for cache_name, cache in cache_instances:
+            # Given: A cache implementation and TTL test data
+            test_key = f"contract:ttl:{cache_name}"
+            test_value = {"ttl_test": True, "cache_type": cache_name}
+            ttl_seconds = 3600
+            
+            # When: Setting value with TTL
+            await cache.set(test_key, test_value, ttl=ttl_seconds)
+            retrieved = await cache.get(test_key)
+            exists = await cache.exists(test_key)
+            
+            # Then: All implementations must store TTL values correctly
+            assert retrieved == test_value, f"TTL set/get failed for {cache_name}"
+            assert exists is True, f"TTL exists check failed for {cache_name}"
+            
+            # Cleanup
+            await cache.delete(test_key)
     
-    Given: Multiple threads attempting to initialize CacheParameterMapper
-    When: Concurrent initialization occurs
-    Then: All mapper instances should be properly initialized
-    And: Parameter classifications should remain consistent
-    And: No race conditions should occur during setup
-    """
-    import pytest
-    import threading
-    import time
-    from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
-    
-    # Skip this test as it requires integration testing approach
-    # Thread safety testing is better suited for integration tests
-    # where we can test with real concurrent scenarios
-    pytest.skip("Thread safety testing requires integration test approach with real concurrency scenarios")
-
-@pytest.mark.skip(reason="Configuration error testing requires mocking internal preset system behavior which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify error handling through observable outcomes.")
-async def test_get_cache_config_handles_configuration_building_errors(self):
-    """
-    Test that get_cache_config() handles configuration building errors with appropriate exceptions.
-    
-    Verifies:
-        Configuration building failures are properly handled and reported
-        
-    Business Impact:
-        Prevents application startup with invalid cache configurations
-        
-    Scenario:
-        Given: Settings with invalid or conflicting cache configuration
-        When: get_cache_config() attempts to build configuration
-        Then: ConfigurationError is raised with specific building failure details
-        And: Error context includes preset system issues or validation failures
-        And: Error provides actionable guidance for configuration correction
-        
-    Error Handling Verified:
-        - Preset system failures cause ConfigurationError with preset context
-        - Configuration validation failures cause appropriate error types
-        - Custom configuration parsing errors handled with file/format context
-        - Error messages provide specific guidance for configuration correction
-        - Build failures prevent invalid cache configuration deployment
-        
-    Fixtures Used:
-        - Settings with invalid configuration for error testing
-        - Mock preset system configured to simulate failures
-        
-    Robust Error Handling:
-        Configuration building errors prevent deployment with invalid cache settings
-        
-    Related Tests:
-        - test_get_cache_config_builds_configuration_from_settings_using_preset_system()
-        - test_get_cache_config_provides_fallback_configuration_on_errors()
-    """
-    pass
-
-@pytest.mark.skip(reason="Registry instance management testing requires mocking internal registry behavior which would violate behavior-driven testing principles. This test should focus on observable resource usage patterns through integration tests.")
-async def test_cache_service_registry_enables_efficient_instance_management(self):
-    """
-    Test that cache service registry enables efficient cache instance management and reuse.
-    
-    Verifies:
-        Cache registry optimizes performance through instance reuse and lifecycle management
-        
-    Business Impact:
-        Reduces resource consumption and improves performance through cache instance optimization
-        
-    Scenario:
-        Given: Multiple requests for cache service with similar configurations
-        When: get_cache_service() manages cache instances through registry
-        Then: Appropriate cache instance reuse occurs for performance optimization
-        And: Registry prevents resource leaks through proper lifecycle management
-        And: Cache instance management optimizes memory and connection usage
-        
-    Registry Management Verified:
-        - Cache instances appropriately managed through registry system
-        - Resource optimization through intelligent instance reuse
-        - Memory leak prevention through proper cache lifecycle management
-        - Connection pool optimization for Redis-based cache instances
-        - Registry cleanup prevents accumulation of unused cache references
-        
-    Fixtures Used:
-        - mock_cache_service_registry: Registry for instance management testing
-        
-    Resource Optimization:
-        Registry management optimizes cache resource usage and lifecycle
-        
-    Related Tests:
-        - test_get_cache_service_creates_cache_using_factory_with_registry_management()
-        - test_cache_registry_cleanup_for_lifecycle_management()
-    """
-    pass
-
-@pytest.mark.skip(reason="Infrastructure error testing requires simulating internal infrastructure failures which would require extensive mocking of system boundaries. This test should be replaced with integration tests that verify error handling through real failure scenarios.")
-async def test_get_cache_service_handles_infrastructure_errors_appropriately(self):
-    """
-    Test that get_cache_service() handles infrastructure errors with appropriate error reporting.
-    
-    Verifies:
-        Infrastructure failures are handled with clear error reporting and fallback behavior
-        
-    Business Impact:
-        Enables troubleshooting and maintains application stability during infrastructure issues
-        
-    Scenario:
-        Given: Cache creation failures due to infrastructure issues
-        When: get_cache_service() encounters infrastructure errors during creation
-        Then: InfrastructureError is raised with detailed error context
-        And: Error context includes specific failure information for troubleshooting
-        And: Fallback behavior activates when appropriate for continued operation
-        
-    Infrastructure Error Handling:
-        - Critical infrastructure failures cause InfrastructureError with context
-        - Error context includes specific failure details for operational response
-        - Fallback behavior enables continued application operation when possible
-        - Error reporting provides actionable information for infrastructure teams
-        - Error handling balances application stability with failure visibility
-        
-    Fixtures Used:
-        - Configuration scenarios that trigger infrastructure errors
-        
-    Robust Error Management:
-        Infrastructure error handling maintains application stability during failures
-        
-    Related Tests:
-        - test_get_cache_service_provides_graceful_fallback_on_redis_failures()
-        - test_cache_service_error_context_for_troubleshooting()
-    """
-    pass
-
-@pytest.mark.skip(reason="Registry cleanup statistics testing requires mocking internal registry implementation details which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify cleanup effectiveness through observable registry behavior.")
-async def test_registry_cleanup_provides_comprehensive_cleanup_statistics(self):
-    """
-    Test that registry cleanup provides comprehensive statistics about cleanup operations.
-    
-    Verifies:
-        Registry cleanup returns detailed information about cleanup results
-        
-    Business Impact:
-        Enables monitoring and troubleshooting of cache registry management
-        
-    Scenario:
-        Given: Cache registry requiring cleanup with various reference states
-        When: cleanup_registry() performs comprehensive registry cleanup
-        Then: Detailed cleanup statistics are returned with operation results
-        And: Statistics include counts of cleaned, remaining, and processed entries
-        And: Cleanup duration and performance metrics included in statistics
-        
-    Cleanup Statistics Verified:
-        - Count of cleaned entries removed during cleanup operation
-        - Count of remaining active entries after cleanup
-        - Total entries processed during cleanup operation
-        - Cleanup operation duration for performance monitoring
-        - Memory recovery statistics from dead reference removal
-        
-    Fixtures Used:
-        - mock_cache_dependency_manager: Manager for statistics testing
-        - Registry scenarios with known reference counts for verification
-        
-    Operational Visibility:
-        Cleanup statistics enable monitoring and optimization of registry management
-        
-    Related Tests:
-        - test_cache_dependency_manager_cleanup_registry_removes_dead_references()
-        - test_cleanup_registry_handles_concurrent_access_safely()
-    """
-    pass
-
-@pytest.mark.skip(reason="Thread safety testing requires mocking internal asyncio.Lock behavior and registry concurrency mechanisms which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify concurrent access safety through real concurrent operations.")
-async def test_registry_operations_are_thread_safe_with_async_lock(self):
-    """
-    Test that cache registry operations are thread-safe using asyncio.Lock for concurrent access.
-    
-    Verifies:
-        Registry operations handle concurrent access safely through proper locking
-        
-    Business Impact:
-        Ensures registry integrity during concurrent cache operations in async applications
-        
-    Scenario:
-        Given: Multiple concurrent cache registry operations
-        When: Registry cleanup and access occur simultaneously
-        Then: asyncio.Lock ensures thread-safe access to registry
-        And: Registry state remains consistent during concurrent operations
-        And: No race conditions occur during registry modification
-        
-    Thread Safety Verified:
-        - asyncio.Lock acquired before registry modification operations
-        - Concurrent registry access serialized through lock mechanism
-        - Registry state consistency maintained during concurrent operations
-        - Lock release ensures other operations can proceed after completion
-        - No registry corruption occurs during high-concurrency scenarios
-        
-    Fixtures Used:
-        - mock_asyncio_lock: Lock for thread safety testing
-        - mock_cache_service_registry: Registry for concurrent operation testing
-        
-    Concurrent Safety:
-        Registry locking ensures safe concurrent access in async environments
-        
-    Related Tests:
-        - test_cache_dependency_manager_cleanup_registry_removes_dead_references()
-        - test_registry_cleanup_performance_under_load()
-    """
-    pass
-
-@pytest.mark.skip(reason="FastAPI application lifecycle integration testing requires mocking application lifecycle events and shutdown handlers which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify cleanup behavior in real FastAPI application contexts.")
-async def test_cleanup_registry_integrates_with_application_lifecycle_events(self):
-    """
-    Test that cleanup_cache_registry() integrates properly with FastAPI application lifecycle.
-    
-    Verifies:
-        Registry cleanup function works correctly as FastAPI shutdown event handler
-        
-    Business Impact:
-        Ensures proper cache cleanup during application shutdown and deployment lifecycle
-        
-    Scenario:
-        Given: FastAPI application with cache dependencies and shutdown events
-        When: Application shutdown triggers cleanup_cache_registry() as event handler
-        Then: Registry cleanup executes properly during application shutdown
-        And: Cleanup completes before application termination
-        And: Resource cleanup enables clean application shutdown
-        
-    Lifecycle Integration Verified:
-        - cleanup_cache_registry() executes correctly as FastAPI shutdown handler
-        - Cleanup completes within application shutdown timeout constraints
-        - Resource cleanup enables graceful application termination
-        - Error handling during cleanup doesn't prevent application shutdown
-        - Cleanup results available for shutdown monitoring and logging
-        
-    Fixtures Used:
-        - Mock FastAPI application lifecycle for integration testing
-        - mock_cache_service_registry: Registry for lifecycle cleanup testing
-        
-    Application Integration:
-        Registry cleanup integrates seamlessly with application lifecycle management
-        
-    Related Tests:
-        - test_cleanup_cache_registry_provides_detailed_cleanup_results()
-        - test_cleanup_registry_handles_shutdown_errors_gracefully()
-    """
-    pass
-
-@pytest.mark.skip(reason="Ping method optimization testing requires mocking internal ping() method behavior and performance monitoring which would violate behavior-driven testing principles. This test should verify health check efficiency through observable response times in integration tests.")
-async def test_cache_health_status_uses_ping_method_for_efficient_checks(self):
-    """
-    Test that get_cache_health_status() uses ping() method for efficient health checks when available.
-    
-    Verifies:
-        Health monitoring optimizes performance by using lightweight ping operations
-        
-    Business Impact:
-        Minimizes health check overhead while providing reliable connectivity verification
-        
-    Scenario:
-        Given: Cache instance with ping() method available for lightweight health checks
-        When: get_cache_health_status() performs health assessment
-        Then: ping() method is used for efficient connectivity verification
-        And: Health check completes quickly with minimal resource usage
-        And: ping() results integrated into comprehensive health status
-        
-    Efficient Health Checking Verified:
-        - ping() method called when available for lightweight connectivity check
-        - Health check performance optimized through ping() usage
-        - ping() response time included in health status metrics
-        - Fallback to full operations when ping() method not available
-        - Health check efficiency suitable for high-frequency monitoring
-        
-    Fixtures Used:
-        - mock_redis_cache_with_ping: Cache with ping method for efficiency testing
-        - Performance metrics for health check timing verification
-        
-    Performance Optimization:
-        Health checks use efficient ping operations to minimize monitoring overhead
-        
-    Related Tests:
-        - test_get_cache_health_status_performs_comprehensive_cache_health_checks()
-        - test_cache_health_status_fallback_for_caches_without_ping()
-    """
-    pass
-
-@pytest.mark.skip(reason="Validation error to HTTP exception conversion testing requires creating invalid configurations and mocking HTTPException behavior which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify error handling through real invalid configuration scenarios.")
-async def test_validate_cache_configuration_converts_validation_errors_to_http_exceptions(self):
-    """
-    Test that validate_cache_configuration() converts validation errors to appropriate HTTPExceptions.
-    
-    Verifies:
-        Configuration validation errors are converted to proper HTTP error responses
-        
-    Business Impact:
-        Provides clear HTTP error responses for invalid cache configurations
-        
-    Scenario:
-        Given: Invalid CacheConfig with validation errors
-        When: validate_cache_configuration() validates invalid configuration
-        Then: ValidationError is caught and converted to HTTPException
-        And: HTTP 500 status code returned for configuration validation failure
-        And: Error details included in HTTP response for troubleshooting
-        
-    HTTP Error Conversion Verified:
-        - ValidationError caught during configuration validation
-        - HTTPException raised with HTTP 500 status for configuration errors
-        - Error details from validation included in HTTP response
-        - HTTP error response format suitable for API error handling
-        - Configuration validation prevents invalid config exposure via HTTP
-        
-    Fixtures Used:
-        - Invalid configuration for validation error testing
-        - mock_fastapi_http_exception: HTTPException for error conversion testing
-        
-    API Error Handling:
-        Configuration validation provides proper HTTP error responses for invalid configs
-        
-    Related Tests:
-        - test_validate_cache_configuration_validates_configuration_and_returns_config()
-        - test_validation_dependency_provides_appropriate_error_context()
-    """
-    pass
-
-@pytest.mark.skip(reason="Web configuration error testing requires mocking internal factory methods which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify error handling through real configuration failure scenarios.")
-async def test_web_cache_service_handles_configuration_errors_appropriately(self):
-    """
-    Test that get_web_cache_service() handles web configuration errors with appropriate error reporting.
-    
-    Verifies:
-        Web cache configuration errors are handled with clear error context
-        
-    Business Impact:
-        Enables troubleshooting of web cache configuration issues
-        
-    Scenario:
-        Given: Invalid configuration for web cache requirements
-        When: get_web_cache_service() attempts web cache creation
-        Then: ConfigurationError is raised with web-specific error context
-        And: Error context indicates web cache requirements and validation failures
-        And: Error provides guidance for web cache configuration correction
-        
-    Web Configuration Error Handling:
-        - Web-specific configuration validation errors clearly reported
-        - Error context includes web application requirements and constraints
-        - Configuration guidance specific to web cache optimization
-        - Error handling prevents invalid web cache deployment
-        - Error messages enable effective web cache troubleshooting
-        
-    Fixtures Used:
-        - Invalid configuration scenarios for web cache testing
-        
-    Web Configuration Safety:
-        Web cache configuration errors prevent deployment with suboptimal web caching
-        
-    Related Tests:
-        - test_get_web_cache_service_creates_web_optimized_cache_instance()
-        - test_web_cache_service_provides_web_specific_error_context()
-    """
-    pass
-
-@pytest.mark.skip(reason="AI configuration validation testing requires mocking internal factory validation logic which would violate behavior-driven testing principles. This test should be replaced with integration tests that verify validation through real configuration scenarios.")
-async def test_ai_cache_service_validates_required_ai_configuration(self):
-    """
-    Test that get_ai_cache_service() validates that required AI configuration is present.
-    
-    Verifies:
-        AI cache service ensures AI features are properly configured before creation
-        
-    Business Impact:
-        Prevents AI applications from running with non-functional AI cache configuration
-        
-    Scenario:
-        Given: CacheConfig missing required AI configuration features
-        When: get_ai_cache_service() attempts AI cache creation
-        Then: ConfigurationError is raised indicating missing AI configuration
-        And: Error context specifies required AI configuration parameters
-        And: Error provides guidance for enabling AI cache features
-        
-    AI Configuration Validation Verified:
-        - Missing AI configuration causes ConfigurationError with specific context
-        - AI feature requirements clearly specified in error messages
-        - Configuration validation prevents AI applications with incomplete AI cache
-        - Error context includes guidance for enabling AI cache features
-        - Validation ensures AI cache functionality before application use
-        
-    Fixtures Used:
-        - mock_cache_config_basic: Configuration without AI features for validation
-        - Mock factory configured to validate AI requirements
-        
-    AI Configuration Safety:
-        AI configuration validation ensures functional AI cache deployment
-        
-    Related Tests:
-        - test_get_ai_cache_service_creates_ai_optimized_cache_instance()
-        - test_ai_cache_service_provides_ai_specific_error_context()
-    """
-    pass
-
-@pytest.mark.skip(reason="Error handling testing for fallback and conditional dependencies requires simulating internal error conditions which would require extensive mocking of system boundaries. This test should be replaced with integration tests that verify error handling through real failure scenarios.")
-async def test_fallback_and_conditional_dependencies_handle_errors_gracefully(self):
-    """
-    Test that fallback and conditional dependencies handle errors gracefully with appropriate fallback behavior.
-    
-    Verifies:
-        Error scenarios in fallback and conditional dependencies maintain application stability
-        
-    Business Impact:
-        Ensures application resilience during cache configuration or infrastructure errors
-        
-    Scenario:
-        Given: Error conditions in cache creation or parameter validation
-        When: Fallback or conditional cache dependencies encounter errors
-        Then: Graceful error handling maintains cache functionality when possible
-        And: Fallback behavior activates appropriately during error conditions
-        And: Error context provides useful information for troubleshooting
-        
-    Graceful Error Handling Verified:
-        - Infrastructure errors trigger appropriate fallback behavior
-        - Invalid parameters handled with clear validation error messages
-        - Cache creation failures result in fallback to memory cache when appropriate
-        - Error context includes specific failure information for debugging
-        - Application stability maintained during various error scenarios
-        
-    Fixtures Used:
-        - Error scenarios for fallback and conditional dependency testing
-        
-    Application Resilience:
-        Error handling in dependencies maintains application stability during failures
-        
-    Related Tests:
-        - test_get_fallback_cache_service_always_returns_memory_cache()
-        - test_get_cache_service_conditional_selects_cache_based_on_parameters()
-    """
-    pass
-
-@pytest.mark.skip(reason="Replace with integration test using real components")
-def test_build_key_remains_functional_during_redis_failures(self):
-    """
-    Test that build_key continues working even when Redis is unavailable.
-    
-    Verifies:
-        Key generation doesn't depend on Redis connectivity and remains functional
-        
-    Business Impact:
-        Domain services can generate cache keys even during Redis outages
-        
-    Scenario:
-        Given: AI cache with Redis connectivity issues
-        When: build_key is called during Redis failure
-        Then: Key generation completes successfully using CacheKeyGenerator
-        And: Generated keys maintain consistency for future cache operations
-        And: Performance monitor records key generation timing (independent of Redis)
-        And: Domain services can prepare for cache operations when Redis recovers
-        
-    Key Generation Resilience Verified:
-        - build_key() operates independently of Redis connection status
-        - Key generation maintains consistency during Redis outages
-        - Performance monitoring continues for key generation operations
-        - Generated keys remain valid for future cache operations
-        
-    Fixtures Used:
-        - None
-        
-    Infrastructure Independence:
-        Key generation provides consistent behavior regardless of Redis status
-        
-    Related Tests:
-        - test_standard_cache_set_handles_infrastructure_error_gracefully()
-        - test_standard_cache_get_handles_infrastructure_error_gracefully()
-    """
-    pass
-
-@pytest.mark.skip(reason="Replace with integration test using real components")
-async def test_validate_connection_security_assesses_secure_connection_accurately(self, mock_path_exists):
-    """
-    Test that validate_connection_security accurately assesses secure Redis connections.
-    
-    Verifies:
-        Security validation correctly identifies and scores secure connection configurations
-        
-    Business Impact:
-        Enables accurate security posture assessment for compliance and monitoring
-        
-    Scenario:
-        Given: Redis connection with comprehensive security features enabled
-        When: validate_connection_security() is called with secure connection
-        Then: SecurityValidationResult indicates secure connection status
-        And: Security score reflects high security level based on enabled features
-        And: Minimal vulnerabilities and appropriate recommendations provided
-        
-    Secure Connection Assessment:
-        - TLS encryption properly detected and scored in security assessment
-        - Authentication methods (AUTH/ACL) properly detected and scored
-        - Certificate validation status properly assessed and included
-        - Overall security score reflects comprehensive security implementation
-        - Security recommendations focus on optimization rather than critical fixes
-        
-    Fixtures Used:
-        - mock_redis_connection_secure: Connection with security features
-        - sample_security_validation_result: Expected secure assessment results
-        
-    Accurate Assessment:
-        Security validation provides reliable assessment of actual connection security
-        
-    Related Tests:
-        - test_validate_connection_security_identifies_vulnerabilities()
-        - test_security_scoring_reflects_configuration_strength()
-    """
-    # Mock certificate files exist
-    mock_path_exists.return_value = True
-    
-    # Given: Redis connection with comprehensive security features enabled
-    config = SecurityConfig(
-        redis_auth="secure-password",
-        use_tls=True,
-        tls_cert_path="/etc/ssl/redis.crt",
-        acl_username="secure_user",
-        acl_password="secure_password",
-        verify_certificates=True
-    )
-    manager = RedisCacheSecurityManager(config)
-    
-    # Mock secure Redis client
-    import fakeredis.aioredis
-    
-    class ExtendedFakeRedis(fakeredis.aioredis.FakeRedis):
-        """Extended FakeRedis with additional commands needed for testing."""
-        
-        async def info(self, section=None):
-            """Mock implementation of Redis INFO command."""
-            return {
-                "redis_version": "6.2.0",
-                "redis_mode": "standalone",
-                "os": "Linux 4.9.0-7-amd64 x86_64",
-                "arch_bits": "64",
-                "used_memory": "1000000",
-                "role": "master"
+    @pytest.mark.asyncio
+    async def test_cache_shared_contract_data_types(self, cache_instances):
+        """
+        Shared contract test for data type handling across implementations.
+        
+        Verifies that all cache implementations handle various Python data types
+        consistently, ensuring serialization/deserialization behavior is equivalent.
+        """
+        test_data = {
+            "string": "test string value",
+            "integer": 42,
+            "float": 3.14159,
+            "boolean": True,
+            "none": None,
+            "list": [1, 2, 3, "mixed", {"nested": True}],
+            "dict": {
+                "nested": {"deeply": {"nested": "value"}},
+                "numbers": [1, 2, 3],
+                "mixed": True
             }
-    
-    fake_redis_client = ExtendedFakeRedis(decode_responses=False)
-    
-    # When: validate_connection_security() is called with secure connection
-    result = await manager.validate_connection_security(fake_redis_client)
-    
-    # Then: SecurityValidationResult indicates secure connection status
-    assert isinstance(result, SecurityValidationResult)
-    
-    # And: Security score reflects high security level based on enabled features
-    assert result.security_score >= 80  # High security score
-    assert result.is_secure is True
-    
-    # And: Authentication methods properly detected
-    assert result.auth_configured is True
-    assert result.acl_enabled is True
-    assert result.auth_method == "ACL"
-    
-    # And: TLS encryption properly detected
-    assert result.tls_enabled is True
-    assert result.connection_encrypted is True
-    assert result.certificate_valid is True
-    
-    # And: Minimal vulnerabilities for secure configuration
-    assert len(result.vulnerabilities) == 0  # No vulnerabilities expected for secure config
-    
-    # And: Appropriate recommendations provided
-    assert len(result.recommendations) > 0  # Should have optimization recommendations
+        }
+        
+        for cache_name, cache in cache_instances:
+            for data_type, test_value in test_data.items():
+                # Given: A cache implementation and various data types
+                test_key = f"contract:types:{cache_name}:{data_type}"
+                
+                # When: Storing and retrieving different data types
+                await cache.set(test_key, test_value)
+                retrieved = await cache.get(test_key)
+                
+                # Then: All implementations must preserve data integrity
+                assert retrieved == test_value, f"Data type {data_type} failed for {cache_name}"
+                
+                # Cleanup
+                await cache.delete(test_key)
+                
+    @pytest.mark.asyncio
+    async def test_cache_shared_contract_interface_compliance(self, cache_instances):
+        """
+        Shared contract test for CacheInterface compliance across implementations.
+        
+        Verifies that all cache implementations expose the required interface methods
+        and that these methods are callable with the expected signatures.
+        """
+        required_methods = ['get', 'set', 'delete', 'exists']
+        
+        for cache_name, cache in cache_instances:
+            # Then: All implementations must expose required interface methods
+            for method_name in required_methods:
+                assert hasattr(cache, method_name), f"Method {method_name} missing from {cache_name}"
+                assert callable(getattr(cache, method_name)), f"Method {method_name} not callable in {cache_name}"
+                
+    @pytest.mark.asyncio
+    async def test_factory_assembled_cache_shared_contract(self, cache_instances_via_factory):
+        """
+        Demonstration test using the factory-based fixture for broader scope testing.
+        
+        This test demonstrates the alternative approach that includes factory assembly
+        logic in the contract testing. It tests the same behavioral contract but with
+        broader coverage of the service creation pipeline.
+        
+        Use this approach when you want to validate that the CacheFactory correctly
+        assembles cache services that adhere to the same behavioral contracts.
+        """
+        for cache_name, cache in cache_instances_via_factory:
+            # Given: A factory-assembled cache implementation and test data
+            test_key = f"factory_contract:basic:{cache_name}"
+            test_value = {"cache_type": cache_name, "assembled_by": "factory", "contract_test": True}
+            
+            # When: Performing basic operations on factory-assembled cache
+            await cache.set(test_key, test_value)
+            retrieved = await cache.get(test_key)
+            exists_before_delete = await cache.exists(test_key)
+            
+            await cache.delete(test_key)
+            exists_after_delete = await cache.exists(test_key)
+            retrieved_after_delete = await cache.get(test_key)
+            
+            # Then: Factory-assembled caches must behave identically to directly instantiated ones
+            assert retrieved == test_value, f"Factory get() failed for {cache_name}"
+            assert exists_before_delete is True, f"Factory exists() before delete failed for {cache_name}"
+            assert exists_after_delete is False, f"Factory exists() after delete failed for {cache_name}"
+            assert retrieved_after_delete is None, f"Factory get() after delete failed for {cache_name}"
