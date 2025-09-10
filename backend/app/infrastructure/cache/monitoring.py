@@ -321,6 +321,7 @@ class CachePerformanceMonitor:
         )
 
         self.key_generation_times.append(metric)
+        # Enforce retention and count limits during recording for memory efficiency
         self._cleanup_old_measurements(self.key_generation_times)
 
         # Log warning if performance is poor
@@ -362,10 +363,11 @@ class CachePerformanceMonitor:
         )
 
         self.cache_operation_times.append(metric)
+        # Enforce retention and count limits during recording for memory efficiency
         self._cleanup_old_measurements(self.cache_operation_times)
-
         # Update cache hit/miss statistics
         self.total_operations += 1
+        # Only 'get' operations contribute to hit/miss effectiveness metrics
         if operation == "get":
             if cache_hit:
                 self.cache_hits += 1
@@ -414,6 +416,7 @@ class CachePerformanceMonitor:
         )
 
         self.compression_ratios.append(metric)
+        # Enforce retention and count limits during recording for memory efficiency
         self._cleanup_old_measurements(self.compression_ratios)
 
         savings = original_size - compressed_size
@@ -483,6 +486,7 @@ class CachePerformanceMonitor:
         )
 
         self.memory_usage_measurements.append(metric)
+        # Enforce retention and count limits during recording for memory efficiency
         self._cleanup_old_measurements(self.memory_usage_measurements)
 
         # Log warnings based on memory usage
@@ -535,6 +539,7 @@ class CachePerformanceMonitor:
         )
 
         self.invalidation_events.append(metric)
+        # Enforce retention and count limits during recording for memory efficiency
         self._cleanup_old_measurements(self.invalidation_events)
 
         # Update overall invalidation statistics
@@ -1242,61 +1247,68 @@ class CachePerformanceMonitor:
         """
         slow_ops: Dict[str, List[Any]] = {"key_generation": [], "cache_operations": [], "compression": []}
 
+        # Use a robust baseline average that reduces outlier influence by
+        # averaging only the lowest 80% of values.
+        def _baseline_average(values: List[float]) -> float:
+            if not values:
+                return 0.0
+            values_sorted = sorted(values)
+            cutoff = max(1, int(len(values_sorted) * 0.8))
+            baseline_slice = values_sorted[:cutoff]
+            return sum(baseline_slice) / len(baseline_slice)
+
         # Analyze key generation times
         if self.key_generation_times:
-            avg_duration = mean([m.duration for m in self.key_generation_times])
-            threshold = avg_duration * threshold_multiplier
+            durations = [m.duration for m in self.key_generation_times]
+            baseline = _baseline_average(durations)
+            threshold = baseline * threshold_multiplier
 
             for metric in self.key_generation_times:
-                if metric.duration > threshold:
+                if metric.duration >= threshold:
                     slow_ops["key_generation"].append(
                         {
                             "duration": metric.duration,
                             "text_length": metric.text_length,
                             "operation_type": metric.operation_type,
-                            "timestamp": datetime.fromtimestamp(
-                                metric.timestamp
-                            ).isoformat(),
-                            "times_slower": metric.duration / avg_duration,
+                            "timestamp": datetime.fromtimestamp(metric.timestamp).isoformat(),
+                            "times_slower": (metric.duration / baseline) if baseline > 0 else float("inf"),
                         }
                     )
 
         # Analyze cache operations
         if self.cache_operation_times:
-            avg_duration = mean([m.duration for m in self.cache_operation_times])
-            threshold = avg_duration * threshold_multiplier
+            durations = [m.duration for m in self.cache_operation_times]
+            baseline = _baseline_average(durations)
+            threshold = baseline * threshold_multiplier
 
             for metric in self.cache_operation_times:
-                if metric.duration > threshold:
+                if metric.duration >= threshold:
                     slow_ops["cache_operations"].append(
                         {
                             "duration": metric.duration,
                             "operation_type": metric.operation_type,
                             "text_length": metric.text_length,
-                            "timestamp": datetime.fromtimestamp(
-                                metric.timestamp
-                            ).isoformat(),
-                            "times_slower": metric.duration / avg_duration,
+                            "timestamp": datetime.fromtimestamp(metric.timestamp).isoformat(),
+                            "times_slower": (metric.duration / baseline) if baseline > 0 else float("inf"),
                         }
                     )
 
         # Analyze compression times
         if self.compression_ratios:
-            avg_duration = mean([m.compression_time for m in self.compression_ratios])
-            threshold = avg_duration * threshold_multiplier
+            comp_times = [m.compression_time for m in self.compression_ratios]
+            baseline = _baseline_average(comp_times)
+            threshold = baseline * threshold_multiplier
 
             for compression_metric in self.compression_ratios:
-                if compression_metric.compression_time > threshold:
+                if compression_metric.compression_time >= threshold:
                     slow_ops["compression"].append(
                         {
                             "compression_time": compression_metric.compression_time,
                             "original_size": compression_metric.original_size,
                             "compression_ratio": compression_metric.compression_ratio,
                             "operation_type": compression_metric.operation_type,
-                            "timestamp": datetime.fromtimestamp(
-                                compression_metric.timestamp
-                            ).isoformat(),
-                            "times_slower": compression_metric.compression_time / avg_duration,
+                            "timestamp": datetime.fromtimestamp(compression_metric.timestamp).isoformat(),
+                            "times_slower": (compression_metric.compression_time / baseline) if baseline > 0 else float("inf"),
                         }
                     )
 
