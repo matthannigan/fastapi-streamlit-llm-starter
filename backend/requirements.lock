@@ -28,9 +28,9 @@ attrs==25.3.0
     # via
     #   jsonschema
     #   referencing
-boto3==1.40.23
+boto3==1.40.27
     # via pydantic-ai-slim
-botocore==1.40.23
+botocore==1.40.27
     # via
     #   boto3
     #   s3transfer
@@ -58,6 +58,8 @@ distro==1.9.0
     #   anthropic
     #   groq
     #   openai
+docker==7.1.0
+    # via testcontainers
 eval-type-backport==0.2.2
     # via
     #   mistralai
@@ -80,11 +82,11 @@ google-auth==2.40.3
     # via
     #   google-genai
     #   pydantic-ai-slim
-google-genai==1.32.0
+google-genai==1.35.0
     # via pydantic-ai-slim
-griffe==1.13.0
+griffe==1.14.0
     # via pydantic-ai-slim
-groq==0.31.0
+groq==0.31.1
     # via pydantic-ai-slim
 h11==0.16.0
     # via
@@ -137,9 +139,9 @@ jsonschema==4.25.1
     # via
     #   -r requirements.txt
     #   mcp
-jsonschema-specifications==2025.4.1
+jsonschema-specifications==2025.9.1
     # via jsonschema
-logfire-api==4.3.6
+logfire-api==4.5.0
     # via
     #   pydantic-evals
     #   pydantic-graph
@@ -151,7 +153,7 @@ mdurl==0.1.2
     # via markdown-it-py
 mistralai==1.9.10
     # via pydantic-ai-slim
-openai==1.105.0
+openai==1.107.0
     # via pydantic-ai-slim
 opentelemetry-api==1.36.0
     # via
@@ -212,7 +214,7 @@ pygments==2.19.2
     # via
     #   pytest
     #   rich
-pytest==8.4.1
+pytest==8.4.2
     # via
     #   -r requirements.txt
     #   pytest-asyncio
@@ -229,6 +231,7 @@ python-dotenv==1.1.1
     # via
     #   -r requirements.txt
     #   pydantic-settings
+    #   testcontainers
     #   uvicorn
 python-multipart==0.0.20
     # via
@@ -252,6 +255,7 @@ requests==2.32.5
     # via
     #   -r requirements.txt
     #   cohere
+    #   docker
     #   google-genai
     #   huggingface-hub
     #   pydantic-ai-slim
@@ -265,7 +269,7 @@ rpds-py==0.27.1
     #   referencing
 rsa==4.9.1
     # via google-auth
-s3transfer==0.13.1
+s3transfer==0.14.0
     # via boto3
 six==1.17.0
     # via python-dateutil
@@ -288,6 +292,8 @@ tenacity==9.1.2
     # via
     #   -r requirements.txt
     #   google-genai
+testcontainers==4.13.0
+    # via -r requirements.txt
 tokenizers==0.22.0
     # via cohere
 tqdm==4.67.1
@@ -308,6 +314,7 @@ typing-extensions==4.15.0
     #   opentelemetry-api
     #   pydantic
     #   pydantic-core
+    #   testcontainers
     #   typing-inspection
 typing-inspection==0.4.1
     # via
@@ -319,7 +326,9 @@ typing-inspection==0.4.1
 urllib3==2.5.0
     # via
     #   botocore
+    #   docker
     #   requests
+    #   testcontainers
     #   types-requests
 uvicorn[standard]==0.24.0.post1
     # via
@@ -335,5 +344,7 @@ websockets==15.0.1
     # via
     #   google-genai
     #   uvicorn
+wrapt==1.17.3
+    # via testcontainers
 zipp==3.23.0
     # via importlib-metadata
