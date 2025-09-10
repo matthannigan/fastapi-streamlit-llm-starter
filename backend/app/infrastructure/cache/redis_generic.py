@@ -56,7 +56,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing-only imports
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-from app.core.exceptions import InfrastructureError
+from app.core.exceptions import InfrastructureError, ConfigurationError
 
 # Optional security imports for production environments
 try:
@@ -123,6 +123,27 @@ class GenericRedisCache(CacheInterface):
         security_config: Optional["SecurityConfig"] = None,
         fail_on_connection_error: bool = False,
     ):
+        # Validate parameters per public contract
+        if not isinstance(default_ttl, int):
+            raise ConfigurationError("default_ttl must be an integer", {"default_ttl": default_ttl})
+        if not (1 <= default_ttl <= 86400):
+            raise ConfigurationError("default_ttl must be between 1 and 86400 seconds", {"default_ttl": default_ttl})
+        
+        if not isinstance(l1_cache_size, int):
+            raise ConfigurationError("l1_cache_size must be an integer", {"l1_cache_size": l1_cache_size})
+        if not (0 <= l1_cache_size <= 10000):  # 0 allows disabling L1 cache
+            raise ConfigurationError("l1_cache_size must be between 0 and 10000 entries", {"l1_cache_size": l1_cache_size})
+        
+        if not isinstance(compression_level, int):
+            raise ConfigurationError("compression_level must be an integer", {"compression_level": compression_level})
+        if not (1 <= compression_level <= 9):
+            raise ConfigurationError("compression_level must be between 1 and 9", {"compression_level": compression_level})
+        
+        if not isinstance(compression_threshold, int):
+            raise ConfigurationError("compression_threshold must be an integer", {"compression_threshold": compression_threshold})
+        if not (100 <= compression_threshold <= 100000):
+            raise ConfigurationError("compression_threshold must be between 100 and 100000 bytes", {"compression_threshold": compression_threshold})
+
         self.redis_url = redis_url
         self.default_ttl = default_ttl
         self.enable_l1_cache = enable_l1_cache
@@ -132,7 +153,7 @@ class GenericRedisCache(CacheInterface):
         self.redis: Optional["RedisClient"] = None
 
         self.l1_cache: Optional[InMemoryCache] = None
-        if self.enable_l1_cache:
+        if self.enable_l1_cache and l1_cache_size > 0:
             self.l1_cache = InMemoryCache(
                 default_ttl=default_ttl, max_size=l1_cache_size, fail_on_connection_error=fail_on_connection_error
             )
