@@ -1306,39 +1306,3 @@ class TestCachePresetManagerValidation:
             assert 'name' in details, f"Preset '{preset_name}' details should include name"
             assert 'description' in details, f"Preset '{preset_name}' details should include description"
             assert len(details['description']) > 10, f"Preset '{preset_name}' should have descriptive description"
-
-    def test_cache_preset_manager_get_preset_details_provides_specific_preset_information(self):
-        """
-        Test that get_preset_details() provides detailed information about specific presets.
-        
-        Verifies:
-            Detailed preset information supports configuration understanding and customization
-            
-        Business Impact:
-            Enables deep understanding of preset configurations for customization decisions
-            
-        Scenario:
-            Given: CachePresetManager with specific preset selection
-            When: get_preset_details() is called for specific preset
-            Then: Detailed preset information is returned
-            And: Parameter values and rationale are explained
-            And: Environment applicability is clearly described
-            And: Customization guidance is provided
-            
-        Detailed Preset Information Verified:
-            - Complete parameter configuration is detailed
-            - Parameter rationale and optimization reasoning is explained
-            - Environment context and applicability is described
-            - Customization recommendations are provided where appropriate
-            
-        Fixtures Used:
-            - None (testing preset detail generation directly)
-            
-        Configuration Understanding Verified:
-            Detailed preset information enables informed customization and deployment decisions
-            
-        Related Tests:
-            - test_preset_details_explain_parameter_optimization_reasoning()
-            - test_preset_details_provide_customization_guidance()
-        """
-        pass
