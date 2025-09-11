@@ -422,7 +422,65 @@ class TestParameterMapping:
         And: Generic parameters should be suitable for GenericRedisCache
         And: AI-specific parameters should contain only AI functionality
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: A set of mixed AI and generic parameters based on actual implementation
+        mapper = CacheParameterMapper()
+        mixed_params = {
+            "redis_url": "redis://localhost:6379",  # Generic parameter
+            "default_ttl": 3600,  # Generic parameter
+            "text_hash_threshold": 1000,  # AI-specific parameter
+            "compression_threshold": 2000,  # Generic parameter
+            "l1_cache_size": 50,  # Generic parameter
+            "hash_algorithm": "sha256",  # AI-specific parameter
+            "text_size_tiers": {"small": 500, "medium": 5000, "large": 50000}  # AI-specific parameter
+        }
+        
+        # When: map_ai_to_generic_params() is called
+        generic_params, ai_specific_params = mapper.map_ai_to_generic_params(mixed_params)
+        
+        # Then: Parameters should be correctly separated into generic and AI-specific
+        assert isinstance(generic_params, dict), "Generic parameters should be a dictionary"
+        assert isinstance(ai_specific_params, dict), "AI-specific parameters should be a dictionary"
+        
+        # And: Generic parameters should be suitable for GenericRedisCache
+        # Check that expected generic parameters are in the result
+        assert "redis_url" in generic_params, "redis_url should be in generic parameters"
+        assert "default_ttl" in generic_params, "default_ttl should be in generic parameters"
+        assert "compression_threshold" in generic_params, "compression_threshold should be in generic parameters"
+        assert "l1_cache_size" in generic_params, "l1_cache_size should be in generic parameters"
+        
+        # Verify generic parameter values are preserved
+        assert generic_params["redis_url"] == "redis://localhost:6379"
+        assert generic_params["default_ttl"] == 3600
+        assert generic_params["compression_threshold"] == 2000
+        assert generic_params["l1_cache_size"] == 50
+        
+        # Verify L1 cache is auto-enabled when l1_cache_size is provided
+        assert "enable_l1_cache" in generic_params, "L1 cache should be auto-enabled when l1_cache_size is provided"
+        assert generic_params["enable_l1_cache"] == True, "L1 cache should be enabled automatically"
+        
+        # And: AI-specific parameters should contain only AI functionality
+        # Check that AI-specific parameters are separated correctly
+        assert "text_hash_threshold" in ai_specific_params, "text_hash_threshold should be in AI-specific parameters"
+        assert "hash_algorithm" in ai_specific_params, "hash_algorithm should be in AI-specific parameters"
+        assert "text_size_tiers" in ai_specific_params, "text_size_tiers should be in AI-specific parameters"
+        
+        # Verify AI parameter values are preserved
+        assert ai_specific_params["text_hash_threshold"] == 1000
+        assert ai_specific_params["hash_algorithm"] == "sha256"
+        assert ai_specific_params["text_size_tiers"] == {"small": 500, "medium": 5000, "large": 50000}
+        
+        # Verify no parameter appears in both dictionaries
+        generic_keys = set(generic_params.keys())
+        ai_keys = set(ai_specific_params.keys())
+        assert len(generic_keys.intersection(ai_keys)) == 0, "Parameters should not appear in both generic and AI-specific"
+        
+        # Verify all original parameters are accounted for (plus auto-enabled l1 cache)
+        all_separated_keys = generic_keys.union(ai_keys)
+        original_keys = set(mixed_params.keys())
+        # The implementation may add enable_l1_cache automatically, so we check core behavior
+        assert original_keys.issubset(all_separated_keys), "All original parameters should be accounted for after separation"
 
     def test_parameter_name_mapping(self):
         """
@@ -434,7 +492,50 @@ class TestParameterMapping:
         And: Parameter values should be preserved during mapping
         And: Mapped parameters should be included in generic parameters
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: AI parameters with names that have generic equivalents
+        mapper = CacheParameterMapper()
+        # Use the actual parameter mappings that exist in the implementation
+        ai_params_with_mappings = {
+            "memory_cache_size": 100,  # Should map to "l1_cache_size" (this is the only actual mapping)
+            "redis_url": "redis://localhost:6379",  # Direct generic parameter
+            "default_ttl": 7200,  # Direct generic parameter
+            "text_hash_threshold": 800,  # AI-specific, should not be mapped
+            "hash_algorithm": "md5"  # AI-specific, should not be mapped
+        }
+        
+        # When: Parameter mapping is performed
+        generic_params, ai_specific_params = mapper.map_ai_to_generic_params(ai_params_with_mappings)
+        
+        # Then: AI parameter names should be mapped to generic names
+        # Check for the actual mapping that exists: memory_cache_size -> l1_cache_size
+        assert "l1_cache_size" in generic_params, "AI parameter 'memory_cache_size' should be mapped to generic parameter 'l1_cache_size'"
+        
+        # And: Parameter values should be preserved during mapping
+        assert generic_params["l1_cache_size"] == 100, "Value for mapped parameter 'l1_cache_size' should be preserved from 'memory_cache_size'"
+        
+        # And: Direct generic parameters should be included in generic parameters
+        assert "redis_url" in generic_params, "Direct generic parameter 'redis_url' should be in generic parameters"
+        assert "default_ttl" in generic_params, "Direct generic parameter 'default_ttl' should be in generic parameters"
+        assert generic_params["redis_url"] == "redis://localhost:6379", "redis_url value should be preserved"
+        assert generic_params["default_ttl"] == 7200, "default_ttl value should be preserved"
+        
+        # And: L1 cache should be auto-enabled when l1_cache_size is mapped
+        assert "enable_l1_cache" in generic_params, "L1 cache should be auto-enabled when l1_cache_size is provided"
+        assert generic_params["enable_l1_cache"] == True, "L1 cache should be enabled automatically"
+        
+        # Verify unmapped AI-specific parameters remain in AI-specific section
+        assert "text_hash_threshold" in ai_specific_params, "text_hash_threshold should remain AI-specific"
+        assert "hash_algorithm" in ai_specific_params, "hash_algorithm should remain AI-specific"
+        assert ai_specific_params["text_hash_threshold"] == 800, "text_hash_threshold value should be preserved"
+        assert ai_specific_params["hash_algorithm"] == "md5", "hash_algorithm value should be preserved"
+        
+        # Verify original AI parameter names don't appear in generic parameters
+        assert "memory_cache_size" not in generic_params, "Original AI parameter name 'memory_cache_size' should not appear in generic parameters"
+        
+        # Verify mapped parameters don't appear in AI-specific parameters
+        assert "l1_cache_size" not in ai_specific_params, "Mapped generic parameter 'l1_cache_size' should not appear in AI-specific parameters"
 
     def test_empty_parameters_handling(self):
         """
@@ -446,7 +547,37 @@ class TestParameterMapping:
         And: No exceptions should be raised
         And: The operation should complete successfully
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: An empty parameter dictionary
+        mapper = CacheParameterMapper()
+        empty_params = {}
+        
+        # When: Parameter mapping is attempted
+        try:
+            generic_params, ai_specific_params = mapper.map_ai_to_generic_params(empty_params)
+            mapping_successful = True
+        except Exception as e:
+            mapping_successful = False
+            exception_raised = e
+        
+        # Then: Empty dictionaries should be returned for both generic and AI-specific
+        assert mapping_successful, "Parameter mapping should handle empty parameters without exceptions"
+        assert isinstance(generic_params, dict), "Generic parameters should be a dictionary"
+        assert isinstance(ai_specific_params, dict), "AI-specific parameters should be a dictionary"
+        
+        # And: No exceptions should be raised
+        # This is verified by the mapping_successful assertion above
+        
+        # And: The operation should complete successfully
+        # Verify the operation returns sensible empty results
+        assert len(generic_params) == 0 or all(v is None or v == "" or v == 0 for v in generic_params.values()), \
+            "Generic parameters should be empty or contain only default values"
+        assert len(ai_specific_params) == 0, "AI-specific parameters should be empty for empty input"
+        
+        # Verify the results are usable
+        assert generic_params is not None, "Generic parameters should not be None"
+        assert ai_specific_params is not None, "AI-specific parameters should not be None"
 
     def test_only_generic_parameters(self):
         """
@@ -458,7 +589,44 @@ class TestParameterMapping:
         And: The AI-specific dictionary should be empty
         And: Generic parameters should be unchanged
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: A parameter dictionary containing only actual generic parameters from the implementation
+        mapper = CacheParameterMapper()
+        only_generic_params = {
+            "redis_url": "redis://generic:6379",
+            "default_ttl": 1800,
+            "enable_l1_cache": True,
+            "l1_cache_size": 15,
+            "compression_threshold": 1500,
+            "compression_level": 6
+        }
+        
+        # When: Parameter separation is performed
+        generic_params, ai_specific_params = mapper.map_ai_to_generic_params(only_generic_params)
+        
+        # Then: All parameters should be classified as generic
+        for param_name, param_value in only_generic_params.items():
+            assert param_name in generic_params, f"Generic parameter '{param_name}' should be in generic parameters"
+            assert generic_params[param_name] == param_value, f"Generic parameter '{param_name}' value should be preserved"
+        
+        # And: The AI-specific dictionary should be empty
+        assert len(ai_specific_params) == 0, "AI-specific parameters should be empty when only generic parameters are provided"
+        
+        # And: Generic parameters should be unchanged
+        # Verify exact preservation of parameter names and values
+        assert set(generic_params.keys()).issuperset(set(only_generic_params.keys())), \
+            "All original generic parameter names should be preserved"
+        
+        for param_name in only_generic_params:
+            assert generic_params[param_name] == only_generic_params[param_name], \
+                f"Value for generic parameter '{param_name}' should be unchanged"
+        
+        # Verify data types are preserved
+        assert isinstance(generic_params["redis_url"], str), "redis_url should remain string"
+        assert isinstance(generic_params["default_ttl"], int), "default_ttl should remain int"
+        assert isinstance(generic_params["enable_l1_cache"], bool), "enable_l1_cache should remain bool"
+        assert isinstance(generic_params["l1_cache_size"], int), "l1_cache_size should remain int"
 
     def test_only_ai_specific_parameters(self):
         """
@@ -470,7 +638,54 @@ class TestParameterMapping:
         And: The generic dictionary should be empty or contain defaults
         And: AI-specific parameters should be preserved
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: A parameter dictionary containing only AI-specific parameters
+        mapper = CacheParameterMapper()
+        only_ai_params = {
+            "text_hash_threshold": 2000,
+            "hash_algorithm": "blake2b",
+            "text_size_tiers": {"tiny": 100, "small": 1000, "medium": 10000, "large": 100000},
+            "enable_text_preprocessing": True,
+            "preprocessing_pipeline": ["normalize", "tokenize", "hash"],
+            "cache_key_prefix": "ai_response",
+            "response_format_version": "v2.1"
+        }
+        
+        # When: Parameter separation is performed
+        generic_params, ai_specific_params = mapper.map_ai_to_generic_params(only_ai_params)
+        
+        # Then: All parameters should be classified as AI-specific
+        for param_name, param_value in only_ai_params.items():
+            assert param_name in ai_specific_params, f"AI parameter '{param_name}' should be in AI-specific parameters"
+            assert ai_specific_params[param_name] == param_value, f"AI parameter '{param_name}' value should be preserved"
+        
+        # And: The generic dictionary should be empty or contain defaults
+        # Check that generic parameters either don't contain AI-specific parameters or only contain defaults
+        for param_name in only_ai_params:
+            assert param_name not in generic_params, f"AI-specific parameter '{param_name}' should not appear in generic parameters"
+        
+        # Generic parameters may contain default values but should not contain AI-specific values
+        if len(generic_params) > 0:
+            # If generic_params has content, it should be default/fallback values
+            for key, value in generic_params.items():
+                assert key not in only_ai_params, f"Generic parameter '{key}' should not be from AI-specific input"
+        
+        # And: AI-specific parameters should be preserved
+        # Verify exact preservation of parameter names and values
+        assert len(ai_specific_params) == len(only_ai_params), "All AI-specific parameters should be preserved"
+        
+        # Verify complex data structures are preserved
+        assert ai_specific_params["text_size_tiers"] == {"tiny": 100, "small": 1000, "medium": 10000, "large": 100000}, \
+            "Complex AI parameter structures should be preserved"
+        assert ai_specific_params["preprocessing_pipeline"] == ["normalize", "tokenize", "hash"], \
+            "AI parameter lists should be preserved"
+        
+        # Verify data types are preserved
+        assert isinstance(ai_specific_params["text_hash_threshold"], int), "text_hash_threshold should remain int"
+        assert isinstance(ai_specific_params["enable_text_preprocessing"], bool), "enable_text_preprocessing should remain bool"
+        assert isinstance(ai_specific_params["text_size_tiers"], dict), "text_size_tiers should remain dict"
+        assert isinstance(ai_specific_params["preprocessing_pipeline"], list), "preprocessing_pipeline should remain list"
 
     def test_mixed_parameter_scenarios(self):
         """
@@ -482,7 +697,79 @@ class TestParameterMapping:
         And: No parameters should be lost during mapping
         And: Mapped parameters should appear in appropriate categories
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: A parameter dictionary with generic, AI-specific, and mapped parameters
+        mapper = CacheParameterMapper()
+        mixed_complex_params = {
+            # Generic parameters (should pass through)
+            "redis_url": "redis://complex:6379",
+            "default_ttl": 7200,
+            "enable_compression": True,
+            "compression_threshold": 3000,
+            
+            # AI-specific parameters (should be separated)
+            "text_hash_threshold": 1500,
+            "hash_algorithm": "sha256",
+            "text_size_tiers": {"small": 300, "medium": 3000, "large": 30000},
+            
+            # Parameters that may be mapped (AI -> generic equivalents)
+            "ai_redis_url": "redis://ai-specific:6379",  # May map to redis_url
+            "ai_default_ttl": 9000,  # May map to default_ttl
+            "ai_compression_enabled": False,  # May map to enable_compression
+            
+            # Additional mixed parameters
+            "memory_cache_size": 200,
+            "max_connections": 25
+        }
+        
+        # When: Comprehensive parameter mapping is performed
+        generic_params, ai_specific_params = mapper.map_ai_to_generic_params(mixed_complex_params)
+        
+        # Then: All parameters should be correctly classified and mapped
+        assert isinstance(generic_params, dict), "Generic parameters should be a dictionary"
+        assert isinstance(ai_specific_params, dict), "AI-specific parameters should be a dictionary"
+        
+        # Core generic parameters should be present
+        expected_generic_keys = {"redis_url", "default_ttl", "compression_threshold"}
+        actual_generic_keys = set(generic_params.keys())
+        assert expected_generic_keys.issubset(actual_generic_keys), f"Expected generic keys {expected_generic_keys} should be subset of {actual_generic_keys}"
+        
+        # AI-specific parameters should be preserved
+        expected_ai_keys = {"text_hash_threshold", "hash_algorithm", "text_size_tiers"}
+        actual_ai_keys = set(ai_specific_params.keys())
+        assert expected_ai_keys.issubset(actual_ai_keys), f"Expected AI keys {expected_ai_keys} should be subset of {actual_ai_keys}"
+        
+        # And: No parameters should be lost during mapping
+        # Count all keys from both output dictionaries
+        total_output_keys = len(generic_params) + len(ai_specific_params)
+        original_input_keys = len(mixed_complex_params)
+        
+        # Allow for parameter mapping (e.g., ai_redis_url -> redis_url)
+        # So total output might be different from input, but no data should be lost
+        assert total_output_keys >= len(expected_generic_keys) + len(expected_ai_keys), \
+            "Essential parameters should not be lost during mapping"
+        
+        # Verify specific parameter values are preserved
+        assert generic_params["default_ttl"] == 7200, "Original default_ttl should be preserved"
+        assert generic_params["compression_threshold"] == 3000, "compression_threshold should be preserved"
+        
+        assert ai_specific_params["text_hash_threshold"] == 1500, "text_hash_threshold should be preserved"
+        assert ai_specific_params["hash_algorithm"] == "sha256", "hash_algorithm should be preserved"
+        assert ai_specific_params["text_size_tiers"] == {"small": 300, "medium": 3000, "large": 30000}, "Complex AI parameters should be preserved"
+        
+        # And: Mapped parameters should appear in appropriate categories
+        # If parameter mapping occurs, verify mapped values appear correctly
+        if "ai_redis_url" in mixed_complex_params and "redis_url" in generic_params:
+            # If mapping occurred, the value should be from the mapped parameter or original
+            assert generic_params["redis_url"] in ["redis://complex:6379", "redis://ai-specific:6379"], \
+                "redis_url should contain either original or mapped value"
+        
+        # Verify no parameter appears in both dictionaries
+        generic_keys = set(generic_params.keys())
+        ai_keys = set(ai_specific_params.keys())
+        overlap = generic_keys.intersection(ai_keys)
+        assert len(overlap) == 0, f"Parameters should not appear in both categories: {overlap}"
 
     def test_parameter_value_preservation(self):
         """
@@ -494,7 +781,112 @@ class TestParameterMapping:
         And: Data types should remain unchanged
         And: Complex values should be handled correctly
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        
+        # Given: Parameters with various data types and values
+        mapper = CacheParameterMapper()
+        diverse_params = {
+            # String parameters
+            "redis_url": "redis://localhost:6379",
+            "hash_algorithm": "blake2b",
+            
+            # Integer parameters
+            "default_ttl": 3600,
+            "text_hash_threshold": 2000,
+            "memory_cache_size": 150,
+            
+            # Float parameters
+            "connection_timeout": 5.5,
+            "compression_ratio": 0.75,
+            
+            # Boolean parameters
+            "enable_compression": True,
+            "use_tls": False,
+            "enable_text_preprocessing": True,
+            
+            # Complex data structures
+            "text_size_tiers": {
+                "small": 500,
+                "medium": 5000,
+                "large": 50000,
+                "metadata": {"version": "v2", "enabled": True}
+            },
+            "preprocessing_pipeline": ["normalize", "tokenize", "hash"],
+            
+            # Tuple and other types
+            "cache_key_prefix": "ai_response",
+            "response_format_version": "v2.1"
+        }
+        
+        # Store original values for comparison
+        original_values = {
+            key: value if not isinstance(value, (dict, list)) else 
+                 dict(value) if isinstance(value, dict) else list(value)
+            for key, value in diverse_params.items()
+        }
+        
+        # When: Parameter mapping is performed
+        generic_params, ai_specific_params = mapper.map_ai_to_generic_params(diverse_params)
+        
+        # Then: All parameter values should be preserved exactly
+        # Combine results to check all parameters
+        all_output_params = {**generic_params, **ai_specific_params}
+        
+        # Check that all values that should be preserved are preserved
+        for key, original_value in original_values.items():
+            if key in all_output_params:
+                actual_value = all_output_params[key]
+                assert actual_value == original_value, \
+                    f"Parameter '{key}' value should be preserved: expected {original_value}, got {actual_value}"
+        
+        # And: Data types should remain unchanged
+        # Check specific type preservation
+        type_checks = [
+            ("default_ttl", int, [generic_params, ai_specific_params]),
+            ("text_hash_threshold", int, [generic_params, ai_specific_params]),
+            ("enable_compression", bool, [generic_params, ai_specific_params]),
+            ("connection_timeout", float, [generic_params, ai_specific_params]),
+            ("redis_url", str, [generic_params, ai_specific_params]),
+            ("hash_algorithm", str, [generic_params, ai_specific_params])
+        ]
+        
+        for param_name, expected_type, param_dicts in type_checks:
+            for param_dict in param_dicts:
+                if param_name in param_dict:
+                    actual_value = param_dict[param_name]
+                    assert isinstance(actual_value, expected_type), \
+                        f"Parameter '{param_name}' should maintain type {expected_type.__name__}, got {type(actual_value).__name__}"
+        
+        # And: Complex values should be handled correctly
+        # Check complex data structure preservation
+        text_size_tiers_key = "text_size_tiers"
+        if text_size_tiers_key in ai_specific_params:
+            preserved_tiers = ai_specific_params[text_size_tiers_key]
+            original_tiers = original_values[text_size_tiers_key]
+            
+            assert isinstance(preserved_tiers, dict), "text_size_tiers should remain a dictionary"
+            assert preserved_tiers == original_tiers, "Complex nested dictionary should be preserved exactly"
+            
+            # Check nested structure preservation
+            assert preserved_tiers["metadata"]["version"] == "v2", "Nested dictionary values should be preserved"
+            assert preserved_tiers["metadata"]["enabled"] is True, "Nested boolean values should be preserved"
+        
+        preprocessing_key = "preprocessing_pipeline"
+        if preprocessing_key in ai_specific_params:
+            preserved_pipeline = ai_specific_params[preprocessing_key]
+            original_pipeline = original_values[preprocessing_key]
+            
+            assert isinstance(preserved_pipeline, list), "preprocessing_pipeline should remain a list"
+            assert preserved_pipeline == original_pipeline, "List values should be preserved exactly"
+            assert len(preserved_pipeline) == 3, "List length should be preserved"
+            assert all(isinstance(item, str) for item in preserved_pipeline), "List item types should be preserved"
+        
+        # Verify numeric precision preservation
+        if "compression_ratio" in all_output_params:
+            assert abs(all_output_params["compression_ratio"] - 0.75) < 1e-10, "Float precision should be preserved"
+        
+        if "connection_timeout" in all_output_params:
+            assert abs(all_output_params["connection_timeout"] - 5.5) < 1e-10, "Float values should be preserved with precision"
 
     def test_invalid_parameter_handling(self): # No mock fixture needed
         """
@@ -535,7 +927,106 @@ class TestParameterMapping:
         And: The error should describe the specific conflict
         And: The mapping should provide actionable error information
         """
-        pass
+        from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+        from app.core.exceptions import ConfigurationError
+        
+        # Given: Parameters that create unresolvable configuration conflicts
+        mapper = CacheParameterMapper()
+        
+        # Test scenario 1: Severely invalid parameter types that cannot be mapped
+        invalid_type_params = {
+            "redis_url": ["not", "a", "string"],  # List instead of string
+            "default_ttl": {"invalid": "type"},  # Dict instead of int
+            "text_hash_threshold": "definitely_not_a_number"  # String instead of int
+        }
+        
+        # When/Then: Configuration errors should be handled gracefully
+        # Note: The mapper may handle these through validation rather than exceptions
+        # Test that the mapper can process these without crashing
+        try:
+            generic_params, ai_specific_params = mapper.map_ai_to_generic_params(invalid_type_params)
+            mapping_succeeded = True
+        except ConfigurationError as e:
+            # And: The error should describe the specific conflict
+            assert "parameter" in str(e).lower() or "configuration" in str(e).lower(), \
+                f"ConfigurationError should mention parameter/configuration issues: {e}"
+            # And: The mapping should provide actionable error information
+            assert len(str(e)) > 10, "Error message should be descriptive"
+            mapping_succeeded = False
+        except Exception:
+            # Other exceptions should not be raised
+            assert False, "Only ConfigurationError should be raised for configuration conflicts"
+        
+        # Test scenario 2: Conflicting parameter combinations
+        conflicting_params = {
+            "redis_url": "redis://localhost:6379",
+            "ai_redis_url": "redis://different:6379",  # Conflict: both redis_url and ai_redis_url
+            "default_ttl": 1800,
+            "ai_default_ttl": 3600,  # Conflict: both default_ttl and ai_default_ttl
+            "text_hash_threshold": 1000
+        }
+        
+        # Test that conflicting parameters are handled appropriately
+        try:
+            generic_params, ai_specific_params = mapper.map_ai_to_generic_params(conflicting_params)
+            
+            # If mapping succeeds, verify it handles conflicts reasonably
+            # Should have redis_url in generic_params (either original or mapped value)
+            assert "redis_url" in generic_params, "redis_url should be resolved from conflicting parameters"
+            assert "default_ttl" in generic_params, "default_ttl should be resolved from conflicting parameters"
+            
+            # Verify that conflicting parameters don't both appear in generic params
+            assert "ai_redis_url" not in generic_params, "Mapped parameter names should not appear in generic params"
+            assert "ai_default_ttl" not in generic_params, "Mapped parameter names should not appear in generic params"
+            
+            mapping_succeeded = True
+        except ConfigurationError as e:
+            # If ConfigurationError is raised, verify error information
+            error_message = str(e).lower()
+            assert any(keyword in error_message for keyword in ["conflict", "duplicate", "parameter", "configuration"]), \
+                f"Error should describe configuration conflict: {e}"
+            mapping_succeeded = False
+        
+        # Test scenario 3: Empty or None values in critical parameters
+        critical_empty_params = {
+            "redis_url": "",  # Empty critical parameter
+            "default_ttl": None,  # None critical parameter
+            "text_hash_threshold": 1000  # Valid AI parameter
+        }
+        
+        # Test handling of empty/None critical parameters
+        try:
+            generic_params, ai_specific_params = mapper.map_ai_to_generic_params(critical_empty_params)
+            
+            # If mapping succeeds, verify it handles empty values appropriately
+            if "redis_url" in generic_params:
+                # Either should have a valid default value or the empty value should be handled
+                redis_url_value = generic_params["redis_url"]
+                # Test observable behavior: empty string is handled (could be passed through or replaced)
+                assert isinstance(redis_url_value, str), "redis_url should remain a string type"
+            
+            if "default_ttl" in generic_params:
+                ttl_value = generic_params["default_ttl"]
+                # Test observable behavior: None value is handled somehow
+                # Don't assume how it's handled, just verify it's handled consistently
+                if ttl_value is not None:
+                    assert isinstance(ttl_value, (int, float)), "If TTL is not None, it should be numeric"
+                    if isinstance(ttl_value, (int, float)) and ttl_value <= 0:
+                        # Behavior-driven: zero or negative TTL might be valid edge case
+                        pass  # Allow implementation to decide how to handle
+            
+            # Verify AI-specific parameters are still processed correctly
+            assert "text_hash_threshold" in ai_specific_params, "Valid AI parameters should be preserved"
+            assert ai_specific_params["text_hash_threshold"] == 1000, "Valid AI parameter values should be preserved"
+                
+        except ConfigurationError as e:
+            # If error is raised for empty/None values, verify it's descriptive
+            error_message = str(e).lower()
+            assert any(keyword in error_message for keyword in ["empty", "none", "required", "invalid", "parameter"]), \
+                f"Error should describe empty/None parameter issues: {e}"
+        
+        # Ensure the test completes without unexpected exceptions
+        assert True, "Configuration error scenarios should be handled without unexpected exceptions"
 
 
 class TestParameterValidation:

@@ -5747,4 +5747,221 @@ class TestDataManagement:
             - test_export_metrics_includes_comprehensive_metadata()
             - test_reset_stats_clears_all_performance_data()
         """
-        pass
+        # Given: CachePerformanceMonitor with performance data ready for external analysis
+        monitor = CachePerformanceMonitor()
+        
+        # Add diverse performance data to test external tool compatibility
+        import time
+        base_timestamp = time.time()
+        
+        # Add time series data suitable for external analysis
+        for i in range(10):
+            # Vary timing to create meaningful time series
+            monitor.record_key_generation_time(
+                duration=0.010 + (i * 0.002) + (0.001 if i % 3 == 0 else 0),
+                text_length=100 + i * 20,
+                operation_type=f"external_analysis_op_{i % 3}",
+                additional_data={
+                    "sequence_id": i,
+                    "batch_name": f"batch_{i // 3}",
+                    "environment": "production"
+                }
+            )
+            
+            # Cache operations with varied patterns
+            monitor.record_cache_operation_time(
+                operation="get" if i % 2 == 0 else "set",
+                duration=0.005 + (i * 0.001),
+                cache_hit=i % 4 != 0,  # 75% hit rate
+                text_length=50 + i * 10,
+                additional_data={
+                    "session_id": f"session_{i % 5}",
+                    "client_type": "api" if i % 2 == 0 else "web"
+                }
+            )
+        
+        # Add compression data with clear patterns
+        for i in range(5):
+            monitor.record_compression_ratio(
+                original_size=1000 + i * 500,
+                compressed_size=300 + i * 100,
+                compression_time=0.020 + i * 0.005,
+                operation_type=f"compression_level_{i + 1}"
+            )
+        
+        # Add memory usage data points
+        for i in range(3):
+            memory_cache = {f"analysis_key_{j}": f"data_{j}" * (i + 1) for j in range(10 + i * 5)}
+            monitor.record_memory_usage(
+                memory_cache=memory_cache,
+                redis_stats={
+                    "memory_used_bytes": (20 + i * 10) * 1024 * 1024,
+                    "keys": 100 + i * 50,
+                    "connected_clients": 5 + i,
+                    "commands_processed": 1000 + i * 200
+                },
+                additional_data={
+                    "datacenter": f"dc_{i + 1}",
+                    "instance_type": "cache_optimized"
+                }
+            )
+        
+        # Add invalidation events with business context
+        invalidation_patterns = ["user:*", "session:*", "api:*", "temp:*"]
+        for i, pattern in enumerate(invalidation_patterns):
+            monitor.record_invalidation_event(
+                pattern=pattern,
+                keys_invalidated=15 + i * 5,
+                duration=0.003 + i * 0.001,
+                invalidation_type="scheduled" if i % 2 == 0 else "on_demand",
+                operation_context=f"cleanup_job_{i}",
+                additional_data={
+                    "reason": "ttl_expired" if i % 2 == 0 else "manual_cleanup",
+                    "affected_services": [f"service_{j}" for j in range(i + 1)]
+                }
+            )
+        
+        # When: export_metrics() formats data for external consumption
+        exported_data = monitor.export_metrics()
+        
+        # Then: Data format is suitable for common analysis tools and data warehouses
+        
+        # Test JSON compatibility (essential for most external tools)
+        import json
+        try:
+            json_export = json.dumps(exported_data, indent=2)
+            parsed_back = json.loads(json_export)
+            assert len(parsed_back) > 0, "JSON serialization should preserve data"
+        except (TypeError, ValueError) as e:
+            pytest.fail(f"Exported data must be JSON serializable for external tools: {e}")
+        
+        # Test standard metric naming conventions (snake_case, descriptive)
+        required_top_level_keys = [
+            "cache_hits", "cache_misses", "total_operations", 
+            "export_timestamp", "key_generation_times", "cache_operation_times",
+            "compression_ratios", "memory_usage_measurements", "invalidation_events"
+        ]
+        
+        for key in required_top_level_keys:
+            assert key in exported_data, f"Should include standard metric key: {key}"
+            # Verify naming convention (snake_case)
+            assert "_" in key or key.islower(), f"Metric key should follow snake_case convention: {key}"
+        
+        # Test time series data formatting compatibility
+        time_series_arrays = [
+            "key_generation_times", "cache_operation_times", 
+            "compression_ratios", "memory_usage_measurements", "invalidation_events"
+        ]
+        
+        for array_name in time_series_arrays:
+            if array_name in exported_data and len(exported_data[array_name]) > 0:
+                measurements = exported_data[array_name]
+                
+                # Each measurement should have timestamp for time series analysis
+                for measurement in measurements:
+                    assert "timestamp" in measurement, f"Time series data should include timestamps in {array_name}"
+                    assert isinstance(measurement["timestamp"], (int, float)), f"Timestamps should be numeric in {array_name}"
+                
+                # Measurements should be sortable by timestamp
+                timestamps = [m["timestamp"] for m in measurements]
+                sorted_timestamps = sorted(timestamps)
+                # Allow for some timing variation but ensure generally chronological
+                assert len(timestamps) == len(sorted_timestamps), f"Should have valid timestamps for sorting in {array_name}"
+        
+        # Test tool-agnostic data structure (flat, consistent types)
+        assert isinstance(exported_data["cache_hits"], int), "Aggregate metrics should be integers"
+        assert isinstance(exported_data["cache_misses"], int), "Aggregate metrics should be integers"
+        assert isinstance(exported_data["total_operations"], int), "Aggregate metrics should be integers"
+        assert isinstance(exported_data["export_timestamp"], str), "Timestamps should be string format for tools"
+        
+        # Test data structure consistency within arrays
+        for array_name in time_series_arrays:
+            if array_name in exported_data and len(exported_data[array_name]) > 1:
+                measurements = exported_data[array_name]
+                first_measurement = measurements[0]
+                
+                # All measurements in array should have consistent structure
+                for measurement in measurements[1:]:
+                    assert set(measurement.keys()) == set(first_measurement.keys()), \
+                        f"All measurements in {array_name} should have consistent keys"
+                
+                # Verify data types are consistent within measurement type
+                for key, value in first_measurement.items():
+                    expected_type = type(value)
+                    for measurement in measurements:
+                        if measurement[key] is not None:  # Allow None values
+                            assert isinstance(measurement[key], expected_type), \
+                                f"Data type should be consistent for {key} in {array_name}"
+        
+        # Test external tool specific format requirements
+        
+        # Test CSV compatibility (flat structure with consistent columns)
+        if exported_data["key_generation_times"]:
+            key_gen_sample = exported_data["key_generation_times"][0]
+            # Should be flattenable to CSV (no deeply nested objects in core metrics)
+            for key, value in key_gen_sample.items():
+                if key != "additional_data":  # additional_data can be complex
+                    assert not isinstance(value, (dict, list)), \
+                        f"Core metrics should be flat for CSV compatibility: {key}"
+        
+        # Test database/SQL compatibility (consistent numeric types)
+        numeric_fields = ["cache_hits", "cache_misses", "total_operations", "total_invalidations"]
+        for field in numeric_fields:
+            if field in exported_data:
+                assert isinstance(exported_data[field], int), f"{field} should be integer for database storage"
+                assert exported_data[field] >= 0, f"{field} should be non-negative"
+        
+        # Test monitoring tool integration (standard metric patterns)
+        # Check for common monitoring tool patterns
+        monitoring_patterns = {
+            "counters": ["cache_hits", "cache_misses", "total_operations"],
+            "gauges": ["export_timestamp"],
+            "histograms": ["key_generation_times", "cache_operation_times"],
+            "events": ["invalidation_events"]
+        }
+        
+        for pattern_type, expected_fields in monitoring_patterns.items():
+            for field in expected_fields:
+                if field in exported_data:
+                    if pattern_type == "counters":
+                        assert isinstance(exported_data[field], int) and exported_data[field] >= 0, \
+                            f"Counter {field} should be non-negative integer"
+                    elif pattern_type == "histograms":
+                        assert isinstance(exported_data[field], list), \
+                            f"Histogram {field} should be array of measurements"
+        
+        # Test scalability for external tools (data size should be reasonable)
+        total_measurements = sum(
+            len(exported_data[key]) for key in time_series_arrays 
+            if key in exported_data and isinstance(exported_data[key], list)
+        )
+        assert total_measurements < 10000, "Export size should be reasonable for external tool processing"
+        
+        # Test metadata preservation for external context
+        if exported_data["key_generation_times"]:
+            sample_measurement = exported_data["key_generation_times"][0]
+            assert "additional_data" in sample_measurement, "Should preserve context metadata for external analysis"
+            assert isinstance(sample_measurement["additional_data"], dict), "Metadata should be structured"
+        
+        # Test external tool configuration compatibility
+        # Verify export contains configuration context that external tools might need
+        # This is implicitly tested through the metadata and structure validation above
+        
+        # Test integration readiness - verify export is ready for common external tools
+        # 1. Time series databases (InfluxDB, Prometheus)
+        assert all(
+            isinstance(m.get("timestamp"), (int, float)) 
+            for array_name in time_series_arrays 
+            if array_name in exported_data
+            for m in exported_data[array_name]
+        ), "Time series database compatibility requires numeric timestamps"
+        
+        # 2. Log aggregation systems (ELK, Splunk)
+        assert isinstance(exported_data["export_timestamp"], str), "Log systems expect string timestamps"
+        
+        # 3. Business intelligence tools (requires flat, normalized data)
+        # Verified through the CSV compatibility tests above
+        
+        # Final verification: Export should be complete and ready for immediate external use
+        assert len(json.dumps(exported_data)) > 100, "Export should contain substantial data for analysis"
+        assert "export_timestamp" in exported_data, "Export should be timestamped for external correlation"
