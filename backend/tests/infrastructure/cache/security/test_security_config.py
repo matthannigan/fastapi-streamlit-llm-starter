@@ -672,8 +672,7 @@ class TestSecurityConfigEnvironmentCreation:
         assert config.has_authentication is True
         assert config.security_level == "HIGH"
 
-    @patch.dict('os.environ', {}, clear=True)
-    def test_create_from_env_returns_none_when_no_security_variables(self):
+    def test_create_from_env_returns_none_when_no_security_variables(self, monkeypatch):
         """
         Test that create_security_config_from_env returns None when no security variables present.
         
@@ -706,8 +705,14 @@ class TestSecurityConfigEnvironmentCreation:
             - test_create_from_env_builds_secure_config_from_environment()
             - test_insecure_environment_provides_appropriate_warnings()
         """
-        # Given: Environment without Redis security configuration variables
-        # (Cleared by patch.dict)
+        # Clear all Redis security-related environment variables for clean test
+        redis_security_vars = [
+            'REDIS_AUTH', 'REDIS_ACL_USERNAME', 'REDIS_ACL_PASSWORD', 'REDIS_USE_TLS',
+            'REDIS_TLS_CERT_PATH', 'REDIS_TLS_KEY_PATH', 'REDIS_TLS_CA_PATH',
+            'REDIS_VERIFY_CERTIFICATES', 'REDIS_CONNECTION_TIMEOUT'
+        ]
+        for var in redis_security_vars:
+            monkeypatch.delenv(var, raising=False)
         
         # When: create_security_config_from_env() function is called
         config = create_security_config_from_env()

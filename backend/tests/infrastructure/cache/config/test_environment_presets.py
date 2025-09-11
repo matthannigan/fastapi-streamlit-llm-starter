@@ -815,7 +815,7 @@ class TestEnvironmentPresetsUtilityMethods:
         assert "ai_optimizations" in ai_details
         assert ai_details["ai_optimizations"] is not None
 
-    def test_recommend_preset_suggests_appropriate_configuration(self):
+    def test_recommend_preset_suggests_appropriate_configuration(self, monkeypatch):
         """
         Test that recommend_preset() suggests appropriate preset based on environment analysis.
         
@@ -880,7 +880,12 @@ class TestEnvironmentPresetsUtilityMethods:
         unknown_recommendation = EnvironmentPresets.recommend_preset("unknown-environment")
         assert unknown_recommendation == "simple"  # Safe default
         
-        # Test auto-detection (no environment specified)
+        # Test auto-detection (no environment specified) 
+        # Clear all environment variables that could affect auto-detection
+        env_vars_to_clear = ['ENVIRONMENT', 'NODE_ENV', 'FLASK_ENV', 'APP_ENV', 'ENV', 'DEPLOYMENT_ENV', 'DJANGO_SETTINGS_MODULE', 'RAILS_ENV', 'ENABLE_AI_CACHE']
+        for var in env_vars_to_clear:
+            monkeypatch.delenv(var, raising=False)
+        
         auto_recommendation = EnvironmentPresets.recommend_preset(None)
         # Should return a valid preset name
         assert auto_recommendation is not None

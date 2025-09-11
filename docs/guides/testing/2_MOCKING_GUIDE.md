@@ -246,3 +246,38 @@ async def test_health_check_success(self, api_client):
         assert result is True
 ```
 
+## Environment Variable Mocking
+
+### Problem: Environment Variable Pollution in Parallel Tests
+
+When tests run via Makefile commands that load `.env` files, environment variables can contaminate test isolation, especially with parallel execution (`pytest-xdist`).
+
+### Symptoms:
+- Tests pass when run individually but fail in full test suite
+- Different results between `pytest` and `make test-*` commands
+- Failures related to auto-detection or environment-dependent logic
+
+### Solution: Use `monkeypatch` Instead of `patch.dict`
+
+❌ **Problematic Approach:**
+```python
+# DON'T: patch.dict doesn't work well with parallel execution
+with patch.dict(os.environ, {'NODE_ENV': 'development'}, clear=True):
+    result = auto_detect_environment()
+
+✅ Recommended Approach:
+def test_environment_detection(monkeypatch):
+    # Clear all relevant environment variables
+    env_vars_to_clear = ['ENVIRONMENT', 'NODE_ENV', 'FLASK_ENV', ...]
+    for var in env_vars_to_clear:
+        monkeypatch.delenv(var, raising=False)
+
+    # Set only what you need for the test
+    monkeypatch.setenv('NODE_ENV', 'development')
+    result = auto_detect_environment()
+
+Best Practices:
+
+1. Comprehensive Clearing: Clear all environment variables that could affect the test
+2. Use raising=False: Prevent errors if variables don't exist
+3. Group Related Tests: Use @pytest.mark.xdist_group(name="env_tests") for related tests

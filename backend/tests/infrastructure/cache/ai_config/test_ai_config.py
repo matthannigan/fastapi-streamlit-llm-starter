@@ -1092,7 +1092,7 @@ class TestAIResponseCacheConfigFactory:
             # Expected behavior for malformed parameters
             pass
 
-    def test_from_env_loads_configuration_from_preset_system(self):
+    def test_from_env_loads_configuration_from_preset_system(self, monkeypatch):
         """
         Test that from_env() loads configuration from preset-based environment system.
         
@@ -1149,18 +1149,17 @@ class TestAIResponseCacheConfigFactory:
             assert config.memory_cache_size > 0, "Should have positive memory cache size"
         
         # Test with no environment variables (should use defaults)
-        with patch.dict(os.environ, {}, clear=False):
-            # Remove any AI_CACHE_* variables that might exist
-            env_to_clear = [k for k in os.environ.keys() if k.startswith('AI_CACHE_')]
-            for key in env_to_clear:
-                if key in os.environ:
-                    del os.environ[key]
-            
-            config = AIResponseCacheConfig.from_env()
-            assert isinstance(config, AIResponseCacheConfig), "Should return default configuration"
-            
-            result = config.validate()
-            assert result.is_valid, f"Default environment configuration should be valid. Errors: {result.errors}"
+        # Clear all cache-related environment variables for clean test
+        cache_env_vars = ['CACHE_PRESET', 'CACHE_REDIS_URL', 'CACHE_CUSTOM_CONFIG', 'ENVIRONMENT', 'NODE_ENV']
+        cache_env_vars.extend([k for k in os.environ.keys() if k.startswith('AI_CACHE_')])
+        for var in cache_env_vars:
+            monkeypatch.delenv(var, raising=False)
+        
+        config = AIResponseCacheConfig.from_env()
+        assert isinstance(config, AIResponseCacheConfig), "Should return default configuration"
+        
+        result = config.validate()
+        assert result.is_valid, f"Default environment configuration should be valid. Errors: {result.errors}"
         
         # Test environment variables with custom prefix
         with patch.dict(os.environ, {

@@ -385,7 +385,8 @@ class TestCachePresetManagerRecommendation:
         - EnvironmentRecommendation (real): Recommendation result structure
     """
 
-    def test_cache_preset_manager_recommend_preset_detects_development_environments(self):
+    @pytest.mark.xdist_group(name="environment_detection")
+    def test_cache_preset_manager_recommend_preset_detects_development_environments(self, monkeypatch):
         """
         Test that recommend_preset() detects development environments and recommends appropriate presets.
         
@@ -419,6 +420,11 @@ class TestCachePresetManagerRecommendation:
             - test_cache_preset_manager_recommend_preset_detects_production_environments()
             - test_recommendation_confidence_reflects_environment_detection_accuracy()
         """
+        # Clear all environment variables that could affect auto-detection
+        env_vars_to_clear = ['ENVIRONMENT', 'NODE_ENV', 'FLASK_ENV', 'APP_ENV', 'ENV', 'DEPLOYMENT_ENV', 'DJANGO_SETTINGS_MODULE', 'RAILS_ENV', 'ENABLE_AI_CACHE']
+        for var in env_vars_to_clear:
+            monkeypatch.delenv(var, raising=False)
+        
         manager = CachePresetManager()
         
         # Test explicit development environment names
@@ -442,10 +448,12 @@ class TestCachePresetManagerRecommendation:
         assert dev_recommendation.confidence >= 0.80, "Should have high confidence for 'dev' abbreviation"
         
         # Test with environment variable mocking for auto-detection
-        with patch.dict(os.environ, {'NODE_ENV': 'development'}, clear=False):
-            auto_recommendation = manager.recommend_preset_with_details(None)  # Auto-detect
-            assert auto_recommendation.preset_name == 'development', "Auto-detection should find development from NODE_ENV"
-            assert auto_recommendation.confidence >= 0.70, "Auto-detection should have reasonable confidence"
+        # Use monkeypatch for proper isolation in parallel test execution
+        monkeypatch.delenv('ENVIRONMENT', raising=False)
+        monkeypatch.setenv('NODE_ENV', 'development')
+        auto_recommendation = manager.recommend_preset_with_details(None)  # Auto-detect
+        assert auto_recommendation.preset_name == 'development', "Auto-detection should find development from NODE_ENV"
+        assert auto_recommendation.confidence >= 0.70, "Auto-detection should have reasonable confidence"
         
         with patch.dict(os.environ, {'ENVIRONMENT': 'dev'}, clear=False):
             auto_recommendation = manager.recommend_preset_with_details(None)
@@ -462,7 +470,8 @@ class TestCachePresetManagerRecommendation:
         assert dev_preset.connection_timeout == 2, "Development preset should have fast timeout"
         assert dev_preset.log_level == "DEBUG", "Development preset should enable debug logging"
 
-    def test_cache_preset_manager_recommend_preset_detects_production_environments(self):
+    @pytest.mark.xdist_group(name="environment_detection")
+    def test_cache_preset_manager_recommend_preset_detects_production_environments(self, monkeypatch):
         """
         Test that recommend_preset() detects production environments and recommends robust presets.
         
@@ -496,6 +505,11 @@ class TestCachePresetManagerRecommendation:
             - test_cache_preset_manager_recommend_preset_detects_ai_environments()
             - test_production_recommendations_prioritize_reliability_over_speed()
         """
+        # Clear all environment variables that could affect auto-detection
+        env_vars_to_clear = ['ENVIRONMENT', 'NODE_ENV', 'FLASK_ENV', 'APP_ENV', 'ENV', 'DEPLOYMENT_ENV', 'DJANGO_SETTINGS_MODULE', 'RAILS_ENV', 'ENABLE_AI_CACHE']
+        for var in env_vars_to_clear:
+            monkeypatch.delenv(var, raising=False)
+        
         manager = CachePresetManager()
         
         # Test explicit production environment names
@@ -524,10 +538,12 @@ class TestCachePresetManagerRecommendation:
         assert staging_recommendation.confidence >= 0.80, "Should have high confidence for staging environment"
         
         # Test with environment variable mocking for auto-detection
-        with patch.dict(os.environ, {'NODE_ENV': 'production'}, clear=False):
-            auto_recommendation = manager.recommend_preset_with_details(None)  # Auto-detect
-            assert auto_recommendation.preset_name == 'production', "Auto-detection should find production from NODE_ENV"
-            assert auto_recommendation.confidence >= 0.70, "Auto-detection should have reasonable confidence"
+        # Use monkeypatch for proper isolation in parallel test execution
+        monkeypatch.delenv('ENVIRONMENT', raising=False)
+        monkeypatch.setenv('NODE_ENV', 'production')
+        auto_recommendation = manager.recommend_preset_with_details(None)  # Auto-detect
+        assert auto_recommendation.preset_name == 'production', "Auto-detection should find production from NODE_ENV"
+        assert auto_recommendation.confidence >= 0.70, "Auto-detection should have reasonable confidence"
         
         with patch.dict(os.environ, {'ENVIRONMENT': 'prod'}, clear=False):
             auto_recommendation = manager.recommend_preset_with_details(None)
@@ -547,6 +563,7 @@ class TestCachePresetManagerRecommendation:
         assert prod_preset.compression_level == 9, "Production preset should use maximum compression"
         assert prod_preset.log_level == "INFO", "Production preset should use INFO logging level"
 
+    @pytest.mark.xdist_group(name="environment_detection")
     def test_cache_preset_manager_recommend_preset_detects_ai_environments(self):
         """
         Test that recommend_preset() detects AI environments and recommends AI-optimized presets.
@@ -617,11 +634,11 @@ class TestCachePresetManagerRecommendation:
             auto_recommendation = manager.recommend_preset_with_details(None)
             assert auto_recommendation.preset_name == 'ai-production', "Auto-detection should find AI production from ENVIRONMENT"
         
-        with patch.dict(os.environ, {'ENABLE_AI_CACHE': 'true', 'NODE_ENV': 'development'}, clear=False):
+        with patch.dict(os.environ, {'ENABLE_AI_CACHE': 'true', 'NODE_ENV': 'development'}, clear=True):
             auto_recommendation = manager.recommend_preset_with_details(None)
             assert auto_recommendation.preset_name == 'ai-development', "Should detect AI development when AI cache enabled with dev environment"
         
-        with patch.dict(os.environ, {'ENABLE_AI_CACHE': 'true', 'NODE_ENV': 'production'}, clear=False):
+        with patch.dict(os.environ, {'ENABLE_AI_CACHE': 'true', 'NODE_ENV': 'production'}, clear=True):
             auto_recommendation = manager.recommend_preset_with_details(None)
             assert auto_recommendation.preset_name == 'ai-production', "Should detect AI production when AI cache enabled with prod environment"
         
@@ -639,6 +656,7 @@ class TestCachePresetManagerRecommendation:
         assert ai_prod_preset.max_connections == 25, "AI production preset should have high connection pool for AI workloads"
         assert ai_prod_preset.memory_cache_size == 1000, "AI production preset should have large memory cache for AI data"
 
+    @pytest.mark.xdist_group(name="environment_detection")
     def test_cache_preset_manager_recommend_preset_with_details_provides_comprehensive_reasoning(self):
         """
         Test that recommend_preset_with_details() provides comprehensive recommendation reasoning.
@@ -719,7 +737,7 @@ class TestCachePresetManagerRecommendation:
             assert len(rec.reasoning) > 20, "Reasoning should be descriptive for abbreviations"
         
         # Test auto-detection with comprehensive details
-        with patch.dict(os.environ, {'NODE_ENV': 'production', 'DEBUG': 'false'}, clear=False):
+        with patch.dict(os.environ, {'NODE_ENV': 'production', 'DEBUG': 'false'}, clear=True):
             auto_rec = manager.recommend_preset_with_details(None)
             assert auto_rec.preset_name == 'production', "Auto-detection should find production"
             assert auto_rec.confidence >= 0.70, "Auto-detection should have reasonable confidence"
@@ -740,6 +758,7 @@ class TestCachePresetManagerRecommendation:
             assert rec.confidence < 0.60, f"Unknown environment '{env}' should have lower confidence"
             assert 'default' in rec.reasoning.lower() or 'unknown' in rec.reasoning.lower(), "Should explain fallback reasoning"
 
+    @pytest.mark.xdist_group(name="environment_detection")
     def test_cache_preset_manager_handles_ambiguous_environment_scenarios(self):
         """
         Test that recommend_preset() handles ambiguous environment scenarios appropriately.
@@ -807,7 +826,7 @@ class TestCachePresetManagerRecommendation:
         # Test conflicting environment variables (simulating conflicting signals)
         # Note: The implementation gives priority to explicit environment variables first,
         # so NODE_ENV=development will take precedence over PROD=true
-        with patch.dict(os.environ, {'NODE_ENV': 'development', 'PROD': 'true'}, clear=False):
+        with patch.dict(os.environ, {'NODE_ENV': 'development', 'PROD': 'true'}, clear=True):
             recommendation = manager.recommend_preset_with_details(None)
             # Should handle conflicting signals gracefully by following priority order
             assert recommendation.preset_name in ['development', 'production', 'simple'], "Should handle conflicting signals"

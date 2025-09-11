@@ -347,7 +347,7 @@ class TestCacheSecurityIntegration:
             pytest.skip(f"Redis not available for strict security testing: {e}")
 
     @pytest.mark.asyncio
-    async def test_security_config_environment_integration(self):
+    async def test_security_config_environment_integration(self, monkeypatch):
         """
         Test SecurityConfig creation from environment variables.
         
@@ -385,11 +385,19 @@ class TestCacheSecurityIntegration:
                 pass
         
         # Test with empty environment
-        with patch.dict('os.environ', {}, clear=True):
-            empty_env_config = create_security_config_from_env()
-            
-            # Should return None or default configuration
-            assert empty_env_config is None or isinstance(empty_env_config, SecurityConfig)
+        # Clear all Redis security-related environment variables for clean test
+        redis_security_vars = [
+            'REDIS_AUTH', 'REDIS_ACL_USERNAME', 'REDIS_ACL_PASSWORD', 'REDIS_USE_TLS',
+            'REDIS_TLS_CERT_PATH', 'REDIS_TLS_KEY_PATH', 'REDIS_TLS_CA_PATH',
+            'REDIS_VERIFY_CERTIFICATES', 'REDIS_CONNECTION_TIMEOUT'
+        ]
+        for var in redis_security_vars:
+            monkeypatch.delenv(var, raising=False)
+        
+        empty_env_config = create_security_config_from_env()
+        
+        # Should return None or default configuration
+        assert empty_env_config is None or isinstance(empty_env_config, SecurityConfig)
 
     @pytest.mark.asyncio
     async def test_security_validation_comprehensive_reporting(self):
