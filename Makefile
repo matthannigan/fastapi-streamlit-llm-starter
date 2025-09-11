@@ -34,30 +34,42 @@
         mkdocs-serve mkdocs-build \
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
         ci-test ci-test-all lock-deps update-deps \
-        list-presets show-preset validate-config validate-preset recommend-preset migrate-config test-presets \
-        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset migrate-cache-config
+        list-resil-presets show-resil-preset validate-resil-config validate-resil-preset recommend-resil-preset test-resil-presets \
+        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset
 
 ##################################################################################################
 # Configuration and Environment Detection
 ##################################################################################################
 
-# Check if .env file exists and include it
+# Selectively load variables from .env if present
 ifneq (,$(wildcard .env))
-    include .env
-    export
+    BACKEND_PORT  ?= $(shell grep -E '^[[:space:]]*BACKEND_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*BACKEND_PORT[[:space:]]*=[[:space:]]*//')
+    FRONTEND_PORT ?= $(shell grep -E '^[[:space:]]*FRONTEND_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*FRONTEND_PORT[[:space:]]*=[[:space:]]*//')
+    REDIS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_PORT[[:space:]]*=[[:space:]]*//')
+    REPOMIX_CMD   ?= $(shell grep -E '^[[:space:]]*REPOMIX_CMD[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REPOMIX_CMD[[:space:]]*=[[:space:]]*//')
+    export BACKEND_PORT FRONTEND_PORT REDIS_PORT REPOMIX_CMD
 endif
 
-# Example target to show the variables are loaded
-show-env-vars:
-	@echo "Backend Port is: $(BACKEND_PORT)"
-	@echo "Frontend Port is: $(FRONTEND_PORT)"
-	@echo "Redis Port is: $(REDIS_PORT)"
-	@echo "Environment is: $(ENVIRONMENT)"
-	@echo "Debug mode is: $(DEBUG)"
-	@echo "Application logging level is: $(LOG_LEVEL)"
-	@echo "---"
-	@echo "The shell also sees BACKEND_PORT as: $$BACKEND_PORT etc"
-		
+# Set sensible defaults when not provided
+BACKEND_PORT  ?= 8000
+FRONTEND_PORT ?= 8501
+REDIS_PORT    ?= 6379
+REPOMIX_CMD   ?= npx repomix
+
+# Also default when value exists but is empty
+ifeq ($(strip $(BACKEND_PORT))),)
+BACKEND_PORT := 8000
+endif
+ifeq ($(strip $(FRONTEND_PORT))),)
+FRONTEND_PORT := 8501
+endif
+ifeq ($(strip $(REDIS_PORT))),)
+REDIS_PORT := 6379
+endif
+ifeq ($(strip $(REPOMIX_CMD))),)
+REPOMIX_CMD := npx repomix
+endif
+
 # Python executable detection - prefer python3, fallback to python
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
 VENV_DIR := .venv
@@ -85,12 +97,28 @@ else
     PYTHON_CMD := $(VENV_PYTHON)
 endif
 
-# Use custom repomix command if present in .env
-REPOMIX_CMD ?= npx repomix
-ifeq ($(strip $(REPOMIX_CMD)),)
-REPOMIX_CMD := npx repomix
-endif
+# API base URL for documentation
+API_BASE_URL := http://localhost:$(BACKEND_PORT)
+export API_BASE_URL
 
+# Example target to show the variables are loaded
+show-env-vars:
+	@echo "Project Name is: $(COMPOSE_PROJECT_NAME)"
+	@echo "Git Branch is: $(GIT_BRANCH)"
+	@echo "Virtual Env Status is: $(IN_VENV)"
+	@echo "Docker Env Status is: $(IN_DOCKER)"
+	@echo "Venv Directory is: $(VENV_DIR)"
+	@echo "Venv Python Executable is: $(VENV_PYTHON)"
+	@echo "Venv Pip Executable is: $(VENV_PIP)"
+	@echo "Python Command is: $(PYTHON_CMD)"
+	@echo "Backend Port is: $(BACKEND_PORT)"
+	@echo "Frontend Port is: $(FRONTEND_PORT)"
+	@echo "Redis Port is: $(REDIS_PORT)"
+	@echo "API Base URL is: $(API_BASE_URL)"
+	@echo "Repomix Command is: $(REPOMIX_CMD)"
+	@echo "---"
+	@echo "The shell also sees BACKEND_PORT as: $$BACKEND_PORT etc"
+		
 ##################################################################################################
 # Help and Documentation
 ##################################################################################################
@@ -130,6 +158,7 @@ help:
 	@echo "  test-backend-infra   Run all infrastructure service tests (alias)"
 	@echo "  test-backend-infra-ai        Run AI infrastructure service tests"
 	@echo "  test-backend-infra-cache     Run cache infrastructure service tests"
+	@echo "  test-backend-infra-cache-e2e-redis  Run Redis-enhanced E2E cache tests (requires Docker)"
 	@echo "  test-backend-infra-monitoring Run monitoring infrastructure service tests"
 	@echo "  test-backend-infra-resilience Run resilience infrastructure service tests"
 	@echo "  test-backend-infra-security   Run security infrastructure service tests"
@@ -154,13 +183,12 @@ help:
 	@echo "  format               Format code with black and isort"
 	@echo ""
 	@echo "⚙️  RESILIENCE CONFIGURATION:"
-	@echo "  list-presets         List available resilience presets"
-	@echo "  show-preset          Show preset details (Usage: PRESET=simple)"
-	@echo "  validate-config      Validate current resilience configuration"
-	@echo "  validate-preset      Validate specific preset (Usage: PRESET=simple)"
-	@echo "  recommend-preset     Get preset recommendation (Usage: ENV=development)"
-	@echo "  migrate-config       Migrate legacy config to presets"
-	@echo "  test-presets         Run all preset-related tests"
+	@echo "  list-resil-presets         List available resilience presets"
+	@echo "  show-resil-preset          Show preset details (Usage: PRESET=simple)"
+	@echo "  validate-resil-config      Validate current resilience configuration"
+	@echo "  validate-resil-preset      Validate specific preset (Usage: PRESET=simple)"
+	@echo "  recommend-resil-preset     Get preset recommendation (Usage: ENV=development)"
+	@echo "  test-resil-presets         Run all preset-related tests"
 	@echo ""
 	@echo "🗂️  CACHE CONFIGURATION:"
 	@echo "  list-cache-presets   List available cache presets"
@@ -168,7 +196,6 @@ help:
 	@echo "  validate-cache-config Validate current cache configuration"
 	@echo "  validate-cache-preset Validate specific cache preset (Usage: PRESET=production)"
 	@echo "  recommend-cache-preset Get cache preset recommendation (Usage: ENV=staging)"
-	@echo "  migrate-cache-config Migrate legacy cache config to presets"
 	@echo ""
 	@echo "🐳 DOCKER OPERATIONS:"
 	@echo "  docker-build         Build all Docker images"
@@ -225,7 +252,8 @@ help:
 	@echo "  make install && make dev    # Complete setup and start development"
 	@echo "  make test-backend-api       # Test just the API endpoints"
 	@echo "  make test-backend-infra-cache # Test just cache infrastructure"
-	@echo "  make show-preset PRESET=production  # Show production preset"
+	@echo "  make test-backend-infra-cache-e2e-redis # Test cache with real Redis"
+	@echo "  make show-resil-preset PRESET=production  # Show production preset"
 	@echo "  make restore BACKUP=redis-20240101-120000.rdb  # Restore backup"
 	@echo "  make code_ref && make docusaurus # Generate docs and serve locally"
 	@echo ""
@@ -380,11 +408,19 @@ test-backend-infra-ai:
 
 # Run infrastructure service tests
 test-backend-infra-cache:
-#	@echo "🧪 Running backend cache infrastructure service tests that use redis..."
-#	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -m "redis" -n 0 -q --retries 2 --retry-delay 5
-#	@echo "🧪 Running backend cache infrastructure service tests (excluding redis tests)..."
 	@echo "🧪 Running backend cache infrastructure service tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --tb=no
+
+# Run infrastructure service E2E tests
+test-backend-infra-cache-e2e:
+	@echo "🧪 Running backend cache infrastructure service E2E tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e and not redis" -v --tb=short --retries 3 --retry-delay 1
+
+# Run infrastructure service Redis-enhanced E2E tests
+test-backend-infra-cache-e2e-redis:
+	@echo "🧪 Running backend cache infrastructure Redis-enhanced E2E tests..."
+	@echo "⚠️  This requires Docker for Testcontainers Redis functionality"
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e and redis" -v --tb=short --retries 3 --retry-delay 1
 
 update-tests-progress:
 	@echo "🧪 Updating tests progress..."
@@ -541,6 +577,7 @@ lint-frontend:
 	@docker-compose run frontend flake8 app/
 
 # Lint a specific file
+# args: FILE=<path/to/file.py>
 lint-file:
 	@if [ -z "$(FILE)" ]; then echo "Usage: make lint-file FILE=path/to/file.py"; exit 1; fi
 	@echo "🔍 Linting $(FILE)..."
@@ -875,7 +912,7 @@ ci-test-all:
 	@cd backend && python -m flake8 app/
 	@cd frontend && python -m flake8 app/
 	@echo "⚙️  Running preset-related tests..."
-	@$(MAKE) test-presets
+	@$(MAKE) test-resil-presets
 	@echo "⚙️  Validating all presets..."
 	@python scripts/validate_resilience_config.py --validate-preset simple --quiet
 	@python scripts/validate_resilience_config.py --validate-preset development --quiet
@@ -903,29 +940,31 @@ update-deps: venv
 ##################################################################################################
 
 # List available resilience configuration presets
-list-presets:
+list-resil-presets:
 	@echo "⚙️  Available resilience configuration presets:"
-	@$(PYTHON_CMD) scripts/validate_resilience_config.py --list-presets
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --list-resil-presets
 
 # Show details of a specific preset
-show-preset:
+# args: PRESET=<preset_name>
+show-resil-preset:
 	@if [ -z "$(PRESET)" ]; then \
-		echo "❌ Usage: make show-preset PRESET=<preset_name>"; \
+		echo "❌ Usage: make show-resil-preset PRESET=<preset_name>"; \
 		echo "💡 Available presets: simple, development, production"; \
 		exit 1; \
 	fi
 	@echo "⚙️  Showing details for preset: $(PRESET)"
-	@$(PYTHON_CMD) scripts/validate_resilience_config.py --show-preset $(PRESET)
+	@$(PYTHON_CMD) scripts/validate_resilience_config.py --show-resil-preset $(PRESET)
 
 # Validate current resilience configuration
-validate-config:
+validate-resil-config:
 	@echo "⚙️  Validating current resilience configuration..."
 	@$(PYTHON_CMD) scripts/validate_resilience_config.py --validate-current
 
 # Validate a specific preset configuration
-validate-preset:
+# args: PRESET=<preset_name>
+validate-resil-preset:
 	@if [ -z "$(PRESET)" ]; then \
-		echo "❌ Usage: make validate-preset PRESET=<preset_name>"; \
+		echo "❌ Usage: make validate-resil-preset PRESET=<preset_name>"; \
 		echo "💡 Available presets: simple, development, production"; \
 		exit 1; \
 	fi
@@ -933,22 +972,18 @@ validate-preset:
 	@$(PYTHON_CMD) scripts/validate_resilience_config.py --validate-preset $(PRESET)
 
 # Get preset recommendation for environment
-recommend-preset:
+# args: ENV=<environment>
+recommend-resil-preset:
 	@if [ -z "$(ENV)" ]; then \
-		echo "❌ Usage: make recommend-preset ENV=<environment>"; \
+		echo "❌ Usage: make recommend-resil-preset ENV=<environment>"; \
 		echo "💡 Example environments: development, staging, production"; \
 		exit 1; \
 	fi
 	@echo "⚙️  Getting preset recommendation for environment: $(ENV)"
 	@$(PYTHON_CMD) scripts/validate_resilience_config.py --recommend-preset $(ENV)
 
-# Migrate legacy configuration to presets
-migrate-config:
-	@echo "⚙️  Analyzing legacy configuration and providing migration recommendations..."
-	@$(PYTHON_CMD) scripts/migrate_resilience_config.py
-
 # Run all preset-related tests
-test-presets:
+test-resil-presets:
 	@echo "🧪 Running preset-related tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/test_resilience_presets.py tests/integration/test_preset_resilience_integration.py -v
 
@@ -959,9 +994,10 @@ test-presets:
 # List available cache configuration presets
 list-cache-presets:
 	@echo "🗂️  Available cache configuration presets:"
-	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --list-presets
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --list-resil-presets
 
 # Show details of a specific cache preset
+# args: PRESET=<preset_name>
 show-cache-preset:
 	@if [ -z "$(PRESET)" ]; then \
 		echo "❌ Usage: make show-cache-preset PRESET=<preset_name>"; \
@@ -969,7 +1005,7 @@ show-cache-preset:
 		exit 1; \
 	fi
 	@echo "🗂️  Showing details for cache preset: $(PRESET)"
-	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --show-preset $(PRESET)
+	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --show-resil-preset $(PRESET)
 
 # Validate current cache configuration
 validate-cache-config:
@@ -987,6 +1023,7 @@ validate-cache-preset:
 	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --validate-preset $(PRESET)
 
 # Get cache preset recommendation for environment
+# args: ENV=<environment>
 recommend-cache-preset:
 	@if [ -z "$(ENV)" ]; then \
 		echo "❌ Usage: make recommend-cache-preset ENV=<environment>"; \
@@ -995,8 +1032,3 @@ recommend-cache-preset:
 	fi
 	@echo "🗂️  Getting cache preset recommendation for environment: $(ENV)"
 	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --recommend-preset $(ENV)
-
-# Migrate legacy cache configuration to presets
-migrate-cache-config:
-	@echo "🗂️  Analyzing legacy cache configuration and providing migration recommendations..."
-	@cd backend && $(PYTHON_CMD) scripts/migrate_cache_config.py --analyze
