@@ -113,5 +113,4 @@
 | 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerConnection | 5 | 5 | 3 | 3 |
 | 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerReporting | 3 | 3 | 2 | 2 |
 | 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerValidation | 3 | 3 | 1 | 1 |
-|--------|-----------|------------|---------------|------------------|-----------------------|---------------------------|
 | | | **TOTAL** | **555** | **555** | **540** | **540** |

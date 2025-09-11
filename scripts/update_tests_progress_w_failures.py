@@ -354,7 +354,7 @@ def generate_markdown_table(stats: List[Dict[str, Any]], failure_counts: Optiona
             total_row += "|"
         
         table_body = "\n".join(rows)
-        return f"{header}{separator}{table_body}\n{separator}{total_row}"
+        return f"{header}{separator}{table_body}\n{total_row}"
 
     return header + separator
 
