@@ -87,7 +87,7 @@ class GenericRedisCache(CacheInterface):
     ```
     """
 
-    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False):
+    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs):
         ...
 
     def register_callback(self, event: str, callback: Callable):
