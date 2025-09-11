@@ -812,12 +812,12 @@ repomix-backend-cache:
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache_C.md --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/cache/**/*,docs/**/*cache*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*" --compress
 
 # Generate backend contracts documentation 
-repomix-backend-contracts:
+repomix-backend-contracts: generate-contracts
 	@echo "📄 Generating backend cache documentation..."
 	@mkdir -p repomix-output
-	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts_U.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*"
-	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache_U.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*"
-	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience_U.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*"
 
 repomix-backend-tests-cache:
 	@echo "📄 Generating backend tests cache documentation..."
