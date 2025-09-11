@@ -429,9 +429,6 @@ class TestCallbackErrorHandling:
     and that error scenarios are handled gracefully.
     """
 
-
-
-
     async def test_callback_memory_leak_prevention(self, default_generic_redis_config, fake_redis_client):
         """
         Test prevention of memory leaks in callback registration.
