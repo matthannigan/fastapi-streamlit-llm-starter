@@ -83,16 +83,16 @@
 | 🟢 | `monitoring/test_statistics_and_analysis.py` | TestPerformanceStatistics | 9 | 9 | 9 | 9 |
 | 🟢 | `monitoring/test_statistics_and_analysis.py` | TestSlowOperationDetection | 6 | 6 | 6 | 6 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestCacheParameterMapperInitialization | 3 | 3 | 3 | 3 |
-| 🟠 | `parameter_mapping/test_parameter_mapping.py` | TestParameterMapping | 9 | 9 | 6 | 6 |
+| 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestParameterMapping | 9 | 9 | 9 | 9 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestParameterValidation | 10 | 10 | 10 | 10 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestValidationResult | 7 | 7 | 7 | 7 |
-| 🟠 | `redis_ai/test_redis_ai_connection.py` | TestAIResponseCacheConnection | 4 | 4 | 2 | 2 |
+| 🟢 | `redis_ai/test_redis_ai_connection.py` | TestAIResponseCacheConnection | 4 | 4 | 4 | 4 |
 | 🟢 | `redis_ai/test_redis_ai_core_operations.py` | TestAIResponseCacheCoreOperations | 10 | 10 | 10 | 10 |
 | 🟢 | `redis_ai/test_redis_ai_error_handling.py` | TestAIResponseCacheErrorHandling | 2 | 2 | 2 | 2 |
 | 🟢 | `redis_ai/test_redis_ai_inheritance.py` | TestAIResponseCacheInheritance | 6 | 6 | 6 | 6 |
 | 🟢 | `redis_ai/test_redis_ai_initialization.py` | TestAIResponseCacheInitialization | 5 | 5 | 5 | 5 |
 | 🟢 | `redis_ai/test_redis_ai_invalidation.py` | TestAIResponseCacheInvalidation | 9 | 9 | 9 | 9 |
-| 🟠 | `redis_ai/test_redis_ai_statistics.py` | TestAIResponseCacheStatistics | 8 | 8 | 3 | 3 |
+| 🟢 | `redis_ai/test_redis_ai_statistics.py` | TestAIResponseCacheStatistics | 8 | 8 | 8 | 8 |
 | 🟢 | `redis_generic/test_callback_system_integration.py` | TestCallbackErrorHandling | 2 | 2 | 2 | 2 |
 | 🟢 | `redis_generic/test_callback_system_integration.py` | TestCallbackRegistration | 5 | 5 | 5 | 5 |
 | 🟢 | `redis_generic/test_callback_system_integration.py` | TestMultipleCallbackHandling | 1 | 1 | 1 | 1 |
@@ -110,7 +110,7 @@
 | 🟢 | `redis_generic/test_security_features.py` | TestSecurityValidation | 3 | 3 | 3 | 3 |
 | 🟢 | `security/test_security_config.py` | TestSecurityConfigEnvironmentCreation | 3 | 3 | 3 | 3 |
 | 🟢 | `security/test_security_config.py` | TestSecurityConfigInitialization | 9 | 9 | 9 | 9 |
-| 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerConnection | 5 | 5 | 3 | 3 |
-| 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerReporting | 3 | 3 | 2 | 2 |
-| 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerValidation | 3 | 3 | 1 | 1 |
-| | | **TOTAL** | **555** | **555** | **540** | **540** |
+| 🟢 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerConnection | 5 | 5 | 5 | 5 |
+| 🟢 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerReporting | 3 | 3 | 3 | 3 |
+| 🟢 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerValidation | 3 | 3 | 3 | 3 |
+| | | **TOTAL** | **555** | **555** | **555** | **555** |
