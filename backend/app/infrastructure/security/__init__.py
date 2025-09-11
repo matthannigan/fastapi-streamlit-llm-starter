@@ -214,10 +214,11 @@ The security system follows industry standards:
 - **Authentication Standards**: Supports standard authentication mechanisms
 - **Audit Standards**: Provides comprehensive audit trails for compliance
 """
-from .auth import verify_api_key, optional_verify_api_key, get_auth_status
+from .auth import verify_api_key, verify_api_key_http, optional_verify_api_key, get_auth_status
 
 __all__ = [
     "verify_api_key",
+    "verify_api_key_http",
     "optional_verify_api_key",
     "get_auth_status"
 ]

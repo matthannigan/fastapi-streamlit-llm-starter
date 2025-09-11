@@ -157,7 +157,7 @@ from app.core.exceptions import (
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-from app.infrastructure.security import verify_api_key, optional_verify_api_key
+from app.infrastructure.security import verify_api_key, verify_api_key_http, optional_verify_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -547,7 +547,7 @@ async def invalidate_cache(
         default="api_endpoint", description="Context for the invalidation operation"
     ),
     cache_service: AIResponseCache = Depends(get_cache_service),
-    api_key: str = Depends(verify_api_key),
+    api_key: str = Depends(verify_api_key_http),
 ):
     """Invalidate cache entries matching the specified pattern.
 
