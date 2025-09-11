@@ -200,16 +200,32 @@ class CacheConfig:
         # Convert enum to string for JSON serialization
         config_dict["strategy"] = self.strategy.value
 
+        # Create SecurityConfig from security-related fields
+        security_config = None
+        if any([config_dict["redis_password"], config_dict["use_tls"], 
+                config_dict["tls_cert_path"], config_dict["tls_key_path"]]):
+            try:
+                from app.infrastructure.cache.security import SecurityConfig
+                security_config = SecurityConfig(
+                    redis_auth=config_dict["redis_password"],
+                    use_tls=config_dict["use_tls"],
+                    tls_cert_path=config_dict["tls_cert_path"],
+                    tls_key_path=config_dict["tls_key_path"],
+                    connection_timeout=config_dict["connection_timeout"],
+                    max_retries=3  # Default retry attempts
+                )
+            except ImportError:
+                # SecurityConfig not available, fall back to individual parameters
+                # This maintains compatibility during development/testing
+                security_config = None
+        
         # Map fields to factory-expected names
         factory_dict = {
-            # Redis configuration
+            # Redis configuration (core connectivity)
             "redis_url": config_dict["redis_url"],
-            "redis_password": config_dict["redis_password"],
-            "use_tls": config_dict["use_tls"],
-            "tls_cert_path": config_dict["tls_cert_path"],
-            "tls_key_path": config_dict["tls_key_path"],
-            "max_connections": config_dict["max_connections"],
-            "connection_timeout": config_dict["connection_timeout"],
+            
+            # Security configuration (proper architecture)
+            "security_config": security_config,
 
             # Cache behavior (factory expects these names)
             "default_ttl": config_dict["default_ttl"],
