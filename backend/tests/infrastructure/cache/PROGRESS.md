@@ -77,13 +77,13 @@
 | 🟢 | `monitoring/test_metric_dataclasses.py` | TestPerformanceMetric | 6 | 6 | 6 | 6 |
 | 🟢 | `monitoring/test_performance_monitor.py` | TestCachePerformanceMonitorInitialization | 6 | 6 | 6 | 6 |
 | 🟢 | `monitoring/test_performance_monitor.py` | TestMetricRecording | 16 | 16 | 16 | 16 |
-| 🟠 | `monitoring/test_statistics_and_analysis.py` | TestDataManagement | 7 | 7 | 6 | 6 |
+| 🟢 | `monitoring/test_statistics_and_analysis.py` | TestDataManagement | 7 | 7 | 7 | 7 |
 | 🟢 | `monitoring/test_statistics_and_analysis.py` | TestInvalidationAnalysis | 9 | 9 | 9 | 9 |
 | 🟢 | `monitoring/test_statistics_and_analysis.py` | TestMemoryUsageAnalysis | 8 | 8 | 8 | 8 |
 | 🟢 | `monitoring/test_statistics_and_analysis.py` | TestPerformanceStatistics | 9 | 9 | 9 | 9 |
 | 🟢 | `monitoring/test_statistics_and_analysis.py` | TestSlowOperationDetection | 6 | 6 | 6 | 6 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestCacheParameterMapperInitialization | 3 | 3 | 3 | 3 |
-| 🟠 | `parameter_mapping/test_parameter_mapping.py` | TestParameterMapping | 9 | 9 | 1 | 1 |
+| 🟠 | `parameter_mapping/test_parameter_mapping.py` | TestParameterMapping | 9 | 9 | 6 | 6 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestParameterValidation | 10 | 10 | 10 | 10 |
 | 🟢 | `parameter_mapping/test_parameter_mapping.py` | TestValidationResult | 7 | 7 | 7 | 7 |
 | 🟠 | `redis_ai/test_redis_ai_connection.py` | TestAIResponseCacheConnection | 4 | 4 | 2 | 2 |
@@ -113,3 +113,5 @@
 | 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerConnection | 5 | 5 | 3 | 3 |
 | 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerReporting | 3 | 3 | 2 | 2 |
 | 🟠 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerValidation | 3 | 3 | 1 | 1 |
+|--------|-----------|------------|---------------|------------------|-----------------------|---------------------------|
+| | | **TOTAL** | **555** | **555** | **540** | **540** |

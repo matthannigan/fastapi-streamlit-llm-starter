@@ -287,17 +287,29 @@ def generate_markdown_table(stats: List[Dict[str, Any]], failure_counts: Optiona
         separator = "|--------|-----------|------------|---------------|------------------|----------------------|\n"
     
     rows = []
+    # Initialize totals
+    total_methods_sum = 0
+    non_skip_methods_sum = 0
+    actual_implementation_sum = 0
+    passing_tests_sum = 0
+
     stats.sort(key=lambda x: (x.get('file_path') or '', x.get('class_name') or ''))
 
     for stat in stats:
         total_methods = stat["total_methods"]
         non_skip_methods = total_methods - stat["skipped_methods"]
         actual_implementation = stat["implemented_methods"]
+        
+        # Aggregate totals
+        total_methods_sum += total_methods
+        non_skip_methods_sum += non_skip_methods
+        actual_implementation_sum += actual_implementation
 
         failures = 0
         if has_failures_info:
             key = (stat['file_path'], stat['class_name'])
             failures = failure_counts.get(key, 0)
+            passing_tests_sum += (actual_implementation - failures)
         
         # Determine status emoji
         if stat['class_name'] == "[No Tests Found]":
@@ -311,8 +323,6 @@ def generate_markdown_table(stats: List[Dict[str, Any]], failure_counts: Optiona
                 status = "🟢" if failures == 0 else "🟡"
             elif is_partially_implemented:
                 status = "🟠"
-        
-        passing_tests_str = f"| {actual_implementation - failures} |" if has_failures_info else ""
         
         row_str = (
             f"| {status} "
@@ -330,7 +340,24 @@ def generate_markdown_table(stats: List[Dict[str, Any]], failure_counts: Optiona
             
         rows.append(row_str)
         
-    return header + separator + "\n".join(rows)
+    # Add the total summary row
+    if rows:
+        total_row = (
+            f"| | | **TOTAL** "
+            f"| **{total_methods_sum}** "
+            f"| **{non_skip_methods_sum}** "
+            f"| **{actual_implementation_sum}** "
+        )
+        if has_failures_info:
+            total_row += f"| **{passing_tests_sum}** |"
+        else:
+            total_row += "|"
+        
+        table_body = "\n".join(rows)
+        return f"{header}{separator}{table_body}\n{separator}{total_row}"
+
+    return header + separator
+
 
 def main():
     """
