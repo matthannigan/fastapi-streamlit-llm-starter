@@ -66,26 +66,35 @@ class ClassMethodAnalyzer(ast.NodeVisitor):
     def visit_ClassDef(self, node: ast.ClassDef):
         """
         Called when visiting a class. Pushes the class onto a stack to handle
-        nested classes correctly.
+        nested classes correctly, but only processes top-level classes.
         """
-        self._class_name_stack.append(node.name)
-        self._get_stats_dict(node.name) # Ensure class exists in stats
-        self.generic_visit(node)
-        self._class_name_stack.pop()
+        # Only process top-level classes. Ignore classes defined inside
+        # functions or other classes.
+        if not self._class_name_stack:
+            self._class_name_stack.append(node.name)
+            self._get_stats_dict(node.name)
+            self.generic_visit(node)
+            self._class_name_stack.pop()
+        else:
+            # This is a nested class, so we do not visit its children.
+            return
 
     def _process_function_node(self, node: Union[ast.FunctionDef, ast.AsyncFunctionDef]):
-        """Helper to process both sync and async function/method nodes."""
-        stats_dict = None
-        if self._class_name_stack:
-            # We are inside a class
+        """
+        Helper to process both sync and async function/method nodes.
+        It only counts methods within a top-level class or standalone test functions.
+        """
+        is_top_level_method = len(self._class_name_stack) == 1
+        is_standalone_test = not self._class_name_stack and node.name.startswith('test_')
+
+        if is_top_level_method:
             current_class_name = self._class_name_stack[-1]
             stats_dict = self._get_stats_dict(current_class_name)
-        elif node.name.startswith('test_'):
-            # This is a standalone test function
+        elif is_standalone_test:
             stats_dict = self._get_stats_dict(self.STANDALONE_KEY)
         else:
-            # Not a method in a tracked class or a standalone test, so skip.
-            self.generic_visit(node)
+            # Not a function we should be counting. Do not process it, and
+            # importantly, do not visit its children to find more functions.
             return
 
         stats_dict["total_methods"] += 1
@@ -106,7 +115,10 @@ class ClassMethodAnalyzer(ast.NodeVisitor):
             if non_trivial_statements:
                 stats_dict["implemented_methods"] += 1
         
-        self.generic_visit(node)
+        # DO NOT call self.generic_visit(node) here. This prevents the visitor
+        # from descending into the method's body and counting nested helper
+        # functions as if they were methods of the class.
+
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         """Called for sync functions/methods."""
