@@ -137,9 +137,11 @@ Version Compatibility:
 """
 
 import logging
+import sys
 import time
 from typing import Any, Dict, List, Optional
 from app.infrastructure.cache.base import CacheInterface
+from app.core.exceptions import ConfigurationError
 
 
 class InMemoryCache(CacheInterface):

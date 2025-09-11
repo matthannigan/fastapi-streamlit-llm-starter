@@ -43,7 +43,7 @@ from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-from app.core.exceptions import InfrastructureError
+from app.core.exceptions import InfrastructureError, ConfigurationError
 
 
 class GenericRedisCache(CacheInterface):
