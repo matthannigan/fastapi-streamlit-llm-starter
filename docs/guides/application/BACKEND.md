@@ -231,16 +231,16 @@ export RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 3, "circuit_breaker_threshol
 
 ```bash
 # List available presets
-make list-presets
+make list-resil-presets
 
 # Show preset details  
-make show-preset PRESET=production
+make show-resil-preset PRESET=production
 
 # Validate current configuration
-make validate-config
+make validate-resil-config
 
 # Get environment recommendations
-make recommend-preset ENV=production
+make recommend-resil-preset ENV=production
 
 # Migrate legacy configuration
 make migrate-config

@@ -300,10 +300,10 @@ make lint-backend          # Run backend linting (flake8 + mypy)
 make format                # Format code with black and isort
 
 # ⚙️ Resilience Configuration Management
-make list-presets          # List available resilience configuration presets
-make show-preset PRESET=production  # Show preset details
-make validate-config       # Validate current resilience configuration
-make recommend-preset ENV=production # Get preset recommendation
+make list-resil-presets          # List available resilience configuration presets
+make show-resil-preset PRESET=production  # Show preset details
+make validate-resil-config       # Validate current resilience configuration
+make recommend-resil-preset ENV=production # Get preset recommendation
 
 # 🐳 Docker Operations
 make docker-build          # Build all Docker images

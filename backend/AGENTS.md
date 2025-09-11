@@ -166,10 +166,10 @@ RESILIENCE_CUSTOM_CONFIG='{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
 **Command Line Tools:**
 ```bash
 # Resilience management via Makefile
-make list-presets           # List available presets
-make show-preset PRESET=production  # Show preset details
-make validate-config        # Validate current configuration
-make recommend-preset ENV=production  # Get recommendations
+make list-resil-presets           # List available presets
+make show-resil-preset PRESET=production  # Show preset details
+make validate-resil-config        # Validate current configuration
+make recommend-resil-preset ENV=production  # Get recommendations
 ```
 
 ### Security & AI Safety Features
