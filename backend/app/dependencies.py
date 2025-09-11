@@ -528,23 +528,29 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         full functionality with in-memory caching when Redis is unavailable, making it suitable
         for both development and production environments with varying infrastructure availability.
     """
-    cache = AIResponseCache(
-        redis_url=settings.redis_url,
-        default_ttl=settings.cache_default_ttl,
-        text_hash_threshold=settings.cache_text_hash_threshold,
-        compression_threshold=settings.cache_compression_threshold,
-        compression_level=settings.cache_compression_level,
-        text_size_tiers=settings.cache_text_size_tiers,
-        memory_cache_size=settings.cache_memory_cache_size
-    )
+    from app.infrastructure.cache.dependencies import get_cache_config
+    from app.infrastructure.cache.factory import CacheFactory
+    
+    # Get cache configuration using preset system
+    cache_config = await get_cache_config(settings)
+    
+    # Use factory for proper cache creation
+    factory = CacheFactory()
     
     try:
-        await cache.connect()
+        # Create cache from configuration with graceful degradation
+        cache = await factory.create_cache_from_config(
+            cache_config.to_dict(),
+            fail_on_connection_error=False  # Enable graceful fallback
+        )
+        return cache
     except Exception as e:
-        # Log the error but continue gracefully - cache will operate without Redis
-        logger.warning(f"Failed to connect to Redis: {e}. Cache will operate without persistence.")
-    
-    return cache
+        # Log the error but continue gracefully with basic cache
+        logger.warning(f"Cache factory creation failed, using fallback: {e}")
+        
+        # Fallback to basic memory cache
+        from app.infrastructure.cache.memory import InMemoryCache
+        return InMemoryCache()
 
 
 @lru_cache()
