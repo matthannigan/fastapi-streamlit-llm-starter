@@ -122,6 +122,7 @@ class GenericRedisCache(CacheInterface):
         performance_monitor: Optional[CachePerformanceMonitor] = None,
         security_config: Optional["SecurityConfig"] = None,
         fail_on_connection_error: bool = False,
+        **kwargs  # Accept additional parameters for backward compatibility
     ):
         # Validate parameters per public contract
         if not isinstance(default_ttl, int):
@@ -143,6 +144,42 @@ class GenericRedisCache(CacheInterface):
             raise ConfigurationError("compression_threshold must be an integer", {"compression_threshold": compression_threshold})
         if not (100 <= compression_threshold <= 100000):
             raise ConfigurationError("compression_threshold must be between 100 and 100000 bytes", {"compression_threshold": compression_threshold})
+
+        # Handle legacy security parameters for backward compatibility
+        if security_config is None and kwargs:
+            # Check for legacy security parameters in kwargs
+            legacy_security_params = {
+                'redis_password', 'use_tls', 'tls_cert_path', 'tls_key_path',
+                'tls_ca_path', 'verify_certificates', 'redis_auth',
+                'acl_username', 'acl_password', 'connection_timeout',
+                'socket_timeout', 'min_tls_version', 'cipher_suites'
+            }
+            
+            found_legacy_params = {k: v for k, v in kwargs.items() if k in legacy_security_params}
+            if found_legacy_params:
+                logger.debug(f"Converting legacy security parameters to SecurityConfig: {list(found_legacy_params.keys())}")
+                try:
+                    from app.infrastructure.cache.security import SecurityConfig
+                    security_config = SecurityConfig(
+                        redis_auth=found_legacy_params.get('redis_password') or found_legacy_params.get('redis_auth'),
+                        acl_username=found_legacy_params.get('acl_username'),
+                        acl_password=found_legacy_params.get('acl_password'),
+                        use_tls=found_legacy_params.get('use_tls', False),
+                        tls_cert_path=found_legacy_params.get('tls_cert_path'),
+                        tls_key_path=found_legacy_params.get('tls_key_path'),
+                        tls_ca_path=found_legacy_params.get('tls_ca_path'),
+                        verify_certificates=found_legacy_params.get('verify_certificates', True),
+                        connection_timeout=found_legacy_params.get('connection_timeout', 5),
+                        socket_timeout=found_legacy_params.get('socket_timeout', 30),
+                        min_tls_version=found_legacy_params.get('min_tls_version', 771),
+                        cipher_suites=found_legacy_params.get('cipher_suites')
+                    )
+                    logger.debug("Successfully converted legacy security parameters to SecurityConfig")
+                    
+                except ImportError:
+                    logger.warning("SecurityConfig not available, keeping legacy parameters")
+                except Exception as e:
+                    logger.warning(f"Failed to create SecurityConfig from legacy parameters: {e}")
 
         self.redis_url = redis_url
         self.default_ttl = default_ttl

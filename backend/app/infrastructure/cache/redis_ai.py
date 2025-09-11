@@ -153,6 +153,7 @@ class AIResponseCache(GenericRedisCache):
         operation_ttls: Optional[Dict[str, int]] = None,
         security_config: Optional['SecurityConfig'] = None,  # Security configuration support
         fail_on_connection_error: bool = False,
+        **kwargs  # Accept additional parameters for backward compatibility
     ):
         """
         Initialize AIResponseCache with parameter mapping and inheritance.
@@ -197,6 +198,45 @@ class AIResponseCache(GenericRedisCache):
                 )
                 resolved_l1_cache_size = memory_cache_size
 
+            # Handle legacy security parameters for backward compatibility
+            if security_config is None and kwargs:
+                # Check for legacy security parameters in kwargs
+                legacy_security_params = {
+                    'redis_password', 'use_tls', 'tls_cert_path', 'tls_key_path',
+                    'tls_ca_path', 'verify_certificates', 'redis_auth',
+                    'acl_username', 'acl_password', 'connection_timeout',
+                    'socket_timeout', 'min_tls_version', 'cipher_suites'
+                }
+                
+                found_legacy_params = {k: v for k, v in kwargs.items() if k in legacy_security_params}
+                if found_legacy_params:
+                    logger.debug(f"Converting legacy security parameters to SecurityConfig: {list(found_legacy_params.keys())}")
+                    try:
+                        from app.infrastructure.cache.security import SecurityConfig
+                        security_config = SecurityConfig(
+                            redis_auth=found_legacy_params.get('redis_password') or found_legacy_params.get('redis_auth'),
+                            acl_username=found_legacy_params.get('acl_username'),
+                            acl_password=found_legacy_params.get('acl_password'),
+                            use_tls=found_legacy_params.get('use_tls', False),
+                            tls_cert_path=found_legacy_params.get('tls_cert_path'),
+                            tls_key_path=found_legacy_params.get('tls_key_path'),
+                            tls_ca_path=found_legacy_params.get('tls_ca_path'),
+                            verify_certificates=found_legacy_params.get('verify_certificates', True),
+                            connection_timeout=found_legacy_params.get('connection_timeout', 5),
+                            socket_timeout=found_legacy_params.get('socket_timeout', 30),
+                            min_tls_version=found_legacy_params.get('min_tls_version', 771),
+                            cipher_suites=found_legacy_params.get('cipher_suites')
+                        )
+                        
+                        # Remove legacy parameters from kwargs to avoid conflicts
+                        kwargs = {k: v for k, v in kwargs.items() if k not in legacy_security_params}
+                        logger.debug("Successfully converted legacy security parameters to SecurityConfig")
+                        
+                    except ImportError:
+                        logger.warning("SecurityConfig not available, keeping legacy parameters")
+                    except Exception as e:
+                        logger.warning(f"Failed to create SecurityConfig from legacy parameters: {e}")
+
             # Collect all AI parameters for mapping
             ai_params = {
                 'redis_url': redis_url,
@@ -212,6 +252,7 @@ class AIResponseCache(GenericRedisCache):
                 'operation_ttls': operation_ttls,
                 'security_config': security_config,
                 'fail_on_connection_error': fail_on_connection_error,
+                **kwargs  # Include any remaining kwargs for flexibility
             }
 
             # Remove None values to avoid validation issues, but keep performance_monitor and security_config

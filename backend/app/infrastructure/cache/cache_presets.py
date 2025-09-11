@@ -214,9 +214,12 @@ class CacheConfig:
                     connection_timeout=config_dict["connection_timeout"],
                     max_retries=3  # Default retry attempts
                 )
-            except ImportError:
+            except ImportError as e:
                 # SecurityConfig not available, fall back to individual parameters
                 # This maintains compatibility during development/testing
+                security_config = None
+            except Exception as e:
+                # SecurityConfig creation failed, fall back to individual parameters
                 security_config = None
         
         # Map fields to factory-expected names
