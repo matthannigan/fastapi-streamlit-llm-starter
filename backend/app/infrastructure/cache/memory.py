@@ -578,3 +578,162 @@ class InMemoryCache(CacheInterface):
 
         remaining = int(expires_at - time.time())
         return max(0, remaining)  # Don't return negative values
+
+    async def invalidate_pattern(self, pattern: str, operation_context: str = "") -> int:
+        """
+        Invalidate cache entries matching a glob-style pattern.
+        
+        Removes all cache entries whose keys match the specified pattern. 
+        This method provides compatibility with Redis-based cache APIs that
+        support pattern-based invalidation for administrative operations.
+        
+        Args:
+            pattern: Glob-style pattern to match cache keys. Empty string matches all keys.
+                    Supports wildcards: * (any characters), ? (single character)
+            operation_context: Context information for logging/monitoring (optional)
+        
+        Returns:
+            int: Number of cache entries that were invalidated
+            
+        Behavior:
+            - Pattern matching uses Python fnmatch for glob-style patterns
+            - Empty pattern matches all entries (complete cache clear)
+            - Expired entries are also removed during pattern matching
+            - Operation is atomic - either all matching keys are removed or none
+            
+        Example:
+            >>> cache = InMemoryCache()
+            >>> await cache.set("user:123", "data1")
+            >>> await cache.set("user:456", "data2") 
+            >>> await cache.set("session:abc", "session_data")
+            >>> count = await cache.invalidate_pattern("user:*")
+            >>> assert count == 2  # Removed user:123 and user:456
+        """
+        import fnmatch
+        
+        if not pattern:
+            # Empty pattern means invalidate all
+            keys_to_remove = list(self._cache.keys())
+        else:
+            # Find keys matching the pattern
+            keys_to_remove = [
+                key for key in self._cache.keys()
+                if fnmatch.fnmatch(key, pattern)
+            ]
+        
+        # Remove matching keys
+        removed_count = 0
+        for key in keys_to_remove:
+            if key in self._cache:
+                del self._cache[key]
+                if key in self._access_order:
+                    self._access_order.remove(key)
+                removed_count += 1
+        
+        if operation_context and removed_count > 0:
+            logger.debug(
+                f"InMemoryCache invalidated {removed_count} entries "
+                f"for pattern '{pattern}' (context: {operation_context})"
+            )
+        
+        return removed_count
+
+    def get_invalidation_frequency_stats(self) -> dict:
+        """
+        Get cache invalidation frequency and pattern statistics.
+        
+        For InMemoryCache, this is a stub implementation that returns empty stats
+        since invalidation tracking is not implemented for memory-only cache.
+        
+        Returns:
+            dict: Empty statistics structure for consistency with API contract
+        """
+        return {
+            "frequency": {},
+            "patterns": {},
+            "total_operations": 0,
+            "performance": {}
+        }
+
+    def get_invalidation_recommendations(self) -> list:
+        """
+        Get optimization recommendations based on invalidation patterns.
+        
+        For InMemoryCache, this returns no recommendations since pattern
+        analysis is not implemented for memory-only cache.
+        
+        Returns:
+            list: Empty recommendations list
+        """
+        return []
+
+    def get_cache_statistics(self) -> dict:
+        """
+        Get current memory cache statistics for internal use.
+        
+        Returns:
+            dict: Basic cache statistics including entry count and memory usage
+        """
+        active_entries = len(self.get_active_keys())
+        total_entries = len(self._cache)
+        
+        # Calculate approximate memory usage
+        memory_bytes = 0
+        for entry in self._cache.values():
+            try:
+                memory_bytes += len(str(entry).encode('utf-8'))
+            except:
+                memory_bytes += 100  # Rough estimate for non-string data
+        
+        # Format memory size
+        if memory_bytes >= 1024 * 1024:
+            memory_str = f"{memory_bytes / (1024 * 1024):.1f}MB"
+        elif memory_bytes >= 1024:
+            memory_str = f"{memory_bytes / 1024:.1f}KB"
+        else:
+            memory_str = f"{memory_bytes}B"
+        
+        return {
+            "active_entries": active_entries,
+            "total_entries": total_entries,
+            "memory_usage": memory_str,
+            "max_size": self.max_size,
+            "utilization_percent": (active_entries / self.max_size) * 100 if self.max_size > 0 else 0
+        }
+
+    async def get_cache_stats(self) -> dict:
+        """
+        Get comprehensive cache statistics for monitoring and status endpoints.
+        
+        Returns cache status information consistent with the API contract,
+        providing visibility into memory cache performance and utilization.
+        
+        Returns:
+            dict: Cache statistics containing:
+                - redis: Redis backend status (always disconnected for InMemoryCache)
+                - memory: Memory cache status with entry counts and utilization
+                - performance: Basic performance metrics for the memory cache
+        """
+        # Get current memory cache statistics
+        memory_stats = self.get_cache_statistics()
+        active_entries = len(self.get_active_keys())
+        
+        return {
+            "redis": {
+                "status": "disconnected",
+                "message": "InMemoryCache does not use Redis backend"
+            },
+            "memory": {
+                "status": "active",
+                "entries": active_entries,
+                "max_size": self.max_size,
+                "utilization_percent": (active_entries / self.max_size) * 100 if self.max_size > 0 else 0,
+                "memory_usage": memory_stats.get("memory_usage", "0B")
+            },
+            "performance": {
+                "status": "active",
+                "hit_rate": 0.0,  # Not tracked in basic InMemoryCache
+                "total_operations": active_entries,  # Approximate based on entries
+                "cache_type": "memory_only"
+            }
+        }
