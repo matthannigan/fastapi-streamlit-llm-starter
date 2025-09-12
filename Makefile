@@ -860,6 +860,7 @@ repomix-backend-tests-cache:
 	@echo "📄 Generating backend tests cache documentation..."
 	@mkdir -p repomix-output
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-tests-cache_U.md --quiet --include "backend/tests/**/cache/**/*,backend/tests/**/*cache*.*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-tests-cache-e2e_U.md --quiet --include "backend/tests/infrastructure/cache/e2e/**/*,backend/tests/infrastructure/cache/conftest.py"
 
 repomix-backend-tests-cache-fixtures:
 	@echo "📄 Generating backend tests cache fixtures documentation..."
