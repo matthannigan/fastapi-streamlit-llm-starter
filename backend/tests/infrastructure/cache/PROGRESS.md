@@ -50,6 +50,11 @@
 | 🟢 | `dependencies/test_specialized_dependencies.py` | TestFallbackAndConditionalCacheDependencies | 2 | 2 | 2 | 2 |
 | 🟢 | `dependencies/test_specialized_dependencies.py` | TestTestingCacheDependencies | 3 | 3 | 3 | 3 |
 | 🟢 | `dependencies/test_specialized_dependencies.py` | TestWebCacheServiceDependency | 2 | 2 | 2 | 2 |
+| 🟢 | `e2e/test_cache_invalidation_workflow.py` | TestCacheInvalidationWorkflow | 5 | 5 | 5 | 5 |
+| 🟢 | `e2e/test_cache_monitoring_workflow.py` | TestCacheMonitoringWorkflow | 5 | 5 | 5 | 5 |
+| 🟢 | `e2e/test_cache_preset_driven_behavior.py` | TestPresetDrivenBehavior | 3 | 3 | 3 | 3 |
+| 🟢 | `e2e/test_redis_enhanced_monitoring.py` | TestRedisEnhancedMonitoringWorkflow | 6 | 6 | 6 | 6 |
+| 🟢 | `e2e/test_redis_enhanced_preset_behavior.py` | TestRedisEnhancedPresetBehavior | 6 | 6 | 6 | 6 |
 | 🟢 | `factory/test_factory.py` | TestAIApplicationCacheCreation | 8 | 8 | 8 | 8 |
 | 🟢 | `factory/test_factory.py` | TestCacheFactoryInitialization | 2 | 2 | 2 | 2 |
 | 🟢 | `factory/test_factory.py` | TestConfigurationBasedCacheCreation | 8 | 8 | 8 | 8 |
@@ -113,4 +118,4 @@
 | 🟢 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerConnection | 5 | 5 | 5 | 5 |
 | 🟢 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerReporting | 3 | 3 | 3 | 3 |
 | 🟢 | `security/test_security_manager.py` | TestRedisCacheSecurityManagerValidation | 3 | 3 | 3 | 3 |
-| | | **TOTAL** | **555** | **555** | **555** | **555** |
+| | | **TOTAL** | **580** | **580** | **580** | **580** |
