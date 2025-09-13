@@ -16,7 +16,6 @@ This directory contains comprehensive examples demonstrating advanced usage of t
 
 **What it demonstrates:**
 - 🏗️ **Complete Infrastructure Setup**: Shows how to initialize and configure all major infrastructure components
-- 💾 **Advanced Caching Patterns**: AIResponseCache with custom configurations, tiered caching, and performance monitoring
 - 🛡️ **Resilience Systems**: Circuit breakers, retry mechanisms, and different resilience strategies
 - 🤖 **AI Infrastructure**: Secure prompt building, input sanitization, and response validation
 - 📊 **Performance Monitoring**: Comprehensive metrics collection and analysis
@@ -33,29 +32,6 @@ This directory contains comprehensive examples demonstrating advanced usage of t
 ```bash
 cd backend
 python -m examples.advanced_infrastructure_demo
-```
-
-### 2. Cache Configuration Examples (`cache_configuration_examples.py`)
-
-**Purpose:** Focused examples demonstrating different AIResponseCache configuration patterns for various environments and use cases.
-
-**What it demonstrates:**
-- 🔧 **Basic Cache Setup**: Simple configuration for getting started
-- 🛠️ **Development Configuration**: Optimized for fast development cycles
-- 🚀 **Production Configuration**: High-performance settings with advanced monitoring
-- 💾 **Memory-Only Fallback**: Graceful degradation when Redis is unavailable  
-- 🗑️ **Cache Invalidation Patterns**: Different approaches to cache management
-- 📊 **Performance Monitoring**: Using metrics to optimize cache performance
-
-**Configuration Examples:**
-- **Development**: Fast compression, short TTLs, smaller thresholds
-- **Production**: Maximum compression, longer TTLs, comprehensive monitoring
-- **Fallback**: InMemoryCache for Redis-less environments
-
-**Usage:**
-```bash
-cd backend
-python -m examples.cache_configuration_examples
 ```
 
 ## 🚀 Getting Started
@@ -90,18 +66,9 @@ cd backend
 
 # Advanced infrastructure demo
 python -m examples.advanced_infrastructure_demo
-
-# Cache configuration examples  
-python -m examples.cache_configuration_examples
 ```
 
 ## 🏗️ Infrastructure Components Covered
-
-### Cache Infrastructure
-- **AIResponseCache**: Redis-based caching with compression and tiered storage
-- **InMemoryCache**: High-performance in-memory caching with TTL and LRU eviction
-- **CachePerformanceMonitor**: Comprehensive performance monitoring and analytics
-- **Cache Key Generation**: Optimized key generation for large texts
 
 ### Resilience Infrastructure  
 - **Circuit Breaker Pattern**: Automatic failure detection and service protection

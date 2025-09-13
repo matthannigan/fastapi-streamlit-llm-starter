@@ -96,7 +96,7 @@ Automatically generated from Python docstrings and README files within project c
 #### Tests & Examples
 
 - **[Backend Testing](./code_ref/backend/tests/)**: Comprehensive test suite documentation with test structure, organization, and testing guidelines *(Last updated 2024-07-27)*
-- **[Backend Examples](./code_ref/backend/examples/)**: Infrastructure examples demonstrating advanced usage of caching, resilience, and AI components *(Last updated 2024-07-27)*
+- **[Backend Examples](./code_ref/backend/examples/)**: Infrastructure examples demonstrating advanced usage of resilience and AI components *(Last updated 2024-07-27)*
 
 ### [Frontend](./code_ref/frontend/)
 

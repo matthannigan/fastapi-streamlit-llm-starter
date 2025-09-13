@@ -334,7 +334,7 @@ backend/
 │       ├── text_processing.py         # Request/response models
 │       ├── health.py                  # Health check models
 │       └── common.py                  # Shared response models
-├── examples/                          # Infrastructure usage examples
+├── examples/                          # Infrastructure integration examples
 ├── tests/                            # Comprehensive test suite (23k+ lines)
 ├── scripts/                          # Utility scripts
 ├── requirements.txt                  # Python dependencies

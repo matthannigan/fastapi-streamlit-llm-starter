@@ -73,10 +73,15 @@ await cache.cache_response(
 # Retrieve cached AI response
 cached = await cache.get_cached_response(
     text="Analyze this document...",
-    operation="summarize", 
+    operation="summarize",
     options={"max_length": 100}
 )
 ```
+
+**📖 For complete implementation examples, see:**
+- Cache module docstrings in `app.infrastructure.cache.dependencies`
+- Cache factory patterns in `app.infrastructure.cache.factory`
+- Real-world usage patterns in production endpoints
 
 ### Simple Preset Configuration
 
