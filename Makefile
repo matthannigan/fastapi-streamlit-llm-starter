@@ -850,6 +850,7 @@ repomix-backend-cache: repomix-backend-cache-tests
 	@mkdir -p repomix-output
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache_U.md --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/cache/**/*,docs/**/*cache*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*"
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache_C.md --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/cache/**/*,docs/**/*cache*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*" --compress
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*"
 
 repomix-backend-cache-tests:
 	@echo "📄 Generating backend tests cache documentation..."
