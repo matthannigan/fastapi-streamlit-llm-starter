@@ -227,7 +227,7 @@
     "title": "Cache Infrastructure Testing Guide",
     "topic_category": "infrastructure",
     "audience_level": "advanced",
-    "description": "Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, performance benchmarks, and CI/CD configuration",
+    "description": "Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, and CI/CD configuration",
     "dependencies": [
       "guides/infrastructure/cache/CACHE.md",
       "guides/infrastructure/cache/api-reference.md",
