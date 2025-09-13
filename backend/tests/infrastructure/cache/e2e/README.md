@@ -43,8 +43,7 @@ make test-backend-infra-cache-e2e-redis
 ### All E2E Tests
 ```bash
 # Run both standard and Redis-enhanced tests
-cd backend
-../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -m "e2e" -v
+cd backend && source ../.venv/bin/activate && python -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e" -v && cd ..
 ```
 
 ## Test Fixtures
