@@ -214,13 +214,42 @@ async def get_performance_monitor(cache_service: AIResponseCache = Depends(get_c
             and computing cache performance statistics and metrics.
     
     Raises:
-        AttributeError: If the cache service does not have a performance_monitor
-            attribute or if the monitor is not properly initialized.
+        InfrastructureError: If the cache service does not have a performance_monitor
+            attribute or if the monitor is not properly initialized, indicating
+            that performance monitoring is not available for this cache implementation.
     
     Example:
         Used as a FastAPI dependency:
         >>> @router.get("/metrics")
         >>> async def endpoint(monitor: CachePerformanceMonitor = Depends(get_performance_monitor)):
+        ...     return monitor.get_performance_stats()
+    """
+    ...
+
+
+async def get_performance_monitor_http(cache_service: AIResponseCache = Depends(get_cache_service)) -> CachePerformanceMonitor:
+    """
+    HTTP-aware dependency wrapper that converts InfrastructureError to HTTPException.
+    
+    This wrapper catches InfrastructureError exceptions from get_performance_monitor and
+    converts them to HTTPException which FastAPI handles gracefully, avoiding middleware
+    conflicts and providing proper HTTP status codes for performance monitor availability.
+    
+    Args:
+        cache_service (AIResponseCache): Injected cache service dependency
+            containing the performance monitor component.
+    
+    Returns:
+        CachePerformanceMonitor: The performance monitor instance when available.
+    
+    Raises:
+        HTTPException: 500 Internal Server Error when performance monitor is not available
+            for the current cache implementation, with detailed error information.
+    
+    Example:
+        Used as a FastAPI dependency:
+        >>> @router.get("/metrics")
+        >>> async def endpoint(monitor: CachePerformanceMonitor = Depends(get_performance_monitor_http)):
         ...     return monitor.get_performance_stats()
     """
     ...
@@ -491,7 +520,7 @@ async def get_invalidation_recommendations(cache_service: AIResponseCache = Depe
 
 
 @router.get('/metrics', response_model=CachePerformanceResponse, summary='Get Cache Performance Metrics', description='Retrieve comprehensive cache performance statistics including key generation times, cache operation metrics, compression ratios, and memory usage.', responses={200: {'description': 'Successfully retrieved cache performance metrics', 'content': {'application/json': {'example': {'timestamp': '2024-01-15T10:30:00.123456', 'retention_hours': 1, 'cache_hit_rate': 85.5, 'total_cache_operations': 150, 'cache_hits': 128, 'cache_misses': 22, 'key_generation': {'total_operations': 75, 'avg_duration': 0.002, 'median_duration': 0.0015, 'max_duration': 0.012, 'min_duration': 0.0008, 'avg_text_length': 1250, 'max_text_length': 5000, 'slow_operations': 2}, 'cache_operations': {'total_operations': 150, 'avg_duration': 0.0045, 'median_duration': 0.003, 'max_duration': 0.025, 'min_duration': 0.001, 'slow_operations': 5, 'by_operation_type': {'get': {'count': 100, 'avg_duration': 0.003, 'max_duration': 0.015}, 'set': {'count': 50, 'avg_duration': 0.007, 'max_duration': 0.025}}}, 'compression': {'total_operations': 25, 'avg_compression_ratio': 0.65, 'median_compression_ratio': 0.62, 'best_compression_ratio': 0.45, 'worst_compression_ratio': 0.89, 'avg_compression_time': 0.003, 'max_compression_time': 0.015, 'total_bytes_processed': 524288, 'total_bytes_saved': 183500, 'overall_savings_percent': 35.0}}}}}, 500: {'description': 'Internal server error - Performance monitor unavailable or failed', 'content': {'application/json': {'examples': {'monitor_not_initialized': {'summary': 'Performance monitor not initialized', 'value': {'detail': 'Failed to retrieve cache performance metrics: Performance monitor not available'}}, 'cache_service_error': {'summary': 'Cache service dependency failure', 'value': {'detail': 'Failed to retrieve cache performance metrics: Cache service not available'}}, 'stats_computation_error': {'summary': 'Error computing statistics', 'value': {'detail': 'Failed to retrieve cache performance metrics: Statistics computation failed'}}}}}}, 503: {'description': 'Service temporarily unavailable - Cache monitoring disabled', 'content': {'application/json': {'example': {'detail': 'Cache performance monitoring is temporarily disabled'}}}}})
-async def get_cache_performance_metrics(api_key: str = Depends(optional_verify_api_key), performance_monitor: CachePerformanceMonitor = Depends(get_performance_monitor)) -> CachePerformanceResponse:
+async def get_cache_performance_metrics(api_key: str = Depends(optional_verify_api_key), performance_monitor: CachePerformanceMonitor = Depends(get_performance_monitor_http)) -> CachePerformanceResponse:
     """
     Get comprehensive cache performance metrics and statistics.
     
