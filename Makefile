@@ -424,7 +424,7 @@ test-backend-infra-cache-e2e-redis:
 
 update-tests-progress:
 	@echo "🧪 Updating tests progress..."
-	@-$(PYTHON_CMD) -m pytest backend/tests/infrastructure/cache/ -n auto -q --json-report --json-report-file=backend/tests/infrastructure/cache/failures.json
+	@-cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --json-report --json-report-file=tests/infrastructure/cache/failures.json
 	@$(PYTHON_CMD) scripts/update_tests_progress_w_failures.py backend/tests/infrastructure/cache/ --failures backend/tests/infrastructure/cache/failures.json --output backend/tests/infrastructure/cache/PROGRESS.md
 
 # Run infrastructure service tests
