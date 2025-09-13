@@ -851,7 +851,7 @@ repomix-backend-contracts: generate-contracts
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*"
 
 # Generate backend cache documentation 
-repomix-backend-cache: repomix-backend-tests-cache
+repomix-backend-cache: repomix-backend-cache-tests
 	@echo "📄 Generating backend cache documentation..."
 	@mkdir -p repomix-output
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache_U.md --quiet --include "backend/**/cache/**/*,backend/**/*cache*.*,backend/**/*CACHE*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/cache/**/*,docs/**/*cache*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*"
