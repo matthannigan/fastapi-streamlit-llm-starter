@@ -222,7 +222,7 @@ External Dependencies:
 ### test_cache_preset_manager_recommend_preset_detects_development_environments()
 
 ```python
-def test_cache_preset_manager_recommend_preset_detects_development_environments(self):
+def test_cache_preset_manager_recommend_preset_detects_development_environments(self, monkeypatch):
 ```
 
 Test that recommend_preset() detects development environments and recommends appropriate presets.
@@ -260,7 +260,7 @@ Related Tests:
 ### test_cache_preset_manager_recommend_preset_detects_production_environments()
 
 ```python
-def test_cache_preset_manager_recommend_preset_detects_production_environments(self):
+def test_cache_preset_manager_recommend_preset_detects_production_environments(self, monkeypatch):
 ```
 
 Test that recommend_preset() detects production environments and recommends robust presets.
@@ -544,44 +544,6 @@ Configuration Decision Support Verified:
 Related Tests:
     - test_preset_summary_enables_configuration_comparison()
     - test_preset_summary_supports_ui_development()
-
-### test_cache_preset_manager_get_preset_details_provides_specific_preset_information()
-
-```python
-def test_cache_preset_manager_get_preset_details_provides_specific_preset_information(self):
-```
-
-Test that get_preset_details() provides detailed information about specific presets.
-
-Verifies:
-    Detailed preset information supports configuration understanding and customization
-    
-Business Impact:
-    Enables deep understanding of preset configurations for customization decisions
-    
-Scenario:
-    Given: CachePresetManager with specific preset selection
-    When: get_preset_details() is called for specific preset
-    Then: Detailed preset information is returned
-    And: Parameter values and rationale are explained
-    And: Environment applicability is clearly described
-    And: Customization guidance is provided
-    
-Detailed Preset Information Verified:
-    - Complete parameter configuration is detailed
-    - Parameter rationale and optimization reasoning is explained
-    - Environment context and applicability is described
-    - Customization recommendations are provided where appropriate
-    
-Fixtures Used:
-    - None (testing preset detail generation directly)
-    
-Configuration Understanding Verified:
-    Detailed preset information enables informed customization and deployment decisions
-    
-Related Tests:
-    - test_preset_details_explain_parameter_optimization_reasoning()
-    - test_preset_details_provide_customization_guidance()
 
 ### test_cache_preset_manager_get_preset_details_provides_specific_preset_information()
 

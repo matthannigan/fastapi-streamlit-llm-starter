@@ -1015,24 +1015,24 @@ def test_get_recent_slow_operations_applies_threshold_multipliers_correctly(self
 Test that get_recent_slow_operations() applies threshold multipliers correctly.
 
 Verifies:
-    Configurable threshold multipliers are applied accurately for slow operation detection
+    Configurable threshold multipliers affect slow operation detection sensitivity
     
 Business Impact:
     Enables tuning of slow operation sensitivity based on operational requirements
     
 Scenario:
-    Given: CachePerformanceMonitor with configurable threshold multiplier
-    When: get_recent_slow_operations() calculates slow operation thresholds
-    Then: Threshold multipliers are correctly applied to average operation times
+    Given: CachePerformanceMonitor with operations of varying speeds
+    When: get_recent_slow_operations() is called with different threshold multipliers
+    Then: Lower multipliers detect more operations as slow (higher sensitivity)
     
 Edge Cases Covered:
-    - Default threshold multiplier (2.0x average)
+    - Default threshold multiplier (2.0x baseline)
     - Custom threshold multipliers (various sensitivity levels)
-    - Threshold calculation accuracy
-    - Edge cases with very fast or slow average times
+    - Behavioral verification of threshold sensitivity
+    - Consistent categorization across operation types
     
 Mocks Used:
-    - None (threshold calculation verification)
+    - None (behavioral verification)
     
 Related Tests:
     - test_get_recent_slow_operations_categorizes_by_operation_type()

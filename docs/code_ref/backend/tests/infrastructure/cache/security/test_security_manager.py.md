@@ -164,7 +164,7 @@ Related Tests:
 ### test_connection_authentication_failure_handled_gracefully()
 
 ```python
-def test_connection_authentication_failure_handled_gracefully(self):
+async def test_connection_authentication_failure_handled_gracefully(self, mock_aioredis):
 ```
 
 Test that authentication failures during connection are handled with clear error reporting.
@@ -202,7 +202,7 @@ Related Tests:
 ### test_connection_timeout_prevents_infinite_retry_loops()
 
 ```python
-def test_connection_timeout_prevents_infinite_retry_loops(self):
+async def test_connection_timeout_prevents_infinite_retry_loops(self, mock_aioredis, mock_sleep):
 ```
 
 Test that connection timeout configuration prevents infinite retry loops.
@@ -301,7 +301,7 @@ Related Tests:
 ### test_security_scoring_reflects_configuration_strength()
 
 ```python
-def test_security_scoring_reflects_configuration_strength(self):
+async def test_security_scoring_reflects_configuration_strength(self):
 ```
 
 Test that security scoring in validation results accurately reflects configuration strength.
@@ -340,7 +340,7 @@ Related Tests:
 ### test_security_recommendations_provide_actionable_guidance()
 
 ```python
-def test_security_recommendations_provide_actionable_guidance(self):
+async def test_security_recommendations_provide_actionable_guidance(self):
 ```
 
 Test that security validation provides actionable recommendations for improvement.
@@ -479,7 +479,7 @@ Related Tests:
 ### test_test_security_configuration_validates_end_to_end_security()
 
 ```python
-def test_test_security_configuration_validates_end_to_end_security(self):
+async def test_test_security_configuration_validates_end_to_end_security(self, mock_aioredis):
 ```
 
 Test that test_security_configuration performs comprehensive security validation.

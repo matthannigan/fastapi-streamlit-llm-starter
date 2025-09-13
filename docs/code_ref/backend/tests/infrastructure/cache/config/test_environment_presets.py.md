@@ -494,7 +494,7 @@ Related Tests:
 ### test_recommend_preset_suggests_appropriate_configuration()
 
 ```python
-def test_recommend_preset_suggests_appropriate_configuration(self):
+def test_recommend_preset_suggests_appropriate_configuration(self, monkeypatch):
 ```
 
 Test that recommend_preset() suggests appropriate preset based on environment analysis.

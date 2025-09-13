@@ -625,38 +625,6 @@ Related Tests:
     - test_for_testing_uses_test_database_for_isolation()
     - test_for_testing_applies_short_ttls_for_quick_expiration()
 
-### test_for_testing_uses_test_database_for_isolation()
-
-```python
-async def test_for_testing_uses_test_database_for_isolation(self):
-```
-
-Test that for_testing() uses Redis test database for test isolation.
-
-Verifies:
-    Testing cache uses separate Redis database to avoid production data conflicts
-    
-Business Impact:
-    Prevents test data from interfering with development or production caches
-    
-Scenario:
-    Given: Factory configured for testing with default settings
-    When: for_testing() is called without custom Redis URL
-    Then: Cache is created targeting Redis database 15 for test isolation
-    
-Edge Cases Covered:
-    - Default test database selection (DB 15)
-    - Custom test database configuration
-    - Test database URL parsing and validation
-    - Database isolation verification
-    
-Mocks Used:
-    - none
-    
-Related Tests:
-    - test_for_testing_creates_cache_with_test_optimizations()
-    - test_for_testing_supports_custom_test_database()
-
 ### test_for_testing_applies_short_ttls_for_quick_expiration()
 
 ```python

@@ -116,7 +116,7 @@ cache = AIResponseCache(
 ### __init__()
 
 ```python
-def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: Optional[int] = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False):
+def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: Optional[int] = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs):
 ```
 
 Initialize AIResponseCache with parameter mapping and inheritance.

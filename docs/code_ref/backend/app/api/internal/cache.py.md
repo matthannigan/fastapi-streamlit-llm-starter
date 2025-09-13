@@ -345,7 +345,7 @@ Note:
 ## invalidate_cache()
 
 ```python
-async def invalidate_cache(pattern: str = Query(default='', description='Pattern to match for cache invalidation'), operation_context: str = Query(default='api_endpoint', description='Context for the invalidation operation'), cache_service: AIResponseCache = Depends(get_cache_service), api_key: str = Depends(verify_api_key)):
+async def invalidate_cache(pattern: str = Query(default='', description='Pattern to match for cache invalidation'), operation_context: str = Query(default='api_endpoint', description='Context for the invalidation operation'), cache_service: AIResponseCache = Depends(get_cache_service), api_key: str = Depends(verify_api_key_http)):
 ```
 
 Invalidate cache entries matching the specified pattern.

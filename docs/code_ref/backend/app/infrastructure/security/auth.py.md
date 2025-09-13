@@ -19,13 +19,15 @@ Key Features:
     - **Test Integration**: Built-in test mode support for automated testing
     - **User Tracking**: Optional user context and request metadata tracking
     - **Flexible Configuration**: Environment-based configuration with runtime reloading
+    - **HTTP Exception Compatibility**: Wrapper dependencies that convert custom exceptions to proper HTTP responses
 
 Architecture:
-    The module is structured around three main components:
+    The module is structured around four main components:
     
     1. **AuthConfig**: Manages authentication configuration and feature flags
     2. **APIKeyAuth**: Handles API key validation and metadata management
     3. **FastAPI Dependencies**: Provides authentication dependencies for route protection
+    4. **HTTPException Wrappers**: Converts custom exceptions to FastAPI-compatible HTTP responses
 
 Operation Modes:
     - **Simple Mode** (default): Basic API key validation without advanced features
@@ -90,6 +92,17 @@ Usage Examples:
                 return "Valid key"
             return "Invalid key"
         ```
+    
+    HTTP Exception compatibility (recommended for FastAPI endpoints):
+        ```python
+        from app.infrastructure.security.auth import verify_api_key_http
+        
+        @app.post("/internal/cache/invalidate")
+        async def protected_endpoint(api_key: str = Depends(verify_api_key_http)):
+            # This dependency automatically converts AuthenticationError to 401 HTTPException
+            # Avoids middleware conflicts and provides clean HTTP responses
+            return {"message": "Authenticated access", "key": api_key}
+        ```
 
 Extension Points:
     The module provides several extension points for customization:
@@ -121,10 +134,21 @@ Performance:
     - Minimal overhead for simple mode operations
 
 Error Handling:
-    The module raises appropriate HTTP exceptions:
-    - `401 Unauthorized`: Missing or invalid API key
-    - Detailed error messages with WWW-Authenticate headers
-    - Graceful degradation in development mode
+    The module provides two approaches for error handling:
+    
+    **Standard Dependencies** (verify_api_key, optional_verify_api_key):
+    - Raise `AuthenticationError` custom exceptions
+    - Handled by global exception handlers
+    - May cause middleware conflicts in dependency injection
+    
+    **HTTP Wrapper Dependencies** (verify_api_key_http - recommended):
+    - Convert `AuthenticationError` to `HTTPException` automatically
+    - Return proper `401 Unauthorized` responses with detailed error messages
+    - Include WWW-Authenticate headers and structured error context
+    - Avoid middleware conflicts and provide clean HTTP responses
+    - Preserve original error messages and debugging context
+    
+    Both approaches support graceful degradation in development mode
 
 Version: 1.0.0
 Author: FastAPI LLM Starter Team
@@ -376,3 +400,24 @@ Args:
     
 Returns:
     True if feature is supported
+
+## verify_api_key_http()
+
+```python
+async def verify_api_key_http(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
+```
+
+Dependency wrapper that converts AuthenticationError to HTTPException.
+
+This wrapper catches AuthenticationError exceptions from verify_api_key and
+converts them to HTTPException which FastAPI handles more gracefully with
+the middleware stack, avoiding "response already started" conflicts.
+
+Args:
+    credentials: HTTP Bearer credentials from the request
+    
+Returns:
+    The verified API key
+    
+Raises:
+    HTTPException: 401 Unauthorized if authentication fails

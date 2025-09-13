@@ -333,3 +333,93 @@ Args:
 
 Returns:
     Remaining TTL in seconds, None if key doesn't exist or has no expiration
+
+### invalidate_pattern()
+
+```python
+async def invalidate_pattern(self, pattern: str, operation_context: str = '') -> int:
+```
+
+Invalidate cache entries matching a glob-style pattern.
+
+Removes all cache entries whose keys match the specified pattern. 
+This method provides compatibility with Redis-based cache APIs that
+support pattern-based invalidation for administrative operations.
+
+Args:
+    pattern: Glob-style pattern to match cache keys. Empty string matches all keys.
+            Supports wildcards: * (any characters), ? (single character)
+    operation_context: Context information for logging/monitoring (optional)
+
+Returns:
+    int: Number of cache entries that were invalidated
+    
+Behavior:
+    - Pattern matching uses Python fnmatch for glob-style patterns
+    - Empty pattern matches all entries (complete cache clear)
+    - Expired entries are also removed during pattern matching
+    - Operation is atomic - either all matching keys are removed or none
+    
+Example:
+    >>> cache = InMemoryCache()
+    >>> await cache.set("user:123", "data1")
+    >>> await cache.set("user:456", "data2") 
+    >>> await cache.set("session:abc", "session_data")
+    >>> count = await cache.invalidate_pattern("user:*")
+    >>> assert count == 2  # Removed user:123 and user:456
+
+### get_invalidation_frequency_stats()
+
+```python
+def get_invalidation_frequency_stats(self) -> dict:
+```
+
+Get cache invalidation frequency and pattern statistics.
+
+For InMemoryCache, this is a stub implementation that returns empty stats
+since invalidation tracking is not implemented for memory-only cache.
+
+Returns:
+    dict: Empty statistics structure for consistency with API contract
+
+### get_invalidation_recommendations()
+
+```python
+def get_invalidation_recommendations(self) -> list:
+```
+
+Get optimization recommendations based on invalidation patterns.
+
+For InMemoryCache, this returns no recommendations since pattern
+analysis is not implemented for memory-only cache.
+
+Returns:
+    list: Empty recommendations list
+
+### get_cache_statistics()
+
+```python
+def get_cache_statistics(self) -> dict:
+```
+
+Get current memory cache statistics for internal use.
+
+Returns:
+    dict: Basic cache statistics including entry count and memory usage
+
+### get_cache_stats()
+
+```python
+async def get_cache_stats(self) -> dict:
+```
+
+Get comprehensive cache statistics for monitoring and status endpoints.
+
+Returns cache status information consistent with the API contract,
+providing visibility into memory cache performance and utilization.
+
+Returns:
+    dict: Cache statistics containing:
+        - redis: Redis backend status (always disconnected for InMemoryCache)
+        - memory: Memory cache status with entry counts and utilization
+        - performance: Basic performance metrics for the memory cache

@@ -49,33 +49,29 @@ External Dependencies:
 def test_connect_delegates_to_parent_and_returns_connection_status(self):
 ```
 
-Test that connect method delegates to parent class and returns proper status.
+Test that connect method delegates to parent class and returns appropriate status.
 
 Verifies:
-    Connection management follows proper inheritance delegation pattern
+    Connection delegation maintains inheritance contract
     
 Business Impact:
-    Ensures reliable connection establishment for cache operations
+    Proper inheritance ensures consistent connection behavior
     
 Scenario:
-    Given: AIResponseCache instance ready for Redis connection
+    Given: AIResponseCache properly inherits from GenericRedisCache
     When: connect method is called
-    Then: GenericRedisCache.connect is called through inheritance
-    And: Connection success status (True) is returned from parent
-    And: Connection establishment is handled entirely by parent class
-    And: AI cache doesn't duplicate connection logic
+    Then: Connection attempt delegates to parent GenericRedisCache.connect
+    And: Connection success or failure is returned appropriately
+    And: Cache maintains proper connection state after delegation
     
-Connection Delegation Verified:
-    - Parent class connect method is invoked
-    - Connection result (True for success) is returned
-    - Parent class manages Redis connection state
-    - AI cache inherits connection behavior without duplication
+Delegation Pattern:
+    AIResponseCache.connect() -> GenericRedisCache.connect() -> Redis client setup
     
-Fixtures Used:
-    - None
-    
-Inheritance Pattern:
-    Connection management demonstrates proper inheritance delegation
+Expected Outcomes:
+    - AIResponseCache inherits connection logic without modification
+    - Parent class handles all Redis connection establishment
+    - Connection state properly maintained in inheritance hierarchy
+    - Error handling follows parent class patterns
     
 Related Tests:
     - test_connect_handles_redis_failure_gracefully()
@@ -90,34 +86,34 @@ def test_connect_handles_redis_failure_gracefully(self):
 Test that connect method handles Redis connection failures gracefully.
 
 Verifies:
-    Connection failures don't break AI cache initialization
+    Graceful degradation when Redis is unavailable
     
 Business Impact:
-    Allows AI services to operate in memory-only mode during Redis outages
+    System continues operating during Redis outages
     
 Scenario:
-    Given: Redis server unavailable or connection configured incorrectly
-    When: connect method is called
-    Then: GenericRedisCache.connect returns False indicating failure
-    And: AI cache accepts connection failure gracefully
-    And: Cache operates in memory-only mode with degraded functionality
-    And: Connection failure is handled without raising exceptions
+    Given: AIResponseCache configured with invalid Redis connection
+    When: connect method attempts connection
+    Then: Connection failure is handled gracefully
+    And: Cache continues to function with memory-only operations
+    And: No exceptions are raised that would break the application
+    And: Cache state remains stable for subsequent operations
     
-Graceful Connection Failure Handling:
-    - Connection failure (False return) handled without exceptions
-    - Cache continues operating in memory-only mode
-    - Performance monitor may record connection failure event
-    - AI services can still use cache with reduced functionality
+Graceful Degradation Patterns:
+    - Connection failure doesn't crash the application
+    - Memory-only operations remain available
+    - Cache methods continue to work with reduced functionality
+    - Error logging provides useful information without breaking operation
     
-Fixtures Used:
-    - None
-    
-Degraded Mode Operation:
-    Cache continues functioning with memory-only operations
+Expected Behavior:
+    - Invalid connection returns False or None (not exception)
+    - Cache remains operational for basic functionality
+    - Memory cache continues to work through parent class
+    - Subsequent operations don't crash due to failed connection
     
 Related Tests:
-    - test_connect_delegates_to_parent_and_returns_connection_status()
-    - test_cache_operations_work_without_redis_connection()
+    - test_standard_cache_operations_work_without_redis_connection()
+    - test_get_cache_stats_handles_redis_failure_gracefully()
 
 ### test_connect_integrates_with_performance_monitoring()
 

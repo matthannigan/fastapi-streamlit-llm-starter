@@ -90,6 +90,36 @@ Secure GenericRedisCache configuration for security testing.
 Provides a configuration with security features enabled for testing
 secure Redis connections and security validation.
 
+Creates the security configuration on-demand to ensure mock_path_exists
+is active during SecurityConfig creation.
+
+## mock_path_exists()
+
+```python
+def mock_path_exists():
+```
+
+Fixture that mocks pathlib.Path.exists for certificate file validation.
+
+Uses autospec=True to ensure the mock's signature matches the real
+method, which is crucial for using side_effect correctly. The default
+return_value is True for "happy path" tests.
+
+Note: This fixture is now redundant since it's already defined in parent conftest,
+but kept here for clarity in the redis_generic test module context.
+
+## mock_ssl_context()
+
+```python
+def mock_ssl_context():
+```
+
+Fixture that mocks SSL certificate loading operations for security testing.
+
+Mocks ssl.SSLContext.load_cert_chain and ssl.SSLContext.load_verify_locations
+to prevent actual file system access during testing. Essential for security
+tests that require TLS configuration without real certificate files.
+
 ## compression_redis_config()
 
 ```python

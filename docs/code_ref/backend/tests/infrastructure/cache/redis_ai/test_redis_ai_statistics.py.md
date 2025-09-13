@@ -11,17 +11,16 @@ AIResponseCache public contract. Tests focus on behavior-driven testing principl
 and observable statistics collection and reporting functionality.
 
 Implementation Status:
-    - 3 tests PASS: AI performance summary, text tier statistics, operation performance
-    - 5 tests SKIP: Due to performance_monitor null reference bugs in implementation
+    - 8 tests PASS: All statistics and performance monitoring tests implemented and passing
     
-Known Implementation Bugs:
-    Critical performance_monitor null reference issues prevent testing of:
-    - get_cache_stats(): calls performance_monitor.get_performance_stats() without null check
-    - get_cache_hit_ratio(): calls performance_monitor._calculate_hit_rate() without null check  
-    - get_performance_summary(): depends on performance_monitor methods without null checks
-    
-    These bugs should be fixed by adding 'if self.performance_monitor is not None:' checks
-    before all performance_monitor method calls throughout the AIResponseCache implementation.
+Implementation Notes:
+    All tests have been re-implemented using behavior-driven testing principles based strictly 
+    on the public contract from backend/contracts/infrastructure/cache/redis_ai.pyi. 
+    Key improvements:
+    - Removed internal implementation mocking (e.g., cache.performance_monitor._calculate_hit_rate)
+    - Test only documented behavior from public contract
+    - Focus on observable outcomes rather than implementation details
+    - Ensure tests would pass even if internal implementation is completely rewritten
 
 Coverage Focus:
     - Statistics collection and reporting behavior verification
@@ -61,7 +60,7 @@ External Dependencies:
 ### test_get_cache_stats_returns_comprehensive_statistics()
 
 ```python
-def test_get_cache_stats_returns_comprehensive_statistics(self):
+async def test_get_cache_stats_returns_comprehensive_statistics(self, valid_ai_params):
 ```
 
 Test that get_cache_stats returns comprehensive cache statistics as documented.
@@ -99,7 +98,7 @@ Related Tests:
 ### test_get_cache_stats_handles_redis_failure_gracefully()
 
 ```python
-def test_get_cache_stats_handles_redis_failure_gracefully(self):
+async def test_get_cache_stats_handles_redis_failure_gracefully(self, valid_ai_params):
 ```
 
 Test that get_cache_stats handles Redis connection failures gracefully.
@@ -137,7 +136,7 @@ Related Tests:
 ### test_get_cache_hit_ratio_calculates_percentage_correctly()
 
 ```python
-def test_get_cache_hit_ratio_calculates_percentage_correctly(self):
+def test_get_cache_hit_ratio_calculates_percentage_correctly(self, valid_ai_params):
 ```
 
 Test that get_cache_hit_ratio returns accurate hit ratio percentage.
@@ -174,7 +173,7 @@ Related Tests:
 ### test_get_cache_hit_ratio_handles_zero_operations()
 
 ```python
-def test_get_cache_hit_ratio_handles_zero_operations(self):
+def test_get_cache_hit_ratio_handles_zero_operations(self, valid_ai_params):
 ```
 
 Test that get_cache_hit_ratio handles zero operations without division errors.
@@ -209,7 +208,7 @@ Related Tests:
 ### test_get_performance_summary_includes_hit_ratio()
 
 ```python
-def test_get_performance_summary_includes_hit_ratio(self):
+def test_get_performance_summary_includes_hit_ratio(self, valid_ai_params):
 ```
 
 Test that get_performance_summary includes hit ratio and comprehensive metrics.

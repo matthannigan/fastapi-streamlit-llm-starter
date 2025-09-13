@@ -37,7 +37,7 @@ def visit_ClassDef(self, node: ast.ClassDef):
 ```
 
 Called when visiting a class. Pushes the class onto a stack to handle
-nested classes correctly.
+nested classes correctly, but only processes top-level classes.
 
 ### visit_FunctionDef()
 

@@ -51,7 +51,7 @@ security configuration and operational status.
 ### test_get_security_status_with_security_config()
 
 ```python
-def test_get_security_status_with_security_config(self, secure_generic_redis_config):
+def test_get_security_status_with_security_config(self, mock_path_exists, mock_ssl_context):
 ```
 
 Test security status retrieval with security configuration.
@@ -91,7 +91,7 @@ Then: Security levels should be accurately classified
 ### test_security_status_data_completeness()
 
 ```python
-def test_security_status_data_completeness(self, secure_generic_redis_config):
+def test_security_status_data_completeness(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
 ```
 
 Test completeness of security status data.
@@ -140,7 +140,7 @@ Redis connection security including authentication and encryption validation.
 ### test_validate_security_with_security_manager()
 
 ```python
-async def test_validate_security_with_security_manager(self, secure_generic_redis_config, fake_redis_client):
+async def test_validate_security_with_security_manager(self, secure_generic_redis_config, fake_redis_client, mock_path_exists, mock_ssl_context):
 ```
 
 Test security validation with security manager available.
@@ -167,7 +167,7 @@ And: No errors should be raised for missing security features
 ### test_validate_security_connection_handling()
 
 ```python
-async def test_validate_security_connection_handling(self, secure_generic_redis_config):
+async def test_validate_security_connection_handling(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
 ```
 
 Test security validation with connection issues.
@@ -187,7 +187,7 @@ reports including configuration analysis, vulnerability assessment, and recommen
 ### test_generate_security_report_comprehensive()
 
 ```python
-async def test_generate_security_report_comprehensive(self, secure_generic_redis_config, fake_redis_client):
+async def test_generate_security_report_comprehensive(self, secure_generic_redis_config, fake_redis_client, mock_path_exists, mock_ssl_context):
 ```
 
 Test comprehensive security report generation.
@@ -215,7 +215,7 @@ And: Report should provide security improvement recommendations
 ### test_security_report_formatting()
 
 ```python
-async def test_security_report_formatting(self, secure_generic_redis_config):
+async def test_security_report_formatting(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
 ```
 
 Test security report formatting and structure.
@@ -235,7 +235,7 @@ of security settings including connection validation and authentication testing.
 ### test_security_configuration_testing_comprehensive()
 
 ```python
-async def test_security_configuration_testing_comprehensive(self, secure_generic_redis_config, fake_redis_client):
+async def test_security_configuration_testing_comprehensive(self, secure_generic_redis_config, fake_redis_client, mock_path_exists, mock_ssl_context):
 ```
 
 Test comprehensive security configuration testing.
@@ -263,7 +263,7 @@ And: Overall security status should be negative
 ### test_security_configuration_testing_error_handling()
 
 ```python
-async def test_security_configuration_testing_error_handling(self, secure_generic_redis_config):
+async def test_security_configuration_testing_error_handling(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
 ```
 
 Test security configuration testing error handling.

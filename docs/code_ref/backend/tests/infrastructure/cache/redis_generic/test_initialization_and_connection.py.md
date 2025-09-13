@@ -121,7 +121,7 @@ And: Compression level should be correctly set
 ### test_security_configuration_initialization()
 
 ```python
-def test_security_configuration_initialization(self, secure_generic_redis_config):
+def test_security_configuration_initialization(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
 ```
 
 Test initialization with security configuration.
@@ -219,7 +219,7 @@ And: Validation errors should be specific and helpful
 ### test_security_feature_availability()
 
 ```python
-async def test_security_feature_availability(self, secure_generic_redis_config):
+async def test_security_feature_availability(self, secure_generic_redis_config, mock_path_exists, mock_ssl_context):
 ```
 
 Test availability of security features when configured.

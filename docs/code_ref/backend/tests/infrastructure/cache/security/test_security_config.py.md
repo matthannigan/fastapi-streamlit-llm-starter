@@ -370,7 +370,7 @@ Related Tests:
 ### test_create_from_env_returns_none_when_no_security_variables()
 
 ```python
-def test_create_from_env_returns_none_when_no_security_variables(self):
+def test_create_from_env_returns_none_when_no_security_variables(self, monkeypatch):
 ```
 
 Test that create_security_config_from_env returns None when no security variables present.
