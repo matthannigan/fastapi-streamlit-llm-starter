@@ -393,6 +393,6 @@ class InMemoryCache(CacheInterface):
             dict: Cache statistics containing:
                 - redis: Redis backend status (always disconnected for InMemoryCache)
                 - memory: Memory cache status with entry counts and utilization
-                - performance: Basic performance metrics for the memory cache
+                - performance: Comprehensive performance metrics including actual hit rate calculation
         """
         ...

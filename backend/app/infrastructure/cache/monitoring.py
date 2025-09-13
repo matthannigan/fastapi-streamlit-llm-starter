@@ -567,13 +567,24 @@ class CachePerformanceMonitor:
 
     def _get_invalidations_in_last_hour(self) -> int:
         """
-        Get the number of invalidations in the last hour.
+        Get the number of invalidations in the last hour for frequency analysis.
 
-        Counts invalidation events that occurred within the past 3600 seconds
-        from the current time. Used for frequency analysis and alerting.
+        This helper method is used by get_invalidation_frequency_stats() to calculate
+        the hourly invalidation rate for alerting and monitoring purposes. It provides
+        critical data for detecting cache invalidation storms and performance issues.
+
+        The method scans invalidation timestamps within the past 3600 seconds and
+        counts events for frequency-based alerting thresholds:
+        - Warning threshold: Default 100 invalidations/hour
+        - Critical threshold: Default 300 invalidations/hour
 
         Returns:
-            int: Number of invalidation events in the last hour.
+            int: Number of invalidation events in the last hour, used for
+                 alerting logic and invalidation frequency monitoring.
+
+        Related Methods:
+            - get_invalidation_frequency_stats(): Main consumer of this data
+            - check_invalidation_rate(): Uses this for threshold alerts
         """
         current_time = time.time()
         cutoff_time = current_time - 3600  # 1 hour ago

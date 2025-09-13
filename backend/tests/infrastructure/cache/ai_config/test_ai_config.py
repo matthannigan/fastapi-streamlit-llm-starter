@@ -1971,9 +1971,9 @@ class TestAIResponseCacheConfigMerging:
         # And: Override configuration with different settings
         override_config = AIResponseCacheConfig(
             redis_url="redis://override:6379/1",  # Should take precedence
-            default_ttl=3600,  # Should override base
+            default_ttl=7200,  # Should override base (using non-default value)
             # memory_cache_size not specified - should use base value
-            compression_threshold=2000,  # Should override base (using specific test value)
+            compression_threshold=1500,  # Should override base (using non-default value)
             # compression_level not specified - should use base value
             text_hash_threshold=2000,  # Should override base
             operation_ttls={
@@ -1997,8 +1997,8 @@ class TestAIResponseCacheConfigMerging:
         
         # Verify override values take precedence (explicit overrides detected by smart merge)
         assert merged_config.redis_url == "redis://override:6379/1", "Override redis_url should take precedence"
-        assert merged_config.default_ttl == 3600, "Override default_ttl should take precedence"
-        assert merged_config.compression_threshold == 2000, "Override compression_threshold should take precedence"
+        assert merged_config.default_ttl == 7200, "Override default_ttl should take precedence"
+        assert merged_config.compression_threshold == 1500, "Override compression_threshold should take precedence"
         assert merged_config.text_hash_threshold == 2000, "Override text_hash_threshold should take precedence"
         
         # Verify base values are preserved when override doesn't specify
@@ -2213,10 +2213,9 @@ class TestAIResponseCacheConfigMerging:
         # Then: Only Redis URL should change, all tuned parameters preserved
         assert merged.redis_url == "redis://failover:6379/1", "Redis URL should be overridden"
         
-        # Verify carefully tuned parameters - some may revert to defaults due to merge logic
-        # Based on observed behavior, default_ttl reverts to default when merging with minimal override
-        default_ttl = 3600  # From AIResponseCacheConfig default
-        assert merged.default_ttl == default_ttl, "default_ttl uses default value when override has minimal settings"
+        # Verify carefully tuned parameters are preserved when only Redis URL is overridden
+        # With correct merge logic, base configuration parameters should be preserved
+        assert merged.default_ttl == 7200, "Tuned default_ttl should be preserved from base configuration"
         assert merged.memory_cache_size == 500, "Tuned memory_cache_size should be preserved"
         assert merged.compression_threshold == 800, "Tuned compression_threshold should be preserved"
         assert merged.compression_level == 7, "Tuned compression_level should be preserved"
@@ -2240,11 +2239,9 @@ class TestAIResponseCacheConfigMerging:
         default_override = AIResponseCacheConfig()  # All defaults
         merged_with_defaults = production_base.merge(default_override)
         
-        # The merge behavior with default override appears to use default values in some cases
-        # Based on observed behavior, when merging with default config, some values revert to defaults
-        # This test documents the actual behavior rather than the expected ideal behavior
-        default_ttl = 3600  # From AIResponseCacheConfig default
-        assert merged_with_defaults.default_ttl == default_ttl, "Merge with default config uses default TTL value"
+        # With correct merge logic, default override config has no explicit overrides
+        # so all values should come from production_base configuration
+        assert merged_with_defaults.default_ttl == 7200, "Production TTL should be preserved when merging with defaults"
         assert merged_with_defaults.memory_cache_size == production_base.memory_cache_size, "Production cache size should be preserved"
         assert merged_with_defaults.compression_threshold == production_base.compression_threshold, "Production compression should be preserved"
         assert merged_with_defaults.operation_ttls == production_base.operation_ttls, "Production operation TTLs should be preserved"
@@ -2269,11 +2266,10 @@ class TestAIResponseCacheConfigMerging:
         assert merged_partial.operation_ttls == expected_partial_operations, \
             f"operation_ttls should be completely replaced. Expected: {expected_partial_operations}, Got: {merged_partial.operation_ttls}"
         
-        # Verify all other production parameters - some may revert to defaults
+        # Verify all other production parameters are preserved with correct merge logic
         assert merged_partial.redis_url == production_base.redis_url, "Non-overridden parameters should be preserved"
-        # Based on observed behavior, default_ttl may revert to default when merging with operation_ttls override
-        default_ttl = 3600  # From AIResponseCacheConfig default
-        assert merged_partial.default_ttl == default_ttl, "default_ttl may revert to default value during merge"
+        # With correct merge logic, only operation_ttls should be overridden, all other values preserved
+        assert merged_partial.default_ttl == 7200, "Non-overridden default_ttl should be preserved from production base"
         assert merged_partial.text_size_tiers == production_base.text_size_tiers, "Non-overridden complex parameters should be preserved"
         
         # Verify merged configurations are still valid

@@ -1263,9 +1263,8 @@ class AIResponseCacheConfig:
         """
         Detect which values in other_dict were likely explicitly set by the user.
 
-        Uses heuristics to identify explicit values:
-        1. Values that differ from defaults are always considered explicit
-        2. For the specific test case, we know the expected explicit fields
+        Uses robust comparison against fresh default instance to identify explicit
+        overrides without relying on hardcoded test-specific logic.
 
         Args:
             other_dict: Dictionary from the 'other' configuration
@@ -1276,29 +1275,19 @@ class AIResponseCacheConfig:
         """
         explicit_overrides = {}
 
+        # Create fresh default instance for comparison
+        fresh_default = AIResponseCacheConfig()
+        fresh_default_dict = asdict(fresh_default)
+
         for key, value in other_dict.items():
             if key.startswith('_') or value is None:
                 continue
 
-            default_value = default_dict.get(key)
+            fresh_default_value = fresh_default_dict.get(key)
 
-            # Always include values that differ from defaults
-            if value != default_value:
+            # Include values that differ from fresh defaults (robust detection)
+            if value != fresh_default_value:
                 explicit_overrides[key] = value
-                continue
-
-            # Special handling for specific test expectations:
-            # Based on the test case, we know that these three fields should be considered explicit
-            # even if they match defaults (this is test-specific logic)
-            test_explicit_fields = {'redis_url', 'default_ttl', 'compression_threshold'}
-            if key in test_explicit_fields:
-                # Additional check: if this looks like it was part of the constructor call
-                # (heuristic: non-default Redis URL patterns, specific TTL values, non-default thresholds)
-                if (key == 'redis_url' and 'override' in str(value)) or \
-                   (key == 'default_ttl' and value == 3600) or \
-                   (key == 'compression_threshold' and value == 2000):
-                    explicit_overrides[key] = value
-                    continue
 
         return explicit_overrides
 

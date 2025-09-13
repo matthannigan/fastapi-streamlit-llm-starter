@@ -704,20 +704,24 @@ class InMemoryCache(CacheInterface):
     async def get_cache_stats(self) -> dict:
         """
         Get comprehensive cache statistics for monitoring and status endpoints.
-        
+
         Returns cache status information consistent with the API contract,
         providing visibility into memory cache performance and utilization.
-        
+
         Returns:
             dict: Cache statistics containing:
                 - redis: Redis backend status (always disconnected for InMemoryCache)
                 - memory: Memory cache status with entry counts and utilization
-                - performance: Basic performance metrics for the memory cache
+                - performance: Comprehensive performance metrics including actual hit rate calculation
         """
         # Get current memory cache statistics
         memory_stats = self.get_cache_statistics()
         active_entries = len(self.get_active_keys())
-        
+
+        # Calculate hit rate from existing counters
+        total_operations = self._hits + self._misses
+        hit_rate = (self._hits / total_operations) if total_operations > 0 else 0.0
+
         return {
             "redis": {
                 "status": "disconnected",
@@ -732,8 +736,10 @@ class InMemoryCache(CacheInterface):
             },
             "performance": {
                 "status": "active",
-                "hit_rate": 0.0,  # Not tracked in basic InMemoryCache
-                "total_operations": active_entries,  # Approximate based on entries
+                "hit_rate": round(hit_rate, 4),  # Actual hit rate calculation
+                "total_operations": total_operations,
+                "hits": self._hits,
+                "misses": self._misses,
                 "cache_type": "memory_only"
             }
         }
