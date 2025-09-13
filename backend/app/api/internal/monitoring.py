@@ -352,15 +352,24 @@ async def get_monitoring_health(
         
         # Check cache performance monitoring
         try:
-            cache_stats = cache_service.performance_monitor.get_performance_stats()
-            monitoring_health["components"]["cache_performance_monitor"] = {
-                "status": "healthy",
-                "total_operations_tracked": cache_stats.get("total_cache_operations", 0),
-                "has_recent_data": len(cache_service.performance_monitor.cache_operation_times) > 0
-            }
-            # Update timestamp from performance stats if available
-            if "timestamp" in cache_stats:
-                monitoring_health["timestamp"] = str(cache_stats["timestamp"])
+            # Check if performance_monitor attribute exists (not all cache implementations have it)
+            if hasattr(cache_service, 'performance_monitor') and cache_service.performance_monitor is not None:
+                cache_stats = cache_service.performance_monitor.get_performance_stats()
+                monitoring_health["components"]["cache_performance_monitor"] = {
+                    "status": "healthy",
+                    "total_operations_tracked": cache_stats.get("total_cache_operations", 0),
+                    "has_recent_data": len(cache_service.performance_monitor.cache_operation_times) > 0
+                }
+                # Update timestamp from performance stats if available
+                if "timestamp" in cache_stats:
+                    monitoring_health["timestamp"] = str(cache_stats["timestamp"])
+            else:
+                # Performance monitor not available (e.g., InMemoryCache)
+                monitoring_health["components"]["cache_performance_monitor"] = {
+                    "status": "degraded",
+                    "error": "Performance monitor not available for this cache implementation"
+                }
+                monitoring_health["status"] = "degraded"
         except Exception as e:
             logger.warning(f"Cache performance monitor check failed: {e}")
             monitoring_health["components"]["cache_performance_monitor"] = {
