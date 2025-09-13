@@ -239,30 +239,9 @@ To perform a final quality check against the core principles, we instruct the as
 
 We also run the test suite to identify errors and failures and work to debug them with the coding assistant.
 
-## 6. Test Implementation Prioritization
-
-When adding new tests or implementing skeleton tests, follow this established priority order to ensure the most critical functionality is always covered first.
-
-#### Immediate Priority (High Business Impact)
-
-1.  **Memory Cache Core Operations** - Foundation for all caching.
-2.  **Redis Generic Cache Operations** - Production cache functionality.
-3.  **AI Cache Core Operations** - Business-critical AI features.
-4.  **Security Configuration** - Production security requirements.
-
-#### Medium Priority
-
-1.  **Performance Monitoring** - Operational visibility.
-2.  **Configuration Management** - Deployment flexibility.
-3.  **Cache Validation** - Configuration safety.
-
-#### Lower Priority
-
-1.  **Migration Operations** - Utility functionality.
-2.  **Benchmarking** - Performance optimization.
-3.  **Cache Presets** - Configuration convenience.
-
 ## 7. How to Run Tests
+
+### Unit and Integration Tests
 
 To run all tests in this suite, navigate to the repository root, activate the `.venv` virtual environment, and execute:
 
@@ -275,3 +254,9 @@ cd backend && source ../.venv/bin/activate && python -m pytest [test_file.py]
 ```
 
 Tests automatically run in parallel by default. See more more settings at `backend/pytest.ini`.
+
+### All E2E Tests
+```bash
+# Run both standard and Redis-enhanced tests
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e" -v
+```
