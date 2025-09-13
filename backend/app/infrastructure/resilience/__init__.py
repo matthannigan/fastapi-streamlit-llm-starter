@@ -1,34 +1,96 @@
 """
-Resilience Infrastructure Service
+Resilience Infrastructure Service Package
 
-This module provides comprehensive fault tolerance and resilience patterns for AI services,
-including circuit breakers, retry logic, and intelligent failure handling. It implements
-industry-standard resilience patterns with intelligent configuration management.
+This package provides comprehensive fault tolerance and resilience patterns for AI services,
+implementing industry-standard resilience patterns with intelligent configuration management,
+performance monitoring, and seamless integration across the application infrastructure.
 
-## Architecture
+## Package Architecture
 
-The resilience system follows a layered architecture:
-- **Pattern Layer**: Circuit breakers, retry logic, and failure classification
-- **Configuration Layer**: Preset management and intelligent configuration
-- **Orchestration Layer**: High-level decorators and service integration
-- **Monitoring Layer**: Metrics, validation, and performance tracking
+The resilience system follows a sophisticated layered architecture designed for maximum
+flexibility and operational visibility:
 
-## Key Components
+- **Pattern Layer**: Core resilience patterns (circuit breakers, retry logic, failure classification)
+- **Configuration Layer**: Intelligent preset management with dynamic configuration and validation
+- **Orchestration Layer**: High-level decorators and service integration for seamless adoption
+- **Monitoring Layer**: Comprehensive metrics, performance tracking, and alerting system
+- **Migration Layer**: Legacy configuration analysis and automated migration utilities
 
-### Core Patterns
-- **Circuit Breaker**: Prevents cascade failures with automatic recovery
-- **Retry Logic**: Intelligent retry with exponential backoff and jitter
+## Core Components
+
+### Circuit Breaker Pattern (`circuit_breaker.py`)
+Advanced circuit breaker implementation with intelligent failure detection:
+- **Failure Threshold Detection**: Configurable failure rate and count thresholds
+- **Automatic Recovery**: Time-based recovery with exponential backoff
+- **State Management**: Open/Closed/Half-Open states with proper state transitions
+- **Performance Metrics**: Real-time monitoring of operation success/failure rates
+- **Custom Strategies**: Configurable strategies for different operation types
+
+### Retry Logic (`retry.py`)
+Intelligent retry mechanisms with failure classification:
+- **Exponential Backoff**: Configurable backoff with jitter to prevent thundering herd
 - **Exception Classification**: Smart categorization of transient vs permanent failures
+- **Retry Strategies**: Different strategies (conservative, balanced, aggressive) per operation
+- **Timeout Management**: Configurable timeouts with graceful degradation
+- **Success Rate Tracking**: Monitoring of retry success patterns
 
-### Configuration Management
-- **Preset System**: Pre-configured resilience strategies (simple, development, production)
-- **Dynamic Configuration**: Runtime configuration updates with validation
-- **Migration Tools**: Legacy configuration analysis and migration utilities
+### Configuration Management (`config_presets.py`)
+Simplified configuration system with intelligent defaults:
+- **Preset System**: Pre-configured strategies (simple, development, production)
+- **Environment Detection**: Automatic environment-specific configuration
+- **Dynamic Updates**: Runtime configuration changes with validation
+- **Legacy Migration**: Automated migration from complex legacy configurations
+- **Validation**: Comprehensive configuration validation with detailed error reporting
 
-### Monitoring & Analytics
-- **Performance Metrics**: Operation timing, success rates, and failure patterns
-- **Configuration Monitoring**: Preset usage tracking and change auditing
-- **Alerting System**: Threshold-based alerts for configuration issues
+### Orchestration (`orchestrator.py`)
+High-level integration layer for seamless resilience adoption:
+- **Operation Decorators**: Easy-to-use decorators for different resilience strategies
+- **Service Integration**: Unified resilience interface for AI service operations
+- **Context Management**: Automatic context preservation across retry attempts
+- **Metrics Integration**: Automatic performance tracking and monitoring
+- **Error Handling**: Comprehensive error handling with proper exception propagation
+
+### Performance Monitoring (`performance_benchmarks.py`)
+Advanced performance monitoring and benchmarking system:
+- **Operation Timing**: Detailed timing analysis with percentile calculations
+- **Success Rate Analysis**: Success/failure rate tracking with trend analysis
+- **Performance Regression Detection**: Automatic detection of performance degradations
+- **Benchmark Suites**: Comprehensive benchmark testing for configuration validation
+- **Threshold Alerting**: Configurable performance thresholds with alerting
+
+### Configuration Validation (`config_validator.py`)
+Robust validation system with security and performance considerations:
+- **Schema Validation**: Comprehensive JSON schema validation with detailed error reporting
+- **Security Features**: Rate limiting and abuse protection for validation endpoints
+- **Performance Optimization**: Efficient validation with caching and optimization
+- **Template System**: Pre-defined configuration templates for common use cases
+- **Migration Support**: Validation of migrated configurations with compatibility checking
+
+## Design Principles & Standards
+
+### Reliability & Fault Tolerance
+- **Fail Fast**: Quick detection and handling of permanent failures
+- **Graceful Degradation**: Maintaining service availability during partial failures
+- **Intelligent Recovery**: Automatic recovery with adaptive backoff strategies
+- **Isolation**: Failure isolation to prevent cascade failures across services
+
+### Performance & Efficiency
+- **Minimal Overhead**: < 0.1ms overhead per resilience operation
+- **Async-First Design**: Full async/await support for optimal concurrency
+- **Resource Efficient**: Minimal memory and CPU overhead
+- **High Throughput**: Supports thousands of operations per second
+
+### Configuration & Operations
+- **Preset-Driven**: Simplified configuration through intelligent presets
+- **Environment-Aware**: Automatic adaptation to different environments
+- **Monitoring Integration**: Built-in metrics collection and performance tracking
+- **DevOps Ready**: Comprehensive operational visibility and control
+
+### Security & Compliance
+- **Secure Defaults**: Security-first configuration with safe defaults
+- **Validation Security**: Rate limiting and abuse protection for configuration endpoints
+- **Audit Trails**: Complete audit trails for configuration changes and failures
+- **Compliance Ready**: Supports compliance requirements with comprehensive logging
 
 ## Usage Patterns
 

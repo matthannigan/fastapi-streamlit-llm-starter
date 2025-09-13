@@ -77,54 +77,101 @@ logger = logging.getLogger(__name__)
                      401: {"model": ErrorResponse, "description": "Authentication Error"},
                  })
 async def auth_status(api_key: str = Depends(verify_api_key)):
-    """Verify authentication status and return API key validation information.
+    """
+    Authentication status validation endpoint with secure API key verification and truncation.
     
-    This endpoint validates the provided API key and returns authentication status
-    information. It serves as a secure health check for authentication systems and
-    provides a safe method to validate API keys without exposing sensitive data.
-    
-    The endpoint requires a valid API key provided through the standard authentication
-    mechanism (Authorization header with "Bearer <token>" format or X-API-Key header).
-    Upon successful authentication, it returns confirmation details with a safely
-    truncated version of the API key for verification purposes.
+    This endpoint provides comprehensive authentication status validation for client applications and
+    monitoring systems, implementing secure API key verification with safe response formatting that
+    prevents sensitive data exposure. It serves as both a functional authentication validator and a
+    diagnostic tool for authentication system health monitoring and integration testing.
     
     Args:
-        api_key (str): The validated API key obtained through the verify_api_key
-            dependency. This parameter is automatically injected by FastAPI's
-            dependency injection system after successful authentication validation.
+        api_key: The validated API key string obtained through infrastructure authentication dependency
+                injection. This parameter is automatically resolved by FastAPI's dependency system
+                after successful authentication validation through either Authorization Bearer token
+                or X-API-Key header mechanisms.
     
     Returns:
-        dict: Authentication status information containing:
-            - authenticated (bool): Always True when the request reaches this endpoint,
-              confirming successful authentication
-            - api_key_prefix (str): Safely truncated API key showing only the first
-              8 characters followed by "..." for security verification purposes.
-              Keys with 8 characters or fewer display the complete key
-            - message (str): Human-readable confirmation message indicating successful
-              authentication
+        dict: Comprehensive authentication status response containing:
+             - authenticated: Boolean always True upon successful endpoint access, confirming valid authentication
+             - api_key_prefix: Safely truncated API key displaying first 8 characters with "..." suffix
+                              for security verification (complete key shown if ≤8 characters total)
+             - message: Human-readable confirmation message indicating successful authentication completion
     
     Raises:
-        AuthenticationError: Authentication failures raise authentication errors:
-            - Missing API key: No API key provided in request headers
-            - Invalid API key: API key is malformed or unrecognized
-            - Authentication failure: API key format is incorrect
+        HTTPException: 401 Unauthorized when authentication validation fails:
+                      - Missing API key in request headers (Authorization or X-API-Key)
+                      - Invalid API key format or unrecognized key value
+                      - Authentication system failure or key validation error
     
-    Example:
-        >>> # GET /v1/auth/status
-        >>> # Headers: Authorization: Bearer your-api-key-here
-        >>> {
-        ...   "authenticated": true,
-        ...   "api_key_prefix": "abcd1234...",
-        ...   "message": "Authentication successful"
-        ... }
+    Behavior:
+        **Authentication Validation:**
+        - Validates API key through infrastructure security dependency before endpoint execution
+        - Supports multiple authentication methods (Bearer token and X-API-Key header formats)
+        - Applies comprehensive API key format validation and recognition checks
+        - Ensures only authenticated requests reach the endpoint logic
+        
+        **Response Security:**
+        - Truncates API key to first 8 characters with "..." suffix for security verification
+        - Prevents full API key exposure in response logs or client-side storage
+        - Maintains verification capability while preserving security best practices
+        - Returns complete key only for keys with 8 or fewer characters total
+        
+        **Integration Patterns:**
+        - Provides standardized authentication status response for client SDK integration
+        - Enables authentication system health monitoring and validation workflows
+        - Supports debugging and diagnostic use cases for authentication troubleshooting
+        - Facilitates automated testing of authentication mechanisms and key rotation
+        
+        **Error Handling:**
+        - Returns structured error responses through FastAPI exception handling
+        - Provides meaningful error messages for authentication failure diagnosis
+        - Maintains security by not exposing system internals in error responses
+        - Supports integration with logging and monitoring systems for security events
+    
+    Examples:
+        >>> # Basic authentication status check with Bearer token
+        >>> import httpx
+        >>> headers = {"Authorization": "Bearer your-api-key-12345678"}
+        >>> response = await client.get("/v1/auth/status", headers=headers)
+        >>> assert response.status_code == 200
+        >>> result = response.json()
+        >>> assert result["authenticated"] is True
+        >>> assert result["api_key_prefix"] == "your-api..."
+        >>> assert "successful" in result["message"]
+        
+        >>> # Alternative X-API-Key header authentication
+        >>> headers = {"X-API-Key": "production-key-abcdef123456"}
+        >>> response = await client.get("/v1/auth/status", headers=headers)
+        >>> data = response.json()
+        >>> assert data["authenticated"] is True
+        >>> assert data["api_key_prefix"] == "producti..."
+        
+        >>> # Authentication failure scenario
+        >>> response = await client.get("/v1/auth/status")  # No API key
+        >>> assert response.status_code == 401
+        >>> error = response.json()
+        >>> assert "Authentication Error" in str(error)
+        
+        >>> # Client SDK integration pattern
+        >>> class APIClient:
+        ...     async def validate_authentication(self):
+        ...         response = await self.get("/v1/auth/status")
+        ...         return response.json()["authenticated"]
+        
+        >>> # Monitoring system health check integration
+        >>> async def check_auth_system_health():
+        ...     try:
+        ...         response = await client.get("/v1/auth/status", headers=auth_headers)
+        ...         return response.status_code == 200
+        ...     except Exception:
+        ...         return False  # Authentication system unavailable
     
     Note:
-        This endpoint is designed for:
-        - API key validation in client applications and SDKs
-        - Authentication system health monitoring and diagnostics
-        - Debugging authentication configuration issues
-        - Integration testing of authentication workflows
-        - Verifying API key rotation and management processes
+        This endpoint serves multiple operational purposes including client application authentication
+        validation, monitoring system integration, debugging authentication configuration issues, and
+        integration testing of authentication workflows. The secure response format prevents sensitive
+        API key exposure while maintaining verification and diagnostic capabilities.
     """
     return {
         "authenticated": True,

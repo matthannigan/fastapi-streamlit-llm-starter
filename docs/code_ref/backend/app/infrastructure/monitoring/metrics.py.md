@@ -57,7 +57,7 @@ json_format = metrics.export_json()
 
 Metrics collection integrates with:
 - Cache performance monitoring
-- Resilience pattern monitoring
+- Resilience pattern monitoring  
 - AI service operation tracking
 - HTTP request/response monitoring
 - Database connection monitoring

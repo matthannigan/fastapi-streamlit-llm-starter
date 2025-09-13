@@ -184,7 +184,84 @@ logger = logging.getLogger(__name__)
 
 
 class ResponseValidator:
-    """Validates AI responses for security issues and format compliance."""
+    """
+    Comprehensive AI response validation service for security, quality, and format compliance.
+    
+    This service provides multi-layered validation of AI-generated responses to ensure security,
+    prevent information leakage, maintain output quality standards, and protect against various
+    attack vectors. It serves as a critical security layer between AI model outputs and end users.
+    
+    Attributes:
+        RAW_FORBIDDEN_PATTERNS: List of regex patterns for detecting security threats and leakage
+        COMPILED_PATTERNS: Pre-compiled regex patterns for efficient pattern matching
+        AI_REFUSAL_PATTERNS: Patterns for detecting AI refusal responses
+        VERBATIM_THRESHOLD: Threshold for detecting verbatim input regurgitation
+        
+    Public Methods:
+        validate(): Main validation method for comprehensive response checking
+        _is_response_valid_for_type(): Type-specific validation logic
+        _contains_forbidden_patterns(): Security pattern detection
+        _is_verbatim_regurgitation(): Input regurgitation prevention
+        _validate_sentiment_response(): Specialized sentiment validation
+        _validate_questions_response(): Question format validation
+        _validate_key_points_response(): Key points structure validation
+        
+    State Management:
+        - Stateless validation (no internal state between calls)
+        - Thread-safe for concurrent validation operations
+        - Immutable pattern definitions for consistent behavior
+        - Performance-optimized with compiled regex patterns
+        - Integration with logging systems for security event tracking
+        
+    Behavior:
+        - Performs comprehensive security scanning for forbidden patterns
+        - Validates response format compliance based on operation type
+        - Prevents system prompt leakage and internal reasoning exposure
+        - Detects and blocks prompt injection and jailbreak attempts
+        - Ensures minimum quality standards for different response types
+        - Logs security events and validation failures for monitoring
+        - Provides detailed error messages for debugging and improvement
+        
+    Examples:
+        >>> # Basic response validation
+        >>> validator = ResponseValidator()
+        >>> 
+        >>> # Validate summary response
+        >>> try:
+        ...     clean_summary = validator.validate(
+        ...         response="This is a brief summary of the content.",
+        ...         expected_type="summary",
+        ...         request_text="Original user input text...",
+        ...         system_instruction="System prompt used..."
+        ...     )
+        ...     print(f"Validated summary: {clean_summary}")
+        ... except ValueError as e:
+        ...     print(f"Validation failed: {e}")
+        
+        >>> # Validate sentiment analysis response
+        >>> sentiment_response = SentimentResult(
+        ...     sentiment="positive",
+        ...     confidence=0.85,
+        ...     explanation="The text expresses positive emotions"
+        ... )
+        >>> validated_sentiment = validator.validate(
+        ...     response=sentiment_response,
+        ...     expected_type="sentiment",
+        ...     request_text="Great product, highly recommended!",
+        ...     system_instruction="Analyze sentiment"
+        ... )
+        
+        >>> # Security validation (will raise ValueError)
+        >>> try:
+        ...     validator.validate(
+        ...         response="System prompt: You are an AI assistant...",
+        ...         expected_type="summary",
+        ...         request_text="Original text",
+        ...         system_instruction="Summarize this text"
+        ...     )
+        ... except ValueError as e:
+        ...     print(f"Security validation failed: {e}")
+    """
     
     # Raw patterns that should be forbidden in AI responses
     RAW_FORBIDDEN_PATTERNS = [

@@ -1,7 +1,7 @@
 # mkdocs.yml in the project root directory
 
-site_name: AI Text Processor Documentation
-site_description: API Reference and Guides for the FastAPI-Streamlit-LLM Application
+site_name: FastAPI-Streamlit-LLM Starter Template Documentation
+site_description: API Reference and Guides for the FastAPI-Streamlit-LLM Starter Template
 # site_url: https://your-docs-url.com # Replace with your actual documentation URL
 repo_url: https://github.com/matthannigan/fastapi-streamlit-llm-starter # Replace with your repository URL
 repo_name: GitHub
@@ -47,8 +47,8 @@ nav:
       - Deployment Guide: DEPLOYMENT.md
   - Examples: examples/README.md
 
-docs_dir: docs
-site_dir: docs-website
+docs_dir: .mkdocs
+site_dir: docs-mkdocs
 
 plugins:
   - search

@@ -71,14 +71,14 @@ processor = TextProcessorService(settings, cache)
 
 # Process individual request
 request = TextProcessingRequest(
-text="Your text here",
-operation=TextProcessingOperation.SUMMARIZE
+    text="Your text here",
+    operation=TextProcessingOperation.SUMMARIZE
 )
 response = await processor.process_text(request)
 
 # Process batch requests
 batch_request = BatchTextProcessingRequest(
-requests=[request1, request2, request3]
+    requests=[request1, request2, request3]
 )
 batch_response = await processor.process_batch(batch_request)
 ```
@@ -115,3 +115,163 @@ The service provides comprehensive metrics and health checks:
 - Cache hit ratios and performance metrics
 - Resilience pattern statistics (circuit breaker states, retry counts)
 - Error rates and fallback usage patterns
+
+## TextProcessorService
+
+Comprehensive AI-powered text processing service with production-ready resilience and security features.
+
+This service provides a complete solution for AI-powered text analysis operations including
+summarization, sentiment analysis, key point extraction, question generation, and question-answering.
+It integrates seamlessly with infrastructure services to provide caching, resilience patterns,
+security validation, and performance monitoring.
+
+Attributes:
+    settings: Application configuration containing AI model settings, resilience configuration,
+             and operational parameters for text processing operations
+    cache_service: AI response cache service for storing and retrieving processed results,
+                  improving performance and reducing API costs
+    agent: PydanticAI agent configured for text processing operations with proper model integration
+    sanitizer: Input sanitizer for security validation and prompt injection prevention
+    response_validator: Output validator for security and quality assurance of AI responses
+    ai_resilience: Resilience orchestrator providing circuit breakers, retry logic, and fallback responses
+    concurrency_semaphore: Semaphore for controlling concurrent batch operations and resource management
+    
+Public Methods:
+    process_text(): Process single text processing requests with full resilience and caching
+    process_batch(): Process multiple requests concurrently with automatic batch management
+    _configure_resilience_strategies(): Configure operation-specific resilience strategies
+    _get_fallback_response(): Provide fallback responses when AI services are unavailable
+    _get_fallback_sentiment(): Generate neutral sentiment when sentiment analysis fails
+    
+State Management:
+    - Thread-safe for concurrent request processing across multiple workers
+    - Maintains internal state for resilience patterns and circuit breaker status
+    - Automatic resource management with proper cleanup and connection handling
+    - Immutable configuration after initialization for consistent behavior
+    - Integration with monitoring systems for operational visibility
+    
+Behavior:
+    - Performs input sanitization on all user-provided text before processing
+    - Checks cache for existing responses before making AI API calls
+    - Applies operation-specific resilience strategies with circuit breakers and retry logic
+    - Validates AI responses for security threats and quality issues
+    - Stores successful responses in cache for future retrieval
+    - Provides fallback responses when AI services are unavailable
+    - Logs comprehensive processing metrics and security events
+    - Supports batch processing with configurable concurrency limits
+    
+Examples:
+    >>> # Basic service initialization
+    >>> from app.services import TextProcessorService
+    >>> from app.core.config import settings
+    >>> from app.infrastructure.cache import get_ai_cache_service
+    >>> 
+    >>> cache_service = get_ai_cache_service()
+    >>> processor = TextProcessorService(settings, cache_service)
+    
+    >>> # Single operation processing
+    >>> from shared.models import TextProcessingRequest, TextProcessingOperation
+    >>> 
+    >>> request = TextProcessingRequest(
+    ...     text="Sample text for analysis",
+    ...     operation=TextProcessingOperation.SUMMARIZE,
+    ...     options={"max_length": 100}
+    ... )
+    >>> response = await processor.process_text(request)
+    >>> print(f"Summary: {response.result}")
+    
+    >>> # Question-answering with required question parameter
+    >>> qa_request = TextProcessingRequest(
+    ...     text="Document content to analyze",
+    ...     operation=TextProcessingOperation.QA,
+    ...     question="What are the main conclusions?"
+    ... )
+    >>> qa_response = await processor.process_text(qa_request)
+    >>> print(f"Answer: {qa_response.result}")
+    
+    >>> # Batch processing with automatic concurrency control
+    >>> from shared.models import BatchTextProcessingRequest
+    >>> 
+    >>> batch_request = BatchTextProcessingRequest(
+    ...     requests=[
+    ...         TextProcessingRequest(text="Text 1", operation="summarize"),
+    ...         TextProcessingRequest(text="Text 2", operation="sentiment"),
+    ...         TextProcessingRequest(text="Text 3", operation="key_points")
+    ...     ],
+    ...     batch_id="analysis_batch_001"
+    ... )
+    >>> batch_response = await processor.process_batch(batch_request)
+    >>> print(f"Processed {batch_response.completed_items} of {batch_response.total_items} items")
+
+### __init__()
+
+```python
+def __init__(self, settings: Settings, cache: 'AIResponseCache'):
+```
+
+Initialize the text processor with AI agent, resilience patterns, and security validation.
+
+Args:
+    settings: Application settings instance containing AI model configuration,
+             resilience parameters, and operational settings for text processing
+    cache: AI response cache service instance for storing and retrieving processed results,
+          improving performance and reducing redundant API calls
+
+Behavior:
+    - Initializes PydanticAI agent with configured model and temperature settings
+    - Sets up input sanitizer for security validation and prompt injection prevention
+    - Configures response validator for output security and quality assurance
+    - Establishes resilience orchestrator with operation-specific strategies
+    - Creates concurrency semaphore for batch processing resource management
+    - Registers operation-specific resilience strategies from configuration
+    - Prepares logging infrastructure for comprehensive request tracking
+    
+Raises:
+    ConfigurationError: If required settings are missing or invalid
+    InfrastructureError: If cache service initialization fails
+    ValueError: If AI model configuration is invalid
+    
+Examples:
+    >>> # Basic initialization with default settings
+    >>> processor = TextProcessorService(settings, cache_service)
+    
+    >>> # Initialization with custom resilience configuration
+    >>> custom_settings = Settings(
+    ...     gemini_api_key="your-api-key",
+    ...     ai_model="gemini-2.0-flash-exp",
+    ...     ai_temperature=0.7,
+    ...     BATCH_AI_CONCURRENCY_LIMIT=10
+    ... )
+    >>> processor = TextProcessorService(custom_settings, cache_service)
+
+### process_text()
+
+```python
+async def process_text(self, request: TextProcessingRequest) -> TextProcessingResponse:
+```
+
+Process text with caching and resilience support.
+
+### process_batch()
+
+```python
+async def process_batch(self, batch_request: BatchTextProcessingRequest) -> BatchTextProcessingResponse:
+```
+
+Process a batch of text processing requests concurrently with resilience.
+
+### get_resilience_health()
+
+```python
+def get_resilience_health(self) -> Dict[str, Any]:
+```
+
+Get resilience health status for this service.
+
+### get_resilience_metrics()
+
+```python
+def get_resilience_metrics(self) -> Dict[str, Any]:
+```
+
+Get resilience metrics for this service.

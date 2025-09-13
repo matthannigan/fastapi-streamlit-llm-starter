@@ -229,3 +229,8 @@ tasks/
 backend/app.old/
 
 /docusaurus.bak/
+
+.mkdocs/
+docs-mkdocs/
+backend/tests/infrastructure/cache/failures.txt
+backend/tests/infrastructure/cache/failures.json

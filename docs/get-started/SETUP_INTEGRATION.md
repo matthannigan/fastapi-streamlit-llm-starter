@@ -1146,7 +1146,7 @@ This project is licensed under the MIT License. See `LICENSE` file for details.
 ### Next Steps
 - **[FastAPI Backend Guide](../guides/application/BACKEND.md)**: Deep dive into backend architecture, API endpoints, and development patterns
 - **[Streamlit Frontend Guide](../guides/application/FRONTEND.md)**: Comprehensive frontend development with modern Streamlit patterns
-- **[Testing Guide](../guides/developer/TESTING.md)**: Complete testing strategies for backend and frontend components
+- **[Testing Guide](../guides/testing/TESTING.md)**: Complete testing strategies for backend and frontend components
 - **[API Documentation](../guides/application/API.md)**: Detailed API reference for public and internal endpoints
 - **[Authentication Guide](../guides/developer/AUTHENTICATION.md)**: Multi-key authentication system configuration and usage
 

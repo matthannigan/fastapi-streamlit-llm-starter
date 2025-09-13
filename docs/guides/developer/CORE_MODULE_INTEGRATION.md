@@ -392,7 +392,248 @@ class YourCustomCacheService(CacheInterface):
         pass
 ```
 
-### 3. API Endpoint Integration
+### 3. Phase 2 Cache Architecture Integration (NEW)
+
+**The new Phase 2 cache architecture** introduces an inheritance-based design with clean separation between generic Redis caching and AI-specific features. Here's how to integrate properly:
+
+#### Using AIResponseCache with Configuration
+
+```python
+from app.infrastructure.cache import AIResponseCache, AIResponseCacheConfig
+from app.core import settings
+
+class YourDomainService:
+    """Proper integration with Phase 2 cache architecture."""
+    
+    def __init__(self):
+        # Option 1: Use pre-configured cache from dependency injection
+        self.ai_cache = self._create_ai_cache()
+        
+        # Option 2: Create generic Redis cache for non-AI data
+        self.generic_cache = self._create_generic_cache()
+    
+    def _create_ai_cache(self) -> AIResponseCache:
+        """Create AI cache using AIResponseCacheConfig."""
+        config = AIResponseCacheConfig(
+            redis_url=settings.redis_url,
+            default_ttl=settings.cache_default_ttl,
+            operation_ttls={
+                "your_operation": 7200,  # 2 hours for your specific operations
+                "quick_analysis": 1800,  # 30 minutes for fast operations
+            },
+            text_hash_threshold=settings.cache_text_hash_threshold,
+            memory_cache_size=settings.cache_memory_cache_size
+        )
+        
+        # Validate configuration before use
+        validation_result = config.validate()
+        if not validation_result.is_valid:
+            raise ConfigurationError(f"AI cache config invalid: {validation_result.errors}")
+        
+        return AIResponseCache(config)
+    
+    def _create_generic_cache(self) -> GenericRedisCache:
+        """Create generic cache for non-AI application data."""
+        return GenericRedisCache(
+            redis_url=settings.redis_url,
+            default_ttl=settings.cache_default_ttl,
+            enable_l1_cache=True,
+            compression_threshold=settings.cache_compression_threshold
+        )
+    
+    async def process_ai_content(self, text: str, operation: str) -> dict:
+        """Example AI operation using the inheritance-based cache."""
+        
+        # Check AI cache first (inherits all GenericRedisCache features)
+        cached_result = await self.ai_cache.get_cached_response(
+            text=text,
+            operation=operation,
+            options={}
+        )
+        
+        if cached_result:
+            return cached_result
+        
+        # Process and cache using AI-specific features
+        result = await self._perform_ai_operation(text, operation)
+        
+        await self.ai_cache.cache_response(
+            text=text,
+            operation=operation,
+            options={},
+            response=result
+        )
+        
+        return result
+    
+    async def cache_application_data(self, key: str, data: dict) -> None:
+        """Example using generic cache for application data."""
+        
+        # Use generic cache for non-AI data (user profiles, sessions, etc.)
+        await self.generic_cache.set(key, data, ttl=3600)
+```
+
+#### Migration from Legacy Cache Implementation
+
+If you have existing cache code, here's how to migrate to Phase 2:
+
+```python
+# OLD: Legacy direct cache instantiation
+# cache = AIResponseCache(
+#     redis_url="redis://localhost:6379",
+#     default_ttl=3600,
+#     # ... other parameters
+# )
+
+# NEW: Phase 2 configuration-based approach
+from app.infrastructure.cache import AIResponseCacheConfig, AIResponseCache
+
+config = AIResponseCacheConfig(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,
+    # Enhanced configuration with validation
+    operation_ttls={
+        "summarize": 7200,
+        "sentiment": 86400,
+    },
+    text_size_tiers={
+        'small': 500,
+        'medium': 5000,
+        'large': 50000
+    }
+)
+
+# Validate before creating cache
+validation_result = config.validate()
+if validation_result.is_valid:
+    cache = AIResponseCache(config)
+else:
+    logger.error(f"Cache configuration errors: {validation_result.errors}")
+```
+
+#### Using Supporting Components
+
+Phase 2 introduces supporting components that integrate with core configuration:
+
+```python
+from app.infrastructure.cache import (
+    CacheParameterMapper,
+    CacheKeyGenerator,
+    CacheMigrationManager
+)
+from app.core import settings
+
+class AdvancedCacheIntegration:
+    """Advanced Phase 2 cache integration patterns."""
+    
+    def __init__(self):
+        self.config = settings
+        self.parameter_mapper = CacheParameterMapper()
+        self.key_generator = CacheKeyGenerator()
+        self.migration_manager = CacheMigrationManager()
+    
+    async def setup_cache_with_validation(self) -> AIResponseCache:
+        """Setup cache with parameter validation."""
+        
+        # Map and validate parameters
+        ai_params, generic_params = self.parameter_mapper.map_parameters({
+            'redis_url': self.config.redis_url,
+            'default_ttl': self.config.cache_default_ttl,
+            'text_hash_threshold': self.config.cache_text_hash_threshold,
+            'operation_ttls': {
+                'your_operation': 3600
+            }
+        })
+        
+        validation_result = self.parameter_mapper.validate_parameters(ai_params)
+        if not validation_result.is_valid:
+            raise ConfigurationError(f"Parameter validation failed: {validation_result.errors}")
+        
+        # Create configuration and cache
+        config = AIResponseCacheConfig(**ai_params)
+        return AIResponseCache(config)
+    
+    async def migrate_existing_cache_data(self, old_cache: Any, new_cache: AIResponseCache):
+        """Migrate data from old cache implementation."""
+        
+        migration_report = await self.migration_manager.migrate_cache_data(
+            source_cache=old_cache,
+            target_cache=new_cache,
+            batch_size=100,
+            validate_data=True
+        )
+        
+        logger.info(f"Migration completed: {migration_report}")
+```
+
+#### Dependency Injection Integration
+
+Integrate Phase 2 cache with FastAPI dependency injection:
+
+```python
+from fastapi import Depends
+from app.infrastructure.cache import AIResponseCache, AIResponseCacheConfig
+from app.core import settings
+
+async def get_ai_cache_service() -> AIResponseCache:
+    """Dependency provider for AI cache service with Phase 2 architecture."""
+    
+    config = AIResponseCacheConfig(
+        redis_url=settings.redis_url,
+        default_ttl=settings.cache_default_ttl,
+        text_hash_threshold=settings.cache_text_hash_threshold,
+        operation_ttls=settings.get_operation_ttls(),  # From core config
+        memory_cache_size=settings.cache_memory_cache_size
+    )
+    
+    # Validate configuration
+    validation_result = config.validate()
+    if not validation_result.is_valid:
+        logger.error(f"AI cache configuration errors: {validation_result.errors}")
+        # Fallback to memory cache
+        from app.infrastructure.cache import InMemoryCache
+        return InMemoryCache()
+    
+    cache = AIResponseCache(config)
+    
+    try:
+        await cache.connect()
+    except Exception as e:
+        logger.warning(f"Redis connection failed, using memory mode: {e}")
+    
+    return cache
+
+# Use in your endpoints
+@app.post("/your-ai-endpoint")
+async def your_ai_endpoint(
+    request: YourRequest,
+    ai_cache: AIResponseCache = Depends(get_ai_cache_service)
+):
+    """Endpoint using Phase 2 cache architecture."""
+    
+    # Cache automatically handles inheritance features
+    cached_result = await ai_cache.get_cached_response(
+        text=request.text,
+        operation=request.operation,
+        options=request.options
+    )
+    
+    if cached_result:
+        return cached_result
+    
+    # Process and cache
+    result = await process_ai_request(request)
+    await ai_cache.cache_response(
+        text=request.text,
+        operation=request.operation,
+        options=request.options,
+        response=result
+    )
+    
+    return result
+```
+
+### 4. API Endpoint Integration
 
 Your API endpoints automatically benefit from core module integration:
 

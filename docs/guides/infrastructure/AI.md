@@ -1,5 +1,6 @@
 ---
 sidebar_label: AI
+sidebar_position: 1
 ---
 # AI Infrastructure Service
 

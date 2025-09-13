@@ -35,3 +35,52 @@ from app.core.config import settings
 
 app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
 ```
+
+## RequestSizeLimitMiddleware
+
+Enhanced request size limiting with streaming validation.
+
+Features:
+- Per-endpoint size limits
+- Content-type specific limits
+- Streaming request body validation
+- Protection against DoS attacks
+- Detailed error responses
+- Configurable size limits
+
+### __init__()
+
+```python
+def __init__(self, app: ASGIApp, settings: Settings):
+```
+
+### dispatch()
+
+```python
+async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+```
+
+Process request with size validation.
+
+## RequestTooLargeException
+
+Deprecated. Use RequestTooLargeError from app.core.exceptions instead.
+
+## ASGIRequestSizeLimitMiddleware
+
+ASGI-level request size limiting for maximum performance.
+
+This implementation works at the ASGI level for better performance
+and more granular control over request processing.
+
+### __init__()
+
+```python
+def __init__(self, app: ASGIApp, max_size: int = 10 * 1024 * 1024):
+```
+
+### __call__()
+
+```python
+async def __call__(self, scope: Scope, receive: Receive, send: Send):
+```

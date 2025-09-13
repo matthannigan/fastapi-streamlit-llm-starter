@@ -15,7 +15,13 @@
 - **[Infrastructure vs Domain Services](./reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability *(Last updated 2025-07-30)*
 - **Infrastructure Services**:
   - **[AI](./guides/infrastructure/AI.md)**: Production-ready, security-first AI infrastructure service with comprehensive protection against prompt injection attacks and flexible templating *(Last updated 2025-07-30)*
-  - **[Cache](./guides/infrastructure/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation *(Last updated 2025-07-30)*
+  - **Cache Infrastructure**: Comprehensive cache infrastructure with multi-tiered architecture, AI optimization, and production-ready patterns
+    - **[Cache Overview](./guides/infrastructure/cache/CACHE.md)**: Cache infrastructure architecture, key features, and navigation hub *(Last updated 2025-08-27)*
+    - **[Usage Guide](./guides/infrastructure/cache/usage-guide.md)**: Practical implementation patterns, factory methods, and developer productivity *(Last updated 2025-08-27)*
+    - **[API Reference](./guides/infrastructure/cache/api-reference.md)**: Complete API documentation for all cache interfaces and factory methods *(Last updated 2025-08-27)*
+    - **[Configuration Guide](./guides/infrastructure/cache/configuration.md)**: Preset system, environment variables, and configuration management *(Last updated 2025-08-27)*
+    - **[Testing Guide](./guides/infrastructure/cache/testing.md)**: Testing strategies, fixtures, and performance benchmarks *(Last updated 2025-08-27)*
+    - **[Troubleshooting Guide](./guides/infrastructure/cache/troubleshooting.md)**: Performance optimization, debugging workflows, and operational guidance *(Last updated 2025-08-27)*
   - **[Monitoring](./guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection *(Last updated 2025-07-30)*
   - **[Resilience](./guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns for AI service operations with circuit breakers, retry mechanisms, configuration presets, and performance monitoring *(Last updated 2025-07-30)*
   - **[Security](./guides/infrastructure/SECURITY.md)**: Defense-in-depth security capabilities for AI-powered applications with authentication, authorization, and AI-specific threat protection *(Last updated 2025-07-30)*
@@ -39,7 +45,7 @@
 - **[Docker Setup & Usage](./guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services *(Last updated 2025-07-31)*
 - **[Documentation Guidance & Philosophy](./guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation *(Last updated 2025-07-31)*
 - **[Exception Handling](./guides/developer/EXCEPTION_HANDLING.md)**: Comprehensive exception handling system with hierarchical error classification, resilience integration, global error handlers, and testing patterns for robust error management *(Last updated 2025-08-05)*
-- **[Testing](./guides/developer/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-07-30)*
+- **[Testing](./guides/testing/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-07-30)*
 - **[Virtual Environment Management](./guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation *(Last updated 2025-07-30)*
 
 ### Operations Guides
@@ -90,7 +96,7 @@ Automatically generated from Python docstrings and README files within project c
 #### Tests & Examples
 
 - **[Backend Testing](./code_ref/backend/tests/)**: Comprehensive test suite documentation with test structure, organization, and testing guidelines *(Last updated 2024-07-27)*
-- **[Backend Examples](./code_ref/backend/examples/)**: Infrastructure examples demonstrating advanced usage of caching, resilience, and AI components *(Last updated 2024-07-27)*
+- **[Backend Examples](./code_ref/backend/examples/)**: Infrastructure examples demonstrating advanced usage of resilience and AI components *(Last updated 2024-07-27)*
 
 ### [Frontend](./code_ref/frontend/)
 

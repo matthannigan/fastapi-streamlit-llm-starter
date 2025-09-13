@@ -16,13 +16,13 @@ multiple algorithms with content-aware decisions and size thresholds.
 
 - **Request decompression**: Supports `gzip`, `deflate`, and `br` (Brotli)
 - **Response compression**: Chooses the best algorithm from client
-`Accept-Encoding` preferences
+  `Accept-Encoding` preferences
 - **Content-aware decisions**: Skips images, archives, and already-compressed
-media; prioritizes text and JSON payloads
+  media; prioritizes text and JSON payloads
 - **Size thresholds**: Only compresses responses larger than a configurable
-minimum
+  minimum
 - **Streaming support**: Optional ASGI-level streaming compression for large
-responses
+  responses
 - **Safety**: Falls back gracefully if a compression backend fails
 
 ## Configuration
@@ -39,7 +39,7 @@ Configured via `app.core.config.Settings` (see `backend/app/core/config.py`):
 
 - Request: `Content-Encoding` is honored for decompression
 - Response: Sets `Content-Encoding`, `Content-Length`, and adds
-`X-Original-Size` and `X-Compression-Ratio` for observability
+  `X-Original-Size` and `X-Compression-Ratio` for observability
 
 ## Usage
 
@@ -59,3 +59,75 @@ app.add_middleware(CompressionMiddleware, settings=settings)
 
 Compression is applied only when it reduces payload size. Media types that are
 usually already compressed are excluded to avoid wasted CPU cycles.
+
+## CompressionMiddleware
+
+Comprehensive compression middleware for requests and responses.
+
+Features:
+- Automatic request decompression (gzip, deflate, brotli)
+- Intelligent response compression based on content type and size
+- Configurable compression levels and algorithms
+- Content-type aware compression decisions
+- Performance optimized with size thresholds
+
+### __init__()
+
+```python
+def __init__(self, app: ASGIApp, settings: Settings):
+```
+
+### dispatch()
+
+```python
+async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+```
+
+Process request with compression handling.
+
+### __call__()
+
+```python
+async def __call__(self, scope, receive, send):
+```
+
+ASGI interface for handling request decompression.
+
+## StreamingCompressionMiddleware
+
+ASGI-level streaming compression middleware for large responses.
+
+This middleware compresses responses as they're being streamed,
+which is more memory-efficient for large responses.
+
+### __init__()
+
+```python
+def __init__(self, app: ASGIApp, settings: Settings):
+```
+
+### __call__()
+
+```python
+async def __call__(self, scope, receive, send):
+```
+
+## CompressionSettings
+
+Compression middleware configuration settings.
+
+## get_compression_stats()
+
+```python
+def get_compression_stats(response: Response) -> Dict[str, Any]:
+```
+
+Get compression statistics from a response.
+
+## configure_compression_settings()
+
+```python
+def configure_compression_settings(settings: Settings) -> Dict[str, Any]:
+```
+
+Configure compression settings with validation.

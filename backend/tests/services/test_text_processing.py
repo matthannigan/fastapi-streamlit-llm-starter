@@ -40,6 +40,11 @@ def mock_ai_agent():
 def mock_cache_service():
     """Mock cache service for testing."""
     mock_cache = AsyncMock(spec=AIResponseCache)
+    # New standard interface methods
+    mock_cache.get = AsyncMock(return_value=None)
+    mock_cache.set = AsyncMock()
+    mock_cache.build_key = MagicMock(return_value="test_cache_key")
+    # Legacy methods (for backward compatibility tests)
     mock_cache.get_cached_response = AsyncMock(return_value=None)
     mock_cache.cache_response = AsyncMock()
     return mock_cache
@@ -296,7 +301,7 @@ class TestTextProcessorCaching:
     async def test_cache_miss_processes_normally(self, service, sample_text):
         """Test that cache miss results in normal processing."""
         # Configure mock cache to return None (cache miss)
-        service.cache_service.get_cached_response.return_value = None
+        service.cache_service.get.return_value = None
         
         # Mock AI response
         mock_response = MagicMock()
@@ -315,16 +320,17 @@ class TestTextProcessorCaching:
         assert response.success is True
         assert response.result is not None
         
-        # Verify cache was checked
-        service.cache_service.get_cached_response.assert_called_once()
+        # Verify cache was checked using new standard interface
+        service.cache_service.build_key.assert_called_once()
+        service.cache_service.get.assert_called_once()
         
-        # Verify response was cached
-        service.cache_service.cache_response.assert_called_once()
-        cache_args = service.cache_service.cache_response.call_args[0]
-        # Use strip() to handle whitespace differences
-        assert cache_args[0].strip() == sample_text.strip()  # text
-        assert cache_args[1] == "summarize"  # operation
-        assert cache_args[2] == {"max_length": 100}  # options
+        # Verify response was cached using standard interface
+        service.cache_service.set.assert_called_once()
+        set_args = service.cache_service.set.call_args
+        assert set_args[0][0] == "test_cache_key"  # cache key
+        # Verify response structure was cached
+        cached_data = set_args[0][1]
+        assert cached_data["result"] == "This is a test summary."
     
     @pytest.mark.asyncio
     async def test_cache_hit_returns_cached_response(self, service, sample_text):
@@ -339,8 +345,8 @@ class TestTextProcessorCaching:
             "cache_hit": True
         }
         
-        # Mock cache to return cached response
-        service.cache_service.get_cached_response.return_value = cached_response
+        # Mock cache to return cached response using new standard interface
+        service.cache_service.get.return_value = cached_response
         
         # Create a proper mock for the agent
         mock_agent = AsyncMock()
@@ -363,13 +369,13 @@ class TestTextProcessorCaching:
         mock_agent.run.assert_not_called()
         
         # Verify response was not cached again
-        service.cache_service.cache_response.assert_not_called()
+        service.cache_service.set.assert_not_called()
     
     @pytest.mark.asyncio
     async def test_cache_with_qa_operation(self, service, sample_text):
         """Test caching with Q&A operation that includes question parameter."""
         # Configure cache miss
-        service.cache_service.get_cached_response.return_value = None
+        service.cache_service.get.return_value = None
         
         mock_response = MagicMock()
         mock_response.output = "AI is intelligence demonstrated by machines."
@@ -383,20 +389,20 @@ class TestTextProcessorCaching:
         
         response = await service.process_text(request)
         
-        # Verify response was cached with question parameter
-        service.cache_service.cache_response.assert_called_once()
-        cache_args = service.cache_service.cache_response.call_args[0]
-        # Use strip() to handle whitespace differences
-        assert cache_args[0].strip() == sample_text.strip()  # text
-        assert cache_args[1] == "qa"  # operation
-        assert cache_args[2] == {}  # options (empty for QA)
-        assert cache_args[4] == "What is AI?"  # question
+        # Verify cache key was built with question parameter
+        service.cache_service.build_key.assert_called_once()
+        build_key_args = service.cache_service.build_key.call_args[0]
+        assert build_key_args[1] == "qa"  # operation
+        assert build_key_args[2]["question"] == "What is AI?"  # question in options
+        
+        # Verify response was cached using standard interface
+        service.cache_service.set.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_cache_with_string_operation(self, service, sample_text):
         """Test caching works with string operation (not enum)."""
         # Configure cache miss
-        service.cache_service.get_cached_response.return_value = None
+        service.cache_service.get.return_value = None
         
         mock_response = MagicMock()
         mock_response.output = "Test summary"
@@ -414,7 +420,7 @@ class TestTextProcessorCaching:
         
         # Verify it works without AttributeError
         assert response.success is True
-        service.cache_service.cache_response.assert_called_once()
+        service.cache_service.set.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_cache_error_handling(self, service, sample_text):
@@ -440,7 +446,7 @@ class TestTextProcessorCaching:
     async def test_cache_with_different_options(self, service, sample_text):
         """Test that different options create different cache entries."""
         # Configure cache miss for both requests
-        service.cache_service.get_cached_response.return_value = None
+        service.cache_service.get.return_value = None
         
         mock_response = MagicMock()
         mock_response.output = "Test summary"
@@ -462,14 +468,234 @@ class TestTextProcessorCaching:
         )
         await service.process_text(request2)
         
-        # Verify cache was checked twice with different parameters
-        assert service.cache_service.get_cached_response.call_count == 2
-        assert service.cache_service.cache_response.call_count == 2
+        # Verify cache operations were called twice using standard interface
+        assert service.cache_service.build_key.call_count == 2
+        assert service.cache_service.get.call_count == 2
+        assert service.cache_service.set.call_count == 2
         
-        # Verify different options were used
-        call1_options = service.cache_service.get_cached_response.call_args_list[0][0][2]
-        call2_options = service.cache_service.get_cached_response.call_args_list[1][0][2]
+        # Verify different options were used in build_key calls
+        call1_options = service.cache_service.build_key.call_args_list[0][0][2]
+        call2_options = service.cache_service.build_key.call_args_list[1][0][2]
         assert call1_options != call2_options
+
+
+class TestDomainCacheLogic:
+    """Test domain-specific cache logic methods in TextProcessorService."""
+    
+    @pytest.fixture
+    def service(self, mock_ai_agent, mock_cache_service, mock_settings, monkeypatch):
+        """Create a TextProcessorService instance."""
+        monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+        
+        with patch('app.services.text_processor.Agent', return_value=mock_ai_agent):
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            service.agent = mock_ai_agent
+            return service
+    
+    @pytest.mark.asyncio
+    async def test_build_cache_key_without_question(self, service):
+        """Test cache key building for operations without questions."""
+        text = "Sample text for analysis"
+        operation = "summarize"
+        options = {"max_length": 100, "style": "concise"}
+        
+        result = await service._build_cache_key(text, operation, options)
+        
+        # Verify build_key was called with correct parameters
+        service.cache_service.build_key.assert_called_once_with(text, operation, options)
+        assert result == "test_cache_key"
+    
+    @pytest.mark.asyncio
+    async def test_build_cache_key_with_question(self, service):
+        """Test cache key building for Q&A operations with questions."""
+        text = "Document content for questions"
+        operation = "qa"
+        options = {"max_tokens": 150}
+        question = "What are the main conclusions?"
+        
+        result = await service._build_cache_key(text, operation, options, question)
+        
+        # Verify question was embedded in options
+        expected_options = {**options, "question": question}
+        service.cache_service.build_key.assert_called_once_with(text, operation, expected_options)
+        assert result == "test_cache_key"
+    
+    @pytest.mark.asyncio
+    async def test_build_cache_key_preserves_original_options(self, service):
+        """Test that original options dict is not mutated when embedding question."""
+        text = "Sample text"
+        operation = "qa"
+        original_options = {"max_tokens": 150}
+        original_options_copy = original_options.copy()
+        question = "Test question?"
+        
+        await service._build_cache_key(text, operation, original_options, question)
+        
+        # Verify original options dict was not mutated
+        assert original_options == original_options_copy
+        
+        # Verify question was embedded in the call
+        call_args = service.cache_service.build_key.call_args[0]
+        called_options = call_args[2]
+        assert called_options["question"] == question
+        assert called_options["max_tokens"] == 150
+    
+    def test_get_ttl_for_operation_all_operations(self, service):
+        """Test TTL assignment for all operation types."""
+        expected_ttls = {
+            'summarize': 7200,    # 2 hours
+            'sentiment': 3600,    # 1 hour
+            'key_points': 5400,   # 1.5 hours
+            'questions': 3600,    # 1 hour
+            'qa': 1800,           # 30 minutes
+        }
+        
+        for operation, expected_ttl in expected_ttls.items():
+            result = service._get_ttl_for_operation(operation)
+            assert result == expected_ttl, f"Incorrect TTL for operation '{operation}'"
+    
+    def test_get_ttl_for_operation_unknown_operation(self, service):
+        """Test TTL for unknown operations returns None."""
+        result = service._get_ttl_for_operation("unknown_operation")
+        assert result is None
+    
+    def test_get_ttl_for_operation_case_sensitivity(self, service):
+        """Test TTL lookup is case sensitive."""
+        # Uppercase should not match
+        result = service._get_ttl_for_operation("SUMMARIZE")
+        assert result is None
+        
+        # Lowercase should match
+        result = service._get_ttl_for_operation("summarize")
+        assert result == 7200
+
+
+class TestStandardCacheInterface:
+    """Test that TextProcessorService uses standard cache interface methods."""
+    
+    @pytest.fixture
+    def service(self, mock_ai_agent, mock_cache_service, mock_settings, monkeypatch):
+        """Create a TextProcessorService instance."""
+        monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+        
+        with patch('app.services.text_processor.Agent', return_value=mock_ai_agent):
+            service = TextProcessorService(settings=mock_settings, cache=mock_cache_service)
+            service.agent = mock_ai_agent
+            return service
+    
+    @pytest.mark.asyncio
+    async def test_cache_miss_uses_standard_interface(self, service, sample_text):
+        """Test that cache miss processing uses standard get/set interface."""
+        # Configure cache miss
+        service.cache_service.get.return_value = None
+        service.cache_service.build_key.return_value = "test_key_123"
+        
+        # Mock AI response
+        mock_response = MagicMock()
+        mock_response.output = "This is a test summary."
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=TextProcessingOperation.SUMMARIZE,
+            options={"max_length": 100}
+        )
+        
+        response = await service.process_text(request)
+        
+        # Verify standard interface was used
+        assert response.success is True
+        
+        # Verify cache.get was called (not legacy get_cached_response)
+        service.cache_service.get.assert_called_once_with("test_key_123")
+        
+        # Verify cache.set was called with correct TTL (not legacy cache_response)
+        service.cache_service.set.assert_called_once()
+        set_call_args = service.cache_service.set.call_args
+        assert set_call_args[0][0] == "test_key_123"  # key
+        assert set_call_args[0][2] == 7200  # TTL for summarize operation
+        
+        # Verify build_key was called with correct parameters
+        service.cache_service.build_key.assert_called_once_with(
+            sample_text, "summarize", {"max_length": 100}
+        )
+    
+    @pytest.mark.asyncio
+    async def test_cache_hit_uses_standard_interface(self, service, sample_text):
+        """Test that cache hit uses standard get interface."""
+        cached_response = {
+            "operation": "summarize",
+            "result": "Cached summary result",
+            "success": True,
+            "processing_time": 0.5,
+            "metadata": {"word_count": 10},
+            "cached_at": "2024-01-01T12:00:00",
+            "cache_hit": True
+        }
+        
+        # Mock cache to return cached response
+        service.cache_service.get.return_value = cached_response
+        service.cache_service.build_key.return_value = "cached_key_456"
+        
+        mock_agent = AsyncMock()
+        service.agent = mock_agent
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=TextProcessingOperation.SUMMARIZE,
+            options={"max_length": 100}
+        )
+        
+        response = await service.process_text(request)
+        
+        # Verify cached response was returned
+        assert response.success is True
+        assert response.result == "Cached summary result"
+        
+        # Verify standard interface was used
+        service.cache_service.get.assert_called_once_with("cached_key_456")
+        
+        # Verify AI agent was not called
+        mock_agent.run.assert_not_called()
+        
+        # Verify response was not cached again (no set call)
+        service.cache_service.set.assert_not_called()
+    
+    @pytest.mark.asyncio
+    async def test_qa_operation_uses_standard_interface_with_question(self, service, sample_text):
+        """Test that Q&A operations embed question in options for standard interface."""
+        # Configure cache miss
+        service.cache_service.get.return_value = None
+        service.cache_service.build_key.return_value = "qa_key_789"
+        
+        mock_response = MagicMock()
+        mock_response.output = "AI is intelligence demonstrated by machines."
+        service.agent.run = AsyncMock(return_value=mock_response)
+        
+        request = TextProcessingRequest(
+            text=sample_text,
+            operation=TextProcessingOperation.QA,
+            question="What is AI?"
+        )
+        
+        response = await service.process_text(request)
+        
+        # Verify standard interface was used
+        assert response.success is True
+        
+        # Verify build_key was called with question embedded in options
+        service.cache_service.build_key.assert_called_once_with(
+            sample_text, "qa", {"question": "What is AI?"}
+        )
+        
+        # Verify cache.get was called with generated key
+        service.cache_service.get.assert_called_once_with("qa_key_789")
+        
+        # Verify cache.set was called with QA TTL
+        service.cache_service.set.assert_called_once()
+        set_call_args = service.cache_service.set.call_args
+        assert set_call_args[0][0] == "qa_key_789"  # key
+        assert set_call_args[0][2] == 1800  # TTL for QA operation
 
 
 class TestServiceInitialization:

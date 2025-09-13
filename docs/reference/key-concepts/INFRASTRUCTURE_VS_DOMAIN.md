@@ -321,7 +321,7 @@ By maintaining this distinction, we create a template that provides immediate va
 
 ### Next Steps
 - **[AI Infrastructure](../../guides/infrastructure/AI.md)**: Production-ready AI infrastructure service (keep and extend)
-- **[Cache Infrastructure](../../guides/infrastructure/CACHE.md)**: Multi-tiered caching infrastructure service (keep and extend)
+- **[Cache Infrastructure](../../guides/infrastructure/cache/CACHE.md)**: Multi-tiered caching infrastructure service (keep and extend)
 - **[Resilience Infrastructure](../../guides/infrastructure/RESILIENCE.md)**: Comprehensive resilience patterns infrastructure service (keep and extend)
 - **[Security Infrastructure](../../guides/infrastructure/SECURITY.md)**: Defense-in-depth security infrastructure service (keep and extend)
 - **[Monitoring Infrastructure](../../guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability infrastructure service (keep and extend)

@@ -87,37 +87,69 @@ from pydantic import BaseModel, Field, field_serializer
 
 class ErrorResponse(BaseModel):
     """
-    Standardized error response model for all API endpoints.
+    Standardized error response model providing consistent error reporting across all API endpoints.
     
-    This model provides a consistent error response format across the entire API,
-    ensuring clients receive predictable error information regardless of the
-    specific endpoint or error type.
+    This model serves as the foundation for all error responses in the API, ensuring predictable
+    error information delivery regardless of the specific endpoint, error type, or failure context.
+    It integrates seamlessly with the global exception handler and provides structured error
+    information for both human users and automated systems.
     
     Attributes:
-        success (bool): Always False for error responses. Allows clients to 
-            easily distinguish success from error responses.
-        error (str): Human-readable error message describing what went wrong.
-            Should be safe to display to end users.
-        error_code (str, optional): Machine-readable error code for programmatic
-            error handling. Examples: "VALIDATION_ERROR", "AI_SERVICE_ERROR".
-        details (dict, optional): Additional error context for debugging.
-            Should not contain sensitive information as it may be logged.
-        timestamp (datetime): ISO formatted timestamp when the error occurred.
-            Useful for debugging and log correlation.
+        success: Always False for error responses, enabling clients to easily distinguish
+                error responses from success responses in a consistent manner
+        error: Human-readable error message describing what went wrong, safe for display
+               to end users and suitable for user interface error presentation
+        error_code: Optional machine-readable error code for programmatic error handling,
+                   enabling client applications to implement specific error handling logic
+        details: Optional dictionary containing additional error context for debugging,
+                sanitized to exclude sensitive information while providing useful context
+        timestamp: ISO 8601 formatted timestamp indicating when the error occurred,
+                  facilitating debugging, log correlation, and performance analysis
     
-    Example:
-        ```json
-        {
-            "success": false,
-            "error": "Question is required for Q&A operation",
-            "error_code": "VALIDATION_ERROR",
-            "details": {
-                "operation": "qa",
-                "request_id": "12345-abcde"
-            },
-            "timestamp": "2025-01-12T10:30:45.123456"
-        }
-        ```
+    State Management:
+        - Immutable once created (Pydantic model behavior)
+        - Thread-safe for concurrent access across request handlers
+        - Automatic timestamp generation with UTC timezone
+        - Consistent JSON serialization with proper field ordering
+        - Integration with logging systems for error tracking
+        
+    Behavior:
+        - Automatically sets success to False for all error instances
+        - Generates timestamp at creation time for accurate error timing
+        - Serializes timestamp to ISO 8601 format for JSON compatibility
+        - Validates error message is non-empty for meaningful error reporting
+        - Sanitizes details dictionary to prevent sensitive data exposure
+        - Integrates with FastAPI's automatic OpenAPI documentation
+        
+    Examples:
+        >>> # Basic error response without additional context
+        >>> basic_error = ErrorResponse(error="Invalid request format")
+        >>> assert basic_error.success is False
+        >>> assert basic_error.error == "Invalid request format"
+        
+        >>> # Error with machine-readable code for programmatic handling
+        >>> validation_error = ErrorResponse(
+        ...     error="Question is required for Q&A operation",
+        ...     error_code="VALIDATION_ERROR"
+        ... )
+        >>> assert validation_error.error_code == "VALIDATION_ERROR"
+        
+        >>> # Comprehensive error with debugging context
+        >>> detailed_error = ErrorResponse(
+        ...     error="AI service temporarily unavailable",
+        ...     error_code="SERVICE_UNAVAILABLE", 
+        ...     details={
+        ...         "service": "gemini_api",
+        ...         "retry_after": 30,
+        ...         "request_id": "req_12345"
+        ...     }
+        ... )
+        >>> assert "service" in detailed_error.details
+        
+        >>> # Error response serialization
+        >>> error_json = detailed_error.model_dump_json()
+        >>> assert "timestamp" in error_json
+        >>> assert "success" in error_json
     """
     success: bool = Field(
         default=False, 

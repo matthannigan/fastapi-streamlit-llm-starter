@@ -2,370 +2,371 @@
 sidebar_label: cache
 ---
 
-# Cache Infrastructure Module
+# Cache Infrastructure
 
-This directory provides a comprehensive caching infrastructure with multiple implementations, performance monitoring, and advanced features specifically designed for AI response caching.
+Comprehensive caching infrastructure for FastAPI applications with multiple implementations, preset-based configuration, and advanced monitoring. Supports both web applications and AI workloads with intelligent optimization.
 
-## Directory Structure
-
-```
-cache/
-├── __init__.py          # Module exports and comprehensive documentation
-├── base.py             # Abstract interface defining cache contract
-├── memory.py           # In-memory cache implementation with TTL and LRU
-├── redis.py            # Redis-based AIResponseCache with advanced features
-├── monitoring.py       # Comprehensive performance monitoring and analytics
-├── redis.py.md         # Additional Redis cache documentation
-├── redis.py.txt        # Redis cache implementation notes
-└── README.md           # This documentation file
-```
-
-## Core Architecture
-
-### `base.py` - The Foundation Interface
-
-The `CacheInterface` abstract base class defines the contract that all cache implementations must follow:
+## Quick Start
 
 ```python
-class CacheInterface(ABC):
-    @abstractmethod
-    async def get(self, key: str):
-        """Retrieve a value from cache"""
-        pass
+# 1. Set environment preset
+export CACHE_PRESET=development  # or production, ai-production
+
+# 2. Use in FastAPI application
+from app.infrastructure.cache.dependencies import get_cache_service
+from fastapi import Depends
+
+@app.post("/api/process")
+async def process_data(
+    request: ProcessRequest,
+    cache: CacheInterface = Depends(get_cache_service)
+):
+    cached_result = await cache.get(f"process:{request.id}")
+    if cached_result:
+        return cached_result
     
-    @abstractmethod
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
-        """Store a value in cache with optional TTL"""
-        pass
-    
-    @abstractmethod
-    async def delete(self, key: str):
-        """Remove a value from cache"""
-        pass
+    result = await process_service.execute(request)
+    await cache.set(f"process:{request.id}", result, ttl=3600)
+    return result
 ```
 
-**Architecture Role:**
-- **Interface Compliance**: Provides common contract for dependency injection
-- **Implementation Flexibility**: Ensures consistent behavior across cache types  
-- **Seamless Integration**: Enables switching between cache implementations
-- **Async Pattern**: Enforces async/await pattern for all cache operations
-- **Type Safety**: Supports proper type hints for development and testing
+## Architecture Overview
 
-## Cache Implementations Comparison
+### Cache Interface
 
-### `memory.py` - InMemoryCache
+All implementations follow the `CacheInterface` contract for seamless polymorphic usage:
 
-**Purpose:** Lightweight, fast in-memory caching for development, testing, and scenarios where Redis is unavailable.
-
-**Key Features:**
-- ✅ **Storage**: Pure Python dictionaries in RAM with metadata tracking
-- ✅ **TTL Support**: Automatic expiration with configurable time-to-live per entry
-- ✅ **LRU Eviction**: Intelligent memory management with access order tracking
-- ✅ **Performance**: Sub-millisecond access times with O(1) operations
-- ✅ **Statistics**: Built-in metrics including utilization and performance tracking
-- ✅ **Thread Safety**: Safe for asyncio concurrent usage within single event loop
-- ✅ **Automatic Cleanup**: Periodic cleanup of expired entries during operations
-- ✅ **Comprehensive API**: Additional methods like `exists()`, `get_ttl()`, `get_active_keys()`
-
-**Configuration:**
 ```python
-cache = InMemoryCache(
-    default_ttl=3600,      # 1 hour default expiration
-    max_size=1000          # Maximum 1000 entries before LRU eviction
-)
+# Standard interface - works with any implementation
+await cache.set(key: str, value: Any, ttl: Optional[int])
+result = await cache.get(key: str) -> Any | None
+await cache.delete(key: str)
 ```
 
-**Best For:**
-- Development and testing environments
-- Applications with moderate caching needs (<10,000 entries)  
-- Scenarios where external dependencies are not desired
-- Microservices with minimal infrastructure requirements
-- Temporary caching during application startup
+### Implementation Comparison
 
-**Limitations:**
-- ❌ **No Persistence:** Data lost on application restart
-- ❌ **Single Process:** Cannot share cache between application instances
-- ❌ **Memory Constraints:** Limited by available RAM
+| Feature | InMemoryCache | GenericRedisCache | AIResponseCache |
+|---------|---------------|-------------------|-----------------|
+| **Best For** | Development, Testing | Web Applications | AI Workloads |
+| **Persistence** | None | Redis | Redis |
+| **L1 Cache** | N/A | Memory | Memory |
+| **Compression** | No | Configurable | Intelligent |
+| **Key Generation** | Simple | Standard | AI-Optimized |
+| **TTL Strategy** | Fixed | Flexible | Operation-Specific |
+| **Monitoring** | Basic | Advanced | Comprehensive |
 
-### `redis.py` - AIResponseCache
+## Implementation Guide
 
-**Purpose:** Production-ready, feature-rich caching system specifically optimized for AI response caching with persistence and advanced monitoring.
+### InMemoryCache
 
-**Key Features:**
-- ✅ **Persistent Storage**: Redis-backed with data persistence across application restarts
-- ✅ **Tiered Caching**: Memory cache for hot data + Redis for persistence layer
-- ✅ **Intelligent Compression**: Automatic zlib compression with configurable thresholds
-- ✅ **Smart Key Generation**: Optimized cache keys using `CacheKeyGenerator` for large texts
-- ✅ **Graceful Degradation**: Falls back to memory-only when Redis unavailable
-- ✅ **Advanced Monitoring**: Comprehensive analytics via `CachePerformanceMonitor`
-- ✅ **Pattern Invalidation**: Flexible cache invalidation with pattern matching support
-- ✅ **Operation-Specific TTLs**: Different expiration times per AI operation type
-- ✅ **Memory Management**: Configurable memory cache size with intelligent eviction
-- ✅ **Performance Optimization**: Streaming compression and efficient key hashing
-
-**Configuration:**
-```python
-cache = AIResponseCache(
-    redis_url="redis://localhost:6379",
-    default_ttl=3600,                    # Base TTL
-    text_hash_threshold=1000,            # Hash texts over 1000 chars
-    compression_threshold=1000,          # Compress responses over 1KB
-    compression_level=6,                 # zlib compression level
-    memory_cache_size=100,              # In-memory cache entries
-    text_size_tiers={                   # Text categorization
-        'small': 500,
-        'medium': 5000, 
-        'large': 50000
-    }
-)
-```
-
-**Operation-Specific TTLs:**
-```python
-operation_ttls = {
-    "summarize": 7200,    # 2 hours - summaries are stable
-    "sentiment": 86400,   # 24 hours - sentiment rarely changes  
-    "key_points": 7200,   # 2 hours
-    "questions": 3600,    # 1 hour - questions can vary
-    "qa": 1800           # 30 minutes - context-dependent
-}
-```
-
-**Best For:**
-- Production environments requiring persistence
-- High-volume applications (>100,000 cache entries)
-- Multi-process deployments requiring shared cache
-- Applications needing advanced monitoring and analytics
-- AI response caching with compression needs
-
-**Advanced Features:**
-
-#### Intelligent Key Generation
-- **Small texts** (<1000 chars): Uses text directly for readability
-- **Large texts** (>1000 chars): Uses SHA256 hash with metadata for uniqueness
-- **Efficient processing:** Streaming hash approach for memory efficiency
-
-#### Compression Strategy  
-- **Automatic:** Compresses responses larger than threshold
-- **Configurable:** Adjustable compression levels (1-9)
-- **Monitored:** Tracks compression ratios and timing
-
-#### Performance Monitoring
-- **Hit/Miss Ratios:** Real-time cache effectiveness tracking
-- **Operation Timing:** Detailed performance analysis  
-- **Memory Usage:** Memory consumption monitoring with alerts
-- **Compression Analytics:** Efficiency metrics and recommendations
-
-## Usage Examples
-
-### Basic InMemoryCache Usage
+**When to Use**: Development, testing, lightweight applications
 
 ```python
 from app.infrastructure.cache import InMemoryCache
 
-# Initialize
-cache = InMemoryCache(default_ttl=1800, max_size=500)
+cache = InMemoryCache(
+    default_ttl=3600,    # 1 hour default
+    max_size=1000        # LRU eviction at 1000 entries
+)
 
-# Basic operations
-await cache.set("user:123", {"name": "John", "role": "admin"})
-user_data = await cache.get("user:123")
-await cache.delete("user:123")
-
-# Check existence and TTL
-exists = await cache.exists("session:abc") 
-ttl_remaining = await cache.get_ttl("session:abc")
+# Basic usage
+await cache.set("user:123", {"name": "John"})
+user = await cache.get("user:123")
 
 # Statistics
 stats = cache.get_stats()
-print(f"Cache utilization: {stats['utilization_percent']:.1f}%")
+print(f"Hit ratio: {stats['hit_ratio']:.2%}")
 ```
 
-### Advanced AIResponseCache Usage
+**Features**:
+- Sub-millisecond response times
+- TTL with automatic cleanup
+- LRU eviction for memory management
+- Built-in statistics and monitoring
+- No external dependencies
+
+### GenericRedisCache
+
+**When to Use**: Web applications, shared cache across instances
 
 ```python
-from app.infrastructure.cache import AIResponseCache
+from app.infrastructure.cache import GenericRedisCache
 
-# Initialize with custom configuration
-cache = AIResponseCache(
-    redis_url="redis://production:6379",
-    compression_threshold=2000,
-    memory_cache_size=200
+cache = GenericRedisCache(
+    redis_url="redis://localhost:6379",
+    default_ttl=7200,
+    memory_cache_size=500,    # L1 cache size
+    compression_threshold=1024  # Compress > 1KB
 )
 
 await cache.connect()
 
-# Cache AI response
-await cache.cache_response(
-    text="Long document to analyze...",
-    operation="summarize", 
-    options={"max_length": 100, "model": "gpt-4"},
-    response={"summary": "Brief summary", "confidence": 0.95}
-)
-
-# Retrieve cached response  
-cached = await cache.get_cached_response(
-    text="Long document to analyze...",
-    operation="summarize",
-    options={"max_length": 100, "model": "gpt-4"}
-)
-
-# Performance monitoring
-stats = await cache.get_cache_stats()
-hit_ratio = cache.get_cache_hit_ratio()
-summary = cache.get_performance_summary()
-
-# Cache management
-await cache.invalidate_by_operation("summarize", 
-                                   operation_context="model_update") 
-await cache.invalidate_pattern("sentiment",
-                               operation_context="batch_invalidation")
+# Two-tier caching (L1 memory + L2 Redis)
+await cache.set("session:abc", session_data)
+data = await cache.get("session:abc")  # Served from L1 if available
 ```
 
-## Performance Monitoring System
+**Features**:
+- L1 memory cache + L2 Redis persistence
+- Intelligent compression with monitoring
+- Graceful degradation (memory-only fallback)
+- Connection pooling and retry logic
+- Performance monitoring and analytics
 
-The `monitoring.py` module provides comprehensive analytics through the `CachePerformanceMonitor` class with detailed metrics collection and analysis capabilities:
+### AIResponseCache
 
-### Metrics Tracked
-- **Key Generation Performance**: Timing analysis with text length correlations and slow operation detection
-- **Cache Operations**: Get/Set operation timing, hit/miss ratios, and operation type breakdown
-- **Memory Usage**: Total consumption monitoring, growth trends, and threshold-based alerting
-- **Compression Efficiency**: Compression ratios, timing analysis, and size savings calculations
-- **Cache Invalidation**: Frequency monitoring, pattern analysis, and efficiency metrics
+**When to Use**: AI applications, text processing, response caching
 
-### Advanced Analytics
-- **Statistical Analysis**: Mean, median, min/max calculations for all performance metrics
-- **Trend Analysis**: Historical performance patterns with growth rate calculations
-- **Threshold Monitoring**: Configurable byte thresholds with warning and critical levels
-- **Performance Recommendations**: Automated optimization suggestions based on collected data
-- **Slow Operation Detection**: Automatic identification of operations exceeding thresholds
+```python
+from app.infrastructure.cache import AIResponseCache
 
-### Configurable Alerting
-- **Memory Thresholds**: Default 50MB warning, 100MB critical (configurable)
-- **Performance Thresholds**: 100ms key generation, 50ms cache operations (configurable)
-- **Invalidation Rate Monitoring**: 50/hour warning, 100/hour critical (configurable)
-- **Alert Levels**: INFO, WARNING, ERROR, CRITICAL with contextual messages
+cache = AIResponseCache(
+    redis_url="redis://production:6379",
+    text_hash_threshold=1000,        # Hash texts > 1000 chars
+    operation_ttls={                 # Operation-specific TTLs
+        "summarize": 7200,           # 2 hours
+        "sentiment": 86400,          # 24 hours
+        "qa": 1800                   # 30 minutes
+    }
+)
 
-### Data Management
-- **Automatic Cleanup**: Configurable data retention (default: 1 hour, max 1000 measurements)
-- **Export Capabilities**: JSON export for external monitoring systems
-- **Memory Efficiency**: Bounded data structures prevent unbounded growth
-- **Thread Safety**: Safe for concurrent usage within asyncio event loops
+await cache.connect()
 
-## Integration Patterns
+# Intelligent key generation for AI operations
+key = cache.build_key(
+    text="Long document to analyze...",
+    operation="summarize",
+    options={"max_length": 200}
+)
+
+await cache.set(key, ai_response, ttl=7200)
+```
+
+**Features**:
+- Intelligent key generation with text hashing
+- Operation-specific TTL management
+- Text size tier optimization
+- AI-specific monitoring metrics
+- Advanced compression for large responses
+
+## Configuration
+
+### Preset System
+
+**Single Environment Variable**: `CACHE_PRESET` replaces 28+ individual configuration variables.
+
+```bash
+# Choose one preset:
+export CACHE_PRESET=development     # Local development
+export CACHE_PRESET=production      # Web applications  
+export CACHE_PRESET=ai-production   # AI workloads
+
+# Optional overrides:
+export CACHE_REDIS_URL=redis://custom-server:6379
+export ENABLE_AI_CACHE=true
+export CACHE_CUSTOM_CONFIG='{"compression_level": 9}'
+```
+
+### Available Presets
+
+| Preset | Implementation | Use Case | TTL | Features |
+|--------|---------------|----------|-----|----------|
+| `disabled` | InMemoryCache | Minimal overhead | 5min | Cache disabled |
+| `minimal` | InMemoryCache | Resource-constrained | 15min | Basic caching |
+| `development` | InMemoryCache | Local development | 30min | Debug-friendly |
+| `production` | GenericRedisCache | Web applications | 2hr | High performance |
+| `ai-development` | AIResponseCache | AI development | 30min | AI features, debug |
+| `ai-production` | AIResponseCache | AI production | 4hr | Full AI optimization |
+
+### Custom Configuration
+
+For advanced scenarios, use the configuration builder:
+
+```python
+from app.infrastructure.cache import CacheConfigBuilder
+
+config = (CacheConfigBuilder()
+    .for_environment("production")
+    .with_redis("redis://prod-cluster:6379")
+    .with_ai_features(text_hash_threshold=2000)
+    .with_compression(threshold=500, level=6)
+    .build())
+
+cache = CacheFactory.create_cache_from_config(config)
+```
+
+## FastAPI Integration
 
 ### Dependency Injection
 
-The cache system integrates seamlessly with FastAPI's dependency injection:
+```python
+from app.infrastructure.cache.dependencies import (
+    get_cache_service,      # Auto-configured from CACHE_PRESET
+    get_cache_config,       # Configuration object
+    get_cache_health_status # Health monitoring
+)
+
+# Main cache dependency
+@app.post("/api/data")
+async def process_data(
+    cache: CacheInterface = Depends(get_cache_service)
+):
+    # Cache automatically configured from environment preset
+    pass
+
+# Health check endpoint
+@app.get("/health/cache")
+async def cache_health():
+    return await get_cache_health_status()
+
+# Configuration info
+@app.get("/internal/cache/config")
+async def cache_config(config = Depends(get_cache_config)):
+    return {
+        "preset": config.preset_name,
+        "implementation": type(cache).__name__,
+        "redis_url": config.redis_url
+    }
+```
+
+### Lifecycle Management
+
+Dependencies handle connection lifecycle automatically:
+
+- **Startup**: Cache connects during first dependency injection
+- **Shutdown**: Connections cleaned up via weak reference registry
+- **Health**: Automatic health monitoring with Redis ping checks
+- **Fallback**: Graceful degradation on Redis connection failures
+
+## Advanced Features
+
+### Performance Monitoring
 
 ```python
-from app.infrastructure.cache import CacheInterface, InMemoryCache, AIResponseCache
+from app.infrastructure.cache import CachePerformanceMonitor
 
-async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIResponseCache:
-    """Dependency provider for AI response cache service."""
-    cache = AIResponseCache(
-        redis_url=settings.redis_url,
-        default_ttl=settings.cache_default_ttl,
-        text_hash_threshold=settings.cache_text_hash_threshold,
-        compression_threshold=settings.cache_compression_threshold,
-        compression_level=settings.cache_compression_level,
-        text_size_tiers=settings.cache_text_size_tiers,
-        memory_cache_size=settings.cache_memory_cache_size
-    )
-    
-    try:
-        await cache.connect()
-    except Exception as e:
-        # Graceful degradation - cache operates without Redis
-        logger.warning(f"Redis connection failed: {e}")
-    
-    return cache
+# Built-in monitoring for all cache implementations
+monitor = cache.performance_monitor
 
-# Use in FastAPI endpoints
+# Get real-time statistics
+stats = await monitor.get_performance_summary()
+print(f"Hit ratio: {stats['hit_ratio']:.2%}")
+print(f"Average response time: {stats['avg_response_time']:.2f}ms")
+
+# Memory usage tracking
+memory_stats = monitor.get_memory_usage_stats()
+if memory_stats['usage_mb'] > memory_stats['warning_threshold_mb']:
+    logger.warning("Cache memory usage high")
+
+# Export metrics for external monitoring
+metrics_data = monitor.export_metrics()
+```
+
+### Security Features
+
+```python
+from app.infrastructure.cache.security import SecurityConfig
+
+# TLS and authentication for production
+security_config = SecurityConfig(
+    use_tls=True,
+    username="cache_user",
+    password="secure_password",
+    cert_file="/path/to/cert.pem"
+)
+
+cache = GenericRedisCache(
+    redis_url="rediss://secure-redis:6380",  # Note: rediss://
+    security_config=security_config
+)
+```
+
+## Integration Patterns
+
+### Domain Service Pattern (Recommended)
+
+Keep cache logic in domain services, not controllers:
+
+```python
+# ✅ Good: Domain service handles cache logic
+class TextProcessorService:
+    def __init__(self, cache: CacheInterface):
+        self.cache = cache
+    
+    async def process_text(self, text: str, operation: str) -> dict:
+        # Service builds cache keys with domain knowledge
+        cache_key = f"text_process:{operation}:{hash(text)}"
+        
+        cached = await self.cache.get(cache_key)
+        if cached:
+            return cached
+        
+        result = await self._process(text, operation)
+        
+        # Domain-specific TTL logic
+        ttl = self._get_ttl_for_operation(operation)
+        await self.cache.set(cache_key, result, ttl=ttl)
+        
+        return result
+
+# FastAPI controller just uses the service
 @app.post("/process")
 async def process_text(
     request: ProcessRequest,
-    cache: AIResponseCache = Depends(get_cache_service)
+    cache: CacheInterface = Depends(get_cache_service)
 ):
-    cached_result = await cache.get_cached_response(
-        text=request.text,
-        operation=request.operation,
-        options=request.options
-    )
-    
-    if cached_result:
-        return cached_result
-    
-    # Process and cache result
-    result = await ai_service.process(request)
-    await cache.cache_response(
-        text=request.text,
-        operation=request.operation,
-        options=request.options,
-        response=result
-    )
-    return result
+    service = TextProcessorService(cache)
+    return await service.process_text(request.text, request.operation)
 ```
 
-### Environment-Based Configuration
+### Testing Patterns
+
 ```python
-# Development
-cache = InMemoryCache(default_ttl=1800, max_size=100)
+import pytest
+from app.infrastructure.cache.dependencies import get_test_cache
 
-# Production  
-cache = AIResponseCache(
-    redis_url=os.getenv("REDIS_URL", "redis://redis:6379"),
-    default_ttl=int(os.getenv("CACHE_TTL", "3600")),
-    compression_threshold=int(os.getenv("CACHE_COMPRESSION_THRESHOLD", "1000"))
-)
+@pytest.fixture
+async def test_cache():
+    cache = get_test_cache()
+    yield cache
+    # Automatic cleanup handled by test cache
+
+async def test_caching_behavior(test_cache):
+    # Test with real cache behavior
+    await test_cache.set("test_key", {"data": "value"})
+    result = await test_cache.get("test_key")
+    assert result == {"data": "value"}
 ```
 
-## Error Handling & Resilience
+## Documentation Links
 
-Both implementations include comprehensive error handling:
+For detailed user documentation:
 
-- **Redis Connection Failures:** AIResponseCache gracefully degrades to memory-only mode
-- **Serialization Errors:** Logged but don't interrupt application flow  
-- **Memory Pressure:** InMemoryCache uses LRU eviction to manage memory constraints
-- **Corrupted Data:** Automatic cleanup of invalid cache entries
-
-## Testing Considerations
-
-- **InMemoryCache:** Ideal for unit tests (fast, isolated, no external dependencies)
-- **AIResponseCache:** Can be configured with Redis test instance or mocked for unit tests
-- **Interface Compliance:** Both implementations can be tested against the same interface contract
+- **[Configuration Guide](../../../docs/guides/infrastructure/cache/configuration.md)** - Comprehensive configuration options
+- **[Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md)** - User-focused usage patterns  
+- **[API Reference](../../../docs/guides/infrastructure/cache/api-reference.md)** - Complete API documentation
+- **[Migration Guide](../../../docs/guides/infrastructure/cache/migration.md)** - Detailed migration instructions
+- **[Benchmarking](../../../docs/guides/infrastructure/cache/benchmarking.md)** - Performance testing and optimization
+- **[Testing Guide](../../../docs/guides/infrastructure/cache/testing.md)** - Testing strategies and patterns
+- **[Troubleshooting](../../../docs/guides/infrastructure/cache/troubleshooting.md)** - Common issues and solutions
 
 ## Performance Characteristics
 
-| Feature | InMemoryCache | AIResponseCache |
-|---------|---------------|-----------------|
-| **Get Operations** | O(1) avg, O(n) cleanup | O(1) memory, O(1) Redis + network |
-| **Set Operations** | O(1) avg, O(n) eviction | O(1) + compression time |
-| **Memory Usage** | ~100-200 bytes/entry | Varies with compression |  
-| **Startup Time** | Instant | Redis connection time |
-| **Persistence** | None | Full Redis persistence |
-| **Multi-Process** | No | Yes (shared Redis) |
+| Operation | InMemoryCache | GenericRedisCache | AIResponseCache |
+|-----------|---------------|-------------------|-----------------|
+| **Get** (hit) | <1ms | ~2-5ms (L1: <1ms) | ~2-5ms (L1: <1ms) |
+| **Set** | <1ms | ~3-8ms | ~5-15ms (with compression) |
+| **Memory** | ~200 bytes/entry | ~300 bytes/entry + Redis | Variable with compression |
+| **Startup** | Instant | Redis connection time | Redis connection time |
+| **Throughput** | 10K+ ops/sec | 1-5K ops/sec | 500-2K ops/sec |
 
-## Migration Guide
+## Error Handling
 
-### From InMemoryCache to AIResponseCache
-1. Install Redis and configure connection URL
-2. Update initialization code to use AIResponseCache
-3. Configure appropriate TTLs and compression thresholds  
-4. Monitor performance metrics during transition
-5. Implement graceful fallback for Redis unavailability
+All implementations provide graceful error handling:
 
-### Configuration Migration
-```python
-# Before (InMemoryCache)
-cache = InMemoryCache(default_ttl=3600, max_size=1000)
+- **Connection Failures**: Automatic fallback to memory-only mode
+- **Serialization Errors**: Logged warnings, operations continue
+- **Memory Pressure**: Automatic LRU eviction and cleanup
+- **Redis Unavailable**: Seamless degradation with health monitoring
 
-# After (AIResponseCache)  
-cache = AIResponseCache(
-    redis_url="redis://localhost:6379",
-    default_ttl=3600,
-    memory_cache_size=100,  # Smaller memory tier
-    compression_threshold=1000
-)
-```
-
-This cache infrastructure provides a solid foundation for scalable, high-performance caching with the flexibility to choose the right implementation for each environment and use case.
+Choose the right implementation for your use case, configure with presets for simplicity, and leverage the comprehensive monitoring for production optimization.

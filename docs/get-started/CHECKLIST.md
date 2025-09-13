@@ -175,7 +175,7 @@ make frontend-shell            # Access frontend container
 # Testing and validation
 make test-backend-all          # Run all tests including slow ones
 make test-coverage             # Run tests with coverage reports
-make validate-config           # Validate resilience configuration
+make validate-resil-config           # Validate resilience configuration
 
 # Monitoring and diagnostics
 curl http://localhost:8000/health                    # Basic health check

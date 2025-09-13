@@ -1,5 +1,6 @@
 ---
 sidebar_label: Security
+sidebar_position: 5
 ---
 # Security Infrastructure Service
 

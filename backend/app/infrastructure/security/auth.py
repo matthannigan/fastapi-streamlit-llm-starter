@@ -14,13 +14,15 @@ Key Features:
     - **Test Integration**: Built-in test mode support for automated testing
     - **User Tracking**: Optional user context and request metadata tracking
     - **Flexible Configuration**: Environment-based configuration with runtime reloading
+    - **HTTP Exception Compatibility**: Wrapper dependencies that convert custom exceptions to proper HTTP responses
 
 Architecture:
-    The module is structured around three main components:
+    The module is structured around four main components:
     
     1. **AuthConfig**: Manages authentication configuration and feature flags
     2. **APIKeyAuth**: Handles API key validation and metadata management
     3. **FastAPI Dependencies**: Provides authentication dependencies for route protection
+    4. **HTTPException Wrappers**: Converts custom exceptions to FastAPI-compatible HTTP responses
 
 Operation Modes:
     - **Simple Mode** (default): Basic API key validation without advanced features
@@ -85,6 +87,17 @@ Usage Examples:
                 return "Valid key"
             return "Invalid key"
         ```
+    
+    HTTP Exception compatibility (recommended for FastAPI endpoints):
+        ```python
+        from app.infrastructure.security.auth import verify_api_key_http
+        
+        @app.post("/internal/cache/invalidate")
+        async def protected_endpoint(api_key: str = Depends(verify_api_key_http)):
+            # This dependency automatically converts AuthenticationError to 401 HTTPException
+            # Avoids middleware conflicts and provides clean HTTP responses
+            return {"message": "Authenticated access", "key": api_key}
+        ```
 
 Extension Points:
     The module provides several extension points for customization:
@@ -116,10 +129,21 @@ Performance:
     - Minimal overhead for simple mode operations
 
 Error Handling:
-    The module raises appropriate HTTP exceptions:
-    - `401 Unauthorized`: Missing or invalid API key
-    - Detailed error messages with WWW-Authenticate headers
-    - Graceful degradation in development mode
+    The module provides two approaches for error handling:
+    
+    **Standard Dependencies** (verify_api_key, optional_verify_api_key):
+    - Raise `AuthenticationError` custom exceptions
+    - Handled by global exception handlers
+    - May cause middleware conflicts in dependency injection
+    
+    **HTTP Wrapper Dependencies** (verify_api_key_http - recommended):
+    - Convert `AuthenticationError` to `HTTPException` automatically
+    - Return proper `401 Unauthorized` responses with detailed error messages
+    - Include WWW-Authenticate headers and structured error context
+    - Avoid middleware conflicts and provide clean HTTP responses
+    - Preserve original error messages and debugging context
+    
+    Both approaches support graceful degradation in development mode
 
 Version: 1.0.0
 Author: FastAPI LLM Starter Team
@@ -127,9 +151,10 @@ License: MIT
 """
 
 import os
+import sys
 import logging
 from typing import Optional, Dict, Any
-from fastapi import Depends, status
+from fastapi import Depends, status, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError
@@ -140,7 +165,42 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 class AuthConfig:
-    """Configuration class that can be extended for user management."""
+    """
+    Authentication configuration manager with environment-based settings and extensibility hooks.
+    
+    Manages authentication behavior, feature flags, and operation modes through environment
+    variables, providing a flexible foundation for both simple API key validation and
+    advanced user management systems.
+    
+    Attributes:
+        simple_mode: bool indicating basic API key validation mode (default)
+        enable_user_tracking: bool for user context and session tracking
+        enable_request_logging: bool for request metadata collection
+        
+    Public Methods:
+        supports_user_context: Property indicating user context availability
+        
+    State Management:
+        - Environment-driven configuration with sensible defaults
+        - Immutable configuration after initialization
+        - Extension points for custom authentication logic
+        - Thread-safe operation for concurrent request handling
+        
+    Usage:
+        # Default configuration for simple API key authentication
+        config = AuthConfig()
+        
+        # Environment-based configuration
+        # AUTH_MODE=advanced ENABLE_USER_TRACKING=true
+        config = AuthConfig()
+        if not config.simple_mode:
+            print("Advanced authentication features enabled")
+            
+        # Extension point usage
+        class CustomAuthConfig(AuthConfig):
+            def supports_permissions(self) -> bool:
+                return True
+    """
     
     def __init__(self):
         # Can be overridden via environment variable
@@ -177,7 +237,46 @@ class AuthConfig:
         }
 
 class APIKeyAuth:
-    """API Key authentication handler with extensibility hooks."""
+    """
+    API key authentication handler with multi-key support and extensible metadata management.
+    
+    Provides secure API key validation with support for multiple keys, development mode,
+    test integration, and extensibility hooks for advanced authentication requirements.
+    Handles Bearer token extraction, validation, and optional user context management.
+    
+    Attributes:
+        config: AuthConfig instance controlling authentication behavior
+        api_keys: Set[str] containing valid API keys for authentication
+        _key_metadata: Dict[str, Dict[str, Any]] extensible metadata per API key
+        
+    Public Methods:
+        authenticate(): Primary authentication method with Bearer token validation
+        get_user_context(): Extract user information from authenticated requests
+        add_key_metadata(): Associate metadata with specific API keys
+        
+    State Management:
+        - Thread-safe API key validation for concurrent requests
+        - Immutable key set after initialization (reload required for changes)
+        - Extensible metadata system for custom authentication logic
+        - Development and test mode support with automatic fallbacks
+        
+    Usage:
+        # Basic API key authentication
+        auth = APIKeyAuth()
+        api_key = await auth.authenticate("Bearer sk-abc123")
+        
+        # Advanced usage with user context
+        config = AuthConfig()
+        auth = APIKeyAuth(config)
+        if config.supports_user_context:
+            user_info = auth.get_user_context(api_key)
+            
+        # Extension with metadata
+        auth.add_key_metadata("sk-abc123", {
+            "user_id": "user_123",
+            "permissions": ["read", "write"]
+        })
+    """
     
     def __init__(self, auth_config: Optional[AuthConfig] = None):
         self.config = auth_config or AuthConfig()
@@ -219,7 +318,9 @@ class APIKeyAuth:
                     }
         
         if not api_keys:
-            logger.warning("No API keys configured. API endpoints will be unprotected!")
+            _IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
+            if not _IS_PYTEST:
+                logger.warning("No API keys configured. API endpoints will be unprotected!")
         else:
             logger.info(f"Loaded {len(api_keys)} API key(s) in {self.config.get_auth_info()['mode']} mode")
         
@@ -408,3 +509,38 @@ def supports_feature(feature: str) -> bool:
         'request_logging': auth_config.enable_request_logging
     }
     return feature_map.get(feature, False)
+
+# ============================================================================
+# HTTPException Wrapper Dependencies for FastAPI Compatibility
+# ============================================================================
+
+async def verify_api_key_http(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> str:
+    """
+    Dependency wrapper that converts AuthenticationError to HTTPException.
+    
+    This wrapper catches AuthenticationError exceptions from verify_api_key and
+    converts them to HTTPException which FastAPI handles more gracefully with
+    the middleware stack, avoiding "response already started" conflicts.
+    
+    Args:
+        credentials: HTTP Bearer credentials from the request
+        
+    Returns:
+        The verified API key
+        
+    Raises:
+        HTTPException: 401 Unauthorized if authentication fails
+    """
+    try:
+        return await verify_api_key(credentials)
+    except AuthenticationError as exc:
+        # 1. Use the status module for clarity and standardization.
+        # 2. Preserve the original, more specific error message from the exception.
+        # 3. Include the exception's context for better debugging, just like your global handler.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": str(exc), "context": exc.context},
+            headers={"WWW-Authenticate": "Bearer"}
+        )

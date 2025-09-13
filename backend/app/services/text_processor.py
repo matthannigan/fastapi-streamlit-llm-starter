@@ -152,15 +152,129 @@ logger = logging.getLogger(__name__)
 
 
 class TextProcessorService:
-    """Service for processing text using AI models with resilience patterns."""
+    """
+    Comprehensive AI-powered text processing service with production-ready resilience and security features.
+    
+    This service provides a complete solution for AI-powered text analysis operations including
+    summarization, sentiment analysis, key point extraction, question generation, and question-answering.
+    It integrates seamlessly with infrastructure services to provide caching, resilience patterns,
+    security validation, and performance monitoring.
+    
+    Attributes:
+        settings: Application configuration containing AI model settings, resilience configuration,
+                 and operational parameters for text processing operations
+        cache_service: AI response cache service for storing and retrieving processed results,
+                      improving performance and reducing API costs
+        agent: PydanticAI agent configured for text processing operations with proper model integration
+        sanitizer: Input sanitizer for security validation and prompt injection prevention
+        response_validator: Output validator for security and quality assurance of AI responses
+        ai_resilience: Resilience orchestrator providing circuit breakers, retry logic, and fallback responses
+        concurrency_semaphore: Semaphore for controlling concurrent batch operations and resource management
+        
+    Public Methods:
+        process_text(): Process single text processing requests with full resilience and caching
+        process_batch(): Process multiple requests concurrently with automatic batch management
+        _configure_resilience_strategies(): Configure operation-specific resilience strategies
+        _get_fallback_response(): Provide fallback responses when AI services are unavailable
+        _get_fallback_sentiment(): Generate neutral sentiment when sentiment analysis fails
+        
+    State Management:
+        - Thread-safe for concurrent request processing across multiple workers
+        - Maintains internal state for resilience patterns and circuit breaker status
+        - Automatic resource management with proper cleanup and connection handling
+        - Immutable configuration after initialization for consistent behavior
+        - Integration with monitoring systems for operational visibility
+        
+    Behavior:
+        - Performs input sanitization on all user-provided text before processing
+        - Checks cache for existing responses before making AI API calls
+        - Applies operation-specific resilience strategies with circuit breakers and retry logic
+        - Validates AI responses for security threats and quality issues
+        - Stores successful responses in cache for future retrieval
+        - Provides fallback responses when AI services are unavailable
+        - Logs comprehensive processing metrics and security events
+        - Supports batch processing with configurable concurrency limits
+        
+    Examples:
+        >>> # Basic service initialization
+        >>> from app.services import TextProcessorService
+        >>> from app.core.config import settings
+        >>> from app.infrastructure.cache import get_ai_cache_service
+        >>> 
+        >>> cache_service = get_ai_cache_service()
+        >>> processor = TextProcessorService(settings, cache_service)
+        
+        >>> # Single operation processing
+        >>> from shared.models import TextProcessingRequest, TextProcessingOperation
+        >>> 
+        >>> request = TextProcessingRequest(
+        ...     text="Sample text for analysis",
+        ...     operation=TextProcessingOperation.SUMMARIZE,
+        ...     options={"max_length": 100}
+        ... )
+        >>> response = await processor.process_text(request)
+        >>> print(f"Summary: {response.result}")
+        
+        >>> # Question-answering with required question parameter
+        >>> qa_request = TextProcessingRequest(
+        ...     text="Document content to analyze",
+        ...     operation=TextProcessingOperation.QA,
+        ...     question="What are the main conclusions?"
+        ... )
+        >>> qa_response = await processor.process_text(qa_request)
+        >>> print(f"Answer: {qa_response.result}")
+        
+        >>> # Batch processing with automatic concurrency control
+        >>> from shared.models import BatchTextProcessingRequest
+        >>> 
+        >>> batch_request = BatchTextProcessingRequest(
+        ...     requests=[
+        ...         TextProcessingRequest(text="Text 1", operation="summarize"),
+        ...         TextProcessingRequest(text="Text 2", operation="sentiment"),
+        ...         TextProcessingRequest(text="Text 3", operation="key_points")
+        ...     ],
+        ...     batch_id="analysis_batch_001"
+        ... )
+        >>> batch_response = await processor.process_batch(batch_request)
+        >>> print(f"Processed {batch_response.completed_items} of {batch_response.total_items} items")
+    """
     
     def __init__(self, settings: Settings, cache: "AIResponseCache"):
         """
-        Initialize the text processor with AI agent and resilience.
+        Initialize the text processor with AI agent, resilience patterns, and security validation.
         
         Args:
-            settings: Application settings instance for configuration.
-            cache: Cache service instance for storing AI responses.
+            settings: Application settings instance containing AI model configuration,
+                     resilience parameters, and operational settings for text processing
+            cache: AI response cache service instance for storing and retrieving processed results,
+                  improving performance and reducing redundant API calls
+        
+        Behavior:
+            - Initializes PydanticAI agent with configured model and temperature settings
+            - Sets up input sanitizer for security validation and prompt injection prevention
+            - Configures response validator for output security and quality assurance
+            - Establishes resilience orchestrator with operation-specific strategies
+            - Creates concurrency semaphore for batch processing resource management
+            - Registers operation-specific resilience strategies from configuration
+            - Prepares logging infrastructure for comprehensive request tracking
+            
+        Raises:
+            ConfigurationError: If required settings are missing or invalid
+            InfrastructureError: If cache service initialization fails
+            ValueError: If AI model configuration is invalid
+            
+        Examples:
+            >>> # Basic initialization with default settings
+            >>> processor = TextProcessorService(settings, cache_service)
+            
+            >>> # Initialization with custom resilience configuration
+            >>> custom_settings = Settings(
+            ...     gemini_api_key="your-api-key",
+            ...     ai_model="gemini-2.0-flash-exp",
+            ...     ai_temperature=0.7,
+            ...     BATCH_AI_CONCURRENCY_LIMIT=10
+            ... )
+            >>> processor = TextProcessorService(custom_settings, cache_service)
         """
         self.settings = settings
         self.cache = cache
@@ -223,7 +337,8 @@ class TextProcessorService:
         
         # Try to get cached response first
         operation_value = operation.value if hasattr(operation, 'value') else operation
-        cached_response = await self.cache_service.get_cached_response(text, operation_value, {}, question)
+        cache_key = await self._build_cache_key(text, operation_value, {}, question)
+        cached_response = await self.cache_service.get(cache_key)
         
         if cached_response:
             logger.info(f"Using cached fallback for {operation}")
@@ -269,12 +384,13 @@ class TextProcessorService:
         
         # Check cache first
         operation_value = request.operation.value if hasattr(request.operation, 'value') else request.operation
-        cached_response = await self.cache_service.get_cached_response(
+        cache_key = await self._build_cache_key(
             request.text, 
             operation_value, 
             request.options or {}, 
             request.question
         )
+        cached_response = await self.cache_service.get(cache_key)
         
         if cached_response:
             logger.info(f"Cache hit for operation: {request.operation}")
@@ -289,7 +405,7 @@ class TextProcessorService:
                 return cached_response
             else:
                  # Handle cases where cache might return a simple string or other type not directly convertible
-                 # This part depends on how cache_response stores data. Assuming it stores a dict.
+                 # This part depends on how the cache stores data. Assuming it stores a dict.
                  logger.warning(f"Unexpected cache response type: {type(cached_response)}")
                  # Attempt to recreate response, or handle error
                  # For now, let's assume it's a dict as per Pydantic model usage
@@ -350,13 +466,9 @@ class TextProcessorService:
                 logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: FALLBACK_USED")
             
             # Cache the successful response (even fallback responses)
-            await self.cache_service.cache_response(
-                request.text,
-                operation_value,
-                request.options or {},
-                response.model_dump(),
-                request.question
-            )
+            # Reuse the cache_key from above to avoid redundant key generation
+            ttl = self._get_ttl_for_operation(operation_value)
+            await self.cache_service.set(cache_key, response.model_dump(), ttl)
                 
             processing_time = time.time() - start_time
             response.processing_time = processing_time
@@ -648,3 +760,95 @@ class TextProcessorService:
     def get_resilience_metrics(self) -> Dict[str, Any]:
         """Get resilience metrics for this service."""
         return ai_resilience.get_all_metrics()
+    
+    # =============================================================================
+    # DOMAIN CACHE KEY BUILDING LOGIC
+    # =============================================================================
+    
+    async def _build_cache_key(
+        self, 
+        text: str, 
+        operation: str, 
+        options: Dict[str, Any], 
+        question: Optional[str] = None
+    ) -> str:
+        """
+        Build cache key using domain-specific logic and question parameter handling.
+        
+        This method encapsulates domain-specific cache key building logic, properly
+        embedding question parameters in the options dictionary before delegating
+        to the infrastructure layer's generic key generation.
+        
+        Args:
+            text: Input text for key generation
+            operation: Operation type (summarize, sentiment, key_points, questions, qa)
+            options: Options dictionary containing operation-specific parameters
+            question: Question for Q&A operations, embedded in options if present
+            
+        Returns:
+            Generated cache key string
+            
+        Behavior:
+            - Embeds question parameter in options dictionary if present
+            - Delegates to infrastructure layer's build_key() method for actual generation
+            - Maintains backwards compatibility with existing key generation logic
+            - Handles all operation types with consistent key generation patterns
+            
+        Examples:
+            >>> # Standard operation without question
+            >>> key = await service._build_cache_key(
+            ...     text="Sample text",
+            ...     operation="summarize",
+            ...     options={"max_length": 100}
+            ... )
+            
+            >>> # Q&A operation with question embedded in options
+            >>> key = await service._build_cache_key(
+            ...     text="Document content",
+            ...     operation="qa",
+            ...     options={"max_tokens": 150},
+            ...     question="What are the main conclusions?"
+            ... )
+        """
+        # Embed question in options dictionary if present
+        if question:
+            options = {**options, 'question': question}
+        
+        # Use generic infrastructure cache key building
+        return self.cache_service.build_key(text, operation, options)
+    
+    def _get_ttl_for_operation(self, operation: str) -> Optional[int]:
+        """
+        Get operation-specific TTL for cache storage.
+        
+        This method provides domain-specific TTL logic for different operation types,
+        ensuring appropriate cache lifetimes based on the nature of each operation.
+        
+        Args:
+            operation: Operation type (summarize, sentiment, key_points, questions, qa)
+            
+        Returns:
+            TTL in seconds for the operation, or None to use cache default
+            
+        Behavior:
+            - Returns operation-specific TTL values based on content volatility
+            - Summarization has longer TTL as summaries change less frequently
+            - Q&A operations have shorter TTL as answers may need fresher context
+            - Sentiment analysis has moderate TTL balancing accuracy and performance
+            
+        Examples:
+            >>> ttl = service._get_ttl_for_operation("summarize")
+            >>> # Returns 7200 (2 hours) for summary operations
+            
+            >>> ttl = service._get_ttl_for_operation("qa") 
+            >>> # Returns 1800 (30 minutes) for Q&A operations
+        """
+        # Operation-specific TTL logic based on content characteristics
+        operation_ttls = {
+            'summarize': 7200,    # 2 hours - summaries change less frequently
+            'sentiment': 3600,    # 1 hour - sentiment relatively stable but contextual
+            'key_points': 5400,   # 1.5 hours - key points moderately stable
+            'questions': 3600,    # 1 hour - questions benefit from fresher context
+            'qa': 1800,           # 30 minutes - Q&A answers need fresher context
+        }
+        return operation_ttls.get(operation)

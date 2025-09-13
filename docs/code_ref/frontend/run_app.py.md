@@ -14,40 +14,34 @@ The script automatically configures the Python path to ensure all application mo
 accessible, validates package imports, and launches Streamlit with appropriate server settings
 for both development and production environments.
 
-## Key Features
+Key Features:
+    - Automatic Python path configuration for package discovery
+    - Import validation with detailed error reporting
+    - Environment-specific Streamlit configuration
+    - Debug output for troubleshooting deployment issues
+    - Cross-platform compatibility for different deployment scenarios
 
-- Automatic Python path configuration for package discovery
-- Import validation with detailed error reporting
-- Environment-specific Streamlit configuration
-- Debug output for troubleshooting deployment issues
-- Cross-platform compatibility for different deployment scenarios
+Environment Variables:
+    STREAMLIT_ENV: When set to "development", enables additional development features
+                   like automatic reloading on file changes (runOnSave)
 
-## Environment Variables
+Usage:
+    Run directly as a Python script:
+        python run_app.py
+        
+    Or as an executable (with proper shebang):
+        ./run_app.py
 
-STREAMLIT_ENV: When set to "development", enables additional development features
-like automatic reloading on file changes (runOnSave)
+Server Configuration:
+    - Default address: 0.0.0.0 (accessible from all network interfaces)
+    - Default port: 8501
+    - Development mode: Automatic reload on file changes when STREAMLIT_ENV=development
 
-## Usage
+Dependencies:
+    streamlit: Web application framework and CLI
+    app: Local application package containing the main Streamlit application
 
-Run directly as a Python script:
-python run_app.py
-
-Or as an executable (with proper shebang):
-./run_app.py
-
-## Server Configuration
-
-- Default address: 0.0.0.0 (accessible from all network interfaces)
-- Default port: 8501
-- Development mode: Automatic reload on file changes when STREAMLIT_ENV=development
-
-## Dependencies
-
-streamlit: Web application framework and CLI
-app: Local application package containing the main Streamlit application
-
-## Note
-
-This launcher is particularly useful in containerized environments where Python path
-configuration may be complex, or when the application needs to be launched with
-specific Streamlit server settings that differ from defaults.
+Note:
+    This launcher is particularly useful in containerized environments where Python path
+    configuration may be complex, or when the application needs to be launched with
+    specific Streamlit server settings that differ from defaults.

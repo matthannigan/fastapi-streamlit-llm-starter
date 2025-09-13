@@ -21,3 +21,6 @@ docs-website/
 CLAUDE.md
 docs.old/
 .github/
+backend/tests.old/
+docs-mkdocs/
+backend/scripts/old/

@@ -1,0 +1,165 @@
+You can create hooks for Claude Code to automatically run flake8 and mypy linting using Claude's settings configuration. Here are the steps:
+
+1. Create or Update Claude Settings
+
+Claude Code settings are stored in ~/.claude/settings.json. You'll need to add hook configurations:
+
+{
+  "hooks": {
+    "post_edit": [
+      {
+        "name": "Python Linting",
+        "pattern": "**/*.py",
+        "command": "cd \"${workspaceRoot}\" && python -m flake8 \"${file}\"",
+        "showOutput": true,
+        "continueOnError": true
+      },
+      {
+        "name": "Python Type Checking",
+        "pattern": "**/*.py",
+        "command": "cd \"${workspaceRoot}\" && python -m mypy \"${file}\" --ignore-missing-imports",
+        "showOutput": true,
+        "continueOnError": true
+      }
+    ]
+  }
+}
+
+2. For Your Specific Project Structure
+
+Since your project uses a virtual environment and has backend/frontend structure, here's a more tailored configuration:
+
+{
+  "hooks": {
+    "post_edit": [
+      {
+        "name": "Backend Python Linting",
+        "pattern": "backend/**/*.py",
+        "command": "cd \"${workspaceRoot}\" && source .venv/bin/activate && python -m flake8 \"${file}\" --max-line-length=88 --extend-ignore=E203,W503",
+        "showOutput": true,
+        "continueOnError": true
+      },
+      {
+        "name": "Frontend Python Linting",
+        "pattern": "frontend/**/*.py",
+        "command": "cd \"${workspaceRoot}\" && source .venv/bin/activate && python -m flake8 \"${file}\" --max-line-length=88 --extend-ignore=E203,W503",
+        "showOutput": true,
+        "continueOnError": true
+      },
+      {
+        "name": "Backend Type Checking",
+        "pattern": "backend/**/*.py",
+        "command": "cd \"${workspaceRoot}/backend\" && ../.venv/bin/python -m mypy \"${fileRelative}\" --ignore-missing-imports --config-file=mypy.ini",
+        "showOutput": true,
+        "continueOnError": true
+      }
+    ]
+  }
+}
+
+3. Using Your Project's Makefile Commands
+
+Even better, leverage your existing Makefile commands:
+
+{
+  "hooks": {
+    "post_edit": [
+      {
+        "name": "Python Linting via Makefile",
+        "pattern": "backend/**/*.py",
+        "command": "cd \"${workspaceRoot}\" && make lint-file FILE=\"${file}\"",
+        "showOutput": true,
+        "continueOnError": true
+      }
+    ]
+  }
+}
+
+You'd need to add a lint-file target to your Makefile:
+
+# Lint a specific file
+lint-file:
+  @if [ -z "$(FILE)" ]; then echo "Usage: make lint-file FILE=path/to/file.py"; exit 1; fi
+  @echo "🔍 Linting $(FILE)..."
+  @source .venv/bin/activate && python -m flake8 "$(FILE)" --max-line-length=88 --extend-ignore=E203,W503
+  @echo "🔍 Type checking $(FILE)..."
+  @source .venv/bin/activate && cd backend && python -m mypy "$(FILE)" --ignore-missing-imports || true
+
+4. Hook Configuration Options
+
+Key configuration options:
+
+- pattern: File glob pattern to match (e.g., "**/*.py", "backend/**/*.py")
+- command: Shell command to execute
+- showOutput: Whether to display command output (true/false)
+- continueOnError: Whether to continue if command fails (true/false)
+- workingDirectory: Override working directory (optional)
+
+5. Available Variables
+
+Claude provides these variables in hook commands:
+
+- ${file}: Full path to the edited file
+- ${fileRelative}: Relative path from workspace root
+- ${workspaceRoot}: Full path to workspace root
+- ${fileName}: Just the filename without path
+- ${fileBasename}: Filename without extension
+
+6. Testing Your Hooks
+
+After setting up hooks:
+
+1. Edit a Python file in Claude Code
+2. Save the file (Cmd/Ctrl+S)
+3. Check the output panel for linting results
+4. Hooks should run automatically on each save
+
+7. Advanced Configuration
+
+For more sophisticated linting, you could create a wrapper script:
+
+#!/bin/bash
+# scripts/lint-on-save.sh
+FILE="$1"
+
+echo "🔍 Linting $FILE..."
+
+# Run flake8
+if ! python -m flake8 "$FILE" --max-line-length=88 --extend-ignore=E203,W503; then
+    echo "❌ Flake8 found issues in $FILE"
+fi
+
+# Run mypy if it's a backend file
+if [[ "$FILE" == backend/* ]]; then
+    cd backend
+    if ! python -m mypy "${FILE#backend/}" --ignore-missing-imports; then
+        echo "❌ MyPy found type issues in $FILE"
+    fi
+fi
+
+echo "✅ Linting complete for $FILE"
+
+Then reference it in your hook:
+
+{
+  "command": "cd \"${workspaceRoot}\" && source .venv/bin/activate && bash scripts/lint-on-save.sh \"${file}\""
+}
+
+This gives you automatic linting on every Python file save while leveraging your existing project structure and tooling!
+
+
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${workspaceRoot}\" && source .venv/bin/activate && python -m flake8 \"${file}\""
+          }
+        ]
+      }
+    ]
+  }
+}

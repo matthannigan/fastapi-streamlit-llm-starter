@@ -4,6 +4,13 @@ services:
       - DEBUG=false
       - LOG_LEVEL=INFO
       - RESILIENCE_PRESET=${RESILIENCE_PRESET:-production}
+      # Phase 4 Cache Preset Configuration - Production optimized
+      # Uses production preset with high-performance defaults following resilience pattern
+      - CACHE_PRESET=${CACHE_PRESET:-production}
+      # Production-specific overrides for performance and reliability
+      - ENABLE_AI_CACHE=true
+      # Production optimization via custom config (optional)
+      # - CACHE_CUSTOM_CONFIG={"max_connections": 50, "compression_level": 9}
     volumes: []  # No volume mounts in production
     deploy:
       replicas: 3

@@ -2,69 +2,47 @@
 sidebar_label: __init__
 ---
 
-# Cache Infrastructure Module
+# **Comprehensive cache infrastructure with multiple implementations and monitoring.**
 
   file_path: `backend/app/infrastructure/cache/__init__.py`
 
-This module provides a comprehensive caching infrastructure with multiple implementations
-and monitoring capabilities. It serves as the single point of entry for all cache-related
-functionality in the application.
+This module serves as the central entry point for all cache-related functionality,
+providing multiple cache implementations, configuration management, and comprehensive
+monitoring capabilities for both web and AI applications.
+
+## Directory Structure
+
+The cache module is organized into specialized components:
+
+- **Core Implementations**: `base.py`, `memory.py`, `redis_generic.py`, `redis_ai.py`
+- **Configuration**: `config.py`, `ai_config.py`, `cache_presets.py`, `dependencies.py`
+- **Utilities**: `factory.py`, `key_generator.py`, `parameter_mapping.py`
+- **Advanced Features**: `monitoring.py`, `security.py`
 
 ## Main Components
 
-- CacheInterface: Abstract base class for all cache implementations
-- AIResponseCache: Redis-based cache with compression and tiered storage
-- InMemoryCache: High-performance in-memory cache with TTL and LRU eviction
-- CacheKeyGenerator: Optimized cache key generation for large texts
-- CachePerformanceMonitor: Comprehensive performance monitoring and analytics
+- **CacheInterface**: Abstract base class for all cache implementations
+- **AIResponseCache**: AI-optimized Redis cache with intelligent key generation
+- **GenericRedisCache**: Flexible Redis cache with L1 memory cache
+- **InMemoryCache**: High-performance in-memory cache with TTL and LRU eviction
+- **CacheFactory**: Explicit cache creation with environment-optimized defaults
+- **CacheConfig**: Comprehensive configuration management with preset system
+- **CachePerformanceMonitor**: Real-time monitoring and analytics
+- **FastAPI Dependencies**: Complete dependency injection with lifecycle management
 
-## Cache Implementations
-
-- Redis-based caching with fallback to memory-only mode
-- In-memory caching with TTL and LRU eviction
-- Graceful degradation when Redis is unavailable
-
-## Monitoring and Analytics
-
-- Real-time performance metrics
-- Memory usage tracking
-- Compression efficiency monitoring
-- Cache invalidation pattern analysis
-- Automatic threshold-based alerting
-
-## Usage Example
+## Quick Start
 
 ```python
-from app.infrastructure.cache import AIResponseCache, InMemoryCache
+# Preset-based configuration (recommended)
+from app.infrastructure.cache.dependencies import get_cache_config
+from app.infrastructure.cache import CacheFactory
 
-# Redis-based cache for production
-cache = AIResponseCache(redis_url="redis://localhost:6379")
-await cache.connect()
+config = get_cache_config()  # Uses CACHE_PRESET environment variable
+cache = CacheFactory.create_cache_from_config(config)
 
-# In-memory cache for development/testing
-memory_cache = InMemoryCache(default_ttl=3600, max_size=1000)
-
-# Cache an AI response
-await cache.cache_response(
-    text="Document to process",
-    operation="summarize",
-    options={"max_length": 100},
-    response={"summary": "Brief summary"}
-)
-
-# Get cached response
-result = await cache.get_cached_response(
-    text="Document to process",
-    operation="summarize",
-    options={"max_length": 100}
-)
+# Standard cache operations
+await cache.set("key", {"data": "value"}, ttl=3600)
+result = await cache.get("key")
 ```
 
-## Configuration
-
-The cache system supports extensive configuration for:
-- TTL (Time-To-Live) settings per operation type
-- Compression thresholds and levels
-- Memory cache size limits
-- Performance monitoring thresholds
-- Redis connection settings
+See the component README.md for comprehensive usage examples and configuration details.

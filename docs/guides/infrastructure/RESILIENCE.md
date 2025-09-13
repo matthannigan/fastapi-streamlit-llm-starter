@@ -1,5 +1,6 @@
 ---
 sidebar_label: Resilience
+sidebar_position: 4
 ---
 # Resilience Infrastructure Service
 
