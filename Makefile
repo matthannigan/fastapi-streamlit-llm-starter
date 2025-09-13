@@ -414,13 +414,7 @@ test-backend-infra-cache:
 # Run infrastructure service E2E tests
 test-backend-infra-cache-e2e:
 	@echo "🧪 Running backend cache infrastructure service E2E tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e and not redis" -v --tb=short --retries 3 --retry-delay 1
-
-# Run infrastructure service Redis-enhanced E2E tests
-test-backend-infra-cache-e2e-redis:
-	@echo "🧪 Running backend cache infrastructure Redis-enhanced E2E tests..."
-	@echo "⚠️  This requires Docker for Testcontainers Redis functionality"
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e and redis" -v --tb=short --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e" -v --tb=short --retries 3 --retry-delay 1
 
 update-tests-progress:
 	@echo "🧪 Updating tests progress..."
