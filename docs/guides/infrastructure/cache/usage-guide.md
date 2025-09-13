@@ -105,7 +105,7 @@ ENABLE_AI_CACHE=true                        # AI features toggle
 ├─ 🌐 **Web Application**
 │   ├─ Sessions, API responses, page cache
 │   ├─ → Use: `factory.for_web_app()`
-│   └─ Features: Redis + L1 memory, 30min TTL, balanced compression
+│   └─ Features: Redis + memory tier, 30min TTL, balanced compression
 │
 ├─ 🤖 **AI/LLM Application**  
 │   ├─ AI responses, model outputs, embeddings
@@ -123,13 +123,13 @@ ENABLE_AI_CACHE=true                        # AI features toggle
     └─ Features: Full control, parameter validation, auto-detection
 ```
 
-### Performance Characteristics
+### Cache Characteristics
 
 | Cache Type | Speed | Persistence | Memory Usage | Best For |
 |------------|-------|-------------|--------------|----------|
-| **InMemoryCache** | ⚡ Fastest (~0.1ms) | ❌ No | 🟡 Medium | Testing, dev |
-| **GenericRedisCache** | 🚀 Fast (~2-5ms) | ✅ Yes | 🟢 Low | Web apps |
-| **AIResponseCache** | 🚀 Fast (~2-5ms) | ✅ Yes | 🟡 Medium | AI apps |
+| **InMemoryCache** | ⚡ Fastest | ❌ No | 🟡 Medium | Testing, dev |
+| **GenericRedisCache** | 🚀 Fast | ✅ Yes | 🟢 Low | Web apps |
+| **AIResponseCache** | 🚀 Fast | ✅ Yes | 🟡 Medium | AI apps |
 
 ### Factory Method Details
 
@@ -142,9 +142,9 @@ ENABLE_AI_CACHE=true                        # AI features toggle
 web_cache = await factory.for_web_app(
     redis_url="redis://localhost:6379",
     default_ttl=1800,              # 30 minutes - good for session data
-    enable_l1_cache=True,          # Enable fast memory tier
-    l1_cache_size=200,             # 200 items in memory
-    compression_threshold=2000,     # Compress responses > 2KB
+    enable_memory_cache=True,      # Enable fast memory tier
+    memory_cache_size=200,         # 200 items in memory
+    compression_threshold=2000,     # Compress larger responses
     compression_level=6,           # Balanced compression
     fail_on_connection_error=False # Graceful degradation
 )
@@ -153,9 +153,9 @@ web_cache = await factory.for_web_app(
 production_web_cache = await factory.for_web_app(
     redis_url="redis://redis-cluster:6379",
     default_ttl=3600,              # 1 hour for production stability
-    l1_cache_size=500,             # Larger memory cache
+    memory_cache_size=500,         # Larger memory cache
     compression_threshold=1000,     # More aggressive compression
-    compression_level=7,           # Higher compression ratio
+    compression_level=7,           # Higher compression level
     fail_on_connection_error=True  # Strict error handling
 )
 ```
@@ -176,8 +176,8 @@ production_web_cache = await factory.for_web_app(
 ai_cache = await factory.for_ai_app(
     redis_url="redis://ai-redis:6379",
     default_ttl=3600,              # 1 hour base TTL
-    l1_cache_size=100,             # Smaller L1 for AI responses
-    compression_threshold=1000,     # Aggressive compression for large responses
+    memory_cache_size=100,         # Smaller memory cache for AI responses
+    compression_threshold=1000,     # Aggressive compression
     text_hash_threshold=500,       # Hash text over 500 characters
     operation_ttls={               # Operation-specific TTLs
         "summarize": 7200,         # 2 hours - summaries are stable
@@ -206,14 +206,14 @@ ai_cache = await factory.for_ai_app(
 memory_test_cache = await factory.for_testing(
     use_memory_cache=True,         # Force memory-only mode
     default_ttl=60,                # 1 minute expiration
-    l1_cache_size=50               # Small cache for testing
+    memory_cache_size=50           # Small cache for testing
 )
 
 # Redis test cache with isolated database
 redis_test_cache = await factory.for_testing(
     redis_url="redis://localhost:6379/15",  # Database 15 for tests
     default_ttl=60,                # 1 minute TTL
-    enable_l1_cache=False,         # Disable L1 for predictable behavior
+    enable_memory_cache=False,     # Disable memory cache for predictable behavior
     compression_level=1,           # Fast compression for speed
     fail_on_connection_error=False # Allow fallback during tests
 )
@@ -519,9 +519,9 @@ class UserDomainService:
 dev_cache = await factory.for_web_app(
     redis_url="redis://localhost:6379",
     default_ttl=900,               # 15 minutes for rapid testing
-    l1_cache_size=50,              # Small memory footprint
+    memory_cache_size=50,          # Small memory footprint
     compression_threshold=5000,     # Less aggressive compression
-    compression_level=3,           # Fast compression for development
+    compression_level=3,           # Fast compression
     fail_on_connection_error=False # Continue without Redis
 )
 
@@ -537,14 +537,14 @@ dev_cache = await factory.for_web_app(
 unit_test_cache = await factory.for_testing(
     use_memory_cache=True,
     default_ttl=60,
-    l1_cache_size=25
+    memory_cache_size=25
 )
 
 # Integration test cache with Redis test database
 integration_cache = await factory.for_testing(
     redis_url="redis://localhost:6379/15",
     default_ttl=120,
-    enable_l1_cache=False,         # Disable for predictable behavior
+    enable_memory_cache=False,     # Disable for predictable behavior
     compression_level=1,           # Fast compression
     fail_on_connection_error=True  # Fail fast in tests
 )
@@ -561,9 +561,9 @@ integration_cache = await factory.for_testing(
 prod_web_cache = await factory.for_web_app(
     redis_url="redis://redis-cluster:6379",
     default_ttl=3600,              # 1 hour for stability
-    l1_cache_size=500,             # Large memory cache
+    memory_cache_size=500,         # Large memory cache
     compression_threshold=1000,     # Aggressive compression
-    compression_level=7,           # High compression ratio
+    compression_level=7,           # High compression level
     fail_on_connection_error=True  # Strict error handling
 )
 
@@ -572,7 +572,7 @@ prod_ai_cache = await factory.for_ai_app(
     redis_url="redis://ai-redis-cluster:6379",
     default_ttl=7200,              # 2 hours base TTL
     compression_threshold=500,      # Very aggressive compression
-    compression_level=8,           # Near-maximum compression
+    compression_level=8,           # High compression level
     text_hash_threshold=1000,
     memory_cache_size=200,
     operation_ttls={
@@ -713,7 +713,7 @@ cached = await cache.get_cached_response(
 
 ### Memory Tier Optimization
 
-**Configure L1 Cache Size Based on Usage Patterns**:
+**Configure Memory Cache Size Based on Usage Patterns**:
 
 ```python
 # Profile your cache usage first
@@ -723,18 +723,18 @@ memory_usage = cache_stats.get("memory_usage", {})
 
 # Optimize based on hit ratio
 if hit_ratio < 0.7:  # Low hit ratio
-    # Increase L1 cache size
-    cache = await factory.for_web_app(l1_cache_size=500)
+    # Increase memory cache size
+    cache = await factory.for_web_app(memory_cache_size=500)
 elif memory_usage.get("utilization", 0) > 0.9:  # High memory usage
-    # Reduce L1 cache size
-    cache = await factory.for_web_app(l1_cache_size=100)
+    # Reduce memory cache size
+    cache = await factory.for_web_app(memory_cache_size=100)
 ```
 
 **Hot Data Preloading**:
 
 ```python
 async def preload_hot_data():
-    """Preload frequently accessed data into L1 cache"""
+    """Preload frequently accessed data into memory cache"""
     hot_keys = [
         "config:feature_flags",
         "config:rate_limits", 
@@ -764,16 +764,16 @@ for key in sample_keys:
 
 avg_size = sum(data_sizes) / len(data_sizes)
 
-# Optimize compression threshold
+# Optimize compression settings based on data patterns
 if avg_size < 1000:  # Small data
     cache = await factory.for_web_app(
-        compression_threshold=2000,  # Less aggressive
+        compression_threshold=2000,  # Higher threshold for small data
         compression_level=3          # Faster compression
     )
 elif avg_size > 10000:  # Large data
     cache = await factory.for_web_app(
-        compression_threshold=500,   # More aggressive  
-        compression_level=8          # Better compression
+        compression_threshold=500,   # Lower threshold for large data
+        compression_level=8          # Higher compression level
     )
 ```
 
@@ -1219,9 +1219,9 @@ if not settings.debug:
 - **[Code Standards](../developer/CODE_STANDARDS.md)**: Development patterns and best practices
 
 ### Configuration & Setup
-- **[Cache API Reference](../CACHE_API_REFERENCE.md)**: Detailed API documentation for all cache methods
-- **[Cache Configuration](../CACHE_PRESETS.md)**: Complete preset system and configuration options
-- **[Cache Testing](../CACHE_TESTING.md)**: Testing patterns and test utilities
+- **[Cache API Reference](./api-reference.md)**: Detailed API documentation for all cache methods
+- **[Cache Configuration](./configuration.md)**: Complete preset system and configuration options
+- **[Cache Testing](./testing.md)**: Testing patterns and test utilities
 
 ### Operations & Monitoring
 - **[Monitoring Infrastructure](./MONITORING.md)**: Comprehensive monitoring setup and metrics

@@ -39,18 +39,18 @@ graph TB
         end
         
         subgraph "GenericRedisCache Components"
-            GENERIC --> L1_GENERIC[L1 Memory Cache]
+            GENERIC --> MEMORY_TIER[Memory Cache Tier]
             GENERIC --> COMPRESS_GENERIC[Compression Engine]
             GENERIC --> CALLBACK_SYSTEM[Callback System]
             GENERIC --> MONITOR_GENERIC[Performance Monitor]
         end
-        
+
         subgraph "AIResponseCache Components"
-            AI_CACHE --> L1_AI[L1 Memory Cache]
+            AI_CACHE --> MEMORY_AI[Memory Cache Tier]
             AI_CACHE --> KEYGEN[AI Key Generator]
             AI_CACHE --> COMPRESS_AI[Smart Compression]
             AI_CACHE --> MONITOR_AI[AI Performance Monitor]
-            AI_CACHE --> TEXT_TIERS[Text Tier System]
+            AI_CACHE --> TEXT_TIERS[Text Processing System]
         end
         
         subgraph "Extracted Components"
@@ -59,8 +59,8 @@ graph TB
         end
         
         subgraph "Storage Backends"
-            L1_GENERIC --> MEMORY_STORE[Memory Store]
-            L1_AI --> MEMORY_STORE
+            MEMORY_TIER --> MEMORY_STORE[Memory Store]
+            MEMORY_AI --> MEMORY_STORE
             COMPRESS_GENERIC --> REDIS_STORE[Redis Store]
             COMPRESS_AI --> REDIS_STORE
         end
@@ -89,8 +89,8 @@ graph TB
 ## Key Features
 
 ### Multi-Tiered Caching Architecture
-- **Memory (L1) Cache**: Sub-millisecond access times for hot data
-- **Redis (L2) Cache**: Persistent storage with cross-instance sharing
+- **Transparent Multi-Tier Caching**: Optimized performance with automatic tier management
+- **Persistent Storage**: Cross-instance data sharing with Redis backend
 - **Intelligent Placement**: Automatic tier selection based on access patterns
 - **Graceful Degradation**: Memory-only fallback when Redis unavailable
 
@@ -101,10 +101,10 @@ graph TB
 - **Response Pattern Recognition**: AI-specific caching patterns and invalidation strategies
 
 ### Advanced Compression & Storage
-- **Intelligent Compression**: Automatic zlib compression with configurable thresholds
-- **Storage Savings**: 60-80% reduction in storage requirements for typical AI responses
-- **Configurable Algorithms**: Support for multiple compression levels and strategies
-- **Memory Efficiency**: Streaming compression for large responses
+- **Intelligent Compression**: Automatic compression with configurable thresholds
+- **Storage Optimization**: Significant reduction in storage requirements
+- **Configurable Compression**: Support for multiple compression levels and strategies
+- **Memory Efficiency**: Optimized compression for large responses
 
 ### Comprehensive Monitoring
 - **Performance Analytics**: Detailed cache hit rates, operation timing, and optimization recommendations
@@ -144,7 +144,7 @@ Lightweight, fast in-memory caching perfect for development, testing, and Redis 
 ### GenericRedisCache
 **File**: `backend/app/infrastructure/cache/redis_generic.py`
 
-A clean, production-ready Redis implementation suitable for general-purpose FastAPI applications. Provides L1 memory cache, automatic compression, callback systems, and graceful degradation.
+A clean, production-ready Redis implementation suitable for general-purpose FastAPI applications. Provides memory cache tier, automatic compression, callback systems, and graceful degradation.
 
 **Best For**:
 - General web applications
@@ -252,40 +252,40 @@ graph TD
     SIZE_CHECK -->|Large 5K-50K| CONTENT_KEY[Content Hash Key<br/>With Metadata]
     SIZE_CHECK -->|X-Large > 50K| STREAM_KEY[Streaming Hash<br/>Memory Efficient]
     
-    SMALL_KEY --> L1_CHECK
-    HASH_KEY --> L1_CHECK
-    CONTENT_KEY --> L1_CHECK
-    STREAM_KEY --> L1_CHECK
+    SMALL_KEY --> MEMORY_CHECK
+    HASH_KEY --> MEMORY_CHECK
+    CONTENT_KEY --> MEMORY_CHECK
+    STREAM_KEY --> MEMORY_CHECK
     
-    L1_CHECK{Check Memory Cache<br/>L1 Tier}
-    L1_CHECK -->|Hit| L1_HIT[Memory Cache Hit<br/>~0.1ms response]
-    L1_CHECK -->|Miss| L1_MISS[Memory Cache Miss<br/>Continue to L2]
+    MEMORY_CHECK{Check Memory Cache<br/>Memory Tier}
+    MEMORY_CHECK -->|Hit| MEMORY_HIT[Memory Cache Hit<br/>Fast response]
+    MEMORY_CHECK -->|Miss| MEMORY_MISS[Memory Cache Miss<br/>Continue to Redis]
     
-    L1_HIT --> UPDATE_ACCESS[Update LRU Access<br/>Time Tracking]
-    UPDATE_ACCESS --> RETURN_L1[Return Cached Result<br/>Record Hit Metrics]
-    
-    L1_MISS --> REDIS_AVAILABLE{Redis<br/>Available?}
+    MEMORY_HIT --> UPDATE_ACCESS[Update LRU Access<br/>Time Tracking]
+    UPDATE_ACCESS --> RETURN_MEMORY[Return Cached Result<br/>Record Hit Metrics]
+
+    MEMORY_MISS --> REDIS_AVAILABLE{Redis<br/>Available?}
     REDIS_AVAILABLE -->|No| FALLBACK_MODE[Memory-Only Mode<br/>Process with AI Service]
-    REDIS_AVAILABLE -->|Yes| L2_CHECK{Check Redis Cache<br/>L2 Tier}
-    
-    L2_CHECK -->|Hit| L2_HIT[Redis Cache Hit<br/>~2-5ms response]
-    L2_CHECK -->|Miss| L2_MISS[Redis Cache Miss<br/>Execute AI Service]
-    
-    L2_HIT --> COMPRESSED{Data<br/>Compressed?}
+    REDIS_AVAILABLE -->|Yes| REDIS_CHECK{Check Redis Cache<br/>Redis Tier}
+
+    REDIS_CHECK -->|Hit| REDIS_HIT[Redis Cache Hit<br/>Network response]
+    REDIS_CHECK -->|Miss| REDIS_MISS[Redis Cache Miss<br/>Execute AI Service]
+
+    REDIS_HIT --> COMPRESSED{Data<br/>Compressed?}
     COMPRESSED -->|Yes| DECOMPRESS[Decompress Data<br/>zlib decompression]
-    COMPRESSED -->|No| PROMOTE[Promote to L1<br/>Memory Cache]
+    COMPRESSED -->|No| PROMOTE[Promote to Memory<br/>Memory Cache]
     DECOMPRESS --> PROMOTE
-    
-    PROMOTE --> RETURN_L2[Return Cached Result<br/>Record L2 Hit Metrics]
-    
-    L2_MISS --> AI_SERVICE[Call AI Service<br/>Process Request]
+
+    PROMOTE --> RETURN_REDIS[Return Cached Result<br/>Record Redis Hit Metrics]
+
+    REDIS_MISS --> AI_SERVICE[Call AI Service<br/>Process Request]
     FALLBACK_MODE --> AI_SERVICE
     
     AI_SERVICE --> PROCESS_RESPONSE[Process AI Response<br/>Apply Caching Logic]
     
     PROCESS_RESPONSE --> COMPRESSION_CHECK{Response Size ≥<br/>Compression Threshold?}
     COMPRESSION_CHECK -->|Yes| COMPRESS[Compress Response<br/>60-80% size reduction]
-    COMPRESSION_CHECK -->|No| STORE_RESPONSE[Store Response<br/>Both L1 and L2]
+    COMPRESSION_CHECK -->|No| STORE_RESPONSE[Store Response<br/>Memory and Redis Tiers]
     
     COMPRESS --> STORE_RESPONSE
     STORE_RESPONSE --> TTL_STRATEGY{Apply Operation<br/>TTL Strategy}
@@ -304,25 +304,25 @@ graph TD
         MONITOR[Real-time Monitoring<br/>Hit rates, compression ratios<br/>Memory usage, performance analytics]
     end
     
-    L1_CHECK --> MONITOR
-    L2_CHECK --> MONITOR
+    MEMORY_CHECK --> MONITOR
+    REDIS_CHECK --> MONITOR
     COMPRESS --> MONITOR
     DECOMPRESS --> MONITOR
 ```
 
 ### Tier Selection Strategy
 
-**L1 Memory Cache (Hot Data)**:
+**Memory Cache Tier (Hot Data)**:
 - Recently accessed responses
 - Small to medium-sized responses (< 1MB)
 - High-frequency access patterns
-- Sub-millisecond response times
+- Fast response times
 
-**L2 Redis Cache (Persistent Storage)**:
+**Redis Cache Tier (Persistent Storage)**:
 - All cached responses for persistence
 - Large responses with compression
 - Cross-instance data sharing
-- Millisecond response times
+- Network-based response times
 
 **Fallback Behavior**:
 - Automatic memory-only mode when Redis unavailable
@@ -395,9 +395,9 @@ The Cache Infrastructure Service integrates seamlessly with other infrastructure
 
 **Target Metrics**:
 - **Cache Hit Rate**: Aim for >70% (excellent: >80%)
-- **Key Generation Time**: <5ms average
+- **Key Generation Time**: Efficient key processing
 - **Memory Usage**: Monitor growth trends and set appropriate thresholds
-- **Compression Ratios**: 60-80% storage savings for typical AI responses
+- **Compression Efficiency**: Significant storage savings for cached responses
 
 **Optimization Techniques**:
 - Use consistent text preprocessing for better cache hits

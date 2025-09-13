@@ -50,8 +50,8 @@ async def for_web_app(
     self,
     redis_url: str = "redis://redis:6379",
     default_ttl: int = 1800,
-    enable_l1_cache: bool = True,
-    l1_cache_size: int = 200,
+    enable_memory_cache: bool = True,
+    memory_cache_size: int = 200,
     compression_threshold: int = 2000,
     compression_level: int = 6,
     fail_on_connection_error: bool = False,
@@ -66,8 +66,8 @@ Creates a cache optimized for web applications with balanced performance.
 **Parameters:**
 - `redis_url` (str): Redis server URL. Default: "redis://redis:6379"
 - `default_ttl` (int): Default time-to-live in seconds. Default: 1800 (30 minutes)
-- `enable_l1_cache` (bool): Enable in-memory L1 cache. Default: True
-- `l1_cache_size` (int): Maximum L1 cache entries. Default: 200
+- `enable_memory_cache` (bool): Enable in-memory cache tier. Default: True
+- `memory_cache_size` (int): Maximum memory cache entries. Default: 200
 - `compression_threshold` (int): Compress data above this size in bytes. Default: 2000
 - `compression_level` (int): Zlib compression level 1-9. Default: 6
 - `fail_on_connection_error` (bool): Raise error if Redis unavailable. Default: False
@@ -101,8 +101,8 @@ async def for_ai_app(
     self,
     redis_url: str = "redis://redis:6379",
     default_ttl: int = 3600,
-    enable_l1_cache: bool = True,
-    l1_cache_size: int = 100,
+    enable_memory_cache: bool = True,
+    memory_cache_size: int = 100,
     compression_threshold: int = 1000,
     compression_level: int = 6,
     text_hash_threshold: int = 500,
@@ -120,12 +120,12 @@ Creates a cache optimized for AI applications with enhanced storage and compress
 **Parameters:**
 - `redis_url` (str): Redis server URL. Default: "redis://redis:6379"
 - `default_ttl` (int): Default time-to-live in seconds. Default: 3600 (1 hour)
-- `enable_l1_cache` (bool): Enable in-memory L1 cache. Default: True
-- `l1_cache_size` (int): Maximum L1 cache entries. Default: 100
+- `enable_memory_cache` (bool): Enable in-memory cache tier. Default: True
+- `memory_cache_size` (int): Maximum memory cache entries. Default: 100
 - `compression_threshold` (int): Compress data above this size in bytes. Default: 1000
 - `compression_level` (int): Zlib compression level 1-9. Default: 6
 - `text_hash_threshold` (int): Hash text above this length for keys. Default: 500
-- `memory_cache_size` (Optional[int]): Override l1_cache_size if provided
+- `memory_cache_size` (Optional[int]): Memory cache size override if provided
 - `operation_ttls` (Optional[Dict[str, int]]): Custom TTLs per AI operation type
 - `fail_on_connection_error` (bool): Raise error if Redis unavailable. Default: False
 - `**kwargs`: Additional parameters passed to AIResponseCache
@@ -162,8 +162,8 @@ async def for_testing(
     self,
     redis_url: str = "redis://redis:6379/15",
     default_ttl: int = 60,
-    enable_l1_cache: bool = False,
-    l1_cache_size: int = 50,
+    enable_memory_cache: bool = False,
+    memory_cache_size: int = 50,
     compression_threshold: int = 1000,
     compression_level: int = 1,
     fail_on_connection_error: bool = False,
@@ -177,8 +177,8 @@ Creates a cache optimized for testing environments with short TTLs and fast oper
 **Parameters:**
 - `redis_url` (str): Redis server URL with test DB. Default: "redis://redis:6379/15"
 - `default_ttl` (int): Default time-to-live in seconds. Default: 60 (1 minute)
-- `enable_l1_cache` (bool): Enable in-memory L1 cache. Default: False
-- `l1_cache_size` (int): Maximum L1 cache entries. Default: 50
+- `enable_memory_cache` (bool): Enable in-memory cache tier. Default: False
+- `memory_cache_size` (int): Maximum memory cache entries. Default: 50
 - `compression_threshold` (int): Compress data above this size in bytes. Default: 1000
 - `compression_level` (int): Zlib compression level 1-9. Default: 1
 - `fail_on_connection_error` (bool): Raise error if Redis unavailable. Default: False
@@ -218,13 +218,13 @@ Creates a cache instance from a configuration dictionary with flexible parameter
 
 **Optional Configuration Keys:**
 - `default_ttl` (int): Default time-to-live in seconds
-- `enable_l1_cache` (bool): Enable in-memory L1 cache
-- `l1_cache_size` (int): Maximum L1 cache entries
+- `enable_memory_cache` (bool): Enable in-memory cache tier
+- `memory_cache_size` (int): Maximum memory cache entries
 - `compression_threshold` (int): Compress data above this size
 - `compression_level` (int): Zlib compression level 1-9
 - `text_hash_threshold` (int): Hash text above this length (triggers AIResponseCache)
 - `operation_ttls` (Dict[str, int]): Custom TTLs per operation (triggers AIResponseCache)
-- `memory_cache_size` (int): Override l1_cache_size (triggers AIResponseCache)
+- `memory_cache_size` (int): Memory cache size (triggers AIResponseCache)
 
 **Returns:**
 - `CacheInterface`: Configured cache instance based on configuration
@@ -234,7 +234,7 @@ Creates a cache instance from a configuration dictionary with flexible parameter
 config = {
     "redis_url": "redis://localhost:6379",
     "default_ttl": 3600,
-    "enable_l1_cache": True,
+    "enable_memory_cache": True,
     "compression_threshold": 2000
 }
 cache = await factory.create_cache_from_config(config)
@@ -899,7 +899,7 @@ Dependency function for application settings.
 
 ### Testing Dependencies
 
-> **💡 Testing strategies**: See the [Cache Testing Guide](../CACHE_TESTING.md) for comprehensive testing patterns, mocking strategies, and test utilities.
+> **💡 Testing strategies**: See the [Cache Testing Guide](./testing.md) for comprehensive testing patterns, mocking strategies, and test utilities.
 
 #### get_test_cache()
 
@@ -1188,8 +1188,8 @@ prod_cache = await factory.create_cache_from_config(prod_config.to_dict())
 
 - **[Cache Infrastructure Guide](./CACHE.md)** - Comprehensive cache infrastructure overview with architecture, features, and configuration patterns
 - **[Cache Usage Guide](./usage-guide.md)** - Practical implementation examples with quickstart patterns and advanced optimization strategies
-- **[Cache Testing Guide](../CACHE_TESTING.md)** - Testing patterns, mocking strategies, and test utilities for cache infrastructure
-- **[Cache Configuration Guide](../CACHE_ENVIRONMENT_CONFIG.md)** - Environment variable configuration and preset management
+- **[Cache Testing Guide](./testing.md)** - Testing patterns, mocking strategies, and test utilities for cache infrastructure
+- **[Cache Configuration Guide](./configuration.md)** - Environment variable configuration and preset management
 ### Related Infrastructure Documentation
 
 - **[Monitoring Guide](../MONITORING.md)** - Performance monitoring, metrics collection, and alerting strategies
@@ -1199,8 +1199,8 @@ prod_cache = await factory.create_cache_from_config(prod_config.to_dict())
 
 ### Developer Resources
 
-- **[Cache Developer Experience Guide](../CACHE_DEVELOPER_EXPERIENCE.md)** - Development tools, debugging utilities, and performance optimization
-- **[Cache Presets Guide](../CACHE_PRESET_GUIDE.md)** - Pre-configured cache settings for different environments and use cases
+- **[Cache Troubleshooting Guide](./troubleshooting.md)** - Development tools, debugging utilities, and performance optimization
+- **[Cache Configuration Guide](./configuration.md)** - Pre-configured cache settings for different environments and use cases
 
 ---
 

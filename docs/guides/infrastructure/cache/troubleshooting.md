@@ -92,9 +92,9 @@ curl -s "http://localhost:8000/internal/cache/metrics" | jq '{
 
 **Target Benchmarks**:
 - **Cache Hit Rate**: >70% (excellent: >80%)
-- **L1 Memory Hit Rate**: >40% for hot data
-- **Average Operation Time**: <5ms for cache hits
-- **Key Generation Time**: <2ms average
+- **Memory Tier Hit Rate**: >40% for hot data
+- **Average Operation Time**: Fast response for cache hits
+- **Key Generation Time**: Efficient key processing
 
 #### Memory Usage Analysis
 ```bash
@@ -378,7 +378,7 @@ curl -X POST "http://localhost:8000/internal/cache/compress-existing"
 
 **Optimize Memory Cache Size**:
 ```bash
-# Reduce L1 cache size
+# Reduce memory cache size
 curl -X POST "http://localhost:8000/internal/cache/config/update" \
   -H "Content-Type: application/json" \
   -d '{
@@ -637,7 +637,7 @@ curl -X POST "http://localhost:8000/internal/cache/optimize/compression" \
 
 #### Memory Tier Optimization
 ```bash
-# Optimize L1/L2 tier distribution
+# Optimize memory/Redis tier distribution
 curl -X POST "http://localhost:8000/internal/cache/optimize/memory-tiers" \
   -H "Content-Type: application/json" \
   -d '{
