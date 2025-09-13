@@ -102,7 +102,14 @@ def get_client_identifier(request: Request) -> str:
 
 
 def get_endpoint_classification(request: Request) -> str:
-    """Get endpoint classification for rate limiting."""
+    """
+    Get endpoint classification for rate limiting.
+    
+    Extend this function for business-specific rate limiting:
+    - Add tier-based classification
+    - Add resource-cost-based classification  
+    - Add user-role-based classification
+    """
     path = request.url.path
 
     # Health check endpoints
@@ -311,9 +318,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _init_redis(self):
         """Initialize Redis connection for distributed rate limiting."""
         try:
-            if hasattr(self.settings, 'redis_url') and self.settings.redis_url:
+            # Preset-based complex configuration
+            cache_config = self.settings.get_cache_config()
+            redis_url = cache_config.redis_url
+
+            if redis_url:
                 self.redis_client = redis.from_url(
-                    self.settings.redis_url,
+                    redis_url,
                     decode_responses=True,
                     socket_connect_timeout=1,
                     socket_timeout=1
