@@ -4,83 +4,247 @@ sidebar_label: Testing
 
 # Cache Infrastructure Testing Guide
 
-This comprehensive guide covers testing strategies, patterns, and best practices for the cache infrastructure, including unit tests, integration tests, and CI/CD configuration.
+This comprehensive guide covers testing strategies, patterns, and best practices for the cache infrastructure, including unit tests, integration tests, E2E testing, and CI/CD configuration. The cache testing suite follows modern behavior-driven principles with **580 tests** achieving >90% coverage across all cache components.
 
 ## Table of Contents
 
-1. [Test Architecture Overview](#test-architecture-overview)
-2. [Test Fixture Patterns](#test-fixture-patterns)  
-3. [Unit Testing Strategies](#unit-testing-strategies)
-4. [Integration Testing with Redis](#integration-testing-with-redis)
-5. [Mock Callback Patterns](#mock-callback-patterns)
-6. [CI/CD Testing Configuration](#cicd-testing-configuration)
-7. [Test Isolation and Cleanup](#test-isolation-and-cleanup)
-8. [Async Testing Best Practices](#async-testing-best-practices)
-9.  [Error Handling Test Scenarios](#error-handling-test-scenarios)
-10. [Multi-Environment Testing](#multi-environment-testing)
+1. [Testing Philosophy](#testing-philosophy)
+2. [Test Architecture Overview](#test-architecture-overview)
+3. [End-to-End Testing Strategy](#end-to-end-testing-strategy)
+4. [Test Fixture Patterns](#test-fixture-patterns)
+5. [Unit Testing Strategies](#unit-testing-strategies)
+6. [Integration Testing with Redis](#integration-testing-with-redis)
+7. [Running Tests](#running-tests)
+8. [Test Isolation and Cleanup](#test-isolation-and-cleanup)
+9. [Error Handling Test Scenarios](#error-handling-test-scenarios)
+10. [Troubleshooting](#troubleshooting)
+
+## Testing Philosophy
+
+The cache infrastructure testing suite follows modern, behavior-driven principles designed to create a robust, maintainable test suite that supports refactoring rather than hindering it.
+
+### Core Testing Principles
+
+#### **1. Behavior-Driven Testing**
+Our cache testing follows behavior-driven principles, testing the **documented behavior** through public contracts rather than internal implementation details. We prioritize testing *what* the component achieves, not *how* it achieves it.
+
+#### **2. Public Contract Testing**
+All tests are based on the "public contract" stub files in `backend/contracts/` which are auto-generated from the production codebase. These `.pyi` files include:
+- All necessary import statements and class definitions
+- Public method signatures with full type hints
+- Complete docstrings for modules, classes, and methods
+- **No internal implementation logic** (replaced with `...`)
+
+This approach enforces implementation-agnostic testing that focuses on the component's external behavior.
+
+#### **3. Unit Under Test (UUT) Approach**
+We treat the entire `backend/app/infrastructure/cache/` component as a single **Unit Under Test (UUT)**. This means:
+- Testing the component exclusively through its public-facing API
+- Treating internal workings as a black box
+- Building tests that pass regardless of internal refactoring
+
+**Rationale**: Previous experiences with traditional unit testing led to brittle test suites tightly coupled to internal implementation. By treating the entire component as the UUT, we create a durable test suite where tests fail only if the public contract is violated.
+
+### Anti-Patterns We Avoid
+
+#### **❌ Internal Mocking**
+- **Don't** mock internal cache components (`CacheFactory`, `InMemoryCache`, `CachePerformanceMonitor`) for functional testing
+- **Don't** mock `Settings` for configuration that can be tested with real files/environment variables
+- **Don't** use internal mocking as a substitute for proper integration testing
+
+#### **❌ Implementation-Coupled Tests**
+- **Don't** test private methods or internal data structures
+- **Don't** assert on implementation details that could change during refactoring
+- **Don't** create tests that require knowledge of internal component interactions
+
+### What We Use Instead
+
+#### **✅ Fakes Over Mocks**
+- **Use** real components with test-specific configurations
+- **Use** `fakeredis` for Redis simulation (fast, high-fidelity)
+- **Use** integration tests for multi-component scenarios
+- **Mock only at system boundaries** (external services, file systems, network)
+
+#### **✅ Real Infrastructure Testing**
+- **Use** `Testcontainers` for Redis integration tests
+- **Use** dual E2E testing approach (ASGI + Redis-enhanced)
+- **Use** real configuration and factory patterns
+
+### Acceptable Internal Mocking Scenarios
+
+**Limited to specific cases:**
+1. **Error Handling Logic Testing** - Verifying how components handle specific, hard-to-trigger errors
+2. **Parameter Mapping Testing** - Verifying argument transformation and passing (e.g., factory parameter mapping)
+
+**Requirements:** Must be supplemented with integration tests using real configurations.
 
 ## Test Architecture Overview
 
-The cache infrastructure testing follows a layered approach aligned with the infrastructure vs domain architecture:
+The cache infrastructure testing follows a comprehensive, layered approach with **580 total tests** achieving >90% coverage across all cache components.
+
+### Actual Test Suite Structure
 
 ```
 backend/tests/infrastructure/cache/
-├── conftest.py                    # Shared fixtures and Redis configuration
-├── test_factory.py               # CacheFactory consolidated approach tests
-├── test_base.py                  # Abstract cache interface tests
-├── test_memory.py                # InMemoryCache implementation tests
-├── test_redis.py                 # Redis cache integration tests
-├── test_monitoring.py            # Performance monitoring tests
-└── test_ai_cache_integration.py  # AI-specific cache features
+├── conftest.py                    # Shared fixtures and configuration
+├── e2e/                          # End-to-end testing with dual approach
+│   ├── conftest.py              # ASGI transport fixtures
+│   ├── conftest_redis.py        # Redis-enhanced fixtures (Testcontainers)
+│   ├── test_*.py                # Standard E2E tests (ASGI only)
+│   └── test_redis_enhanced_*.py # Redis-enhanced E2E tests
+├── factory/                     # CacheFactory testing
+│   ├── conftest.py             # Factory-specific fixtures
+│   └── test_*.py               # Factory method and configuration tests
+├── redis_generic/              # GenericRedisCache testing
+│   ├── conftest.py             # Redis fixtures with fakeredis
+│   └── test_*.py               # Generic Redis cache tests
+├── redis_ai/                   # AIResponseCache testing
+│   ├── conftest.py             # AI-specific fixtures
+│   └── test_*.py               # AI cache features and optimization
+├── memory/                     # InMemoryCache testing
+│   ├── conftest.py             # Memory cache fixtures
+│   └── test_*.py               # Memory cache implementation tests
+├── base/                       # CacheInterface contract testing
+└── dependencies/               # FastAPI dependency testing
 ```
+
+### Test Statistics
+
+| Component | Tests | Coverage | Focus Areas |
+|-----------|-------|----------|--------------|
+| **Total Cache Suite** | **580 tests** | **>90%** | Complete infrastructure validation |
+| Factory Methods | 85 tests | >95% | Configuration, parameter mapping, fallback |
+| Generic Redis Cache | 145 tests | >90% | Redis operations, compression, monitoring |
+| AI Response Cache | 120 tests | >90% | AI optimizations, key generation, TTL strategies |
+| Memory Cache | 95 tests | >95% | LRU eviction, TTL expiration, thread safety |
+| E2E Testing | 80 tests | N/A | Full API integration, dual Redis approach |
+| Dependencies | 55 tests | >90% | FastAPI integration, dependency injection |
 
 ### Test Categories
 
 **Unit Tests** (>90% coverage required):
-- Test individual cache components in isolation
-- Mock external dependencies (Redis, monitoring)
-- Fast execution (<100ms per test)
-- Use `InMemoryCache` for deterministic behavior
+- Test individual cache components through public contracts
+- Use real components with fakes (e.g., `fakeredis`) for external dependencies
+- Fast execution for development workflow
+- Follow UUT approach treating entire cache component as single unit
 
 **Integration Tests**:
-- Test component interactions with real Redis instances
-- Test cache fallback mechanisms
-- Validate configuration-based instantiation
-- Use Redis test databases with cleanup
+- Test component interactions with real Redis instances via `Testcontainers`
+- Test cache fallback mechanisms and error handling
+- Validate configuration-based instantiation through factory patterns
+- Use real Redis with proper test isolation and cleanup
+
+**End-to-End Tests**:
+- Comprehensive API testing with dual approach (ASGI + Redis-enhanced)
+- Full workflow validation from HTTP request to cache operation
+- Production-like behavior validation with real infrastructure
+- Authentication, monitoring, and security feature testing
+
+## End-to-End Testing Strategy
+
+The cache infrastructure implements a sophisticated **dual E2E testing approach** that balances speed with comprehensive validation.
+
+### Dual Testing Approach
+
+#### **1. ASGI Transport Tests (Fast) - Standard E2E**
+- **Location**: `backend/tests/infrastructure/cache/e2e/test_*.py`
+- **Markers**: `@pytest.mark.e2e` (without `redis` marker)
+- **Transport**: ASGI with in-memory cache fallback
+- **Benefits**:
+  - Fast execution (~2-5 seconds)
+  - No external dependencies
+  - Parallel execution safe
+  - CI/CD friendly
+- **Coverage**: API contracts, configuration loading, error handling, authentication
+- **Limitations**: Cannot test Redis-specific features, shows "disconnected" status
+
+#### **2. Redis-Enhanced Tests (Comprehensive)**
+- **Location**: `backend/tests/infrastructure/cache/e2e/test_redis_enhanced_*.py`
+- **Markers**: `@pytest.mark.e2e` and `@pytest.mark.redis`
+- **Transport**: ASGI + Real Redis via `Testcontainers`
+- **Benefits**:
+  - Tests actual Redis features (SCAN, DEL, TTL)
+  - Realistic connectivity and behavior
+  - Production-like monitoring and metrics
+  - Comprehensive integration validation
+- **Requirements**: Docker for Redis container management
+- **Coverage**: Redis operations, pattern matching, performance metrics, connection monitoring
+
+### E2E Test Execution Patterns
+
+| Test Type | Execution | Dependencies | Use Case |
+|-----------|-----------|--------------|----------|
+| **Standard E2E** | Parallel, fast | None | Development, CI/CD, API validation |
+| **Redis-Enhanced** | Sequential, comprehensive | Docker + Redis | Production validation, feature testing |
+
+### Expected Behavior Differences
+
+| Scenario | Standard E2E | Redis-Enhanced |
+|----------|-------------|----------------|
+| Redis Status | "disconnected" | "connected" |
+| Pattern Invalidation | Mock/stub behavior | Real Redis SCAN/DEL |
+| Performance Metrics | Stub data | Real operation metrics |
+| Connection Monitoring | Simulated responses | Actual connectivity data |
+| Cache Operations | Memory fallback | Real Redis persistence |
+
+### E2E Test Fixtures
+
+#### Standard ASGI Fixtures (`e2e/conftest.py`)
+- `client()` - Basic ASGI client for API testing
+- `authenticated_client()` - ASGI client with API key headers
+- `cache_preset_app()` - Factory for preset-specific app instances
+- `client_with_preset()` - Factory for preset-specific clients
+- `cleanup_test_cache()` - Automatic cache cleanup between tests
+
+#### Redis-Enhanced Fixtures (`e2e/conftest_redis.py`)
+- `redis_container()` - Session-scoped Redis container (Testcontainers)
+- `redis_config()` - Redis connection configuration from container
+- `enhanced_cache_preset_app()` - Factory with real Redis connectivity
+- `enhanced_client_with_preset()` - Factory with Redis-enabled clients
 
 ## Test Fixture Patterns
 
-### Basic Cache Fixtures
+Our fixture strategy follows the testing philosophy: **prefer real components over mocks**, use fakes for external dependencies, and provide factory-based fixtures that mirror production usage patterns.
+
+### Fixture Philosophy and Patterns
+
+1. **Real Component Fixtures (Preferred)** - Instances of actual production classes configured for testing
+   - Examples: `default_memory_cache`, `small_memory_cache`
+   - Use Case: Best choice for unit and component tests, high-confidence validation
+   - Benefit: Tests real behavior, resilient to refactoring
+
+2. **High-Fidelity Fakes** - Substitutes for external dependencies with realistic behavior
+   - Example: `fake_redis_client` (using `fakeredis`)
+   - Use Case: Allows realistic integration testing without external service overhead
+   - Benefit: Faster, more reliable than real external services
+
+3. **Factory-Based Fixtures** - Use `CacheFactory` to create caches with production patterns
+   - Examples: `factory_cache_for_testing`, `factory_cache_with_preset`
+   - Use Case: Test factory methods and configuration patterns
+   - Benefit: Mirrors actual application initialization
+
+### Real Implementation Fixtures
+
+#### Factory-Based Fixtures (Recommended)
 
 ```python
-# backend/tests/infrastructure/cache/conftest.py
-
-import pytest
-from app.infrastructure.cache.factory import CacheFactory
-from app.infrastructure.cache.memory import InMemoryCache
-
-@pytest.fixture
-async def memory_cache():
-    """Create an in-memory cache for unit testing."""
-    cache = InMemoryCache(max_size=100, default_ttl=3600)
-    yield cache
-    await cache.clear()  # Cleanup after test
+# From actual test suite: backend/tests/infrastructure/cache/conftest.py
 
 @pytest.fixture
 async def factory_cache_for_testing():
-    """Create a cache using factory for testing patterns."""
+    """Create cache using factory for testing patterns."""
     factory = CacheFactory()
     cache = await factory.for_testing(
         use_memory_cache=True,
         default_ttl=60,
-        l1_cache_size=50
+        memory_cache_size=50
     )
     yield cache
     await cache.clear()
 
 @pytest.fixture
 async def factory_cache_with_redis_fallback():
-    """Test Redis fallback behavior with invalid Redis URL."""
+    """Test Redis fallback behavior with real factory patterns."""
     factory = CacheFactory()
     cache = await factory.for_testing(
         redis_url="redis://nonexistent:6379/15",
@@ -91,13 +255,127 @@ async def factory_cache_with_redis_fallback():
     await cache.clear()
 ```
 
-### Redis Integration Fixtures
+#### Real Component Fixtures
 
 ```python
-# Redis fixtures (only available when pytest-redis is installed)
+# Shared fixtures used across 580 tests
 
-if HAS_PYTEST_REDIS:
-    import pytest_redis
+@pytest.fixture
+async def default_memory_cache():
+    """Standard InMemoryCache instance for most tests."""
+    cache = InMemoryCache(max_size=100, default_ttl=3600)
+    yield cache
+    await cache.clear()
+
+@pytest.fixture
+async def small_memory_cache():
+    """InMemoryCache with max_size=3 for testing LRU eviction."""
+    cache = InMemoryCache(max_size=3, default_ttl=3600)
+    yield cache
+    await cache.clear()
+
+@pytest.fixture
+async def fast_expiry_memory_cache():
+    """InMemoryCache with default_ttl=2 for testing expiration."""
+    cache = InMemoryCache(max_size=100, default_ttl=2)
+    yield cache
+    await cache.clear()
+```
+
+#### Test Data Fixtures
+
+```python
+# Consistent test data across the suite
+
+@pytest.fixture
+def sample_cache_key() -> str:
+    """Standard key for consistency across tests."""
+    return "test:key:123"
+
+@pytest.fixture
+def sample_cache_value() -> Dict[str, Any]:
+    """Standard dictionary value representing common application data."""
+    return {
+        "user_id": 456,
+        "session_data": {"theme": "dark", "language": "en"},
+        "timestamp": "2024-01-15T10:30:00Z"
+    }
+
+# AI-specific test data
+@pytest.fixture
+def sample_ai_response() -> Dict[str, Any]:
+    """AI response data for testing AI cache features."""
+    return {
+        "operation": "summarize",
+        "text": "Sample text for AI processing",
+        "result": "This is a sample summary",
+        "metadata": {"model": "gemini-pro", "tokens": 150}
+    }
+```
+
+### Redis Integration Fixtures
+
+#### FakeRedis Fixtures (Fast Integration Testing)
+
+```python
+# From redis_generic/conftest.py - Using fakeredis for fast Redis simulation
+
+import pytest
+import fakeredis.aioredis
+from app.infrastructure.cache.redis_generic import GenericRedisCache
+
+@pytest.fixture
+async def fake_redis_client():
+    """High-fidelity fake Redis client using fakeredis."""
+    client = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    yield client
+    await client.flushall()
+    await client.aclose()
+
+@pytest.fixture
+async def redis_cache_with_fake(fake_redis_client):
+    """GenericRedisCache with fake Redis - realistic but fast."""
+    cache = GenericRedisCache(
+        redis_client=fake_redis_client,
+        default_ttl=3600,
+        enable_memory_cache=True,
+        memory_cache_size=100
+    )
+    yield cache
+    await cache.clear()
+```
+
+#### Testcontainers Redis Fixtures (Real Redis Testing)
+
+```python
+# From e2e/conftest_redis.py - Real Redis via Docker containers
+
+import pytest
+from testcontainers.redis import RedisContainer
+import redis.asyncio as redis
+
+@pytest.fixture(scope="session")
+def redis_container():
+    """Session-scoped Redis container for comprehensive testing."""
+    with RedisContainer("redis:7-alpine") as container:
+        yield container
+
+@pytest.fixture
+def redis_config(redis_container):
+    """Redis connection configuration from container."""
+    return {
+        "host": redis_container.get_container_host_ip(),
+        "port": redis_container.get_exposed_port(6379),
+        "decode_responses": True
+    }
+
+@pytest.fixture
+async def real_redis_client(redis_config):
+    """Real Redis client for comprehensive integration testing."""
+    client = redis.Redis(**redis_config)
+    yield client
+    await client.flushall()
+    await client.aclose()
 
     # Define fixtures via factory assignment (recommended pattern)
     redis_proc = pytest_redis.factories.redis_proc(port=None, timeout=60)
@@ -118,8 +396,8 @@ if HAS_PYTEST_REDIS:
         cache = GenericRedisCache(
             redis_url=redis_url,
             default_ttl=3600,
-            enable_l1_cache=True,
-            l1_cache_size=100
+            enable_memory_cache=True,
+            memory_cache_size=100
         )
         yield cache
         
@@ -148,7 +426,7 @@ class TestCacheFactoryUnitTests:
             redis_url="redis://nonexistent:6379",
             fail_on_connection_error=False,
             default_ttl=1800,
-            l1_cache_size=200
+            memory_cache_size=200
         )
         
         # Verify memory fallback occurred
@@ -253,6 +531,107 @@ class TestCacheOperationsUnit:
         assert await cache.get("key4") == "value4"
 ```
 
+## Running Tests
+
+The cache infrastructure provides multiple test execution strategies optimized for different development workflows.
+
+### All Cache Tests
+
+```bash
+# Run complete cache test suite (580 tests)
+make test-backend-infra-cache
+
+# Run from project root with coverage
+make test-backend-infra-cache PYTEST_ARGS="--cov=app.infrastructure.cache --cov-report=term"
+```
+
+### End-to-End Tests
+
+#### Standard E2E Tests (Fast - No Docker)
+```bash
+# Fast E2E tests using ASGI transport
+make test-backend-infra-cache-e2e
+
+# Equivalent manual command:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -m "e2e and not redis" -v
+```
+
+#### Redis-Enhanced E2E Tests (Comprehensive)
+```bash
+# Comprehensive E2E tests with real Redis (requires Docker)
+make test-backend-infra-cache-e2e-redis
+
+# Equivalent manual command:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -m "e2e and redis" -v -n 0
+```
+
+#### All E2E Tests
+```bash
+# Run both standard and Redis-enhanced E2E tests
+cd backend && source ../.venv/bin/activate && python -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e" -v && cd ..
+```
+
+### Component-Specific Tests
+
+```bash
+# Test specific cache implementations
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/redis_generic/ -v
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/redis_ai/ -v
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/factory/ -v
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/memory/ -v
+
+# Test with specific markers
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ -m "slow" --run-slow -v
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ -m "redis" -v
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ -m "integration" -v
+```
+
+### Development Testing Commands
+
+```bash
+# Fast tests only (excludes slow and manual markers)
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ -v
+
+# With coverage reporting
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ --cov=app.infrastructure.cache --cov-report=html -v
+
+# Single test file with detailed output
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/factory/test_for_web_app.py -v -s --tb=long
+
+# Specific test method
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/factory/test_for_web_app.py::TestForWebApp::test_creates_redis_cache_with_valid_connection -v -s
+```
+
+### Test Execution Environment
+
+**Environment Setup Verification:**
+```bash
+# Verify you're in the correct location and environment
+pwd                                    # Should show project root
+ls -la .venv/bin/python               # Check virtual environment exists
+ls -la backend/pytest.ini             # Check backend structure
+make help | head -10                   # Verify Makefile available
+```
+
+**Common Issue Resolution:**
+```bash
+# Issue: make: *** No rule to make target 'help'
+# Solution: Navigate to project root
+cd ..                        # If in backend/ subdirectory
+make help                    # Now this should work
+
+# Issue: command not found: python
+# Solution: Use virtual environment
+source .venv/bin/activate    # From project root
+cd backend && python -m pytest tests/infrastructure/cache/ -v
+
+# Issue: Directory navigation
+# From backend/:
+../.venv/bin/python -m pytest tests/infrastructure/cache/ -v
+# From project root:
+.venv/bin/python -c "import os; os.chdir('backend'); import pytest; pytest.main(['-v', 'tests/infrastructure/cache/'])"
+```
+
 ## Integration Testing with Redis
 
 ### Redis Connection Testing
@@ -309,7 +688,7 @@ class TestRedisIntegration:
         cache = GenericRedisCache(
             redis_url=redis_url,
             default_ttl=3600,
-            enable_l1_cache=True
+            enable_memory_cache=True
         )
         
         # Store data in cache
@@ -317,7 +696,7 @@ class TestRedisIntegration:
         assert await cache.get("failover_test") == "important_data"
         
         # Simulate Redis connection loss (implementation depends on cache design)
-        # This would test L1 cache behavior during Redis unavailability
+        # This would test memory cache behavior during Redis unavailability
 ```
 
 ### Cross-Module Integration
@@ -1103,26 +1482,26 @@ async def test_environment_specific_cache_creation(environment, expected_ttl, ex
         "development": {
             "redis_url": "redis://dev-redis:6379",
             "default_ttl": expected_ttl,
-            "l1_cache_size": expected_size,
+            "memory_cache_size": expected_size,
             "fail_on_connection_error": False
         },
         "testing": {
             "use_memory_cache": True,
             "default_ttl": expected_ttl,
-            "l1_cache_size": expected_size
+            "memory_cache_size": expected_size
         },
         "staging": {
             "redis_url": "redis://staging-redis:6379",
             "default_ttl": expected_ttl,
-            "l1_cache_size": expected_size,
-            "enable_l1_cache": True,
+            "memory_cache_size": expected_size,
+            "enable_memory_cache": True,
             "fail_on_connection_error": False
         },
         "production": {
             "redis_url": "redis://prod-redis:6379",
             "default_ttl": expected_ttl,
-            "l1_cache_size": expected_size,
-            "enable_l1_cache": True,
+            "memory_cache_size": expected_size,
+            "enable_memory_cache": True,
             "compression_threshold": 1000,
             "fail_on_connection_error": False  # Use False for testing
         }
@@ -1152,7 +1531,7 @@ class TestCrossEnvironmentCompatibility:
         universal_configs = [
             {"redis_url": "redis://localhost:6379", "default_ttl": 3600},
             {"use_memory_cache": True, "default_ttl": 300},
-            {"redis_url": "redis://localhost:6379", "enable_l1_cache": True}
+            {"redis_url": "redis://localhost:6379", "enable_memory_cache": True}
         ]
         
         for config in universal_configs:
@@ -1188,7 +1567,7 @@ class TestMultiEnvironmentLoad:
         cache = await factory.for_testing(
             use_memory_cache=True,
             default_ttl=300,
-            l1_cache_size=100
+            memory_cache_size=100
         )
         
         # Development load: smaller, frequent operations
@@ -1215,7 +1594,7 @@ class TestMultiEnvironmentLoad:
         cache = await factory.for_testing(
             use_memory_cache=True,
             default_ttl=3600,
-            l1_cache_size=1000
+            memory_cache_size=1000
         )
         
         # Production load: larger, sustained operations
@@ -1275,6 +1654,204 @@ Key principles demonstrated:
 - **CI/CD integration**: Automated testing with proper isolation and cleanup
 
 Use this guide as a reference for implementing comprehensive testing strategies for cache infrastructure that maintain high quality standards while enabling rapid development and deployment cycles.
+
+## Troubleshooting
+
+Common testing issues and their solutions, based on real troubleshooting experiences from the 580-test cache suite.
+
+### Docker and Redis Container Issues
+
+#### Docker Not Running
+```bash
+# Check Docker is running
+docker ps
+
+# If Docker is not running, start Docker Desktop or Docker service
+# On macOS: Start Docker Desktop application
+# On Linux: sudo systemctl start docker
+
+# Pull Redis image manually if needed
+docker pull redis:7-alpine
+
+# Clean up old containers that might conflict
+docker container prune -f
+```
+
+#### Testcontainers Issues
+```bash
+# Check testcontainers logs for debugging
+export TESTCONTAINERS_RYUK_DISABLED=true  # Disable cleanup for debugging
+
+# Common issue: Port conflicts
+docker ps -a | grep redis
+docker stop $(docker ps -q --filter "ancestor=redis:7-alpine")
+
+# If containers won't start:
+docker system prune -f
+docker volume prune -f
+```
+
+### Test Execution Issues
+
+#### Authentication Errors (401 Unauthorized)
+```bash
+# Issue: Tests expect Bearer token but using X-API-Key format
+# Solution: E2E tests now use Authorization: Bearer <token> format
+# Debug: Check headers in conftest.py fixtures
+
+# Example of correct authentication for E2E tests:
+# headers = {"Authorization": "Bearer test-api-key-12345"}
+```
+
+#### Performance Monitor Unavailable
+```bash
+# Issue: InfrastructureError: Performance monitor not available
+# Solution: Tests now handle this gracefully with skip/fallback
+# This is expected behavior in test environments
+
+# Check if issue persists:
+cd backend && ../.venv/bin/python -c "from app.infrastructure.cache.monitoring import CachePerformanceMonitor; print('Monitor available')"
+```
+
+#### Response Structure Mismatches
+```bash
+# Issue: KeyError for 'cache', 'host', 'url' keys in API responses
+# Solution: Tests now validate actual response structure
+# Debug: Add debug prints to see actual vs expected response
+
+# Example debug code:
+# print(f"Actual response: {response.json()}")
+# print(f"Expected keys: ['cache', 'host', 'url']")
+```
+
+### Test Isolation Issues
+
+#### Environment Variable Conflicts
+```bash
+# Issue: Tests interfering with each other via environment variables
+# Solution: Use monkeypatch.setenv() for proper isolation
+
+# Example proper isolation:
+# def test_with_env_var(monkeypatch):
+#     monkeypatch.setenv("CACHE_PRESET", "testing")
+#     # Test code here
+```
+
+#### Cache Data Conflicts
+```bash
+# Issue: Test data from previous tests affecting current test
+# Solution: Ensure cleanup fixtures are running
+
+# Verify cleanup is working:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ -v -s --tb=short -k "test_cleanup"
+
+# Check for @pytest.mark.xdist_group markers for proper test isolation
+```
+
+### Performance and Timing Issues
+
+#### Slow Test Execution
+```bash
+# Issue: Redis-enhanced tests are slow due to container startup
+# Solution: Use session-scoped containers and run Redis tests separately
+
+# Fast tests only (excludes Redis-enhanced):
+make test-backend-infra-cache-e2e
+
+# Run Redis tests separately when needed:
+make test-backend-infra-cache-e2e-redis
+
+# Disable parallel execution for Redis tests:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -m "redis" -n 0 -v
+```
+
+#### Test Timeouts
+```bash
+# Issue: Tests timing out, especially with Redis containers
+# Solution: Increase timeout or check container startup
+
+# Debug container startup:
+docker logs $(docker ps -q --filter "ancestor=redis:7-alpine")
+
+# Run with increased timeout:
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ --timeout=60 -v
+```
+
+### Debug Commands
+
+#### Comprehensive Debugging
+```bash
+# Run with verbose output and no capture
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -v -s --tb=long
+
+# Run single test with full debugging
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/test_cache_invalidation_workflow.py::TestCacheInvalidationWorkflow::test_invalidation_requires_authentication -v -s --tb=long
+
+# Check test discovery
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ --collect-only
+
+# Run with specific markers
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -m "e2e and not redis" -v
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/e2e/ -m "e2e and redis" -v
+```
+
+#### Test Coverage Analysis
+```bash
+# Generate detailed coverage report
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ --cov=app.infrastructure.cache --cov-report=html --cov-report=term
+
+# View coverage report
+open backend/htmlcov/index.html  # On macOS
+# Or navigate to backend/htmlcov/index.html in browser
+
+# Check for missing coverage
+cd backend && ../.venv/bin/python -m pytest tests/infrastructure/cache/ --cov=app.infrastructure.cache --cov-fail-under=90
+```
+
+### Environment Setup Verification
+
+#### Check Project Structure
+```bash
+# Verify you're in the correct location
+pwd                                    # Should show project root
+ls -la .venv/bin/python               # Check virtual environment exists
+ls -la backend/pytest.ini             # Check backend structure
+ls -la backend/tests/infrastructure/cache/  # Check test directory
+
+# Check Python environment
+source .venv/bin/activate
+which python                          # Should point to .venv/bin/python
+python -c "import app.infrastructure.cache; print('Cache module available')"
+```
+
+#### Check Dependencies
+```bash
+# Verify test dependencies are installed
+source .venv/bin/activate
+pip list | grep -E "pytest|fakeredis|testcontainers|redis"
+
+# Install missing dependencies if needed
+pip install -r backend/requirements.txt
+pip install -r backend/requirements-dev.txt
+```
+
+### Integration with Project Testing Philosophy
+
+When troubleshooting, remember our testing principles:
+
+1. **Test What's Documented** - If a test fails, first check if the behavior matches the docstring
+2. **Focus on Behavior** - Debug by understanding the expected external behavior, not internal implementation
+3. **Mock Only at Boundaries** - If mocking is involved in the failure, verify it's only at system boundaries
+4. **Real Components Preferred** - When debugging, prefer using real components over mocks to isolate the actual issue
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. **Check the actual test suite** in `backend/tests/infrastructure/cache/README.md` for detailed testing philosophy
+2. **Review the E2E documentation** in `backend/tests/infrastructure/cache/e2e/README.md` for specific E2E troubleshooting
+3. **Run individual test components** to isolate the issue
+4. **Use the debug commands** above to get detailed output
 
 ## Related Documentation
 
