@@ -481,7 +481,7 @@ class CacheConfigBuilder:
 
         return self
 
-    def from_file(self, file_path: Union[str, Path]) -> 'CacheConfigBuilder':
+    def from_file(self, file_path: str | Path) -> 'CacheConfigBuilder':
         """
         Load configuration from a JSON file.
 
@@ -589,7 +589,7 @@ class CacheConfigBuilder:
         """
         return self._config.to_dict()
 
-    def save_to_file(self, file_path: Union[str, Path],
+    def save_to_file(self, file_path: str | Path,
                      create_dirs: bool = True) -> None:
         """
         Save current configuration to a JSON file.

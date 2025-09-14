@@ -4,7 +4,7 @@
 
 ### 1. Initial Setup
 - [ ] Clone the repository
-- [ ] Install Python 3.8+ and create virtual environment
+- [ ] Install Python 3.12+ (Python 3.13 recommended) and create virtual environment
 - [ ] Copy `.env.example` to `.env`
 - [ ] Configure authentication and AI API keys in `.env`
 - [ ] Ensure Docker and Docker Compose are installed (optional for Docker workflow)

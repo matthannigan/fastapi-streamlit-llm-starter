@@ -165,7 +165,7 @@ ENABLE_AI_CACHE=true                        # Optional AI features toggle
 
 ### Prerequisites
 
-- **Python 3.8+** for backend development
+- **Python 3.12+** (Python 3.13 recommended) for backend development
 - **Docker and Docker Compose** for containerized development
 - **AI API Key** (Gemini, OpenAI, or Anthropic)
 

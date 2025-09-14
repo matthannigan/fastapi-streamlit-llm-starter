@@ -38,7 +38,7 @@ python -m examples.advanced_infrastructure_demo
 
 ### Prerequisites
 
-1. **Python Environment**: Ensure you have Python 3.8+ with the project dependencies installed:
+1. **Python Environment**: Ensure you have Python 3.12+ (Python 3.13 recommended) with the project dependencies installed:
    ```bash
    pip install -r requirements.txt
    ```

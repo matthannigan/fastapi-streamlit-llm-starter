@@ -145,7 +145,7 @@ graph TB
 ## 🔧 Complete Setup Guide
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.12+ (Python 3.13 recommended)
 - Gemini API key (get from Google AI Studio)
 - Git
 
