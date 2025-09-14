@@ -386,7 +386,7 @@ class Settings(BaseSettings):
 
     @field_validator('health_check_timeout_ms', 'health_check_ai_model_timeout_ms', 'health_check_cache_timeout_ms', 'health_check_resilience_timeout_ms', 'health_check_retry_count')
     @classmethod
-    def validate_health_check_numbers(cls, v: Union[int, float], info) -> int:
+    def validate_health_check_numbers(cls, v: int | float, info) -> int:
         """
         Ensure health check numeric settings are valid, and warn about suboptimal values.
         """
