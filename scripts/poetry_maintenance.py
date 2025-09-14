@@ -21,7 +21,9 @@ class PoetryMaintenance:
 
     def __init__(self, project_root: Path):
         self.project_root = project_root
-        self.components = ["backend", "frontend", "shared"]
+        # Only backend uses Poetry in the unified architecture
+        self.poetry_components = ["backend"]
+        self.all_components = ["backend", "frontend", "shared"]
 
     def run_command(self, cmd: List[str], cwd: Path = None) -> subprocess.CompletedProcess:
         """Run a command and return the result."""
@@ -41,10 +43,10 @@ class PoetryMaintenance:
             sys.exit(1)
 
     def check_poetry_installations(self) -> bool:
-        """Verify Poetry is properly configured in all components."""
+        """Verify Poetry is properly configured in Poetry components."""
         print("🔍 Checking Poetry installations...")
 
-        for component in self.components:
+        for component in self.poetry_components:
             component_path = self.project_root / component
             if not component_path.exists():
                 print(f"❌ Component directory not found: {component}")
@@ -69,11 +71,11 @@ class PoetryMaintenance:
         return True
 
     def security_scan(self) -> Dict[str, Any]:
-        """Run security scanning on all components."""
+        """Run security scanning on Poetry-enabled components."""
         print("\n🔒 Running security scans...")
         results = {}
 
-        for component in self.components:
+        for component in self.poetry_components:
             print(f"Scanning {component}...")
             component_path = self.project_root / component
 
@@ -100,22 +102,41 @@ class PoetryMaintenance:
                 results[component] = {"status": "clean", "vulnerabilities": 0}
                 print(f"✅ {component}: No vulnerabilities found")
             else:
-                # Parse vulnerabilities from output
-                vuln_count = audit_result.stdout.count("VULNERABILITY")
-                results[component] = {
-                    "status": "vulnerabilities_found",
-                    "vulnerabilities": vuln_count,
-                    "details": audit_result.stdout
-                }
-                print(f"⚠️  {component}: {vuln_count} vulnerabilities found")
+                # Check if pip-audit is missing
+                if "pip-audit" in audit_result.stderr and "not found" in audit_result.stderr:
+                    results[component] = {
+                        "status": "pip_audit_missing",
+                        "error": "pip-audit not installed in Poetry environment",
+                        "recommendation": "Run: cd backend && poetry add --group dev pip-audit"
+                    }
+                    print(f"⚠️  {component}: pip-audit not installed")
+                else:
+                    # Parse vulnerabilities from output
+                    vuln_count = audit_result.stdout.count("VULNERABILITY")
+                    results[component] = {
+                        "status": "vulnerabilities_found",
+                        "vulnerabilities": vuln_count,
+                        "details": audit_result.stdout
+                    }
+                    print(f"⚠️  {component}: {vuln_count} vulnerabilities found")
+
+        # Add information about non-Poetry components
+        results["frontend"] = {
+            "status": "not_applicable",
+            "note": "Frontend uses Docker-only approach - scan Docker images separately"
+        }
+        results["shared"] = {
+            "status": "not_applicable",
+            "note": "Shared library has minimal dependencies - vulnerabilities managed via backend"
+        }
 
         return results
 
     def update_dependencies(self) -> bool:
-        """Update dependencies in all components."""
+        """Update dependencies in Poetry-enabled components."""
         print("\n📦 Updating dependencies...")
 
-        for component in self.components:
+        for component in self.poetry_components:
             print(f"Updating {component}...")
             component_path = self.project_root / component
 
@@ -132,22 +153,29 @@ class PoetryMaintenance:
         return True
 
     def validate_cross_component_compatibility(self) -> bool:
-        """Validate that components can work together."""
+        """Validate that components can work together in unified architecture."""
         print("\n🔗 Validating cross-component compatibility...")
 
-        # Check shared library version consistency
+        # In unified architecture, only backend has Poetry configuration
         backend_path = self.project_root / "backend"
-        frontend_path = self.project_root / "frontend"
 
-        # Check that backend and frontend both reference the same shared library
-        for component_name, component_path in [("backend", backend_path), ("frontend", frontend_path)]:
-            result = self.run_command(["poetry", "show", "my-project-shared-lib"], cwd=component_path)
+        # Check that backend references the shared library
+        result = self.run_command(["poetry", "show", "my-project-shared-lib"], cwd=backend_path)
 
-            if result.returncode != 0:
-                print(f"❌ {component_name}: Shared library not found in dependencies")
-                return False
+        if result.returncode != 0:
+            print(f"❌ Backend: Shared library not found in Poetry dependencies")
+            return False
 
-            print(f"✅ {component_name}: Shared library dependency validated")
+        print(f"✅ Backend: Shared library dependency validated via Poetry")
+
+        # Check that shared library has proper pyproject.toml for pip compatibility
+        shared_pyproject = self.project_root / "shared" / "pyproject.toml"
+        if not shared_pyproject.exists():
+            print(f"❌ Shared: pyproject.toml not found for pip compatibility")
+            return False
+
+        print(f"✅ Shared: pyproject.toml exists for pip compatibility")
+        print(f"ℹ️  Frontend: Uses Docker-only approach (no local Poetry validation needed)")
 
         return True
 
@@ -206,7 +234,7 @@ def main():
         # Determine overall status
         if (report["poetry_installations"] and
             report["cross_component_compatibility"] and
-            all(comp["status"] == "clean" for comp in report["security_scan"].values())):
+            all(comp["status"] in ["clean", "not_applicable"] for comp in report["security_scan"].values())):
             print("\n🎉 All maintenance checks passed!")
             sys.exit(0)
         else:
