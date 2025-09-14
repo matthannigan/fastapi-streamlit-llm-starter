@@ -247,7 +247,7 @@ Leverage Python 3.13 specific features and performance optimizations. Address an
 **Goal**: Leverage Python 3.13 specific features, optimize performance, and address any compatibility issues discovered in Phase 2.
 
 ### Deliverable 6: Dependencies and Compatibility Optimization
-**Goal**: Optimize dependencies for Python 3.13 and resolve any compatibility issues identified in Phase 2.
+**Goal**: Optimize dependencies for Python 3.12+ and resolve any compatibility issues identified in Phase 2.
 
 #### Task 6.1: Comprehensive Dependency Audit
 - [ ] Audit backend dependencies:
@@ -304,28 +304,86 @@ Leverage Python 3.13 specific features and performance optimizations. Address an
   - [ ] Leverage Python 3.12's improved error messages and stack traces.
   - [ ] Update logging and error handling to benefit from enhanced debugging features.
   - [ ] Implement better error context and reporting where applicable.
+- [ ] Python 3.13 language feature adoption:
+  - [ ] Leverage the `@typing.override` decorator:
+    - [ ] Identify subclasses that override parent methods across the codebase.
+    - [ ] Apply `@typing.override` decorator to explicitly mark overridden methods.
+    - [ ] Configure static type checkers to catch override-related errors.
+  - [ ] Utilize more flexible f-strings:
+    - [ ] Review existing complex string formatting logic for simplification opportunities.
+    - [ ] Refactor code to leverage Python 3.13's enhanced f-string capabilities.
+    - [ ] Remove parsing limitation workarounds from previous Python versions.
+  - [ ] Improve error handling with enhanced `NameError` suggestions:
+    - [ ] Test and validate improved `NameError` messages during development.
+    - [ ] Update debugging documentation to reference enhanced error suggestions.
+  - [ ] Adopt stricter `TypedDict` defaults:
+    - [ ] Audit existing `TypedDict` objects in shared library data models.
+    - [ ] Explicitly mark optional keys with `typing.NotRequired` where appropriate.
+    - [ ] Update data contracts to leverage stricter key requirements.
 
 #### Task 7.2: Performance Optimization Implementation
 - [ ] Identify performance optimization opportunities:
-  - [ ] Identify bottlenecks that could benefit from Python 3.12 optimizations.
+  - [ ] Identify bottlenecks that could benefit from Python 3.13 optimizations.
   - [ ] Document specific performance improvement areas.
   - [ ] Create performance benchmarking suite for ongoing monitoring.
-- [ ] Implement Python 3.12-specific optimizations:
-  - [ ] Optimize hot paths in infrastructure services for Python 3.12.
-  - [ ] Update data structures and algorithms to leverage performance improvements.
-  - [ ] Implement any Python 3.12-specific optimization patterns.
-  - [ ] Validate performance improvements through benchmarking.
+- [ ] Benchmark the impact of the new JIT Compiler:
+  - [ ] Identify critical code paths in backend infrastructure services for benchmarking.
+  - [ ] Create baseline performance measurements on current Python version.
+  - [ ] Run benchmarks with Python 3.13's copy-and-patch JIT compiler.
+  - [ ] Quantify and document performance gains (targeting 15-20% improvement).
+  - [ ] Optimize hot paths that show significant JIT compiler benefits.
+- [ ] Experiment with the no-GIL build (free-threading):
+  - [ ] Compile Python 3.13 with experimental `--without-gil` build.
+  - [ ] Identify CPU-bound tasks within FastAPI application suitable for parallelization.
+  - [ ] Create test scenarios for complex data processing workloads.
+  - [ ] Validate thread-safety of existing infrastructure services (cache, resilience).
+  - [ ] Measure performance impact of free-threaded execution on multi-core workloads.
+  - [ ] Document free-threading compatibility and limitations.
+- [ ] Implement Python 3.13-specific optimizations:
+  - [ ] Optimize data structures and algorithms to leverage performance improvements.
+  - [ ] Update infrastructure services to benefit from JIT compiler optimizations.
+  - [ ] Implement performance monitoring for ongoing optimization tracking.
+  - [ ] Validate performance improvements through comprehensive benchmarking.
 
 #### Task 7.3: Future Compatibility Preparation
-- [ ] Python 3.13 compatibility preparation:
-  - [ ] Test application compatibility with Python 3.13 beta/release.
-  - [ ] Identify any potential issues with future Python versions.
-  - [ ] Prepare deprecation handling for future Python version transitions.
-  - [ ] Document forward compatibility strategy.
+**Goal**: Proactively ensure project compatibility with Python 3.14 by testing against release candidates and addressing specific new features, deprecations, and performance changes.
+
+- [ ] Test application compatibility with Python 3.14 Release Candidates:
+  - [ ] Update CI/CD matrix to include Python 3.14 RC testing job.
+  - [ ] Run full test suite against latest Python 3.14 RC (3.14.0rc2 or newer).
+  - [ ] Prioritize fixing new test failures distinct from documented baseline failures.
+  - [ ] Document Python 3.14 RC compatibility status and issues.
+- [ ] Audit code for specific 3.14 language and syntax changes:
+  - [ ] Review `finally` clauses for PEP 765 compliance:
+    - [ ] Identify `return`, `break`, or `continue` statements in `finally` clauses.
+    - [ ] Run tests with warnings enabled to catch `SyntaxWarning` issues.
+    - [ ] Refactor problematic `finally` clause patterns.
+  - [ ] Assess impact of deferred annotation evaluation (PEP 649):
+    - [ ] Review runtime introspection of type hints in the application.
+    - [ ] Test annotation evaluation timing changes with default PEP 649 behavior.
+    - [ ] Update code that depends on immediate annotation evaluation.
+  - [ ] Plan for deprecation of `from __future__ import annotations`:
+    - [ ] Audit codebase for `from __future__ import annotations` usage.
+    - [ ] Document strategy to remove imports once dependencies support new behavior.
+    - [ ] Create migration timeline for annotation import removal.
+- [ ] Benchmark performance with the new tail-call interpreter:
+  - [ ] Re-run existing performance benchmarks on Python 3.14.
+  - [ ] Focus benchmarking on CPU-bound infrastructure services.
+  - [ ] Quantify performance improvements from new interpreter design.
+  - [ ] Document performance characteristics for Python 3.14.
+- [ ] Update tooling and documentation for 3.14:
+  - [ ] Check linter and type checker compatibility:
+    - [ ] Verify `Ruff` supports Python 3.14 syntax and features.
+    - [ ] Ensure `mypy` has released Python 3.14-compatible version.
+    - [ ] Update development tool versions in requirements files.
+  - [ ] Update `README.md` and developer guides:
+    - [ ] Add Python 3.14 to list of supported and tested versions.
+    - [ ] Update forward compatibility strategy documentation.
+    - [ ] Document upcoming features and deprecations being monitored.
 - [ ] Long-term maintenance planning:
   - [ ] Establish Python version update and maintenance schedule.
   - [ ] Create guidelines for future Python version transitions.
-  - [ ] Document lessons learned from Python 3.12 migration.
+  - [ ] Document lessons learned from Python 3.13 migration.
   - [ ] Prepare infrastructure for ongoing Python version maintenance.
 
 ---
@@ -335,7 +393,7 @@ Leverage Python 3.13 specific features and performance optimizations. Address an
 
 #### Task 8.1: End-to-End Integration Testing
 - [ ] Comprehensive system testing:
-  - [ ] Test complete application stack with Python 3.12.
+  - [ ] Test complete application stack with Python 3.13.
   - [ ] Verify all components (backend, frontend, shared) work together correctly.
   - [ ] Test deployment pipelines and production readiness.
   - [ ] Validate performance characteristics meet expectations.
