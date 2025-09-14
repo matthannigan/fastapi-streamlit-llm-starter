@@ -176,50 +176,50 @@ Leverage Poetry's advanced features for dependency groups, scripts, and optimize
 **Goal**: Update existing Makefile targets and Docker configurations to use Poetry while maintaining current development experience.
 
 #### Task 3.1: Makefile Poetry Integration
-- [ ] Update root-level Makefile to support Poetry:
-  - [ ] Modify `venv` target to detect and use Poetry virtual environments
-  - [ ] Update `install` target to use Poetry: `poetry install` instead of pip install
-  - [ ] Create `poetry-install` target for explicit Poetry setup
-  - [ ] Update `PYTHON_CMD` detection to work with Poetry virtual environments
-- [ ] Update component-specific Makefile targets:
-  - [ ] Modify `install-backend` to use: `cd backend && poetry install --with dev,testing,quality`
-  - [ ] Update `install-frontend` to use: `cd frontend && poetry install --with dev,quality`
-  - [ ] Update `test-backend` to use: `cd backend && poetry run pytest`
-  - [ ] Update `test-frontend` to use: `cd frontend && poetry run pytest`
-- [ ] Maintain backward compatibility:
-  - [ ] Keep existing target names and behavior
-  - [ ] Add Poetry-specific targets as alternatives
-  - [ ] Provide clear error messages if Poetry is not installed
-  - [ ] Document migration path for developers
+- [X] Update root-level Makefile to support Poetry:
+  - [X] Modify `venv` target to detect and use Poetry virtual environments
+  - [X] Update `install` target to use Poetry: `poetry install` instead of pip install
+  - [X] Create `poetry-install` target for explicit Poetry setup
+  - [X] Update `PYTHON_CMD` detection to work with Poetry virtual environments
+- [X] Update component-specific Makefile targets:
+  - [X] Modify `install-backend` to use: `cd backend && poetry install --with dev,testing,quality`
+  - [X] Update `install-frontend` to use: `cd frontend && poetry install --with dev,quality`
+  - [X] Update `test-backend` to use: `cd backend && poetry run pytest`
+  - [X] Update `test-frontend` to use: `cd frontend && poetry run pytest`
+- [X] Maintain backward compatibility:
+  - [X] Keep existing target names and behavior
+  - [X] Add Poetry-specific targets as alternatives
+  - [X] Provide clear error messages if Poetry is not installed
+  - [X] Document migration path for developers
 
 #### Task 3.2: Docker Configuration Updates
-- [ ] Update backend Dockerfile for Poetry:
-  - [ ] Install Poetry in base Docker stage: `pip install poetry==1.7+`
-  - [ ] Configure Poetry for Docker: `poetry config virtualenvs.create false`
-  - [ ] Replace requirements.txt copying with: `COPY pyproject.toml poetry.lock ./`
-  - [ ] Update dependency installation: `poetry install --only=main` for production
-  - [ ] Update development stage: `poetry install --with dev` for development builds
-- [ ] Update frontend Dockerfile for Poetry:
-  - [ ] Mirror backend Poetry installation and configuration
-  - [ ] Replace frontend requirements file copying with Poetry files
-  - [ ] Update shared library installation to use Poetry path dependencies
-  - [ ] Test frontend Docker build produces identical functionality
-- [ ] Create optimized Docker workflows:
-  - [ ] Implement Poetry export for production builds: `poetry export -f requirements.txt --without-hashes`
-  - [ ] Create Docker-specific Poetry configuration for faster builds
-  - [ ] Update docker-compose.yml to work with Poetry-based containers
+- [X] Update backend Dockerfile for Poetry:
+  - [X] Install Poetry in base Docker stage: `pip install poetry==2.1.4`
+  - [X] Configure Poetry for Docker: `POETRY_NO_INTERACTION=1, POETRY_VENV_IN_PROJECT=1`
+  - [X] Replace requirements.txt copying with: `COPY pyproject.toml poetry.lock ./`
+  - [X] Update dependency installation: `poetry install --only=main` for production
+  - [X] Update development stage: `poetry install --with dev` for development builds
+- [X] Update frontend Dockerfile for Poetry:
+  - [X] Mirror backend Poetry installation and configuration
+  - [X] Replace frontend requirements file copying with Poetry files
+  - [X] Update shared library installation to use Poetry path dependencies
+  - [X] Test frontend Docker build produces identical functionality
+- [X] Create optimized Docker workflows:
+  - [X] Implement Poetry export for production builds: `poetry export -f requirements.txt --without-hashes`
+  - [X] Create Docker-specific Poetry configuration for faster builds
+  - [X] Update docker-compose.yml to work with Poetry-based containers
 
 #### Task 3.3: CI/CD Pipeline Updates
-- [ ] Update GitHub Actions workflows for Poetry:
-  - [ ] Install Poetry in CI environment: `pip install poetry`
-  - [ ] Replace pip install steps with `poetry install` in test workflows
-  - [ ] Update caching strategies to cache Poetry virtual environments and lock files
-  - [ ] Modify test execution to use `poetry run` commands
-- [ ] Update dependency management workflows:
-  - [ ] Replace `make lock-deps` with Poetry lock file management
-  - [ ] Update dependency update process to use `poetry update`
-  - [ ] Configure automated Poetry lock file generation and committing
-  - [ ] Set up Poetry dependency security scanning
+- [X] Update GitHub Actions workflows for Poetry:
+  - [X] Install Poetry in CI environment: `pip install poetry==2.1.4`
+  - [X] Replace pip install steps with `poetry install` in test workflows
+  - [X] Update caching strategies to cache Poetry virtual environments and lock files
+  - [X] Modify test execution to use `poetry run` commands
+- [X] Update dependency management workflows:
+  - [X] Replace `make lock-deps` with Poetry lock file management
+  - [X] Update dependency update process to use `poetry update`
+  - [X] Configure automated Poetry lock file generation and committing
+  - [X] Set up Poetry dependency security scanning
 
 ---
 
@@ -227,35 +227,35 @@ Leverage Poetry's advanced features for dependency groups, scripts, and optimize
 **Goal**: Optimize Docker builds with Poetry and implement advanced Poetry features for production deployment.
 
 #### Task 4.1: Docker Multi-stage Poetry Optimization
-- [ ] Implement optimized Docker multi-stage builds:
-  - [ ] Create dedicated Poetry installation stage
-  - [ ] Separate dependency installation from application code copying
-  - [ ] Use Poetry export for lightweight production images
-  - [ ] Implement proper Poetry cache mounting for faster builds
-- [ ] Backend Docker optimization:
-  - [ ] Create production stage using `poetry export --only=main | pip install`
-  - [ ] Development stage using full Poetry installation
-  - [ ] Test stage using Poetry with test dependencies
-  - [ ] Validate image size reduction and build time improvement
-- [ ] Frontend Docker optimization:
-  - [ ] Apply similar multi-stage approach for frontend
-  - [ ] Handle shared library dependencies correctly in Docker context
-  - [ ] Optimize for Streamlit-specific requirements
-  - [ ] Validate frontend Docker functionality matches current behavior
+- [X] Implement optimized Docker multi-stage builds:
+  - [X] Create dedicated Poetry installation stage
+  - [X] Separate dependency installation from application code copying
+  - [X] Use Poetry export for lightweight production images
+  - [X] Implement proper Poetry cache mounting for faster builds
+- [X] Backend Docker optimization:
+  - [X] Create production stage using `poetry export --only=main | pip install`
+  - [X] Development stage using full Poetry installation
+  - [X] Test stage using Poetry with test dependencies
+  - [X] Validate image size reduction and build time improvement
+- [X] Frontend Docker optimization:
+  - [X] Apply similar multi-stage approach for frontend
+  - [X] Handle shared library dependencies correctly in Docker context
+  - [X] Optimize for Streamlit-specific requirements
+  - [X] Validate frontend Docker functionality matches current behavior
 
 #### Task 4.2: Poetry Scripts and Development Tools
-- [ ] Configure Poetry scripts in pyproject.toml files:
-  - [ ] Backend scripts: `dev = "uvicorn app.main:app --reload"`, `test = "pytest"`
-  - [ ] Frontend scripts: `dev = "streamlit run app/app.py"`, `test = "pytest"`
-  - [ ] Shared library scripts: `test = "pytest"`, `build = "python -m build"`
-- [ ] Set up Poetry plugin integrations:
-  - [ ] Install poetry-plugin-export for requirements.txt generation if needed
-  - [ ] Configure poetry-plugin-up for dependency updates
-  - [ ] Set up pre-commit hooks that work with Poetry
-- [ ] Development environment automation:
-  - [ ] Create Poetry-based setup scripts
-  - [ ] Configure IDE integration (VS Code, PyCharm) with Poetry
-  - [ ] Document Poetry workflow for team members
+- [X] Configure Poetry scripts in pyproject.toml files:
+  - [X] Backend scripts: `dev = "uvicorn app.main:app --reload"`, `test = "pytest"`
+  - [X] Frontend scripts: `dev = "streamlit run app/app.py"`, `test = "pytest"`
+  - [X] Shared library scripts: `test = "pytest"`, `build = "python -m build"`
+- [X] Set up Poetry plugin integrations:
+  - [X] Install poetry-plugin-export for requirements.txt generation if needed
+  - [X] Configure poetry-plugin-up for dependency updates
+  - [X] Set up pre-commit hooks that work with Poetry
+- [X] Development environment automation:
+  - [X] Create Poetry-based setup scripts
+  - [X] Configure IDE integration (VS Code, PyCharm) with Poetry
+  - [X] Document Poetry workflow for team members
 
 ---
 

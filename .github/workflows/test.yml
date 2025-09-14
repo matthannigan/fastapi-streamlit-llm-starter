@@ -32,47 +32,89 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip dependencies
+    - name: Install Poetry
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry==2.1.4
+
+    - name: Cache Poetry dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        path: |
+          ~/.cache/pypoetry
+          **/.venv
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock', '**/requirements*.txt') }}
         restore-keys: |
+          ${{ runner.os }}-poetry-
           ${{ runner.os }}-pip-
+
+    - name: Install shared dependencies
+      run: |
+        cd shared
+        if [ -f "pyproject.toml" ]; then
+          poetry install
+        else
+          echo "No Poetry configuration found in shared, skipping"
+        fi
 
     - name: Install backend dependencies
       run: |
         cd backend
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        if [ -f "pyproject.toml" ]; then
+          poetry install --with dev,testing,quality
+        else
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+        fi
 
     - name: Install frontend dependencies
       run: |
         cd frontend
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        if [ -f "pyproject.toml" ]; then
+          poetry install --with dev,quality
+        else
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+        fi
 
     - name: Run backend tests
       env:
         GEMINI_API_KEY: test-key
       run: |
         cd backend
-        python -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+        if [ -f "pyproject.toml" ]; then
+          poetry run pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+        else
+          python -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=html
+        fi
 
     - name: Run frontend tests
       run: |
         cd frontend
-        python -m pytest tests/ -v --cov=app --cov-report=xml
+        if [ -f "pyproject.toml" ]; then
+          poetry run pytest tests/ -v --cov=app --cov-report=xml
+        else
+          python -m pytest tests/ -v --cov=app --cov-report=xml
+        fi
 
     - name: Run code quality checks
       run: |
         cd backend
-        python -m flake8 app/
-        python -m mypy app/ --ignore-missing-imports
+        if [ -f "pyproject.toml" ]; then
+          poetry run flake8 app/
+          poetry run mypy app/ --ignore-missing-imports
+        else
+          python -m flake8 app/
+          python -m mypy app/ --ignore-missing-imports
+        fi
         cd ../frontend
-        python -m flake8 app/
+        if [ -f "pyproject.toml" ]; then
+          poetry run flake8 app/
+        else
+          python -m flake8 app/
+        fi
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

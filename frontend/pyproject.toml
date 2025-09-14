@@ -74,9 +74,13 @@ matplotlib = "^3.7.0"
 [tool.poetry.group.prod.dependencies]
 # Production optimizations - add as needed
 
-[tool.poetry.scripts]
-frontend-dev = "streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0"
-frontend-prod = "streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true"
+# Use Poetry run for development scripts
+# poetry run streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 (dev)
+# poetry run streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true (prod)
+# poetry run pytest (test)
+# poetry run ruff check . (lint)
+# poetry run ruff format . (format)
+# poetry run mypy app/ (type-check)
 
 [tool.poetry.urls]
 Homepage = "https://github.com/your-org/fastapi-streamlit-llm-starter"

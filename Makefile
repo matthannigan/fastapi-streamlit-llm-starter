@@ -72,6 +72,7 @@ endif
 
 # Python executable detection - prefer python3, fallback to python
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
+POETRY := $(shell command -v poetry 2> /dev/null)
 VENV_DIR := .venv
 VENV_PYTHON := $(VENV_DIR)/bin/python
 VENV_PIP := $(VENV_DIR)/bin/pip
@@ -87,12 +88,16 @@ export COMPOSE_PROJECT_NAME
 # Environment detection for smart Python command selection
 IN_VENV := $(shell $(PYTHON) -c "import sys; print('1' if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else '0')" 2>/dev/null || echo "0")
 IN_DOCKER := $(shell [ -f /.dockerenv ] && echo "1" || echo "0")
+HAS_POETRY := $(shell command -v poetry > /dev/null 2>&1 && echo "1" || echo "0")
 
 # Select appropriate Python command based on current environment
 ifeq ($(IN_DOCKER),1)
     PYTHON_CMD := python
 else ifeq ($(IN_VENV),1)
     PYTHON_CMD := python
+else ifeq ($(HAS_POETRY),1)
+    # Try Poetry first, fallback to venv
+    PYTHON_CMD := $(shell cd backend 2>/dev/null && poetry run python -c "import sys; print(sys.executable)" 2>/dev/null || echo "$(VENV_PYTHON)")
 else
     PYTHON_CMD := $(VENV_PYTHON)
 endif
@@ -107,6 +112,8 @@ show-env-vars:
 	@echo "Git Branch is: $(GIT_BRANCH)"
 	@echo "Virtual Env Status is: $(IN_VENV)"
 	@echo "Docker Env Status is: $(IN_DOCKER)"
+	@echo "Has Poetry is: $(HAS_POETRY)"
+	@echo "Poetry Command is: $(POETRY)"
 	@echo "Venv Directory is: $(VENV_DIR)"
 	@echo "Venv Python Executable is: $(VENV_PYTHON)"
 	@echo "Venv Pip Executable is: $(VENV_PIP)"
@@ -137,8 +144,10 @@ help:
 	@echo "  make clean           🧹 Clean up generated files and caches"
 	@echo ""
 	@echo "🏗️  SETUP AND INSTALLATION:"
-	@echo "  venv                 Create Python virtual environment for backend"
-	@echo "  install              Install backend dependencies (auto-creates venv)"
+	@echo "  venv                 Create Python virtual environment for backend (pip-tools mode)"
+	@echo "  poetry-install       Install all dependencies using Poetry (recommended)"
+	@echo "  install              Install backend dependencies (auto-detects Poetry/pip-tools)"
+	@echo "  install-backend      Install backend dependencies (auto-detects Poetry/pip-tools)"
 	@echo "  install-frontend     Install frontend dependencies via Docker"
 	@echo "  install-frontend-local  Install frontend deps in current venv (local dev)"
 	@echo ""
@@ -276,15 +285,61 @@ venv:
 		echo "ℹ️  Virtual environment already exists at $(VENV_DIR)"; \
 	fi
 
-# Install backend dependencies (auto-creates venv)
-install: venv docusaurus-install
-	@echo "📦 Installing backend dependencies..."
-	@cd backend && source ../$(VENV_DIR)/bin/activate && pip install -r requirements.lock -r requirements-dev.lock
-	@echo "✅ Backend dependencies installed successfully!"
-	@echo "✅ project venv activated via: source $(VENV_DIR)/bin/activate"
+# Install all dependencies using Poetry (recommended)
+poetry-install:
+	@if [ "$(HAS_POETRY)" != "1" ]; then \
+		echo "❌ Error: Poetry not found. Please install Poetry first:"; \
+		echo "   curl -sSL https://install.python-poetry.org | python3 -"; \
+		exit 1; \
+	fi
+	@echo "📦 Installing dependencies using Poetry..."
+	@echo "🔧 Installing shared library..."
+	@cd shared && poetry install
+	@echo "🔧 Installing backend dependencies..."
+	@cd backend && poetry install --with dev,testing,quality
+	@echo "🔧 Installing frontend dependencies..."
+	@cd frontend && poetry install --with dev,quality
+	@echo "✅ All Poetry dependencies installed successfully!"
 	@echo "💡 Next steps:"
 	@echo "   - make run-backend    # Start backend server"
 	@echo "   - make dev            # Start full development environment"
+
+# Install backend dependencies (auto-detects Poetry/pip-tools)
+install: docusaurus-install
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "backend/pyproject.toml" ]; then \
+		echo "📦 Detected Poetry configuration, using Poetry..."; \
+		$(MAKE) install-backend-poetry; \
+	else \
+		echo "📦 Using pip-tools configuration..."; \
+		$(MAKE) install-backend-pip; \
+	fi
+	@echo "✅ Backend dependencies installed successfully!"
+	@echo "💡 Next steps:"
+	@echo "   - make run-backend    # Start backend server"
+	@echo "   - make dev            # Start full development environment"
+
+# Install backend dependencies using Poetry
+install-backend-poetry:
+	@echo "🔧 Installing shared library..."
+	@cd shared && poetry install
+	@echo "🔧 Installing backend dependencies with Poetry..."
+	@cd backend && poetry install --with dev,testing,quality
+
+# Install backend dependencies using pip-tools (legacy)
+install-backend-pip: venv
+	@echo "🔧 Installing backend dependencies with pip-tools..."
+	@cd backend && source ../$(VENV_DIR)/bin/activate && pip install -r requirements.lock -r requirements-dev.lock
+	@echo "✅ project venv activated via: source $(VENV_DIR)/bin/activate"
+
+# Install backend dependencies (auto-detects Poetry/pip-tools)
+install-backend:
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "backend/pyproject.toml" ]; then \
+		echo "📦 Using Poetry for backend installation..."; \
+		$(MAKE) install-backend-poetry; \
+	else \
+		echo "📦 Using pip-tools for backend installation..."; \
+		$(MAKE) install-backend-pip; \
+	fi
 
 # Install frontend dependencies via Docker (recommended)
 install-frontend:
@@ -297,15 +352,21 @@ install-frontend:
 
 # Install frontend dependencies in current virtual environment (local development)
 install-frontend-local:
-	@echo "📦 Installing frontend Python dependencies into current virtual environment..."
-	@if [ -z "$$VIRTUAL_ENV" ]; then \
-		echo "❌ Error: No virtual environment detected"; \
-		echo "   Please activate your virtual environment first:"; \
-		echo "   source .venv/bin/activate"; \
-		exit 1; \
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "frontend/pyproject.toml" ]; then \
+		echo "📦 Installing frontend dependencies with Poetry..."; \
+		cd shared && poetry install; \
+		cd frontend && poetry install --with dev,quality; \
+	else \
+		echo "📦 Installing frontend Python dependencies into current virtual environment..."; \
+		if [ -z "$$VIRTUAL_ENV" ]; then \
+			echo "❌ Error: No virtual environment detected"; \
+			echo "   Please activate your virtual environment first:"; \
+			echo "   source .venv/bin/activate"; \
+			exit 1; \
+		fi; \
+		echo "🔧 Installing frontend dependencies..."; \
+		cd frontend && pip install -r requirements.txt -r requirements-dev.txt; \
 	fi
-	@echo "🔧 Installing frontend dependencies..."
-	@cd frontend && pip install -r requirements.txt -r requirements-dev.txt
 	@echo "✅ Frontend dependencies installed successfully!"
 	@echo "💡 You can still use Docker with 'make dev' for full containerized development"
 
@@ -325,7 +386,13 @@ run-backend:
 	@echo ""
 	@echo "⏹️  Press Ctrl+C to stop the server"
 	@echo ""
-	@cd backend && $(PYTHON_CMD) -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "backend/pyproject.toml" ]; then \
+		echo "🔧 Using Poetry to run backend..."; \
+		cd backend && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload; \
+	else \
+		echo "🔧 Using venv to run backend..."; \
+		cd backend && $(PYTHON_CMD) -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload; \
+	fi
 
 # Start full development environment with hot reload (Docker Compose v2.22+)
 dev:
@@ -384,12 +451,20 @@ test-local: venv
 # Run backend tests (fast tests only, default)
 test-backend:
 	@echo "🧪 Running backend tests (fast tests only)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -q --retries 2 --retry-delay 5
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "backend/pyproject.toml" ]; then \
+		cd backend && poetry run pytest tests/ -q --retries 2 --retry-delay 5; \
+	else \
+		cd backend && $(PYTHON_CMD) -m pytest tests/ -q --retries 2 --retry-delay 5; \
+	fi
 
 # Run backend API endpoint tests
 test-backend-api:
 	@echo "🧪 Running backend API endpoint tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/api/ -v
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "backend/pyproject.toml" ]; then \
+		cd backend && poetry run pytest tests/api/ -v; \
+	else \
+		cd backend && $(PYTHON_CMD) -m pytest tests/api/ -v; \
+	fi
 
 # Run backend core functionality tests
 test-backend-core:
@@ -488,6 +563,9 @@ test-backend-manual:
 # Run frontend tests via Docker
 test-frontend:
 	@echo "🧪 Running frontend tests via Docker..."
+	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "frontend/pyproject.toml" ]; then \
+		echo "💡 Note: Poetry configuration detected, but using Docker for consistency"; \
+	fi
 	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml run frontend pytest tests/ -v
 
 # Run end-to-end integration tests

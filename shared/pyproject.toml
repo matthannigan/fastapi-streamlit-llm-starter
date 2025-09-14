@@ -12,6 +12,15 @@ pydantic = "^2.11.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
+ruff = "^0.13.0"
+mypy = "^1.18.0"
+
+# Use Poetry run for development scripts
+# poetry run pytest (test)
+# poetry run ruff check . (lint)
+# poetry run ruff format . (format)
+# poetry run mypy shared/ (type-check)
+# poetry build (build package)
 
 [build-system]
 requires = ["poetry-core"]
