@@ -85,38 +85,50 @@ Leverage Poetry's advanced features for dependency groups, scripts, and optimize
   - [ ] Confirm no regression in shared library functionality
 
 #### Task 1.3: Backend Component Poetry Migration
-- [ ] Initialize Poetry in backend directory:
-  - [ ] Run `cd backend && poetry init --no-interaction`
-  - [ ] Configure basic project metadata (name, version, description)
-  - [ ] Set Python version requirement to `"^3.12"` for consistency
-- [ ] Convert backend dependencies to Poetry format:
-  - [ ] Migrate production dependencies from `requirements.txt`:
+- [ ] **CRITICAL PATH**: Convert backend `pyproject.toml` to proper Poetry package:
+  - [ ] Backup existing `backend/pyproject.toml` configuration
+  - [ ] Initialize Poetry in backend directory: `cd backend && poetry init`
+  - [ ] Migrate existing pyproject.toml metadata to Poetry format:
+    - [ ] Convert `[project]` section to `[tool.poetry]` format
+    - [ ] Update version, description, and author information from existing config
+    - [ ] Transform dependency specifications from PEP 621 to Poetry format
+    - [ ] Convert `[project.optional-dependencies]` to Poetry dependency groups
+- [ ] Configure backend dependencies:
+  - [ ] Migrate core dependencies from existing `dependencies = [...]`:
     - [ ] FastAPI: `poetry add "fastapi>=0.110.0"`
-    - [ ] Uvicorn: `poetry add "uvicorn[standard]>=0.24.0,<0.25.0"`
+    - [ ] Uvicorn: `poetry add "uvicorn[standard]>=0.35.0"`
     - [ ] Pydantic dependencies: `poetry add "pydantic>=2.10" "pydantic-settings>=2.0.0" "pydantic-ai>=0.2.8,<0.3.0"`
     - [ ] Infrastructure dependencies: `poetry add httpx requests redis tenacity circuitbreaker psutil brotli`
-  - [ ] Set up dependency groups for backend:
-    - [ ] Create dev group: `poetry add --group dev pytest pytest-asyncio pytest-cov pytest-xdist httpx requests`
-    - [ ] Create testing group: `poetry add --group testing pytest-redis pytest-timeout pytest-retry pytest-random-order`
-    - [ ] Create quality group: `poetry add --group quality flake8 mypy black isort pre-commit`
+  - [ ] Set up dependency groups from existing optional-dependencies:
+    - [ ] Convert `dev` group: `poetry add --group dev pytest pytest-asyncio pytest-cov pytest-xdist ruff mypy pre-commit`
+    - [ ] Convert `test` group: `poetry add --group test pytest pytest-asyncio pytest-cov pytest-mock httpx fakeredis testcontainers`
+    - [ ] Convert `prod` group: `poetry add --group prod prometheus-client structlog gunicorn`
 - [ ] Configure shared library as path dependency:
   - [ ] Add shared library dependency: `poetry add --path ../shared`
   - [ ] Test that shared library imports work correctly in backend context
   - [ ] Verify that Poetry resolves shared library dependencies properly
 
-#### Task 1.4: Frontend Component Poetry Migration  
-- [ ] Initialize Poetry in frontend directory:
-  - [ ] Run `cd frontend && poetry init --no-interaction`
-  - [ ] Configure project metadata consistent with backend
-  - [ ] Set Python version requirement to `"^3.12"`
-- [ ] Convert frontend dependencies to Poetry format:
-  - [ ] Migrate core dependencies from `requirements.txt`:
-    - [ ] Streamlit: `poetry add "streamlit>=1.28.1,<1.29.0"`
+#### Task 1.4: Frontend Component Poetry Migration
+- [ ] **CRITICAL PATH**: Convert frontend `pyproject.toml` to proper Poetry package:
+  - [ ] Backup existing `frontend/pyproject.toml` configuration
+  - [ ] Initialize Poetry in frontend directory: `cd frontend && poetry init`
+  - [ ] Migrate existing pyproject.toml metadata to Poetry format:
+    - [ ] Convert `[project]` section to `[tool.poetry]` format
+    - [ ] Update version, description, and author information from existing config
+    - [ ] Transform dependency specifications from PEP 621 to Poetry format
+    - [ ] Convert `[project.optional-dependencies]` to Poetry dependency groups
+- [ ] Configure frontend dependencies:
+  - [ ] Migrate core dependencies from existing `dependencies = [...]`:
+    - [ ] Streamlit: `poetry add "streamlit>=1.49.0"`
     - [ ] HTTP client: `poetry add "httpx>=0.28.1"`
     - [ ] Configuration: `poetry add "pydantic-settings>=2.0.3,<3.0.0" "python-dotenv>=1.0.0,<2.0.0"`
-  - [ ] Set up frontend dependency groups:
-    - [ ] Create dev group: `poetry add --group dev pytest pytest-asyncio pytest-cov pytest-xdist`
-    - [ ] Create quality group: `poetry add --group quality flake8 black isort`
+    - [ ] UI dependencies: `poetry add "plotly>=5.17.0" "pandas>=2.0.0" "numpy>=1.24.0"`
+    - [ ] Streamlit components: `poetry add "streamlit-authenticator>=0.2.3" "streamlit-option-menu>=0.3.6"`
+  - [ ] Set up dependency groups from existing optional-dependencies:
+    - [ ] Convert `dev` group: `poetry add --group dev pytest pytest-asyncio pytest-cov pytest-mock ruff mypy pre-commit`
+    - [ ] Convert `test` group: `poetry add --group test pytest pytest-asyncio pytest-cov pytest-mock selenium pytest-playwright`
+    - [ ] Convert `ui` group: `poetry add --group ui altair bokeh seaborn matplotlib polars pyarrow streamlit-aggrid`
+    - [ ] Convert `prod` group: `poetry add --group prod streamlit-analytics streamlit-cache streamlit-keycloak`
 - [ ] Configure shared library path dependency:
   - [ ] Add shared library: `poetry add --path ../shared`
   - [ ] Verify frontend can import and use shared models correctly
