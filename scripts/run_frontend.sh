@@ -52,7 +52,7 @@ if curl -f http://localhost:8000/health &>/dev/null; then
 else
     echo "⚠️  Warning: Backend not detected at http://localhost:8000"
     echo "   Frontend will still start but API features may not work"
-    echo "   To start backend: ./scripts/run_backend.sh or make install && source .venv/bin/activate && cd backend && uvicorn app.main:app --reload"
+    echo "   To start backend: ./scripts/run_backend.sh or cd backend && poetry run uvicorn app.main:app --reload"
 fi
 
 # Start dependencies (Redis) if not already running

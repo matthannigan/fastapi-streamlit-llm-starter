@@ -86,14 +86,15 @@ class PoetryMaintenance:
                 results[component] = {"status": "export_failed", "error": result.stderr}
                 continue
 
-            # Run pip-audit (skip editable packages)
+            # Run pip-audit using Poetry environment (skip editable packages)
+            component_path = self.project_root / component
             audit_cmd = [
-                str(self.project_root / ".venv/bin/pip-audit"),
+                "poetry", "run", "pip-audit",
                 "-r", "/tmp/scan-requirements.txt",
                 "--skip-editable"
             ]
 
-            audit_result = self.run_command(audit_cmd)
+            audit_result = self.run_command(audit_cmd, cwd=component_path)
 
             if audit_result.returncode == 0:
                 results[component] = {"status": "clean", "vulnerabilities": 0}
