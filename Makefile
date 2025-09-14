@@ -322,13 +322,13 @@ install: docusaurus-install
 # Install backend dependencies using Poetry
 install-backend-poetry:
 	@echo "🔧 Installing shared library..."
-	@cd shared && poetry env use python3 || poetry env use python3.12 || poetry env use python3.13 || true
+	@cd shared && poetry env use python3.13 || poetry env use python3 || true
 	@cd shared && poetry install
 	@echo "🔧 Installing backend dependencies with Poetry..."
-	@cd backend && poetry env use python3 || poetry env use python3.12 || poetry env use python3.13 || true
+	@cd backend && poetry env use python3.13 || poetry env use python3 || true
 	@cd backend && poetry install --with dev,test
 	@echo "🔧 Installing frontend dependencies with Poetry..."
-	@cd frontend && poetry env use python3 || poetry env use python3.12 || poetry env use python3.13 || true
+	@cd frontend && poetry env use python3.13 || poetry env use python3 || true
 	@cd frontend && poetry install --with dev,test
 
 # Install backend dependencies using pip-tools (legacy)
@@ -360,8 +360,8 @@ install-frontend:
 install-frontend-local:
 	@if [ "$(HAS_POETRY)" = "1" ] && [ -f "frontend/pyproject.toml" ]; then \
 		echo "📦 Installing frontend dependencies with Poetry..."; \
-		cd shared && (poetry env use python3 || poetry env use python3.12 || poetry env use python3.13 || true) && poetry install; \
-		cd frontend && (poetry env use python3 || poetry env use python3.12 || poetry env use python3.13 || true) && poetry install --with dev,test; \
+		cd shared && (poetry env use python3.13 || poetry env use python3 || true) && poetry install; \
+		cd frontend && (poetry env use python3.13 || poetry env use python3 || true) && poetry install --with dev,test; \
 	else \
 		echo "📦 Installing frontend Python dependencies into current virtual environment..."; \
 		if [ -z "$$VIRTUAL_ENV" ]; then \
