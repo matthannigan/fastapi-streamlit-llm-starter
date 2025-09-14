@@ -35,7 +35,8 @@
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
         ci-test ci-test-all lock-deps update-deps \
         list-resil-presets show-resil-preset validate-resil-config validate-resil-preset recommend-resil-preset test-resil-presets \
-        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset
+        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset \
+        poetry-maintenance poetry-security-scan poetry-update poetry-validate poetry-export poetry-install poetry-info
 
 ##################################################################################################
 # Configuration and Environment Detection
@@ -1102,3 +1103,63 @@ recommend-cache-preset:
 	fi
 	@echo "🗂️  Getting cache preset recommendation for environment: $(ENV)"
 	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --recommend-preset $(ENV)
+
+
+# ========================================
+# POETRY MAINTENANCE COMMANDS
+# ========================================
+
+# Run comprehensive Poetry maintenance report
+poetry-maintenance:
+	@echo "🔧 Running comprehensive Poetry maintenance check..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py
+
+# Run Poetry security scanning across all components
+poetry-security-scan:
+	@echo "🔒 Running Poetry security scan..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py security-scan
+
+# Update all Poetry dependencies across components
+poetry-update:
+	@echo "📦 Updating all Poetry dependencies..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py update
+
+# Validate Poetry cross-component compatibility
+poetry-validate:
+	@echo "🔗 Validating Poetry cross-component compatibility..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py validate
+
+# Export Poetry requirements for all components
+poetry-export:
+	@echo "📋 Exporting Poetry requirements for all components..."
+	@cd backend && poetry export -f requirements.txt --output requirements-prod.txt
+	@cd backend && poetry export -f requirements.txt --with dev --output requirements-dev.txt
+	@cd backend && poetry export -f requirements.txt --with test --output requirements-test.txt
+	@cd frontend && poetry export -f requirements.txt --output requirements-prod.txt
+	@cd frontend && poetry export -f requirements.txt --with dev --output requirements-dev.txt
+	@cd frontend && poetry export -f requirements.txt --with test --output requirements-test.txt
+	@cd shared && poetry export -f requirements.txt --output requirements-prod.txt
+	@cd shared && poetry export -f requirements.txt --with dev --output requirements-dev.txt
+	@echo "✅ Poetry requirements exported successfully"
+
+# Poetry installation for all components
+poetry-install:
+	@echo "🔧 Installing Poetry dependencies for all components..."
+	@cd backend && poetry install --with dev,test
+	@cd frontend && poetry install --with dev,test
+	@cd shared && poetry install --with dev
+	@echo "✅ Poetry dependencies installed successfully"
+
+# Show Poetry dependency information
+poetry-info:
+	@echo "📋 Poetry Dependency Information:"
+	@echo ""
+	@echo "📦 Backend Dependencies:"
+	@cd backend && poetry show --tree
+	@echo ""
+	@echo "🖥️  Frontend Dependencies:"
+	@cd frontend && poetry show --tree
+	@echo ""
+	@echo "🔗 Shared Library Dependencies:"
+	@cd shared && poetry show --tree
+
