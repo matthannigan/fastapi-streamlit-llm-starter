@@ -46,7 +46,7 @@ dependencies = [
     
     # FastAPI and ASGI server
     "fastapi>=0.110.0",
-    "uvicorn[standard]>=0.24.0,<0.25.0",
+    "uvicorn[standard]>=0.35.0",
     
     # Data validation and configuration
     "pydantic>=2.10",
@@ -85,8 +85,8 @@ dev = [
     "pytest-mock>=3.10.0",
     
     # Code quality and formatting
-    "ruff>=0.1.0",
-    "mypy>=1.0",
+    "ruff>=0.13.0",
+    "mypy>=1.18.0",
     "pre-commit>=3.0",
     
     # Type stubs for better type checking
@@ -257,7 +257,7 @@ max-complexity = 10
 
 [tool.mypy]
 # Backend-specific type checking configuration
-python_version = "3.12"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

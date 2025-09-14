@@ -10,7 +10,7 @@ readme = "README.md" # Create a basic README.md in project_root/shared/
 requires-python = ">=3.12"
 # Add any direct dependencies of the shared code itself
 dependencies = [
-  "pydantic>=2.0"
+  "pydantic>=2.11.0"
 ]
 
 [project.optional-dependencies]

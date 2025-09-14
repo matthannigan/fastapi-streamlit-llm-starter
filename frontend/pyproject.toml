@@ -46,7 +46,7 @@ dependencies = [
     "fastapi-streamlit-llm-starter-shared @ file:../shared",
     
     # Streamlit framework
-    "streamlit>=1.28.1,<1.29.0",
+    "streamlit>=1.49.0",
     
     # HTTP client for backend communication
     "httpx>=0.28.1",
@@ -75,8 +75,8 @@ dev = [
     "pytest-mock>=3.10.0",
     
     # Code quality and formatting
-    "ruff>=0.1.0",
-    "mypy>=1.0",
+    "ruff>=0.13.0",
+    "mypy>=1.18.0",
     "pre-commit>=3.0",
     
     # Type stubs for better type checking
@@ -268,7 +268,7 @@ max-complexity = 12  # Slightly higher for UI code complexity
 
 [tool.mypy]
 # Frontend-specific type checking configuration
-python_version = "3.12"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

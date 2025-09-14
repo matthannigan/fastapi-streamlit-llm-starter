@@ -1045,7 +1045,7 @@ class Settings(BaseSettings):
         'health_check_retry_count'
     )
     @classmethod
-    def validate_health_check_numbers(cls, v: Union[int, float], info) -> int:
+    def validate_health_check_numbers(cls, v: int | float, info) -> int:
         """
         Ensure health check numeric settings are valid, and warn about suboptimal values.
         """
