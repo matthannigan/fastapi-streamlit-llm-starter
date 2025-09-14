@@ -188,13 +188,43 @@ Returns:
         and computing cache performance statistics and metrics.
 
 Raises:
-    AttributeError: If the cache service does not have a performance_monitor
-        attribute or if the monitor is not properly initialized.
+    InfrastructureError: If the cache service does not have a performance_monitor
+        attribute or if the monitor is not properly initialized, indicating
+        that performance monitoring is not available for this cache implementation.
 
 Example:
     Used as a FastAPI dependency:
     >>> @router.get("/metrics")
     >>> async def endpoint(monitor: CachePerformanceMonitor = Depends(get_performance_monitor)):
+    ...     return monitor.get_performance_stats()
+
+## get_performance_monitor_http()
+
+```python
+async def get_performance_monitor_http(cache_service: AIResponseCache = Depends(get_cache_service)) -> CachePerformanceMonitor:
+```
+
+HTTP-aware dependency wrapper that converts InfrastructureError to HTTPException.
+
+This wrapper catches InfrastructureError exceptions from get_performance_monitor and
+converts them to HTTPException which FastAPI handles gracefully, avoiding middleware
+conflicts and providing proper HTTP status codes for performance monitor availability.
+
+Args:
+    cache_service (AIResponseCache): Injected cache service dependency
+        containing the performance monitor component.
+
+Returns:
+    CachePerformanceMonitor: The performance monitor instance when available.
+
+Raises:
+    HTTPException: 500 Internal Server Error when performance monitor is not available
+        for the current cache implementation, with detailed error information.
+
+Example:
+    Used as a FastAPI dependency:
+    >>> @router.get("/metrics")
+    >>> async def endpoint(monitor: CachePerformanceMonitor = Depends(get_performance_monitor_http)):
     ...     return monitor.get_performance_stats()
 
 ## get_cache_status()
@@ -464,7 +494,7 @@ Example:
 ## get_cache_performance_metrics()
 
 ```python
-async def get_cache_performance_metrics(api_key: str = Depends(optional_verify_api_key), performance_monitor: CachePerformanceMonitor = Depends(get_performance_monitor)) -> CachePerformanceResponse:
+async def get_cache_performance_metrics(api_key: str = Depends(optional_verify_api_key), performance_monitor: CachePerformanceMonitor = Depends(get_performance_monitor_http)) -> CachePerformanceResponse:
 ```
 
 Get comprehensive cache performance metrics and statistics.

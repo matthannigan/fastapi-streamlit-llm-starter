@@ -134,3 +134,8 @@ def get_endpoint_classification(request: Request) -> str:
 ```
 
 Get endpoint classification for rate limiting.
+
+Extend this function for business-specific rate limiting:
+- Add tier-based classification
+- Add resource-cost-based classification  
+- Add user-role-based classification
