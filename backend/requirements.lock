@@ -175,7 +175,7 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
-pydantic==2.11.8
+pydantic==2.11.9
     # via
     #   -r requirements.txt
     #   anthropic
