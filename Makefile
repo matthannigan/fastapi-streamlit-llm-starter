@@ -297,9 +297,9 @@ poetry-install:
 	@echo "🔧 Installing shared library..."
 	@cd shared && poetry install
 	@echo "🔧 Installing backend dependencies..."
-	@cd backend && poetry install --with dev,testing,quality
+	@cd backend && poetry install --with dev,test
 	@echo "🔧 Installing frontend dependencies..."
-	@cd frontend && poetry install --with dev,quality
+	@cd frontend && poetry install --with dev,test
 	@echo "✅ All Poetry dependencies installed successfully!"
 	@echo "💡 Next steps:"
 	@echo "   - make run-backend    # Start backend server"
