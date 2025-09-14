@@ -1,0 +1,232 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastapi-streamlit-llm-starter"
+version = "0.1.0"
+description = "A comprehensive starter template for building production-ready LLM-powered APIs with FastAPI and Streamlit"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "FastAPI Streamlit LLM Starter Contributors"}
+]
+maintainers = [
+    {name = "FastAPI Streamlit LLM Starter Contributors"}
+]
+keywords = [
+    "fastapi",
+    "streamlit",
+    "llm",
+    "ai",
+    "production",
+    "template",
+    "starter",
+    "python"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Framework :: FastAPI",
+]
+
+# Core dependencies shared across the project
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21.0",
+    "mypy>=1.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.0",
+]
+
+# Testing dependencies
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+]
+
+# All development dependencies combined
+all = [
+    "fastapi-streamlit-llm-starter[dev,test]",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/fastapi-streamlit-llm-starter"
+Repository = "https://github.com/your-org/fastapi-streamlit-llm-starter"
+Documentation = "https://github.com/your-org/fastapi-streamlit-llm-starter/tree/main/docs"
+Issues = "https://github.com/your-org/fastapi-streamlit-llm-starter/issues"
+Changelog = "https://github.com/your-org/fastapi-streamlit-llm-starter/blob/main/CHANGELOG.md"
+
+# Tool configurations for unified project standards
+
+[tool.pytest.ini_options]
+# Configure pytest for the entire project
+testpaths = [
+    "backend/tests",
+    "frontend/tests",
+    "shared/tests"
+]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+    "-v"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "api: marks tests as API tests",
+    "ui: marks tests as UI tests",
+]
+asyncio_mode = "auto"
+
+[tool.ruff]
+# Modern Python linting configuration for Python 3.12+
+target-version = "py312"
+line-length = 88
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*.py" = [
+    "S101",    # asserts allowed in tests
+    "ARG",     # unused function args in tests are often expected
+    "FBT",     # don't care about boolean flag args in tests
+    "PLR2004", # magic values are OK in tests
+]
+
+[tool.ruff.isort]
+known-first-party = ["app", "shared"]
+split-on-trailing-comma = true
+
+[tool.mypy]
+# Type checking configuration for Python 3.12+
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+# Per-module configuration
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "streamlit.*",
+    "redis.*",
+    "pytest.*",
+    "pydantic_ai.*",
+]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["backend/app", "frontend/app", "shared"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/migrations/*",
+    "*/node_modules/*",
+    "*/__pycache__/*",
+    "*/build/*",
+    "*/dist/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+# Package discovery configuration
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shared*", "scripts*"]
+exclude = [
+    "backend*",
+    "frontend*",
+    "docs*",
+    "tests*",
+    "*.tests",
+    "*.tests.*",
+    "tests.*",
+    "htmlcov*",
+    "*.egg-info",
+    "__pycache__",
+    "node_modules",
+    ".git",
+    ".github",
+    ".vscode",
+    "*.pyc",
+    "*.pyo",
+]

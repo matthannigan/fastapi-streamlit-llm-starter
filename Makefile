@@ -12,7 +12,7 @@
 #   make lint          - Check code quality
 #
 # Requirements:
-#   - Python 3.8+ for backend development
+#   - Python 3.12+ (Python 3.13 recommended) for backend development
 #   - Docker and Docker Compose for containerized development
 #   - Node.js for repomix documentation generation (optional)
 ##################################################################################################

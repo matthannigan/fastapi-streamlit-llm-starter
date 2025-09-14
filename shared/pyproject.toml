@@ -7,7 +7,7 @@ name = "my_project_shared_lib" # Distribution name for pip
 version = "0.1.0"
 description = "Shared Python code for the project, including models and utilities."
 readme = "README.md" # Create a basic README.md in project_root/shared/
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 # Add any direct dependencies of the shared code itself
 dependencies = [
   "pydantic>=2.0"
