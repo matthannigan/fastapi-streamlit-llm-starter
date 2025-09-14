@@ -1142,13 +1142,6 @@ poetry-export:
 	@cd shared && poetry export -f requirements.txt --with dev --output requirements-dev.txt
 	@echo "✅ Poetry requirements exported successfully"
 
-# Poetry installation for all components
-poetry-install:
-	@echo "🔧 Installing Poetry dependencies for all components..."
-	@cd backend && poetry install --with dev,test
-	@cd frontend && poetry install --with dev,test
-	@cd shared && poetry install --with dev
-	@echo "✅ Poetry dependencies installed successfully"
 
 # Show Poetry dependency information
 poetry-info:
