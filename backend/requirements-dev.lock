@@ -168,13 +168,22 @@ pytest==8.4.2
     #   -r requirements-dev.txt
     #   pytest-asyncio
     #   pytest-cov
+    #   pytest-random-order
     #   pytest-redis
+    #   pytest-retry
+    #   pytest-timeout
     #   pytest-xdist
 pytest-asyncio==1.2.0
     # via -r requirements-dev.txt
 pytest-cov==4.1.0
     # via -r requirements-dev.txt
+pytest-random-order==1.2.0
+    # via -r requirements-dev.txt
 pytest-redis==3.1.3
+    # via -r requirements-dev.txt
+pytest-retry==1.7.0
+    # via -r requirements-dev.txt
+pytest-timeout==2.4.0
     # via -r requirements-dev.txt
 pytest-xdist==3.8.0
     # via -r requirements-dev.txt
