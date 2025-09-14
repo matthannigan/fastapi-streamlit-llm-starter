@@ -1,12 +1,20 @@
-[tool.poetry]
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
 name = "fastapi-streamlit-llm-starter-frontend"
 version = "0.1.0"
 description = "Frontend Streamlit application for LLM-powered user interfaces"
-authors = ["FastAPI Streamlit LLM Starter Contributors"]
-maintainers = ["FastAPI Streamlit LLM Starter Contributors"]
-license = "MIT"
 readme = "README.md"
-packages = [{include = "app"}]
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "FastAPI Streamlit LLM Starter Contributors"}
+]
+maintainers = [
+    {name = "FastAPI Streamlit LLM Starter Contributors"}
+]
 keywords = [
     "streamlit",
     "frontend",
@@ -32,61 +40,109 @@ classifiers = [
     "Framework :: Streamlit",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-my_project_shared_lib = {path = "../shared", develop = true}
-streamlit = "^1.49.0"
-httpx = "^0.28.1"
-pydantic-settings = "^2.0.3,<3.0.0"
-python-dotenv = "^1.0.0,<2.0.0"
-plotly = "^5.17.0"
-pandas = "^2.0.0"
-numpy = "^1.24.0"
-streamlit-authenticator = "^0.2.3"
-streamlit-option-menu = "^0.3.6"
+# Core frontend dependencies
+dependencies = [
+    # Local dependencies
+    "fastapi-streamlit-llm-starter-shared @ file:../shared",
+    
+    # Streamlit framework
+    "streamlit>=1.49.0",
+    
+    # HTTP client for backend communication
+    "httpx>=0.28.1",
+    
+    # Configuration and settings
+    "pydantic-settings>=2.0.3,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    
+    # UI enhancements and utilities
+    "plotly>=5.17.0",  # Interactive visualizations
+    "pandas>=2.0.0",   # Data manipulation for UI
+    "numpy>=1.24.0",   # Numerical operations
+    
+    # Additional Streamlit components
+    "streamlit-authenticator>=0.2.3",  # Authentication components
+    "streamlit-option-menu>=0.3.6",    # Enhanced navigation
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^0.23.0"
-pytest-cov = "^4.0"
-pytest-mock = "^3.10.0"
-ruff = "^0.13.0"
-mypy = "^1.18.0"
-pre-commit = "^3.0"
-types-requests = "^2.31.0"
-pandas-stubs = "^2.0.0"
-httpx = "^0.28.1"
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    # Testing framework
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.10.0",
+    
+    # Code quality and formatting
+    "ruff>=0.13.0",
+    "mypy>=1.18.0",
+    "pre-commit>=3.0",
+    
+    # Type stubs for better type checking
+    "types-requests>=2.31.0",
+    "pandas-stubs>=2.0.0",
+    
+    # Development tools
+    "httpx>=0.28.1",  # For testing HTTP clients
+    "streamlit-dev-tools>=0.1.0",  # Streamlit development utilities
+]
 
-[tool.poetry.group.test.dependencies]
-pytest = "^8.0.0"
-pytest-asyncio = "^0.23.0"
-pytest-cov = "^4.0"
-pytest-mock = "^3.10.0"
-httpx = "^0.28.1"
-selenium = "^4.15.0"
-pytest-playwright = "^0.4.0"
+# Testing dependencies (subset of dev for CI)
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.10.0",
+    "httpx>=0.28.1",
+    "selenium>=4.15.0",     # For UI testing
+    "pytest-playwright>=0.4.0",  # Alternative UI testing
+]
 
-[tool.poetry.group.ui.dependencies]
-altair = "^5.0.0"
-seaborn = "^0.12.0"
-matplotlib = "^3.7.0"
+# UI enhancement dependencies
+ui = [
+    # Advanced visualization
+    "altair>=5.0.0",        # Declarative statistical visualization
+    "bokeh>=3.3.0",         # Interactive visualization library
+    "seaborn>=0.12.0",      # Statistical data visualization
+    "matplotlib>=3.7.0",   # Plotting library
+    
+    # Data processing for UI
+    "polars>=0.19.0",       # Fast DataFrame library
+    "pyarrow>=14.0.0",      # Columnar data processing
+    
+    # Additional components
+    "streamlit-aggrid>=0.3.4",     # Advanced data grid
+    "streamlit-folium>=0.15.0",    # Interactive maps
+    "streamlit-plotly-events>=0.0.6",  # Plotly interactivity
+]
 
-[tool.poetry.group.prod.dependencies]
-# Production optimizations - add as needed
+# Production optimization dependencies
+prod = [
+    # Performance monitoring
+    "streamlit-analytics>=0.4.0",
+    
+    # Caching enhancements
+    "streamlit-cache>=0.1.0",
+    
+    # Security enhancements
+    "streamlit-keycloak>=0.1.0",
+]
 
-[tool.poetry.scripts]
-frontend-dev = "streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0"
-frontend-prod = "streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true"
+# All development dependencies
+all = [
+    "fastapi-streamlit-llm-starter-frontend[dev,test,ui,prod]",
+]
 
-[tool.poetry.urls]
+[project.urls]
 Homepage = "https://github.com/your-org/fastapi-streamlit-llm-starter"
 Repository = "https://github.com/your-org/fastapi-streamlit-llm-starter"
 Documentation = "https://github.com/your-org/fastapi-streamlit-llm-starter/tree/main/docs"
 Issues = "https://github.com/your-org/fastapi-streamlit-llm-starter/issues"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[project.scripts]
+frontend-dev = "streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0"
+frontend-prod = "streamlit run app/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true"
 
 # Tool configurations specific to frontend development
 
@@ -103,7 +159,7 @@ addopts = [
     "--cov-report=html:htmlcov",
     "--cov-report=term-missing",
     "--cov-report=xml",
-    "--cov-fail-under=75",
+    "--cov-fail-under=75",  # Slightly lower for UI code
     "-v"
 ]
 markers = [
@@ -119,7 +175,7 @@ asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
-    "ignore::UserWarning:streamlit.*",
+    "ignore::UserWarning:streamlit.*",  # Ignore Streamlit-specific warnings
 ]
 
 [tool.ruff]
@@ -208,7 +264,7 @@ fixture-parentheses = false
 mark-parentheses = false
 
 [tool.ruff.mccabe]
-max-complexity = 12
+max-complexity = 12  # Slightly higher for UI code complexity
 
 [tool.mypy]
 # Frontend-specific type checking configuration
@@ -251,6 +307,8 @@ module = [
     "streamlit_authenticator.*",
     "streamlit_option_menu.*",
     "streamlit_aggrid.*",
+    "streamlit_folium.*",
+    "streamlit_plotly_events.*",
 ]
 ignore_missing_imports = true
 
@@ -265,7 +323,7 @@ omit = [
     "*/__pycache__/*",
     "*/build/*",
     "*/dist/*",
-    "run_app.py",
+    "run_app.py",  # Entry point script
 ]
 
 [tool.coverage.report]
@@ -283,7 +341,7 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
-    "st\\.",
+    "st\\.",  # Exclude Streamlit-specific calls from coverage
 ]
 
 [tool.coverage.html]
@@ -291,6 +349,28 @@ directory = "htmlcov"
 
 [tool.coverage.xml]
 output = "coverage.xml"
+
+# Package discovery configuration for frontend
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = [
+    "tests*",
+    "*.tests",
+    "*.tests.*", 
+    "tests.*",
+    "htmlcov*",
+    "*.egg-info",
+    "__pycache__",
+    ".git",
+    ".github",
+    ".vscode",
+    "*.pyc",
+    "*.pyo",
+]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml", "*.toml", "*.txt", "*.md", "*.css", "*.js", "*.html"]
 
 # Streamlit-specific configuration
 [tool.streamlit]
