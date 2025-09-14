@@ -1,20 +1,15 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
+[tool.poetry]
 name = "fastapi-streamlit-llm-starter"
 version = "0.1.0"
 description = "A comprehensive starter template for building production-ready LLM-powered APIs with FastAPI and Streamlit"
 readme = "README.md"
-requires-python = ">=3.12"
-license = {text = "MIT"}
-authors = [
-    {name = "FastAPI Streamlit LLM Starter Contributors"}
-]
-maintainers = [
-    {name = "FastAPI Streamlit LLM Starter Contributors"}
-]
+license = "MIT"
+authors = ["FastAPI Streamlit LLM Starter Contributors"]
+maintainers = ["FastAPI Streamlit LLM Starter Contributors"]
 keywords = [
     "fastapi",
     "streamlit",
@@ -38,37 +33,31 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Framework :: FastAPI",
 ]
+packages = [
+    {include = "shared"},
+    {include = "scripts"},
+]
 
+[tool.poetry.dependencies]
+python = "^3.12"
 # Core dependencies shared across the project
-dependencies = [
-    "pydantic>=2.0",
-]
+pydantic = "^2.0"
 
-[project.optional-dependencies]
-# Development dependencies
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-asyncio>=0.21.0",
-    "mypy>=1.0",
-    "ruff>=0.1.0",
-    "pre-commit>=3.0",
-]
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+pytest-cov = "^4.0"
+pytest-asyncio = "^0.21.0"
+mypy = "^1.0"
+ruff = "^0.1.0"
+pre-commit = "^3.0"
 
-# Testing dependencies
-test = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-asyncio>=0.21.0",
-    "httpx>=0.24.0",
-]
+[tool.poetry.group.test.dependencies]
+pytest = "^7.0"
+pytest-cov = "^4.0"
+pytest-asyncio = "^0.21.0"
+httpx = "^0.24.0"
 
-# All development dependencies combined
-all = [
-    "fastapi-streamlit-llm-starter[dev,test]",
-]
-
-[project.urls]
+[tool.poetry.urls]
 Homepage = "https://github.com/your-org/fastapi-streamlit-llm-starter"
 Repository = "https://github.com/your-org/fastapi-streamlit-llm-starter"
 Documentation = "https://github.com/your-org/fastapi-streamlit-llm-starter/tree/main/docs"

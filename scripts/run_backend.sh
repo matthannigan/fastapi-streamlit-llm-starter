@@ -14,23 +14,12 @@ if [ -z "$PYTHON" ]; then
     exit 1
 fi
 
-# Virtual environment setup (root level, consistent with Makefile)
-VENV_DIR=".venv"
-VENV_PYTHON="$VENV_DIR/bin/python"
-VENV_PIP="$VENV_DIR/bin/pip"
-
-# Check if we're already in a virtual environment
-IN_VENV=$(${PYTHON} -c "import sys; print('1' if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else '0')" 2>/dev/null || echo "0")
-
-if [ "$IN_VENV" = "1" ]; then
-    echo "✅ Already in virtual environment"
-    PYTHON_CMD="python"
-    PIP_CMD="pip"
-elif [ -d "$VENV_DIR" ]; then
-    echo "🔧 Activating existing virtual environment..."
-    source "$VENV_DIR/bin/activate"
-    PYTHON_CMD="$VENV_PYTHON"
-    PIP_CMD="$VENV_PIP"
+# Check if Poetry is available and backend has Poetry configuration
+if command -v poetry >/dev/null 2>&1 && [ -f "backend/pyproject.toml" ]; then
+    echo "✅ Using Poetry for backend environment..."
+    PYTHON_CMD="poetry run python"
+    # Ensure Poetry virtual environment is set up
+    cd backend && poetry install --with dev,test --quiet && cd ..
 else
     echo "📦 Creating virtual environment at $VENV_DIR..."
     $PYTHON -m venv "$VENV_DIR"
@@ -89,9 +78,10 @@ echo "   • Use 'make lint-backend' for code quality checks"
 echo ""
 
 # Run the server with proper host binding and reload
-exec $PYTHON_CMD -m uvicorn app.main:app \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --reload \
-    --reload-dir app \
-    --log-level info 
+if [[ "$PYTHON_CMD" == "poetry run python" ]]; then
+    # Poetry command needs to run from backend directory
+    exec sh -c "cd backend && poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app --log-level info"
+else
+    # Traditional virtual environment
+    exec $PYTHON_CMD -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app --log-level info
+fi 

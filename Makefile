@@ -35,7 +35,8 @@
         repomix repomix-backend repomix-backend-tests repomix-frontend repomix-frontend-tests repomix-docs \
         ci-test ci-test-all lock-deps update-deps \
         list-resil-presets show-resil-preset validate-resil-config validate-resil-preset recommend-resil-preset test-resil-presets \
-        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset
+        list-cache-presets show-cache-preset validate-cache-config validate-cache-preset recommend-cache-preset \
+        poetry-maintenance poetry-security-scan poetry-update poetry-validate poetry-export poetry-install poetry-info poetry-dev install-backend-poetry
 
 ##################################################################################################
 # Configuration and Environment Detection
@@ -72,6 +73,7 @@ endif
 
 # Python executable detection - prefer python3, fallback to python
 PYTHON := $(shell command -v python3 2> /dev/null || command -v python 2> /dev/null)
+POETRY := $(shell command -v poetry 2> /dev/null)
 VENV_DIR := .venv
 VENV_PYTHON := $(VENV_DIR)/bin/python
 VENV_PIP := $(VENV_DIR)/bin/pip
@@ -87,6 +89,7 @@ export COMPOSE_PROJECT_NAME
 # Environment detection for smart Python command selection
 IN_VENV := $(shell $(PYTHON) -c "import sys; print('1' if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else '0')" 2>/dev/null || echo "0")
 IN_DOCKER := $(shell [ -f /.dockerenv ] && echo "1" || echo "0")
+HAS_POETRY := $(shell command -v poetry > /dev/null 2>&1 && echo "1" || echo "0")
 
 # Select appropriate Python command based on current environment
 ifeq ($(IN_DOCKER),1)
@@ -107,6 +110,8 @@ show-env-vars:
 	@echo "Git Branch is: $(GIT_BRANCH)"
 	@echo "Virtual Env Status is: $(IN_VENV)"
 	@echo "Docker Env Status is: $(IN_DOCKER)"
+	@echo "Has Poetry is: $(HAS_POETRY)"
+	@echo "Poetry Command is: $(POETRY)"
 	@echo "Venv Directory is: $(VENV_DIR)"
 	@echo "Venv Python Executable is: $(VENV_PYTHON)"
 	@echo "Venv Pip Executable is: $(VENV_PIP)"
@@ -137,8 +142,10 @@ help:
 	@echo "  make clean           🧹 Clean up generated files and caches"
 	@echo ""
 	@echo "🏗️  SETUP AND INSTALLATION:"
-	@echo "  venv                 Create Python virtual environment for backend"
-	@echo "  install              Install backend dependencies (auto-creates venv)"
+	@echo "  venv                 Create Python virtual environment for backend (pip-tools mode)"
+	@echo "  poetry-install       Install all dependencies using Poetry (recommended)"
+	@echo "  install              Install backend dependencies (auto-detects Poetry/pip-tools)"
+	@echo "  install-backend      Install backend dependencies (auto-detects Poetry/pip-tools)"
 	@echo "  install-frontend     Install frontend dependencies via Docker"
 	@echo "  install-frontend-local  Install frontend deps in current venv (local dev)"
 	@echo ""
@@ -276,7 +283,26 @@ venv:
 		echo "ℹ️  Virtual environment already exists at $(VENV_DIR)"; \
 	fi
 
-# Install backend dependencies (auto-creates venv)
+# Install all dependencies using Poetry (recommended)
+poetry-install:
+	@if [ "$(HAS_POETRY)" != "1" ]; then \
+		echo "❌ Error: Poetry not found. Please install Poetry first:"; \
+		echo "   curl -sSL https://install.python-poetry.org | python3 -"; \
+		exit 1; \
+	fi
+	@echo "📦 Installing dependencies using Poetry..."
+	@echo "🔧 Installing shared library..."
+	@cd shared && poetry install
+	@echo "🔧 Installing backend dependencies..."
+	@cd backend && poetry install --with dev,test
+	@echo "🔧 Installing frontend dependencies..."
+	@cd frontend && poetry install --with dev,test
+	@echo "✅ All Poetry dependencies installed successfully!"
+	@echo "💡 Next steps:"
+	@echo "   - make run-backend    # Start backend server"
+	@echo "   - make dev            # Start full development environment"
+
+# Install backend dependencies (auto-detects Poetry/pip-tools)
 install: venv docusaurus-install
 	@echo "📦 Installing backend dependencies..."
 	@cd backend && source ../$(VENV_DIR)/bin/activate && pip install -r requirements.lock -r requirements-dev.lock
@@ -285,6 +311,43 @@ install: venv docusaurus-install
 	@echo "💡 Next steps:"
 	@echo "   - make run-backend    # Start backend server"
 	@echo "   - make dev            # Start full development environment"
+
+# Optional Poetry support for backend development (uses root .venv)
+install-backend-poetry: venv
+	@if ! command -v poetry >/dev/null 2>&1; then \
+		echo "❌ Poetry not found. Install with: curl -sSL https://install.python-poetry.org | python3 -"; \
+		exit 1; \
+	fi
+	@echo "🔧 Configuring Poetry to use root virtual environment..."
+	@cd backend && poetry env use $(shell pwd)/$(VENV_DIR)/bin/python
+	@echo "🔧 Installing backend dependencies with Poetry..."
+	@cd backend && poetry install --with dev,test
+	@echo "✅ Backend Poetry environment ready using root .venv!"
+
+# Use Poetry for enhanced dependency management with unified workflow
+poetry-dev:
+	@echo "🎯 Setting up Poetry development environment..."
+	@$(MAKE) install-backend-poetry
+	@echo "💡 Poetry environment ready!"
+	@echo ""
+	@echo "📝 UNIFIED WORKFLOW:"
+	@echo "   Adding dependencies:"
+	@echo "     cd backend && poetry add pytest-mock         # Adds to pyproject.toml + poetry.lock"
+	@echo "     cd backend && poetry export --without-hashes -f requirements.txt > requirements.txt"
+	@echo "     make install                                 # Installs into root .venv for consistency"
+	@echo ""
+	@echo "   Development commands:"
+	@echo "     source .venv/bin/activate                    # Single environment for all tools"
+	@echo "     pytest backend/tests/                       # Run tests"
+	@echo "     uvicorn app.main:app --reload               # Run server"
+
+# Export Poetry dependencies to requirements files for pip workflow
+poetry-export:
+	@echo "📤 Exporting Poetry dependencies to requirements files..."
+	@cd backend && poetry export --without-hashes -f requirements.txt -o requirements.txt
+	@cd backend && poetry export --without-hashes --with dev -f requirements.txt -o requirements-dev.txt
+	@cd backend && poetry export --without-hashes --only dev -f requirements.txt -o requirements-dev-only.txt
+	@echo "✅ Dependencies exported! Run 'make install' to install into root .venv"
 
 # Install frontend dependencies via Docker (recommended)
 install-frontend:
@@ -1024,3 +1087,46 @@ recommend-cache-preset:
 	fi
 	@echo "🗂️  Getting cache preset recommendation for environment: $(ENV)"
 	@cd backend && $(PYTHON_CMD) scripts/validate_cache_config.py --recommend-preset $(ENV)
+
+
+# ========================================
+# POETRY MAINTENANCE COMMANDS
+# ========================================
+
+# Run comprehensive Poetry maintenance report
+poetry-maintenance:
+	@echo "🔧 Running comprehensive Poetry maintenance check..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py
+
+# Run Poetry security scanning across all components
+poetry-security-scan:
+	@echo "🔒 Running Poetry security scan..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py security-scan
+
+# Update all Poetry dependencies across components
+poetry-update:
+	@echo "📦 Updating all Poetry dependencies..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py update
+
+# Validate Poetry cross-component compatibility
+poetry-validate:
+	@echo "🔗 Validating Poetry cross-component compatibility..."
+	@$(PYTHON_CMD) scripts/poetry_maintenance.py validate
+
+
+
+# Show Poetry dependency information
+poetry-info:
+	@echo "📋 Poetry Dependency Information:"
+	@echo ""
+	@echo "📦 Backend Dependencies (via Poetry):"
+	@cd backend && poetry show --tree
+	@echo ""
+	@echo "🖥️  Frontend Dependencies:"
+	@echo "   Frontend uses Docker-only approach (no Poetry environment)"
+	@echo "   See frontend/Dockerfile for dependency management"
+	@echo ""
+	@echo "🔗 Shared Library Dependencies:"
+	@echo "   Shared library has minimal pyproject.toml for pip compatibility"
+	@echo "   Dependencies managed via backend Poetry environment"
+
