@@ -9,6 +9,11 @@ RESILIENCE_PRESET=development
 API_KEY=dev-test-key
 GEMINI_API_KEY=your-gemini-api-key
 
+# Authentication Configuration
+AUTH_MODE=simple                  # "simple" or "advanced" mode
+ENABLE_USER_TRACKING=false        # Enable user context tracking (advanced mode only)
+ENABLE_REQUEST_LOGGING=true       # Enable security event logging
+
 # Cache Configuration (choose one preset)
 CACHE_PRESET=development              # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
 
@@ -40,6 +45,11 @@ RESILIENCE_PRESET=production
 API_KEY=your-secure-production-key
 ADDITIONAL_API_KEYS=key1,key2,key3
 GEMINI_API_KEY=your-production-gemini-key
+
+# Authentication Configuration
+AUTH_MODE=advanced                # "simple" or "advanced" - use advanced for production
+ENABLE_USER_TRACKING=true         # Enable user context tracking and metadata
+ENABLE_REQUEST_LOGGING=true       # Enable comprehensive security event logging
 
 # Cache Configuration
 CACHE_PRESET=production               # Production-optimized cache settings

@@ -190,6 +190,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from app.core.config import settings
 from app.core.middleware import setup_middleware, setup_enhanced_middleware
 from app.infrastructure.security import verify_api_key
+from app.core.environment import is_production_environment, get_environment_info, FeatureContext
 from app.api.v1.health import health_router
 from app.api.v1.auth import auth_router
 from app.api.v1.text_processing import router as text_processing_router
