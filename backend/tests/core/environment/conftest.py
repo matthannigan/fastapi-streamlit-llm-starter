@@ -798,12 +798,18 @@ def mock_file_system_errors():
         - Testing file system error handling
         - Testing graceful degradation
     """
-    def mock_exists_with_error(path):
-        if 'restricted' in str(path):
-            raise PermissionError("Access denied")
-        return False
+    # Store original function to avoid recursion
+    original_exists = Path.exists
 
-    with patch('app.core.environment.Path.exists', side_effect=mock_exists_with_error):
+    def mock_exists_with_error(self):
+        path_str = str(self)
+        # Only raise errors for specific test paths, not pytest internals
+        if 'restricted' in path_str or path_str in ['.env', '.git', 'docker-compose.dev.yml']:
+            raise PermissionError("Access denied")
+        # Use the original method for all other paths
+        return original_exists(self)
+
+    with patch.object(Path, 'exists', mock_exists_with_error):
         yield
 
 
@@ -853,11 +859,19 @@ def mock_partial_failure_conditions():
     # Environment where file system fails but environment variables work
     env_vars = {'ENVIRONMENT': 'production'}
 
-    def mock_exists_failing(path):
-        raise OSError("File system unavailable")
+    # Store original function to avoid recursion
+    original_exists = Path.exists
+
+    def mock_exists_failing(self):
+        path_str = str(self)
+        # Fail only for environment detection paths, not pytest internals
+        if any(indicator in path_str for indicator in ['.env', '.git', 'docker-compose', 'requirements']):
+            raise OSError("File system unavailable")
+        # Use the original method for all other paths (pytest internals)
+        return original_exists(self)
 
     with patch.dict(os.environ, env_vars), \
-         patch('app.core.environment.Path.exists', side_effect=mock_exists_failing):
+         patch.object(Path, 'exists', mock_exists_failing):
         yield
 
 

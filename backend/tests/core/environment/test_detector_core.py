@@ -54,9 +54,19 @@ class TestEnvironmentDetectorInitialization:
         Fixtures Used:
             - None (testing initialization behavior only)
         """
-        pass
+        # Given: No configuration parameters
 
-    def test_environment_detector_initializes_with_custom_config(self):
+        # When: Creating EnvironmentDetector instance
+        detector = EnvironmentDetector()
+
+        # Then: Detector initializes with default DetectionConfig and empty signal cache
+        assert detector.config is not None
+        assert isinstance(detector.config, DetectionConfig)
+        assert hasattr(detector, '_signal_cache')
+        assert isinstance(detector._signal_cache, dict)
+        assert len(detector._signal_cache) == 0
+
+    def test_environment_detector_initializes_with_custom_config(self, custom_detection_config):
         """
         Test that EnvironmentDetector accepts custom DetectionConfig.
 
@@ -74,7 +84,16 @@ class TestEnvironmentDetectorInitialization:
         Fixtures Used:
             - custom_detection_config: DetectionConfig with modified patterns and precedence
         """
-        pass
+        # Given: Custom DetectionConfig instance with modified patterns
+
+        # When: Creating EnvironmentDetector with custom config
+        detector = EnvironmentDetector(custom_detection_config)
+
+        # Then: Detector stores custom configuration for subsequent detection operations
+        assert detector.config is custom_detection_config
+        assert detector.config.env_var_precedence == custom_detection_config.env_var_precedence
+        assert detector.config.development_patterns == custom_detection_config.development_patterns
+        assert detector.config.feature_contexts == custom_detection_config.feature_contexts
 
     def test_environment_detector_creates_signal_cache(self):
         """
@@ -94,9 +113,17 @@ class TestEnvironmentDetectorInitialization:
         Fixtures Used:
             - None (testing initialization state only)
         """
-        pass
+        # Given: EnvironmentDetector initialization
 
-    def test_environment_detector_logs_initialization(self):
+        # When: Checking internal state after creation
+        detector = EnvironmentDetector()
+
+        # Then: Signal cache is initialized as empty dictionary
+        assert hasattr(detector, '_signal_cache')
+        assert isinstance(detector._signal_cache, dict)
+        assert len(detector._signal_cache) == 0
+
+    def test_environment_detector_logs_initialization(self, mock_logger):
         """
         Test that EnvironmentDetector logs initialization for monitoring.
 
@@ -114,7 +141,14 @@ class TestEnvironmentDetectorInitialization:
         Fixtures Used:
             - mock_logger: Mocked logger to capture initialization messages
         """
-        pass
+        # Given: Logger configuration for EnvironmentDetector
+        # (provided by mock_logger fixture)
+
+        # When: Creating EnvironmentDetector instance
+        detector = EnvironmentDetector()
+
+        # Then: Initialization message is logged with appropriate level
+        mock_logger.info.assert_called_once_with("Initialized EnvironmentDetector")
 
 
 class TestEnvironmentDetectorBasicDetection:
@@ -131,7 +165,7 @@ class TestEnvironmentDetectorBasicDetection:
         for configuration selection and must provide reliable results
     """
 
-    def test_detect_environment_returns_environment_info(self):
+    def test_detect_environment_returns_environment_info(self, environment_detector):
         """
         Test that detect_environment returns complete EnvironmentInfo result.
 
@@ -149,9 +183,29 @@ class TestEnvironmentDetectorBasicDetection:
         Fixtures Used:
             - environment_detector: EnvironmentDetector with default configuration
         """
-        pass
+        # Given: EnvironmentDetector instance with default configuration
+        # (provided by environment_detector fixture)
 
-    def test_detect_environment_with_explicit_feature_context(self):
+        # When: Calling detect_environment() without parameters
+        result = environment_detector.detect_environment()
+
+        # Then: Returns EnvironmentInfo with environment, confidence, reasoning, and detected_by
+        assert isinstance(result, EnvironmentInfo)
+        assert isinstance(result.environment, Environment)
+        assert isinstance(result.confidence, float)
+        assert isinstance(result.reasoning, str)
+        assert isinstance(result.detected_by, str)
+        assert isinstance(result.feature_context, FeatureContext)
+        assert isinstance(result.additional_signals, list)
+        assert isinstance(result.metadata, dict)
+
+        # Verify required fields are populated
+        assert result.environment is not None
+        assert result.confidence is not None
+        assert result.reasoning != ""
+        assert result.detected_by != ""
+
+    def test_detect_environment_with_explicit_feature_context(self, environment_detector):
         """
         Test that detect_environment accepts feature context parameter.
 
@@ -169,9 +223,18 @@ class TestEnvironmentDetectorBasicDetection:
         Fixtures Used:
             - environment_detector: EnvironmentDetector with default configuration
         """
-        pass
+        # Given: EnvironmentDetector instance
+        # (provided by environment_detector fixture)
 
-    def test_detect_environment_confidence_within_valid_range(self):
+        # When: Calling detect_environment() with specific FeatureContext
+        test_context = FeatureContext.AI_ENABLED
+        result = environment_detector.detect_environment(test_context)
+
+        # Then: Returns EnvironmentInfo with feature_context field set to specified context
+        assert isinstance(result, EnvironmentInfo)
+        assert result.feature_context == test_context
+
+    def test_detect_environment_confidence_within_valid_range(self, environment_detector, mock_environment_conditions):
         """
         Test that detect_environment returns confidence scores in valid range.
 
@@ -190,9 +253,24 @@ class TestEnvironmentDetectorBasicDetection:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_environment_conditions: Various environment variable and system configurations
         """
-        pass
+        # Given: EnvironmentDetector with various environment conditions
+        # Test various environment conditions from fixture
+        test_scenarios = [
+            mock_environment_conditions['production_explicit'],
+            mock_environment_conditions['development_explicit'],
+            mock_environment_conditions['node_env_prod'],
+            mock_environment_conditions['mixed_signals']
+        ]
 
-    def test_detect_environment_fallback_when_no_signals(self):
+        for env_vars in test_scenarios:
+            with patch.dict('os.environ', env_vars, clear=True):
+                # When: Calling detect_environment() under different scenarios
+                result = environment_detector.detect_environment()
+
+                # Then: All returned confidence scores are between 0.0 and 1.0
+                assert 0.0 <= result.confidence <= 1.0, f"Confidence {result.confidence} out of range for {env_vars}"
+
+    def test_detect_environment_fallback_when_no_signals(self, environment_detector, clean_environment):
         """
         Test that detect_environment provides fallback when no environment signals found.
 
@@ -211,9 +289,19 @@ class TestEnvironmentDetectorBasicDetection:
             - environment_detector: EnvironmentDetector with default configuration
             - clean_environment: Environment with no detection signals available
         """
-        pass
+        # Given: EnvironmentDetector in environment with no detection signals
+        # (clean_environment fixture provides this context)
 
-    def test_detect_environment_includes_reasoning(self):
+        # When: Calling detect_environment()
+        result = environment_detector.detect_environment()
+
+        # Then: Returns DEVELOPMENT environment with confidence around 0.5 and fallback reasoning
+        assert result.environment == Environment.DEVELOPMENT
+        assert result.confidence == 0.5
+        assert "fallback" in result.reasoning.lower() or "no environment signals" in result.reasoning.lower()
+        assert result.detected_by == "fallback"
+
+    def test_detect_environment_includes_reasoning(self, environment_detector):
         """
         Test that detect_environment provides human-readable reasoning.
 
@@ -232,9 +320,19 @@ class TestEnvironmentDetectorBasicDetection:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_environment_signal: Known environment condition for predictable detection
         """
-        pass
+        # Given: EnvironmentDetector with identifiable environment signals
+        with patch.dict('os.environ', {'ENVIRONMENT': 'production'}, clear=True):
+            # When: Calling detect_environment()
+            result = environment_detector.detect_environment()
 
-    def test_detect_environment_includes_detected_by_source(self):
+            # Then: Returns EnvironmentInfo with reasoning field explaining detection logic
+            assert isinstance(result.reasoning, str)
+            assert len(result.reasoning) > 0
+            assert "environment" in result.reasoning.lower() or "production" in result.reasoning.lower()
+            # Reasoning should be human-readable and explain the detection
+            assert result.reasoning != ""
+
+    def test_detect_environment_includes_detected_by_source(self, environment_detector):
         """
         Test that detect_environment identifies primary detection mechanism.
 
@@ -253,7 +351,16 @@ class TestEnvironmentDetectorBasicDetection:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_primary_signal: Known environment signal with identifiable source
         """
-        pass
+        # Given: EnvironmentDetector with known environment signal
+        with patch.dict('os.environ', {'ENVIRONMENT': 'development'}, clear=True):
+            # When: Calling detect_environment()
+            result = environment_detector.detect_environment()
+
+            # Then: Returns EnvironmentInfo with detected_by field identifying signal source
+            assert isinstance(result.detected_by, str)
+            assert len(result.detected_by) > 0
+            # Should identify the primary signal source
+            assert result.detected_by == "ENVIRONMENT"
 
 
 class TestEnvironmentDetectorSummaryReporting:
@@ -270,7 +377,7 @@ class TestEnvironmentDetectorSummaryReporting:
         classification in production systems for reliability assurance
     """
 
-    def test_get_environment_summary_returns_complete_structure(self):
+    def test_get_environment_summary_returns_complete_structure(self, environment_detector):
         """
         Test that get_environment_summary returns comprehensive detection information.
 
@@ -290,9 +397,28 @@ class TestEnvironmentDetectorSummaryReporting:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_environment_signals: Environment with multiple detection signals
         """
-        pass
+        # Given: EnvironmentDetector with detectable environment signals
+        with patch.dict('os.environ', {'ENVIRONMENT': 'production'}, clear=True):
+            # When: Calling get_environment_summary()
+            summary = environment_detector.get_environment_summary()
 
-    def test_get_environment_summary_formats_signals_for_analysis(self):
+            # Then: Returns dictionary with all required fields
+            assert isinstance(summary, dict)
+
+            # Verify all required fields are present
+            required_fields = ['detected_environment', 'confidence', 'reasoning', 'detected_by', 'all_signals', 'metadata']
+            for field in required_fields:
+                assert field in summary, f"Missing required field: {field}"
+
+            # Verify field types
+            assert isinstance(summary['detected_environment'], str)
+            assert isinstance(summary['confidence'], float)
+            assert isinstance(summary['reasoning'], str)
+            assert isinstance(summary['detected_by'], str)
+            assert isinstance(summary['all_signals'], list)
+            assert isinstance(summary['metadata'], dict)
+
+    def test_get_environment_summary_formats_signals_for_analysis(self, environment_detector):
         """
         Test that get_environment_summary formats signals for human analysis.
 
@@ -311,9 +437,31 @@ class TestEnvironmentDetectorSummaryReporting:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_multiple_signals: Environment with various types of detection signals
         """
-        pass
+        # Given: EnvironmentDetector with multiple environment signals
+        with patch.dict('os.environ', {'ENVIRONMENT': 'production', 'NODE_ENV': 'production'}, clear=True):
+            # When: Calling get_environment_summary()
+            summary = environment_detector.get_environment_summary()
 
-    def test_get_environment_summary_includes_confidence_details(self):
+            # Then: all_signals list contains formatted signal information for analysis
+            signals = summary['all_signals']
+            assert isinstance(signals, list)
+
+            if signals:  # If signals were detected
+                for signal in signals:
+                    assert isinstance(signal, dict)
+                    # Verify signal has required format fields
+                    required_signal_fields = ['source', 'value', 'environment', 'confidence', 'reasoning']
+                    for field in required_signal_fields:
+                        assert field in signal, f"Signal missing field: {field}"
+
+                    # Verify field types
+                    assert isinstance(signal['source'], str)
+                    assert isinstance(signal['value'], str)
+                    assert isinstance(signal['environment'], str)
+                    assert isinstance(signal['confidence'], float)
+                    assert isinstance(signal['reasoning'], str)
+
+    def test_get_environment_summary_includes_confidence_details(self, environment_detector):
         """
         Test that get_environment_summary includes detailed confidence information.
 
@@ -332,9 +480,28 @@ class TestEnvironmentDetectorSummaryReporting:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_confidence_scenarios: Environment conditions producing different confidence levels
         """
-        pass
+        # Given: EnvironmentDetector with varying confidence signals
+        test_scenarios = [
+            {'ENVIRONMENT': 'production'},  # High confidence
+            {'NODE_ENV': 'development'},    # Medium confidence
+            {}                              # Low confidence (fallback)
+        ]
 
-    def test_get_environment_summary_preserves_signal_confidence_scores(self):
+        for env_vars in test_scenarios:
+            with patch.dict('os.environ', env_vars, clear=True):
+                # When: Calling get_environment_summary()
+                summary = environment_detector.get_environment_summary()
+
+                # Then: Returns confidence score and reasoning explaining confidence assessment
+                assert 'confidence' in summary
+                assert isinstance(summary['confidence'], float)
+                assert 0.0 <= summary['confidence'] <= 1.0
+
+                assert 'reasoning' in summary
+                assert isinstance(summary['reasoning'], str)
+                assert len(summary['reasoning']) > 0
+
+    def test_get_environment_summary_preserves_signal_confidence_scores(self, environment_detector):
         """
         Test that get_environment_summary preserves original signal confidence scores.
 
@@ -353,9 +520,25 @@ class TestEnvironmentDetectorSummaryReporting:
             - environment_detector: EnvironmentDetector with default configuration
             - mock_known_confidence_signals: Environment signals with predetermined confidence scores
         """
-        pass
+        # Given: EnvironmentDetector with signals having known confidence scores
+        with patch.dict('os.environ', {'ENVIRONMENT': 'production'}, clear=True):
+            # When: Calling get_environment_summary()
+            summary = environment_detector.get_environment_summary()
 
-    def test_get_environment_summary_uses_default_context(self):
+            # Then: all_signals preserve original confidence values for each signal
+            signals = summary['all_signals']
+            if signals:  # If signals were detected
+                for signal in signals:
+                    assert 'confidence' in signal
+                    assert isinstance(signal['confidence'], float)
+                    assert 0.0 <= signal['confidence'] <= 1.0
+
+                    # Confidence should be preserved from original signal
+                    # High confidence for ENVIRONMENT variable should be around 0.95
+                    if signal['source'] == 'ENVIRONMENT':
+                        assert signal['confidence'] >= 0.90
+
+    def test_get_environment_summary_uses_default_context(self, environment_detector):
         """
         Test that get_environment_summary uses DEFAULT feature context for detection.
 
@@ -373,4 +556,22 @@ class TestEnvironmentDetectorSummaryReporting:
         Fixtures Used:
             - environment_detector: EnvironmentDetector with default configuration
         """
-        pass
+        # Given: EnvironmentDetector instance
+        # (provided by environment_detector fixture)
+
+        # When: Calling get_environment_summary()
+        summary = environment_detector.get_environment_summary()
+
+        # Then: Uses FeatureContext.DEFAULT for environment detection
+        # We can verify this by checking that no feature-specific metadata is present
+        metadata = summary.get('metadata', {})
+
+        # Default context should not have feature-specific keys
+        feature_specific_keys = ['ai_prefix', 'enable_ai_cache_enabled', 'enforce_auth_enabled']
+        for key in feature_specific_keys:
+            assert key not in metadata, f"Found feature-specific key '{key}' in default context summary"
+
+        # Verify this is behaving like default context by comparing with explicit call
+        default_env_info = environment_detector.detect_environment(FeatureContext.DEFAULT)
+        assert summary['detected_environment'] == default_env_info.environment.value
+        assert summary['confidence'] == default_env_info.confidence
