@@ -503,13 +503,16 @@ class EnvironmentDetector:
         # Determine final environment with confidence
         final_environment = self._determine_environment(context_info['signals'])
         
+        # Combine all signals (base detection signals + feature-specific additional signals)
+        all_signals = signals + context_info['additional_signals']
+
         return EnvironmentInfo(
             environment=final_environment['environment'],
             confidence=final_environment['confidence'],
             reasoning=final_environment['reasoning'],
             detected_by=final_environment['detected_by'],
             feature_context=feature_context,
-            additional_signals=context_info['additional_signals'],
+            additional_signals=all_signals,
             metadata=context_info['metadata']
         )
     
@@ -707,6 +710,7 @@ class EnvironmentDetector:
             - For files: checks file existence using Path.exists()
             - Returns False for malformed indicators or missing conditions
             - Does not raise exceptions for invalid paths or variables
+            - Logs warnings for file system access errors but continues gracefully
 
         Examples:
             >>> detector = EnvironmentDetector()
@@ -721,13 +725,21 @@ class EnvironmentDetector:
             >>> assert detector._check_indicator(".env") == True
             >>> assert detector._check_indicator("nonexistent.file") == False
         """
-        if '=' in indicator:
-            # Environment variable check
-            var, expected = indicator.split('=', 1)
-            return os.getenv(var, '').lower() == expected.lower()
-        else:
-            # File existence check
-            return Path(indicator).exists()
+        try:
+            if '=' in indicator:
+                # Environment variable check
+                var, expected = indicator.split('=', 1)
+                return os.getenv(var, '').lower() == expected.lower()
+            else:
+                # File existence check
+                return Path(indicator).exists()
+        except (OSError, PermissionError, IOError) as e:
+            # File system access errors should not break detection
+            logger.warning(
+                f"Unable to check system indicator '{indicator}': {e}",
+                extra={"indicator": indicator, "error": str(e)}
+            )
+            return False
     
     def _detect_from_patterns(self) -> List[EnvironmentSignal]:
         """
@@ -749,6 +761,7 @@ class EnvironmentDetector:
             - Stops at first match per pattern category for efficiency
             - Assigns moderate confidence (0.60-0.70) as patterns can be ambiguous
             - Returns empty list if no HOSTNAME set or no patterns match
+            - Logs warnings for invalid regex patterns but continues with valid patterns
 
         Examples:
             >>> # With HOSTNAME=api-prod-01.example.com
@@ -774,15 +787,28 @@ class EnvironmentDetector:
             
             for patterns, environment, confidence in env_patterns:
                 for pattern in patterns:
-                    if re.match(pattern, hostname, re.IGNORECASE):
-                        signals.append(EnvironmentSignal(
-                            source="hostname_pattern",
-                            value=hostname,
-                            environment=environment,
-                            confidence=confidence,
-                            reasoning=f"Hostname '{hostname}' matches {environment.value} pattern"
-                        ))
-                        break
+                    try:
+                        if re.match(pattern, hostname, re.IGNORECASE):
+                            signals.append(EnvironmentSignal(
+                                source="hostname_pattern",
+                                value=hostname,
+                                environment=environment,
+                                confidence=confidence,
+                                reasoning=f"Hostname '{hostname}' matches {environment.value} pattern"
+                            ))
+                            break
+                    except re.error as e:
+                        # Log invalid pattern but continue with other patterns
+                        logger.warning(
+                            f"Skipping invalid regex pattern in {environment.value} detection",
+                            extra={
+                                "pattern": pattern,
+                                "environment_type": environment.value,
+                                "regex_error": str(e),
+                                "hostname": hostname
+                            }
+                        )
+                        continue
         
         return signals
     
