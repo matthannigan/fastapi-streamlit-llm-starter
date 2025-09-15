@@ -56,7 +56,7 @@ graph TB
 - ✅ **Strategy-Based Operations**: Multiple resilience strategies (aggressive, balanced, conservative, critical)
 - ✅ **Comprehensive API**: 38 endpoints across 8 focused modules for complete management
 - ✅ **Performance Monitoring**: Real-time metrics, benchmarking, and health monitoring
-- ✅ **Environment Detection**: Automatic environment detection with intelligent preset recommendations
+- ✅ **Environment Detection**: Automatic environment detection with intelligent preset recommendations using the unified [Environment Detection Service](../developer/ENVIRONMENT_DETECTION.md)
 - ✅ **Graceful Degradation**: Fallback mechanisms and safe failure modes
 
 ## Core Components

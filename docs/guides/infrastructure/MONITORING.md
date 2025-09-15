@@ -1455,7 +1455,7 @@ async def start_external_monitoring():
 
 ### Environment-Based Configuration
 
-The monitoring system supports comprehensive environment-based configuration:
+The monitoring system supports comprehensive environment-based configuration, leveraging the unified [Environment Detection Service](../developer/ENVIRONMENT_DETECTION.md) for consistent environment classification:
 
 ```python
 import os
