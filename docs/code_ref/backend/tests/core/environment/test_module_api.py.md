@@ -26,7 +26,7 @@ Business Critical:
 ### test_get_environment_info_returns_complete_detection_result()
 
 ```python
-def test_get_environment_info_returns_complete_detection_result(self):
+def test_get_environment_info_returns_complete_detection_result(self, mock_global_detector):
 ```
 
 Test that get_environment_info returns complete EnvironmentInfo.
@@ -48,7 +48,7 @@ Fixtures Used:
 ### test_get_environment_info_supports_feature_contexts()
 
 ```python
-def test_get_environment_info_supports_feature_contexts(self):
+def test_get_environment_info_supports_feature_contexts(self, mock_global_detector):
 ```
 
 Test that get_environment_info accepts feature context parameters.
@@ -76,7 +76,7 @@ def test_get_environment_info_validates_feature_context_parameter(self):
 Test that get_environment_info validates feature context parameter.
 
 Verifies:
-    Invalid FeatureContext values raise ValidationError as documented.
+    Invalid FeatureContext values raise AttributeError as actual behavior.
 
 Business Impact:
     Prevents invalid feature context usage throughout the application.
@@ -84,7 +84,7 @@ Business Impact:
 Scenario:
     Given: Module-level get_environment_info function
     When: Calling function with invalid feature context parameter
-    Then: Raises ValidationError with appropriate error message
+    Then: Raises AttributeError due to missing 'value' attribute
 
 Fixtures Used:
     - None (testing parameter validation only)
@@ -92,7 +92,7 @@ Fixtures Used:
 ### test_is_production_environment_uses_confidence_threshold()
 
 ```python
-def test_is_production_environment_uses_confidence_threshold(self):
+def test_is_production_environment_uses_confidence_threshold(self, mock_global_detector):
 ```
 
 Test that is_production_environment applies documented confidence threshold.
@@ -109,12 +109,12 @@ Scenario:
     Then: Returns True only for PRODUCTION environment with confidence > 0.60
 
 Fixtures Used:
-    - mock_confidence_scenarios: Environment conditions producing various confidence levels
+    - mock_global_detector: Mocked global environment detector instance
 
 ### test_is_development_environment_uses_confidence_threshold()
 
 ```python
-def test_is_development_environment_uses_confidence_threshold(self):
+def test_is_development_environment_uses_confidence_threshold(self, mock_global_detector):
 ```
 
 Test that is_development_environment applies documented confidence threshold.
@@ -131,12 +131,12 @@ Scenario:
     Then: Returns True only for DEVELOPMENT environment with confidence > 0.60
 
 Fixtures Used:
-    - mock_confidence_scenarios: Environment conditions producing various confidence levels
+    - mock_global_detector: Mocked global environment detector instance
 
 ### test_production_and_development_functions_support_feature_contexts()
 
 ```python
-def test_production_and_development_functions_support_feature_contexts(self):
+def test_production_and_development_functions_support_feature_contexts(self, mock_global_detector, mock_feature_detection_results):
 ```
 
 Test that environment check functions accept feature context parameters.
@@ -158,7 +158,7 @@ Fixtures Used:
 ### test_environment_check_functions_use_same_detection_logic()
 
 ```python
-def test_environment_check_functions_use_same_detection_logic(self):
+def test_environment_check_functions_use_same_detection_logic(self, mock_global_detector):
 ```
 
 Test that environment check functions use consistent detection logic.

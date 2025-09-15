@@ -26,7 +26,7 @@ Business Critical:
 ### test_detect_with_context_validates_feature_context_parameter()
 
 ```python
-def test_detect_with_context_validates_feature_context_parameter(self):
+def test_detect_with_context_validates_feature_context_parameter(self, environment_detector):
 ```
 
 Test that detect_with_context validates FeatureContext parameter type.
@@ -48,7 +48,7 @@ Fixtures Used:
 ### test_detection_handles_file_system_access_errors()
 
 ```python
-def test_detection_handles_file_system_access_errors(self):
+def test_detection_handles_file_system_access_errors(self, environment_detector, mock_file_system_errors):
 ```
 
 Test that detection handles file system access errors gracefully.
@@ -71,7 +71,7 @@ Fixtures Used:
 ### test_detection_handles_environment_variable_access_errors()
 
 ```python
-def test_detection_handles_environment_variable_access_errors(self):
+def test_detection_handles_environment_variable_access_errors(self, environment_detector, mock_env_access_errors):
 ```
 
 Test that detection handles environment variable access errors gracefully.
@@ -94,7 +94,7 @@ Fixtures Used:
 ### test_detection_handles_regex_pattern_errors_gracefully()
 
 ```python
-def test_detection_handles_regex_pattern_errors_gracefully(self):
+def test_detection_handles_regex_pattern_errors_gracefully(self, mock_problematic_hostname, invalid_patterns_config):
 ```
 
 Test that detection handles regex pattern matching errors gracefully.
@@ -117,7 +117,7 @@ Fixtures Used:
 ### test_detection_provides_meaningful_error_messages()
 
 ```python
-def test_detection_provides_meaningful_error_messages(self):
+def test_detection_provides_meaningful_error_messages(self, environment_detector, mock_error_conditions):
 ```
 
 Test that detection provides clear error messages when failures occur.
@@ -140,7 +140,7 @@ Fixtures Used:
 ### test_detection_maintains_partial_functionality_during_errors()
 
 ```python
-def test_detection_maintains_partial_functionality_during_errors(self):
+def test_detection_maintains_partial_functionality_during_errors(self, environment_detector, mock_partial_failure_conditions):
 ```
 
 Test that detection maintains partial functionality when some mechanisms fail.

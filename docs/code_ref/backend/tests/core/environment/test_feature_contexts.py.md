@@ -26,7 +26,7 @@ Business Critical:
 ### test_detect_with_context_default_context_behavior()
 
 ```python
-def test_detect_with_context_default_context_behavior(self):
+def test_detect_with_context_default_context_behavior(self, environment_detector):
 ```
 
 Test that detect_with_context with DEFAULT context matches basic detection.
@@ -48,7 +48,7 @@ Fixtures Used:
 ### test_detect_with_context_ai_enabled_feature_detection()
 
 ```python
-def test_detect_with_context_ai_enabled_feature_detection(self):
+def test_detect_with_context_ai_enabled_feature_detection(self, environment_detector, mock_ai_environment_vars):
 ```
 
 Test that AI_ENABLED context applies AI-specific detection logic.
@@ -71,7 +71,7 @@ Fixtures Used:
 ### test_detect_with_context_security_enforcement_override()
 
 ```python
-def test_detect_with_context_security_enforcement_override(self):
+def test_detect_with_context_security_enforcement_override(self, environment_detector, mock_security_enforcement_vars):
 ```
 
 Test that SECURITY_ENFORCEMENT context can override environment to production.
@@ -94,7 +94,7 @@ Fixtures Used:
 ### test_detect_with_context_cache_optimization_context()
 
 ```python
-def test_detect_with_context_cache_optimization_context(self):
+def test_detect_with_context_cache_optimization_context(self, environment_detector, mock_cache_environment_vars):
 ```
 
 Test that CACHE_OPTIMIZATION context applies cache-specific detection logic.
@@ -117,7 +117,7 @@ Fixtures Used:
 ### test_detect_with_context_resilience_strategy_context()
 
 ```python
-def test_detect_with_context_resilience_strategy_context(self):
+def test_detect_with_context_resilience_strategy_context(self, environment_detector, mock_resilience_environment_vars):
 ```
 
 Test that RESILIENCE_STRATEGY context applies resilience-specific detection logic.
@@ -140,7 +140,7 @@ Fixtures Used:
 ### test_detect_with_context_adds_feature_specific_metadata()
 
 ```python
-def test_detect_with_context_adds_feature_specific_metadata(self):
+def test_detect_with_context_adds_feature_specific_metadata(self, environment_detector, mock_feature_environment_vars):
 ```
 
 Test that feature contexts add relevant metadata to detection results.
@@ -163,7 +163,7 @@ Fixtures Used:
 ### test_detect_with_context_preserves_base_signals()
 
 ```python
-def test_detect_with_context_preserves_base_signals(self):
+def test_detect_with_context_preserves_base_signals(self, environment_detector, mock_security_enforcement_vars):
 ```
 
 Test that feature contexts preserve base environment signals.

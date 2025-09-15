@@ -269,7 +269,7 @@ Raises:
 ### from_file()
 
 ```python
-def from_file(self, file_path: Union[str, Path]) -> 'CacheConfigBuilder':
+def from_file(self, file_path: str | Path) -> 'CacheConfigBuilder':
 ```
 
 Load configuration from a JSON file.
@@ -333,7 +333,7 @@ Returns:
 ### save_to_file()
 
 ```python
-def save_to_file(self, file_path: Union[str, Path], create_dirs: bool = True) -> None:
+def save_to_file(self, file_path: str | Path, create_dirs: bool = True) -> None:
 ```
 
 Save current configuration to a JSON file.

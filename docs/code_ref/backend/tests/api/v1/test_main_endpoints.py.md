@@ -73,23 +73,3 @@ def test_openapi_schema(self, client: TestClient):
 ```
 
 Test that OpenAPI schema is accessible.
-
-## TestAuthentication
-
-Test authentication functionality.
-
-### test_auth_status_with_valid_key()
-
-```python
-def test_auth_status_with_valid_key(self, authenticated_client):
-```
-
-Test auth status with valid API key.
-
-### test_auth_status_without_key()
-
-```python
-def test_auth_status_without_key(self, client):
-```
-
-Test auth status without API key in test environment.

@@ -28,11 +28,11 @@ workflows in domain services.
 ## Dependencies & Integration
 
 ### Infrastructure Dependencies
-- `app.infrastructure.security.verify_api_key`: Infrastructure authentication service
+- `app.infrastructure.security.verify_api_key_http`: HTTP-compatible authentication service
 - `app.schemas.ErrorResponse`: Structured error response model
 
 ### FastAPI Dependencies
-- `verify_api_key()`: Required authentication dependency injection
+- `verify_api_key_http()`: HTTP-compatible authentication dependency injection
 
 ## Usage Examples
 
@@ -68,7 +68,7 @@ Customize the authentication logic and responses based on your application needs
 ## auth_status()
 
 ```python
-async def auth_status(api_key: str = Depends(verify_api_key)):
+async def auth_status(api_key: str = Depends(verify_api_key_http)):
 ```
 
 Authentication status validation endpoint with secure API key verification and truncation.

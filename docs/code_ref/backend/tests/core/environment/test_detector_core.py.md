@@ -47,7 +47,7 @@ Fixtures Used:
 ### test_environment_detector_initializes_with_custom_config()
 
 ```python
-def test_environment_detector_initializes_with_custom_config(self):
+def test_environment_detector_initializes_with_custom_config(self, custom_detection_config):
 ```
 
 Test that EnvironmentDetector accepts custom DetectionConfig.
@@ -91,7 +91,7 @@ Fixtures Used:
 ### test_environment_detector_logs_initialization()
 
 ```python
-def test_environment_detector_logs_initialization(self):
+def test_environment_detector_logs_initialization(self, mock_logger):
 ```
 
 Test that EnvironmentDetector logs initialization for monitoring.
@@ -126,7 +126,7 @@ Business Critical:
 ### test_detect_environment_returns_environment_info()
 
 ```python
-def test_detect_environment_returns_environment_info(self):
+def test_detect_environment_returns_environment_info(self, environment_detector):
 ```
 
 Test that detect_environment returns complete EnvironmentInfo result.
@@ -148,7 +148,7 @@ Fixtures Used:
 ### test_detect_environment_with_explicit_feature_context()
 
 ```python
-def test_detect_environment_with_explicit_feature_context(self):
+def test_detect_environment_with_explicit_feature_context(self, environment_detector):
 ```
 
 Test that detect_environment accepts feature context parameter.
@@ -170,7 +170,7 @@ Fixtures Used:
 ### test_detect_environment_confidence_within_valid_range()
 
 ```python
-def test_detect_environment_confidence_within_valid_range(self):
+def test_detect_environment_confidence_within_valid_range(self, environment_detector, mock_environment_conditions):
 ```
 
 Test that detect_environment returns confidence scores in valid range.
@@ -193,7 +193,7 @@ Fixtures Used:
 ### test_detect_environment_fallback_when_no_signals()
 
 ```python
-def test_detect_environment_fallback_when_no_signals(self):
+def test_detect_environment_fallback_when_no_signals(self, environment_detector, clean_environment):
 ```
 
 Test that detect_environment provides fallback when no environment signals found.
@@ -216,7 +216,7 @@ Fixtures Used:
 ### test_detect_environment_includes_reasoning()
 
 ```python
-def test_detect_environment_includes_reasoning(self):
+def test_detect_environment_includes_reasoning(self, environment_detector):
 ```
 
 Test that detect_environment provides human-readable reasoning.
@@ -239,7 +239,7 @@ Fixtures Used:
 ### test_detect_environment_includes_detected_by_source()
 
 ```python
-def test_detect_environment_includes_detected_by_source(self):
+def test_detect_environment_includes_detected_by_source(self, environment_detector):
 ```
 
 Test that detect_environment identifies primary detection mechanism.
@@ -275,7 +275,7 @@ Business Critical:
 ### test_get_environment_summary_returns_complete_structure()
 
 ```python
-def test_get_environment_summary_returns_complete_structure(self):
+def test_get_environment_summary_returns_complete_structure(self, environment_detector):
 ```
 
 Test that get_environment_summary returns comprehensive detection information.
@@ -299,7 +299,7 @@ Fixtures Used:
 ### test_get_environment_summary_formats_signals_for_analysis()
 
 ```python
-def test_get_environment_summary_formats_signals_for_analysis(self):
+def test_get_environment_summary_formats_signals_for_analysis(self, environment_detector):
 ```
 
 Test that get_environment_summary formats signals for human analysis.
@@ -322,7 +322,7 @@ Fixtures Used:
 ### test_get_environment_summary_includes_confidence_details()
 
 ```python
-def test_get_environment_summary_includes_confidence_details(self):
+def test_get_environment_summary_includes_confidence_details(self, environment_detector):
 ```
 
 Test that get_environment_summary includes detailed confidence information.
@@ -345,7 +345,7 @@ Fixtures Used:
 ### test_get_environment_summary_preserves_signal_confidence_scores()
 
 ```python
-def test_get_environment_summary_preserves_signal_confidence_scores(self):
+def test_get_environment_summary_preserves_signal_confidence_scores(self, environment_detector):
 ```
 
 Test that get_environment_summary preserves original signal confidence scores.
@@ -368,7 +368,7 @@ Fixtures Used:
 ### test_get_environment_summary_uses_default_context()
 
 ```python
-def test_get_environment_summary_uses_default_context(self):
+def test_get_environment_summary_uses_default_context(self, environment_detector):
 ```
 
 Test that get_environment_summary uses DEFAULT feature context for detection.
