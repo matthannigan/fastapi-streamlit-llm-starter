@@ -27,6 +27,100 @@ The security infrastructure follows a **defense-in-depth architecture** with mul
 4. **Integration Layer**: FastAPI dependency injection with optional authentication
 5. **Monitoring Layer**: Security event logging and audit trail capabilities
 
+### 4-Layer Authentication Architecture
+
+The authentication system is built on a **4-layer architectural pattern** that provides separation of concerns, extensibility, and optimal performance:
+
+#### Layer 1: `AuthConfig` - Configuration Management
+**Purpose**: Environment-based configuration management with automatic mode detection
+**Responsibilities**:
+- Parse and validate environment variables (`AUTH_MODE`, `API_KEY`, etc.)
+- Detect operational modes (development, simple, advanced, test)
+- Manage feature flags (`ENABLE_USER_TRACKING`, `ENABLE_REQUEST_LOGGING`)
+- Provide runtime configuration queries
+
+```python
+# Layer 1: Configuration initialization
+auth_config = AuthConfig()
+print(f"Mode: {auth_config.mode}")  # "simple", "advanced", "development", "test"
+print(f"Features: {auth_config.get_enabled_features()}")
+```
+
+#### Layer 2: `APIKeyAuth` - Core Multi-Key Validation Logic
+**Purpose**: Core authentication engine with multi-key support and metadata management
+**Responsibilities**:
+- Multi-key validation (primary + additional keys)
+- Secure key comparison using constant-time algorithms
+- Key metadata and user context management
+- Thread-safe operations for concurrent environments
+
+```python
+# Layer 2: Core authentication logic
+api_key_auth = APIKeyAuth(auth_config)
+is_valid = api_key_auth.verify_api_key("your-api-key")
+metadata = api_key_auth.get_key_metadata("your-api-key")
+```
+
+#### Layer 3: `FastAPI Dependencies` - Direct Route Protection
+**Purpose**: Direct dependency functions for route-level authentication
+**Responsibilities**:
+- Direct integration with FastAPI dependency injection
+- Core authentication logic without HTTP-specific handling
+- Suitable for advanced use cases requiring direct access
+
+```python
+# Layer 3: Direct FastAPI dependencies
+from app.infrastructure.security import verify_api_key
+
+@app.post("/advanced/endpoint")
+async def advanced_endpoint(api_key: str = Depends(verify_api_key)):
+    """Direct dependency - advanced use cases."""
+    return {"authenticated": True}
+```
+
+#### Layer 4: `HTTP Wrapper Dependencies` - Middleware-Compatible Dependencies
+**Purpose**: HTTP-optimized dependencies for standard web endpoints
+**Responsibilities**:
+- HTTP-specific error handling and responses
+- Middleware compatibility optimization
+- Standard REST API patterns
+- Recommended for most web endpoints
+
+```python
+# Layer 4: HTTP wrapper dependencies (recommended)
+from app.infrastructure.security import verify_api_key_http
+
+@app.post("/v1/standard-endpoint")
+async def standard_endpoint(api_key: str = Depends(verify_api_key_http)):
+    """HTTP wrapper - recommended for most endpoints."""
+    return {"authenticated": True}
+```
+
+### Architecture Benefits
+
+| Layer | Benefit | Use Case |
+|-------|---------|----------|
+| **Layer 1** | Centralized configuration | Environment detection, feature flags |
+| **Layer 2** | Core logic reusability | Custom auth flows, testing |
+| **Layer 3** | Direct FastAPI integration | Advanced authentication scenarios |
+| **Layer 4** | HTTP optimization | Standard REST API endpoints |
+
+### Architectural Flow
+
+```
+Environment Variables → Layer 1 (AuthConfig) → Layer 2 (APIKeyAuth)
+                                                       ↓
+FastAPI Route → Layer 4 (HTTP Wrapper) → Layer 3 (Direct Dependency) → Layer 2
+                                                       ↓
+Authentication Result ← HTTP Response ← Validation Result ← Core Logic
+```
+
+Each layer builds upon the previous one, allowing for:
+- **Separation of Concerns**: Each layer has a specific responsibility
+- **Extensibility**: New authentication methods can be added at any layer
+- **Performance**: HTTP-optimized paths for common use cases
+- **Testability**: Each layer can be tested independently
+
 ## Core Components Comparison
 
 ### Authentication & Authorization (`auth.py`)
@@ -103,12 +197,12 @@ api_key_auth = APIKeyAuth(auth_config)
 
 ```python
 from fastapi import FastAPI, Depends
-from app.infrastructure.security import verify_api_key
+from app.infrastructure.security import verify_api_key_http
 
 app = FastAPI()
 
 @app.get("/protected")
-async def protected_endpoint(api_key: str = Depends(verify_api_key)):
+async def protected_endpoint(api_key: str = Depends(verify_api_key_http)):
     """Protected endpoint requiring valid API key."""
     return {"message": "Access granted", "key": api_key}
 ```
@@ -184,12 +278,12 @@ The security system integrates seamlessly with FastAPI's dependency injection:
 
 ```python
 from fastapi import FastAPI, Depends, HTTPException
-from app.infrastructure.security import verify_api_key, get_auth_status
+from app.infrastructure.security import verify_api_key_http, get_auth_status
 
 app = FastAPI()
 
 # Global dependency for protected routes
-async def require_auth(api_key: str = Depends(verify_api_key)) -> str:
+async def require_auth(api_key: str = Depends(verify_api_key_http)) -> str:
     """Global authentication dependency."""
     return api_key
 
@@ -201,7 +295,7 @@ class SecureTextProcessingService:
     async def process_text(
         self, 
         text: str, 
-        api_key: str = Depends(verify_api_key)
+        api_key: str = Depends(verify_api_key_http)
     ) -> dict:
         """Secure text processing with authentication."""
         return {
@@ -641,10 +735,10 @@ async def get_data():
     return {"data": "sensitive information"}
 
 # After: Protected endpoints
-from app.infrastructure.security import verify_api_key
+from app.infrastructure.security import verify_api_key_http
 
 @app.get("/data")
-async def get_data(api_key: str = Depends(verify_api_key)):
+async def get_data(api_key: str = Depends(verify_api_key_http)):
     return {"data": "sensitive information", "authenticated": True}
 ```
 
@@ -710,3 +804,19 @@ async def advanced_endpoint(
 4. **Monitoring**: Include authentication metrics in application monitoring
 
 This security infrastructure provides production-ready, defense-in-depth security practices designed to protect FastAPI applications while maintaining flexibility for development and testing environments.
+
+## Related Documentation
+
+### User Guides
+- **[Authentication Guide](../../../docs/guides/developer/AUTHENTICATION.md)**: Comprehensive user guide for authentication implementation, modes, and troubleshooting
+- **[Security Infrastructure Guide](../../../docs/guides/infrastructure/SECURITY.md)**: Infrastructure-level security patterns and integration examples
+
+### Implementation Examples
+- **[Authentication Status API](../../api/v1/auth.py)**: Production example demonstrating `verify_api_key_http` usage and best practices
+
+### Architecture References
+- **[Infrastructure vs Domain Services](../../../docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Understanding the architectural separation principles
+- **[Dual API Architecture](../../../docs/reference/key-concepts/DUAL_API_ARCHITECTURE.md)**: Security context for the dual-API design
+
+### Configuration
+- **[Environment Variables Guide](../../../docs/get-started/ENVIRONMENT_VARIABLES.md)**: Authentication environment variable configuration examples
