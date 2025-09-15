@@ -124,12 +124,12 @@ Core authentication logic with API key validation and metadata management.
 **Basic Authentication Protection**:
 ```python
 from fastapi import FastAPI, Depends
-from app.infrastructure.security import verify_api_key
+from app.infrastructure.security import verify_api_key_http
 
 app = FastAPI()
 
 @app.get("/protected")
-async def protected_endpoint(api_key: str = Depends(verify_api_key)):
+async def protected_endpoint(api_key: str = Depends(verify_api_key_http)):
     """Protected endpoint requiring valid API key."""
     return {"message": "Access granted", "authenticated": True}
 ```
@@ -228,12 +228,12 @@ The security system integrates seamlessly with FastAPI's dependency injection sy
 
 ```python
 from fastapi import FastAPI, Depends, HTTPException
-from app.infrastructure.security import verify_api_key, get_auth_status
+from app.infrastructure.security import verify_api_key_http, get_auth_status
 
 app = FastAPI()
 
 # Global dependency for protected routes
-async def require_auth(api_key: str = Depends(verify_api_key)) -> str:
+async def require_auth(api_key: str = Depends(verify_api_key_http)) -> str:
     """Global authentication dependency."""
     return api_key
 
@@ -243,9 +243,9 @@ class SecureTextProcessingService:
         self.auth_required = True
     
     async def process_text(
-        self, 
-        text: str, 
-        api_key: str = Depends(verify_api_key)
+        self,
+        text: str,
+        api_key: str = Depends(verify_api_key_http)
     ) -> dict:
         """Secure text processing with authentication."""
         return {
@@ -842,7 +842,7 @@ Optional API key verification for endpoints supporting both authenticated and an
 - **Returns**: API key string or None
 - **Use Case**: Flexible endpoint access patterns
 
-#### `verify_api_key_with_metadata(api_key: str = Depends(verify_api_key)) -> dict`
+#### `verify_api_key_with_metadata(api_key: str = Depends(verify_api_key_http)) -> dict`
 Enhanced verification returning API key with associated metadata.
 - **Parameters**: `api_key` - Validated API key
 - **Returns**: Dictionary with key, metadata, and permissions
@@ -997,10 +997,10 @@ async def get_data():
     return {"data": "sensitive information"}
 
 # After: Protected endpoints
-from app.infrastructure.security import verify_api_key
+from app.infrastructure.security import verify_api_key_http
 
 @app.get("/data")
-async def get_data(api_key: str = Depends(verify_api_key)):
+async def get_data(api_key: str = Depends(verify_api_key_http)):
     return {"data": "sensitive information", "authenticated": True}
 ```
 

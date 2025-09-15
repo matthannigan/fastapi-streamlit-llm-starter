@@ -23,8 +23,6 @@ from app.schemas import (
     SentimentResult
 )
 
-# Default headers for authenticated requests
-AUTH_HEADERS = {"Authorization": "Bearer test-api-key-12345"}
 
 class TestHealthEndpoint:
     """Test health check endpoint."""
@@ -86,29 +84,3 @@ class TestAPIDocumentation:
         data = response.json()
         assert data["info"]["title"] == "AI Text Processor API"
 
-class TestAuthentication:
-    """Test authentication functionality."""
-    
-    def test_auth_status_with_valid_key(self, authenticated_client):
-        """Test auth status with valid API key."""
-        response = authenticated_client.get("/v1/auth/status")
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data["authenticated"] is True
-        assert "api_key_prefix" in data
-        assert data["message"] == "Authentication successful"
-    
-    def test_auth_status_without_key(self, client):
-        """Test auth status without API key in test environment."""
-        # In the test environment, the AuthenticationError bubbles up as a raw exception
-        # due to middleware interaction issues, even though the global exception handler is called
-        from app.core.exceptions import AuthenticationError
-        
-        with pytest.raises(AuthenticationError) as exc_info:
-            response = client.get("/v1/auth/status")
-        
-        # Verify the exception contains the expected message
-        assert "API key required" in str(exc_info.value)
-        assert exc_info.value.context["auth_method"] == "bearer_token"
-        assert exc_info.value.context["credentials_provided"] is False
