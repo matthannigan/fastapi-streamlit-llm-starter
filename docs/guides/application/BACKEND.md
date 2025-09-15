@@ -39,6 +39,7 @@ The **Core Module** (`app/core/`) serves as the critical integration layer that 
 
 - **Configuration Management** (`config.py`): Centralized settings with validation, resilience presets, and environment variable support
 - **Exception Handling** (`exceptions.py`): Unified exception hierarchy with intelligent classification for retry logic
+- **Environment Detection** (`environment.py`): Unified environment classification with confidence scoring for consistent infrastructure configuration
 - **Middleware Infrastructure** (`middleware.py`): Production-ready middleware stack with CORS, security, logging, and monitoring
 
 **Key Integration Role**: The core module acts as the central nervous system that enables your domain logic to seamlessly integrate with production-ready infrastructure services without tight coupling.
@@ -302,6 +303,7 @@ backend/
 │   │
 │   ├── core/                           # Application-wide setup
 │   │   ├── config.py                   # Centralized Pydantic settings
+│   │   ├── environment.py              # Unified environment detection service
 │   │   ├── exceptions.py               # Custom exception classes
 │   │   └── middleware.py               # CORS, error handling middleware
 │   │
@@ -556,7 +558,8 @@ This provides:
 - **[Resilience Infrastructure](./infrastructure/RESILIENCE.md)**: Circuit breakers, retry mechanisms, and performance monitoring
 - **[Security Infrastructure](./infrastructure/SECURITY.md)**: Defense-in-depth security for AI-powered applications
 - **[Monitoring Infrastructure](./infrastructure/MONITORING.md)**: Comprehensive observability and performance analytics
-- **[Authentication Guide](./developer/AUTHENTICATION.md)**: Multi-key authentication system configuration
+- **[Authentication Guide](../developer/AUTHENTICATION.md)**: Multi-key authentication system configuration
+- **[Environment Detection Guide](../developer/ENVIRONMENT_DETECTION.md)**: Unified environment detection service for consistent infrastructure configuration
 
 ## 📄 License
 
