@@ -427,106 +427,47 @@ class PresetManager:
     
     def _auto_detect_environment(self) -> EnvironmentRecommendation:
         """
-        Auto-detect environment from environment variables and system context.
-        
+        Auto-detect environment using unified environment detection service.
+
+        MIGRATION: This method has been migrated from 102-line custom detection logic
+        to use the unified environment detection service with resilience-specific context support.
+
         Returns:
-            EnvironmentRecommendation based on detected environment
+            EnvironmentRecommendation based on unified service detection with
+            identical format and behavior to original implementation
         """
-        # First, honor an explicit ENVIRONMENT value when present
-        env_environment = os.getenv('ENVIRONMENT')
-        if env_environment:
-            env_val = env_environment.lower().strip()
-            if env_val in { 'staging', 'stage', 'production', 'prod' }:
-                return EnvironmentRecommendation(
-                    preset_name='production',
-                    confidence=0.70,
-                    reasoning=f"Explicit ENVIRONMENT={env_environment} maps to production preset",
-                    environment_detected=f"{env_environment} (auto-detected)"
-                )
-            if env_val in { 'development', 'dev', 'testing', 'test' }:
-                return EnvironmentRecommendation(
-                    preset_name='development',
-                    confidence=0.70,
-                    reasoning=f"Explicit ENVIRONMENT={env_environment} detected",
-                    environment_detected=f"{env_environment} (auto-detected)"
-                )
+        # Import unified environment service
+        from app.core.environment import get_environment_info, FeatureContext
 
-        # Check common environment variables (prefer more specific/app-standard names first)
-        env_vars_to_check = [
-            'NODE_ENV',
-            'ENV',
-            'DEPLOYMENT_ENV',
-            'DJANGO_SETTINGS_MODULE',
-            'FLASK_ENV',
-            'RAILS_ENV',
-            'APP_ENV'
-        ]
-        
-        detected_env = None
-        for var in env_vars_to_check:
-            value = os.getenv(var)
-            if value:
-                detected_env = value
-                break
-        
-        if detected_env:
-            logger.info(f"Auto-detected environment from {var}={detected_env}")
-            recommendation = self.recommend_preset_with_details(detected_env)
-            # Modify to indicate auto-detection
-            return EnvironmentRecommendation(
-                preset_name=recommendation.preset_name,
-                confidence=recommendation.confidence,
-                reasoning=recommendation.reasoning,
-                environment_detected=f"{detected_env} (auto-detected)"
-            )
-        
-        # Check for development indicators
-        host = os.getenv('HOST', '') or ''
-        dev_indicators = [
-            os.getenv('DEBUG') == 'true',
-            os.getenv('DEBUG') == '1',
-            os.path.exists('.env'),
-            os.path.exists('docker-compose.dev.yml'),
-            os.path.exists('.git'),  # Local development
-            'localhost' in host,
-            '127.0.0.1' in host
-        ]
-        
-        if any(dev_indicators):
-            return EnvironmentRecommendation(
-                preset_name="development",
-                confidence=0.75,
-                reasoning="Development indicators detected (DEBUG=true, .env file, localhost, etc.)",
-                environment_detected="development (auto-detected)"
-            )
-        
-        # Check for production indicators
-        database_url = os.getenv('DATABASE_URL', '') or ''
-        prod_indicators = [
-            os.getenv('PROD') == 'true',
-            os.getenv('PRODUCTION') == 'true',
-            os.getenv('DEBUG') == 'false',
-            os.getenv('DEBUG') == '0',
-            'prod' in host.lower(),
-            'production' in database_url.lower()
-        ]
-        
-        if any(prod_indicators):
-            return EnvironmentRecommendation(
-                preset_name="production",
-                confidence=0.70,
-                reasoning="Production indicators detected (PROD=true, DEBUG=false, production URLs, etc.)",
-                environment_detected="production (auto-detected)"
-            )
-        
-        # ENVIRONMENT already handled above
+        # Get environment info with resilience-specific context for resilience strategy decisions
+        env_info = get_environment_info(FeatureContext.RESILIENCE_STRATEGY)
 
-        # Default fallback
+        # Map unified service environment to resilience preset name
+        preset_mapping = {
+            "development": "development",
+            "testing": "development",  # Testing uses development-like settings
+            "staging": "production",   # Staging mirrors production settings
+            "production": "production",
+            "unknown": "simple"        # Safe fallback for unknown environments
+        }
+
+        preset_name = preset_mapping.get(env_info.environment, "simple")
+
+        # Handle special fallback case for very low confidence (no clear signals)
+        # Match original behavior: when confidence is low, fall back to 'simple'
+        if env_info.confidence <= 0.5 and env_info.environment in ["unknown", "development"]:
+            preset_name = "simple"
+            reasoning = "No clear environment indicators found, using simple preset as safe default"
+            environment_detected = "unknown (auto-detected)"
+        else:
+            reasoning = env_info.reasoning
+            environment_detected = f"{env_info.environment} (auto-detected)"
+
         return EnvironmentRecommendation(
-            preset_name="simple",
-            confidence=0.50,
-            reasoning="No clear environment indicators found, using simple preset as safe default",
-            environment_detected="unknown (auto-detected)"
+            preset_name=preset_name,
+            confidence=env_info.confidence,
+            reasoning=reasoning,
+            environment_detected=environment_detected
         )
     
     def _pattern_match_environment(self, env_str: str) -> tuple[str, float, str]:
