@@ -404,6 +404,24 @@
     ],
     "last_analyzed": "2025-01-31T10:00:00Z"
   },
+  "guides/developer/ENVIRONMENT_DETECTION.md": {
+    "title": "Environment Detection Service",
+    "topic_category": "infrastructure",
+    "audience_level": "advanced",
+    "description": "Unified environment detection service providing centralized environment classification across all backend infrastructure services with confidence scoring and feature-aware detection",
+    "dependencies": [
+      "reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "followups": [
+      "guides/infrastructure/SECURITY.md",
+      "guides/infrastructure/RESILIENCE.md",
+      "guides/infrastructure/cache/CACHE.md",
+      "guides/infrastructure/MONITORING.md",
+      "guides/developer/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-09-15T10:00:00Z"
+  },
   "guides/developer/EXCEPTION_HANDLING.md": {
     "title": "Exception Handling Guide",
     "topic_category": "developer",

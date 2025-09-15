@@ -333,7 +333,7 @@ graph TD
 
 ### Environment-Based Configuration
 
-The cache infrastructure supports flexible configuration through environment variables and preset systems:
+The cache infrastructure supports flexible configuration through environment variables and preset systems, leveraging the unified [Environment Detection Service](../../developer/ENVIRONMENT_DETECTION.md) for consistent environment classification:
 
 ```bash
 # Quick Setup with Presets

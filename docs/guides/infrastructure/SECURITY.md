@@ -71,7 +71,7 @@ graph TB
 
 ### Authentication Configuration (`AuthConfig`)
 
-Manages authentication configuration and feature flags with environment-based detection.
+Manages authentication configuration and feature flags with environment-based detection. Uses the unified [Environment Detection Service](../developer/ENVIRONMENT_DETECTION.md) for consistent environment classification across all infrastructure services.
 
 #### Configuration Modes
 

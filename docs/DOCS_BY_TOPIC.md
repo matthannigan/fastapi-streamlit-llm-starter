@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-09-12*
+*Last updated on 2025-09-15*
 
 ## Application
 
@@ -73,6 +73,8 @@ This view organizes all documentation by topic category, providing an alternativ
 - **[Cache Infrastructure Service](guides/infrastructure/cache/CACHE.md)**: Multi-tiered caching capabilities optimized for AI response caching with intelligent strategies, monitoring, and graceful degradation - primary entry point for cache documentation
 
 - **[Cache Infrastructure Testing Guide](guides/infrastructure/cache/testing.md)**: Comprehensive testing strategies, patterns, and best practices including unit tests, integration tests, and CI/CD configuration
+
+- **[Environment Detection Service](guides/developer/ENVIRONMENT_DETECTION.md)**: Unified environment detection service providing centralized environment classification across all backend infrastructure services with confidence scoring and feature-aware detection
 
 - **[Monitoring Infrastructure Service](guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection
 

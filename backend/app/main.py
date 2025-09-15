@@ -191,6 +191,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from app.core.config import settings
 from app.core.middleware import setup_middleware, setup_enhanced_middleware
 from app.infrastructure.security import verify_api_key
+from app.core.environment import is_production_environment, get_environment_info, FeatureContext
 from app.api.v1.health import health_router
 from app.api.v1.auth import auth_router
 from app.api.v1.text_processing import router as text_processing_router
@@ -445,8 +446,24 @@ async def lifespan(app: FastAPI):
     logger.info("Starting FastAPI application")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"AI Model: {settings.ai_model}")
-    logger.info("Public API docs available at: /docs")
-    logger.info("Internal API docs available at: /internal/docs")
+
+    # Environment-aware startup logging
+    try:
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+        is_production_env = is_production_environment()
+
+        logger.info(f"Environment: {env_info.environment} (confidence: {env_info.confidence:.2f})")
+        logger.info("Public API docs available at: /docs")
+
+        if is_production_env:
+            logger.info("Internal API docs: DISABLED (production environment)")
+        else:
+            logger.info("Internal API docs available at: /internal/docs")
+    except Exception as e:
+        # Fallback to original behavior if environment detection fails
+        logger.warning(f"Environment detection failed: {e}")
+        logger.info("Public API docs available at: /docs")
+        logger.info("Internal API docs available at: /internal/docs")
     # Initialize health infrastructure
     try:
         from app.dependencies import initialize_health_infrastructure
@@ -1023,14 +1040,17 @@ def create_internal_app() -> FastAPI:
         }
     ]
     
+    # Environment-aware documentation control
+    is_production = is_production_environment()
+
     internal_app = FastAPI(
         title="AI Text Processor - Internal API",
         description="Internal API for monitoring, administration, and system management.",
         version="1.0.0",
         openapi_version="3.0.3",  # Use 3.0.3 for better Swagger UI compatibility
         docs_url=None,  # Disable default docs to use custom
-        redoc_url="/redoc" if settings.debug else None, # Available at /internal/redoc; disabled in production
-        openapi_url="/openapi.json" if settings.debug else None,  # Available at /internal/openapi.json disabled in production
+        redoc_url="/redoc" if not is_production else None,  # Available at /internal/redoc; disabled in production
+        openapi_url="/openapi.json" if not is_production else None,  # Available at /internal/openapi.json; disabled in production
         openapi_tags=internal_tags_metadata,
     )
     
@@ -1103,8 +1123,24 @@ def create_internal_app() -> FastAPI:
             as a security-controlled gateway to internal API documentation. Access
             is restricted to development environments to maintain operational security.
         """
-        if not settings.debug:
-            raise HTTPException(status_code=404, detail="Documentation not available in production")
+        # Environment-aware documentation protection
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+        is_production_env = is_production_environment()
+
+        if is_production_env:
+            # Enhanced error message with environment detection context
+            logger.warning(
+                f"Internal documentation access blocked in {env_info.environment} environment "
+                f"(confidence: {env_info.confidence:.2f})"
+            )
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "message": "Documentation not available in production",
+                    "environment": env_info.environment.value,
+                    "confidence": env_info.confidence
+                }
+            )
         return HTMLResponse(
             get_custom_swagger_ui_html(
                 openapi_url="/internal/openapi.json",  # Use absolute path to internal API schema
