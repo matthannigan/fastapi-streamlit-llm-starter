@@ -290,17 +290,19 @@ class APIKeyAuth:
         """Load API keys from environment variables."""
         api_keys = set()
         
-        # Primary API key
+        # Primary API key - trim whitespace for consistency
         primary_key = settings.api_key
         if primary_key:
-            api_keys.add(primary_key)
-            # Extension point: add metadata for this key
-            if self.config.enable_user_tracking:
-                self._key_metadata[primary_key] = {
-                    "type": "primary",
-                    "created_at": "system",
-                    "permissions": ["read", "write"]  # Default permissions
-                }
+            primary_key = primary_key.strip()
+            if primary_key:  # Only add non-empty keys after trimming
+                api_keys.add(primary_key)
+                # Extension point: add metadata for this key
+                if self.config.enable_user_tracking:
+                    self._key_metadata[primary_key] = {
+                        "type": "primary",
+                        "created_at": "system",
+                        "permissions": ["read", "write"]  # Default permissions
+                    }
         
         # Additional API keys (comma-separated)
         additional_keys = settings.additional_api_keys
@@ -357,8 +359,36 @@ class APIKeyAuth:
         return metadata
     
     def reload_keys(self):
-        """Reload API keys from environment (useful for runtime updates)."""
+        """
+        Reload API keys from environment variables with metadata consistency.
+
+        Performs complete key and metadata refresh from current environment state,
+        ensuring consistent state between api_keys and _key_metadata.
+
+        Behavior:
+            - Clears existing metadata to prevent orphaned entries
+            - Reloads API keys from current environment variables
+            - Regenerates metadata for new keys when user tracking is enabled
+            - Maintains consistent state between keys and metadata
+            - Logs reload completion for operational monitoring
+
+        Use Cases:
+            - Runtime key rotation without application restart
+            - Adding or removing API keys during operation
+            - Updating key metadata after configuration changes
+
+        Thread Safety:
+            Use carefully in multi-threaded environments as this modifies
+            internal state. Consider implementing proper locking if needed.
+        """
+        # Clear existing metadata before reloading to ensure consistency
+        old_metadata = self._key_metadata.copy()
+        self._key_metadata.clear()
+
+        # Reload keys (this will repopulate metadata via _load_api_keys)
         self.api_keys = self._load_api_keys()
+
+        logger.info(f"Reloaded {len(self.api_keys)} API key(s) in {self.config.get_auth_info()['mode']} mode")
 
 # Global instances
 auth_config = AuthConfig()

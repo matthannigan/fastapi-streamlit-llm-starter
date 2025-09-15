@@ -294,7 +294,26 @@ class APIKeyAuth:
 
     def reload_keys(self):
         """
-        Reload API keys from environment (useful for runtime updates).
+        Reload API keys from environment variables with metadata consistency.
+        
+        Performs complete key and metadata refresh from current environment state,
+        ensuring consistent state between api_keys and _key_metadata.
+        
+        Behavior:
+            - Clears existing metadata to prevent orphaned entries
+            - Reloads API keys from current environment variables
+            - Regenerates metadata for new keys when user tracking is enabled
+            - Maintains consistent state between keys and metadata
+            - Logs reload completion for operational monitoring
+        
+        Use Cases:
+            - Runtime key rotation without application restart
+            - Adding or removing API keys during operation
+            - Updating key metadata after configuration changes
+        
+        Thread Safety:
+            Use carefully in multi-threaded environments as this modifies
+            internal state. Consider implementing proper locking if needed.
         """
         ...
 
