@@ -34,50 +34,89 @@ class TestSecurityValidationEndpoints:
         return {"Authorization": "Bearer test-api-key-12345"}
     
     def test_security_validation_endpoint_unauthorized(self, client):
-        """Test security validation endpoint without authentication."""
+        """
+        Test security validation endpoint rejects unauthenticated requests.
+
+        Business Impact: Prevents unauthorized access to sensitive configuration
+        validation capabilities that could expose system security posture.
+
+        Observable Behavior: Unauthenticated requests should consistently return
+        401 status with proper error structure, maintaining security boundaries.
+        """
         config = {"retry_attempts": 3}
         try:
             response = client.post(
                 "/internal/resilience/config/validate-secure",
                 json={"configuration": config}
             )
+            # Observable outcome: Must reject with proper HTTP auth status
             assert response.status_code == 401
+
+            # Verify security-focused error response structure
+            if response.headers.get('content-type', '').startswith('application/json'):
+                error_data = response.json()
+                assert "detail" in error_data, "Security error should include detailed information"
+
         except Exception as e:
-            # If exception is thrown, it should be an authentication error
+            # Observable outcome: Exception should be authentication-related
             assert "AuthenticationError" in str(type(e)) or "API key required" in str(e)
+            assert hasattr(e, 'context'), "Security exceptions should include context for auditing"
     
     def test_security_validation_endpoint_valid_config(self, client, auth_headers):
-        """Test security validation with valid configuration."""
+        """
+        Test security validation correctly processes valid resilience configuration.
+
+        Business Impact: Ensures legitimate configuration changes are accepted and
+        validated properly, enabling system administrators to maintain resilience
+        patterns without false rejection of valid configurations.
+
+        Observable Behavior: Valid configuration should return success status with
+        comprehensive validation results including security analysis and recommendations.
+
+        Success Criteria:
+        - Returns 200 status for valid configuration
+        - Provides validation result with is_valid=True
+        - Includes security analysis (size, field count)
+        - Returns actionable suggestions for optimization
+        """
         config = {
             "retry_attempts": 3,
             "circuit_breaker_threshold": 5,
             "default_strategy": "balanced"
         }
-        
+
         response = client.post(
             "/internal/resilience/config/validate-secure",
             json={"configuration": config},
             headers=auth_headers
         )
-        
-        assert response.status_code == 200
+
+        # Observable outcome: Should accept valid configuration
+        assert response.status_code == 200, "Valid configuration should be accepted"
         data = response.json()
-        
-        assert "is_valid" in data
-        assert "errors" in data
-        assert "warnings" in data
-        assert "suggestions" in data
-        assert "security_info" in data
-        
-        assert data["is_valid"] is True
-        assert isinstance(data["errors"], list)
-        assert isinstance(data["warnings"], list)
-        assert isinstance(data["suggestions"], list)
-        
+
+        # Observable outcome: Must provide comprehensive validation result
+        required_fields = ["is_valid", "errors", "warnings", "suggestions", "security_info"]
+        for field in required_fields:
+            assert field in data, f"Validation response must include '{field}' for actionability"
+
+        # Observable outcome: Valid config should pass validation
+        assert data["is_valid"] is True, "Valid configuration should pass validation check"
+
+        # Observable outcome: Should provide structured feedback
+        assert isinstance(data["errors"], list), "Errors should be provided as structured list"
+        assert isinstance(data["warnings"], list), "Warnings should be provided as structured list"
+        assert isinstance(data["suggestions"], list), "Suggestions should be provided for optimization"
+
+        # Observable outcome: Security analysis should be comprehensive
         security_info = data["security_info"]
-        assert "size_bytes" in security_info
-        assert "max_size_bytes" in security_info
-        assert "field_count" in security_info
+        security_fields = ["size_bytes", "max_size_bytes", "field_count"]
+        for field in security_fields:
+            assert field in security_info, f"Security analysis must include '{field}' for monitoring"
+
+        # Observable outcome: Should enable graceful degradation decision-making
+        assert security_info["size_bytes"] <= security_info["max_size_bytes"], \
+            "Configuration size should be within acceptable limits for system stability"
         assert "validation_timestamp" in security_info
     
     def test_security_validation_endpoint_invalid_config(self, client, auth_headers):
