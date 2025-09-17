@@ -441,21 +441,164 @@
     "last_analyzed": "2025-08-05T10:00:00Z"
   },
   "guides/testing/TESTING.md": {
-    "title": "Testing Guide",
-    "topic_category": "developer",
-    "audience_level": "intermediate",
-    "description": "Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend",
+    "title": "Testing Overview",
+    "topic_category": "testing",
+    "audience_level": "introductory",
+    "description": "High-level testing philosophy overview with navigation to comprehensive testing guides for unit tests, integration tests, and testing workflows",
     "dependencies": [
       "guides/application/BACKEND.md",
       "guides/application/FRONTEND.md",
       "guides/developer/EXCEPTION_HANDLING.md"
     ],
     "followups": [
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md",
+      "guides/testing/WRITING_TESTS.md",
+      "guides/testing/TEST_EXECUTION_GUIDE.md",
       "guides/developer/DEPLOYMENT.md",
-      "guides/developer/CODE_STANDARDS.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/UNIT_TESTS.md": {
+    "title": "Unit Tests Comprehensive Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Complete guide to behavior-driven unit testing with 3-pillar framework, 5-step AI workflow process, testing patterns, and quality framework for isolated component verification",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/testing/WRITING_TESTS.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "followups": [
+      "guides/testing/INTEGRATION_TESTS.md",
+      "guides/testing/MOCKING_GUIDE.md",
+      "guides/testing/TEST_STRUCTURE.md",
+      "guides/testing/TEST_EXECUTION_GUIDE.md",
+      "guides/testing/COVERAGE_STRATEGY.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/INTEGRATION_TESTS.md": {
+    "title": "Integration Tests Comprehensive Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Complete guide to component collaboration and seam testing strategies with high-fidelity environment testing, boundary verification, and collaborative behavior validation",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/WRITING_TESTS.md"
+    ],
+    "followups": [
+      "guides/testing/MOCKING_GUIDE.md",
+      "guides/testing/TEST_STRUCTURE.md",
+      "guides/testing/TEST_EXECUTION_GUIDE.md",
+      "guides/infrastructure/cache/testing.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/WRITING_TESTS.md": {
+    "title": "Writing Tests Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Docstring-driven test development principles focusing on contract-based testing, behavior verification, and maintainable test design patterns",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "followups": [
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md",
+      "guides/testing/MOCKING_GUIDE.md",
+      "guides/testing/TEST_STRUCTURE.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/MOCKING_GUIDE.md": {
+    "title": "Mocking Strategy Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Strategic approach to mocking emphasizing fakes over mocks, boundary mocking patterns, and maintaining test integrity through minimal mock usage",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md"
+    ],
+    "followups": [
+      "guides/testing/TEST_STRUCTURE.md",
+      "guides/testing/COVERAGE_STRATEGY.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/COVERAGE_STRATEGY.md": {
+    "title": "Coverage Strategy Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Tiered coverage approach emphasizing meaningful metrics over raw percentages, focusing on critical path coverage and quality indicators",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md"
+    ],
+    "followups": [
+      "guides/testing/TEST_EXECUTION_GUIDE.md",
+      "guides/testing/CONTRIBUTING_TESTS.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/TEST_STRUCTURE.md": {
+    "title": "Test Structure Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Test organization patterns, fixture strategies, test categorization, and structural approaches for maintainable test suites",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md"
+    ],
+    "followups": [
+      "guides/testing/TEST_EXECUTION_GUIDE.md",
+      "guides/testing/CONTRIBUTING_TESTS.md",
+      "guides/developer/CODE_STANDARDS.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/TEST_EXECUTION_GUIDE.md": {
+    "title": "Test Execution Guide",
+    "topic_category": "testing",
+    "audience_level": "introductory",
+    "description": "Practical guide to running tests, debugging failures, troubleshooting common issues, and maintaining test execution environments",
+    "dependencies": [
+      "guides/testing/TESTING.md",
       "guides/developer/DOCKER.md"
     ],
-    "last_analyzed": "2025-01-31T10:00:00Z"
+    "followups": [
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md",
+      "guides/testing/CONTRIBUTING_TESTS.md",
+      "guides/developer/DEPLOYMENT.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
+  },
+  "guides/testing/CONTRIBUTING_TESTS.md": {
+    "title": "Contributing Tests Guide",
+    "topic_category": "testing",
+    "audience_level": "intermediate",
+    "description": "Guidelines and standards for adding new tests to the project, ensuring consistency with testing philosophy and maintaining test quality",
+    "dependencies": [
+      "guides/testing/TESTING.md",
+      "guides/testing/UNIT_TESTS.md",
+      "guides/testing/INTEGRATION_TESTS.md",
+      "guides/testing/WRITING_TESTS.md"
+    ],
+    "followups": [
+      "guides/developer/CODE_STANDARDS.md",
+      "guides/testing/TEST_STRUCTURE.md",
+      "guides/testing/COVERAGE_STRATEGY.md"
+    ],
+    "last_analyzed": "2025-09-17T10:00:00Z"
   },
   "guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md": {
     "title": "Virtual Environment Management",

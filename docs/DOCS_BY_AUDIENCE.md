@@ -2,7 +2,7 @@
 
 This view organizes all documentation by target audience level, helping you find content appropriate for your experience level.
 
-*Last updated on 2025-09-15*
+*Last updated on 2025-09-17*
 
 ## Introductory
 
@@ -11,6 +11,10 @@ This view organizes all documentation by target audience level, helping you find
 - **[Get Started Checklist](get-started/CHECKLIST.md)**: Complete installation and setup checklist covering initial setup, API keys, Docker configuration, and development workflows
 
 - **[Setup & Complete Systems Integration Guide](get-started/SETUP_INTEGRATION.md)**: Comprehensive setup and system integration guide with complete usage examples to get up and running quickly
+
+- **[Test Execution Guide](guides/testing/TEST_EXECUTION_GUIDE.md)**: Practical guide to running tests, debugging failures, troubleshooting common issues, and maintaining test execution environments
+
+- **[Testing Overview](guides/testing/TESTING.md)**: High-level testing philosophy overview with navigation to comprehensive testing guides for unit tests, integration tests, and testing workflows
 
 
 ## Intermediate
@@ -27,6 +31,10 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Code Standards & Examples](guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation
 
+- **[Contributing Tests Guide](guides/testing/CONTRIBUTING_TESTS.md)**: Guidelines and standards for adding new tests to the project, ensuring consistency with testing philosophy and maintaining test quality
+
+- **[Coverage Strategy Guide](guides/testing/COVERAGE_STRATEGY.md)**: Tiered coverage approach emphasizing meaningful metrics over raw percentages, focusing on critical path coverage and quality indicators
+
 - **[Docker Setup & Usage](guides/developer/DOCKER.md)**: Comprehensive Docker setup for development and production environments with backend FastAPI and frontend Streamlit services
 
 - **[Domain Services Guide](guides/domain-services/README.md)**: Overview and principles for building customizable, infrastructure-powered domain services
@@ -39,7 +47,11 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Infrastructure vs Domain Services](reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md)**: Architectural distinction between reusable template components and application-specific business logic for maintaining template reusability
 
+- **[Integration Tests Comprehensive Guide](guides/testing/INTEGRATION_TESTS.md)**: Complete guide to component collaboration and seam testing strategies with high-fidelity environment testing, boundary verification, and collaborative behavior validation
+
 - **[Logging Strategy Guide](guides/operations/LOGGING_STRATEGY.md)**: Structured logging strategies, log analysis procedures, security event logging, and operational log management for effective system observability
+
+- **[Mocking Strategy Guide](guides/testing/MOCKING_GUIDE.md)**: Strategic approach to mocking emphasizing fakes over mocks, boundary mocking patterns, and maintaining test integrity through minimal mock usage
 
 - **[Shared Module](guides/application/SHARED.md)**: Shared module documentation for Pydantic models and sample data used across backend and frontend
 
@@ -47,11 +59,15 @@ This view organizes all documentation by target audience level, helping you find
 
 - **[Template Customization](/guides/get-started/TEMPLATE_CUSTOMIZATION.md)**: Guide to understanding the project's architecture for stability and easy customization with clear separation between Infrastructure and Domain logic
 
-- **[Testing Guide](guides/testing/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
+- **[Test Structure Guide](guides/testing/TEST_STRUCTURE.md)**: Test organization patterns, fixture strategies, test categorization, and structural approaches for maintainable test suites
 
 - **[Troubleshooting Guide](guides/operations/TROUBLESHOOTING.md)**: Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures
 
+- **[Unit Tests Comprehensive Guide](guides/testing/UNIT_TESTS.md)**: Complete guide to behavior-driven unit testing with 3-pillar framework, 5-step AI workflow process, testing patterns, and quality framework for isolated component verification
+
 - **[Virtual Environment Management](guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation
+
+- **[Writing Tests Guide](guides/testing/WRITING_TESTS.md)**: Docstring-driven test development principles focusing on contract-based testing, behavior verification, and maintainable test design patterns
 
 
 ## Advanced

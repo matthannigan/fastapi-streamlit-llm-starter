@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-09-15*
+*Last updated on 2025-09-17*
 
 ## Application
 
@@ -45,8 +45,6 @@ This view organizes all documentation by topic category, providing an alternativ
 - **[Documentation Guidance & Philosophy](guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation
 
 - **[Exception Handling Guide](guides/developer/EXCEPTION_HANDLING.md)**: Comprehensive exception handling system with hierarchical error classification, resilience integration, global error handlers, and testing patterns for robust error management
-
-- **[Testing Guide](guides/testing/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend
 
 - **[Virtual Environment Management](guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation
 
@@ -108,4 +106,25 @@ This view organizes all documentation by topic category, providing an alternativ
 - **[Get Started Checklist](get-started/CHECKLIST.md)**: Complete installation and setup checklist covering initial setup, API keys, Docker configuration, and development workflows
 
 - **[Setup & Complete Systems Integration Guide](get-started/SETUP_INTEGRATION.md)**: Comprehensive setup and system integration guide with complete usage examples to get up and running quickly
+
+
+## Testing
+
+- **[Contributing Tests Guide](guides/testing/CONTRIBUTING_TESTS.md)**: Guidelines and standards for adding new tests to the project, ensuring consistency with testing philosophy and maintaining test quality
+
+- **[Coverage Strategy Guide](guides/testing/COVERAGE_STRATEGY.md)**: Tiered coverage approach emphasizing meaningful metrics over raw percentages, focusing on critical path coverage and quality indicators
+
+- **[Integration Tests Comprehensive Guide](guides/testing/INTEGRATION_TESTS.md)**: Complete guide to component collaboration and seam testing strategies with high-fidelity environment testing, boundary verification, and collaborative behavior validation
+
+- **[Mocking Strategy Guide](guides/testing/MOCKING_GUIDE.md)**: Strategic approach to mocking emphasizing fakes over mocks, boundary mocking patterns, and maintaining test integrity through minimal mock usage
+
+- **[Test Execution Guide](guides/testing/TEST_EXECUTION_GUIDE.md)**: Practical guide to running tests, debugging failures, troubleshooting common issues, and maintaining test execution environments
+
+- **[Test Structure Guide](guides/testing/TEST_STRUCTURE.md)**: Test organization patterns, fixture strategies, test categorization, and structural approaches for maintainable test suites
+
+- **[Testing Overview](guides/testing/TESTING.md)**: High-level testing philosophy overview with navigation to comprehensive testing guides for unit tests, integration tests, and testing workflows
+
+- **[Unit Tests Comprehensive Guide](guides/testing/UNIT_TESTS.md)**: Complete guide to behavior-driven unit testing with 3-pillar framework, 5-step AI workflow process, testing patterns, and quality framework for isolated component verification
+
+- **[Writing Tests Guide](guides/testing/WRITING_TESTS.md)**: Docstring-driven test development principles focusing on contract-based testing, behavior verification, and maintainable test design patterns
 
