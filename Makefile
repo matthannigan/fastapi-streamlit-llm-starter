@@ -903,9 +903,9 @@ repomix-backend-tests:
 repomix-backend-contracts: generate-contracts
 	@echo "📄 Generating backend cache documentation..."
 	@mkdir -p repomix-output
-	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*"
-	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*"
-	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*" --ignore "backend/contracts/repomix-instructions.md"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*" --ignore "backend/contracts/repomix-instructions.md"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*" --ignore "backend/contracts/repomix-instructions.md"
 
 # Generate backend cache documentation 
 repomix-backend-cache: repomix-backend-cache-tests
@@ -920,6 +920,34 @@ repomix-backend-cache-tests:
 	@mkdir -p repomix-output
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache-tests_U.md --quiet --include "backend/tests/**/cache/**/*,backend/tests/**/*cache*.*"
 #	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-cache-tests-e2e_U.md --quiet --include "backend/tests/infrastructure/cache/e2e/**/*,backend/tests/infrastructure/cache/conftest.py"
+
+# Generate backend environment documentation 
+repomix-backend-environment: repomix-backend-environment-tests
+	@echo "📄 Generating backend environment documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-environment_U.md --quiet --include "backend/**/environment/**/*,backend/**/*environment*.*,backend/**/*environment*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/environment/**/*,docs/**/*environment*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-environment_C.md --quiet --include "backend/**/environment/**/*,backend/**/*environment*.*,backend/**/*environment*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/environment/**/*,docs/**/*environment*.*" --ignore "backend/contracts/**/*,docs/code_ref/**/*" --compress
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-environment.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/environment/**/*,backend/contracts/**/*environment*.*"
+
+repomix-backend-environment-tests:
+	@echo "📄 Generating backend tests environment documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-environment-tests_U.md --quiet --include "backend/tests/**/environment/**/*,backend/tests/**/*environment*.*"
+#	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-environment-tests-e2e_U.md --quiet --include "backend/tests/infrastructure/environment/e2e/**/*,backend/tests/infrastructure/environment/conftest.py"
+
+# Generate backend security/auth documentation 
+repomix-backend-security-auth: repomix-backend-security-auth-tests
+	@echo "📄 Generating backend security/auth documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth_U.md --quiet --include "backend/**/security/**/*,backend/**/*security*.*,backend/**/*security*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/security/**/*,docs/**/*security*.*,backend/**/auth/**/*,backend/**/*auth*.*,backend/**/*auth*.*,docs/**/auth/**/*,docs/**/*auth*.*,docs/**/SECURITY.md,docs/**/AUTHENTICATION.md" --ignore "backend/contracts/**/*,docs/code_ref/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth_C.md --quiet --include "backend/**/security/**/*,backend/**/*security*.*,backend/**/*security*.*,.env.example,docs/guides/application/BACKEND.md,docs/**/security/**/*,docs/**/*security*.*,backend/**/auth/**/*,backend/**/*auth*.*,backend/**/*auth*.*,docs/**/auth/**/*,docs/**/*auth*.*,docs/**/SECURITY.md,docs/**/AUTHENTICATION.md" --ignore "backend/contracts/**/*,docs/code_ref/**/*" --compress
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-security-auth.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/security/**/*,backend/contracts/**/*security*.*,backend/contracts/**/auth/**/*,backend/contracts/**/auth*.*"
+
+repomix-backend-security-auth-tests:
+	@echo "📄 Generating backend tests security/auth documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth-tests_U.md --quiet --include "backend/tests/**/security/**/*,backend/tests/**/*security*.*,backend/tests/**/auth/**/*,backend/tests/**/auth*.*"
+#	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth-tests-e2e_U.md --quiet --include "backend/tests/infrastructure/security/e2e/**/*,backend/tests/infrastructure/security/conftest.py,backend/tests/infrastructure/auth/e2e/**/*,backend/tests/infrastructure/auth/conftest.py"
 
 # Generate frontend-only documentation
 repomix-frontend: repomix-frontend-tests
@@ -941,6 +969,7 @@ repomix-docs: generate-doc-views
 	@mkdir -p repomix-output
 	@$(REPOMIX_CMD) --output repomix-output/repomix_code-ref.md --quiet --include "docs/code_ref/**/*"
 	@$(REPOMIX_CMD) --output repomix-output/repomix_docs.md --quiet --include "**/README.md,docs/**/*" --ignore "docs/code_ref*/**/*,docs/reference/deep-dives/**/*"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_docs-testing.md --quiet --include "docs/guides/testing/**/*"	
 
 ##################################################################################################
 # CI/CD and Dependencies

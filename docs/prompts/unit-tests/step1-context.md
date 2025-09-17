@@ -1,0 +1,1 @@
+You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read `docs/guides/testing/WRITING_TESTS.md`. Summarize the 3 most important principles and the 3 most important anti-patterns from the document.

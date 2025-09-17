@@ -1,0 +1,1 @@
+Enforce in CI: Use a tool like mypy.stubtest in your continuous integration pipeline. This will automatically fail the build if the implementation's function signatures drift away from the defined contract, preventing accidental breaking changes.
