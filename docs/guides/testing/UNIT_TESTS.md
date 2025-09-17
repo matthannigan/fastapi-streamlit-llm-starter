@@ -9,10 +9,10 @@ sidebar_position: 2
 ### Related Guides
 - **[Testing Overview](./TESTING.md)** - High-level testing philosophy and principles
 - **[Integration Tests](./INTEGRATION_TESTS.md)** - Component collaboration and seam testing
-- **[Writing Tests](./1_WRITING_TESTS.md)** - Docstring-driven test development
-- **[Mocking Strategy](./2_MOCKING_GUIDE.md)** - When and how to use mocks vs fakes
-- **[Test Structure](./4_TEST_STRUCTURE.md)** - Test organization and fixtures
-- **[Test Execution](./5_TEST_EXECUTION_GUIDE.md)** - Running and debugging tests
+- **[Writing Tests](./WRITING_TESTS.md)** - Docstring-driven test development
+- **[Mocking Strategy](./MOCKING_GUIDE.md)** - When and how to use mocks vs fakes
+- **[Test Structure](./TEST_STRUCTURE.md)** - Test organization and fixtures
+- **[Test Execution](./TEST_EXECUTION_GUIDE.md)** - Running and debugging tests
 
 ### Quick Start Commands
 ```bash

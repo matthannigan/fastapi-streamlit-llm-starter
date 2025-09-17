@@ -12,12 +12,12 @@ This document provides a high-level overview of the testing philosophy for this 
 ### Comprehensive Testing Guides
 - **[Unit Tests](./UNIT_TESTS.md)** - Complete guide to behavior-driven unit testing with AI workflows
 - **[Integration Tests](./INTEGRATION_TESTS.md)** - Component collaboration and seam testing strategies
-- **[Writing Tests](./1_WRITING_TESTS.md)** - Docstring-driven test development principles
-- **[Mocking Strategy](./2_MOCKING_GUIDE.md)** - Fakes over mocks, boundary mocking patterns
-- **[Coverage Strategy](./3_COVERAGE_STRATEGY.md)** - Tiered coverage approach and meaningful metrics
-- **[Test Structure](./4_TEST_STRUCTURE.md)** - Organization, fixtures, and test categories
-- **[Test Execution](./5_TEST_EXECUTION_GUIDE.md)** - Running tests, debugging, and troubleshooting
-- **[Contributing Tests](./6_CONTRIBUTING_TESTS.md)** - Guidelines for adding new tests
+- **[Writing Tests](./WRITING_TESTS.md)** - Docstring-driven test development principles
+- **[Mocking Strategy](./MOCKING_GUIDE.md)** - Fakes over mocks, boundary mocking patterns
+- **[Coverage Strategy](./COVERAGE_STRATEGY.md)** - Tiered coverage approach and meaningful metrics
+- **[Test Structure](./TEST_STRUCTURE.md)** - Organization, fixtures, and test categories
+- **[Test Execution](./TEST_EXECUTION_GUIDE.md)** - Running tests, debugging, and troubleshooting
+- **[Contributing Tests](./CONTRIBUTING_TESTS.md)** - Guidelines for adding new tests
 
 - ### Quick Start Commands
 ```bash
@@ -35,13 +35,13 @@ make test-coverage
 ```
 
 ### Find What You Need
-- **New to the project?** → Start with [Test Execution Guide](./5_TEST_EXECUTION_GUIDE.md)
+- **New to the project?** → Start with [Test Execution Guide](./TEST_EXECUTION_GUIDE.md)
 - **Writing unit tests?** → See [Unit Tests Guide](./UNIT_TESTS.md) for comprehensive guidance
 - **Testing component interactions?** → Check [Integration Tests Guide](./INTEGRATION_TESTS.md)
-- **Writing new features?** → See [Writing Tests](./1_WRITING_TESTS.md) for docstring-driven development
-- **Struggling with mocks?** → Check [Mocking Strategy](./2_MOCKING_GUIDE.md)
-- **Coverage questions?** → Review [Coverage Strategy](./3_COVERAGE_STRATEGY.md)
-- **Test failing?** → See [Troubleshooting](./5_TEST_EXECUTION_GUIDE.md#troubleshooting)
+- **Writing new features?** → See [Writing Tests](./WRITING_TESTS.md) for docstring-driven development
+- **Struggling with mocks?** → Check [Mocking Strategy](./MOCKING_GUIDE.md)
+- **Coverage questions?** → Review [Coverage Strategy](./COVERAGE_STRATEGY.md)
+- **Test failing?** → See [Troubleshooting](./TEST_EXECUTION_GUIDE.md#troubleshooting)
 
 ## Overview
 
@@ -327,9 +327,9 @@ def test_gemini_integration_smoke():
 ### Comprehensive Testing Guides
 - **[Unit Tests](./UNIT_TESTS.md)**: Complete guide to behavior-driven unit testing including 5-step process, AI workflows, patterns, and quality framework
 - **[Integration Tests](./INTEGRATION_TESTS.md)**: Component collaboration testing with seam verification, high-fidelity fakes, and AI-assisted workflows
-- **[Writing Tests](./1_WRITING_TESTS.md)**: Docstring-driven test development principles and general testing guidance
-- **[Mocking Strategy](./2_MOCKING_GUIDE.md)**: When and how to use mocks vs fakes with system boundary patterns
-- **[Test Structure](./4_TEST_STRUCTURE.md)**: Test organization, fixtures, and directory structure
+- **[Writing Tests](./WRITING_TESTS.md)**: Docstring-driven test development principles and general testing guidance
+- **[Mocking Strategy](./MOCKING_GUIDE.md)**: When and how to use mocks vs fakes with system boundary patterns
+- **[Test Structure](./TEST_STRUCTURE.md)**: Test organization, fixtures, and directory structure
 
 ### Core Testing Documentation
 - **[DOCSTRINGS_CODE.md](../developer/DOCSTRINGS_CODE.md)**: Production code docstring standards that serve as test specifications for behavior-driven testing

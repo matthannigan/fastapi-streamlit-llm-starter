@@ -186,7 +186,7 @@ def test_gemini_api_integration_smoke():
 
 #### Fixture Documentation Standards
 
-All fixtures follow the unified documentation standards outlined in the [Writing Tests Guide](./1_WRITING_TESTS.md#unified-test-documentation-standards).
+All fixtures follow the unified documentation standards outlined in the [Writing Tests Guide](./WRITING_TESTS.md#unified-test-documentation-standards).
 
 > **📖 Fixture Documentation Templates**: See **[DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)** section on "Fixture Documentation" for comprehensive fixture docstring patterns and examples.
 

@@ -6,7 +6,7 @@ The testing documentation requires comprehensive restructuring following the cre
 
 ### Identified Documentation Gaps
 - **Unit Testing Guide**: No comprehensive unit testing document despite having detailed integration testing guidance
-- **Content Organization**: Testing concepts scattered across `docs/guides/testing/TESTING.md`, `docs/guides/testing/1_WRITING_TESTS.md`, and `docs/guides/testing/4_TEST_STRUCTURE.md` without clear boundaries
+- **Content Organization**: Testing concepts scattered across `docs/guides/testing/TESTING.md`, `docs/guides/testing/WRITING_TESTS.md`, and `docs/guides/testing/TEST_STRUCTURE.md` without clear boundaries
 - **AI-Assisted Workflows**: Unit test development prompts exist in `docs/prompts/unit-tests/` but lack proper documentation integration
 - **5-Step Process**: The unit test-specific 5-step generation process is documented in the general writing guide instead of unit-specific guidance
 - **Balance**: `INTEGRATION_TESTS.md` provides exceptional depth while unit testing lacks equivalent comprehensive guidance
@@ -46,15 +46,15 @@ Update existing documentation files to remove duplicated content, add proper cro
 - [X] Document current content distribution across testing files:
   - [X] Catalog all unit testing content in `TESTING.md` (lines 96-142, 567-659)
     *Note: Line 567+ does not exist - file has 384 lines. Found behavior-focused vs implementation-focused examples at lines 96-142*
-  - [X] Identify unit test examples in `1_WRITING_TESTS.md` (lines 19-213, 486-537, 214-223)
+  - [X] Identify unit test examples in `WRITING_TESTS.md` (lines 19-213, 486-537, 214-223)
     *Found: Rich docstring examples, 5-step workflow starting at line 214, refactoring examples at 486-537*
-  - [X] Map unit testing concepts in `4_TEST_STRUCTURE.md` (lines 122-158)
+  - [X] Map unit testing concepts in `TEST_STRUCTURE.md` (lines 122-158)
     *Found: Unit test definition, mocking strategy, cache component examples*
   - [X] Review integration between AI prompts in `docs/prompts/unit-tests/` and documentation
     *Found: 6 AI prompt files covering complete 5-step process from context to implementation*
 - [X] Identify content overlaps and redundancies:
   - [X] Map behavior-focused vs implementation-focused examples across files
-    *Major overlap: TESTING.md has basic examples, 1_WRITING_TESTS.md has detailed docstring patterns, 4_TEST_STRUCTURE.md has component patterns*
+    *Major overlap: TESTING.md has basic examples, WRITING_TESTS.md has detailed docstring patterns, TEST_STRUCTURE.md has component patterns*
   - [X] Identify duplicated testing principles and philosophy statements
     *Behavior-driven philosophy appears in all files with varying depth and examples*
   - [X] Document cross-reference gaps between existing guides
@@ -67,7 +67,7 @@ Update existing documentation files to remove duplicated content, add proper cro
   - [X] Define clear boundaries between `TESTING.md`, `UNIT_TESTS.md`, `INTEGRATION_TESTS.md`, and supporting guides
     *Architecture: TESTING.md = overview/philosophy, UNIT_TESTS.md = comprehensive unit guide (match 1106-line INTEGRATION_TESTS.md), supporting guides = specific aspects*
   - [X] Plan content migration from existing files to new `UNIT_TESTS.md`
-    *Migration plan: TESTING.md lines 96-142 → enhanced examples; 1_WRITING_TESTS.md 5-step process → comprehensive workflow; 4_TEST_STRUCTURE.md unit concepts → patterns section*
+    *Migration plan: TESTING.md lines 96-142 → enhanced examples; WRITING_TESTS.md 5-step process → comprehensive workflow; TEST_STRUCTURE.md unit concepts → patterns section*
   - [X] Design cross-reference strategy between all testing guides
     *Strategy: Quick Navigation sections, bidirectional "See Also" sections, contextual cross-references, consistent navigation patterns*
   - [X] Create navigation flow for developers seeking specific testing guidance
@@ -86,12 +86,12 @@ Update existing documentation files to remove duplicated content, add proper cro
 - [X] Create detailed migration map:
   - [X] Specify which content moves from `TESTING.md` to `UNIT_TESTS.md`
     *Migration: Lines 96-142 behavior-focused vs implementation-focused examples → enhanced with unit-specific context and additional patterns*
-  - [X] Plan transfer of 5-step process from `1_WRITING_TESTS.md` to `UNIT_TESTS.md`
+  - [X] Plan transfer of 5-step process from `WRITING_TESTS.md` to `UNIT_TESTS.md`
     *Transfer: Complete 5-step workflow (lines 214+) moves to comprehensive unit guide with enhanced examples and AI integration*
-  - [X] Map unit test examples from `4_TEST_STRUCTURE.md` to new comprehensive guide
+  - [X] Map unit test examples from `TEST_STRUCTURE.md` to new comprehensive guide
     *Mapping: Unit test definition and cache examples (lines 122-158) → expanded patterns section with mocking strategies and component testing*
   - [X] Design content that remains in original files vs. moves to `UNIT_TESTS.md`
-    *Retention strategy: TESTING.md keeps philosophy overview; 1_WRITING_TESTS.md keeps general docstring principles; 4_TEST_STRUCTURE.md keeps organizational guidance*
+    *Retention strategy: TESTING.md keeps philosophy overview; WRITING_TESTS.md keeps general docstring principles; TEST_STRUCTURE.md keeps organizational guidance*
 - [X] Plan content enhancement requirements:
   - [X] Identify unit testing patterns that need expansion to match integration guide depth
     *Expansion needs: Contract testing patterns, resilience component testing, infrastructure service isolation, async patterns, property-based testing*
@@ -195,7 +195,7 @@ Update existing documentation files to remove duplicated content, add proper cro
     *Completed: Performance guidance in Advanced Unit Testing section*
 
 #### Task 3.3: 5-Step Unit Test Generation Process Integration
-- [X] Transfer 5-step process from `1_WRITING_TESTS.md`:
+- [X] Transfer 5-step process from `WRITING_TESTS.md`:
   - [X] Move complete 5-step workflow documentation to `UNIT_TESTS.md`
     *Completed: Comprehensive 5-step process with AI integration (Context Alignment → Infrastructure Setup → Skeleton Creation → Implementation → Validation)*
   - [X] Enhance workflow with comprehensive examples and patterns
@@ -331,7 +331,7 @@ Update existing documentation files to remove duplicated content, add proper cro
   - [X] Improve cross-references to all testing documentation
     *Completed: Added comprehensive testing guides section in Related Documentation*
 
-#### Task 6.2: 1_WRITING_TESTS.md Updates
+#### Task 6.2: WRITING_TESTS.md Updates
 - [X] Remove unit test-specific content:
   - [X] Remove 5-step process documentation (moved to `UNIT_TESTS.md`)
     *Completed: Replaced 5-step process with summary and references to comprehensive guides*
@@ -351,7 +351,7 @@ Update existing documentation files to remove duplicated content, add proper cro
   - [X] Improve examples to be general rather than unit test-specific
     *Completed: Examples focus on general docstring-driven patterns rather than specific test types*
 
-#### Task 6.3: 4_TEST_STRUCTURE.md Updates
+#### Task 6.3: TEST_STRUCTURE.md Updates
 - [X] Update test structure documentation:
   - [X] Remove detailed unit test examples (lines 122-158) that moved to `UNIT_TESTS.md`
     *Completed: Replaced detailed examples with summary and comprehensive reference to Unit Tests Guide*
@@ -383,7 +383,7 @@ Update existing documentation files to remove duplicated content, add proper cro
   - [X] Create navigation sections linking between unit and integration guides
     *Completed: Quick Navigation sections updated in all files with clear links to comprehensive guides*
   - [X] Add contextual cross-references throughout all documentation
-    *Completed: Contextual references added throughout TESTING.md, 1_WRITING_TESTS.md, and 4_TEST_STRUCTURE.md*
+    *Completed: Contextual references added throughout TESTING.md, WRITING_TESTS.md, and TEST_STRUCTURE.md*
   - [X] Ensure bidirectional linking between related concepts across guides
     *Completed: Bidirectional linking established between overview files and comprehensive guides*
 - [X] Update navigation and quick-start sections:
@@ -426,7 +426,7 @@ Update existing documentation files to remove duplicated content, add proper cro
   - [X] Verify `UNIT_TESTS.md` matches quality and depth of `INTEGRATION_TESTS.md`
     *Completed: UNIT_TESTS.md is 1202 lines vs INTEGRATION_TESTS.md at 1106 lines, matching structure and exceeding depth*
   - [X] Validate all migrated content is properly enhanced and integrated
-    *Completed: All content from TESTING.md, 1_WRITING_TESTS.md, and 4_TEST_STRUCTURE.md properly migrated and enhanced*
+    *Completed: All content from TESTING.md, WRITING_TESTS.md, and TEST_STRUCTURE.md properly migrated and enhanced*
   - [X] Ensure consistent voice and style across all testing documentation
     *Completed: Consistent behavior-driven philosophy and structure maintained across all guides*
   - [X] Verify all code examples are accurate and follow project standards

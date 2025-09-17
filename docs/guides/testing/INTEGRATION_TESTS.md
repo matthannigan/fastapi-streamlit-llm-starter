@@ -8,10 +8,10 @@ sidebar_position: 3
 
 ### Related Guides
 - **[Testing Overview](./TESTING.md)** - High-level testing philosophy and principles
-- **[Writing Tests](./1_WRITING_TESTS.md)** - Docstring-driven test development
-- **[Mocking Strategy](./2_MOCKING_GUIDE.md)** - When and how to use mocks vs fakes
-- **[Test Structure](./4_TEST_STRUCTURE.md)** - Test organization and fixtures
-- **[Test Execution](./5_TEST_EXECUTION_GUIDE.md)** - Running and debugging tests
+- **[Writing Tests](./WRITING_TESTS.md)** - Docstring-driven test development
+- **[Mocking Strategy](./MOCKING_GUIDE.md)** - When and how to use mocks vs fakes
+- **[Test Structure](./TEST_STRUCTURE.md)** - Test organization and fixtures
+- **[Test Execution](./TEST_EXECUTION_GUIDE.md)** - Running and debugging tests
 
 ### Quick Start Commands
 ```bash
@@ -58,7 +58,7 @@ We invert the traditional testing pyramid. Instead of building a massive base of
 
 This is the cornerstone of our strategy. We leverage abstractions and interfaces to enable powerful, reusable tests.
 
-> **📖 Contract-Driven Development**: Our project uses `.pyi` stub files to formally define component contracts. These are located in `backend/contracts/` and are automatically generated via `make generate-contracts`. See [Writing Tests Guide](./1_WRITING_TESTS.md#docstring-driven-test-development) for how we use these contracts to drive test development.
+> **📖 Contract-Driven Development**: Our project uses `.pyi` stub files to formally define component contracts. These are located in `backend/contracts/` and are automatically generated via `make generate-contracts`. See [Writing Tests Guide](./WRITING_TESTS.md#docstring-driven-test-development) for how we use these contracts to drive test development.
 
   * **The Workflow:**
 

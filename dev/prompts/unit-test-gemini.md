@@ -1,5 +1,5 @@
 ```
-npx --prefix /Users/matth/Github/MGH/repomix repomix --output repomix-output/repomix_backend-cache-parameter_mapping_U.md --quiet --include "backend/contracts/core/exceptions.pyi,backend/**/cache/parameter_mapping/**/*,backend/**/cache/**/*parameter_mapping*.*,backend/tests/infrastructure/cache/conftest.py,docs/guides/testing/TESTING.md,docs/guides/testing/1_WRITING_TESTS.md,docs/guides/developer/DOCSTRINGS_TESTS.md" --ignore "backend/app/**/*.*"
+npx --prefix /Users/matth/Github/MGH/repomix repomix --output repomix-output/repomix_backend-cache-parameter_mapping_U.md --quiet --include "backend/contracts/core/exceptions.pyi,backend/**/cache/parameter_mapping/**/*,backend/**/cache/**/*parameter_mapping*.*,backend/tests/infrastructure/cache/conftest.py,docs/guides/testing/TESTING.md,docs/guides/testing/WRITING_TESTS.md,docs/guides/developer/DOCSTRINGS_TESTS.md" --ignore "backend/app/**/*.*"
 ```
 
 ### Unit Test Prompt for Coding Assistant
@@ -12,7 +12,7 @@ Your task is to implement the test logic based on the guiding philosophy, mockin
 
 ### **Guiding Philosophy: Test Behavior, Not Implementation**
 
-Your implementation must adhere to the principles in `docs/guides/testing/1_WRITING_TESTS.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`. The single most important rule is:
+Your implementation must adhere to the principles in `docs/guides/testing/WRITING_TESTS.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`. The single most important rule is:
 
 > **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
 
