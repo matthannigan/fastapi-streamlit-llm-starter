@@ -1,8 +1,9 @@
 """
-Test fixtures for manual cache E2E tests.
+Test fixtures for cache E2E tests.
 
 This module provides fixtures for end-to-end cache testing that require
-a live server and real API authentication.
+a live server and real API authentication. E2E tests are primarily self-contained
+but may import basic fixtures from the main cache conftest.py when needed.
 """
 
 import os
