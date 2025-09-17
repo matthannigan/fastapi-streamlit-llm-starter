@@ -1,3 +1,7 @@
 Review the Google-style module docstring for completeness and accuracy based on the code implementation in this file. Update as needed. Use Markdown for rich text formatting within the docstring. Do not add unnecessary **bold** formatting in Markdown headings. Analyze this file: 
 
 We recently completed a major refactoring of the backend codebase. Review all Google-style Python module docstrings for completeness and accuracy based on the code implementation in these files. Update each module docstring as needed. Use Markdown for rich text formatting within the docstring. Do not add unnecessary **bold** formatting in Markdown headings. For `__init__.py` that re-export modules for convenience, provide only a brief description and/or a directory listing. Analyze the Python files in this folder:
+
+make any improvements to the class and method docstrings following guidance in `docs/guides/developer/DOCSTRINGS_CODE.md`
+
+Now use the public contract for `auth` located at `backend/contracts/infrastructure/security/auth.pyi` to improve and comprehensively update the top-level module docstring in `backend/app/infrastructure/security/auth.py`.  Use Google Python docstring standards with Markdown formatting to improve readability.

@@ -26,9 +26,9 @@ For each module listed above:
 
 1.  **Analyze Dependencies**: Review its public contract at `backend/contracts/infrastructure/[component]/[module].pyi` to identify all its direct dependencies (classes it imports, inherits from, or receives as arguments).
 2.  **Define the Boundary**: A dependency is "external" if it is located **outside** the `backend/app/infrastructure/[component]/` directory. Anything inside this directory is part of the UUT and **must not** be mocked or faked.
-3.  **Review Existing Fixtures**: Check `backend/tests/unit/infrastructure/[component]/conftest.py` to see if a suitable fixture already exists.
+3.  **Review Existing Fixtures**: Check `backend/tests/infrastructure/[component]/conftest.py` to see if a suitable fixture already exists.
 4.  **Decide: Fake or Mock?**: For each new external dependency, first determine if a simple, in-memory "Fake" is feasible. If not, create a `MagicMock`-based fixture.
-5.  **Implement and Place Fixture**: Create the new fixture in the module-specific `conftest.py` at `backend/tests/unit/infrastructure/[component]/[module]/conftest.py`.
+5.  **Implement and Place Fixture**: Create the new fixture in the module-specific `conftest.py` at `backend/tests/infrastructure/[component]/[module]/conftest.py`.
 
 ### **Critical Rules & Constraints**
 

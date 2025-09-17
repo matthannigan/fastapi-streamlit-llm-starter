@@ -2,21 +2,21 @@
 
 ## **Objective**
 
-Your goal is to act as a **Test Suite Architect**. You will create a comprehensive set of test skeletons for `backend/core/environment.py`. You will **only** write test classes, empty test methods, and the detailed docstrings that serve as the specification for each test. **You will not write any implementation code.**
+Your goal is to act as a **Test Suite Architect**. You will create a comprehensive set of test skeletons for `backend/app/infrastructure/security/auth.py`. You will **only** write test classes, empty test methods, and the detailed docstrings that serve as the specification for each test. **You will not write any implementation code.**
 
 This "Docstring-Driven" approach ensures we plan our entire test suite by focusing on observable behaviors defined in the public contract *before* implementation begins.
 
 ## **Guiding Philosophy: The Component is the Unit**
 
-Our testing philosophy treats the entire `environment.py` as a single **Unit Under Test (UUT)**. Every test you design must treat the UUT as a black box, interacting with it exclusively through its public API.
+Our testing philosophy treats the entire `security` infrastructure service as a single **Unit Under Test (UUT)**. Every test you design must treat the UUT as a black box, interacting with it exclusively through its public API.
 
-  * **Source of Truth**: The public contract defined in `backend/contracts/core/environment.pyi` and its corresponding production docstrings.
+  * **Source of Truth**: The public contract defined in `backend/contracts/infrastructure/security/auth.pyi` and its corresponding production docstrings.
   * **Core Principle**: Your test plan must verify *what* the component does, not *how* it does it.
 
 ## **Critical Rules & Constraints**
 
 1.  **No Implementation Knowledge**: You must design tests that can be written without ever seeing the UUT's source code. Base everything on the public contract.
-2.  **No Internal Mocking**: Your test plans **must not** rely on mocking any internal part of the `environment`. The docstrings should only reference fixtures for dependencies that are **external** to the component.
+2.  **No Internal Mocking**: Your test plans **must not** rely on mocking any internal part of the `auth`. The docstrings should only reference fixtures for dependencies that are **external** to the component as defined in `backend/tests/infrastructure/security/conftest.py`
 3.  **Focus on Observable Outcomes**: The "Then" part of your `Given/When/Then` scenarios must describe a result that an external observer can see (e.g., a return value, a state change in a *fake* dependency, or a specific exception being raised).
       * **Avoid**: "Then: The internal `_process_data` method is called."
       * **Prefer**: "Then: The item is successfully stored and can be retrieved with the correct value."
@@ -24,7 +24,7 @@ Our testing philosophy treats the entire `environment.py` as a single **Unit Und
 
 ## **Core Task: Create the Test Skeletons**
 
-Generate skeleton tests in `backend/tests/core/test_environment.py`.
+Generate skeleton tests in `backend/tests/infrastructure/security/test_*.py`.
 
 1.  **Systematically Analyze the Contract**: Review the `.pyi` file and the module's docstring to identify all public methods and their documented behaviors, arguments, return values, and exceptions.
 2.  **Plan Test Categories**: Group the tests into logical classes that cover the full contract. Suggested categories include:
@@ -32,7 +32,8 @@ Generate skeleton tests in `backend/tests/core/test_environment.py`.
       * `Test[ModuleName]CoreFunctionality`: The main "happy path" behaviors.
       * `Test[ModuleName]ErrorHandling`: How the component responds to bad input, failed dependencies, or invalid states.
       * `Test[ModuleName]EdgeCases`: Behavior at documented boundaries or with unusual (but valid) inputs.
-3.  **Write Detailed Docstrings**: For each empty test method, write a comprehensive docstring using the template and guidance from `docs/guides/developer/DOCSTRINGS_TESTS.md`.
+3.  **Plan Test Files**: For large test suites, it may be helpful to group related classes together into separate `test_[behavior-summary].py` files.
+3.  **Write Detailed Docstrings**: Within each file and class, for each empty test method, write a comprehensive docstring using the template and guidance from `docs/guides/developer/DOCSTRINGS_TESTS.md`.
       * Clearly state the `Verifies`, `Business Impact`, and `Scenario (Given/When/Then)`.
       * Under a `Fixtures Used` section, list the specific fixtures from the shared or module-specific `conftest.py` that will be needed to set up the test scenario.
 
