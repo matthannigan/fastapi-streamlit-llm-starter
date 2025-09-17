@@ -477,12 +477,12 @@ test-backend-infra-ai:
 # Run infrastructure service tests
 test-backend-infra-cache:
 	@echo "🧪 Running backend cache infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --tb=no
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/infrastructure/cache/ -n auto -q --tb=no
 
 # Run infrastructure service E2E tests
 test-backend-infra-cache-e2e:
 	@echo "🧪 Running backend cache infrastructure service E2E tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/e2e/ -n 0 -m "e2e" -v --tb=short --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/infrastructure/cache/e2e/ -n 0 -m "e2e" -v --tb=short --retries 3 --retry-delay 1
 
 update-tests-progress:
 	@echo "🧪 Updating tests progress..."
