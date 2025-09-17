@@ -46,7 +46,6 @@
 - **[Documentation Guidance & Philosophy](./guides/developer/DOCUMENTATION_GUIDANCE.md)**: Documentation philosophy and best practices with hierarchical, purpose-driven approach for contextual and actionable documentation *(Last updated 2025-07-31)*
 - **[Environment Detection](./guides/developer/ENVIRONMENT_DETECTION.md)**: Unified environment detection service providing centralized environment classification across all backend infrastructure services with confidence scoring and feature-aware detection *(Last updated 2025-09-15)*
 - **[Exception Handling](./guides/developer/EXCEPTION_HANDLING.md)**: Comprehensive exception handling system with hierarchical error classification, resilience integration, global error handlers, and testing patterns for robust error management *(Last updated 2025-08-05)*
-- **[Testing](./guides/testing/TESTING.md)**: Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-07-30)*
 - **[Virtual Environment Management](./guides/developer/VIRTUAL_ENVIRONMENT_GUIDE.md)**: Enhanced virtual environment management with automatic Python detection and project-level virtual environment creation *(Last updated 2025-07-30)*
 
 ### Operations Guides
@@ -57,6 +56,18 @@
 - **[Performance Optimization](./guides/operations/PERFORMANCE_OPTIMIZATION.md)**: Performance optimization procedures, tuning strategies, cache optimization, AI service optimization, and performance testing workflows *(Last updated 2025-08-03)*
 - **[Security](./guides/operations/SECURITY.md)**: Comprehensive security guide consolidating authentication, AI-specific security threats, incident response procedures, and production security checklist *(Last updated 2025-08-03)*
 - **[Troubleshooting](./guides/operations/TROUBLESHOOTING.md)**: Systematic troubleshooting workflows, diagnostic procedures, and resolution steps for common operational issues with decision trees and escalation procedures *(Last updated 2025-08-03)*
+
+### Testing Guides
+
+- **[Testing Overview](./guides/testing/TESTING.md)** - Comprehensive testing guide covering unit tests, integration tests, performance tests, and test suite organization for backend and frontend *(Last updated 2025-09-17)*
+- **[Unit Tests](./guides/testing/UNIT_TESTS.md)** - Complete guide to behavior-driven unit testing with AI workflows *(Last updated 2025-09-17)*
+- **[Integration Tests](./guides/testing/INTEGRATION_TESTS.md)** - Component collaboration and seam testing strategies *(Last updated 2025-09-17)*
+- **[Writing Tests](./guides/testing/WRITING_TESTS.md)** - Docstring-driven test development principles *(Last updated 2025-09-17)*
+- **[Mocking Strategy](./guides/testing/MOCKING_GUIDE.md)** - Fakes over mocks, boundary mocking patterns *(Last updated 2025-09-17)*
+- **[Coverage Strategy](./guides/testing/COVERAGE_STRATEGY.md)** - Tiered coverage approach and meaningful metrics *(Last updated 2025-09-17)*
+- **[Test Structure](./guides/testing/TEST_STRUCTURE.md)** - Organization, fixtures, and test categories *(Last updated 2025-09-17)*
+- **[Test Execution](./guides/testing/TEST_EXECUTION_GUIDE.md)** - Running tests, debugging, and troubleshooting *(Last updated 2025-09-17)*
+- **[Contributing Tests](./guides/testing/CONTRIBUTING_TESTS.md)** - Guidelines for adding new tests *(Last updated 2025-09-17)*
 
 ### Miscellaneous
 

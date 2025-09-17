@@ -1,5 +1,6 @@
 ---
 sidebar_label: Contributing
+sidebar_position: 9
 ---
 
 # Contributing to Tests

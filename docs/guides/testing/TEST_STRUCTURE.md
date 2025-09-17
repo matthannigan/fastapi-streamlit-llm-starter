@@ -1,5 +1,6 @@
 ---
 sidebar_label: Structure & Organization
+sidebar_position: 7
 ---
 
 # Test Structure & Organization
@@ -71,10 +72,14 @@ The testing architecture follows both the infrastructure vs domain service separ
 
 ## Test Categories Explained
 
-### Functional Tests (User-Facing Behavior)
-**Purpose**: Verify that the system works correctly from a user's perspective  
-**Scope**: End-to-end workflows, API contracts, user journeys  
-**Mocking**: Minimal - only external services (LLM APIs, external databases)  
+### Functional/E2E Tests (User-Facing Behavior)
+
+**Purpose**: Verify that the system works correctly from a user's perspective
+
+**Scope**: End-to-end workflows, API contracts, user journeys
+
+**Mocking**: Minimal - only external services (LLM APIs, external databases)
+
 **Examples**:
 ```python
 def test_complete_text_processing_workflow(client):
@@ -95,61 +100,43 @@ def test_complete_text_processing_workflow(client):
 ```
 
 ### Integration Tests (Component Interactions)
-**Purpose**: Verify that system components work together correctly  
-**Scope**: Service interactions, infrastructure integration, data flow  
-**Mocking**: Selective - mock external systems but use real internal components  
-**Examples**:
-```python
-def test_cache_integration_with_resilience(cache_service, circuit_breaker):
-    """Test that caching works correctly with resilience patterns."""
-    # Should cache successful results
-    result1 = cache_service.get_or_compute("key1", lambda: "computed_value")
-    assert result1 == "computed_value"
-    
-    # Should serve from cache on subsequent calls
-    result2 = cache_service.get_or_compute("key1", lambda: "different_value")  
-    assert result2 == "computed_value"  # Served from cache
-```
+
+**Purpose**: Verify that multiple internal components collaborate correctly to fulfill specific use cases through defined public interfaces.
+
+**Scope**: Component collaboration, critical integration points, and seam testing with high-fidelity infrastructure.
+
+**Testing Approach**: Outside-in testing with real or high-fidelity fake infrastructure, focusing on critical paths rather than exhaustive coverage.
+
+**Comprehensive Guidance**: See **[Integration Tests Guide](./INTEGRATION_TESTS.md)** for:
+- Complete 3-pillar framework for integration testing (Focus on Collaboration, Driven by Behavior, High-Fidelity Environment)
+- Systematic strategies for identifying critical integration points and seams
+- Common integration testing patterns with high-fidelity fakes
+- AI-assisted workflows for integration test development and maintenance
+- Troubleshooting guidance and best practices
 
 ### Unit Tests (Component Contract and Pure Logic)
 
-**Purpose**: Verify a single component works correctly in isolation by testing its public contract. Also used for pure, stateless utility functions.
-**Scope**: The component's public-facing API, treating its internal workings as a black box. Tests focus on observable behavior and should be resilient to internal refactoring.
-**Mocking**: Heavy mocking for true external dependencies (e.g., third-party APIs) at the system boundary only. **Strictly forbids** mocking of internal collaborators within the component under test. High-fidelity fakes (like `fakeredis`) are strongly preferred over mocks.
-**Examples**:
+**Purpose**: Verify a single component works correctly in complete isolation by testing its public contract through observable behavior.
 
-```python
-# ✅ GOOD: Tests the observable behavior of the entire cache component
-def test_cache_stores_and_retrieves_data(default_memory_cache):
-    """
-    Given a cache instance adhering to the CacheInterface,
-    When a value is set with a key,
-    Then the same value should be retrievable with that key.
-    """
-    key = "test:key"
-    value = {"data": "value"}
-    
-    default_memory_cache.set(key, value)
-    retrieved_value = default_memory_cache.get(key)
-    
-    assert retrieved_value == value
+**Scope**: Individual components tested as complete units with external dependencies mocked at system boundaries only. Focus on contract compliance and behavior verification.
 
-# ❌ BAD: Mocks an internal collaborator to test an implementation detail
-def test_cache_uses_internal_key_generator(mock_key_generator):
-    """Tests that the cache calls an internal dependency."""
-    cache = GenericRedisCache(key_generator=mock_key_generator)
-    
-    cache.set("test:key", "value")
+**Testing Approach**: Contract-driven testing using docstring specifications, with emphasis on observable outcomes rather than implementation details.
 
-    # This test is brittle and breaks if the internal wiring changes,
-    # even if the cache's external behavior is still correct.
-    mock_key_generator.generate.assert_called_once_with("test:key")
-```
+**Comprehensive Guidance**: See **[Unit Tests Guide](./UNIT_TESTS.md)** for:
+- Complete 3-pillar framework (Complete Isolation, Contract-Driven, Observable Behavior)
+- 4 core principles with detailed examples and anti-patterns
+- 5-step systematic test generation process with AI integration
+- Common unit testing patterns and troubleshooting guidance
+- Quality framework and validation criteria
 
 ### Manual Tests (Real Service Integration)
-**Purpose**: Verify integration with real external services  
-**Scope**: LLM API calls, performance benchmarks, smoke tests  
-**Mocking**: None - uses real external services  
+
+**Purpose**: Verify integration with real external services
+
+**Scope**: LLM API calls, performance benchmarks, smoke tests
+
+**Mocking**: None - uses real external services
+
 **Examples**:
 ```python
 @pytest.mark.manual
@@ -199,7 +186,7 @@ def test_gemini_api_integration_smoke():
 
 #### Fixture Documentation Standards
 
-All fixtures follow the unified documentation standards outlined in the [Writing Tests Guide](./1_WRITING_TESTS.md#unified-test-documentation-standards).
+All fixtures follow the unified documentation standards outlined in the [Writing Tests Guide](./WRITING_TESTS.md#unified-test-documentation-standards).
 
 > **📖 Fixture Documentation Templates**: See **[DOCSTRINGS_TESTS.md](../developer/DOCSTRINGS_TESTS.md)** section on "Fixture Documentation" for comprehensive fixture docstring patterns and examples.
 

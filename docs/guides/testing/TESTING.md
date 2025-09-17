@@ -1,6 +1,6 @@
 ---
 sidebar_label: Overview
-sidebar_position: 0
+sidebar_position: 1
 ---
 
 # Testing Guide
@@ -9,13 +9,15 @@ This document provides a high-level overview of the testing philosophy for this 
 
 ## Quick Navigation
 
-### Core Testing Guides
-- **[Writing Tests](./1_WRITING_TESTS.md)** - Docstring-driven test development and 5-step workflow
-- **[Mocking Strategy](./2_MOCKING_GUIDE.md)** - Fakes over mocks, boundary mocking patterns
-- **[Coverage Strategy](./3_COVERAGE_STRATEGY.md)** - Tiered coverage approach and meaningful metrics
-- **[Test Structure](./4_TEST_STRUCTURE.md)** - Organization, fixtures, and test categories
-- **[Test Execution](./5_TEST_EXECUTION_GUIDE.md)** - Running tests, debugging, and troubleshooting
-- **[Contributing Tests](./6_CONTRIBUTING_TESTS.md)** - Guidelines for adding new tests
+### Comprehensive Testing Guides
+- **[Unit Tests](./UNIT_TESTS.md)** - Complete guide to behavior-driven unit testing with AI workflows
+- **[Integration Tests](./INTEGRATION_TESTS.md)** - Component collaboration and seam testing strategies
+- **[Writing Tests](./WRITING_TESTS.md)** - Docstring-driven test development principles
+- **[Mocking Strategy](./MOCKING_GUIDE.md)** - Fakes over mocks, boundary mocking patterns
+- **[Coverage Strategy](./COVERAGE_STRATEGY.md)** - Tiered coverage approach and meaningful metrics
+- **[Test Structure](./TEST_STRUCTURE.md)** - Organization, fixtures, and test categories
+- **[Test Execution](./TEST_EXECUTION_GUIDE.md)** - Running tests, debugging, and troubleshooting
+- **[Contributing Tests](./CONTRIBUTING_TESTS.md)** - Guidelines for adding new tests
 
 - ### Quick Start Commands
 ```bash
@@ -33,11 +35,13 @@ make test-coverage
 ```
 
 ### Find What You Need
-- **New to the project?** → Start with [Test Execution Guide](./5_TEST_EXECUTION_GUIDE.md)
-- **Writing new features?** → See [Writing Tests](./1_WRITING_TESTS.md)
-- **Struggling with mocks?** → Check [Mocking Strategy](./2_MOCKING_GUIDE.md)
-- **Coverage questions?** → Review [Coverage Strategy](./3_COVERAGE_STRATEGY.md)
-- **Test failing?** → See [Troubleshooting](./5_TEST_EXECUTION_GUIDE.md#troubleshooting)
+- **New to the project?** → Start with [Test Execution Guide](./TEST_EXECUTION_GUIDE.md)
+- **Writing unit tests?** → See [Unit Tests Guide](./UNIT_TESTS.md) for comprehensive guidance
+- **Testing component interactions?** → Check [Integration Tests Guide](./INTEGRATION_TESTS.md)
+- **Writing new features?** → See [Writing Tests](./WRITING_TESTS.md) for docstring-driven development
+- **Struggling with mocks?** → Check [Mocking Strategy](./MOCKING_GUIDE.md)
+- **Coverage questions?** → Review [Coverage Strategy](./COVERAGE_STRATEGY.md)
+- **Test failing?** → See [Troubleshooting](./TEST_EXECUTION_GUIDE.md#troubleshooting)
 
 ## Overview
 
@@ -45,9 +49,9 @@ make test-coverage
 
 The test suite covers both backend and frontend components with the following types of tests:
 
-- **Unit Tests**: Test a single component (e.g., a service or infrastructure module) as the **Unit Under Test (UUT)**, validating its behavior through its public contract while treating its internals as a black box. This also includes tests for individual pure functions and classes where appropriate.
-- **Integration Tests**: Test component interactions and API endpoints.
-- **End-to-End Tests**: Test complete user workflows.
+- **Unit Tests**: Test individual components in complete isolation, verifying their documented contracts through observable behavior. See [Unit Tests Guide](./UNIT_TESTS.md) for comprehensive guidance on behavior-driven unit testing.
+- **Integration Tests**: Test collaboration between multiple internal components and critical integration points. See [Integration Tests Guide](./INTEGRATION_TESTS.md) for detailed strategies.
+- **End-to-End Tests**: Test complete user workflows through the entire application stack.
 - **Code Quality**: Linting, type checking, and formatting validation.
 
 ### Testing Philosophy: Maintainable, Behavior-Driven Testing
@@ -89,57 +93,20 @@ Our approach reshapes the classic testing pyramid into a modern, multi-layered v
 - **Middle: Behavioral and Contract Tests**: This layer consists of a "small and focused" suite of tests that exercise the public contract of a component from the outside in.
 - **Peak: Integration and End-to-End Tests**: The peak is a small number of tests that verify critical user flows and true wire-level interactions between components.
 
-### Behavior-Focused Testing ✅ vs. Implementation-Focused Testing ❌
+### Behavior-Focused Testing Approach
 
-The following examples illustrate our core philosophy in practice.
+Our testing strategy emphasizes **behavior over implementation**, ensuring tests remain maintainable and provide genuine confidence in component functionality.
 
-#### Behavior-Focused Testing ✅
+**Core Principles:**
+- **Test Public Contracts**: Focus on documented interfaces (Args, Returns, Raises, Behavior)
+- **Observable Outcomes**: Test what external callers can see and depend on
+- **Implementation Independence**: Tests should survive internal refactoring
+- **Clear Intent**: Test names and structure should document expected behavior
 
-**Tests what the code should accomplish from an external observer's perspective:**
-
-```python
-# ✅ GOOD: Tests observable behavior
-def test_user_service_creates_valid_user():
-    """Test that user creation produces a valid user with required fields."""
-    user_data = {"name": "John Doe", "email": "john@example.com"}
-    
-    user = user_service.create_user(user_data)
-    
-    # Tests external contract/behavior
-    assert user.id is not None
-    assert user.is_active is True
-```
-
-**Characteristics:**
-- Tests external contracts and interfaces
-- Focuses on inputs, outputs, and side effects
-- Survives implementation changes
-- Provides confidence that features work as intended
-- Documents expected behavior for other developers
-
-#### Implementation-Focused Testing ❌
-
-**Tests how the code currently works internally:**
-
-```python
-# ❌ BAD: Tests internal implementation details  
-def test_user_service_calls_validator_internally():
-    """Test that create_user calls EmailValidator internally."""
-    user_data = {"name": "John", "email": "john@example.com"}
-    
-    with patch('user_service.EmailValidator') as mock_validator:
-        user_service.create_user(user_data)
-        
-        # Tests internal implementation, not external behavior
-        mock_validator.validate.assert_called_once_with("john@example.com")
-```
-
-**Problems:**
-- Breaks when refactoring internal code
-- Tests private methods and attributes
-- Doesn't verify external functionality
-- Creates brittle test suites
-- Makes refactoring painful and expensive
+**Comprehensive Examples and Guidance:**
+- **Unit Testing**: See [Unit Tests Guide](./UNIT_TESTS.md) for detailed behavior-focused patterns, mocking strategies, and component testing examples
+- **Integration Testing**: See [Integration Tests Guide](./INTEGRATION_TESTS.md) for collaboration testing and seam verification patterns
+- **Anti-Patterns**: Both comprehensive guides include detailed examples of what to avoid and troubleshooting guidance
 
 ### Test Maintenance Guidelines
 
@@ -356,6 +323,13 @@ def test_gemini_integration_smoke():
     assert len(data["result"]) > 10  # Got some meaningful response
 ```
 ## Related Documentation
+
+### Comprehensive Testing Guides
+- **[Unit Tests](./UNIT_TESTS.md)**: Complete guide to behavior-driven unit testing including 5-step process, AI workflows, patterns, and quality framework
+- **[Integration Tests](./INTEGRATION_TESTS.md)**: Component collaboration testing with seam verification, high-fidelity fakes, and AI-assisted workflows
+- **[Writing Tests](./WRITING_TESTS.md)**: Docstring-driven test development principles and general testing guidance
+- **[Mocking Strategy](./MOCKING_GUIDE.md)**: When and how to use mocks vs fakes with system boundary patterns
+- **[Test Structure](./TEST_STRUCTURE.md)**: Test organization, fixtures, and directory structure
 
 ### Core Testing Documentation
 - **[DOCSTRINGS_CODE.md](../developer/DOCSTRINGS_CODE.md)**: Production code docstring standards that serve as test specifications for behavior-driven testing
