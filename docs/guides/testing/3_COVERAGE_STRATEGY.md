@@ -1,5 +1,6 @@
 ---
 sidebar_label: Coverage
+sidebar_position: 6
 ---
 
 # Test Coverage Strategy

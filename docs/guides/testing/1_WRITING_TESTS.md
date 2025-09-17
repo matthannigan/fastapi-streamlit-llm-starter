@@ -1,3 +1,7 @@
+---
+sidebar_position: 4
+---
+
 # Writing Tests
 
 ## Docstring-Driven Test Development
@@ -211,15 +215,22 @@ def test_process_batch_preserves_failed_items(self):
         assert failed_item in items
 ```
 
-### Recommended Test Generation Workflow
+### Systematic Test Development Workflows
 
-To ensure all new tests adhere to our behavior-driven philosophy, we follow a systematic, 5-step process, often guided by a coding assistant. This workflow enforces our principles and produces a robust, maintainable test suite.
+Our project follows systematic, behavior-driven workflows to ensure consistent test quality and adherence to documented contracts.
 
-- **Step 1: Context Alignment (The "Why")**: The process begins by aligning with the project's core testing philosophies, principles, and anti-patterns. This ensures the "why" is understood before any code is written.
-- **Step 2: Fixture Generation (The "Tools")**: Fixtures are generated for any dependencies *outside* the component under test. This step prioritizes fakes over mocks and strictly forbids mocking internal collaborators.
-- **Step 3: Test Planning (The "Blueprint")**: Before implementation, a complete test plan is generated as a series of empty test methods with comprehensive docstrings. This plan is designed by analyzing *only* the component's public contract (`.pyi` file), ensuring a "black box" design.
-- **Step 4: Test Implementation (The "Build")**: The test skeletons from the planning phase are implemented. The guiding rule is to test only observable outcomes and public contracts, ensuring tests are resilient to refactoring.
-- **Step 5: Code Review & Verification (The "Quality Check")**: A final quality check is performed, comparing the generated tests against the project's principles and anti-patterns to refactor any tests that are still coupled to implementation details.
+**For Unit Testing:**
+- **Complete 5-Step Process**: See [Unit Tests Guide](./UNIT_TESTS.md#the-5-step-unit-test-generation-process) for the full systematic workflow including Context Alignment, Infrastructure Setup, Skeleton Creation, Implementation, and Validation
+- **AI-Assisted Workflows**: Comprehensive AI prompt templates for component analysis, test implementation, and quality review
+
+**For Integration Testing:**
+- **Integration-Specific Workflows**: See [Integration Tests Guide](./INTEGRATION_TESTS.md#coding-assistant-integration) for collaboration testing workflows
+- **Seam Analysis and Testing**: Systematic approaches to identifying and testing critical integration points
+
+**General Principles for All Test Types:**
+- **Contract-Driven Development**: Use docstrings as test specifications
+- **Behavior Focus**: Test observable outcomes, not implementation details
+- **Systematic Quality**: Follow consistent patterns for maintainable test suites
 
 ## Traditional Test Examples with Rich Documentation
 
