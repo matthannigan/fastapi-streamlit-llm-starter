@@ -115,6 +115,52 @@ backend/tests/
     └── code-review_shared-schemas.md
 ```
 
+## Test Reorganization Results (Phase 1 & 2 Completed)
+
+The backend test suite was recently reorganized following contract-driven, behavior-focused testing principles. This reorganization addressed classification issues and enhanced test quality:
+
+### ✅ Phase 1: Foundation Reorganization - COMPLETED
+- **High-Quality Integration Tests**: Relocated from `/api/` to `/integration/api/` directories
+  - `test_text_processing_endpoints.py` → `integration/api/v1/`
+  - `test_auth_endpoints.py` → `integration/api/v1/`
+  - `test_monitoring_endpoints.py` → `integration/api/internal/`
+- **Test Classification Corrections**:
+  - E2E test moved to `/e2e/` directory
+  - API endpoint tests properly categorized
+  - Medium-quality tests relocated to appropriate integration directories
+- **Unit Test Organization**: Simple unit tests moved to `/unit/api/v1/`
+- **Cleanup**: Removed 3 incomplete stub files with TODO comments
+
+### ✅ Phase 2: Pattern Integration & Enhancement - COMPLETED
+- **Legacy Pattern Integration**:
+  - Concurrent authentication testing patterns
+  - Case-sensitive API key validation
+  - Malformed authorization header handling
+  - Development vs production mode testing
+- **Manual Test Enhancement**:
+  - Added `call_endpoint` helper for consistent endpoint testing
+  - Comprehensive authentication scenario coverage
+  - Enhanced error handling and response validation
+- **Behavioral Testing Focus**:
+  - Enhanced docstrings with business impact statements
+  - Added observable behavior descriptions and success criteria
+  - Improved error scenario coverage with observable outcomes
+
+### Test Classification Examples from Reorganization
+
+**✅ Excellent Integration Tests (Kept in Place)**
+- `integration/test_request_isolation.py` - Context isolation across requests
+- `integration/test_resilience_integration2.py` - True component integration
+
+**✅ Relocated API Integration Tests**
+- `integration/api/v1/test_text_processing_endpoints.py` - AI processing with external services
+- `integration/api/v1/test_auth_endpoints.py` - Authentication flow integration with enhanced edge cases
+- `integration/api/internal/test_monitoring_endpoints.py` - Monitoring system integration
+
+**✅ Enhanced Manual Tests**
+- `manual/test_manual_api.py` - Added comprehensive authentication scenario testing
+- Improved helper patterns for consistent endpoint validation
+
 ## Test Categories
 
 ### 1. Infrastructure Tests (`infrastructure/` directory) 🏗️

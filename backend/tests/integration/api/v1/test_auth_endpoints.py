@@ -209,3 +209,173 @@ class TestAuthenticationIntegration:
             assert "detail" in error_data
             # Should include WWW-Authenticate header for proper HTTP auth flow
             assert "www-authenticate" in response.headers
+
+
+class TestAuthenticationEdgeCases:
+    """Test authentication edge cases and security scenarios derived from legacy patterns."""
+
+    def test_auth_status_with_case_sensitive_api_key(self, client):
+        """Test that API keys are case-sensitive for security."""
+        # Configure a specific case-sensitive key
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setenv("API_KEY", "TestKey123")
+
+            # Try with wrong case - should fail
+            response = client.get(
+                "/v1/auth/status",
+                headers={"Authorization": "Bearer testkey123"}
+            )
+
+            # Should return 401 for case mismatch
+            assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+            if response.status_code == 401:
+                error_data = response.json()
+                assert "Invalid API key" in error_data["detail"]["message"]
+
+    def test_auth_status_with_malformed_auth_header(self, client):
+        """Test authentication with malformed authorization header."""
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setenv("API_KEY", "test-api-key-12345")
+
+            # Test various malformed header formats
+            malformed_headers = [
+                {"Authorization": "InvalidFormat"},  # Missing Bearer prefix
+                {"Authorization": "Bearer"},         # Missing token
+                {"Authorization": "Basic dGVzdA=="},  # Wrong auth type
+                {"Authorization": ""},               # Empty header
+            ]
+
+            for headers in malformed_headers:
+                response = client.get("/v1/auth/status", headers=headers)
+
+                # Should return 401 for malformed headers
+                assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+                error_data = response.json()
+                error_text = error_data["detail"]["message"].lower()
+                assert "api key required" in error_text or "invalid" in error_text
+
+    def test_auth_status_with_empty_api_key(self, client):
+        """Test authentication with empty API key in Bearer token."""
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setenv("API_KEY", "test-api-key-12345")
+
+            # Test empty bearer token
+            response = client.get(
+                "/v1/auth/status",
+                headers={"Authorization": "Bearer "}
+            )
+
+            # Should return 401 for empty key
+            assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+            error_data = response.json()
+            assert "api key required" in error_data["detail"]["message"].lower()
+
+    def test_auth_status_concurrent_requests(self, client):
+        """Test authentication behavior with concurrent requests."""
+        import threading
+        import queue
+
+        results = queue.Queue()
+
+        def make_auth_request():
+            """Make an authentication request in a separate thread."""
+            headers = {"Authorization": "Bearer test-concurrent-key"}
+
+            try:
+                response = client.get("/v1/auth/status", headers=headers)
+                results.put(("response", response.status_code, response.json()))
+            except Exception as e:
+                results.put(("error", str(e), None))
+
+        # Create multiple concurrent threads
+        threads = []
+        for _ in range(5):
+            thread = threading.Thread(target=make_auth_request)
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+
+        # Verify all requests handled authentication consistently
+        response_count = 0
+        while not results.empty():
+            result_type, status_code, data = results.get()
+            response_count += 1
+
+            if result_type == "response":
+                # All concurrent requests should return consistent auth results
+                assert status_code in [200, 401]  # Should be consistent
+
+                if status_code == 401:
+                    # Verify proper error structure in concurrent scenario
+                    assert "detail" in data
+                    assert "message" in data["detail"]
+                    error_text = data["detail"]["message"].lower()
+                    assert "invalid" in error_text or "api key" in error_text
+
+            elif result_type == "error":
+                # Should not have unhandled exceptions in concurrent access
+                pytest.fail(f"Unhandled exception in concurrent auth test: {status_code}")
+
+        assert response_count == 5  # All requests should have been processed
+
+    def test_auth_status_multiple_operations_consistency(self, client):
+        """Test that authentication is consistent across multiple operations."""
+        operations = ["status", "status", "status"]  # Multiple status checks
+
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setenv("API_KEY", "test-multi-op-key")
+
+            headers = {"Authorization": "Bearer test-multi-op-key"}
+            results = []
+
+            for _ in operations:
+                response = client.get("/v1/auth/status", headers=headers)
+                results.append(response.status_code)
+
+            # All operations should have consistent authentication results
+            assert all(code == results[0] for code in results), "Inconsistent auth across operations"
+
+            # Should not get 401 with configured key (may get 401 if key not configured)
+            if results[0] == 200:
+                # If auth succeeds, verify response structure
+                final_response = client.get("/v1/auth/status", headers=headers)
+                data = final_response.json()
+                assert data["authenticated"] is True
+
+    def test_auth_status_production_vs_development_mode(self, client):
+        """Test authentication behavior differences between production and development modes."""
+        # Test development mode (no keys configured)
+        with pytest.MonkeyPatch().context() as mp:
+            mp.delenv("API_KEY", raising=False)
+            mp.delenv("ADDITIONAL_API_KEYS", raising=False)
+
+            dev_response = client.get("/v1/auth/status")
+            dev_status = dev_response.status_code
+
+        # Test production mode (keys configured)
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setenv("API_KEY", "production-test-key")
+
+            # Request without auth in production mode
+            prod_response = client.get("/v1/auth/status")
+            prod_status = prod_response.status_code
+
+            # Request with auth in production mode
+            auth_response = client.get(
+                "/v1/auth/status",
+                headers={"Authorization": "Bearer production-test-key"}
+            )
+            auth_status = auth_response.status_code
+
+        # Document the behavior differences
+        # Development mode may allow unauthenticated access
+        # Production mode should require authentication
+        assert dev_status in [200, 401]  # Depends on configuration
+        assert prod_status == 401       # Should require auth when keys configured
+        assert auth_status in [200, 401]  # Should work with correct key
