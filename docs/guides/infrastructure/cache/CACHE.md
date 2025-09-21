@@ -356,6 +356,80 @@ CACHE_CUSTOM_CONFIG='{"compression_threshold": 500, "memory_cache_size": 200}'
 
 **Next Steps**: See [Cache Configuration Guide](./configuration.md) for detailed configuration examples and preset-specific guidance.
 
+## Cache Instantiation Patterns
+
+### Architectural Decision: Factory vs Direct Instantiation
+
+The cache infrastructure supports two instantiation approaches, each serving different architectural needs:
+
+#### Factory Methods (Recommended Architecture)
+
+**Factory methods provide production-ready defaults and comprehensive validation** for most application scenarios:
+
+```python
+from app.infrastructure.cache import CacheFactory
+
+factory = CacheFactory()
+
+# Environment-optimized cache creation
+web_cache = await factory.for_web_app()      # Web applications
+ai_cache = await factory.for_ai_app()        # AI/ML workloads
+test_cache = await factory.for_testing()     # Testing scenarios
+```
+
+**Architectural Benefits:**
+- **Separation of Concerns**: Configuration logic separated from application logic
+- **Environment Consistency**: Standardized configurations across deployment environments
+- **Security by Default**: Built-in security configuration and validation
+- **Error Resilience**: Automatic fallback strategies and graceful degradation
+- **Operational Excellence**: Comprehensive monitoring and performance analytics
+
+#### Direct Instantiation (Specialized Architecture)
+
+**Direct instantiation provides fine-grained control** for specialized architectural requirements:
+
+```python
+from app.infrastructure.cache import AIResponseCache, GenericRedisCache
+
+# Custom cache implementation with specific architectural needs
+cache = AIResponseCache(
+    redis_url="redis://specialized-cluster:6380",
+    custom_serialization_strategy=specialized_serializer,
+    advanced_monitoring=custom_monitor,
+    specialized_compression_algorithms=custom_compressor
+)
+```
+
+**Architectural Use Cases:**
+- **Custom Infrastructure Integration**: Specialized monitoring, security, or networking requirements
+- **Performance-Critical Paths**: Optimized configurations for specific performance profiles
+- **Framework Development**: Building reusable cache components or abstractions
+- **Legacy System Integration**: Maintaining compatibility with existing infrastructure patterns
+
+### Production Architecture Recommendations
+
+**For Production Systems:**
+1. **Use factory methods** for 90% of cache implementations
+2. **Implement infrastructure-level configuration** through preset systems
+3. **Reserve direct instantiation** for specialized architectural requirements
+4. **Follow security-first principles** with built-in security configuration validation
+5. **Design for observability** with comprehensive monitoring and metrics collection
+
+**For Development and Testing:**
+1. **Use factory testing methods** for consistent test environments
+2. **Leverage preset configurations** for rapid development iteration
+3. **Implement cache-aware testing patterns** for reliable test isolation
+
+### Migration and Evolution Strategies
+
+**Migrating to Factory Patterns:**
+- **Phase 1**: Identify existing direct instantiation usage patterns
+- **Phase 2**: Map current configurations to appropriate factory methods
+- **Phase 3**: Implement factory-based instantiation with configuration validation
+- **Phase 4**: Retire direct instantiation for standard use cases
+
+**📖 For detailed implementation patterns and comprehensive examples, see [Cache Usage Guide](./usage-guide.md).**
+
 ## Integration with Infrastructure Services
 
 The Cache Infrastructure Service integrates seamlessly with other infrastructure components to provide comprehensive application support:

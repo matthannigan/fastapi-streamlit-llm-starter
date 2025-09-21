@@ -20,17 +20,73 @@ like AIResponseCache.
 - **Flexible Serialization**: Support for JSON and pickle serialization
 - **Connection Management**: Robust Redis connection handling with retry logic
 
-## Usage
+## Usage Patterns
+
+### Factory Method (Recommended)
+
+**Most applications should use factory methods for optimized defaults and built-in validation:**
 
 ```python
-cache = GenericRedisCache(redis_url="redis://localhost:6379")
-await cache.connect()
+from app.infrastructure.cache import CacheFactory
+
+factory = CacheFactory()
+
+# Web applications - recommended approach
+cache = await factory.for_web_app(
+    redis_url="redis://localhost:6379",
+    default_ttl=1800,  # 30 minutes
+    compression_threshold=2000
+)
+
+# Production with security
+from app.infrastructure.security import SecurityConfig
+security_config = SecurityConfig(redis_auth="secure-password", use_tls=True)
+cache = await factory.for_web_app(
+    redis_url="rediss://production:6380",
+    security_config=security_config,
+    fail_on_connection_error=True
+)
+```
+
+**Factory Method Benefits:**
+- Environment-optimized defaults for web applications
+- Comprehensive parameter validation with detailed error messages
+- Automatic fallback to InMemoryCache when Redis unavailable
+- Built-in security configuration and TLS support
+- Structured error handling with proper context
+
+### Direct Instantiation (Advanced Use Cases)
+
+**Use direct instantiation for fine-grained control or custom implementations:**
+
+```python
+cache = GenericRedisCache(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,
+    enable_l1_cache=True,
+    l1_cache_size=200,
+    compression_threshold=2000,
+    compression_level=6
+)
+
+# Manual connection handling required
+connected = await cache.connect()
+if not connected:
+    raise InfrastructureError("Redis connection required for this service")
 
 # Standard cache operations
 await cache.set("user:123", {"name": "John", "age": 30}, ttl=3600)
 user_data = await cache.get("user:123")
 await cache.delete("user:123")
 ```
+
+**Use direct instantiation when:**
+- Building custom cache implementations with specialized requirements
+- Requiring exact parameter combinations not supported by factory methods
+- Developing reusable cache components or frameworks
+- Migrating legacy code with specific configuration needs
+
+**📖 For comprehensive factory usage patterns and configuration examples, see [Cache Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md).**
 """
 
 
