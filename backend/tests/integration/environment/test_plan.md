@@ -260,3 +260,27 @@ backend/tests/integration/environment/
 - **Robustness**: System handles environment detection failures gracefully
 
 This test plan provides comprehensive coverage of the environment detection integration points while prioritizing the most critical functionality first. The tests will ensure the environment detection service integrates reliably with all dependent infrastructure components.
+
+---
+
+## Test Implementation Guidance
+
+The following recommendations are based on learnings from the `auth` integration tests and are intended to ensure robust and reliable tests for the environment detection service.
+
+### Environment Variable Management and Test Isolation
+
+- **`clean_environment` Fixture**: Create a `clean_environment` fixture that runs for each test function. This fixture should back up `os.environ` before the test, clear out any environment variables that could affect environment detection, and restore the original environment after the test. This is critical for test isolation.
+- **Environment-Specific Fixtures**: Develop fixtures like `development_environment`, `production_environment`, and `staging_environment` that use the `clean_environment` fixture to set up specific test scenarios. This will make it easy to test the `EnvironmentDetector` in a variety of controlled conditions.
+- **`no_parallel` Marker**: For tests that modify global state or cannot be run in parallel for other reasons, use a `no_parallel` marker. This will allow for running these tests sequentially, while the rest of the tests can be run in parallel, as is done in the `auth` integration tests.
+
+### Configuration Reloading
+
+- **Reloading Modules**: When a test modifies environment variables, it is essential to reload any modules that read those variables at import time. The `importlib.reload()` function can be used for this purpose. For example, if the `EnvironmentDetector` is initialized when its module is imported, you will need to reload it to pick up changes to `os.environ`.
+- **Dependency Re-initialization**: Any components that depend on the `EnvironmentDetector` may also need to be re-initialized. For example, if a `CachePresetManager` is created with an instance of the `EnvironmentDetector`, a new `CachePresetManager` may need to be created after the environment has been changed and the `EnvironmentDetector` has been reloaded.
+
+### Mocking and Patching
+
+- **Mocking `EnvironmentDetector`**: For tests of components that *use* the `EnvironmentDetector` (e.g., `CachePresetManager`), it can be useful to mock the `EnvironmentDetector` to return a specific environment. This isolates the component being tested from the environment detection logic.
+- **Patching `os.environ`**: For tests of the `EnvironmentDetector` itself, the `unittest.mock.patch.dict` function can be used to temporarily modify `os.environ` for the duration of a test. This is a clean way to simulate different environment variable configurations without affecting other tests.
+
+By following these guidelines, the integration tests for the `environment` module will be robust, reliable, and easy to maintain.
