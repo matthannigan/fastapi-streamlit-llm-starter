@@ -30,6 +30,100 @@ async def process_data(
     return result
 ```
 
+## Factory vs Direct Instantiation
+
+### Recommended Approach: Factory Methods
+
+**For 90% of use cases, use factory methods instead of direct instantiation** for optimized defaults, comprehensive validation, and built-in error handling.
+
+```python
+# ✅ RECOMMENDED: Factory method approach
+from app.infrastructure.cache import CacheFactory
+
+factory = CacheFactory()
+
+# Web applications
+cache = await factory.for_web_app(
+    redis_url="redis://localhost:6379",
+    default_ttl=1800  # 30 minutes
+)
+
+# AI applications
+ai_cache = await factory.for_ai_app(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,  # 1 hour
+    operation_ttls={
+        "summarize": 7200,  # 2 hours
+        "sentiment": 86400  # 24 hours
+    }
+)
+
+# Testing
+test_cache = await factory.for_testing(use_memory_cache=True)
+```
+
+### Factory Method Benefits
+
+- **Environment-Optimized Defaults**: Presets for web, AI, and testing scenarios
+- **Comprehensive Validation**: Parameter validation with detailed error messages
+- **Graceful Fallback**: Automatic fallback to InMemoryCache when Redis unavailable
+- **Security Integration**: Built-in security configuration and TLS support
+- **Error Handling**: Structured error handling with proper context
+
+### When to Use Direct Instantiation
+
+**Reserve direct instantiation for specialized requirements:**
+
+```python
+# ⚠️ ADVANCED: Direct instantiation for fine-grained control
+from app.infrastructure.cache import AIResponseCache
+
+cache = AIResponseCache(
+    redis_url="redis://custom-host:6380/5",
+    default_ttl=7200,
+    text_hash_threshold=2000,
+    compression_threshold=500,
+    compression_level=9,
+    l1_cache_size=300,
+    operation_ttls={"custom_op": 1800},
+    fail_on_connection_error=True
+)
+
+# Manual connection handling required
+connected = await cache.connect()
+if not connected:
+    raise InfrastructureError("Cache connection required")
+```
+
+**Use direct instantiation when:**
+- Building custom cache implementations
+- Requiring exact parameter combinations not supported by factory methods
+- Developing reusable cache components
+- Migrating legacy code with specific configurations
+
+### Migration from Direct to Factory
+
+```python
+# Before: Direct instantiation
+cache = AIResponseCache(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,
+    text_hash_threshold=1000,
+    compression_threshold=1000
+)
+
+# After: Factory method (recommended)
+factory = CacheFactory()
+cache = await factory.for_ai_app(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,
+    text_hash_threshold=1000,
+    compression_threshold=1000
+)
+```
+
+**📖 For comprehensive factory usage patterns and examples, see [Cache Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md).**
+
 ## Architecture Overview
 
 ### Cache Interface
