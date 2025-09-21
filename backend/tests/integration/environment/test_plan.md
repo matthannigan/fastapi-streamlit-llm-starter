@@ -36,12 +36,12 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Ensures production environments enforce API key requirements while allowing development flexibility
 
 **TEST SCENARIOS:**
-- Production environment with configured API keys (should enforce authentication)
-- Production environment with missing API keys (should raise ConfigurationError)
-- Development environment with no API keys (should allow development mode)
-- Development environment with API keys configured (should work normally)
-- Environment detection failure fallback behavior
-- Feature-specific environment detection (SECURITY_ENFORCEMENT context)
+- A request in a production environment with a valid API key is authenticated.
+- The application fails to start if no API keys are configured in a production environment.
+- A request in a development environment is allowed without an API key.
+- A request in a development environment with an API key is authenticated.
+- The system defaults to production security mode when environment detection fails.
+- Security enforcement context is correctly applied for feature-specific environment detection.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing)
 **EXPECTED INTEGRATION SCOPE:** Authentication security enforcement based on environment detection
@@ -56,13 +56,13 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Ensures optimal cache settings for different deployment environments
 
 **TEST SCENARIOS:**
-- Production environment detection triggers production cache preset
-- Development environment detection triggers development cache preset
-- Auto-detection from environment variables (ENVIRONMENT=production)
-- Manual environment override behavior
-- Confidence-based preset selection
-- Custom environment pattern matching
-- Fallback when environment cannot be determined
+- The 'production' cache preset is recommended in a production environment.
+- The 'development' cache preset is recommended in a development environment.
+- The environment is correctly auto-detected from the `ENVIRONMENT` environment variable.
+- A manual environment override correctly changes the recommended preset.
+- Preset selection is influenced by the confidence score of the environment detection.
+- Custom patterns for environment detection are correctly matched.
+- A default preset is recommended when the environment cannot be determined.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing with mock environment variables)
 **EXPECTED INTEGRATION SCOPE:** Environment-driven cache configuration optimization
@@ -77,12 +77,12 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Ensures appropriate resilience strategies for different operational contexts
 
 **TEST SCENARIOS:**
-- Production environment triggers conservative resilience strategy
-- Development environment triggers aggressive/fast-fail strategy
-- Environment-specific strategy overrides for critical operations
-- Operation-specific resilience strategy selection
-- Confidence scoring impact on strategy selection
-- Fallback behavior when environment detection fails
+- A conservative resilience strategy is recommended in a production environment.
+- An aggressive, fast-fail resilience strategy is recommended in a development environment.
+- Resilience strategies can be overridden for critical operations based on the environment.
+- Resilience strategies can be selected for specific operations.
+- Strategy selection is influenced by the confidence score of environment detection.
+- A default resilience strategy is used when environment detection fails.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing with mock environment variables)
 **EXPECTED INTEGRATION SCOPE:** Environment-driven resilience configuration optimization
@@ -97,12 +97,12 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Provides environment-aware authentication status for client applications
 
 **TEST SCENARIOS:**
-- Authentication status response includes environment context
-- API key prefix truncation behavior in different environments
-- Environment detection confidence reflected in response
-- Error responses include environment detection information
-- Feature-specific context affects authentication behavior
-- Development vs production response differences
+- The authentication status response includes the detected environment context.
+- The API key prefix is truncated differently depending on the environment.
+- The environment detection confidence score is reflected in the API response.
+- Error responses from the auth status API include environment detection information.
+- Feature-specific context correctly affects authentication behavior and is reported in the response.
+- The auth status response differs between development and production environments.
 
 **INFRASTRUCTURE NEEDS:** Test client for HTTP API testing
 **EXPECTED INTEGRATION SCOPE:** Environment-aware API response generation
@@ -117,13 +117,13 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Ensures consistent environment detection across different feature contexts
 
 **TEST SCENARIOS:**
-- AI_ENABLED context provides AI-specific metadata
-- SECURITY_ENFORCEMENT context may override standard detection
-- CACHE_OPTIMIZATION context affects cache-related decisions
-- RESILIENCE_STRATEGY context influences resilience behavior
-- Context-specific confidence scoring
-- Metadata inclusion based on feature context
-- Cross-context consistency validation
+- The `AI_ENABLED` context provides AI-specific metadata in the environment details.
+- The `SECURITY_ENFORCEMENT` context can override the standard environment detection.
+- The `CACHE_OPTIMIZATION` context influences cache-related decisions.
+- The `RESILIENCE_STRATEGY` context influences the selected resilience behavior.
+- Each context has its own confidence score for environment detection.
+- Metadata is included in the environment details based on the feature context.
+- Environment detection is consistent across different contexts.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing)
 **EXPECTED INTEGRATION SCOPE:** Feature-aware environment detection consistency
@@ -138,13 +138,13 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Ensures reliable environment detection even when primary signals are unavailable
 
 **TEST SCENARIOS:**
-- High confidence environment detection (multiple confirming signals)
-- Low confidence detection with fallback to development
-- Conflicting signals with confidence-based resolution
-- No signals available (complete fallback behavior)
-- Environment variable precedence and override behavior
-- Pattern-based detection accuracy
-- System indicator-based detection reliability
+- Environment detection has high confidence when multiple signals confirm the environment.
+- The system falls back to 'development' mode when detection confidence is low.
+- Conflicting signals are resolved based on their confidence scores.
+- The system correctly falls back to a default environment when no signals are available.
+- Environment variable precedence and override rules are followed correctly.
+- Pattern-based detection accurately identifies the environment from hostnames or other strings.
+- System indicators reliably contribute to environment detection.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing with controlled environment variables)
 **EXPECTED INTEGRATION SCOPE:** Robust environment detection under various conditions
@@ -159,12 +159,12 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Ensures efficient environment detection across concurrent requests
 
 **TEST SCENARIOS:**
-- Detection result caching for performance
-- Cache invalidation on environment changes
-- Concurrent detection requests with shared caching
-- Cache behavior across different feature contexts
-- Memory usage and cache size management
-- Cache hit/miss ratio optimization
+- The result of environment detection is cached to improve performance.
+- The cache is invalidated when the environment changes.
+- Concurrent requests for environment detection use a shared cache.
+- Caching behavior is consistent across different feature contexts.
+- The memory usage and size of the environment detection cache are managed effectively.
+- The cache hit/miss ratio is optimized for performance.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing with performance measurement)
 **EXPECTED INTEGRATION SCOPE:** Efficient environment detection under load
@@ -179,15 +179,33 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 **BUSINESS IMPACT:** Enables deployment flexibility for complex environment scenarios
 
 **TEST SCENARIOS:**
-- Custom environment variable precedence
-- Custom regex patterns for environment detection
-- Feature-specific configuration overrides
-- Configuration validation and error handling
-- Configuration inheritance and merging
-- Invalid configuration handling and fallback
+- Custom environment variables are given precedence in detection.
+- Custom regex patterns are correctly used for environment detection.
+- Configuration overrides for specific features are applied correctly.
+- The system validates custom configurations and handles errors gracefully.
+- Configuration settings are correctly inherited and merged.
+- The system falls back to a default configuration when an invalid one is provided.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing with custom configurations)
 **EXPECTED INTEGRATION SCOPE:** Extensible environment detection configuration
+
+---
+
+### 9. SEAM: End-to-End Environment Validation
+**HIGH PRIORITY** - Validates the complete chain of behavior from configuration to observable outcome.
+
+**COMPONENTS:** `EnvironmentDetector`, `APIKeyAuth`, `CachePresetManager`, `ResiliencePresetManager`
+**CRITICAL PATH:** Environment variable → Environment detection → Component behavior (security, cache, resilience)
+**BUSINESS IMPACT:** Ensures that environment settings correctly propagate and lead to the expected behavior in running services.
+
+**TEST SCENARIOS:**
+- An end-to-end test where setting `ENVIRONMENT=production` enables strict API key authentication.
+- An end-to-end test where setting `ENVIRONMENT=development` applies the 'development' cache preset.
+- An end-to-end test where setting `ENVIRONMENT=production` applies the 'production' resilience preset.
+- A test that traces a request to show consistent environment detection across security, cache, and resilience.
+
+**INFRASTRUCTURE NEEDS:** Test client, high-fidelity fakes (fakeredis), test containers
+**EXPECTED INTEGRATION SCOPE:** End-to-end validation of environment-driven behavior
 
 ---
 
@@ -199,6 +217,7 @@ Based on analysis of `backend/contracts` directory, the environment detection se
    - Security Environment Enforcement Integration
    - Multi-Context Environment Detection
    - Environment Detection Confidence and Fallback
+   - End-to-End Environment Validation
 
 2. **MEDIUM PRIORITY** (Important for performance and functionality):
    - Cache Preset Environment-Aware Configuration
@@ -221,13 +240,13 @@ Based on analysis of `backend/contracts` directory, the environment detection se
 ```
 backend/tests/integration/environment/
 ├── test_security_environment_enforcement.py     # HIGH PRIORITY
-├── test_cache_preset_integration.py            # MEDIUM PRIORITY
-├── test_resilience_preset_integration.py       # MEDIUM PRIORITY
+├── test_preset_integration.py                  # MEDIUM PRIORITY
 ├── test_auth_api_environment_integration.py    # MEDIUM PRIORITY
 ├── test_multi_context_detection.py             # HIGH PRIORITY
 ├── test_confidence_fallback_system.py          # HIGH PRIORITY
 ├── test_detection_performance_caching.py       # MEDIUM PRIORITY
 ├── test_custom_configuration.py                # LOW PRIORITY
+├── test_end_to_end_validation.py               # HIGH PRIORITY
 ├── conftest.py                                 # Shared fixtures
 └── README.md                                   # Test documentation
 ```
@@ -261,6 +280,6 @@ This is an exceptionally well-crafted integration test plan. It demonstrates a d
 
 ### Recommendations
 
-1.  **Add End-to-End Scenarios**: Introduce a few end-to-end test scenarios that validate the entire chain of behavior, from environment variable setting to the observable outcome in a running service.
-2.  **Consolidate Test Files**: As with the `auth` test plan, consider consolidating some of the smaller test files to reduce boilerplate and improve maintainability. For instance, `test_cache_preset_integration.py` and `test_resilience_preset_integration.py` could be combined into a single `test_preset_integration.py`.
+1.  **Add End-to-End Scenarios**: Added end-to-end test scenarios that validate the entire chain of behavior, from environment variable setting to the observable outcome in a running service.
+2.  **Consolidate Test Files**: Consolidated smaller test files (`test_cache_preset_integration.py` and `test_resilience_preset_integration.py`) into a single `test_preset_integration.py` to reduce boilerplate and improve maintainability.
 

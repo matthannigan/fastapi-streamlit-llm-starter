@@ -40,14 +40,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Ensures appropriate security enforcement based on deployment environment
 
 **TEST SCENARIOS:**
-- Production environment with configured API keys (should enforce strict authentication)
-- Production environment with missing API keys (should raise ConfigurationError)
-- Development environment with no API keys (should allow development mode)
-- Development environment with API keys configured (should work normally)
-- Environment detection failure with fallback to production security mode
-- Feature-specific environment detection (SECURITY_ENFORCEMENT context)
-- Environment confidence scoring impact on security decisions
-- Environment variable precedence and override behavior
+- A request in a production environment with a valid API key is successfully authenticated.
+- The application fails to start in a production environment if no API keys are configured.
+- A request in a development environment without an API key is allowed.
+- A request in a development environment with a valid API key is successfully authenticated.
+- When environment detection fails, the system defaults to production security mode, requiring API key authentication.
+- Security enforcement context is correctly applied based on feature-specific environment detection.
+- Environment confidence scores correctly influence security policy decisions.
+- Environment variable precedence rules are correctly applied for authentication configuration.
 
 **INFRASTRUCTURE NEEDS:** Environment variable mocking, confidence score simulation
 **EXPECTED INTEGRATION SCOPE:** Environment-driven security policy enforcement
@@ -62,14 +62,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Ensures proper HTTP error responses and middleware compatibility
 
 **TEST SCENARIOS:**
-- AuthenticationError properly converted to 401 HTTPException
-- Original error context preserved through conversion
-- WWW-Authenticate headers included in HTTP responses
-- Middleware conflict prevention and response consistency
-- Error context includes environment detection information
-- Structured error response format for API clients
-- Exception chaining and debugging context preservation
-- Global exception handler integration with auth errors
+- A request with an invalid API key receives a 401 Unauthorized response.
+- The 401 response for an invalid API key contains the original error context.
+- The 401 response includes the `WWW-Authenticate` header.
+- Authentication errors are handled consistently without conflicts from other middleware.
+- The error response for an authentication failure includes environment detection information.
+- API clients receive a structured error response on authentication failure.
+- Chained exceptions preserve debugging context during authentication failures.
+- Authentication errors are correctly handled by the global exception handler.
 
 **INFRASTRUCTURE NEEDS:** FastAPI test client, HTTP response validation
 **EXPECTED INTEGRATION SCOPE:** Exception handling and HTTP response consistency
@@ -84,14 +84,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Enables secure route protection across the entire application
 
 **TEST SCENARIOS:**
-- Successful authentication dependency resolution and injection
-- Failed authentication with proper error propagation
-- Multiple authentication methods (Bearer token, X-API-Key header)
-- Optional authentication dependency behavior
-- Authentication metadata dependency injection
-- Concurrent request handling with shared authentication state
-- Authentication state isolation between requests
-- Integration with FastAPI middleware stack
+- A request to a protected endpoint with a valid API key is successful.
+- A request to a protected endpoint with an invalid API key is rejected with a 401 error.
+- Authentication is successful using either a Bearer token or an `X-API-Key` header.
+- Endpoints with optional authentication can be accessed without an API key.
+- Authentication metadata is correctly injected into the request for downstream use.
+- Concurrent requests from different users with valid keys are authenticated successfully without state conflicts.
+- Authentication state is properly isolated between concurrent requests.
+- The authentication dependency interacts correctly with the FastAPI middleware stack.
 
 **INFRASTRUCTURE NEEDS:** FastAPI test client, dependency injection testing
 **EXPECTED INTEGRATION SCOPE:** FastAPI dependency injection and route protection
@@ -106,15 +106,15 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Supports multiple API keys and runtime key management
 
 **TEST SCENARIOS:**
-- Single API key authentication (API_KEY environment variable)
-- Multiple API keys authentication (ADDITIONAL_API_KEYS)
-- Key reloading via `reload_keys()` method
-- Environment variable whitespace trimming and normalization
-- Key metadata association and retrieval
-- Advanced mode configuration (AUTH_MODE=advanced)
-- User tracking enablement (ENABLE_USER_TRACKING=true)
-- Request logging configuration (ENABLE_REQUEST_LOGGING=true)
-- Invalid key format rejection and error handling
+- A user with a single valid API key (defined by `API_KEY`) can access a protected endpoint.
+- A user with a valid secondary API key (from `ADDITIONAL_API_KEYS`) can access a protected endpoint.
+- After reloading keys, newly added keys grant access and removed keys deny access.
+- API keys with leading/trailing whitespace are still treated as valid.
+- Metadata associated with an API key can be retrieved after authentication.
+- When `AUTH_MODE` is 'advanced', advanced authentication features are enabled.
+- When `ENABLE_USER_TRACKING` is 'true', user activity is tracked.
+- When `ENABLE_REQUEST_LOGGING` is 'true', requests are logged.
+- An API key with an invalid format is rejected.
 
 **INFRASTRUCTURE NEEDS:** Environment variable mocking, key configuration testing
 **EXPECTED INTEGRATION SCOPE:** Multi-key authentication and configuration management
@@ -129,14 +129,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Provides authentication validation and system health monitoring
 
 **TEST SCENARIOS:**
-- Successful authentication status response with key prefix truncation
-- Authentication failure with proper HTTP 401 response
-- Environment context inclusion in responses
-- Development vs production response differences
-- Error response format and structure validation
-- API key prefix truncation security (first 8 characters + "...")
-- Response consistency across different authentication methods
-- Integration with error response schemas
+- A client calling `/v1/auth/status` with a valid key receives a success response showing a truncated key prefix.
+- A client calling `/v1/auth/status` with an invalid key receives a 401 Unauthorized response.
+- The `/v1/auth/status` response includes information about the current environment.
+- The `/v1/auth/status` response differs between development and production environments.
+- The error response for an invalid call to `/v1/auth/status` has the correct format and structure.
+- The API key prefix in the `/v1/auth/status` response is securely truncated.
+- The `/v1/auth/status` response is consistent regardless of the authentication method used.
+- The `/v1/auth/status` error response conforms to the defined error schema.
 
 **INFRASTRUCTURE NEEDS:** FastAPI test client, HTTP response validation
 **EXPECTED INTEGRATION SCOPE:** Public API authentication status and response formatting
@@ -151,14 +151,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Enables authentication validation outside HTTP request context
 
 **TEST SCENARIOS:**
-- Valid API key string validation returns True
-- Invalid API key string validation returns False
-- Empty/None input handling and rejection
-- Development mode behavior (no keys configured)
-- Integration with batch processing and background tasks
-- Thread-safe concurrent validation
-- Independence from HTTP context and FastAPI dependencies
-- Consistent behavior with HTTP authentication methods
+- A background task using a valid API key string is successfully authenticated.
+- A background task using an invalid API key string is denied access.
+- The programmatic authentication function handles empty or null inputs gracefully.
+- In a development environment with no keys, programmatic authentication allows access.
+- Programmatic authentication can be used reliably within batch processing jobs.
+- Concurrent calls to the programmatic authentication function are thread-safe.
+- The programmatic authentication function operates correctly without an HTTP request context.
+- The programmatic authentication logic is consistent with the HTTP-based authentication.
 
 **INFRASTRUCTURE NEEDS:** None (unit-style integration testing)
 **EXPECTED INTEGRATION SCOPE:** Programmatic authentication for non-HTTP contexts
@@ -173,14 +173,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Provides operational visibility into authentication system health
 
 **TEST SCENARIOS:**
-- Authentication configuration status reporting
-- API key count reporting (without exposing key values)
-- Development mode detection and reporting
-- System status snapshot generation
-- Thread-safe concurrent access to status information
-- Integration with monitoring endpoints
-- Status information security (no sensitive data exposure)
-- Status consistency across different operation modes
+- The auth status endpoint reports the current authentication configuration.
+- The auth status endpoint reports the number of active API keys without exposing them.
+- The auth status endpoint correctly identifies and reports when the system is in development mode.
+- A snapshot of the authentication system's status can be generated on demand.
+- Concurrent requests to the status endpoint do not corrupt the status information.
+- The status information is accessible through monitoring endpoints.
+- The status endpoint does not expose any sensitive data.
+- The status information remains consistent across different operating modes.
 
 **INFRASTRUCTURE NEEDS:** None (in-memory testing)
 **EXPECTED INTEGRATION SCOPE:** Authentication system monitoring and status reporting
@@ -195,14 +195,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Enables effective troubleshooting and debugging of authentication issues
 
 **TEST SCENARIOS:**
-- AuthenticationError includes environment detection context
-- Error context includes authentication method information
-- Error context includes credential status and validation results
-- Error context preserved through HTTP exception conversion
-- Structured error logging for security monitoring
-- Error context includes confidence scores from environment detection
-- Error context supports debugging without exposing sensitive information
-- Integration with global exception handling and logging systems
+- When authentication fails, the error includes context about the detected environment.
+- The authentication error specifies which authentication method was attempted.
+- The authentication error includes details on the credential's status and why validation failed.
+- The error context is preserved when an `AuthenticationError` is converted to an `HTTPException`.
+- Authentication errors are logged in a structured format suitable for security monitoring.
+- The error context includes the confidence score from environment detection.
+- The error context aids debugging without revealing sensitive information.
+- Authentication errors are correctly processed by the global exception handling and logging systems.
 
 **INFRASTRUCTURE NEEDS:** Exception handling testing, context validation
 **EXPECTED INTEGRATION SCOPE:** Authentication error context and debugging integration
@@ -217,14 +217,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Enables authentication system extensibility and feature management
 
 **TEST SCENARIOS:**
-- User context support detection based on AUTH_MODE
-- Permissions support detection and validation
-- Rate limiting support detection and configuration
-- Custom authentication configuration inheritance
-- Configuration validation and error handling
-- Feature capability reporting and validation
-- Environment variable-based feature toggles
-- Configuration consistency across different operation modes
+- The system correctly detects support for user context based on the `AUTH_MODE`.
+- The system correctly detects and validates support for permissions.
+- The system correctly detects and configures support for rate limiting.
+- Custom authentication configurations inherit correctly from the base configuration.
+- The system validates authentication configuration and handles errors gracefully.
+- The system accurately reports its feature capabilities.
+- Features can be enabled or disabled using environment variables.
+- The authentication configuration remains consistent across different operating modes.
 
 **INFRASTRUCTURE NEEDS:** Configuration testing, feature flag validation
 **EXPECTED INTEGRATION SCOPE:** Authentication configuration extensibility and feature detection
@@ -239,14 +239,14 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 **BUSINESS IMPACT:** Ensures reliable authentication under high concurrent load
 
 **TEST SCENARIOS:**
-- Thread-safe key validation across multiple concurrent requests
-- Thread-safe configuration access and status reporting
-- Thread-safe metadata operations and retrieval
-- Performance characteristics (O(1) key validation)
-- Memory usage and caching optimization
-- Concurrent key reloading safety considerations
-- Request isolation and state management
-- Integration with FastAPI's async request handling
+- Multiple concurrent requests with different keys are validated correctly and without race conditions.
+- Concurrent requests for configuration and status information are handled safely.
+- Concurrent operations on key metadata are thread-safe.
+- API key validation has a constant time complexity (O(1)).
+- Memory usage is optimized through caching.
+- Reloading API keys is a thread-safe operation that doesn't disrupt ongoing requests.
+- The authentication state of one request does not affect others.
+- The authentication system integrates seamlessly with FastAPI's asynchronous request handling.
 
 **INFRASTRUCTURE NEEDS:** Concurrent testing, performance measurement
 **EXPECTED INTEGRATION SCOPE:** Thread safety and performance under concurrent load
@@ -284,18 +284,16 @@ Based on analysis of `backend/contracts` directory, the authentication security 
 
 ```
 backend/tests/integration/auth/
-├── test_environment_security_enforcement.py     # HIGH PRIORITY
-├── test_http_exception_conversion.py            # HIGH PRIORITY
-├── test_fastapi_dependency_injection.py         # HIGH PRIORITY
-├── test_authentication_error_context.py         # HIGH PRIORITY
-├── test_multi_key_authentication.py             # MEDIUM PRIORITY
-├── test_auth_status_api.py                      # MEDIUM PRIORITY
-├── test_programmatic_authentication.py          # MEDIUM PRIORITY
-├── test_auth_system_monitoring.py               # MEDIUM PRIORITY
-├── test_thread_safety_performance.py            # MEDIUM PRIORITY
-├── test_auth_configuration_features.py          # LOW PRIORITY
-├── conftest.py                                  # Shared fixtures
-└── README.md                                    # Test documentation
+├── test_environment_security.py         # HIGH PRIORITY
+├── test_http_exception_handling.py      # HIGH PRIORITY
+├── test_dependency_injection.py         # HIGH PRIORITY
+├── test_error_context.py                # HIGH PRIORITY
+├── test_authentication_features.py      # MEDIUM PRIORITY
+├── test_system_monitoring.py            # MEDIUM PRIORITY
+├── test_concurrency.py                  # MEDIUM PRIORITY
+├── test_configuration.py                # LOW PRIORITY
+├── conftest.py                          # Shared fixtures
+└── README.md                            # Test documentation
 ```
 
 ### **Success Criteria:**
@@ -329,7 +327,7 @@ This integration test plan is comprehensive and well-structured, demonstrating a
 
 ### Recommendations
 
-1.  **Refine Test Scenario Phrasing**: Rephrase test scenarios to be more behavior-focused, emphasizing the observable outcomes from a user's or client's perspective.
-2.  **Add User-Centric Scenarios**: Incorporate more scenarios that describe user journeys or client interactions to ensure the tests validate the intended user experience.
-3.  **Combine Test Files**: Consider combining some of the smaller, related test files into a single file to reduce boilerplate and improve maintainability. For example, `test_multi_key_authentication.py`, `test_auth_status_api.py`, and `test_programmatic_authentication.py` could potentially be combined into a single `test_authentication_features.py`.
+1.  **Refine Test Scenario Phrasing**: Rephrased test scenarios to be more behavior-focused, emphasizing the observable outcomes from a user's or client's perspective.
+2.  **Add User-Centric Scenarios**: Incorporated more scenarios that describe user journeys or client interactions to ensure the tests validate the intended user experience.
+3.  **Combine Test Files**: Combined smaller, related test files into a single file to reduce boilerplate and improve maintainability. For example, `test_multi_key_authentication.py`, `test_auth_status_api.py`, and `test_programmatic_authentication.py` are now combined into a single `test_authentication_features.py`.
 

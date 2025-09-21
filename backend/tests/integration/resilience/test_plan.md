@@ -25,12 +25,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: User request → Resilience orchestration → Failure detection → Retry execution → Response
 
 **TEST SCENARIOS**:
-- Successful operation with no failures (verify circuit breaker closed state)
-- Transient failure with successful retry (verify retry counting and backoff)
-- Multiple transient failures leading to circuit breaker open (verify state transitions)
-- Circuit breaker recovery after timeout (verify half-open state testing)
-- Permanent failure with graceful fallback (verify exception classification)
-- Concurrent requests with shared circuit breaker state (verify thread safety)
+- A user's request succeeds on the first try when the AI service is healthy, and the circuit breaker remains closed.
+- A user's request initially fails due to a temporary AI service error but succeeds after a retry, demonstrating the retry mechanism is working.
+- The system correctly opens the circuit breaker to prevent further requests after repeated failures, protecting the AI service from overload.
+- A user can successfully complete a request after a temporary service outage without manual intervention, as the circuit breaker automatically transitions to half-open and then closed.
+- The system provides a graceful fallback response to the user when the AI service is unavailable and retries are exhausted.
+- The system remains stable and handles requests correctly even when multiple users make concurrent requests during a period of service instability.
 
 **INFRASTRUCTURE NEEDS**: Test database, fakeredis for cache simulation, mocked AI service responses
 
@@ -46,12 +46,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: Environment variables → Configuration loading → Strategy resolution → Operation-specific settings
 
 **TEST SCENARIOS**:
-- Environment-specific preset loading (development vs production)
-- Custom configuration override behavior (verify precedence: custom > strategy > operation > balanced)
-- Operation registration and configuration lookup (verify dynamic operation registration)
-- Configuration validation and error handling (verify schema validation)
-- Configuration migration from legacy format (verify backward compatibility)
-- Concurrent configuration updates (verify thread-safe updates)
+- The system applies the correct resilience strategy based on the detected environment (e.g., 'development' vs. 'production').
+- A custom resilience configuration for a specific operation correctly overrides the default strategy.
+- The system can dynamically register and apply configurations for new operations at runtime.
+- The application handles invalid or malformed configuration files gracefully and provides clear error messages.
+- The system can successfully migrate legacy configurations to the new preset-based format.
+- The resilience configuration can be updated at runtime without causing system instability.
 
 **INFRASTRUCTURE NEEDS**: Environment variable mocking, configuration file fixtures
 
@@ -67,12 +67,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: Operation execution → Metrics collection → Performance analysis → Alert generation
 
 **TEST SCENARIOS**:
-- Metrics collection across multiple operations (verify isolated metrics per operation)
-- Circuit breaker state transition tracking (verify metrics for open/close events)
-- Performance benchmark integration (verify performance regression detection)
-- Alert generation for performance thresholds (verify alert triggering)
-- Metrics export and reporting (verify monitoring system integration)
-- Historical metrics analysis (verify trend analysis and regression detection)
+- The system provides clear visibility into the resilience of different operations by collecting and isolating metrics for each one.
+- Operators are alerted to potential issues when the circuit breaker opens or closes, as these state transitions are tracked as metrics.
+- The system can automatically detect performance regressions in resilience operations by integrating with performance benchmarks.
+- Operators receive timely alerts when resilience performance metrics cross predefined thresholds.
+- The system's monitoring dashboard correctly displays resilience metrics, enabling operators to assess system health.
+- The system supports historical analysis of resilience metrics to identify trends and prevent future regressions.
 
 **INFRASTRUCTURE NEEDS**: Metrics collection fixtures, performance monitoring setup
 
@@ -88,12 +88,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: Legacy configuration → Migration analysis → Validation → Usage tracking
 
 **TEST SCENARIOS**:
-- Legacy configuration migration (verify automated migration from complex to preset-based)
-- Configuration validation with security checks (verify rate limiting and validation security)
-- Migration confidence scoring (verify migration recommendation accuracy)
-- Configuration change tracking (verify audit trail for configuration modifications)
-- Validation error handling and reporting (verify detailed error reporting)
-- Post-migration validation (verify migrated configuration correctness)
+- The system can automatically migrate a complex, legacy resilience configuration to the simpler, preset-based format.
+- The configuration validation process includes security checks to prevent insecure settings, such as overly permissive rate limiting.
+- The system provides a confidence score for each automated migration, helping operators to assess the reliability of the new configuration.
+- All changes to the resilience configuration are tracked in an audit trail.
+- The system provides detailed and actionable error messages when it encounters an invalid configuration.
+- The correctness of a migrated configuration is verified through a post-migration validation step.
 
 **INFRASTRUCTURE NEEDS**: Legacy configuration fixtures, validation service setup
 
@@ -109,12 +109,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: Failure detection → State management → Health reporting → Recovery orchestration
 
 **TEST SCENARIOS**:
-- Circuit breaker state transitions (verify closed → open → half-open → closed)
-- Health check integration (verify system health reflects circuit breaker states)
-- Recovery timeout behavior (verify automatic recovery after specified timeout)
-- State persistence across service restarts (verify state recovery)
-- Health endpoint integration (verify internal API health reporting)
-- Multi-operation circuit breaker isolation (verify per-operation state isolation)
+- The system correctly transitions the circuit breaker from closed to open after repeated failures, and then to half-open and back to closed after a successful recovery.
+- The overall system health status, as reported by the health check endpoint, accurately reflects the state of the circuit breakers.
+- The system automatically attempts to recover from a failure after a configured timeout period.
+- The state of the circuit breaker is preserved across service restarts, preventing the system from flooding a failing service with requests.
+- The health endpoint of the internal API provides accurate and up-to-date information on the status of all circuit breakers.
+- The system maintains separate circuit breakers for different operations, ensuring that a failure in one does not affect others.
 
 **INFRASTRUCTURE NEEDS**: Circuit breaker state persistence, health check endpoints
 
@@ -130,12 +130,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: Exception occurrence → Classification → Retry decision → Fallback execution → Result handling
 
 **TEST SCENARIOS**:
-- Transient vs permanent exception classification (verify correct classification logic)
-- Exception-specific retry strategies (verify different strategies per exception type)
-- Fallback function execution (verify fallback invocation on failure)
-- Context preservation during retries (verify context maintained across retry attempts)
-- Retry exhaustion handling (verify behavior when all retry attempts fail)
-- Exception chaining and logging (verify proper exception propagation and logging)
+- The system can distinguish between temporary (transient) and permanent errors, applying the correct resilience strategy for each.
+- The system applies different retry strategies for different types of exceptions, allowing for fine-tuned error handling.
+- When a request ultimately fails, the system executes a fallback function to provide a graceful response to the user.
+- The system preserves the original request context across multiple retry attempts.
+- When all retry attempts are exhausted, the system handles the failure gracefully without crashing.
+- The system logs a clear and detailed audit trail of all exceptions and retries.
 
 **INFRASTRUCTURE NEEDS**: Exception simulation fixtures, fallback function mocking
 
@@ -151,12 +151,12 @@ The Resilience Infrastructure consists of these primary components:
 **CRITICAL PATH**: Configuration loading → Performance measurement → Validation → Alert generation
 
 **TEST SCENARIOS**:
-- Configuration loading performance benchmarks (verify <100ms loading requirement)
-- Performance regression detection (verify automatic detection of performance degradations)
-- Validation performance monitoring (verify validation operation performance)
-- Threshold-based alerting (verify alert generation for performance thresholds)
-- Performance metrics correlation (verify relationship between config and performance)
-- Benchmark suite execution (verify comprehensive performance testing)
+- The system can load and apply resilience configurations in under 100ms, meeting the performance requirements defined in the contracts.
+- The system automatically detects and alerts on any performance degradations in resilience operations.
+- The performance of the configuration validation process is monitored to ensure it does not become a bottleneck.
+- Operators receive alerts when performance metrics for resilience operations cross predefined thresholds.
+- The system can correlate resilience configuration changes with performance metrics to identify the root cause of issues.
+- The performance benchmark suite provides comprehensive coverage of all resilience operations.
 
 **INFRASTRUCTURE NEEDS**: Performance monitoring setup, benchmark execution environment
 
@@ -289,5 +289,5 @@ This is a very strong and detailed integration test plan. It demonstrates an exc
 
 ### Recommendations
 
-1.  **Add User-Facing Scenarios**: Introduce more user-facing scenarios to the test plan to ensure that the tests are not only validating technical functionality but also that they are meeting the needs of the end-users.
-2.  **Simplify Language**: Where possible, simplify the language used in the test plan to make it more accessible to a wider audience. This will help to ensure that everyone involved in the project has a clear understanding of the testing goals and approach.
+1.  **Add User-Facing Scenarios**: Added more user-facing scenarios to the test plan to ensure that the tests not only validate technical functionality but also that they meet the needs of end-users.
+2.  **Simplify Language**: Simplified the language used in the test plan to make it more accessible to a wider audience, helping to ensure that everyone involved in the project has a clear understanding of the testing goals and approach.
