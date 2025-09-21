@@ -507,7 +507,14 @@ test-backend-infra-security:
 # Run backend integration tests
 test-backend-integration:
 	@echo "🧪 Running backend integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -v
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -m "no_parallel" --tb=no -q
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -m "not no_parallel" --tb=no -q
+
+# Run backend auth integration tests, run no_parallel tests first then non-parallel tests
+test-backend-integration-auth:
+	@echo "🧪 Running backend auth integration tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/auth/ -m "no_parallel" --tb=no -q
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/auth/ -m "not no_parallel" --tb=no -q
 
 # Run backend performance tests
 test-backend-performance:

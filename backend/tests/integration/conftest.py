@@ -2,9 +2,40 @@
 Integration-specific fixtures for testing.
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
+
+# Disable rate limiting during integration tests
+os.environ['RATE_LIMITING_ENABLED'] = 'false'
+
 from app.main import app
+
+
+@pytest.fixture(scope="module")
+def production_environment_integration():
+    """Set up production environment with API keys for integration tests."""
+    # Set production environment with test API keys
+    os.environ['ENVIRONMENT'] = 'production'
+    os.environ['API_KEY'] = 'test-api-key-12345'
+    os.environ['ADDITIONAL_API_KEYS'] = 'test-key-2,test-key-3'
+
+    # Reflect changes in runtime settings and auth
+    try:
+        from app.core.config import settings
+        from app.infrastructure.security.auth import api_key_auth
+        settings.api_key = os.environ.get('API_KEY', '')
+        settings.additional_api_keys = os.environ.get('ADDITIONAL_API_KEYS', '')
+        api_key_auth.reload_keys()
+    except Exception:
+        pass
+
+    yield
+
+    # Cleanup after tests
+    os.environ.pop('ENVIRONMENT', None)
+    os.environ.pop('API_KEY', None)
+    os.environ.pop('ADDITIONAL_API_KEYS', None)
 
 
 @pytest.fixture(scope="module")
@@ -14,8 +45,8 @@ def integration_app():
 
 
 @pytest.fixture(scope="module")
-def integration_client(integration_app):
-    """HTTP client for integration testing."""
+def integration_client(integration_app, production_environment_integration):
+    """HTTP client for integration testing with production environment setup."""
     return TestClient(integration_app)
 
 
@@ -36,3 +67,36 @@ def authenticated_headers():
         "Authorization": "Bearer test-api-key-12345",
         "Content-Type": "application/json"
     }
+
+
+@pytest.fixture
+def invalid_api_key_headers():
+    """Headers with invalid API key for integration tests."""
+    return {
+        "Authorization": "Bearer invalid-api-key-12345",
+        "Content-Type": "application/json"
+    }
+
+
+@pytest.fixture
+def x_api_key_headers():
+    """Headers using X-API-Key instead of Authorization Bearer."""
+    return {
+        "X-API-Key": "test-api-key-12345",
+        "Content-Type": "application/json"
+    }
+
+
+@pytest.fixture
+def malformed_auth_headers():
+    """Headers with malformed authentication."""
+    return {
+        "Authorization": "Invalid-Format test-api-key-12345",
+        "Content-Type": "application/json"
+    }
+
+
+@pytest.fixture
+def missing_auth_headers():
+    """Headers without any authentication."""
+    return {"Content-Type": "application/json"}
