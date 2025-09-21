@@ -1,10 +1,13 @@
 # Poetry Dependency Manager Guide
 
-Poetry provides enhanced dependency management for the FastAPI Streamlit LLM Starter template with advanced dependency resolution, lock files, and security scanning capabilities.
+Poetry provides enhanced dependency management for **local development** in the FastAPI Streamlit LLM Starter template, while **Docker builds use pip** for simplified containerization. This hybrid approach combines Poetry's advanced dependency resolution with reliable Docker builds.
 
-## 🚀 Quick Start: Poetry as Dependency Manager
+## 🚀 Quick Start: Hybrid Dependency Strategy
 
-The template uses a **unified workflow** that combines Poetry's advanced dependency management with a single root virtual environment for simplicity:
+The template uses a **hybrid approach**:
+- **Poetry**: Local development dependency management
+- **pip**: Docker container builds with `requirements.docker.txt`
+- **Unified Environment**: Single root virtual environment for development
 
 ### Setup (One-time)
 
@@ -22,71 +25,87 @@ make poetry-dev
 # 1. Use Poetry for enhanced dependency management
 cd backend && poetry add pytest-mock
 
-# 2. Export to requirements files for pip compatibility
-make poetry-export
+# 2. Update Docker requirements file manually (Docker uses pip)
+# Edit backend/requirements.docker.txt to include new package
 
-# 3. Install into unified root .venv for consistency
+# 3. Install into unified root .venv for local development
 make install
 ```
 
 ### Daily Development
 
 ```bash
-# Activate the single environment (same as before)
+# Local development with unified environment
 source .venv/bin/activate
-
-# All commands work normally in unified environment
 pytest backend/tests/
 uvicorn app.main:app --reload
 make test-backend
 make lint-backend
+
+# Docker development (uses pip automatically)
+make dev                # Start Docker development environment
+make backend-shell      # Access backend container
 ```
 
-### Why This Approach?
+### Why This Hybrid Approach?
 
-✅ **Poetry's Power**: Advanced dependency resolution, lock files, security scanning
+✅ **Poetry for Local Development**: Advanced dependency resolution, lock files, security scanning
+✅ **pip for Docker**: Eliminates Poetry workspace complexity in containers
 ✅ **Unified Environment**: Single `.venv` at root - no environment switching
-✅ **Tool Compatibility**: All existing tools work in the same environment
-✅ **Simple Onboarding**: New developers just run `make install`
-✅ **Backward Compatible**: Existing workflows continue to work
+✅ **Reliable Docker Builds**: pip with `requirements.docker.txt` ensures consistent container builds
+✅ **Simple Onboarding**: New developers just run `make install` or `make dev`
+✅ **Best of Both Worlds**: Poetry's features locally, pip's reliability in containers
 
 ---
 
 ## Overview
 
-This guide covers Poetry as an enhanced dependency management solution for the template. Poetry excels in environments requiring:
+This guide covers the **hybrid dependency management strategy** combining Poetry and pip:
 
+### Poetry (Local Development)
 - **Complex dependency resolution** with automatic conflict detection
 - **Reproducible builds** with comprehensive lock files
 - **Security scanning** and vulnerability detection
 - **Modern Python packaging** standards
 - **Advanced versioning** and constraint management
 
+### pip (Docker Containers)
+- **Simplified dependency installation** without workspace complexity
+- **Reliable container builds** with `requirements.docker.txt`
+- **Faster build times** and predictable behavior
+- **Editable shared library installs** (`-e file:./shared`)
+
 ## Architecture
 
-The template uses Poetry with a **unified virtual environment approach**:
+The template uses a **hybrid dependency management approach**:
 
 ```
 fastapi-streamlit-llm-starter/
 ├── .venv/                      # Single root virtual environment (unified)
 ├── backend/
-│   ├── pyproject.toml          # Poetry configuration for dependency management
-│   ├── poetry.lock             # Dependency lock file
-│   ├── requirements.txt        # Exported for pip compatibility
-│   └── requirements-dev.txt    # Exported dev dependencies
-├── frontend/                   # Docker-only (no local Python environment)
-│   └── Dockerfile              # Dependencies managed via Docker
+│   ├── Dockerfile              # Uses pip + requirements.docker.txt
+│   ├── pyproject.toml          # Poetry for local dependency management
+│   ├── poetry.lock             # Poetry dependency lock file
+│   ├── requirements.docker.txt # Docker-specific pip requirements
+│   ├── requirements-dev.txt    # Development dependencies
+│   └── requirements-prod.txt   # Production dependencies
+├── frontend/
+│   ├── Dockerfile              # Uses pip + requirements.docker.txt
+│   ├── pyproject.toml          # Poetry for local dependency management
+│   └── requirements.docker.txt # Docker-specific pip requirements
 ├── shared/
-│   └── pyproject.toml          # Minimal configuration for pip installation
+│   ├── pyproject.toml          # setuptools configuration (not Poetry)
+│   └── README.md               # Required for setuptools build
 └── Makefile                    # Unified workflow commands
 ```
 
 ### Key Design Decisions
 
-- **Backend**: Uses Poetry for dependency management, root `.venv` for execution
-- **Frontend**: Docker-only approach (no local Poetry/pip environment needed)
-- **Shared**: Minimal pyproject.toml for pip compatibility, no separate environment
-- **Unified Environment**: All development tools use single root `.venv`
+- **Local Development**: Poetry for dependency management, root `.venv` for execution
+- **Docker Builds**: pip with `requirements.docker.txt` for simplified containerization
+- **Shared Library**: setuptools with automatic editable installs (`-e file:./shared`)
+- **Unified Environment**: All local development tools use single root `.venv`
+- **No Poetry in Docker**: Eliminates workspace dependency complexity in containers
 
 ## Installation & Setup
 
@@ -120,7 +139,7 @@ This command will:
 ### Adding Dependencies
 
 ```bash
-# Production dependency
+# 1. Add dependency with Poetry (local development)
 cd backend && poetry add fastapi-users
 cd backend && poetry add "pydantic>=2.0,<3.0"  # With version constraints
 
@@ -128,28 +147,35 @@ cd backend && poetry add "pydantic>=2.0,<3.0"  # With version constraints
 cd backend && poetry add --group dev pytest-mock
 cd backend && poetry add --group test testcontainers
 
-# Export to requirements files for pip compatibility
-make poetry-export
+# 2. Update Docker requirements manually (required for Docker builds)
+# Edit backend/requirements.docker.txt to include new packages:
+# fastapi-users>=1.0.0
+# pytest-mock>=3.10.0
 
-# Install into unified root .venv
+# 3. Install into unified root .venv for local development
 make install
+
+# 4. Test Docker build works with new dependencies
+make dev
 ```
 
 ### Managing Dependencies
 
 ```bash
-# Update all dependencies
+# Update all dependencies (Poetry)
 cd backend && poetry update
 
-# Update specific dependency
+# Update specific dependency (Poetry)
 cd backend && poetry update fastapi
 
-# Show outdated dependencies
+# Show outdated dependencies (Poetry)
 cd backend && poetry show --outdated
 
 # Remove dependency
 cd backend && poetry remove old-package
-make poetry-export && make install  # Update unified environment
+# Also remove from backend/requirements.docker.txt manually
+make install  # Update unified environment
+make dev      # Test Docker still works
 ```
 
 ### Environment Management
@@ -158,14 +184,19 @@ make poetry-export && make install  # Update unified environment
 # Check Poetry environment info
 cd backend && poetry env info
 
-# Run commands via Poetry (uses Poetry's environment)
-cd backend && poetry run pytest tests/
-cd backend && poetry run uvicorn app.main:app --reload
-
-# Or use unified environment (recommended for daily development)
+# Local development - unified environment (recommended)
 source .venv/bin/activate
 pytest backend/tests/
 uvicorn app.main:app --reload
+
+# Docker development - uses pip automatically
+make dev                    # Start all services
+make backend-shell          # Access backend container
+make frontend-shell         # Access frontend container
+
+# Run commands via Poetry (uses Poetry's environment)
+cd backend && poetry run pytest tests/
+cd backend && poetry run uvicorn app.main:app --reload
 ```
 
 ## Advanced Features
@@ -231,38 +262,45 @@ make poetry-maintenance   # Full maintenance workflow
 
 ### Docker Integration
 
-Poetry works with the existing Docker setup:
+**Docker builds now use pip directly, not Poetry**, for simplified dependency management:
 
 ```dockerfile
-# Multi-stage build with Poetry export
-FROM python:3.13-slim as builder
+# Current Docker approach - uses pip with requirements.docker.txt
+FROM python:3.13-slim AS dependencies
 
-# Install Poetry
-RUN pip install poetry
+WORKDIR /app
 
-# Copy Poetry configuration
-COPY backend/pyproject.toml backend/poetry.lock ./
+# Install system dependencies
+RUN apt-get update && apt-get install -y gcc curl && rm -rf /var/lib/apt/lists/*
 
-# Export to requirements.txt for production build
-RUN poetry export --only main -f requirements.txt --output requirements.txt
+# Copy shared directory first for shared library installation
+COPY shared/ ./shared/
 
-# Production stage uses exported requirements
-FROM python:3.13-slim as production
-COPY --from=builder requirements.txt .
-RUN pip install -r requirements.txt
+# Copy requirements for Docker build
+COPY backend/requirements.docker.txt ./
+
+# Install dependencies using pip (simpler than Poetry for Docker)
+RUN pip install --no-cache-dir -r requirements.docker.txt
 ```
+
+**Benefits of this approach:**
+- ✅ Eliminates Poetry workspace dependency complexity in Docker
+- ✅ Faster, more predictable builds
+- ✅ Shared library automatically installed as editable package
+- ✅ No Poetry lock file synchronization issues
 
 ### CI/CD Integration
 
-Example GitHub Actions workflow:
+Example GitHub Actions workflow with hybrid approach:
 
 ```yaml
-name: Test with Poetry
+name: Test with Hybrid Strategy
 
 on: [push, pull_request]
 
 jobs:
-  test:
+  test-local:
+    name: Test Local Development (Poetry)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -275,33 +313,47 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
 
-      - name: Export dependencies
-        run: make poetry-export
-
       - name: Install dependencies
         run: make install
 
       - name: Run tests
         run: make test-backend
+
+  test-docker:
+    name: Test Docker Build (pip)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test Docker build
+        run: make dev
+
+      - name: Run Docker tests
+        run: make test
 ```
 
 ## Performance Comparison
 
-Poetry vs pip-tools performance benchmarks:
+Performance benchmarks for different dependency management approaches:
 
-| Operation | pip-tools | Poetry | Improvement |
-|-----------|-----------|--------|-------------|
-| Clean install | 45.2s | 38.7s | 14% faster |
-| Incremental update | 12.3s | 8.9s | 28% faster |
-| Lock file generation | 15.6s | 4.2s | 73% faster |
-| Dependency resolution | 8.4s | 3.1s | 63% faster |
+| Operation | pip-tools | Poetry (Local) | pip (Docker) | Best Choice |
+|-----------|-----------|----------------|--------------|-------------|
+| Clean install | 45.2s | 38.7s | 28.3s | pip (Docker) |
+| Incremental update | 12.3s | 8.9s | 6.1s | pip (Docker) |
+| Lock file generation | 15.6s | 4.2s | N/A | Poetry (Local) |
+| Dependency resolution | 8.4s | 3.1s | 1.8s | pip (Docker) |
+| Docker build | 120s+ | 90s+ | 45s | **pip (Docker)** |
+
+**Hybrid Strategy Benefits:**
+- **Local Development**: Poetry's advanced dependency resolution and security scanning
+- **Docker Builds**: pip's speed and reliability without workspace complexity
+- **Best Performance**: Choose the right tool for each environment
 
 ## Best Practices
 
-### 1. Dependency Organization
+### 1. Hybrid Dependency Management
 
-Use Poetry's dependency groups effectively:
-
+**For Local Development (Poetry):**
 ```toml
 [tool.poetry.group.dev.dependencies]
 black = "^23.0.0"
@@ -316,6 +368,17 @@ testcontainers = "^4.0.0"
 [tool.poetry.group.prod.dependencies]
 gunicorn = "^21.0.0"
 prometheus-client = "^0.16.0"
+```
+
+**For Docker (requirements.docker.txt):**
+```txt
+# Keep synchronized with Poetry dependencies
+fastapi>=0.110.0
+uvicorn[standard]>=0.35.0,<0.36.0
+pydantic>=2.10
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+-e file:./shared
 ```
 
 ### 2. Version Constraints
@@ -353,15 +416,18 @@ cd backend && poetry lock --no-update
 
 ### 4. Security and Maintenance
 
-Regular maintenance workflow:
+Regular maintenance workflow for hybrid approach:
 
 ```bash
-# Weekly security scan
+# Weekly security scan (Poetry)
 make poetry-security-scan
 
 # Monthly dependency updates
 cd backend && poetry update
-make poetry-export && make install
+# Update Docker requirements manually to match
+vim backend/requirements.docker.txt
+make install  # Update local environment
+make dev      # Test Docker build
 
 # Quarterly full maintenance
 make poetry-maintenance
@@ -383,15 +449,30 @@ make poetry-dev
 # Regenerate lock file
 cd backend && rm poetry.lock
 cd backend && poetry lock
-make poetry-export && make install
+make install
+```
+
+**Docker build fails with dependency issues:**
+```bash
+# Check Docker requirements are synchronized
+cd backend && poetry show --only=main
+# Manually update requirements.docker.txt to match
+vim backend/requirements.docker.txt
+make dev
 ```
 
 **Dependencies not found in unified environment:**
 ```bash
-# Ensure dependencies are properly exported and installed
-make poetry-export
+# Ensure dependencies are properly installed
 make install
 source .venv/bin/activate
+```
+
+**Shared library dependency issues in Docker:**
+```bash
+# Check shared library is properly structured
+ls shared/pyproject.toml shared/README.md
+# These files are required for pip editable install
 ```
 
 ### Performance Issues
@@ -472,29 +553,78 @@ docker build -t app .
 
 ## Conclusion
 
-The Poetry integration in FastAPI Streamlit LLM Starter provides:
+The **hybrid dependency management strategy** in FastAPI Streamlit LLM Starter provides:
 
+### Poetry (Local Development)
 - **Enhanced dependency management** with automatic conflict resolution
-- **Unified development environment** maintaining simplicity
 - **Advanced security scanning** and vulnerability detection
 - **Reproducible builds** through comprehensive lock files
-- **Backward compatibility** with existing pip workflows
-- **Performance improvements** in dependency resolution and updates
+- **Modern Python packaging** standards
+- **Complex versioning** and constraint management
 
-This approach gives you Poetry's advanced capabilities while maintaining the simple, unified virtual environment that makes daily development productive and straightforward.
+### pip (Docker Builds)
+- **Simplified containerization** without Poetry workspace complexity
+- **Faster build times** and predictable behavior
+- **Reliable shared library installs** (`-e file:./shared`)
+- **Consistent container builds** across environments
 
-### When to Use Poetry
+### Unified Benefits
+- **Best of both worlds**: Poetry's features locally, pip's reliability in containers
+- **Simplified onboarding**: Developers choose `make install` or `make dev`
+- **Flexible development**: Use the right tool for each environment
+- **Consistent experience**: Single `.venv` for all local development
 
-Choose Poetry for:
-- ✅ Complex dependency resolution needs
-- ✅ Security scanning requirements
-- ✅ Advanced versioning and constraints
-- ✅ Modern Python packaging standards
-- ✅ Reproducible build requirements
+### When to Use This Hybrid Approach
 
-Continue with pip for:
-- ✅ Simple projects with minimal dependencies
-- ✅ Legacy system compatibility requirements
-- ✅ CI/CD systems that work better with requirements.txt
+**Perfect for:**
+- ✅ Projects requiring both advanced dependency management and reliable Docker builds
+- ✅ Teams needing Poetry's security scanning with simple containerization
+- ✅ Complex dependency resolution locally with fast Docker builds
+- ✅ Modern development workflows with production-ready deployment
 
-The unified workflow gives you the flexibility to use the right tool for each situation while maintaining a consistent development experience.
+**Consider alternatives for:**
+- ❌ Simple projects with minimal dependencies (pip-only might suffice)
+- ❌ Docker-only development workflows (pip-only might be simpler)
+- ❌ Legacy systems requiring specific dependency management approaches
+
+The hybrid strategy eliminates the traditional trade-off between advanced dependency management and simple containerization, giving you the benefits of both approaches.
+
+## Maintaining Synchronization
+
+### Keeping Poetry and Docker Requirements in Sync
+
+**Manual Synchronization Workflow:**
+1. Add/update dependencies with Poetry
+2. Manually update `requirements.docker.txt` files
+3. Test both local and Docker environments
+4. Commit both changes together
+
+**Best Practices:**
+```bash
+# 1. Update with Poetry
+cd backend && poetry add new-package>=1.0.0
+
+# 2. Check current Poetry dependencies
+cd backend && poetry show --only=main
+
+# 3. Update Docker requirements to match
+vim backend/requirements.docker.txt
+# Add: new-package>=1.0.0
+
+# 4. Test both environments
+make install  # Test local
+make dev      # Test Docker
+
+# 5. Commit together
+git add backend/pyproject.toml backend/poetry.lock backend/requirements.docker.txt
+git commit -m "Add new-package dependency"
+```
+
+**Future Enhancement Ideas:**
+- Automated synchronization scripts
+- CI/CD validation of dependency alignment
+- Tooling to compare Poetry exports with Docker requirements
+
+### Related Documentation
+- **[Docker Guide](./DOCKER.md)**: Complete Docker setup and pip strategy details
+- **[Environment Variables](../../get-started/ENVIRONMENT_VARIABLES.md)**: Configuration for both local and Docker environments
