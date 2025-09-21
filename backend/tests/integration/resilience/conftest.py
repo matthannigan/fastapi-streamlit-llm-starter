@@ -32,7 +32,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from typing import Dict, Any, Callable, Optional
 
-from fakeredis import FakeStrictRedis
+import fakeredis.aioredis
 
 from app.core.config import Settings
 from app.core.exceptions import (
@@ -54,7 +54,7 @@ from app.infrastructure.resilience.config_presets import (
     ResilienceStrategy,
     get_default_presets
 )
-from app.infrastructure.cache import RedisCache
+from app.infrastructure.cache import GenericRedisCache
 
 
 @pytest.fixture(scope="session")
@@ -80,18 +80,41 @@ def fake_redis_cache():
 
     This fixture creates a fakeredis instance that behaves identically to
     real Redis for testing cache integration with resilience patterns.
+    
+    Following the "hot-swap" pattern from cache integration tests, this creates
+    a real GenericRedisCache instance and replaces its Redis client with a
+    FakeRedis client for testing without external dependencies.
 
     Business Impact:
         Ensures cache operations are tested with realistic behavior
         without requiring a running Redis server for tests.
 
     Test Strategy:
-        - Uses FakeStrictRedis for high-fidelity Redis simulation
+        - Uses fakeredis.aioredis.FakeRedis for async Redis simulation
+        - Hot-swaps Redis client in GenericRedisCache for testing
         - Provides same interface as real Redis cache implementation
         - Enables testing of cache + resilience pattern integration
+        - Uses test database 15 for isolation (consistent with factory patterns)
     """
-    client = FakeStrictRedis(decode_responses=True)
-    return RedisCache(client)
+    # Create a real GenericRedisCache instance with test-appropriate configuration
+    cache = GenericRedisCache(
+        redis_url="redis://localhost:6379/15",  # URL for interface consistency, database 15 for test isolation
+        default_ttl=3600,  # Standard test TTL
+        enable_l1_cache=False,  # Test pure Redis behavior without L1 cache interference
+        l1_cache_size=0,  # Disable L1 cache for focused Redis testing
+        compression_threshold=1000,  # Standard compression threshold
+        compression_level=6,  # Balanced compression
+        fail_on_connection_error=False  # Allow graceful operation during testing
+    )
+    
+    # Hot-swap the Redis client with FakeRedis for testing
+    # This provides Redis-compatible behavior without requiring an external Redis server
+    cache.redis = fakeredis.aioredis.FakeRedis(
+        decode_responses=False,  # Consistent with real Redis client configuration
+        connection_pool=None  # Use default connection handling
+    )
+    
+    return cache
 
 
 @pytest.fixture
