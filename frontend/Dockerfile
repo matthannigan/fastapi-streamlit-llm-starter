@@ -10,40 +10,20 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN pip install poetry==2.1.4
-
-# Configure Poetry
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VENV_IN_PROJECT=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
-
 # Copy shared directory first for shared library installation
 COPY shared/ ./shared/
 
-# Choose installation method based on available files
-COPY frontend/pyproject.toml* frontend/poetry.lock* frontend/requirements.txt* frontend/requirements.docker.txt* ./
+# Copy requirements for Docker build
+COPY frontend/requirements.docker.txt ./
 
-# Install dependencies with Poetry if pyproject.toml exists, otherwise use pip
-RUN if [ -f "pyproject.toml" ]; then \
-        cd ../shared && poetry install && cd /app; \
-        poetry install --only=main && rm -rf $POETRY_CACHE_DIR; \
-    else \
-        pip install --no-cache-dir -r requirements.docker.txt; \
-    fi
+# Install dependencies using pip (simpler than Poetry for Docker)
+RUN pip install --no-cache-dir -r requirements.docker.txt
 
 # Add shared models to Python path - app package is already available from /app
 ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Development stage
 FROM base AS development
-
-# Install development dependencies
-RUN if [ -f "pyproject.toml" ]; then \
-        poetry install --with dev && rm -rf $POETRY_CACHE_DIR; \
-    else \
-        pip install --no-cache-dir -r requirements-dev.txt; \
-    fi
 
 # Copy frontend application code (excluding local shared directory)
 COPY frontend/app/ ./app/
@@ -67,13 +47,6 @@ CMD ["python", "run_app.py"]
 
 # Production stage
 FROM base AS production
-
-# Install production dependencies
-RUN if [ -f "pyproject.toml" ]; then \
-        poetry install --only=main && rm -rf $POETRY_CACHE_DIR; \
-    else \
-        pip install --no-cache-dir -r requirements.lock; \
-    fi
 
 # Copy frontend application code (excluding local shared directory)
 COPY frontend/app/ ./app/
