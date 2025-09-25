@@ -140,9 +140,8 @@ class TestEnvironmentDetectorFeatureContexts:
 
             # Then: May return PRODUCTION environment even in development context
             assert security_result.feature_context == FeatureContext.SECURITY_ENFORCEMENT
-            # The base environment is still development (from ENVIRONMENT=development in fixture)
-            # but security override signal is available in additional_signals
-            assert security_result.environment == Environment.DEVELOPMENT
+            # Security enforcement should override to production when ENFORCE_AUTH=true
+            assert security_result.environment == Environment.PRODUCTION
             assert security_result.confidence > 0.0
 
             # Verify security-specific metadata is added
@@ -156,7 +155,7 @@ class TestEnvironmentDetectorFeatureContexts:
                               if s.source == 'security_override']
             assert len(security_signals) == 1
             assert security_signals[0].environment == Environment.PRODUCTION
-            assert security_signals[0].confidence == 0.90
+            assert security_signals[0].confidence == 0.98
             assert 'Security enforcement enabled' in security_signals[0].reasoning
 
     def test_detect_with_context_cache_optimization_context(self, environment_detector, mock_cache_environment_vars):

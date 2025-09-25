@@ -500,11 +500,11 @@ class EnvironmentDetector:
         # Apply feature-specific context
         context_info = self._apply_feature_context(signals, feature_context)
         
-        # Determine final environment with confidence
-        final_environment = self._determine_environment(context_info['signals'])
-        
         # Combine all signals (base detection signals + feature-specific additional signals)
         all_signals = signals + context_info['additional_signals']
+        
+        # Determine final environment with confidence using ALL signals including overrides
+        final_environment = self._determine_environment(all_signals)
 
         return EnvironmentInfo(
             environment=final_environment['environment'],
@@ -885,7 +885,7 @@ class EnvironmentDetector:
                             source="security_override",
                             value=f"{env_var}={value}",
                             environment=Environment.PRODUCTION,
-                            confidence=0.90,
+                            confidence=0.98,
                             reasoning=f"Security enforcement enabled via {env_var}"
                         ))
         
