@@ -745,7 +745,7 @@ def mock_global_detector():
         metadata={}
     )
 
-    with patch('app.core.environment.environment_detector', mock_detector):
+    with patch('app.core.environment.api.environment_detector', mock_detector):
         yield mock_detector
 
 
