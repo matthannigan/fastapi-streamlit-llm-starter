@@ -497,7 +497,7 @@ test-backend-cache-e2e:
 test-backend-environment:
 	@$(MAKE) test-backend-environment-unit
 	@$(MAKE) test-backend-environment-integration
-	@$(MAKE) test-backend-environment-e2e
+#	@$(MAKE) test-backend-environment-e2e
 
 test-backend-environment-unit:
 	@echo "🧪 Running backend core environment unit tests..."
@@ -505,18 +505,14 @@ test-backend-environment-unit:
 
 test-backend-environment-integration:
 	@echo "🧪 Running backend core environment integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests.new/integration/environment/ -n 0 -q --tb=no --retries 1 --retry-delay 1
-
-test-backend-environment-e2e:
-#	@echo "🧪 Running backend core environment E2E tests..."
-#	@cd backend && $(PYTHON_CMD) -m pytest tests.new/e2e/environment/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/environment/ -n 0 -v --tb=short --retries 1 --retry-delay 1
 
 
 # Run auth infrastructure tests
 test-backend-auth:
 	@$(MAKE) test-backend-auth-unit
 	@$(MAKE) test-backend-auth-integration
-	@$(MAKE) test-backend-auth-e2e
+#	@$(MAKE) test-backend-auth-e2e
 
 test-backend-auth-unit:
 	@echo "🧪 Running backend auth infrastructure unit tests..."
@@ -524,11 +520,7 @@ test-backend-auth-unit:
 
 test-backend-auth-integration:
 	@echo "🧪 Running backend auth infrastructure integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests.new/integration/auth/ -n 0 -q --tb=no --retries 1 --retry-delay 1
-
-test-backend-auth-e2e:
-#	@echo "🧪 Running backend auth infrastructure E2E tests..."
-#	@cd backend && $(PYTHON_CMD) -m pytest tests.new/e2e/auth/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/auth/ -n 0 -v --tb=short --retries 1 --retry-delay 1
 
 
 # Run infrastructure service tests
