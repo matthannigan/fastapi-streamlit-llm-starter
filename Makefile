@@ -444,35 +444,31 @@ test-local: venv
 # Backend Testing (Granular)
 ##################################################################################################
 
-# Run backend tests (fast tests only, default)
-test-backend:
-	@echo "🧪 Running backend tests (fast tests only)..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -q --retries 2 --retry-delay 5
-
 update-tests-progress:
 	@echo "🧪 Updating tests progress..."
 	@-cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --json-report --json-report-file=tests/infrastructure/cache/failures.json
 	@$(PYTHON_CMD) scripts/update_tests_progress_w_failures.py backend/tests/infrastructure/cache/ --failures backend/tests/infrastructure/cache/failures.json --output backend/tests/infrastructure/cache/PROGRESS.md
 
-# Run backend API endpoint tests
-test-backend-api:
-	@echo "🧪 Running backend API endpoint tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/api/ -v
 
-# Run backend core functionality tests
-test-backend-core:
-	@echo "🧪 Running backend core functionality tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/core/ -v
+# Run all backend tests
+test-backend:
+	@$(MAKE) test-backend-unit
+	@$(MAKE) test-backend-integration
+	@$(MAKE) test-backend-e2e
 
-# Run infrastructure service tests
-test-backend-infra:
-	@echo "🧪 Running backend infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ -v
+# Run backend unit tests
+test-backend-unit:
+	@echo "🧪 Running backend unit tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ -n auto -q --tb=no && cd ..
 
-# Run infrastructure service tests
-test-backend-infra-ai:
-	@echo "🧪 Running backend AI infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ai/ -v
+test-backend-integration:
+	@echo "🧪 Running backend integration tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/cache/ -n 0 -q --tb=no --retries 3 --retry-delay 1 && cd ..
+
+test-backend-e2e:
+	@echo "🧪 Running backend E2E tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1 && cd ..
+
 
 # Run cache infrastructure tests
 test-backend-cache:
@@ -493,7 +489,7 @@ test-backend-cache-e2e:
 	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
 
 
-# Run environment tests
+# Run core environment tests
 test-backend-environment:
 	@$(MAKE) test-backend-environment-unit
 	@$(MAKE) test-backend-environment-integration
@@ -523,59 +519,11 @@ test-backend-auth-integration:
 	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/auth/ -n 0 -v --tb=short --retries 1 --retry-delay 1
 
 
-# Run infrastructure service tests
-test-backend-infra-monitoring:
-	@echo "🧪 Running backend monitoring infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/monitoring/ -v
-
-# Run infrastructure service tests
-test-backend-infra-resilience:
-	@echo "🧪 Running backend resilience infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/resilience/ -v
-
-# Run infrastructure service tests
-test-backend-infra-security:
-	@echo "🧪 Running backend security infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/security/ -v
-
-# Run backend integration tests
-test-backend-integration:
-	@echo "🧪 Running backend integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -m "no_parallel" --tb=no -q
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ -m "not no_parallel" --tb=no -q
-
-# Run backend auth integration tests, run no_parallel tests first then non-parallel tests
-test-backend-integration-auth:
-	@echo "🧪 Running backend auth integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/auth/ -m "no_parallel" --tb=no -q
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/auth/ -m "not no_parallel" --tb=no -q
-
-# Run backend performance tests
-test-backend-performance:
-	@echo "🧪 Running backend performance tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/performance/ -v
-
-# Run domain services tests
-test-backend-services:
-	@echo "🧪 Running backend domain services tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/services/ -v
-
-# Run shared schema tests
-test-backend-schemas:
-	@echo "🧪 Running backend shared schema tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/shared_schemas/ -v
-
 # Run slow/comprehensive backend tests
 test-backend-slow:
 	@echo "🧪 Running slow backend tests (comprehensive)..."
 	@echo "⏳ This may take several minutes..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "slow" --run-slow --timeout=60
-
-# Run all backend tests including slow ones
-test-backend-all:
-	@echo "🧪 Running ALL backend tests (including slow tests)..."
-	@echo "⏳ This may take several minutes..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/ -v -m "not manual" --run-slow --timeout=60
 
 # Run manual tests (require running server)
 test-backend-manual:

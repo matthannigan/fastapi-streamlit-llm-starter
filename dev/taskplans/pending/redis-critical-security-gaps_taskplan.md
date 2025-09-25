@@ -61,7 +61,7 @@ Comprehensive testing, performance validation, and production deployment readine
   - [ ] Logging for encryption operations and failures
 
 #### Task 1.2: AIResponseCache Enhancement
-- [ ] Extend `backend/app/infrastructure/cache/ai_response_cache.py` with encryption support:
+- [ ] Extend `backend/app/infrastructure/cache/redis_ai.py` with encryption support:
   - [ ] Add optional `encryption_key` parameter to constructor
   - [ ] Initialize EncryptedCacheLayer when encryption key provided
   - [ ] Enhance `_compress_data()` method to encrypt before compression
@@ -90,7 +90,7 @@ Comprehensive testing, performance validation, and production deployment readine
 **Goal**: Comprehensive testing of encryption functionality with performance benchmarking.
 
 #### Task 2.1: Unit Tests for Encryption Layer
-- [ ] Create `backend/tests/infrastructure/cache/test_encryption.py`:
+- [ ] Create `backend/tests/unit/cache/encryption/test_*.py` following guidance in `docs/guides/testing/UNIT_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md`:
   - [ ] Test encryption/decryption roundtrip for various data types
   - [ ] Test handling of missing or invalid encryption keys
   - [ ] Test backward compatibility with unencrypted data
@@ -103,16 +103,11 @@ Comprehensive testing, performance validation, and production deployment readine
   - [ ] Validate <15% performance impact requirement
 
 #### Task 2.2: Integration Tests with Cache System
-- [ ] Test encrypted cache operations:
+- [ ]  Create tests in `backend/tests/integration/cache/` for encrypted cache operations following guidance in `docs/guides/testing/INTEGRATION_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md`:
   - [ ] Test `cache_response()` with encryption enabled
   - [ ] Test `get_cached_response()` for encrypted entries
   - [ ] Test mixed encrypted/unencrypted cache entries
   - [ ] Test cache expiration with encrypted data
-- [ ] Test cache migration scenarios:
-  - [ ] Test reading legacy unencrypted entries
-  - [ ] Test gradual migration to encrypted storage
-  - [ ] Test key rotation without cache invalidation
-  - [ ] Validate monitoring metrics with encryption
 
 #### Task 2.3: Backward Compatibility Validation
 - [ ] Ensure zero breaking changes:
@@ -120,10 +115,7 @@ Comprehensive testing, performance validation, and production deployment readine
   - [ ] Verify existing cache tests pass unchanged
   - [ ] Test development environment with encryption disabled
   - [ ] Validate production environment with encryption enforced
-- [ ] Document migration path:
-  - [ ] Create migration guide for enabling encryption
-  - [ ] Document performance characteristics
-  - [ ] Provide troubleshooting for encryption issues
+- [ ] Provide troubleshooting for encryption issues in `docs/guides/infrastructure/cache/troubleshooting.md`
 
 ---
 
@@ -180,6 +172,7 @@ Comprehensive testing, performance validation, and production deployment readine
 **Goal**: Comprehensive testing of environment-aware security configuration generation.
 
 #### Task 4.1: Unit Tests for Configuration Generator
+- [ ] Create `backend/tests/unit/cache/encryption/test_*.py` following guidance in `docs/guides/testing/UNIT_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md`:
 - [ ] Create `backend/tests/infrastructure/security/test_config_generator.py`:
   - [ ] Test configuration generation for each environment
   - [ ] Test password generation with required complexity
