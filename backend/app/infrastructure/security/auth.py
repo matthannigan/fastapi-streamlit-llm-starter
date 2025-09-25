@@ -217,7 +217,7 @@ import os
 import sys
 import logging
 from typing import Optional, Dict, Any
-from fastapi import Depends, status, HTTPException
+from fastapi import Depends, status, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError, ConfigurationError
@@ -227,6 +227,39 @@ logger = logging.getLogger(__name__)
 
 # HTTP Bearer security scheme
 security = HTTPBearer(auto_error=False)
+
+
+def get_api_key_from_request(
+    request: Request,
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> tuple[Optional[str], str]:
+    """
+    Extract API key from either Authorization Bearer or X-API-Key header.
+
+    Supports both authentication methods:
+    - Authorization: Bearer <key>
+    - X-API-Key: <key>
+
+    Args:
+        request: FastAPI Request object containing headers
+        bearer_credentials: HTTP Bearer credentials from Authorization header
+
+    Returns:
+        tuple: (api_key: Optional[str], auth_method: str)
+               - api_key: The extracted API key or None if not found
+               - auth_method: "bearer_token", "x_api_key", or "none"
+    """
+    # Try Bearer token first (existing implementation)
+    if bearer_credentials and bearer_credentials.credentials:
+        return bearer_credentials.credentials, "bearer_token"
+
+    # Try X-API-Key header
+    x_api_key = request.headers.get("X-API-Key")
+    if x_api_key:
+        return x_api_key, "x_api_key"
+
+    # No authentication provided
+    return None, "none"
 
 class AuthConfig:
     """
@@ -560,7 +593,8 @@ auth_config = AuthConfig()
 api_key_auth = APIKeyAuth(auth_config)
 
 async def verify_api_key(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    request: Request,
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> str:
     """
     Environment-aware FastAPI dependency for API key authentication with production security.
@@ -569,9 +603,10 @@ async def verify_api_key(
     development mode support, and comprehensive error context for operational debugging.
 
     Args:
-        credentials: HTTP Bearer authorization credentials from request headers.
-                    Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
-                    Automatically injected by FastAPI's HTTPBearer security scheme.
+        request: FastAPI Request object containing headers for X-API-Key support
+        bearer_credentials: HTTP Bearer authorization credentials from request headers.
+                           Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
+                           Automatically injected by FastAPI's HTTPBearer security scheme.
 
     Returns:
         str: The validated API key string when authentication succeeds.
@@ -605,8 +640,12 @@ async def verify_api_key(
         >>> # GET /protected without Authorization header
         >>> # Returns: api_key = "development"
 
-        >>> # Production mode with valid key
+        >>> # Production mode with valid Bearer token
         >>> # GET /protected with "Authorization: Bearer sk-1234567890abcdef"
+        >>> # Returns: api_key = "sk-1234567890abcdef"
+
+        >>> # Production mode with valid X-API-Key header
+        >>> # GET /protected with "X-API-Key: sk-1234567890abcdef"
         >>> # Returns: api_key = "sk-1234567890abcdef"
 
         >>> # Invalid authentication attempt
@@ -614,9 +653,12 @@ async def verify_api_key(
         >>> # Raises: AuthenticationError("Invalid API key", context={...})
 
         >>> # Missing credentials in production
-        >>> # GET /protected without Authorization header (keys configured)
+        >>> # GET /protected without Authorization or X-API-Key headers (keys configured)
         >>> # Raises: AuthenticationError("API key required...", context={...})
     """
+    # Extract API key from either Bearer or X-API-Key header
+    api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
+
     # If no API keys are configured, allow access (development mode)
     if not api_key_auth.api_keys:
         # Only get environment info when needed for logging
@@ -631,53 +673,54 @@ async def verify_api_key(
             logger.warning("No API keys configured - allowing unauthenticated access")
         return "development"
 
-    # Check if credentials are provided (preserve original error message)
-    if not credentials:
+    # Check if credentials are provided (preserve original error message but support both methods)
+    if not api_key:
         # Get environment info for enhanced context, but preserve original message
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             context = {
-                "auth_method": "bearer_token",
+                "auth_method": auth_method,
                 "environment": env_info.environment.value,
                 "confidence": env_info.confidence,
                 "credentials_provided": False
             }
         except Exception:
-            context = {"auth_method": "bearer_token", "credentials_provided": False}
+            context = {"auth_method": auth_method, "credentials_provided": False}
 
         raise AuthenticationError(
-            "API key required. Please provide a valid API key in the Authorization header.",
+            "API key required. Please provide a valid API key via 'Authorization: Bearer <key>' or 'X-API-Key: <key>' header.",
             context=context
         )
 
     # Verify the API key (preserve original logic)
-    if not api_key_auth.verify_api_key(credentials.credentials):
-        logger.warning(f"Invalid API key attempted: {credentials.credentials[:8]}...")
+    if not api_key_auth.verify_api_key(api_key):
+        logger.warning(f"Invalid API key attempted via {auth_method}: {api_key[:8]}...")
 
         # Get environment info for enhanced context, but preserve original message
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             context = {
-                "auth_method": "bearer_token",
+                "auth_method": auth_method,
                 "environment": env_info.environment.value,
                 "confidence": env_info.confidence,
-                "key_prefix": credentials.credentials[:8],
+                "key_prefix": api_key[:8],
                 "credentials_provided": True
             }
         except Exception:
             context = {
-                "auth_method": "bearer_token",
-                "key_prefix": credentials.credentials[:8],
+                "auth_method": auth_method,
+                "key_prefix": api_key[:8],
                 "credentials_provided": True
             }
 
         raise AuthenticationError("Invalid API key", context=context)
 
-    logger.debug("API key authentication successful")
-    return credentials.credentials
+    logger.debug(f"API key authentication successful via {auth_method}")
+    return api_key
 
 async def verify_api_key_with_metadata(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    request: Request,
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Dict[str, Any]:
     """
     Enhanced dependency that returns API key with metadata (extension point).
@@ -685,7 +728,7 @@ async def verify_api_key_with_metadata(
     Returns:
         Dictionary with api_key and metadata
     """
-    api_key = await verify_api_key(credentials)
+    api_key = await verify_api_key(request, bearer_credentials)
     
     # Extension point: return metadata along with key
     result = {"api_key": api_key}
@@ -701,14 +744,16 @@ async def verify_api_key_with_metadata(
     return result
 
 async def optional_verify_api_key(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    request: Request,
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Optional[str]:
     """
     Optional dependency to verify API key authentication.
     Returns None if no credentials provided, otherwise verifies the key.
     
     Args:
-        credentials: HTTP Bearer credentials from the request
+        request: FastAPI Request object containing headers for X-API-Key support
+        bearer_credentials: HTTP Bearer credentials from the request
         
     Returns:
         The verified API key or None if no credentials provided
@@ -716,11 +761,14 @@ async def optional_verify_api_key(
     Raises:
         HTTPException: If invalid credentials are provided
     """
-    if not credentials:
+    # Extract API key from either Bearer or X-API-Key header
+    api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
+
+    if not api_key:
         return None
-    
+
     # If credentials are provided, they must be valid
-    return await verify_api_key(credentials)
+    return await verify_api_key(request, bearer_credentials)
 
 # Convenience functions
 def verify_api_key_string(api_key: str) -> bool:
@@ -851,7 +899,8 @@ def supports_feature(feature: str) -> bool:
 # ============================================================================
 
 async def verify_api_key_http(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    request: Request,
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> str:
     """
     FastAPI-compatible authentication dependency with HTTP exception handling.
@@ -861,9 +910,10 @@ async def verify_api_key_http(
     compatibility and standardized HTTP error responses.
 
     Args:
-        credentials: HTTP Bearer authorization credentials from request headers.
-                    Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
-                    Automatically injected by FastAPI's HTTPBearer security scheme.
+        request: FastAPI Request object containing headers for X-API-Key support
+        bearer_credentials: HTTP Bearer authorization credentials from request headers.
+                           Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
+                           Automatically injected by FastAPI's HTTPBearer security scheme.
 
     Returns:
         str: The validated API key string when authentication succeeds.
@@ -893,8 +943,12 @@ async def verify_api_key_http(
         >>> async def get_data(api_key: str = Depends(verify_api_key_http)):
         ...     return {"data": "protected", "authenticated_key": api_key[:8]}
 
+        >>> # Supports both Bearer token and X-API-Key header:
+        >>> # GET /api/data with "Authorization: Bearer sk-1234567890abcdef"
+        >>> # GET /api/data with "X-API-Key: sk-1234567890abcdef"
+
         >>> # HTTP error response for invalid authentication
-        >>> # GET /api/data with "Authorization: Bearer invalid-key"
+        >>> # GET /api/data with "Authorization: Bearer invalid-key" or "X-API-Key: invalid-key"
         >>> # Returns: 401 Unauthorized
         >>> # {
         >>> #   "detail": {
@@ -912,11 +966,11 @@ async def verify_api_key_http(
         >>> # Returns: 200 OK with authenticated content
 
         >>> # Missing credentials error response
-        >>> # GET /api/data without Authorization header (keys configured)
+        >>> # GET /api/data without Authorization or X-API-Key headers (keys configured)
         >>> # Returns: 401 Unauthorized with "API key required" message
     """
     try:
-        return await verify_api_key(credentials)
+        return await verify_api_key(request, bearer_credentials)
     except AuthenticationError as exc:
         # 1. Use the status module for clarity and standardization.
         # 2. Preserve the original, more specific error message from the exception.
