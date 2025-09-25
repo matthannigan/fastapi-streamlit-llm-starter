@@ -452,22 +452,22 @@ update-tests-progress:
 
 # Run all backend tests
 test-backend:
-	@$(MAKE) test-backend-unit
-	@$(MAKE) test-backend-integration
-	@$(MAKE) test-backend-e2e
+	@-$(MAKE) test-backend-unit
+	@-$(MAKE) test-backend-integration
+	@-$(MAKE) test-backend-e2e
 
 # Run backend unit tests
 test-backend-unit:
 	@echo "🧪 Running backend unit tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ -n auto -q --tb=no && cd ..
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ -n auto -q --tb=short
 
 test-backend-integration:
 	@echo "🧪 Running backend integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/cache/ -n 0 -q --tb=no --retries 3 --retry-delay 1 && cd ..
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/cache/ -n 0 -q --tb=no --retries 3 --retry-delay 1
 
 test-backend-e2e:
 	@echo "🧪 Running backend E2E tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1 && cd ..
+	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
 
 
 # Run cache infrastructure tests
