@@ -191,7 +191,7 @@ def clean_environment():
         - No hostname patterns available
     """
     with patch.dict(os.environ, {}, clear=True), \
-         patch('app.core.environment.Path.exists', return_value=False), \
+         patch('app.core.environment.patterns.Path.exists', return_value=False), \
          patch.dict(os.environ, {'HOSTNAME': ''}, clear=False):
         yield
 
@@ -415,7 +415,7 @@ def mock_file_system():
         # Production indicators would return False
         return False
 
-    with patch('app.core.environment.Path.exists', side_effect=mock_exists):
+    with patch('app.core.environment.patterns.Path.exists', side_effect=mock_exists):
         yield
 
 
@@ -437,7 +437,7 @@ def mock_custom_indicators():
         return str(path) in ['.custom-env']
 
     with patch.dict(os.environ, env_vars), \
-         patch('app.core.environment.Path.exists', side_effect=mock_exists):
+         patch('app.core.environment.patterns.Path.exists', side_effect=mock_exists):
         yield
 
 
@@ -889,5 +889,5 @@ def mock_logger():
         - Validating log message content and levels
     """
     mock_logger = Mock()
-    with patch('app.core.environment.logger', mock_logger):
+    with patch('app.core.environment.detector.logger', mock_logger):
         yield mock_logger
