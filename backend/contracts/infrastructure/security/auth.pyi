@@ -10,8 +10,8 @@ validation, development mode support, and extensive operational monitoring.
 
 - **🌍 Environment-Aware Security**: Automatic production security enforcement with
   environment detection integration
-- **🔑 Multi-Key API Authentication**: Secure Bearer token and X-API-Key header authentication
-  with support for multiple API keys and key rotation
+- **🔑 Multi-Key API Authentication**: Secure Bearer token authentication with support
+  for multiple API keys and key rotation
 - **⚙️ Flexible Operation Modes**: Simple development mode to advanced production
   configurations with user tracking and permissions
 - **🏗️ Extensible Architecture**: Built-in extension points for custom authentication
@@ -158,7 +158,6 @@ The module provides extensive customization capabilities:
 - **Truncated Logging**: Invalid attempts logged with masked key information
 - **Development Warnings**: Clear guidance when security is disabled
 - **RFC 6750 Compliance**: Standard Bearer token authentication implementation
-- **X-API-Key Support**: Alternative API key header format for client flexibility
 
 ## ⚡ Performance Characteristics
 
@@ -423,13 +422,33 @@ class APIKeyAuth:
         ...
 
 
+def get_api_key_from_request(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> tuple[Optional[str], str]:
+    """
+    Extract API key from either Authorization Bearer or X-API-Key header.
+    
+    Supports both authentication methods:
+    - Authorization: Bearer <key>
+    - X-API-Key: <key>
+    
+    Args:
+        request: FastAPI Request object containing headers
+        bearer_credentials: HTTP Bearer credentials from Authorization header
+    
+    Returns:
+        tuple: (api_key: Optional[str], auth_method: str)
+               - api_key: The extracted API key or None if not found
+               - auth_method: "bearer_token", "x_api_key", or "none"
+    """
+    ...
+
+
 async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
     """
     Environment-aware FastAPI dependency for API key authentication with production security.
     
     Validates API key authentication with environment-aware security enforcement,
     development mode support, and comprehensive error context for operational debugging.
-
+    
     Args:
         request: FastAPI Request object containing headers for X-API-Key support
         bearer_credentials: HTTP Bearer authorization credentials from request headers.
@@ -471,7 +490,7 @@ async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuth
         >>> # Production mode with valid Bearer token
         >>> # GET /protected with "Authorization: Bearer sk-1234567890abcdef"
         >>> # Returns: api_key = "sk-1234567890abcdef"
-
+    
         >>> # Production mode with valid X-API-Key header
         >>> # GET /protected with "X-API-Key: sk-1234567890abcdef"
         >>> # Returns: api_key = "sk-1234567890abcdef"
@@ -640,7 +659,7 @@ async def verify_api_key_http(request: Request, bearer_credentials: Optional[HTT
     Provides the same authentication functionality as verify_api_key but converts
     AuthenticationError exceptions to HTTPException for proper FastAPI middleware
     compatibility and standardized HTTP error responses.
-
+    
     Args:
         request: FastAPI Request object containing headers for X-API-Key support
         bearer_credentials: HTTP Bearer authorization credentials from request headers.
@@ -674,7 +693,7 @@ async def verify_api_key_http(request: Request, bearer_credentials: Optional[HTT
         >>> @app.get("/api/data")
         >>> async def get_data(api_key: str = Depends(verify_api_key_http)):
         ...     return {"data": "protected", "authenticated_key": api_key[:8]}
-
+    
         >>> # Supports both Bearer token and X-API-Key header:
         >>> # GET /api/data with "Authorization: Bearer sk-1234567890abcdef"
         >>> # GET /api/data with "X-API-Key: sk-1234567890abcdef"
