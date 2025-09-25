@@ -105,6 +105,7 @@ cache_config = settings.get_cache_config()
 ```python
 from app.core.config import settings
 from app.core.exceptions import ConfigurationError
+from app.infrastructure.resilience.config_validator import config_validator
 
 try:
     # Load cache configuration with session tracking
@@ -113,10 +114,11 @@ try:
         user_context="production_deployment"
     )
     
-    # Validate custom configuration
-    validation_result = settings.validate_custom_config(custom_json)
-    if not validation_result["is_valid"]:
-        logger.error(f"Configuration errors: {validation_result['errors']}")
+    # Validate custom resilience configuration if needed
+    custom_json = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
+    validation_result = config_validator.validate_json_string(custom_json)
+    if not validation_result.is_valid:
+        logger.error(f"Configuration errors: {validation_result.errors}")
         
 except ConfigurationError as e:
     # Handle configuration validation failures
@@ -213,7 +215,6 @@ class Settings(BaseSettings):
         get_cache_config(): Get complete cache configuration from preset with overrides applied
         get_resilience_config(): Get complete resilience configuration from preset with overrides applied
         get_operation_strategy(): Get resilience strategy for specific operation types
-        validate_custom_config(): Validate custom JSON configuration strings
         get_valid_api_keys(): Get list of all valid API keys (primary + additional)
         
     State Management:
@@ -273,11 +274,6 @@ class Settings(BaseSettings):
             "enable_ai_cache": True
         }
         os.environ['CACHE_CUSTOM_CONFIG'] = json.dumps(custom_cache)
-        
-        # Configuration validation
-        validation_result = settings.validate_custom_config(custom_json)
-        if not validation_result['is_valid']:
-            logger.error(f"Configuration errors: {validation_result['errors']}")
         
         # Session-aware configuration loading
         cache_config = settings.get_cache_config(
@@ -578,62 +574,6 @@ class Settings(BaseSettings):
             >>> # Case sensitivity
             >>> strategy = settings.get_operation_strategy("SUMMARIZE")  # Won't match
             >>> assert strategy == "balanced"  # Falls back to default
-        """
-        ...
-
-    def validate_resilience_custom_config(self, json_string: Optional[str] = None) -> dict:
-        """
-        Validate custom resilience configuration JSON string against schema.
-        
-        This method provides comprehensive validation of custom resilience configuration
-        JSON strings, ensuring they conform to the expected schema and contain valid
-        values before application to the resilience system.
-        
-        Args:
-            json_string: JSON string to validate (default: None).
-                        If None, validates the current resilience_custom_config field value.
-                        If empty string or None, returns success with warning message.
-        
-        Returns:
-            Dictionary with validation results containing:
-            - "is_valid": Boolean indicating overall validation success
-            - "errors": List of error messages for validation failures
-            - "warnings": List of warning messages for non-critical issues
-            
-        Behavior:
-            - Uses resilience_custom_config field value when json_string parameter is None
-            - Returns successful validation with warning when no configuration provided
-            - Parses JSON string and validates against resilience configuration schema
-            - Checks value types, ranges, and allowed enumeration values
-            - Validates nested configuration objects and their relationships
-            - Provides detailed error messages with field names and expected values
-            - Catches and reports JSON parsing errors with helpful error descriptions
-            - Does not modify any configuration state during validation
-            
-        Examples:
-            >>> # Validate current configuration
-            >>> result = settings.validate_custom_config()
-            >>> assert result["is_valid"] is True
-            >>> assert "No custom configuration" in result["warnings"][0]
-            
-            >>> # Validate valid JSON configuration
-            >>> valid_config = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
-            >>> result = settings.validate_custom_config(valid_config)
-            >>> assert result["is_valid"] is True
-            >>> assert len(result["errors"]) == 0
-            
-            >>> # Validate invalid JSON configuration
-            >>> invalid_config = '{"retry_attempts": "not_a_number"}'
-            >>> result = settings.validate_custom_config(invalid_config)
-            >>> assert result["is_valid"] is False
-            >>> assert len(result["errors"]) > 0
-            >>> assert "retry_attempts" in str(result["errors"])
-            
-            >>> # Handle JSON parsing errors
-            >>> malformed_json = '{"retry_attempts": 5,}'  # Trailing comma
-            >>> result = settings.validate_custom_config(malformed_json)
-            >>> assert result["is_valid"] is False
-            >>> assert "Validation error" in result["errors"][0]
         """
         ...
 
