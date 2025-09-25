@@ -28,7 +28,7 @@ preset selections with optional overrides.
 ### Core Design Principles
 - **Preset-First**: Choose configuration presets instead of managing dozens of variables
 - **Override Capable**: Environment variables and JSON overrides for customization
-- **Backward Compatible**: Legacy environment variable support for smooth migration
+- **Configuration Presets**: Simplified preset-based configuration system
 - **Validation-First**: Comprehensive Pydantic validation with clear error messages
 - **Observable Behavior**: Configuration loading behavior is logged and monitorable
 
@@ -47,7 +47,7 @@ preset selections with optional overrides.
 
 ### Resilience Configuration (Preset-Based)
 - **Available Presets**: simple, development, production
-- **Legacy Support**: Automatic detection and migration from individual variables
+- **Preset System**: Intelligent defaults with simple environment variable selection
 - **Operation-Specific**: Different resilience strategies per AI operation type
 - **Custom Overrides**: RESILIENCE_CUSTOM_CONFIG for fine-tuning
 
@@ -110,6 +110,7 @@ cache_config = settings.get_cache_config()
 ```python
 from app.core.config import settings
 from app.core.exceptions import ConfigurationError
+from app.infrastructure.resilience.config_validator import config_validator
 
 try:
     # Load cache configuration with session tracking
@@ -118,10 +119,11 @@ try:
         user_context="production_deployment"
     )
     
-    # Validate custom configuration
-    validation_result = settings.validate_custom_config(custom_json)
-    if not validation_result["is_valid"]:
-        logger.error(f"Configuration errors: {validation_result['errors']}")
+    # Validate custom resilience configuration if needed
+    custom_json = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
+    validation_result = config_validator.validate_json_string(custom_json)
+    if not validation_result.is_valid:
+        logger.error(f"Configuration errors: {validation_result.errors}")
         
 except ConfigurationError as e:
     # Handle configuration validation failures
@@ -151,7 +153,7 @@ os.environ['CACHE_REDIS_URL'] = 'redis://prod-cluster:6379'
 
 ### Preset Resolution Behavior
 - Cache presets resolve configuration precedence: Custom JSON > Environment Variables > Preset Defaults
-- Resilience presets auto-detect legacy environment variables for backward compatibility
+- Resilience presets provide simplified configuration with intelligent defaults
 - Invalid preset names raise ConfigurationError with available preset suggestions
 - Fallback presets are automatically applied when primary preset loading fails
 
@@ -170,7 +172,7 @@ os.environ['CACHE_REDIS_URL'] = 'redis://prod-cluster:6379'
 Note:
     This module represents a critical infrastructure component. All configuration changes
     should undergo thorough testing across different environment scenarios to ensure
-    backward compatibility and proper fallback behavior.
+    preset-based configuration and proper fallback behavior.
 
 ## Settings
 
@@ -205,7 +207,6 @@ Public Methods:
     get_cache_config(): Get complete cache configuration from preset with overrides applied
     get_resilience_config(): Get complete resilience configuration from preset with overrides applied
     get_operation_strategy(): Get resilience strategy for specific operation types
-    validate_custom_config(): Validate custom JSON configuration strings
     get_valid_api_keys(): Get list of all valid API keys (primary + additional)
     
 State Management:
@@ -219,7 +220,7 @@ State Management:
 Behavior:
     - Validates all environment variables against type constraints at startup
     - Applies preset-based configuration with override precedence: Custom JSON > Environment Variables > Preset Defaults
-    - Auto-detects legacy resilience environment variables for backward compatibility
+    - Applies preset-based resilience configuration with optional custom overrides
     - Logs all configuration loading actions and applied overrides for debugging
     - Raises ConfigurationError for invalid preset names with available preset suggestions
     - Falls back to 'simple' presets when primary preset loading fails
@@ -265,11 +266,6 @@ Usage:
         "enable_ai_cache": True
     }
     os.environ['CACHE_CUSTOM_CONFIG'] = json.dumps(custom_cache)
-    
-    # Configuration validation
-    validation_result = settings.validate_custom_config(custom_json)
-    if not validation_result['is_valid']:
-        logger.error(f"Configuration errors: {validation_result['errors']}")
     
     # Session-aware configuration loading
     cache_config = settings.get_cache_config(
@@ -352,30 +348,6 @@ def validate_resilience_preset(cls, v: str) -> str:
 
 Validate resilience preset name.
 
-### validate_resilience_strategy()
-
-```python
-def validate_resilience_strategy(cls, v, info) -> str:
-```
-
-Validate resilience strategy with graceful fallback for environment variables.
-
-### validate_positive_integers()
-
-```python
-def validate_positive_integers(cls, v, info) -> int:
-```
-
-Validate positive integers with strict validation for completely invalid values.
-
-### validate_positive_floats()
-
-```python
-def validate_positive_floats(cls, v: float, info) -> float:
-```
-
-Validate positive floats with fallback for invalid values.
-
 ### validate_health_check_numbers()
 
 ```python
@@ -422,7 +394,7 @@ Raises:
     
 Behavior:
     - Resolves cache_preset field to load base configuration from preset system
-    - Maps 'testing' preset alias to 'development' preset for backward compatibility
+    - Maps 'testing' preset alias to 'development' preset for convenience
     - Applies CACHE_REDIS_URL environment variable override if present
     - Applies ENABLE_AI_CACHE environment variable override if present (true/false/1/0)
     - Applies CACHE_CUSTOM_CONFIG JSON overrides if provided and valid
@@ -464,12 +436,11 @@ Examples:
 def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
 ```
 
-Get complete resilience configuration from preset or legacy settings with monitoring.
+Get complete resilience configuration from preset with custom overrides.
 
-This is the main entry point for resilience configuration that implements both
-preset-based architecture and legacy environment variable compatibility. It
-automatically detects the appropriate configuration source and provides
-comprehensive monitoring and error handling with fallback behavior.
+This is the main entry point for resilience configuration that implements the
+preset-based architecture. It automatically resolves configuration from presets
+and provides comprehensive monitoring and error handling with fallback behavior.
 
 Args:
     session_id: Optional session identifier for monitoring and analytics (default: None)
@@ -482,43 +453,32 @@ Returns:
     - circuit_breaker_config: CircuitBreakerConfig with failure thresholds and recovery timeouts
     - enable_circuit_breaker: Boolean flag for circuit breaker pattern activation
     - enable_retry: Boolean flag for retry mechanism activation
-    
+
 Raises:
     ConfigurationError: When both primary preset loading and fallback preset loading fail
-    
+
 Behavior:
-    - Auto-detects legacy environment variables and prioritizes them for backward compatibility
     - Resolves resilience_preset field to load base configuration from preset system
     - Applies resilience_custom_config JSON overrides if provided and valid
     - Falls back to 'simple' preset if primary preset loading fails
     - Logs all configuration resolution steps and applied overrides for debugging
     - Records preset usage metrics and monitoring data for analytics
-    - Ignores custom config in legacy mode to maintain strict backward compatibility
     - Provides session and user context tracking for operational monitoring
     - Returns identical configuration for identical parameters and environment state
-    - Caches legacy environment variable detection to avoid repeated filesystem checks
-    
+
 Examples:
     >>> # Basic preset-based configuration
     >>> config = settings.get_resilience_config()
     >>> assert config.strategy.name in ["CONSERVATIVE", "BALANCED", "AGGRESSIVE"]
     >>> assert config.retry_config.max_attempts > 0
-    
+
     >>> # Configuration with session tracking
     >>> config = settings.get_resilience_config(
     ...     session_id="api_request_123",
     ...     user_context="text_processing_endpoint"
     ... )
     >>> assert config.circuit_breaker_config.failure_threshold > 0
-    
-    >>> # Legacy environment variable mode
-    >>> import os
-    >>> os.environ['RETRY_MAX_ATTEMPTS'] = '5'
-    >>> os.environ['CIRCUIT_BREAKER_FAILURE_THRESHOLD'] = '10'
-    >>> config = settings.get_resilience_config()
-    >>> assert config.retry_config.max_attempts == 5
-    >>> assert config.circuit_breaker_config.failure_threshold == 10
-    
+
     >>> # Custom JSON configuration mode
     >>> settings.resilience_custom_config = '{"retry_attempts": 7, "circuit_breaker_threshold": 15}'
     >>> config = settings.get_resilience_config()
@@ -578,64 +538,6 @@ Examples:
     >>> # Case sensitivity
     >>> strategy = settings.get_operation_strategy("SUMMARIZE")  # Won't match
     >>> assert strategy == "balanced"  # Falls back to default
-
-### validate_resilience_custom_config()
-
-```python
-def validate_resilience_custom_config(self, json_string: Optional[str] = None) -> dict:
-```
-
-Validate custom resilience configuration JSON string against schema.
-
-This method provides comprehensive validation of custom resilience configuration
-JSON strings, ensuring they conform to the expected schema and contain valid
-values before application to the resilience system.
-
-Args:
-    json_string: JSON string to validate (default: None).
-                If None, validates the current resilience_custom_config field value.
-                If empty string or None, returns success with warning message.
-
-Returns:
-    Dictionary with validation results containing:
-    - "is_valid": Boolean indicating overall validation success
-    - "errors": List of error messages for validation failures
-    - "warnings": List of warning messages for non-critical issues
-    
-Behavior:
-    - Uses resilience_custom_config field value when json_string parameter is None
-    - Returns successful validation with warning when no configuration provided
-    - Parses JSON string and validates against resilience configuration schema
-    - Checks value types, ranges, and allowed enumeration values
-    - Validates nested configuration objects and their relationships
-    - Provides detailed error messages with field names and expected values
-    - Catches and reports JSON parsing errors with helpful error descriptions
-    - Does not modify any configuration state during validation
-    
-Examples:
-    >>> # Validate current configuration
-    >>> result = settings.validate_custom_config()
-    >>> assert result["is_valid"] is True
-    >>> assert "No custom configuration" in result["warnings"][0]
-    
-    >>> # Validate valid JSON configuration
-    >>> valid_config = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
-    >>> result = settings.validate_custom_config(valid_config)
-    >>> assert result["is_valid"] is True
-    >>> assert len(result["errors"]) == 0
-    
-    >>> # Validate invalid JSON configuration
-    >>> invalid_config = '{"retry_attempts": "not_a_number"}'
-    >>> result = settings.validate_custom_config(invalid_config)
-    >>> assert result["is_valid"] is False
-    >>> assert len(result["errors"]) > 0
-    >>> assert "retry_attempts" in str(result["errors"])
-    
-    >>> # Handle JSON parsing errors
-    >>> malformed_json = '{"retry_attempts": 5,}'  # Trailing comma
-    >>> result = settings.validate_custom_config(malformed_json)
-    >>> assert result["is_valid"] is False
-    >>> assert "Validation error" in result["errors"][0]
 
 ### get_valid_api_keys()
 

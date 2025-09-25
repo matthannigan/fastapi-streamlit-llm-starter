@@ -972,11 +972,11 @@ def test_authentication_required(client):
 4. **Memory Management**: Monitor memory usage with large numbers of API keys
 5. **Caching**: Leverage built-in caching for metadata and configuration lookups
 
-## Migration Guide
+## Implementation Guide
 
-### From No Authentication to Secure Authentication
+### Setting Up Authentication
 
-1. **Add Environment Variables**:
+1. **Configure Environment Variables**:
 ```bash
 # Set primary API key
 export API_KEY=your-secure-api-key-here
@@ -989,14 +989,8 @@ export AUTH_MODE=advanced
 export ENABLE_REQUEST_LOGGING=true
 ```
 
-2. **Update Route Protection**:
+2. **Protect Your Endpoints**:
 ```python
-# Before: Unprotected endpoints
-@app.get("/data")
-async def get_data():
-    return {"data": "sensitive information"}
-
-# After: Protected endpoints
 from app.infrastructure.security import verify_api_key_http
 
 @app.get("/data")
@@ -1004,9 +998,8 @@ async def get_data(api_key: str = Depends(verify_api_key_http)):
     return {"data": "sensitive information", "authenticated": True}
 ```
 
-3. **Gradual Migration with Optional Auth**:
+3. **Optional Authentication Pattern**:
 ```python
-# Transition period - support both authenticated and anonymous access
 from app.infrastructure.security import optional_verify_api_key
 
 @app.get("/data")

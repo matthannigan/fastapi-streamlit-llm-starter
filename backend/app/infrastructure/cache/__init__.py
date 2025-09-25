@@ -63,7 +63,6 @@ from .parameter_mapping import ValidationResult, CacheParameterMapper
 # Security components
 from .security import (RedisCacheSecurityManager, SecurityConfig,
                        SecurityValidationResult, create_security_config_from_env)
-# Phase 3 enhancements
 # Factory for explicit cache instantiation
 from .factory import CacheFactory
 # Enhanced configuration management

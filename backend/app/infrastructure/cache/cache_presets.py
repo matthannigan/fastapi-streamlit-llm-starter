@@ -774,8 +774,7 @@ class CachePresetManager:
         """
         Auto-detect environment using unified environment detection service.
 
-        MIGRATION: This method has been migrated from 130-line custom detection logic
-        to use the unified environment detection service with AI-enabled context support.
+        This method uses the unified environment detection service with AI-enabled context support.
 
         Returns:
             EnvironmentRecommendation based on unified service detection with

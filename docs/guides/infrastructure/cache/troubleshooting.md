@@ -552,7 +552,7 @@ curl -s "http://localhost:8000/internal/cache/resource-usage" | jq '{
 }'
 ```
 
-#### Phase 3: Root Cause Identification (5 minutes)
+#### Step 3: Root Cause Identification (5 minutes)
 
 ```bash
 # 1. Pattern analysis

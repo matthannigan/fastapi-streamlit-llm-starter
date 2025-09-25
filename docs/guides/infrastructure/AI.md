@@ -60,11 +60,11 @@ Provides comprehensive input sanitization with advanced prompt injection protect
 
 #### Usage Examples
 
-**Basic Sanitization** (Legacy Compatible):
+**Basic Sanitization**:
 ```python
 from app.infrastructure.ai import sanitize_input
 
-# Basic sanitization with backward compatibility
+# Basic sanitization for simple use cases
 clean_text = sanitize_input("User input with <script> tags")
 # Returns: "User input with  tags" (1024 char limit)
 ```
@@ -470,10 +470,10 @@ The AI Infrastructure Service protects against:
 ### Functions
 
 #### `sanitize_input(text: str) -> str`
-Basic input sanitization with backward compatibility.
+Basic input sanitization for simple use cases.
 - **Parameters**: `text` - Input text to sanitize
 - **Returns**: Sanitized text (1024 char limit)
-- **Use Case**: Legacy compatibility
+- **Use Case**: Simple sanitization scenarios
 
 #### `sanitize_input_advanced(text: str, max_length: int = None) -> str`
 Advanced input sanitization with comprehensive protection.
@@ -538,9 +538,9 @@ Class-based sanitization with configurable options.
 3. **Error Handling**: Implement graceful degradation for sanitization failures
 4. **Documentation**: Document custom patterns and templates clearly
 
-## Migration Guide
+## Implementation Guide
 
-### Adding AI Security to Existing Services
+### Adding AI Security to Your Services
 
 1. **Install Dependencies**: Import AI infrastructure components
 2. **Update Input Processing**: Replace direct AI calls with sanitized inputs

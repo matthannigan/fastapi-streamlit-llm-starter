@@ -3,7 +3,7 @@ AI Response Cache Configuration Module
 
 This module provides comprehensive configuration management for the AI Response Cache
 with advanced validation, factory methods, and environment integration. It supports
-the Phase 2 cache refactoring architecture where AIResponseCache inherits from
+the cache architecture where AIResponseCache inherits from
 GenericRedisCache, enabling clean parameter separation and robust configuration.
 
 ## Classes
@@ -122,20 +122,6 @@ os.environ['CACHE_CUSTOM_CONFIG'] = '''{
 }'''
 ```
 
-### Legacy Environment-Based Configuration (DEPRECATED)
-```python
-# DEPRECATED: Individual environment variables no longer supported
-# Use CACHE_PRESET with preset-based configuration instead
-
-# OLD WAY (no longer works):
-# os.environ['AI_CACHE_DEFAULT_TTL'] = '7200'
-# os.environ['AI_CACHE_MEMORY_CACHE_SIZE'] = '200'
-
-# NEW WAY (recommended):
-os.environ['CACHE_PRESET'] = 'ai-development'
-cache_config = settings.get_cache_config()
-```
-
 ### Configuration Presets
 ```python
 # Development configuration
@@ -202,39 +188,6 @@ This configuration system integrates seamlessly with the cache inheritance archi
 4. **Performance Optimization**: Includes intelligent recommendations for cache tuning
 5. **Environment Flexibility**: Supports Docker, Kubernetes, and cloud deployments
 
-## Migration Guide
-
-### From Legacy Configuration
-```python
-# Old direct initialization
-cache = AIResponseCache(
-    redis_url="redis://localhost:6379",
-    default_ttl=3600,
-    memory_cache_size=100
-)
-
-# New configuration-based approach
-config = AIResponseCacheConfig(
-    redis_url="redis://localhost:6379",
-    default_ttl=3600,
-    memory_cache_size=100
-)
-kwargs = config.to_ai_cache_kwargs()
-cache = AIResponseCache(**kwargs)
-```
-
-### Environment Variable Migration
-```bash
-# Preset-based configuration (RECOMMENDED)
-export CACHE_PRESET="ai-development"
-export CACHE_REDIS_URL="redis://localhost:6379"  # Optional override
-export ENABLE_AI_CACHE="true"  # Optional override
-
-# Legacy environment variables (DEPRECATED - no longer supported)
-# export AI_CACHE_REDIS_URL="redis://localhost:6379"
-# export AI_CACHE_DEFAULT_TTL="3600"
-# export AI_CACHE_MEMORY_CACHE_SIZE="100"
-```
 
 ## Performance Considerations
 

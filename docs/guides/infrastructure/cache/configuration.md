@@ -26,7 +26,7 @@ CACHE_CUSTOM_CONFIG='{"memory_cache_size": 500}'  # Advanced JSON overrides
 
 ### Configuration Comparison
 
-**Legacy Approach (28+ variables)**:
+**Traditional Approach (28+ variables)**:
 ```bash
 CACHE_DEFAULT_TTL=3600
 CACHE_MEMORY_CACHE_SIZE=200

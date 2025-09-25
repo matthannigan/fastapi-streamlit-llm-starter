@@ -202,7 +202,7 @@ redis-cli config set maxmemory-policy allkeys-lru
 - AIResponseCacheConfig validation errors
 - Cache inheritance hierarchy issues
 - Parameter mapping failures
-- Migration between cache implementations
+- Configuration changes between cache implementations
 - Performance degradation after upgrade
 
 #### Diagnostic Steps
@@ -289,20 +289,20 @@ curl -X POST "http://localhost:8000/internal/cache/parameter-mapping/validate" \
   -d '{"ai_params": {...}, "generic_params": {...}}'
 ```
 
-**Cache Migration Issues:**
+**Cache Configuration Issues:**
 ```bash
-# Check migration status
-curl -s "http://localhost:8000/internal/cache/migration/status" | jq '.'
+# Check current configuration status
+curl -s "http://localhost:8000/internal/cache/config/current" | jq '.'
 
-# Test migration compatibility
-curl -X POST "http://localhost:8000/internal/cache/migration/compatibility-check" \
+# Validate configuration compatibility
+curl -X POST "http://localhost:8000/internal/cache/config/validate" \
   -H "Content-Type: application/json" \
-  -d '{"source_type": "legacy", "target_type": "phase2"}'
+  -d '{"preset": "production", "redis_url": "redis://localhost:6379"}'
 
-# Run safe migration with validation
-curl -X POST "http://localhost:8000/internal/cache/migration/execute" \
+# Test configuration changes
+curl -X POST "http://localhost:8000/internal/cache/config/test" \
   -H "Content-Type: application/json" \
-  -d '{"batch_size": 100, "validate_data": true, "dry_run": true}'
+  -d '{"preset": "development", "validate_performance": true}'
 ```
 
 **Performance Regression:**

@@ -160,9 +160,9 @@ make validate-cache-config
 make recommend-cache-preset ENV=production
 ```
 
-## 🆚 Before vs After Preset System
+## 🆚 Configuration Comparison
 
-### Old Way (Phase 3 and earlier)
+### Traditional Approach (Individual Variables)
 ```bash
 # 28+ environment variables to configure
 export CACHE_DEFAULT_TTL=3600
@@ -179,7 +179,7 @@ export CACHE_LOG_LEVEL=DEBUG
 # ... 17+ more variables
 ```
 
-### New Way (Phase 4 - Preset System)
+### Preset System (Recommended)
 ```bash
 # 1-3 environment variables
 export CACHE_PRESET=development

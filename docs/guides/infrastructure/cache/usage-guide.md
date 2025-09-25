@@ -9,7 +9,7 @@ description: Complete practical usage guide for the cache infrastructure - from 
 
 This comprehensive guide provides developers with everything needed to be immediately productive with the cache infrastructure. From instant setup patterns to advanced optimization strategies, this guide delivers actionable solutions for all cache usage scenarios.
 
-> **🚀 NEW in Phase 4**: The cache system now uses `CACHE_PRESET` for simplified configuration, reducing 28+ environment variables to 1-4 variables. This follows the successful pattern from the resilience system.
+> **🚀 Latest Enhancement**: The cache system now uses `CACHE_PRESET` for simplified configuration, reducing 28+ environment variables to 1-4 variables. This follows the successful pattern from the resilience system.
 
 ## 🚀 5-Minute Quickstart
 

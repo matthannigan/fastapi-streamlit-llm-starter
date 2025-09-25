@@ -2035,21 +2035,21 @@ resilient_monitoring = ResilientMonitoringWrapper()
 4. **Testing Integration**: Include monitoring validation in test suites
 5. **Documentation**: Document monitoring integration patterns for service teams
 
-## Migration Guide
+## Implementation Guide
 
-### Adding Monitoring to Existing Services
+### Adding Monitoring to Your Services
 
-1. **Install Monitoring Dependencies**:
+1. **Import Monitoring Components**:
 ```python
 # Add monitoring imports to your service
 from app.infrastructure.monitoring import CachePerformanceMonitor, config_metrics_collector
 
 # Initialize monitoring in service constructor
-class YourExistingService:
+class YourService:
     def __init__(self):
-        # Add monitoring without changing existing functionality
+        # Add monitoring for performance tracking
         self.cache_monitor = CachePerformanceMonitor()
-        # Existing initialization code remains unchanged
+        # Your service initialization code
 ```
 
 2. **Integrate Monitoring Calls Gradually**:

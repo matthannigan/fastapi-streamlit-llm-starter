@@ -76,6 +76,60 @@ active_keys = [k for k in keys_to_check if await cache.exists(k)]
 cache.clear()  # Clear all entries
 ```
 
+## Usage Patterns
+
+### Factory Method (Recommended for Most Cases)
+
+**Use factory methods for consistent configuration and testing patterns:**
+
+```python
+from app.infrastructure.cache import CacheFactory
+
+factory = CacheFactory()
+
+# Testing scenarios - recommended approach
+test_cache = await factory.for_testing(
+    use_memory_cache=True,
+    default_ttl=60,  # 1 minute for tests
+    l1_cache_size=50
+)
+
+# Development environments
+dev_cache = await factory.for_web_app(
+    redis_url="redis://localhost:6379",
+    fail_on_connection_error=False  # Falls back to InMemoryCache
+)
+```
+
+**Factory Method Benefits:**
+- Consistent test environment configurations
+- Automatic fallback behavior when Redis unavailable
+- Environment-optimized defaults
+- Built-in parameter validation
+
+### Direct Instantiation (Appropriate for)
+
+**Use direct instantiation for simple applications and exact control scenarios:**
+
+```python
+# Testing scenarios requiring exact control
+cache = InMemoryCache(default_ttl=1800, max_size=500)
+
+# Simple applications with basic cache needs
+cache = InMemoryCache(default_ttl=7200, max_size=2000)
+
+# Fallback cache implementations
+cache = InMemoryCache(default_ttl=3600, max_size=1000)
+```
+
+**Use direct instantiation when:**
+- Building simple applications with basic caching needs
+- Testing scenarios requiring exact behavioral control
+- Implementing fallback cache strategies
+- Developing specialized cache components
+
+**📖 For comprehensive factory usage patterns and configuration examples, see [Cache Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md).**
+
 Performance Characteristics:
 ----------------------------
 - **Get Operations**: O(1) average case, O(n) worst case during cleanup

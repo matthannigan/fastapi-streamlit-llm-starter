@@ -99,28 +99,7 @@ if not connected:
 - Building custom cache implementations
 - Requiring exact parameter combinations not supported by factory methods
 - Developing reusable cache components
-- Migrating legacy code with specific configurations
-
-### Migration from Direct to Factory
-
-```python
-# Before: Direct instantiation
-cache = AIResponseCache(
-    redis_url="redis://localhost:6379",
-    default_ttl=3600,
-    text_hash_threshold=1000,
-    compression_threshold=1000
-)
-
-# After: Factory method (recommended)
-factory = CacheFactory()
-cache = await factory.for_ai_app(
-    redis_url="redis://localhost:6379",
-    default_ttl=3600,
-    text_hash_threshold=1000,
-    compression_threshold=1000
-)
-```
+- Custom implementations with specific parameter combinations
 
 **📖 For comprehensive factory usage patterns and examples, see [Cache Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md).**
 
@@ -439,7 +418,6 @@ For detailed user documentation:
 - **[Configuration Guide](../../../docs/guides/infrastructure/cache/configuration.md)** - Comprehensive configuration options
 - **[Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md)** - User-focused usage patterns  
 - **[API Reference](../../../docs/guides/infrastructure/cache/api-reference.md)** - Complete API documentation
-- **[Migration Guide](../../../docs/guides/infrastructure/cache/migration.md)** - Detailed migration instructions
 - **[Benchmarking](../../../docs/guides/infrastructure/cache/benchmarking.md)** - Performance testing and optimization
 - **[Testing Guide](../../../docs/guides/infrastructure/cache/testing.md)** - Testing strategies and patterns
 - **[Troubleshooting](../../../docs/guides/infrastructure/cache/troubleshooting.md)** - Common issues and solutions
