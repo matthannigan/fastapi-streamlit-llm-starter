@@ -474,20 +474,62 @@ test-backend-infra-ai:
 	@echo "🧪 Running backend AI infrastructure service tests..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/ai/ -v
 
-# Run infrastructure service tests
-test-backend-infra-cache:
-	@echo "🧪 Running backend cache infrastructure service tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/infrastructure/cache/ -n auto -q --tb=no
+# Run cache infrastructure tests
+test-backend-cache:
+	@$(MAKE) test-backend-cache-unit
+	@$(MAKE) test-backend-cache-integration
+	@$(MAKE) test-backend-cache-e2e
 
-# Run infrastructure service E2E tests
-test-backend-infra-cache-e2e:
-	@echo "🧪 Running backend cache infrastructure service E2E tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/infrastructure/cache/e2e/ -n 0 -m "e2e" -v --tb=short --retries 3 --retry-delay 1
+test-backend-cache-unit:
+	@echo "🧪 Running backend cache infrastructure unit tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/cache/ -n auto -q --tb=no
 
-update-tests-progress:
-	@echo "🧪 Updating tests progress..."
-	@-cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --json-report --json-report-file=tests/infrastructure/cache/failures.json
-	@$(PYTHON_CMD) scripts/update_tests_progress_w_failures.py backend/tests/infrastructure/cache/ --failures backend/tests/infrastructure/cache/failures.json --output backend/tests/infrastructure/cache/PROGRESS.md
+test-backend-cache-integration:
+	@echo "🧪 Running backend cache infrastructure integration tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/cache/ -n 0 -q --tb=no --retries 3 --retry-delay 1
+
+test-backend-cache-e2e:
+	@echo "🧪 Running backend cache infrastructure E2E tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+
+
+# Run environment tests
+test-backend-environment:
+	@$(MAKE) test-backend-environment-unit
+	@$(MAKE) test-backend-environment-integration
+	@$(MAKE) test-backend-environment-e2e
+
+test-backend-environment-unit:
+	@echo "🧪 Running backend core environment unit tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/environment/ -n auto -v --tb=no
+
+test-backend-environment-integration:
+	@echo "🧪 Running backend core environment integration tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests.new/integration/environment/ -n 0 -q --tb=no --retries 1 --retry-delay 1
+
+test-backend-environment-e2e:
+#	@echo "🧪 Running backend core environment E2E tests..."
+#	@cd backend && $(PYTHON_CMD) -m pytest tests.new/e2e/environment/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+
+
+# Run auth infrastructure tests
+test-backend-auth:
+	@$(MAKE) test-backend-auth-unit
+	@$(MAKE) test-backend-auth-integration
+	@$(MAKE) test-backend-auth-e2e
+
+test-backend-auth-unit:
+	@echo "🧪 Running backend auth infrastructure unit tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/auth/ -n auto -v --tb=no
+
+test-backend-auth-integration:
+	@echo "🧪 Running backend auth infrastructure integration tests..."
+	@cd backend && $(PYTHON_CMD) -m pytest tests.new/integration/auth/ -n 0 -q --tb=no --retries 1 --retry-delay 1
+
+test-backend-auth-e2e:
+#	@echo "🧪 Running backend auth infrastructure E2E tests..."
+#	@cd backend && $(PYTHON_CMD) -m pytest tests.new/e2e/auth/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+
 
 # Run infrastructure service tests
 test-backend-infra-monitoring:
