@@ -276,7 +276,7 @@ class TestEnvironmentDetectionConfidenceFallback:
         def failing_detection(*args, **kwargs):
             raise Exception("Environment detection service unavailable")
         
-        with patch('app.core.environment.get_environment_info', side_effect=failing_detection):
+        with patch('app.core.environment.api.get_environment_info', side_effect=failing_detection):
             # Services should handle detection failure gracefully
             # Note: This test depends on how services handle detection failures
             
@@ -382,7 +382,7 @@ class TestEnvironmentDetectionConfidenceFallback:
             - Monitoring metrics are updated appropriately
         """
         # Test with unknown environment (should trigger fallback logging)
-        with patch('app.core.environment.logger') as mock_logger:
+        with patch('app.core.environment.detector.logger') as mock_logger:
             env_info = get_environment_info()
             
             # Should have access to logger (logging may or may not occur depending on implementation)
@@ -436,7 +436,7 @@ class TestEnvironmentDetectionConfidenceFallback:
                 raise Exception("Intermittent detection failure")
             return original_get_env(*args, **kwargs)
         
-        with patch('app.core.environment.get_environment_info', side_effect=intermittent_failure):
+        with patch('app.core.environment.api.get_environment_info', side_effect=intermittent_failure):
             # Multiple calls should not all fail due to error isolation
             success_count = 0
             failure_count = 0

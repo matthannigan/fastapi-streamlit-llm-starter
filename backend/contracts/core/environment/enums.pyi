@@ -26,16 +26,13 @@ class Environment(str, Enum):
         >>> env = Environment.PRODUCTION
         >>> assert env.value == "production"
         >>> assert str(env) == "production"
-
+    
         >>> # Used in configuration
         >>> if env == Environment.PRODUCTION:
         ...     use_redis_cache = True
     """
-    DEVELOPMENT = "development"
-    TESTING = "testing"
-    STAGING = "staging"
-    PRODUCTION = "production"
-    UNKNOWN = "unknown"
+
+    ...
 
 
 class FeatureContext(str, Enum):
@@ -57,13 +54,10 @@ class FeatureContext(str, Enum):
         >>> # Basic usage
         >>> context = FeatureContext.AI_ENABLED
         >>> assert context.value == "ai_enabled"
-
+    
         >>> # Used with environment detection
         >>> env_info = detector.detect_with_context(FeatureContext.SECURITY_ENFORCEMENT)
         >>> # May return production environment even in dev if security is enforced
     """
-    AI_ENABLED = "ai_enabled"
-    SECURITY_ENFORCEMENT = "security_enforcement"
-    CACHE_OPTIMIZATION = "cache_optimization"
-    RESILIENCE_STRATEGY = "resilience_strategy"
-    DEFAULT = "default"
+
+    ...

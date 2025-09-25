@@ -51,26 +51,9 @@ auth_config = security_auth.configure_for_environment(env_info)
 Re-exports for backward compatibility while organizing into submodules.
 """
 
-# Re-export all public APIs
 from .enums import Environment, FeatureContext
 from .models import EnvironmentSignal, EnvironmentInfo, DetectionConfig
 from .detector import EnvironmentDetector
-from .api import (
-    environment_detector,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment
-)
+from .api import environment_detector, get_environment_info, is_production_environment, is_development_environment
 
-__all__ = [
-    'Environment',
-    'FeatureContext',
-    'EnvironmentSignal',
-    'EnvironmentInfo',
-    'DetectionConfig',
-    'EnvironmentDetector',
-    'environment_detector',
-    'get_environment_info',
-    'is_production_environment',
-    'is_development_environment',
-]
+__all__ = ['Environment', 'FeatureContext', 'EnvironmentSignal', 'EnvironmentInfo', 'DetectionConfig', 'EnvironmentDetector', 'environment_detector', 'get_environment_info', 'is_production_environment', 'is_development_environment']
