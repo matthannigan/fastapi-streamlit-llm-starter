@@ -94,31 +94,21 @@ Found extensive direct environment variable usage that should be replaced with p
 - `CACHE_PRESET`
 - Custom override configurations
 
-### 5. TODO/FIXME Comments
-
-Found numerous TODO and FIXME comments indicating incomplete or temporary code:
-
-#### Critical TODOs:
-- `backend/app/infrastructure/cache/redis_ai.py` - Multiple TODO comments about temporary implementations
-- `backend/app/infrastructure/cache/key_generator.py` - Legacy key generation logic
-- `backend/app/api/internal/resilience/monitoring.py` - Temporary monitoring implementation
-- `backend/app/core/middleware/__init__.py` - Legacy middleware patterns
-
-### 6. Phase 3 to Phase 4 Migration References
+### 5. Phase 3 to Phase 4 Migration References
 
 Documentation and code contain numerous references to "Phase 3" and "Phase 4" configurations:
 - Cache system migration from 28+ variables (Phase 3) to preset system (Phase 4)
 - Resilience configuration evolution
 - These references should be cleaned up as they're implementation details
 
-### 7. Test Infrastructure with Legacy Support
+### 6. Test Infrastructure with Legacy Support
 
 Extensive test infrastructure supporting legacy patterns:
-- `backend/tests/integration/resilience/test_configuration_migration_validation.py`
-- `backend/tests/unit/infrastructure/resilience/test_migration_utils.py`
+- `backend/tests.old/integration/resilience/test_configuration_migration_validation.py`
+- `backend/tests.old/unit/infrastructure/resilience/test_migration_utils.py`
 - Multiple conftest files with legacy fixture support
 
-### 8. Documentation References
+### 7. Documentation References
 
 The documentation contains migration guides and legacy references:
 - `docs/guides/operations/TROUBLESHOOTING.md` - Contains legacy troubleshooting steps
@@ -129,7 +119,6 @@ The documentation contains migration guides and legacy references:
 
 ### Entire Directories:
 1. `backend/scripts/old/` - All legacy scripts
-2. `backend/tests.old/` (if exists) - Old test implementations
 
 ### Individual Files:
 1. `backend/app/infrastructure/resilience/migration_utils.py`
@@ -149,11 +138,6 @@ The documentation contains migration guides and legacy references:
    - `backend/app/core/config.py`
    - `backend/app/infrastructure/__init__.py`
 
-3. Clean up TODO/FIXME comments in:
-   - `backend/app/infrastructure/cache/redis_ai.py`
-   - `backend/app/infrastructure/cache/key_generator.py`
-   - `backend/app/api/internal/resilience/monitoring.py`
-
 ## Recommendations
 
 ### Immediate Actions (Before v1.0):
@@ -168,11 +152,7 @@ The documentation contains migration guides and legacy references:
    - Remove support for legacy environment variables
    - Update documentation to only show preset configuration
 
-3. **Clean Up TODO/FIXME Comments**
-   - Address or remove all temporary implementations
-   - Complete any partial features or remove them
-
-4. **Update Documentation**
+3. **Update Documentation**
    - Remove all migration guides
    - Remove Phase 3/4 references
    - Update troubleshooting guides to remove legacy approaches
@@ -192,7 +172,6 @@ The documentation contains migration guides and legacy references:
    - Remove migration utilities
    - Delete old scripts directory
    - Clean up legacy variable handling
-   - Address TODO/FIXME comments
 
 4. **Phase 4: Documentation (1 day)**
    - Update all documentation
@@ -208,7 +187,6 @@ The documentation contains migration guides and legacy references:
 
 **Low Risk:**
 - Removing old scripts and migration utilities
-- Cleaning up TODO comments
 - Documentation updates
 
 **Medium Risk:**
