@@ -449,6 +449,11 @@ test-backend:
 	@echo "🧪 Running backend tests (fast tests only)..."
 	@cd backend && $(PYTHON_CMD) -m pytest tests/ -q --retries 2 --retry-delay 5
 
+update-tests-progress:
+	@echo "🧪 Updating tests progress..."
+	@-cd backend && $(PYTHON_CMD) -m pytest tests/infrastructure/cache/ -n auto -q --json-report --json-report-file=tests/infrastructure/cache/failures.json
+	@$(PYTHON_CMD) scripts/update_tests_progress_w_failures.py backend/tests/infrastructure/cache/ --failures backend/tests/infrastructure/cache/failures.json --output backend/tests/infrastructure/cache/PROGRESS.md
+
 # Run backend API endpoint tests
 test-backend-api:
 	@echo "🧪 Running backend API endpoint tests..."
