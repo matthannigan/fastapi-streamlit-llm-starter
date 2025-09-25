@@ -210,11 +210,10 @@ HEALTH_CHECK_TIMEOUT_MS=500
 
 ## Migration & Compatibility
 
-### Backward Compatibility
-The infrastructure maintains backward compatibility while adding new features:
-- **Legacy API Support**: Existing code continues to work without modification
-- **Gradual Migration**: New features can be adopted incrementally
-- **Configuration Migration**: Tools for migrating legacy configurations
+### Preset-Based Configuration
+The infrastructure uses preset-based configuration for simplified setup:
+- **Modern Configuration**: Preset-based approach replaces complex environment variable configurations
+- **Gradual Adoption**: New features can be adopted incrementally through preset selection
 - **Version Management**: Clear versioning for infrastructure components
 
 ### Future Roadmap

@@ -404,7 +404,7 @@ cache = AIResponseCache(
 - **Custom Infrastructure Integration**: Specialized monitoring, security, or networking requirements
 - **Performance-Critical Paths**: Optimized configurations for specific performance profiles
 - **Framework Development**: Building reusable cache components or abstractions
-- **Legacy System Integration**: Maintaining compatibility with existing infrastructure patterns
+- **System Integration**: Maintaining compatibility with existing infrastructure patterns
 
 ### Production Architecture Recommendations
 
@@ -420,13 +420,13 @@ cache = AIResponseCache(
 2. **Leverage preset configurations** for rapid development iteration
 3. **Implement cache-aware testing patterns** for reliable test isolation
 
-### Migration and Evolution Strategies
+### Implementation Strategies
 
-**Migrating to Factory Patterns:**
-- **Phase 1**: Identify existing direct instantiation usage patterns
-- **Phase 2**: Map current configurations to appropriate factory methods
-- **Phase 3**: Implement factory-based instantiation with configuration validation
-- **Phase 4**: Retire direct instantiation for standard use cases
+**Adopting Factory Patterns:**
+- **Step 1**: Identify existing direct instantiation usage patterns
+- **Step 2**: Map current configurations to appropriate factory methods
+- **Step 3**: Implement factory-based instantiation with configuration validation
+- **Step 4**: Retire direct instantiation for standard use cases
 
 **📖 For detailed implementation patterns and comprehensive examples, see [Cache Usage Guide](./usage-guide.md).**
 

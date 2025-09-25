@@ -1770,7 +1770,7 @@ class AIResponseCache(GenericRedisCache):
         return True
 
     # =============================================================================
-    # AI-SPECIFIC MONITORING METHODS (Phase 2 Deliverable 6)
+    # AI-SPECIFIC MONITORING METHODS
     # =============================================================================
 
     def get_ai_performance_summary(self) -> Dict[str, Any]:

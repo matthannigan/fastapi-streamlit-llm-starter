@@ -14,7 +14,6 @@ flexibility and operational visibility:
 - **Configuration Layer**: Intelligent preset management with dynamic configuration and validation
 - **Orchestration Layer**: High-level decorators and service integration for seamless adoption
 - **Monitoring Layer**: Comprehensive metrics, performance tracking, and alerting system
-- **Migration Layer**: Legacy configuration analysis and automated migration utilities
 
 ## Core Components
 
@@ -39,7 +38,6 @@ Simplified configuration system with intelligent defaults:
 - **Preset System**: Pre-configured strategies (simple, development, production)
 - **Environment Detection**: Automatic environment-specific configuration
 - **Dynamic Updates**: Runtime configuration changes with validation
-- **Legacy Migration**: Automated migration from complex legacy configurations
 - **Validation**: Comprehensive configuration validation with detailed error reporting
 
 ### Orchestration (`orchestrator.py`)
@@ -148,7 +146,6 @@ from .config_presets import ResilienceStrategy, ResilienceConfig, get_default_pr
 from .orchestrator import AIServiceResilience, ai_resilience, with_operation_resilience, with_aggressive_resilience, with_balanced_resilience, with_conservative_resilience, with_critical_resilience
 from .config_validator import ResilienceConfigValidator, ValidationResult, ValidationRateLimiter, RESILIENCE_CONFIG_SCHEMA, CONFIGURATION_TEMPLATES, SECURITY_CONFIG
 from .config_monitoring import ConfigurationMetricsCollector, ConfigurationMetric, ConfigurationUsageStats, ConfigurationAlert, MetricType, AlertLevel
-from .migration_utils import LegacyConfigAnalyzer, ConfigurationMigrator, MigrationRecommendation, MigrationConfidence
 from .performance_benchmarks import ConfigurationPerformanceBenchmark, BenchmarkResult, BenchmarkSuite, PerformanceThreshold
 
-__all__ = ['AIServiceException', 'TransientAIError', 'PermanentAIError', 'RateLimitError', 'ServiceUnavailableError', 'RetryConfig', 'CircuitBreakerConfig', 'ResilienceConfig', 'ResilienceStrategy', 'EnhancedCircuitBreaker', 'ResilienceMetrics', 'AIServiceResilience', 'classify_exception', 'should_retry_on_exception', 'get_default_presets', 'DEFAULT_PRESETS', 'preset_manager', 'ai_resilience', 'with_operation_resilience', 'with_aggressive_resilience', 'with_balanced_resilience', 'with_conservative_resilience', 'with_critical_resilience', 'ResilienceConfigValidator', 'ValidationResult', 'ValidationRateLimiter', 'RESILIENCE_CONFIG_SCHEMA', 'CONFIGURATION_TEMPLATES', 'SECURITY_CONFIG', 'ConfigurationMetricsCollector', 'ConfigurationMetric', 'ConfigurationUsageStats', 'ConfigurationAlert', 'MetricType', 'AlertLevel', 'LegacyConfigAnalyzer', 'ConfigurationMigrator', 'MigrationRecommendation', 'MigrationConfidence', 'ConfigurationPerformanceBenchmark', 'BenchmarkResult', 'BenchmarkSuite', 'PerformanceThreshold', 'preset_manager']
+__all__ = ['AIServiceException', 'TransientAIError', 'PermanentAIError', 'RateLimitError', 'ServiceUnavailableError', 'RetryConfig', 'CircuitBreakerConfig', 'ResilienceConfig', 'ResilienceStrategy', 'EnhancedCircuitBreaker', 'ResilienceMetrics', 'AIServiceResilience', 'classify_exception', 'should_retry_on_exception', 'get_default_presets', 'DEFAULT_PRESETS', 'preset_manager', 'ai_resilience', 'with_operation_resilience', 'with_aggressive_resilience', 'with_balanced_resilience', 'with_conservative_resilience', 'with_critical_resilience', 'ResilienceConfigValidator', 'ValidationResult', 'ValidationRateLimiter', 'RESILIENCE_CONFIG_SCHEMA', 'CONFIGURATION_TEMPLATES', 'SECURITY_CONFIG', 'ConfigurationMetricsCollector', 'ConfigurationMetric', 'ConfigurationUsageStats', 'ConfigurationAlert', 'MetricType', 'AlertLevel', 'ConfigurationPerformanceBenchmark', 'BenchmarkResult', 'BenchmarkSuite', 'PerformanceThreshold', 'preset_manager']

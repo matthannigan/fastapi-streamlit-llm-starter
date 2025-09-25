@@ -34,7 +34,7 @@ Our architecture is organized into functional layers that clearly separate conce
 * **Purpose**: To provide a reliable, battle-tested library of tools like caching, resilience patterns, multi-mode authentication, and comprehensive monitoring.  
 * **Key Characteristics**:  
   * **Production-Ready**: These services include comprehensive error handling, performance monitoring, and graceful degradation patterns.
-  * **Stable API**: Designed to maintain backward compatibility with >90% test coverage requirements.
+  * **Stable API**: Designed for long-term stability with >90% test coverage requirements.
   * **Business-Agnostic**: A caching service or authentication system works the same way whether you're building a chatbot or a document analysis tool.  
   * **Configuration-Driven**: Behavior is controlled through environment variables and preset configurations.
   * **Low Customization**: You will configure these services (via core/config.py and environment variables), but you won't often edit their code.

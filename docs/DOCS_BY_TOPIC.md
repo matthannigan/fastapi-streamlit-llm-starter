@@ -2,7 +2,7 @@
 
 This view organizes all documentation by topic category, providing an alternative navigation structure to help you find content related to specific domains.
 
-*Last updated on 2025-09-17*
+*Last updated on 2025-09-25*
 
 ## Application
 

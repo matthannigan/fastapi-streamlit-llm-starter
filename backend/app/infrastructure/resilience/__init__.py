@@ -14,7 +14,6 @@ flexibility and operational visibility:
 - **Configuration Layer**: Intelligent preset management with dynamic configuration and validation
 - **Orchestration Layer**: High-level decorators and service integration for seamless adoption
 - **Monitoring Layer**: Comprehensive metrics, performance tracking, and alerting system
-- **Migration Layer**: Legacy configuration analysis and automated migration utilities
 
 ## Core Components
 
@@ -39,7 +38,6 @@ Simplified configuration system with intelligent defaults:
 - **Preset System**: Pre-configured strategies (simple, development, production)
 - **Environment Detection**: Automatic environment-specific configuration
 - **Dynamic Updates**: Runtime configuration changes with validation
-- **Legacy Migration**: Automated migration from complex legacy configurations
 - **Validation**: Comprehensive configuration validation with detailed error reporting
 
 ### Orchestration (`orchestrator.py`)
@@ -201,13 +199,6 @@ from .config_monitoring import (
     AlertLevel
 )
 
-# Migration utilities for legacy configurations
-from .migration_utils import (
-    LegacyConfigAnalyzer,
-    ConfigurationMigrator,
-    MigrationRecommendation,
-    MigrationConfidence
-)
 
 # Performance benchmarking
 from .performance_benchmarks import (
@@ -269,11 +260,6 @@ __all__ = [
     "MetricType",
     "AlertLevel",
     
-    # Migration utilities
-    "LegacyConfigAnalyzer",
-    "ConfigurationMigrator",
-    "MigrationRecommendation",
-    "MigrationConfidence",
     
     # Performance benchmarking
     "ConfigurationPerformanceBenchmark",

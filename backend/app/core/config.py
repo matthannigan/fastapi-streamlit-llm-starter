@@ -23,7 +23,7 @@ preset selections with optional overrides.
 ### Core Design Principles
 - **Preset-First**: Choose configuration presets instead of managing dozens of variables
 - **Override Capable**: Environment variables and JSON overrides for customization
-- **Backward Compatible**: Legacy environment variable support for smooth migration
+- **Configuration Presets**: Simplified preset-based configuration system
 - **Validation-First**: Comprehensive Pydantic validation with clear error messages
 - **Observable Behavior**: Configuration loading behavior is logged and monitorable
 
@@ -42,7 +42,7 @@ preset selections with optional overrides.
 
 ### Resilience Configuration (Preset-Based)
 - **Available Presets**: simple, development, production
-- **Legacy Support**: Automatic detection and migration from individual variables
+- **Preset System**: Intelligent defaults with simple environment variable selection
 - **Operation-Specific**: Different resilience strategies per AI operation type
 - **Custom Overrides**: RESILIENCE_CUSTOM_CONFIG for fine-tuning
 
@@ -105,6 +105,7 @@ cache_config = settings.get_cache_config()
 ```python
 from app.core.config import settings
 from app.core.exceptions import ConfigurationError
+from app.infrastructure.resilience.config_validator import config_validator
 
 try:
     # Load cache configuration with session tracking
@@ -113,10 +114,11 @@ try:
         user_context="production_deployment"
     )
     
-    # Validate custom configuration
-    validation_result = settings.validate_custom_config(custom_json)
-    if not validation_result["is_valid"]:
-        logger.error(f"Configuration errors: {validation_result['errors']}")
+    # Validate custom resilience configuration if needed
+    custom_json = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
+    validation_result = config_validator.validate_json_string(custom_json)
+    if not validation_result.is_valid:
+        logger.error(f"Configuration errors: {validation_result.errors}")
         
 except ConfigurationError as e:
     # Handle configuration validation failures
@@ -146,7 +148,7 @@ os.environ['CACHE_REDIS_URL'] = 'redis://prod-cluster:6379'
 
 ### Preset Resolution Behavior
 - Cache presets resolve configuration precedence: Custom JSON > Environment Variables > Preset Defaults
-- Resilience presets auto-detect legacy environment variables for backward compatibility
+- Resilience presets provide simplified configuration with intelligent defaults
 - Invalid preset names raise ConfigurationError with available preset suggestions
 - Fallback presets are automatically applied when primary preset loading fails
 
@@ -165,7 +167,7 @@ os.environ['CACHE_REDIS_URL'] = 'redis://prod-cluster:6379'
 Note:
     This module represents a critical infrastructure component. All configuration changes
     should undergo thorough testing across different environment scenarios to ensure
-    backward compatibility and proper fallback behavior.
+    preset-based configuration and proper fallback behavior.
 """
 
 import os
@@ -219,7 +221,7 @@ logger = logging.getLogger(__name__)
 # Main Public Interface Methods      1117
 # Authentication & Utility Methods   1590
 # Internal Configuration Processing  1698
-# Backward Compatibility Methods     1984
+# Compatibility Methods     1611
 #
 # ========================================
 
@@ -256,7 +258,6 @@ class Settings(BaseSettings):
         get_cache_config(): Get complete cache configuration from preset with overrides applied
         get_resilience_config(): Get complete resilience configuration from preset with overrides applied
         get_operation_strategy(): Get resilience strategy for specific operation types
-        validate_custom_config(): Validate custom JSON configuration strings
         get_valid_api_keys(): Get list of all valid API keys (primary + additional)
         
     State Management:
@@ -270,7 +271,7 @@ class Settings(BaseSettings):
     Behavior:
         - Validates all environment variables against type constraints at startup
         - Applies preset-based configuration with override precedence: Custom JSON > Environment Variables > Preset Defaults
-        - Auto-detects legacy resilience environment variables for backward compatibility
+        - Applies preset-based resilience configuration with optional custom overrides
         - Logs all configuration loading actions and applied overrides for debugging
         - Raises ConfigurationError for invalid preset names with available preset suggestions
         - Falls back to 'simple' presets when primary preset loading fails
@@ -316,11 +317,6 @@ class Settings(BaseSettings):
             "enable_ai_cache": True
         }
         os.environ['CACHE_CUSTOM_CONFIG'] = json.dumps(custom_cache)
-        
-        # Configuration validation
-        validation_result = settings.validate_custom_config(custom_json)
-        if not validation_result['is_valid']:
-            logger.error(f"Configuration errors: {validation_result['errors']}")
         
         # Session-aware configuration loading
         cache_config = settings.get_cache_config(
@@ -724,100 +720,7 @@ class Settings(BaseSettings):
         description="Custom resilience configuration as JSON string (overrides preset)"
     )
 
-    # Legacy Resilience Configuration (for backward compatibility)
-    # These settings are maintained for applications migrating from manual configuration
-
-    # Feature Toggles
-    resilience_enabled: bool = Field(
-        default=True,
-        description="Master toggle for resilience features"
-    )
-    circuit_breaker_enabled: bool = Field(
-        default=True,
-        description="Enable circuit breaker pattern for failure protection"
-    )
-    retry_enabled: bool = Field(
-        default=True,
-        description="Enable retry mechanism for transient failures"
-    )
-
-    # Default Strategy
-    default_resilience_strategy: str = Field(
-        default="balanced",
-        description="Default resilience strategy for operations"
-    )
-
-    # Circuit Breaker Settings
-    circuit_breaker_failure_threshold: int = Field(
-        default=5,
-        gt=0,
-        description="Number of failures before circuit breaker opens"
-    )
-    circuit_breaker_recovery_timeout: int = Field(
-        default=60,
-        gt=0,
-        description="Seconds to wait before attempting circuit breaker recovery"
-    )
-
-    # Retry Mechanism Settings
-    retry_max_attempts: int = Field(
-        default=3,
-        gt=0,
-        description="Maximum number of retry attempts for failed operations"
-    )
-    retry_max_delay: int = Field(
-        default=30,
-        gt=0,
-        description="Maximum delay between retries in seconds"
-    )
-    retry_exponential_multiplier: float = Field(
-        default=1.0,
-        gt=0.0,
-        description="Multiplier for exponential backoff calculations"
-    )
-    retry_exponential_min: float = Field(
-        default=2.0,
-        gt=0.0,
-        description="Minimum delay for exponential backoff in seconds"
-    )
-    retry_exponential_max: float = Field(
-        default=10.0,
-        gt=0.0,
-        description="Maximum delay for exponential backoff in seconds"
-    )
-    retry_jitter_enabled: bool = Field(
-        default=True,
-        description="Enable random jitter to prevent thundering herd"
-    )
-    retry_jitter_max: float = Field(
-        default=2.0,
-        gt=0.0,
-        description="Maximum jitter value in seconds"
-    )
-
-    # Operation-Specific Resilience Strategies
-    # These allow fine-tuning resilience behavior per operation type
-    summarize_resilience_strategy: str = Field(
-        default="balanced",
-        description="Resilience strategy for text summarization operations"
-    )
-    sentiment_resilience_strategy: str = Field(
-        default="aggressive",
-        description="Resilience strategy for sentiment analysis operations"
-    )
-    key_points_resilience_strategy: str = Field(
-        default="balanced",
-        description="Resilience strategy for key points extraction operations"
-    )
-    questions_resilience_strategy: str = Field(
-        default="balanced",
-        description="Resilience strategy for question generation operations"
-    )
-    qa_resilience_strategy: str = Field(
-        default="conservative",
-        description="Resilience strategy for question answering operations"
-    )
-
+    
     # ========================================
     # FIELD VALIDATORS
     # ========================================
@@ -889,154 +792,8 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator(
-        'default_resilience_strategy', 'summarize_resilience_strategy', 'sentiment_resilience_strategy',
-        'key_points_resilience_strategy', 'questions_resilience_strategy', 'qa_resilience_strategy',
-        mode='before'
-    )
-    @classmethod
-    def validate_resilience_strategy(cls, v, info) -> str:
-        """Validate resilience strategy with graceful fallback for environment variables."""
-        # Get default values based on field name
-        defaults = {
-            'default_resilience_strategy': 'balanced',
-            'summarize_resilience_strategy': 'balanced',
-            'sentiment_resilience_strategy': 'aggressive',
-            'key_points_resilience_strategy': 'balanced',
-            'questions_resilience_strategy': 'balanced',
-            'qa_resilience_strategy': 'conservative'
-        }
-        default_value = defaults.get(info.field_name, 'balanced')
 
-        # Handle None or empty values
-        if v is None or v == "":
-            return default_value
 
-        # Convert to string if needed
-        if not isinstance(v, str):
-            v = str(v)
-
-        allowed_strategies = {"conservative", "balanced", "aggressive"}
-        if v not in allowed_strategies:
-            # Check if we're in a context where we should be graceful
-            strategy_env_vars = {
-                'default_resilience_strategy': 'DEFAULT_RESILIENCE_STRATEGY',
-                'summarize_resilience_strategy': 'SUMMARIZE_RESILIENCE_STRATEGY',
-                'sentiment_resilience_strategy': 'SENTIMENT_RESILIENCE_STRATEGY',
-                'key_points_resilience_strategy': 'KEY_POINTS_RESILIENCE_STRATEGY',
-                'questions_resilience_strategy': 'QUESTIONS_RESILIENCE_STRATEGY',
-                'qa_resilience_strategy': 'QA_RESILIENCE_STRATEGY'
-            }
-
-            env_var = strategy_env_vars.get(info.field_name)
-            env_value = os.getenv(env_var) if env_var else None
-
-            # If the invalid value matches what's in the environment, be graceful
-            if env_value == v:
-                logger.warning(
-                    f"Invalid resilience strategy '{v}' from environment variable {env_var}, "
-                    f"falling back to '{default_value}'"
-                )
-                return default_value
-            else:
-                # Value was passed directly - strict validation
-                raise ConfigurationError(
-                    f"Invalid resilience strategy '{v}': must be one of {', '.join(allowed_strategies)}",
-                    context={
-                        "field": info.field_name,
-                        "provided_value": v,
-                        "allowed_values": list(allowed_strategies),
-                        "validation_context": "pydantic_field_validator",
-                        "validation_mode": "strict"
-                    }
-                )
-        return v
-
-    @field_validator(
-        'circuit_breaker_failure_threshold', 'circuit_breaker_recovery_timeout',
-        'retry_max_attempts', 'retry_max_delay', mode='before'
-    )
-    @classmethod
-    def validate_positive_integers(cls, v, info) -> int:
-        """Validate positive integers with strict validation for completely invalid values."""
-        # Get default values based on field name
-        defaults = {
-            'circuit_breaker_failure_threshold': 5,
-            'circuit_breaker_recovery_timeout': 60,
-            'retry_max_attempts': 3,
-            'retry_max_delay': 30
-        }
-        default_value = defaults.get(info.field_name, 1)
-
-        # Handle string conversion
-        if isinstance(v, str):
-            # Empty strings should always fail validation
-            if v.strip() == "":
-                raise ConfigurationError(
-                    f"Invalid empty value for {info.field_name}: must be a positive integer",
-                    context={
-                        "field": info.field_name,
-                        "provided_value": v,
-                        "expected_type": "positive_integer",
-                        "validation_context": "pydantic_field_validator",
-                        "error_type": "empty_string"
-                    }
-                )
-
-            try:
-                v = int(v)
-            except (ValueError, TypeError):
-                # Check if we're in a context with legacy environment variables
-                legacy_vars = [
-                    "RETRY_MAX_ATTEMPTS", "CIRCUIT_BREAKER_FAILURE_THRESHOLD",
-                    "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "RETRY_MAX_DELAY"
-                ]
-                has_any_legacy = any(var in os.environ for var in legacy_vars)
-
-                if has_any_legacy:
-                    # Be graceful in legacy mode for non-empty invalid values
-                    logger.warning(f"Invalid value for {info.field_name}: '{v}', using default: {default_value}")
-                    return default_value
-                else:
-                    # Strict validation in normal mode
-                    raise ConfigurationError(
-                        f"Invalid value for {info.field_name}: '{v}' must be a positive integer",
-                        context={
-                            "field": info.field_name,
-                            "provided_value": v,
-                            "expected_type": "positive_integer",
-                            "validation_context": "pydantic_field_validator",
-                            "error_type": "invalid_conversion",
-                            "validation_mode": "strict"
-                        }
-                    )
-
-        # Handle negative/zero values - be graceful for these
-        if isinstance(v, (int, float)) and v <= 0:
-            logger.warning(f"Invalid value for {info.field_name}: {v}, using default: {default_value}")
-            return default_value
-
-        return int(v) if isinstance(v, (int, float)) else default_value
-
-    @field_validator(
-        'retry_exponential_multiplier', 'retry_exponential_min',
-        'retry_exponential_max', 'retry_jitter_max'
-    )
-    @classmethod
-    def validate_positive_floats(cls, v: float, info) -> float:
-        """Validate positive floats with fallback for invalid values."""
-        if v <= 0:
-            # Get default values based on field name
-            defaults = {
-                'retry_exponential_multiplier': 1.0,
-                'retry_exponential_min': 2.0,
-                'retry_exponential_max': 10.0,
-                'retry_jitter_max': 2.0
-            }
-            default_value = defaults.get(info.field_name, 1.0)
-            logger.warning(f"Invalid value for {info.field_name}: {v}, using default: {default_value}")
-            return default_value
-        return v
 
     # Health Check Configuration Validation
     @field_validator(
@@ -1146,7 +903,7 @@ class Settings(BaseSettings):
             
         Behavior:
             - Resolves cache_preset field to load base configuration from preset system
-            - Maps 'testing' preset alias to 'development' preset for backward compatibility
+            - Maps 'testing' preset alias to 'development' preset for convenience
             - Applies CACHE_REDIS_URL environment variable override if present
             - Applies ENABLE_AI_CACHE environment variable override if present (true/false/1/0)
             - Applies CACHE_CUSTOM_CONFIG JSON overrides if provided and valid
@@ -1254,12 +1011,11 @@ class Settings(BaseSettings):
 
     def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
         """
-        Get complete resilience configuration from preset or legacy settings with monitoring.
-        
-        This is the main entry point for resilience configuration that implements both
-        preset-based architecture and legacy environment variable compatibility. It
-        automatically detects the appropriate configuration source and provides
-        comprehensive monitoring and error handling with fallback behavior.
+        Get complete resilience configuration from preset with custom overrides.
+
+        This is the main entry point for resilience configuration that implements the
+        preset-based architecture. It automatically resolves configuration from presets
+        and provides comprehensive monitoring and error handling with fallback behavior.
 
         Args:
             session_id: Optional session identifier for monitoring and analytics (default: None)
@@ -1272,43 +1028,32 @@ class Settings(BaseSettings):
             - circuit_breaker_config: CircuitBreakerConfig with failure thresholds and recovery timeouts
             - enable_circuit_breaker: Boolean flag for circuit breaker pattern activation
             - enable_retry: Boolean flag for retry mechanism activation
-            
+
         Raises:
             ConfigurationError: When both primary preset loading and fallback preset loading fail
-            
+
         Behavior:
-            - Auto-detects legacy environment variables and prioritizes them for backward compatibility
             - Resolves resilience_preset field to load base configuration from preset system
             - Applies resilience_custom_config JSON overrides if provided and valid
             - Falls back to 'simple' preset if primary preset loading fails
             - Logs all configuration resolution steps and applied overrides for debugging
             - Records preset usage metrics and monitoring data for analytics
-            - Ignores custom config in legacy mode to maintain strict backward compatibility
             - Provides session and user context tracking for operational monitoring
             - Returns identical configuration for identical parameters and environment state
-            - Caches legacy environment variable detection to avoid repeated filesystem checks
-            
+
         Examples:
             >>> # Basic preset-based configuration
             >>> config = settings.get_resilience_config()
             >>> assert config.strategy.name in ["CONSERVATIVE", "BALANCED", "AGGRESSIVE"]
             >>> assert config.retry_config.max_attempts > 0
-            
+
             >>> # Configuration with session tracking
             >>> config = settings.get_resilience_config(
             ...     session_id="api_request_123",
             ...     user_context="text_processing_endpoint"
             ... )
             >>> assert config.circuit_breaker_config.failure_threshold > 0
-            
-            >>> # Legacy environment variable mode
-            >>> import os
-            >>> os.environ['RETRY_MAX_ATTEMPTS'] = '5'
-            >>> os.environ['CIRCUIT_BREAKER_FAILURE_THRESHOLD'] = '10'
-            >>> config = settings.get_resilience_config()
-            >>> assert config.retry_config.max_attempts == 5
-            >>> assert config.circuit_breaker_config.failure_threshold == 10
-            
+
             >>> # Custom JSON configuration mode
             >>> settings.resilience_custom_config = '{"retry_attempts": 7, "circuit_breaker_threshold": 15}'
             >>> config = settings.get_resilience_config()
@@ -1320,9 +1065,7 @@ class Settings(BaseSettings):
         from app.infrastructure.resilience.config_monitoring import config_metrics_collector
 
         # Determine configuration type for monitoring
-        config_type = "legacy" if self._has_legacy_resilience_config() else "preset"
-        if self.resilience_custom_config:
-            config_type = "custom"
+        config_type = "custom" if self.resilience_custom_config else "preset"
 
         # Track configuration loading with monitoring
         with config_metrics_collector.track_config_operation(
@@ -1331,43 +1074,9 @@ class Settings(BaseSettings):
             session_id=session_id,
             user_context=user_context
         ):
-            # Clear cache and check if using legacy configuration
-            self._clear_legacy_config_cache()
-            if self._has_legacy_resilience_config():
-                config_metrics_collector.record_preset_usage(
-                    preset_name="legacy",
-                    operation="load_legacy_config",
-                    session_id=session_id,
-                    user_context=user_context,
-                    metadata={"config_type": "legacy"}
-                )
-                resilience_config = self._load_legacy_resilience_config()
-
-                # In legacy mode, environment variables take highest priority
-                if self.resilience_custom_config:
-                    logger.info(
-                        "Legacy environment variables detected - custom config will be ignored "
-                        "to maintain backward compatibility"
-                    )
-
-                    config_metrics_collector.record_preset_usage(
-                        preset_name="legacy",
-                        operation="ignore_custom_config",
-                        session_id=session_id,
-                        user_context=user_context,
-                        metadata={
-                            "config_type": "legacy_only",
-                            "reason": "legacy_environment_variables_take_precedence"
-                        }
-                    )
-
-                return resilience_config
-
             # Load preset configuration
             try:
-                # Always prefer the instance's preset; do not let env override during tests
                 preset_name = self.resilience_preset
-
                 preset = preset_manager.get_preset(preset_name)
                 resilience_config = preset.to_resilience_config()
 
@@ -1499,93 +1208,10 @@ class Settings(BaseSettings):
             >>> strategy = settings.get_operation_strategy("SUMMARIZE")  # Won't match
             >>> assert strategy == "balanced"  # Falls back to default
         """
-        # Map operation names to their strategy attributes
-        operation_strategies = {
-            "summarize": getattr(self, 'summarize_resilience_strategy', 'balanced'),
-            "summarize_text": getattr(self, 'summarize_resilience_strategy', 'balanced'),
-            "sentiment": getattr(self, 'sentiment_resilience_strategy', 'balanced'),
-            "analyze_sentiment": getattr(self, 'sentiment_resilience_strategy', 'balanced'),
-            "key_points": getattr(self, 'key_points_resilience_strategy', 'balanced'),
-            "extract_key_points": getattr(self, 'key_points_resilience_strategy', 'balanced'),
-            "questions": getattr(self, 'questions_resilience_strategy', 'balanced'),
-            "generate_questions": getattr(self, 'questions_resilience_strategy', 'balanced'),
-            "qa": getattr(self, 'qa_resilience_strategy', 'balanced'),
-            "answer_question": getattr(self, 'qa_resilience_strategy', 'balanced'),
-        }
-
-        return operation_strategies.get(operation_name, 'balanced')
-
-    # TODO: move/dedupe this to backend/app/infrastructure/resilience/
-    def validate_resilience_custom_config(self, json_string: Optional[str] = None) -> dict:
-        """
-        Validate custom resilience configuration JSON string against schema.
-        
-        This method provides comprehensive validation of custom resilience configuration
-        JSON strings, ensuring they conform to the expected schema and contain valid
-        values before application to the resilience system.
-
-        Args:
-            json_string: JSON string to validate (default: None).
-                        If None, validates the current resilience_custom_config field value.
-                        If empty string or None, returns success with warning message.
-
-        Returns:
-            Dictionary with validation results containing:
-            - "is_valid": Boolean indicating overall validation success
-            - "errors": List of error messages for validation failures
-            - "warnings": List of warning messages for non-critical issues
-            
-        Behavior:
-            - Uses resilience_custom_config field value when json_string parameter is None
-            - Returns successful validation with warning when no configuration provided
-            - Parses JSON string and validates against resilience configuration schema
-            - Checks value types, ranges, and allowed enumeration values
-            - Validates nested configuration objects and their relationships
-            - Provides detailed error messages with field names and expected values
-            - Catches and reports JSON parsing errors with helpful error descriptions
-            - Does not modify any configuration state during validation
-            
-        Examples:
-            >>> # Validate current configuration
-            >>> result = settings.validate_custom_config()
-            >>> assert result["is_valid"] is True
-            >>> assert "No custom configuration" in result["warnings"][0]
-            
-            >>> # Validate valid JSON configuration
-            >>> valid_config = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
-            >>> result = settings.validate_custom_config(valid_config)
-            >>> assert result["is_valid"] is True
-            >>> assert len(result["errors"]) == 0
-            
-            >>> # Validate invalid JSON configuration
-            >>> invalid_config = '{"retry_attempts": "not_a_number"}'
-            >>> result = settings.validate_custom_config(invalid_config)
-            >>> assert result["is_valid"] is False
-            >>> assert len(result["errors"]) > 0
-            >>> assert "retry_attempts" in str(result["errors"])
-            
-            >>> # Handle JSON parsing errors
-            >>> malformed_json = '{"retry_attempts": 5,}'  # Trailing comma
-            >>> result = settings.validate_custom_config(malformed_json)
-            >>> assert result["is_valid"] is False
-            >>> assert "Validation error" in result["errors"][0]
-        """
-        from app.infrastructure.resilience.config_validator import config_validator
-
-        config_to_validate = json_string or self.resilience_custom_config
-        if not config_to_validate:
-            return {"is_valid": True, "errors": [], "warnings": ["No custom configuration to validate"]}
-
-        try:
-            validation_result = config_validator.validate_json_string(config_to_validate)
-            return validation_result.to_dict()
-        except Exception as e:
-            return {
-                "is_valid": False,
-                "errors": [f"Validation error: {str(e)}"],
-                "warnings": []
-            }
-
+        # All operations use the same balanced strategy
+        # In the preset system, operation-specific strategies are handled
+        # by the resilience service configuration
+        return 'balanced'
 
     # ========================================
     # AUTHENTICATION & UTILITY METHODS
@@ -1982,7 +1608,7 @@ class Settings(BaseSettings):
 
 
     # ========================================
-    # BACKWARD COMPATIBILITY METHODS
+    # COMPATIBILITY METHODS
     # ========================================
     # These methods maintain compatibility with existing code and tests
 
@@ -2004,7 +1630,7 @@ class Settings(BaseSettings):
     @property
     def is_legacy_config(self) -> bool:
         """Check if using legacy configuration (for test compatibility)."""
-        return self._has_legacy_resilience_config()
+        return False  # Legacy configuration support has been removed
 
     def get_operation_configs(self) -> dict:
         """Get all operation configurations (for test compatibility)."""
@@ -2018,16 +1644,16 @@ class Settings(BaseSettings):
     def get_all_operation_strategies(self) -> dict:
         """Get all operation strategy mappings (for test compatibility)."""
         return {
-            "summarize": self.summarize_resilience_strategy,
-            "summarize_text": self.summarize_resilience_strategy,
-            "sentiment": self.sentiment_resilience_strategy,
-            "analyze_sentiment": self.sentiment_resilience_strategy,
-            "key_points": self.key_points_resilience_strategy,
-            "extract_key_points": self.key_points_resilience_strategy,
-            "questions": self.questions_resilience_strategy,
-            "generate_questions": self.questions_resilience_strategy,
-            "qa": self.qa_resilience_strategy,
-            "answer_question": self.qa_resilience_strategy,
+            "summarize": "balanced",
+            "summarize_text": "balanced",
+            "sentiment": "balanced",
+            "analyze_sentiment": "balanced",
+            "key_points": "balanced",
+            "extract_key_points": "balanced",
+            "questions": "balanced",
+            "generate_questions": "balanced",
+            "qa": "balanced",
+            "answer_question": "balanced",
         }
     
 

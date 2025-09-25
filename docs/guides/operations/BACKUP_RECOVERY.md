@@ -471,13 +471,13 @@ echo "Application recovery completed $(date)"
 - [ ] Start application services
 - [ ] Verify basic functionality
 
-**Phase 3: Validation (< 30 minutes)**
+**Step 3: Validation (< 30 minutes)**
 - [ ] Run health checks
 - [ ] Verify API functionality
 - [ ] Test critical workflows
 - [ ] Monitor system performance
 
-**Phase 4: Notification (< 15 minutes)**
+**Step 4: Notification (< 15 minutes)**
 - [ ] Notify stakeholders
 - [ ] Update status pages
 - [ ] Document recovery actions

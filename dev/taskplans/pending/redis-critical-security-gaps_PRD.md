@@ -134,6 +134,236 @@ class SecureConfigGenerator:
         return ''.join(secrets.choice(alphabet) for _ in range(length))
 ```
 
+### 5. Environment-Aware Security Configuration Integration
+**What it does**: Integrates security configuration generation with the existing environment detection service to provide environment-appropriate security settings automatically.
+
+**Why it's important**: Ensures security configurations match the deployment environment, preventing development settings in production or overly restrictive settings in development.
+
+**How it works**:
+```python
+# backend/app/infrastructure/security/config_generator.py
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional, Dict, Any
+import secrets
+import string
+from cryptography.fernet import Fernet
+
+from app.core.environment import (
+    get_environment_info, 
+    FeatureContext, 
+    Environment,
+    EnvironmentDetector
+)
+
+@dataclass
+class SecurityConfiguration:
+    """Security configuration for Redis and other infrastructure services"""
+    redis_password: str
+    redis_cache_password: str
+    redis_encryption_key: str
+    redis_tls_enabled: bool
+    redis_protected_mode: bool
+    environment: Environment
+    generated_at: datetime
+    confidence: float
+    
+    def to_env_dict(self) -> Dict[str, str]:
+        """Convert to environment variable dictionary"""
+        return {
+            "REDIS_PASSWORD": self.redis_password,
+            "REDIS_CACHE_PASSWORD": self.redis_cache_password,
+            "REDIS_ENCRYPTION_KEY": self.redis_encryption_key,
+            "REDIS_TLS_ENABLED": str(self.redis_tls_enabled).lower(),
+            "REDIS_PROTECTED_MODE": str(self.redis_protected_mode).lower(),
+            "REDIS_SECURITY_ENVIRONMENT": self.environment.value
+        }
+
+class SecureConfigGenerator:
+    """
+    Generates cryptographically secure configurations based on detected environment.
+    Integrates with EnvironmentDetector for environment-aware security settings.
+    """
+    
+    def __init__(self, detector: Optional[EnvironmentDetector] = None):
+        """Initialize with optional custom environment detector"""
+        self.detector = detector
+    
+    def generate_config_for_environment(
+        self, 
+        feature_context: FeatureContext = FeatureContext.SECURITY_ENFORCEMENT,
+        override_environment: Optional[Environment] = None
+    ) -> SecurityConfiguration:
+        """
+        Generate security configuration appropriate for detected environment.
+        
+        Args:
+            feature_context: Feature context for environment detection
+            override_environment: Optional environment override for testing
+        
+        Returns:
+            SecurityConfiguration with environment-appropriate settings:
+            - Production: Maximum security with strong passwords and encryption
+            - Staging: Production-like security for testing
+            - Development: Simplified security for local development
+        """
+        # Detect environment using the core service
+        env_info = get_environment_info(feature_context)
+        environment = override_environment or env_info.environment
+        
+        # Log low confidence detection warnings
+        if env_info.confidence < 0.7 and not override_environment:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Low confidence environment detection ({env_info.confidence:.2f}). "
+                f"Detected: {env_info.environment.value}. Using secure defaults."
+            )
+        
+        # Generate environment-appropriate configuration
+        if environment == Environment.PRODUCTION:
+            config = self._generate_production_config()
+        elif environment == Environment.STAGING:
+            config = self._generate_staging_config()
+        elif environment == Environment.TESTING:
+            config = self._generate_testing_config()
+        else:  # Development or Unknown
+            config = self._generate_development_config()
+        
+        # Add environment detection metadata
+        config.environment = environment
+        config.confidence = env_info.confidence
+        
+        return config
+    
+    def _generate_production_config(self) -> SecurityConfiguration:
+        """Generate maximum security configuration for production"""
+        return SecurityConfiguration(
+            redis_password=self._generate_password(32, include_special=True),
+            redis_cache_password=self._generate_password(32, include_special=True),
+            redis_encryption_key=Fernet.generate_key().decode(),
+            redis_tls_enabled=True,
+            redis_protected_mode=True,
+            environment=Environment.PRODUCTION,
+            generated_at=datetime.utcnow(),
+            confidence=1.0  # Will be updated by caller
+        )
+    
+    def _generate_staging_config(self) -> SecurityConfiguration:
+        """Generate production-like security for staging"""
+        return SecurityConfiguration(
+            redis_password=self._generate_password(24, include_special=True),
+            redis_cache_password=self._generate_password(24, include_special=True),
+            redis_encryption_key=Fernet.generate_key().decode(),
+            redis_tls_enabled=True,
+            redis_protected_mode=True,
+            environment=Environment.STAGING,
+            generated_at=datetime.utcnow(),
+            confidence=1.0
+        )
+    
+    def _generate_testing_config(self) -> SecurityConfiguration:
+        """Generate moderate security for testing environments"""
+        return SecurityConfiguration(
+            redis_password=self._generate_password(16, include_special=False),
+            redis_cache_password=self._generate_password(16, include_special=False),
+            redis_encryption_key=Fernet.generate_key().decode(),
+            redis_tls_enabled=False,
+            redis_protected_mode=True,
+            environment=Environment.TESTING,
+            generated_at=datetime.utcnow(),
+            confidence=1.0
+        )
+    
+    def _generate_development_config(self) -> SecurityConfiguration:
+        """Generate simplified security for local development"""
+        return SecurityConfiguration(
+            redis_password="dev_redis_pass_" + self._generate_password(8, include_special=False),
+            redis_cache_password="dev_cache_pass_" + self._generate_password(8, include_special=False),
+            redis_encryption_key=Fernet.generate_key().decode(),
+            redis_tls_enabled=False,
+            redis_protected_mode=False,
+            environment=Environment.DEVELOPMENT,
+            generated_at=datetime.utcnow(),
+            confidence=1.0
+        )
+    
+    def _generate_password(self, length: int, include_special: bool = True) -> str:
+        """
+        Generate cryptographically secure password.
+        
+        Args:
+            length: Password length
+            include_special: Include special characters for production environments
+        """
+        alphabet = string.ascii_letters + string.digits
+        if include_special:
+            alphabet += "!@#$%^&*-_=+"
+        
+        # Ensure at least one character from each category
+        password = []
+        password.append(secrets.choice(string.ascii_lowercase))
+        password.append(secrets.choice(string.ascii_uppercase))
+        password.append(secrets.choice(string.digits))
+        if include_special:
+            password.append(secrets.choice("!@#$%^&*-_=+"))
+        
+        # Fill remaining length
+        for _ in range(len(password), length):
+            password.append(secrets.choice(alphabet))
+        
+        # Shuffle to avoid predictable patterns
+        secrets.SystemRandom().shuffle(password)
+        return ''.join(password)
+    
+    def validate_existing_config(self, env_vars: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Validate existing security configuration against environment requirements.
+        
+        Returns:
+            Validation results with security score and recommendations
+        """
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+        
+        issues = []
+        score = 100
+        
+        # Check password strength
+        redis_password = env_vars.get('REDIS_PASSWORD', '')
+        if len(redis_password) < 16:
+            issues.append("Redis password too short (<16 characters)")
+            score -= 20
+        if not any(c in "!@#$%^&*-_=+" for c in redis_password):
+            issues.append("Redis password lacks special characters")
+            score -= 10
+        
+        # Check encryption
+        if not env_vars.get('REDIS_ENCRYPTION_KEY'):
+            issues.append("No encryption key configured")
+            score -= 25
+        
+        # Check TLS in production
+        if env_info.environment == Environment.PRODUCTION:
+            if env_vars.get('REDIS_TLS_ENABLED', '').lower() != 'true':
+                issues.append("TLS not enabled in production environment")
+                score -= 30
+        
+        return {
+            "environment": env_info.environment.value,
+            "confidence": env_info.confidence,
+            "security_score": max(0, score),
+            "issues": issues,
+            "recommendation": "regenerate" if score < 70 else "acceptable"
+        }
+```
+
+**Integration Benefits**:
+- **Automatic Environment Detection**: Leverages existing environment detection service for consistent behavior
+- **Environment-Appropriate Security**: Different security levels for development, testing, staging, and production
+- **Confidence-Based Decisions**: Warns when environment detection confidence is low
+- **Validation Capabilities**: Can validate existing configurations against environment requirements
+- **Seamless Integration**: Works with existing infrastructure services and configuration management
+
 ## User Experience
 
 ### User Personas
@@ -156,11 +386,32 @@ class SecureConfigGenerator:
 ./scripts/setup_secure_deployment.sh
 
 # Output:
-# ✅ Generated secure Redis passwords  
-# ✅ Created encryption keys
+# ✅ Detected environment: production (confidence: 0.95)
+# ✅ Generated secure Redis passwords (32 chars with special)  
+# ✅ Created Fernet encryption keys
 # ✅ Configured secure Docker networks
 # ✅ Validated security configuration  
 # ✅ Ready for production deployment
+```
+
+**1a. Python API for Environment-Aware Configuration**
+```python
+from app.infrastructure.security.config_generator import SecureConfigGenerator
+from app.core.environment import FeatureContext
+
+# Automatic environment detection and appropriate config generation
+generator = SecureConfigGenerator()
+config = generator.generate_config_for_environment(
+    feature_context=FeatureContext.SECURITY_ENFORCEMENT
+)
+
+# Export to environment variables
+import os
+for key, value in config.to_env_dict().items():
+    os.environ[key] = value
+
+print(f"Generated {config.environment.value} configuration")
+print(f"Detection confidence: {config.confidence:.2f}")
 ```
 
 **2. Security Status Validation**
@@ -188,7 +439,7 @@ docker-compose up -d  # Uses insecure config for local development
 ### Enhanced Cache Service Integration
 ```python
 # Extend existing AIResponseCache with security features
-class ProductionAIResponseCache(AIResponseCache):
+class SecureAIResponseCache(AIResponseCache):
     """Production-hardened AIResponseCache with encryption and monitoring"""
     
     def __init__(self, security_config: Optional[SecurityConfig] = None, **kwargs):
@@ -239,7 +490,7 @@ class Settings(BaseSettings):
         description="Enable Docker network isolation"
     )
     
-    def get_production_cache(self) -> 'ProductionAIResponseCache':
+    def get_production_cache(self) -> 'SecureAIResponseCache':
         """Get production-configured cache with security features"""
         security_config = None
         if self.redis_password or self.redis_tls_enabled or self.redis_encryption_key:
@@ -249,7 +500,7 @@ class Settings(BaseSettings):
                 redis_encryption_key=self.redis_encryption_key
             )
             
-        return ProductionAIResponseCache(
+        return SecureAIResponseCache(
             redis_url=self.redis_url,
             security_config=security_config,
             default_ttl=self.cache_default_ttl
@@ -274,7 +525,25 @@ class Settings(BaseSettings):
 - Performance impact <15% for encryption operations
 - Graceful fallback when encryption key not provided
 
-### Phase 1B: Network Security Hardening (Week 1)  
+### Phase 1B: Environment-Aware Security Configuration (Week 1)
+**Scope**: Implement environment-aware security configuration generator integrated with core environment detection
+
+**Deliverables**:
+- `backend/app/infrastructure/security/config_generator.py` module
+- `SecurityConfiguration` dataclass for configuration management
+- `SecureConfigGenerator` class with environment-aware generation
+- Integration with `app.core.environment` detection service
+- Validation capabilities for existing configurations
+- Unit tests for all environment scenarios
+
+**Acceptance Criteria**:
+- Automatic environment detection with confidence scoring
+- Different security levels for dev/test/staging/production
+- Cryptographically secure password generation
+- Configuration validation against environment requirements
+- Seamless integration with existing infrastructure
+
+### Phase 1C: Network Security Hardening (Week 1)  
 **Scope**: Secure Docker network configuration and Redis access controls
 
 **Deliverables**:

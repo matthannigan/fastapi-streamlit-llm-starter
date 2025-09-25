@@ -31,11 +31,71 @@ Inheritance pattern:
 - **AIResponseCache**: Adds AI-specific optimizations and intelligent features
 - **CacheParameterMapper**: Handles parameter validation and mapping
 
-## Usage
+## Usage Patterns
+
+### Factory Method (Recommended)
+
+**Most AI applications should use factory methods for AI-optimized defaults and intelligent features:**
 
 ```python
-cache = AIResponseCache(redis_url="redis://localhost:6379")
-await cache.connect()
+from app.infrastructure.cache import CacheFactory
+
+factory = CacheFactory()
+
+# AI applications - recommended approach
+cache = await factory.for_ai_app(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,  # 1 hour
+    operation_ttls={
+        "summarize": 7200,  # 2 hours - summaries are stable
+        "sentiment": 86400,  # 24 hours - sentiment rarely changes
+        "translate": 14400   # 4 hours - translations moderately stable
+    }
+)
+
+# Production AI cache with security
+from app.infrastructure.security import SecurityConfig
+security_config = SecurityConfig(
+    redis_auth="ai-cache-password",
+    use_tls=True,
+    verify_certificates=True
+)
+cache = await factory.for_ai_app(
+    redis_url="rediss://ai-production:6380",
+    security_config=security_config,
+    text_hash_threshold=1000,
+    fail_on_connection_error=True
+)
+```
+
+**Factory Method Benefits for AI Applications:**
+- AI-optimized defaults with operation-specific TTLs
+- Intelligent text hashing for large inputs
+- Enhanced compression for AI response storage
+- AI-specific monitoring and performance analytics
+- Automatic fallback with graceful degradation
+
+### Direct Instantiation (Advanced AI Use Cases)
+
+**Use direct instantiation for specialized AI cache configurations:**
+
+```python
+cache = AIResponseCache(
+    redis_url="redis://localhost:6379",
+    default_ttl=3600,
+    text_hash_threshold=500,
+    operation_ttls={
+        "custom_ai_operation": 1800,
+        "specialized_nlp": 7200
+    },
+    compression_threshold=1000,
+    compression_level=8
+)
+
+# Manual connection handling required
+connected = await cache.connect()
+if not connected:
+    raise InfrastructureError("AI cache connection required")
 
 # AI response caching with intelligent key generation
 key = cache.build_key(
@@ -44,9 +104,15 @@ key = cache.build_key(
     options={"max_length": 100}
 )
 await cache.set(key, {"summary": "Brief summary"}, ttl=3600)
-        ...         'large': 30000
-        ...     }
-        ... )
+```
+
+**Use direct instantiation when:**
+- Building custom AI cache implementations with specialized features
+- Requiring exact AI parameter combinations not supported by factory methods
+- Developing AI-specific frameworks or libraries
+- Migrating legacy AI systems with custom configurations
+
+**📖 For comprehensive factory usage patterns and AI-specific configuration examples, see [Cache Usage Guide](../../../docs/guides/infrastructure/cache/usage-guide.md).**
 
 Dependencies:
     Required:

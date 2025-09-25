@@ -900,9 +900,9 @@ except Exception as e:
     logger.info(f"Circuit breaker metrics: {cb.metrics.to_dict()}")
 ```
 
-## Migration Guide
+## Configuration Management
 
-### From Legacy Environment Variables to Presets
+### Preset-Based Configuration
 
 1. **Analyze Current Configuration**:
 ```bash
@@ -915,37 +915,18 @@ curl -H "X-API-Key: your-api-key" \
      http://localhost:8000/internal/resilience/config/recommend-preset-auto
 ```
 
-2. **Update Configuration**:
+2. **Set Up Configuration**:
 ```bash
 # Set environment variable for preset-based configuration
 export RESILIENCE_PRESET=production
-
-# Remove legacy environment variables
-unset RETRY_MAX_ATTEMPTS
-unset CIRCUIT_BREAKER_FAILURE_THRESHOLD
-unset CIRCUIT_BREAKER_RECOVERY_TIMEOUT
-unset DEFAULT_RESILIENCE_STRATEGY
-# ... remove other legacy variables
 ```
 
-3. **Verify Migration**:
+3. **Verify Configuration**:
 ```bash
 # Check current configuration via Internal API
 curl -H "X-API-Key: your-api-key" \
      http://localhost:8000/internal/resilience/health/detailed
 ```
-
-### Legacy Variable Mapping
-
-| Legacy Variable | Preset Parameter | Notes |
-|-----------------|------------------|-------|
-| `RETRY_MAX_ATTEMPTS` | `retry_attempts` | Direct mapping |
-| `CIRCUIT_BREAKER_FAILURE_THRESHOLD` | `circuit_breaker_threshold` | Direct mapping |
-| `CIRCUIT_BREAKER_RECOVERY_TIMEOUT` | `recovery_timeout` | Direct mapping |
-| `DEFAULT_RESILIENCE_STRATEGY` | `default_strategy` | Direct mapping |
-| `SUMMARIZE_RESILIENCE_STRATEGY` | `operation_overrides.summarize` | Operation-specific |
-| `SENTIMENT_RESILIENCE_STRATEGY` | `operation_overrides.sentiment` | Operation-specific |
-| `QA_RESILIENCE_STRATEGY` | `operation_overrides.qa` | Operation-specific |
 
 ## Advanced Features
 
