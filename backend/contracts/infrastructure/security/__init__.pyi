@@ -57,14 +57,14 @@ Robust authentication system with flexible configuration:
 ### Basic Authentication
 ```python
 from fastapi import Depends
-from app.infrastructure.security import verify_api_key
+from app.infrastructure.security import verify_api_key_http
 
 @app.get("/protected")
-async def protected_endpoint(api_key: str = Depends(verify_api_key)):
+async def protected_endpoint(api_key: str = Depends(verify_api_key_http)):
     return {"message": "Access granted", "authenticated": True}
 
 @app.post("/admin")
-async def admin_endpoint(api_key: str = Depends(verify_api_key)):
+async def admin_endpoint(api_key: str = Depends(verify_api_key_http)):
     # Automatically authenticated with any valid API key
     return {"message": "Admin access", "user": api_key}
 ```
@@ -102,10 +102,10 @@ async def status_endpoint():
 
 ### Custom Authentication Validation
 ```python
-from app.infrastructure.security import verify_api_key
+from app.infrastructure.security import verify_api_key_http
 from fastapi import HTTPException, Depends
 
-async def admin_only_auth(api_key: str = Depends(verify_api_key)):
+async def admin_only_auth(api_key: str = Depends(verify_api_key_http)):
     # Add additional validation for admin endpoints
     if not is_admin_key(api_key):
         raise HTTPException(status_code=403, detail="Admin access required")
