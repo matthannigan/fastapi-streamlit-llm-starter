@@ -15,6 +15,7 @@ Dependencies covered:
 import pytest
 from unittest.mock import Mock, create_autospec
 from typing import Optional, Dict, Any
+from fastapi import Request
 from fastapi.security import HTTPAuthorizationCredentials
 
 # Import real exception classes (part of same application)
@@ -315,3 +316,109 @@ def invalid_http_bearer_credentials(mock_http_bearer_credentials):
 # - ConfigurationError
 # - Environment
 # - FeatureContext
+
+
+@pytest.fixture
+def mock_request():
+    """
+    Provides a mock FastAPI Request object for auth testing.
+    
+    Creates a mock Request with headers attribute that can be configured
+    for different authentication scenarios (Bearer token, X-API-Key, or none).
+    
+    Default Behavior:
+        - Empty headers dictionary (no authentication)
+    
+    Use Cases:
+        - Testing missing authentication headers
+        - Testing Bearer token authentication
+        - Testing X-API-Key header authentication
+    
+    Test Customization:
+        def test_with_bearer_token(mock_request):
+            mock_request.headers = {"Authorization": "Bearer test-key-123"}
+    """
+    request = Mock(spec=Request)
+    request.headers = Mock()
+    request.headers.get = Mock(return_value=None)
+    return request
+
+
+@pytest.fixture
+def mock_request_with_bearer_token(mock_request):
+    """
+    Pre-configured mock Request with valid Bearer token.
+    
+    Provides a Request mock configured with Authorization header
+    containing a valid Bearer token for testing successful authentication.
+    
+    Returns:
+        Mock Request with Authorization: Bearer test-primary-key-123
+    
+    Use Cases:
+        - Testing successful Bearer token authentication
+        - Testing authenticated endpoint access
+    """
+    mock_request.headers.get = Mock(side_effect=lambda key, default=None: 
+        "test-primary-key-123" if key == "Authorization" else default)
+    return mock_request
+
+
+@pytest.fixture
+def mock_request_with_x_api_key(mock_request):
+    """
+    Pre-configured mock Request with X-API-Key header.
+    
+    Provides a Request mock configured with X-API-Key header
+    for testing X-API-Key authentication method.
+    
+    Returns:
+        Mock Request with X-API-Key: test-primary-key-123
+    
+    Use Cases:
+        - Testing X-API-Key authentication method
+        - Testing dual authentication method support
+    """
+    mock_request.headers.get = Mock(side_effect=lambda key, default=None:
+        "test-primary-key-123" if key == "X-API-Key" else default)
+    return mock_request
+
+
+@pytest.fixture
+def mock_request_with_invalid_bearer(mock_request):
+    """
+    Pre-configured mock Request with invalid Bearer token.
+    
+    Provides a Request mock configured with Authorization header
+    containing an invalid Bearer token for testing authentication failures.
+    
+    Returns:
+        Mock Request with Authorization: Bearer invalid-test-key
+    
+    Use Cases:
+        - Testing authentication failure handling
+        - Testing invalid API key rejection
+    """
+    mock_request.headers.get = Mock(side_effect=lambda key, default=None:
+        "invalid-test-key" if key == "Authorization" else default)
+    return mock_request
+
+
+@pytest.fixture
+def mock_request_with_invalid_x_api_key(mock_request):
+    """
+    Pre-configured mock Request with invalid X-API-Key header.
+    
+    Provides a Request mock configured with X-API-Key header
+    containing an invalid key for testing authentication failures.
+    
+    Returns:
+        Mock Request with X-API-Key: invalid-test-key
+    
+    Use Cases:
+        - Testing X-API-Key authentication failure
+        - Testing error responses for invalid X-API-Key
+    """
+    mock_request.headers.get = Mock(side_effect=lambda key, default=None:
+        "invalid-test-key" if key == "X-API-Key" else default)
+    return mock_request
