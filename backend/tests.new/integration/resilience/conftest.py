@@ -61,13 +61,11 @@ from app.infrastructure.cache import GenericRedisCache
 def resilience_test_settings():
     """Session-scoped settings for resilience integration tests."""
     return Settings(
-        environment="testing",
         api_key="test-api-key-12345",
         additional_api_keys="test-key-2,test-key-3",
-        resilience_preset="balanced",
-        enable_circuit_breaker=True,
-        enable_retry=True,
-        max_retry_attempts=3,
+        resilience_preset="simple",
+        # Legacy resilience settings for backward compatibility testing
+        retry_max_attempts=3,
         circuit_breaker_failure_threshold=5,
         circuit_breaker_recovery_timeout=60
     )

@@ -158,7 +158,7 @@ class TestVerifyApiKeyStringUtility:
             from app.infrastructure.security.auth import APIKeyAuth
             with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
                 # When: verify_api_key_string is called with None
-                result = verify_api_key_string(None)
+                result = verify_api_key_string(None)  # type: ignore
 
         # Then: The function returns False safely
         assert result is False

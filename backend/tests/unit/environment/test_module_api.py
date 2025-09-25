@@ -159,15 +159,15 @@ class TestModuleLevelConvenienceFunctions:
         # Test with invalid string value that's not a FeatureContext
         # The actual implementation tries to access .value attribute, causing AttributeError
         with pytest.raises(AttributeError, match="'str' object has no attribute 'value'"):
-            get_environment_info("invalid_context")
+            get_environment_info("invalid_context")  # type: ignore
 
         # Test with integer (invalid type) - also lacks 'value' attribute
         with pytest.raises(AttributeError, match="'int' object has no attribute 'value'"):
-            get_environment_info(123)
+            get_environment_info(123)  # type: ignore
 
         # Test with None - also lacks 'value' attribute
         with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'value'"):
-            get_environment_info(None)
+            get_environment_info(None)  # type: ignore
 
     def test_is_production_environment_uses_confidence_threshold(self, mock_global_detector):
         """

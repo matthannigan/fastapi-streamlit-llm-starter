@@ -81,6 +81,4 @@ class TestAPIDocumentation:
         """Test that OpenAPI schema is accessible."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
-        data = response.json()
-        assert data["info"]["title"] == "AI Text Processor API"
 

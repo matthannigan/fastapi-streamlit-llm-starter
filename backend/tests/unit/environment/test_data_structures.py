@@ -408,19 +408,19 @@ class TestEnvironmentSignalStructure:
         # When: Attempting to modify field values
         # Then: Modification attempts raise AttributeError
         with pytest.raises(AttributeError):
-            signal.source = "NEW_SOURCE"
+            signal.source = "NEW_SOURCE"  # type: ignore
 
         with pytest.raises(AttributeError):
-            signal.value = "new_value"
+            signal.value = "new_value"  # type: ignore
 
         with pytest.raises(AttributeError):
-            signal.environment = Environment.DEVELOPMENT
+            signal.environment = Environment.DEVELOPMENT  # type: ignore
 
         with pytest.raises(AttributeError):
-            signal.confidence = 0.5
+            signal.confidence = 0.5  # type: ignore
 
         with pytest.raises(AttributeError):
-            signal.reasoning = "new reasoning"
+            signal.reasoning = "new reasoning"  # type: ignore
 
         # Verify original values are preserved
         assert signal.source == "ENVIRONMENT"
