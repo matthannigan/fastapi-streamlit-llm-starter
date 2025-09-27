@@ -1,430 +1,329 @@
-# Redis Critical Security Gaps Implementation Task Plan
+# Secure-First Redis Implementation Task Plan
 
 ## Context and Rationale
 
-The FastAPI-Streamlit-LLM Starter project currently operates Redis with critical security vulnerabilities: no authentication, unencrypted data transmission and storage, exposed network ports, and missing security monitoring. The Redis Critical Security Gaps Implementation addresses these vulnerabilities through a comprehensive security enhancement strategy as specified in the PRD at `dev/taskplans/pending/redis-critical-security-gaps_PRD.md`.
+The FastAPI-Streamlit-LLM Starter project will implement a **security-first Redis architecture** where secure connections and data encryption are mandatory, not optional. This represents a fundamental shift from configurable security to **foundational security** that eliminates configuration complexity and prevents accidental insecure deployments.
 
-### Identified Security Gaps
-- **No Redis Authentication**: Redis accepts connections without password verification
-- **Unencrypted Data**: Sensitive AI responses stored and transmitted in plain text
-- **Network Exposure**: Redis port 6379 exposed on all interfaces (0.0.0.0)
-- **No Security Monitoring**: Authentication failures and security events not tracked
-- **Weak Configuration**: Missing environment-aware secure configuration generation
+The implementation follows the PRD at `dev/taskplans/current/redis-critical-security-gaps_PRD.md` which establishes our **"pit of success"** philosophy: security is not configurable - it's always enabled.
 
-### Improvement Goals
-- **Data-at-Rest Encryption**: Implement Fernet encryption for all cached AI responses
-- **Network Isolation**: Configure Docker internal networks with no external exposure
-- **Security Monitoring**: Integrate security events with existing CachePerformanceMonitor
-- **Automated Configuration**: Environment-aware secure credential generation
-- **Zero-Trust Security**: Production-grade authentication and encryption by default
+### Core Security Requirements
+- **Mandatory TLS**: All Redis connections must use TLS encryption and authentication in all environments
+- **Always-On Encryption**: All cached data encrypted at rest using Fernet encryption
+- **Fail-Fast Design**: Application fails immediately on startup if security requirements aren't met
+- **Environment-Aware Defaults**: Security configuration automatically adapts to environment while maintaining security
+- **Zero-Configuration Security**: Developers get secure Redis with a single setup command
 
-### Desired Outcome
-A production-ready Redis deployment with application-layer encryption, network isolation, comprehensive security monitoring, and environment-aware configuration that maintains backward compatibility while providing fail-fast production security validation.
+### Breaking Change Notice
+This implementation **eliminates backward compatibility** with existing insecure configurations. All Redis connections must be secure, and all cached data must be encrypted. This is an intentional breaking change to enforce security-first design.
+
+### Testing Strategy Note
+**IMPORTANT**: This implementation will cause breaking changes for many cache tests that use Fakeredis or Testcontainers. Testing will be handled through a separate PRD and is explicitly excluded from this implementation taskplan.
 
 ---
 
 ## Implementation Phases Overview
 
-**Phase 1: Data Encryption Foundation (2 days)**
-Implement application-layer encryption using Fernet without breaking existing functionality.
+**Phase 1: Mandatory Security Enforcement (1 week)**
+Implement fail-fast startup security validation and Redis security enforcement.
 
-**Phase 2: Environment-Aware Security Configuration (1 day)**
-Create environment-aware security configuration generator integrated with existing environment detection.
+**Phase 2: Secure-Only Cache Architecture (0.5 weeks)**
+Implement always-secure GenericRedisCache and simplified security-only cache implementations.
 
-**Phase 3: Network Security Hardening (1 day)**
-Configure Docker network isolation and Redis authentication requirements.
-
-**Phase 4: Security Monitoring Integration (1 day)**
-Enhance existing monitoring with security event tracking and metrics.
-
-**Phase 5: Integration Testing and Validation (2 days)**
-Comprehensive testing, performance validation, and production deployment readiness.
+**Phase 3: Developer Tooling & Documentation (0.5 weeks)**
+Provide one-command secure setup and comprehensive security documentation.
 
 ---
 
-## Phase 1: Data Encryption Foundation
+## Phase 1: Mandatory Security Enforcement
 
-### Deliverable 1: Encrypted Cache Layer Implementation (Critical Path)
-**Goal**: Implement application-layer encryption for cached AI responses using Fernet encryption with backward compatibility.
+### Deliverable 1: Startup Security Validation System (Critical Path)
+**Goal**: Implement mandatory security validation that prevents application startup without proper security configuration.
 
-#### Task 1.1: EncryptedCacheLayer Class Implementation
+#### Task 1.1: RedisSecurityValidator Implementation
+- [ ] Create `backend/app/core/startup/redis_security.py` with RedisSecurityValidator class:
+  - [ ] Implement `validate_production_security()` method with environment-aware TLS validation
+  - [ ] Use existing `app.core.environment.get_environment_info()` with `FeatureContext.SECURITY_ENFORCEMENT`
+  - [ ] Enforce TLS requirements only in production environment (allow development flexibility)
+  - [ ] Support explicit insecure override with `REDIS_INSECURE_ALLOW_PLAINTEXT=true` and prominent warnings
+  - [ ] Implement `_is_secure_connection()` helper for connection string validation
+- [ ] Implement comprehensive error messaging:
+  - [ ] Clear error messages for production TLS requirement violations
+  - [ ] Provide actionable fix instructions (rediss://, TLS_ENABLED, etc.)
+  - [ ] Include documentation references (`docs/infrastructure/redis-security.md`)
+  - [ ] Add security warnings for insecure overrides
+
+#### Task 1.2: Security Configuration Data Structures
+- [ ] Create `backend/app/infrastructure/cache/security.py` with mandatory security classes:
+  - [ ] Implement `SecurityConfig` dataclass with required security fields:
+    - [ ] Required `redis_auth: str` (no optional authentication)
+    - [ ] Required `encryption_key: str` (no optional encryption)
+    - [ ] Required `use_tls: bool = True` (always enabled)
+    - [ ] Environment-specific `tls_cert_path: str` with auto-generation
+  - [ ] Implement `create_for_environment()` class method with environment-aware generation:
+    - [ ] Production: 32-char passwords, TLS 1.3, certificate validation required
+    - [ ] Staging: 24-char passwords, production-like security
+    - [ ] Development: 16-char passwords, self-signed certificates OK
+  - [ ] Add `__post_init__` validation ensuring no insecure configurations possible
+
+#### Task 1.3: Mandatory Security Manager
+- [ ] Implement `RedisCacheSecurityManager` in `backend/app/infrastructure/cache/security.py`:
+  - [ ] Create `validate_mandatory_security()` method with fail-fast validation:
+    - [ ] Require TLS (rediss://) in ALL environments
+    - [ ] Require authentication for all connections
+    - [ ] Require encryption for all data operations
+    - [ ] Raise `ConfigurationError` with clear guidance for violations
+  - [ ] Implement `create_secure_connection()` method for Redis client creation
+  - [ ] Add security logging for validation success/failure events
+- [ ] Implement secure password generation utilities:
+  - [ ] `generate_secure_password()` function with cryptographic security
+  - [ ] Support for environment-specific password complexity requirements
+  - [ ] Password strength validation and scoring
+
+---
+
+### Deliverable 2: TLS-Enabled Redis Infrastructure
+**Goal**: Provide automated TLS setup and secure Docker configuration for Redis.
+
+#### Task 2.1: TLS Certificate Generation Script
+- [ ] Create `scripts/init-redis-tls.sh` certificate generation script:
+  - [ ] Generate 4096-bit CA and Redis private keys
+  - [ ] Create CA certificate and Redis certificate with proper subject names
+  - [ ] Set appropriate file permissions (600 for keys, 644 for certificates)
+  - [ ] Support configurable Redis hostname (default: "redis")
+  - [ ] Clean up intermediate files (CSR) after generation
+  - [ ] Provide clear success messages with next steps
+
+#### Task 2.2: Secure Docker Configuration
+- [ ] Create `docker-compose.secure.yml` with mandatory TLS configuration:
+  - [ ] Configure Redis with TLS-only mode (`--tls-port 6380 --port 0`)
+  - [ ] Mount TLS certificates and configure certificate paths
+  - [ ] Enable TLS protocols TLSv1.2 and TLSv1.3
+  - [ ] Require password authentication (`--requirepass ${REDIS_PASSWORD}`)
+  - [ ] Enable protected mode (`--protected-mode yes`)
+- [ ] Implement network isolation:
+  - [ ] Create `redis_internal` network with `internal: true`
+  - [ ] Remove external Redis port mapping (no 6379 exposure)
+  - [ ] Configure backend service with dual network access
+  - [ ] Add Redis health check with TLS validation
+- [ ] Add Redis data persistence with secure volumes
+
+#### Task 2.3: Secure Setup Integration Script
+- [ ] Create `scripts/setup-secure-redis.sh` one-command setup script:
+  - [ ] Check for required dependencies (Docker, OpenSSL)
+  - [ ] Generate TLS certificates using init-redis-tls.sh
+  - [ ] Generate secure Redis password and encryption key
+  - [ ] Create .env.secure with generated configuration
+  - [ ] Start secure Redis container using docker-compose.secure.yml
+  - [ ] Validate secure connection and provide status report
+- [ ] Add setup validation:
+  - [ ] Test TLS connection to Redis after startup
+  - [ ] Verify authentication is working
+  - [ ] Check certificate validity and expiration
+  - [ ] Provide troubleshooting guidance for common issues
+
+---
+
+### Deliverable 3: Application-Layer Encryption System
+**Goal**: Implement mandatory Fernet encryption for all cached data with transparent operation.
+
+#### Task 3.1: Encrypted Cache Layer Implementation
 - [ ] Create `backend/app/infrastructure/cache/encryption.py` with EncryptedCacheLayer class:
   - [ ] Implement Fernet-based encryption using `cryptography` library
-  - [ ] Create `encrypt_cache_data()` method for encrypting dictionary data
-  - [ ] Create `decrypt_cache_data()` method for decrypting stored data
-  - [ ] Implement key rotation support with versioned encryption
-  - [ ] Add compression awareness to handle encrypted+compressed data
-- [ ] Handle encryption edge cases:
-  - [ ] Graceful fallback when encryption key not provided
-  - [ ] Support for reading unencrypted legacy cache entries
-  - [ ] Error handling for invalid encryption keys or corrupted data
-  - [ ] Logging for encryption operations and failures
+  - [ ] Create `encrypt_cache_data()` method for encrypting dictionary data to bytes
+  - [ ] Create `decrypt_cache_data()` method for decrypting bytes to dictionary
+  - [ ] Handle JSON serialization before encryption and after decryption
+  - [ ] Add proper error handling for encryption failures and invalid keys
+- [ ] Implement encryption configuration:
+  - [ ] Require encryption key in constructor (no optional encryption)
+  - [ ] Validate Fernet key format and raise `ConfigurationError` for invalid keys
+  - [ ] Add `is_enabled` property (always True for this implementation)
+  - [ ] Log encryption operations for debugging and monitoring
 
-#### Task 1.2: AIResponseCache Enhancement
-- [ ] Extend `backend/app/infrastructure/cache/redis_ai.py` with encryption support:
-  - [ ] Add optional `encryption_key` parameter to constructor
-  - [ ] Initialize EncryptedCacheLayer when encryption key provided
-  - [ ] Enhance `_compress_data()` method to encrypt before compression
-  - [ ] Enhance `_decompress_data()` method to decrypt after decompression
-  - [ ] Maintain exact backward compatibility for unencrypted operation
-- [ ] Implement encryption flow optimization:
-  - [ ] Encrypt first, then compress for optimal security (encrypt-then-compress)
-  - [ ] Add data format markers (e.g., "enc_comp:", "encrypted:")
-  - [ ] Measure and optimize encryption performance impact
-  - [ ] Ensure thread-safe encryption operations
-
-#### Task 1.3: Environment Variable Configuration
-- [ ] Update `backend/app/core/config.py` with encryption settings:
-  - [ ] Add `REDIS_ENCRYPTION_KEY` environment variable support
-  - [ ] Add `REDIS_ENABLE_ENCRYPTION` boolean flag (default: true in production)
-  - [ ] Implement key validation and format checking
-  - [ ] Add encryption configuration to Settings class
-- [ ] Create encryption key management utilities:
-  - [ ] Script to generate Fernet encryption keys
-  - [ ] Key rotation utilities for production environments
-  - [ ] Documentation for secure key storage practices
+#### Task 3.2: Environment-Based Encryption Key Management
+- [ ] Update `backend/app/core/config.py` with mandatory encryption settings:
+  - [ ] Add `REDIS_ENCRYPTION_KEY` environment variable (required)
+  - [ ] Remove optional encryption flags (encryption is always enabled)
+  - [ ] Add encryption key validation in Settings class
+  - [ ] Integrate with SecurityConfig for environment-aware key generation
+- [ ] Create encryption key utilities:
+  - [ ] Script to generate Fernet encryption keys (`scripts/generate-encryption-key.py`)
+  - [ ] Key validation utilities for startup validation
+  - [ ] Documentation for secure key storage and rotation practices
 
 ---
 
-### Deliverable 2: Encryption Testing and Performance Validation
-**Goal**: Comprehensive testing of encryption functionality with performance benchmarking.
+## Phase 2: Secure-Only Cache Architecture
 
-#### Task 2.1: Unit Tests for Encryption Layer
-- [ ] Create `backend/tests/unit/cache/encryption/test_*.py` following guidance in `docs/guides/testing/UNIT_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md`:
-  - [ ] Test encryption/decryption roundtrip for various data types
-  - [ ] Test handling of missing or invalid encryption keys
-  - [ ] Test backward compatibility with unencrypted data
-  - [ ] Test compression+encryption combination
-  - [ ] Test thread safety and concurrent encryption operations
-- [ ] Performance benchmarking tests:
-  - [ ] Measure encryption overhead for typical AI responses
-  - [ ] Benchmark compression+encryption vs encryption+compression
-  - [ ] Test memory usage with encryption enabled
-  - [ ] Validate <15% performance impact requirement
+### Deliverable 4: Always-Secure GenericRedisCache Implementation
+**Goal**: Implement Redis cache with built-in mandatory security that cannot be disabled.
 
-#### Task 2.2: Integration Tests with Cache System
-- [ ]  Create tests in `backend/tests/integration/cache/` for encrypted cache operations following guidance in `docs/guides/testing/INTEGRATION_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md`:
-  - [ ] Test `cache_response()` with encryption enabled
-  - [ ] Test `get_cached_response()` for encrypted entries
-  - [ ] Test mixed encrypted/unencrypted cache entries
-  - [ ] Test cache expiration with encrypted data
+#### Task 4.1: Security-First GenericRedisCache Refactoring
+- [ ] Refactor `backend/app/infrastructure/cache/redis_generic.py` for mandatory security:
+  - [ ] Remove all optional security parameters from constructor
+  - [ ] Initialize SecurityConfig.create_for_environment() automatically
+  - [ ] Initialize RedisCacheSecurityManager with fail-fast validation
+  - [ ] Initialize EncryptedCacheLayer with required encryption key
+  - [ ] Create secure Redis connection using security manager
+- [ ] Implement transparent encryption for all operations:
+  - [ ] Override `_serialize_value()` to always encrypt data before storage
+  - [ ] Override `_deserialize_value()` to always decrypt data after retrieval
+  - [ ] Maintain existing cache method signatures (get, set, delete, etc.)
+  - [ ] Log security operations for monitoring and debugging
+- [ ] Add factory method for simplified creation:
+  - [ ] Implement `create_secure()` class method
+  - [ ] Auto-detect Redis URL from environment with secure defaults
+  - [ ] Provide clear error messages for configuration issues
 
-#### Task 2.3: Backward Compatibility Validation
-- [ ] Ensure zero breaking changes:
-  - [ ] Test cache operations without encryption key (fallback mode)
-  - [ ] Verify existing cache tests pass unchanged
-  - [ ] Test development environment with encryption disabled
-  - [ ] Validate production environment with encryption enforced
-- [ ] Provide troubleshooting for encryption issues in `docs/guides/infrastructure/cache/troubleshooting.md`
-
----
-
-## Phase 2: Environment-Aware Security Configuration
-
-### Deliverable 3: Security Configuration Generator Implementation
-**Goal**: Implement environment-aware security configuration generator integrated with core environment detection service.
-
-#### Task 3.1: SecurityConfiguration Data Structure
-- [ ] Create `backend/app/infrastructure/security/config_generator.py`:
-  - [ ] Implement `SecurityConfiguration` dataclass with all security settings
-  - [ ] Add `redis_password`, `redis_cache_password` fields
-  - [ ] Add `redis_encryption_key` for Fernet encryption
-  - [ ] Add `redis_tls_enabled`, `redis_protected_mode` flags
-  - [ ] Include `environment`, `generated_at`, `confidence` metadata
-- [ ] Implement configuration utilities:
-  - [ ] Create `to_env_dict()` method for environment variable export
-  - [ ] Add configuration validation methods
-  - [ ] Implement configuration serialization for storage
-  - [ ] Add configuration comparison for drift detection
-
-#### Task 3.2: SecureConfigGenerator Class Implementation
-- [ ] Implement environment-aware configuration generation:
-  - [ ] Import and integrate with `app.core.environment` service
-  - [ ] Create `generate_config_for_environment()` main method
-  - [ ] Use `FeatureContext.SECURITY_ENFORCEMENT` for detection
-  - [ ] Handle low confidence detection with secure defaults
-- [ ] Implement environment-specific generators:
-  - [ ] `_generate_production_config()`: 32-char passwords, TLS, full encryption
-  - [ ] `_generate_staging_config()`: 24-char passwords, production-like
-  - [ ] `_generate_testing_config()`: 16-char passwords, moderate security
-  - [ ] `_generate_development_config()`: 8-char prefixed passwords, simple
-- [ ] Implement secure password generation:
-  - [ ] Create `_generate_password()` method with cryptographic security
-  - [ ] Ensure passwords include uppercase, lowercase, digits, special chars
-  - [ ] Implement password complexity validation
-  - [ ] Add password strength scoring
-
-#### Task 3.3: Configuration Validation and Management
-- [ ] Implement `validate_existing_config()` method:
-  - [ ] Check password strength against environment requirements
-  - [ ] Validate encryption key format and strength
-  - [ ] Verify TLS settings for production environments
-  - [ ] Calculate security score and provide recommendations
-- [ ] Create configuration management utilities:
-  - [ ] Script to generate and save secure configurations
-  - [ ] Configuration drift detection utilities
-  - [ ] Automated configuration rotation scheduler
-  - [ ] Configuration backup and recovery tools
+#### Task 4.2: Secure Cache Manager with Fallback Strategy
+- [ ] Create `backend/app/infrastructure/cache/manager.py` with intelligent fallback:
+  - [ ] Try secure Redis connection first using GenericRedisCache.create_secure()
+  - [ ] Graceful fallback to MemoryCache when Redis unavailable
+  - [ ] Log cache type selection and reasons for fallback
+  - [ ] Implement cache type indicator for monitoring
+- [ ] Implement transparent cache interface:
+  - [ ] Provide async get/set/delete methods that work with both cache types
+  - [ ] Handle TTL appropriately for both Redis and memory cache
+  - [ ] Maintain performance logging for both cache backends
+  - [ ] Add cache type information to monitoring endpoints
 
 ---
 
-### Deliverable 4: Security Configuration Testing
-**Goal**: Comprehensive testing of environment-aware security configuration generation.
+### Deliverable 5: Simplified Secure AIResponseCache
+**Goal**: Simplify AIResponseCache to inherit security from GenericRedisCache automatically.
 
-#### Task 4.1: Unit Tests for Configuration Generator
-- [ ] Create `backend/tests/unit/cache/encryption/test_*.py` following guidance in `docs/guides/testing/UNIT_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md`:
-- [ ] Create `backend/tests/infrastructure/security/test_config_generator.py`:
-  - [ ] Test configuration generation for each environment
-  - [ ] Test password generation with required complexity
-  - [ ] Test encryption key generation and validation
-  - [ ] Test configuration validation scoring
-- [ ] Test environment detection integration:
-  - [ ] Test with high confidence environment detection
-  - [ ] Test with low confidence fallback behavior
-  - [ ] Test environment override capabilities
-  - [ ] Validate feature context usage
+#### Task 5.1: AIResponseCache Security Inheritance Refactoring
+- [ ] Simplify `backend/app/infrastructure/cache/redis_ai.py` for automatic security:
+  - [ ] Remove all security-related parameters from constructor
+  - [ ] Inherit from GenericRedisCache to get automatic security
+  - [ ] Maintain AI-specific configuration (default_ttl, compression_threshold)
+  - [ ] Remove manual encryption/decryption code (handled by parent class)
+- [ ] Preserve AI-specific functionality:
+  - [ ] Keep AI response caching logic and key generation
+  - [ ] Maintain compression logic for large responses
+  - [ ] Preserve performance monitoring integration
+  - [ ] Keep existing public method signatures unchanged
+- [ ] Add AI-specific security enhancements:
+  - [ ] Log AI cache operations for security monitoring
+  - [ ] Add AI response size metrics with encryption overhead
+  - [ ] Include security status in AI cache monitoring
 
-#### Task 4.2: Integration Tests with Environment Service
-- [ ] Test end-to-end configuration generation:
-  - [ ] Test automatic environment detection and configuration
-  - [ ] Test configuration export to environment variables
-  - [ ] Test configuration validation against actual environment
-  - [ ] Verify integration with existing Settings class
-- [ ] Test configuration persistence:
-  - [ ] Test saving configurations to .env files
-  - [ ] Test loading and validating saved configurations
-  - [ ] Test configuration rotation workflows
-  - [ ] Validate configuration drift detection
-
----
-
-## Phase 3: Network Security Hardening
-
-### Deliverable 5: Docker Network Isolation Configuration
-**Goal**: Implement secure Docker network configuration with Redis isolation and authentication.
-
-#### Task 5.1: Docker Compose Security Configuration
-- [ ] Create `docker-compose.secure.yml` with isolated networks:
-  - [ ] Define `redis_internal` network with `internal: true`
-  - [ ] Configure Redis service without external port exposure
-  - [ ] Add backend service to both internal and external networks
-  - [ ] Remove direct Redis port mapping (no more 6379:6379)
-- [ ] Configure Redis security settings:
-  - [ ] Add `--requirepass ${REDIS_PASSWORD}` to Redis command
-  - [ ] Enable `--protected-mode yes` for production
-  - [ ] Configure `--bind 127.0.0.1` for localhost only
-  - [ ] Add TLS configuration when enabled
-
-#### Task 5.2: Redis Client Authentication
-- [ ] Update Redis client configuration:
-  - [ ] Modify `backend/app/infrastructure/cache/redis_client.py`
-  - [ ] Add password authentication to Redis connection
-  - [ ] Implement connection retry with authentication
-  - [ ] Add connection validation and health checks
-- [ ] Handle authentication failures:
-  - [ ] Implement clear error messages for auth failures
-  - [ ] Add fallback behavior for development mode
-  - [ ] Log authentication events for monitoring
-  - [ ] Provide troubleshooting guidance
-
-#### Task 5.3: Network Security Testing
-- [ ] Test Docker network isolation:
-  - [ ] Verify Redis not accessible from host network
-  - [ ] Test backend can connect through internal network
-  - [ ] Validate external services cannot reach Redis
-  - [ ] Test network segmentation effectiveness
-- [ ] Test authentication flow:
-  - [ ] Test successful authentication with correct password
-  - [ ] Test rejection with incorrect password
-  - [ ] Test connection without password in protected mode
-  - [ ] Validate authentication retry logic
+#### Task 5.2: Cache Inheritance Validation
+- [ ] Ensure proper security inheritance across cache hierarchy:
+  - [ ] Validate that AIResponseCache gets all security features from GenericRedisCache
+  - [ ] Verify encryption is applied transparently to AI responses
+  - [ ] Test that TLS and authentication work correctly
+  - [ ] Confirm graceful fallback behavior for AI operations
+- [ ] Update cache configuration integration:
+  - [ ] Remove security configuration from AI cache specific settings
+  - [ ] Ensure compatibility with existing cache preset system
+  - [ ] Validate integration with CacheManager fallback strategy
 
 ---
 
-### Deliverable 6: Secure Deployment Scripts
-**Goal**: Create automated scripts for secure production deployment.
+## Phase 3: Developer Tooling & Documentation
 
-#### Task 6.1: Secure Configuration Generation Script
-- [ ] Create `scripts/generate_secure_config.py`:
-  - [ ] Import and use SecureConfigGenerator
-  - [ ] Detect environment automatically
-  - [ ] Generate appropriate security configuration
-  - [ ] Save to .env.production or similar
-  - [ ] Validate generated configuration
-- [ ] Add configuration management features:
-  - [ ] Backup existing configuration before overwrite
-  - [ ] Support dry-run mode for preview
-  - [ ] Add force regeneration option
-  - [ ] Include configuration validation report
+### Deliverable 6: One-Command Secure Development Setup
+**Goal**: Provide complete secure Redis setup with a single command for developers.
 
-#### Task 6.2: Deployment Setup Script
-- [ ] Create `scripts/setup_secure_deployment.sh`:
-  - [ ] Check for required dependencies
-  - [ ] Generate secure configuration if missing
-  - [ ] Validate Docker and Docker Compose setup
-  - [ ] Deploy with secure docker-compose configuration
-  - [ ] Verify deployment health and security
-- [ ] Add deployment validation:
-  - [ ] Test Redis authentication after deployment
-  - [ ] Verify network isolation is working
-  - [ ] Check encryption is enabled
-  - [ ] Generate deployment security report
+#### Task 6.1: Complete Setup Script Implementation
+- [ ] Enhance `scripts/setup-secure-redis.sh` for complete development setup:
+  - [ ] Check and install required dependencies (Docker, Docker Compose, OpenSSL)
+  - [ ] Generate all required certificates and keys
+  - [ ] Create complete .env configuration with secure defaults
+  - [ ] Start secure Redis container and validate connectivity
+  - [ ] Provide clear status report and next steps
+- [ ] Add developer experience features:
+  - [ ] Support for existing .env file preservation with backup
+  - [ ] Option to regenerate certificates and keys
+  - [ ] Validate system requirements before setup
+  - [ ] Provide troubleshooting guidance for common setup issues
+- [ ] Add setup validation:
+  - [ ] Test application can connect securely after setup
+  - [ ] Verify encryption is working correctly
+  - [ ] Check Redis is properly isolated in Docker network
+  - [ ] Generate setup success report with configuration summary
 
----
-
-## Phase 4: Security Monitoring Integration
-
-### Deliverable 7: Security-Aware Cache Monitor
-**Goal**: Enhance existing CachePerformanceMonitor with security event tracking.
-
-#### Task 7.1: SecurityAwareCacheMonitor Implementation
-- [ ] Create `backend/app/infrastructure/cache/security_monitor.py`:
-  - [ ] Extend existing CachePerformanceMonitor class
-  - [ ] Add security event tracking list
-  - [ ] Implement authentication failure counter
-  - [ ] Track encryption/decryption operations
-- [ ] Implement security event recording:
-  - [ ] Create `record_auth_event()` method
-  - [ ] Track timestamps and event types
-  - [ ] Maintain rolling window of recent events
-  - [ ] Calculate security metrics and scores
-
-#### Task 7.2: Monitor Integration with Cache System
-- [ ] Integrate with AIResponseCache:
-  - [ ] Replace standard monitor with SecurityAwareCacheMonitor
-  - [ ] Add security event logging to cache operations
-  - [ ] Record authentication successes and failures
-  - [ ] Track encryption operation metrics
-- [ ] Enhance monitoring endpoints:
-  - [ ] Add `/internal/cache/security-status` endpoint
-  - [ ] Include security metrics in existing monitoring
-  - [ ] Provide security event history
-  - [ ] Generate security summary reports
-
-#### Task 7.3: Security Alerting and Reporting
-- [ ] Implement security alerting:
-  - [ ] Define security event thresholds
-  - [ ] Create alert triggers for suspicious activity
-  - [ ] Implement rate limiting for auth failures
-  - [ ] Add security incident logging
-- [ ] Create security reporting:
-  - [ ] Daily security summary generation
-  - [ ] Authentication audit trails
-  - [ ] Encryption usage statistics
-  - [ ] Security score trending
+#### Task 6.2: Environment Configuration Utilities
+- [ ] Create `scripts/generate-secure-env.py` for environment configuration:
+  - [ ] Generate environment-appropriate secure configuration
+  - [ ] Support for development, staging, and production environments
+  - [ ] Generate secure passwords and encryption keys
+  - [ ] Create .env files with proper formatting and comments
+- [ ] Add configuration validation:
+  - [ ] Validate existing .env files against security requirements
+  - [ ] Check password strength and encryption key validity
+  - [ ] Verify TLS configuration completeness
+  - [ ] Provide configuration upgrade recommendations
 
 ---
 
-### Deliverable 8: Monitoring Testing and Validation
-**Goal**: Comprehensive testing of security monitoring capabilities.
+### Deliverable 7: Security Documentation and Migration Guide
+**Goal**: Provide comprehensive documentation for security-first Redis implementation.
 
-#### Task 8.1: Unit Tests for Security Monitor
-- [ ] Create `backend/tests/infrastructure/cache/test_security_monitor.py`:
-  - [ ] Test security event recording
-  - [ ] Test authentication failure tracking
-  - [ ] Test security metric calculation
-  - [ ] Test alert trigger conditions
-- [ ] Test monitor integration:
-  - [ ] Test with cache operations
-  - [ ] Test security event aggregation
-  - [ ] Test performance impact
-  - [ ] Validate thread safety
+#### Task 7.1: Security Architecture Documentation
+- [ ] Create `docs/infrastructure/redis-security.md` with comprehensive security guide:
+  - [ ] Document mandatory security architecture and philosophy
+  - [ ] Explain TLS requirements and certificate management
+  - [ ] Document encryption implementation and key management
+  - [ ] Provide troubleshooting guide for security issues
+- [ ] Document environment-specific security configurations:
+  - [ ] Production security requirements and best practices
+  - [ ] Development setup with secure defaults
+  - [ ] Staging environment security considerations
+  - [ ] Configuration validation and monitoring procedures
 
-#### Task 8.2: Integration Tests with Monitoring System
-- [ ] Test end-to-end monitoring:
-  - [ ] Test security status endpoint
-  - [ ] Test security event persistence
-  - [ ] Test monitoring under load
-  - [ ] Validate alert generation
-- [ ] Test security reporting:
-  - [ ] Test report generation
-  - [ ] Test audit trail accuracy
-  - [ ] Test metric aggregation
-  - [ ] Validate trending calculations
+#### Task 7.2: Migration and Breaking Changes Documentation
+- [ ] Create comprehensive migration guide:
+  - [ ] Document breaking changes from previous Redis implementation
+  - [ ] Provide step-by-step migration instructions
+  - [ ] Explain security requirement changes and rationale
+  - [ ] Offer troubleshooting for common migration issues
+- [ ] Document insecure override mechanisms:
+  - [ ] When and how to use REDIS_INSECURE_ALLOW_PLAINTEXT override
+  - [ ] Security risks and mitigation strategies
+  - [ ] Network isolation requirements for insecure overrides
+  - [ ] Monitoring and alerting for insecure connections
 
----
-
-## Phase 5: Integration Testing and Validation
-
-### Deliverable 9: Comprehensive Security Testing
-**Goal**: End-to-end testing of all security features with production validation.
-
-#### Task 9.1: Integration Test Suite
-- [ ] Create comprehensive integration tests:
-  - [ ] Test encryption + authentication + network isolation
-  - [ ] Test environment-aware configuration generation
-  - [ ] Test security monitoring with all features
-  - [ ] Test production deployment scenarios
-- [ ] Performance validation:
-  - [ ] Measure total performance impact of security features
-  - [ ] Benchmark encrypted vs unencrypted operations
-  - [ ] Test scalability with security enabled
-  - [ ] Validate <15% performance impact requirement
-
-#### Task 9.2: Production Readiness Validation
-- [ ] Production deployment testing:
-  - [ ] Test secure deployment script end-to-end
-  - [ ] Validate all security features in production mode
-  - [ ] Test failover and recovery scenarios
-  - [ ] Verify monitoring and alerting
-- [ ] Security audit:
-  - [ ] Review all authentication mechanisms
-  - [ ] Validate encryption implementation
-  - [ ] Check network isolation effectiveness
-  - [ ] Audit configuration security
-
-#### Task 9.3: Documentation and Migration Guide
-- [ ] Create comprehensive documentation:
-  - [ ] Security configuration guide
-  - [ ] Deployment best practices
-  - [ ] Monitoring and alerting setup
-  - [ ] Troubleshooting guide
-- [ ] Create migration guide:
-  - [ ] Step-by-step migration from insecure to secure
-  - [ ] Data migration with encryption
-  - [ ] Configuration transition plan
-  - [ ] Rollback procedures
+#### Task 7.3: Developer Setup and Operations Guide
+- [ ] Create developer quickstart guide:
+  - [ ] One-command setup instructions
+  - [ ] Common development workflows with secure Redis
+  - [ ] Debugging security connection issues
+  - [ ] Certificate renewal and key rotation procedures
+- [ ] Document operational procedures:
+  - [ ] Production deployment with secure Redis
+  - [ ] Security monitoring and alerting setup
+  - [ ] Incident response for security violations
+  - [ ] Regular security maintenance tasks
 
 ---
 
-### Deliverable 10: Performance Optimization and Finalization
-**Goal**: Optimize security features for production performance and complete implementation.
+### Deliverable 8: Security Validation and Error Handling
+**Goal**: Implement comprehensive security validation with clear error messages and guidance.
 
-#### Task 10.1: Performance Optimization
-- [ ] Optimize encryption operations:
-  - [ ] Implement encryption caching where applicable
-  - [ ] Optimize compression+encryption pipeline
-  - [ ] Reduce memory allocation overhead
-  - [ ] Implement async encryption where beneficial
-- [ ] Optimize authentication flow:
-  - [ ] Implement connection pooling with auth
-  - [ ] Cache authentication tokens
-  - [ ] Reduce authentication roundtrips
-  - [ ] Optimize retry strategies
+#### Task 8.1: Enhanced Error Messaging System
+- [ ] Improve error messages in RedisSecurityValidator:
+  - [ ] Provide specific fix instructions for each security violation
+  - [ ] Include links to relevant documentation sections
+  - [ ] Add examples of correct configuration
+  - [ ] Distinguish between development and production requirements
+- [ ] Implement graduated error messaging:
+  - [ ] Clear errors for missing TLS in production
+  - [ ] Warnings for insecure overrides with security implications
+  - [ ] Informational messages for development security choices
+  - [ ] Success messages confirming security validation
 
-#### Task 10.2: Final Integration and Validation
-- [ ] Complete system validation:
-  - [ ] Run full test suite with all security features
-  - [ ] Validate backward compatibility
-  - [ ] Test development workflow preservation
-  - [ ] Verify production security enforcement
-- [ ] Final security review:
-  - [ ] Code security review
-  - [ ] Configuration audit
-  - [ ] Penetration testing
-  - [ ] Compliance validation
-
-#### Task 10.3: Release Preparation
-- [ ] Prepare for production release:
-  - [ ] Update all documentation
-  - [ ] Create release notes
-  - [ ] Prepare deployment checklist
-  - [ ] Create rollback plan
-- [ ] Knowledge transfer:
-  - [ ] Create operation runbooks
-  - [ ] Document security procedures
-  - [ ] Provide training materials
-  - [ ] Establish support procedures
+#### Task 8.2: Configuration Validation and Reporting
+- [ ] Implement comprehensive security configuration validation:
+  - [ ] Validate TLS certificate existence and validity
+  - [ ] Check encryption key format and strength
+  - [ ] Verify Redis authentication configuration
+  - [ ] Test actual Redis connectivity with security enabled
+- [ ] Create security status reporting:
+  - [ ] Generate security configuration summary
+  - [ ] Report on encryption and TLS status
+  - [ ] Provide security recommendations
+  - [ ] Include certificate expiration warnings
 
 ---
 
@@ -432,76 +331,62 @@ Comprehensive testing, performance validation, and production deployment readine
 
 ### Phase Execution Strategy
 
-**PHASE 1: Data Encryption Foundation (2 Days)**
-- **Deliverable 1**: Encrypted Cache Layer Implementation
-- **Deliverable 2**: Encryption Testing and Performance Validation
-- **Success Criteria**: Encryption working with <15% performance impact, backward compatible
+**PHASE 1: Mandatory Security Enforcement (1 Week)**
+- **Deliverable 1**: Startup Security Validation System
+- **Deliverable 2**: TLS-Enabled Redis Infrastructure
+- **Deliverable 3**: Application-Layer Encryption System
+- **Success Criteria**: Application fails fast without security, TLS working, encryption mandatory
 
-**PHASE 2: Environment-Aware Security Configuration (1 Day)**
-- **Deliverable 3**: Security Configuration Generator
-- **Deliverable 4**: Security Configuration Testing
-- **Success Criteria**: Environment-appropriate configurations generated automatically
+**PHASE 2: Secure-Only Cache Architecture (0.5 Weeks)**
+- **Deliverable 4**: Always-Secure GenericRedisCache Implementation
+- **Deliverable 5**: Simplified Secure AIResponseCache
+- **Success Criteria**: All cache operations secure by default, graceful fallback working
 
-**PHASE 3: Network Security Hardening (1 Day)**
-- **Deliverable 5**: Docker Network Isolation
-- **Deliverable 6**: Secure Deployment Scripts
-- **Success Criteria**: Redis isolated in internal network, authentication required
+**PHASE 3: Developer Tooling & Documentation (0.5 Weeks)**
+- **Deliverable 6**: One-Command Secure Development Setup
+- **Deliverable 7**: Security Documentation and Migration Guide
+- **Deliverable 8**: Security Validation and Error Handling
+- **Success Criteria**: Single command setup working, comprehensive documentation complete
 
-**PHASE 4: Security Monitoring Integration (1 Day)**
-- **Deliverable 7**: Security-Aware Cache Monitor
-- **Deliverable 8**: Monitoring Testing and Validation
-- **Success Criteria**: Security events tracked, alerts configured, reporting enabled
+### Security-First Implementation Principles
+- **No Optional Security**: Security cannot be disabled or bypassed
+- **Fail-Fast Design**: Application refuses to start without proper security
+- **Environment-Aware**: Security adapts to environment while remaining mandatory
+- **Zero Configuration**: Security works automatically with minimal setup
+- **Clear Guidance**: Comprehensive error messages and documentation
 
-**PHASE 5: Integration Testing and Validation (2 Days)**
-- **Deliverable 9**: Comprehensive Security Testing
-- **Deliverable 10**: Performance Optimization and Finalization
-- **Success Criteria**: All security features integrated, <15% performance impact, production ready
+### Breaking Changes Strategy
+- **Intentional Breaking Changes**: Eliminate all insecure configuration paths
+- **Clear Migration Path**: Comprehensive documentation and automated setup
+- **Developer Support**: One-command secure setup for development
+- **Production Safety**: Fail-fast validation prevents insecure deployments
 
-### Security Implementation Principles
-- **Defense in Depth**: Multiple layers of security (encryption, auth, network, monitoring)
-- **Fail-Fast Production**: Detect and prevent insecure production deployments
-- **Zero Trust**: Assume no trust, verify everything
-- **Backward Compatibility**: Maintain development workflow, enhance production security
-- **Performance Awareness**: Security with minimal performance impact
+### Testing Exclusion Notice
+**IMPORTANT**: This taskplan explicitly excludes testing implementation. Cache tests using Fakeredis or Testcontainers will likely break due to mandatory TLS and encryption requirements. Testing strategy will be addressed in a separate PRD after core security implementation is complete.
 
-### Testing Philosophy
-- **Security-First Testing**: Test security features before functionality
-- **Performance Validation**: Measure impact of each security layer
-- **Production Simulation**: Test with production-like configurations
-- **Backward Compatibility**: Ensure no breaking changes to existing workflows
-
-### Risk Mitigation Strategies
-- **Phased Implementation**: Implement security layers incrementally
-- **Comprehensive Testing**: Test each layer independently and integrated
-- **Fallback Mechanisms**: Graceful degradation for development environments
-- **Clear Documentation**: Detailed guides for configuration and troubleshooting
-- **Monitoring and Alerting**: Proactive security event detection
-
-### Performance Targets
-| Component | Baseline | With Security | Max Impact |
-|-----------|----------|---------------|------------|
-| **Cache Write** | 10ms | 11.5ms | +15% |
-| **Cache Read** | 5ms | 5.75ms | +15% |
-| **Connection Setup** | 50ms | 55ms | +10% |
-| **Memory Usage** | 100MB | 110MB | +10% |
-
-### Security Metrics
-- **Encryption Coverage**: 100% of cached AI responses encrypted in production
-- **Network Isolation**: 0 external ports exposed for Redis
-- **Authentication**: 100% of Redis connections authenticated in production
-- **Monitoring**: 100% of security events tracked and reported
-- **Configuration**: Automated secure configuration for all environments
+### Performance Considerations
+- **Encryption Overhead**: Target <15% performance impact for typical operations
+- **TLS Handshake**: Minimize connection establishment overhead
+- **Certificate Validation**: Efficient certificate checking and caching
+- **Memory Usage**: Monitor encryption memory overhead and optimize
 
 ### Success Criteria
-- **All PRD Requirements Met**: Data encryption, network isolation, monitoring, configuration
-- **Performance Impact <15%**: Validated through comprehensive benchmarking
-- **Zero Breaking Changes**: Existing development workflows preserved
-- **Production Security**: Fail-fast validation prevents insecure deployments
-- **Comprehensive Documentation**: Complete guides for all security features
+- **Zero Insecure Deployments**: No configuration path results in insecure Redis
+- **One-Command Setup**: Developers can set up secure Redis with single script
+- **Fail-Fast Validation**: Application refuses to start without security
+- **Comprehensive Documentation**: Complete guides for setup, migration, and operations
+- **Performance Targets**: <15% performance impact with security enabled
+
+### Risk Mitigation Strategies
+- **Breaking Change Communication**: Clear documentation of changes and migration path
+- **Fallback Mechanisms**: Memory cache fallback when Redis unavailable
+- **Development Flexibility**: Appropriate security for development vs production
+- **Clear Error Messages**: Actionable guidance for security configuration issues
+- **Comprehensive Setup**: Automated tools reduce manual configuration errors
 
 ### Maintenance and Operations
-- **Key Rotation**: Quarterly encryption key rotation
-- **Password Rotation**: Monthly Redis password rotation
-- **Security Audits**: Weekly security event review
-- **Performance Monitoring**: Continuous security impact monitoring
-- **Incident Response**: Defined procedures for security incidents
+- **Certificate Renewal**: Automated certificate expiration monitoring
+- **Key Rotation**: Regular encryption key rotation procedures
+- **Security Monitoring**: Continuous validation of security configuration
+- **Incident Response**: Defined procedures for security violations
+- **Documentation Updates**: Regular updates to security guides and procedures
