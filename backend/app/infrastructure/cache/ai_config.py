@@ -47,7 +47,7 @@ Comprehensive configuration dataclass for AI cache settings with:
 - `compression_threshold`: Size threshold for automatic compression (0-1MB)
 - `compression_level`: Zlib compression level for bandwidth optimization (1-9)
 - `performance_monitor`: CachePerformanceMonitor instance for metrics collection
-- `security_config`: Optional security configuration for encrypted connections
+- `security_config`: DEPRECATED - Security is now automatic via GenericRedisCache inheritance
 
 ### AI-Specific Parameters (Unique to AI Response Caching)
 - `text_hash_threshold`: Character threshold for text hashing optimization (1-100000)
@@ -268,7 +268,7 @@ class AIResponseCacheConfig:
         hash_algorithm: str hash algorithm for text processing (default: 'sha256')
         operation_ttls: Dict[str, int] operation-specific TTL overrides
         performance_monitor: Optional cache performance monitor instance
-        security_config: Optional security configuration for encrypted connections
+        security_config: DEPRECATED - Security is now automatic via GenericRedisCache inheritance
 
     Public Methods:
         validate(): Comprehensive validation with detailed error reporting
@@ -357,7 +357,7 @@ class AIResponseCacheConfig:
     compression_threshold: int = 1000  # 1KB threshold
     compression_level: int = 6  # Balanced compression
     performance_monitor: Optional[CachePerformanceMonitor] = None
-    security_config: Optional[Any] = None  # SecurityConfig type - optional import
+    security_config: Optional[Any] = None  # DEPRECATED - Security now automatic in GenericRedisCache
 
     # AI-Specific Parameters
     text_hash_threshold: int = 1000  # 1000 chars before hashing
@@ -733,9 +733,12 @@ class AIResponseCacheConfig:
                 'performance_monitor': performance_monitor,
             }
 
-            # Only include security_config if not None
+            # DEPRECATED: security_config is no longer used - security is automatic
             if security_config is not None:
-                kwargs['security_config'] = security_config
+                logger.warning(
+                    "security_config parameter is deprecated. Security features are now "
+                    "automatically enabled in GenericRedisCache. This parameter will be ignored."
+                )
 
             # Remove None values to avoid validation issues
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
