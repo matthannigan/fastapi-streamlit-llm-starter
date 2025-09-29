@@ -943,6 +943,49 @@ async def check_cache_health(cache_service: AIResponseCache) -> ComponentStatus:
     stats = await cache_service.get_cache_stats()  # Reuses existing connections
 ```
 
+#### Implemented Cache Service Optimization
+
+**Real Implementation**: Our health check infrastructure now includes this exact optimization pattern:
+
+```python
+# In app/dependencies.py - Health checker registration with dependency injection
+@lru_cache()
+def get_health_checker(settings: Settings = Depends(get_settings)) -> HealthChecker:
+    checker = HealthChecker(...)
+
+    # Cache health check with dependency injection for optimal performance
+    async def cache_health_with_service():
+        cache_service = await get_cache_service(settings)
+        return await check_cache_health(cache_service)  # Reuses singleton service
+
+    checker.register_check("cache", cache_health_with_service)
+    return checker
+
+# In app/infrastructure/monitoring/health.py - Optimized function signature
+async def check_cache_health(cache_service=None) -> ComponentStatus:
+    """
+    Check cache system health using dependency injection for optimal performance.
+
+    Performance Notes:
+        - ✅ OPTIMAL: When cache_service is provided, no instantiation overhead
+        - ⚠️ FALLBACK: When cache_service is None, creates new service instance (less efficient)
+        - For best performance, use dependency injection in get_health_checker()
+    """
+    if cache_service is not None:
+        # OPTIMAL path - reuse existing cache service
+        stats = await cache_service.get_cache_stats()
+    else:
+        # FALLBACK path - create new service for backward compatibility
+        cache_service = await get_cache_service(settings)
+        await cache_service.connect()
+        stats = await cache_service.get_cache_stats()
+```
+
+**Performance Impact**:
+- **Before**: Created new cache instance + Redis connection on every health check
+- **After**: Reuses singleton cache service with persistent connections
+- **Benefit**: Eliminates Redis connection overhead, reduces memory allocation, improves response times
+
 #### Proper Settings Integration
 
 **Problem Solved**: Configuration changes now affect the running application immediately.
