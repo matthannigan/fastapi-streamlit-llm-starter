@@ -159,48 +159,72 @@ logger = logging.getLogger(__name__)
 
 class AIResponseCache(GenericRedisCache):
     """
-    AI Response Cache with enhanced inheritance architecture.
+    AI Response Cache with automatic security inheritance.
 
-    This refactored implementation properly inherits from GenericRedisCache while
-    maintaining all AI-specific functionality. It uses CacheParameterMapper for
-    clean parameter separation and provides comprehensive AI metrics collection.
+    This secure-first implementation inherits all security features from GenericRedisCache
+    automatically, including TLS encryption, authentication, and data encryption at rest.
+    All AI-specific functionality is preserved while security is handled transparently.
 
-    ### Key Improvements
-    - Clean inheritance from GenericRedisCache for core functionality
-    - Proper parameter mapping using CacheParameterMapper
-    - AI-specific callbacks integrated with generic cache events
-    - Maintains backward compatibility with existing API
-    - Enhanced error handling with custom exceptions
+    ## Key Features
 
-    ### Parameters
-    All original AIResponseCache parameters are supported with automatic mapping:
-    - `redis_url` (str): Redis connection URL
+    - **Automatic Security**: Inherits TLS, authentication, and encryption from GenericRedisCache
+    - **AI-Optimized**: Specialized features for AI response caching and text processing
+    - **Clean Architecture**: Simplified parameters focus on AI-specific functionality
+    - **Backward Compatible**: Existing API preserved with deprecation warnings for security params
+    - **Enhanced Performance**: AI-specific callbacks and metrics collection
+
+    ## Automatic Security Features
+
+    All security features are enabled automatically without configuration:
+    - **TLS Encryption**: Secure Redis connections with certificate validation
+    - **Authentication**: Automatic Redis authentication and ACL support
+    - **Data Encryption**: Transparent Fernet encryption for all cached data
+    - **Security Validation**: Automatic environment-aware security enforcement
+
+    ## AI-Specific Parameters
+
+    Focus on AI functionality - security is handled automatically:
+    - `redis_url` (str): Redis connection URL (security applied automatically)
     - `default_ttl` (int): Default time-to-live for cache entries
     - `text_hash_threshold` (int): Character threshold for text hashing
     - `hash_algorithm`: Hash algorithm for large texts
     - `compression_threshold` (int): Size threshold for compression
     - `compression_level` (int): Compression level (1-9)
     - `text_size_tiers` (Dict[str, int]): Text categorization thresholds
-    - `memory_cache_size` (int): Maximum L1 cache entries (mapped to l1_cache_size)
-    - `performance_monitor` (CachePerformanceMonitor): Performance monitoring instance
+    - `l1_cache_size` (int): Maximum L1 cache entries
+    - `operation_ttls` (Dict[str, int]): TTL values per AI operation type
 
-    ### Returns
-    A fully functional AIResponseCache instance with enhanced architecture.
+    ## Returns
 
-    ### Examples
+    A fully functional AIResponseCache instance with automatic security inheritance.
+
+    ## Examples
+
     ```python
-    # Basic usage (backward compatible)
+    # Simple usage - security is automatic
     cache = AIResponseCache(redis_url="redis://localhost:6379")
     await cache.connect()
 
-    # Advanced configuration
+    # AI-optimized configuration
     cache = AIResponseCache(
         redis_url="redis://production:6379",
         text_hash_threshold=1000,
-        memory_cache_size=200,
-        text_size_tiers={'small': 500, 'medium': 5000, 'large': 50000}
+        l1_cache_size=200,
+        operation_ttls={
+            "summarize": 7200,  # 2 hours
+            "sentiment": 86400, # 24 hours
+        }
     )
+
+    # All security features are enabled automatically:
+    # - TLS encryption for Redis connections
+    # - Fernet encryption for cached data
+    # - Automatic authentication and validation
     ```
+
+    Note:
+        Security parameters (security_config, use_tls, etc.) are no longer needed
+        and will generate deprecation warnings. Security is always enabled.
     """
 
     def __init__(
@@ -217,42 +241,40 @@ class AIResponseCache(GenericRedisCache):
         enable_l1_cache: bool = True,  # Explicit L1 cache control
         performance_monitor: Optional[CachePerformanceMonitor] = None,
         operation_ttls: Optional[Dict[str, int]] = None,
-        security_config: Optional['SecurityConfig'] = None,  # Security configuration support
-        fail_on_connection_error: bool = False,
         **kwargs  # Accept additional parameters for backward compatibility
     ):
         """
-        Initialize AIResponseCache with parameter mapping and inheritance.
+        Initialize AIResponseCache with automatic security inheritance.
 
-        This constructor uses CacheParameterMapper to separate AI-specific parameters
-        from generic Redis parameters, then properly initializes the parent class
-        and sets up AI-specific features.
+        This simplified constructor focuses on AI-specific parameters while
+        automatically inheriting security features from the secure GenericRedisCache.
+        All security features (TLS, authentication, encryption) are enabled automatically.
 
         Args:
-            redis_url: Redis connection URL
+            redis_url: Redis connection URL (security features applied automatically)
             default_ttl: Default time-to-live for cache entries in seconds
             text_hash_threshold: Character count threshold for text hashing
             hash_algorithm: Hash algorithm to use for large texts
             compression_threshold: Size threshold in bytes for compressing cache data
             compression_level: Compression level (1-9, where 9 is highest compression)
             text_size_tiers: Text size tiers for caching strategy optimization
-            memory_cache_size: DEPRECATED. Use l1_cache_size instead. Maximum number of items 
+            memory_cache_size: DEPRECATED. Use l1_cache_size instead. Maximum number of items
                               in the in-memory cache. If provided, overrides l1_cache_size for backward compatibility.
             l1_cache_size: Maximum number of items in the L1 in-memory cache (modern parameter)
             enable_l1_cache: Enable/disable L1 in-memory cache for performance optimization
             performance_monitor: Optional performance monitor for tracking cache metrics
             operation_ttls: TTL values per AI operation type
-            security_config: Optional security configuration for secure Redis connections,
-                           including authentication, TLS encryption, and security validation
-            fail_on_connection_error: If True, raise InfrastructureError when Redis unavailable.
-                                     If False (default), gracefully fallback to memory-only mode.
 
         Raises:
             ConfigurationError: If parameter mapping fails or invalid configuration
             ValidationError: If parameter validation fails
-            InfrastructureError: If Redis connection fails and fail_on_connection_error=True
+            InfrastructureError: If Redis connection fails (automatic fallback to memory cache)
+
+        Note:
+            Security features (TLS, authentication, encryption) are automatically enabled
+            by the parent GenericRedisCache. No explicit security configuration needed.
         """
-        logger.debug("Initializing AIResponseCache with inheritance architecture")
+        logger.debug("Initializing AIResponseCache with automatic security inheritance")
 
         try:
             # Handle parameter standardization and backward compatibility
@@ -264,46 +286,24 @@ class AIResponseCache(GenericRedisCache):
                 )
                 resolved_l1_cache_size = memory_cache_size
 
-            # Handle legacy security parameters for backward compatibility
-            if security_config is None and kwargs:
-                # Check for legacy security parameters in kwargs
-                legacy_security_params = {
-                    'redis_password', 'use_tls', 'tls_cert_path', 'tls_key_path',
-                    'tls_ca_path', 'verify_certificates', 'redis_auth',
-                    'acl_username', 'acl_password', 'connection_timeout',
-                    'socket_timeout', 'min_tls_version', 'cipher_suites'
-                }
-                
-                found_legacy_params = {k: v for k, v in kwargs.items() if k in legacy_security_params}
-                if found_legacy_params:
-                    logger.debug(f"Converting legacy security parameters to SecurityConfig: {list(found_legacy_params.keys())}")
-                    try:
-                        from app.infrastructure.cache.security import SecurityConfig
-                        security_config = SecurityConfig(
-                            redis_auth=found_legacy_params.get('redis_password') or found_legacy_params.get('redis_auth'),
-                            acl_username=found_legacy_params.get('acl_username'),
-                            acl_password=found_legacy_params.get('acl_password'),
-                            use_tls=found_legacy_params.get('use_tls', False),
-                            tls_cert_path=found_legacy_params.get('tls_cert_path'),
-                            tls_key_path=found_legacy_params.get('tls_key_path'),
-                            tls_ca_path=found_legacy_params.get('tls_ca_path'),
-                            verify_certificates=found_legacy_params.get('verify_certificates', True),
-                            connection_timeout=found_legacy_params.get('connection_timeout', 5),
-                            socket_timeout=found_legacy_params.get('socket_timeout', 30),
-                            min_tls_version=found_legacy_params.get('min_tls_version', 771),
-                            cipher_suites=found_legacy_params.get('cipher_suites')
-                        )
-                        
-                        # Remove legacy parameters from kwargs to avoid conflicts
-                        kwargs = {k: v for k, v in kwargs.items() if k not in legacy_security_params}
-                        logger.debug("Successfully converted legacy security parameters to SecurityConfig")
-                        
-                    except ImportError:
-                        logger.warning("SecurityConfig not available, keeping legacy parameters")
-                    except Exception as e:
-                        logger.warning(f"Failed to create SecurityConfig from legacy parameters: {e}")
+            # Warn about removed security parameters
+            security_params = {
+                'security_config', 'redis_password', 'use_tls', 'tls_cert_path', 'tls_key_path',
+                'tls_ca_path', 'verify_certificates', 'redis_auth', 'acl_username', 'acl_password',
+                'connection_timeout', 'socket_timeout', 'min_tls_version', 'cipher_suites',
+                'fail_on_connection_error'
+            }
+            found_security_params = {k: v for k, v in kwargs.items() if k in security_params}
+            if found_security_params:
+                logger.warning(
+                    f"Security parameters {list(found_security_params.keys())} are no longer needed. "
+                    "AIResponseCache now inherits automatic security from GenericRedisCache. "
+                    "These parameters will be ignored."
+                )
+                # Remove security parameters from kwargs
+                kwargs = {k: v for k, v in kwargs.items() if k not in security_params}
 
-            # Collect all AI parameters for mapping
+            # Collect AI-specific parameters only - security handled by parent automatically
             ai_params = {
                 'redis_url': redis_url,
                 'default_ttl': default_ttl,
@@ -316,13 +316,11 @@ class AIResponseCache(GenericRedisCache):
                 'enable_l1_cache': enable_l1_cache,
                 'performance_monitor': performance_monitor,
                 'operation_ttls': operation_ttls,
-                'security_config': security_config,
-                'fail_on_connection_error': fail_on_connection_error,
-                **kwargs  # Include any remaining kwargs for flexibility
+                **kwargs  # Include any remaining non-security kwargs
             }
 
-            # Remove None values to avoid validation issues, but keep performance_monitor and security_config
-            ai_params = {k: v for k, v in ai_params.items() if v is not None or k in ('performance_monitor', 'security_config')}
+            # Remove None values to avoid validation issues, but keep performance_monitor
+            ai_params = {k: v for k, v in ai_params.items() if v is not None or k in ('performance_monitor',)}
 
             # Use CacheParameterMapper to separate parameters
             self._parameter_mapper = CacheParameterMapper()
@@ -345,7 +343,7 @@ class AIResponseCache(GenericRedisCache):
             for warning in validation_result.warnings:
                 logger.warning(f"AIResponseCache parameter warning: {warning}")
 
-            # Initialize parent GenericRedisCache with mapped parameters
+            # Initialize parent GenericRedisCache with automatic security - only pass generic parameters
             super().__init__(**generic_params)
 
             # Set up AI-specific configuration
@@ -357,7 +355,7 @@ class AIResponseCache(GenericRedisCache):
             # Register AI-specific callbacks after parent initialization
             self._register_ai_callbacks()
 
-            logger.info("AIResponseCache initialized successfully with inheritance architecture")
+            logger.info("AIResponseCache initialized successfully with automatic security inheritance")
 
         except Exception as e:
             error_msg = f"Failed to initialize AIResponseCache: {e}"

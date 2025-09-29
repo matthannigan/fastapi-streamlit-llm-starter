@@ -147,81 +147,105 @@ from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
 class AIResponseCache(GenericRedisCache):
     """
-    AI Response Cache with enhanced inheritance architecture.
+    AI Response Cache with automatic security inheritance.
     
-    This refactored implementation properly inherits from GenericRedisCache while
-    maintaining all AI-specific functionality. It uses CacheParameterMapper for
-    clean parameter separation and provides comprehensive AI metrics collection.
+    This secure-first implementation inherits all security features from GenericRedisCache
+    automatically, including TLS encryption, authentication, and data encryption at rest.
+    All AI-specific functionality is preserved while security is handled transparently.
     
-    ### Key Improvements
-    - Clean inheritance from GenericRedisCache for core functionality
-    - Proper parameter mapping using CacheParameterMapper
-    - AI-specific callbacks integrated with generic cache events
-    - Maintains backward compatibility with existing API
-    - Enhanced error handling with custom exceptions
+    ## Key Features
     
-    ### Parameters
-    All original AIResponseCache parameters are supported with automatic mapping:
-    - `redis_url` (str): Redis connection URL
+    - **Automatic Security**: Inherits TLS, authentication, and encryption from GenericRedisCache
+    - **AI-Optimized**: Specialized features for AI response caching and text processing
+    - **Clean Architecture**: Simplified parameters focus on AI-specific functionality
+    - **Backward Compatible**: Existing API preserved with deprecation warnings for security params
+    - **Enhanced Performance**: AI-specific callbacks and metrics collection
+    
+    ## Automatic Security Features
+    
+    All security features are enabled automatically without configuration:
+    - **TLS Encryption**: Secure Redis connections with certificate validation
+    - **Authentication**: Automatic Redis authentication and ACL support
+    - **Data Encryption**: Transparent Fernet encryption for all cached data
+    - **Security Validation**: Automatic environment-aware security enforcement
+    
+    ## AI-Specific Parameters
+    
+    Focus on AI functionality - security is handled automatically:
+    - `redis_url` (str): Redis connection URL (security applied automatically)
     - `default_ttl` (int): Default time-to-live for cache entries
     - `text_hash_threshold` (int): Character threshold for text hashing
     - `hash_algorithm`: Hash algorithm for large texts
     - `compression_threshold` (int): Size threshold for compression
     - `compression_level` (int): Compression level (1-9)
     - `text_size_tiers` (Dict[str, int]): Text categorization thresholds
-    - `memory_cache_size` (int): Maximum L1 cache entries (mapped to l1_cache_size)
-    - `performance_monitor` (CachePerformanceMonitor): Performance monitoring instance
+    - `l1_cache_size` (int): Maximum L1 cache entries
+    - `operation_ttls` (Dict[str, int]): TTL values per AI operation type
     
-    ### Returns
-    A fully functional AIResponseCache instance with enhanced architecture.
+    ## Returns
     
-    ### Examples
+    A fully functional AIResponseCache instance with automatic security inheritance.
+    
+    ## Examples
+    
     ```python
-    # Basic usage (backward compatible)
+    # Simple usage - security is automatic
     cache = AIResponseCache(redis_url="redis://localhost:6379")
     await cache.connect()
     
-    # Advanced configuration
+    # AI-optimized configuration
     cache = AIResponseCache(
         redis_url="redis://production:6379",
         text_hash_threshold=1000,
-        memory_cache_size=200,
-        text_size_tiers={'small': 500, 'medium': 5000, 'large': 50000}
+        l1_cache_size=200,
+        operation_ttls={
+            "summarize": 7200,  # 2 hours
+            "sentiment": 86400, # 24 hours
+        }
     )
+    
+    # All security features are enabled automatically:
+    # - TLS encryption for Redis connections
+    # - Fernet encryption for cached data
+    # - Automatic authentication and validation
     ```
+    
+    Note:
+        Security parameters (security_config, use_tls, etc.) are no longer needed
+        and will generate deprecation warnings. Security is always enabled.
     """
 
-    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: Optional[int] = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs):
+    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: Optional[int] = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None, **kwargs):
         """
-        Initialize AIResponseCache with parameter mapping and inheritance.
+        Initialize AIResponseCache with automatic security inheritance.
         
-        This constructor uses CacheParameterMapper to separate AI-specific parameters
-        from generic Redis parameters, then properly initializes the parent class
-        and sets up AI-specific features.
+        This simplified constructor focuses on AI-specific parameters while
+        automatically inheriting security features from the secure GenericRedisCache.
+        All security features (TLS, authentication, encryption) are enabled automatically.
         
         Args:
-            redis_url: Redis connection URL
+            redis_url: Redis connection URL (security features applied automatically)
             default_ttl: Default time-to-live for cache entries in seconds
             text_hash_threshold: Character count threshold for text hashing
             hash_algorithm: Hash algorithm to use for large texts
             compression_threshold: Size threshold in bytes for compressing cache data
             compression_level: Compression level (1-9, where 9 is highest compression)
             text_size_tiers: Text size tiers for caching strategy optimization
-            memory_cache_size: DEPRECATED. Use l1_cache_size instead. Maximum number of items 
+            memory_cache_size: DEPRECATED. Use l1_cache_size instead. Maximum number of items
                               in the in-memory cache. If provided, overrides l1_cache_size for backward compatibility.
             l1_cache_size: Maximum number of items in the L1 in-memory cache (modern parameter)
             enable_l1_cache: Enable/disable L1 in-memory cache for performance optimization
             performance_monitor: Optional performance monitor for tracking cache metrics
             operation_ttls: TTL values per AI operation type
-            security_config: Optional security configuration for secure Redis connections,
-                           including authentication, TLS encryption, and security validation
-            fail_on_connection_error: If True, raise InfrastructureError when Redis unavailable.
-                                     If False (default), gracefully fallback to memory-only mode.
         
         Raises:
             ConfigurationError: If parameter mapping fails or invalid configuration
             ValidationError: If parameter validation fails
-            InfrastructureError: If Redis connection fails and fail_on_connection_error=True
+            InfrastructureError: If Redis connection fails (automatic fallback to memory cache)
+        
+        Note:
+            Security features (TLS, authentication, encryption) are automatically enabled
+            by the parent GenericRedisCache. No explicit security configuration needed.
         """
         ...
 

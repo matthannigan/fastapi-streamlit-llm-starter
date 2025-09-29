@@ -169,15 +169,13 @@ class GenericRedisCache(CacheInterface):
 
     def __init__(
         self,
-        redis_url: str = "redis://redis:6379",
+        redis_url: str = "rediss://redis:6380",  # Default to secure TLS connection
         default_ttl: int = 3600,
         enable_l1_cache: bool = True,
         l1_cache_size: int = 100,
         compression_threshold: int = 1000,
         compression_level: int = 6,
         performance_monitor: Optional[CachePerformanceMonitor] = None,
-        security_config: Optional["SecurityConfig"] = None,
-        fail_on_connection_error: bool = False,
         **kwargs  # Accept additional parameters for backward compatibility
     ):
         # Validate parameters per public contract
@@ -201,54 +199,84 @@ class GenericRedisCache(CacheInterface):
         if not (100 <= compression_threshold <= 100000):
             raise ConfigurationError("compression_threshold must be between 100 and 100000 bytes", {"compression_threshold": compression_threshold})
 
-        # Handle legacy security parameters for backward compatibility
-        if security_config is None and kwargs:
-            # Check for legacy security parameters in kwargs
-            legacy_security_params = {
-                'redis_password', 'use_tls', 'tls_cert_path', 'tls_key_path',
-                'tls_ca_path', 'verify_certificates', 'redis_auth',
-                'acl_username', 'acl_password', 'connection_timeout',
-                'socket_timeout', 'min_tls_version', 'cipher_suites'
-            }
-            
-            found_legacy_params = {k: v for k, v in kwargs.items() if k in legacy_security_params}
-            if found_legacy_params:
-                logger.debug(f"Converting legacy security parameters to SecurityConfig: {list(found_legacy_params.keys())}")
-                try:
-                    from app.infrastructure.cache.security import SecurityConfig
-                    security_config = SecurityConfig(
-                        redis_auth=found_legacy_params.get('redis_password') or found_legacy_params.get('redis_auth'),
-                        acl_username=found_legacy_params.get('acl_username'),
-                        acl_password=found_legacy_params.get('acl_password'),
-                        use_tls=found_legacy_params.get('use_tls', False),
-                        tls_cert_path=found_legacy_params.get('tls_cert_path'),
-                        tls_key_path=found_legacy_params.get('tls_key_path'),
-                        tls_ca_path=found_legacy_params.get('tls_ca_path'),
-                        verify_certificates=found_legacy_params.get('verify_certificates', True),
-                        connection_timeout=found_legacy_params.get('connection_timeout', 5),
-                        socket_timeout=found_legacy_params.get('socket_timeout', 30),
-                        min_tls_version=found_legacy_params.get('min_tls_version', 771),
-                        cipher_suites=found_legacy_params.get('cipher_suites')
-                    )
-                    logger.debug("Successfully converted legacy security parameters to SecurityConfig")
-                    
-                except ImportError:
-                    logger.warning("SecurityConfig not available, keeping legacy parameters")
-                except Exception as e:
-                    logger.warning(f"Failed to create SecurityConfig from legacy parameters: {e}")
+        # Security-First Architecture: Mandatory security configuration
+        # Remove all optional security parameters - security is always enabled
+        logger.info("🔐 Initializing always-secure GenericRedisCache")
+
+        try:
+            from app.infrastructure.cache.security import SecurityConfig, RedisCacheSecurityManager
+            from app.infrastructure.cache.encryption import EncryptedCacheLayer
+
+            # Create environment-aware security configuration automatically
+            self.security_config = SecurityConfig.create_for_environment()
+            logger.info(f"✅ Security configuration created for environment")
+
+            # Initialize security manager with fail-fast validation
+            self.security_manager = RedisCacheSecurityManager(
+                config=self.security_config,
+                performance_monitor=performance_monitor
+            )
+            logger.info("✅ Security manager initialized")
+
+            # Set performance monitor as instance variable for use in other methods
+            self.performance_monitor = performance_monitor
+
+            # Perform mandatory security validation before proceeding
+            self.security_manager.validate_mandatory_security(redis_url)
+            logger.info("✅ Mandatory security validation passed")
+
+            # Initialize encryption layer with required encryption key
+            self.encryption = EncryptedCacheLayer(
+                encryption_key=self.security_config.encryption_key if hasattr(self.security_config, 'encryption_key') else None,
+                performance_monitoring=True
+            )
+
+            if not self.encryption.is_enabled:
+                from app.infrastructure.cache.encryption import create_encryption_layer_from_env
+                self.encryption = create_encryption_layer_from_env()
+
+            logger.info("✅ Encryption layer initialized")
+
+        except ImportError as e:
+            raise ConfigurationError(
+                "🔒 SECURITY ERROR: Security modules are required for GenericRedisCache.\n"
+                "\n"
+                f"Missing module: {e}\n"
+                "\n"
+                "Ensure the following modules are available:\n"
+                "- app.infrastructure.cache.security\n"
+                "- app.infrastructure.cache.encryption\n"
+                "- cryptography library\n",
+                context={"error_type": "missing_security_modules", "original_error": str(e)}
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize security: {e}")
+            raise ConfigurationError(
+                "🔒 SECURITY ERROR: Failed to initialize mandatory security features.\n"
+                "\n"
+                f"Error: {str(e)}\n"
+                "\n"
+                "This may indicate:\n"
+                "- Invalid environment configuration\n"
+                "- Missing security dependencies\n"
+                "- Network connectivity issues\n"
+                "\n"
+                "Use SecurityConfig.create_for_environment() for automatic configuration.",
+                context={"error_type": "security_initialization_failure", "original_error": str(e)}
+            )
 
         self.redis_url = redis_url
         self.default_ttl = default_ttl
         self.enable_l1_cache = enable_l1_cache
         self.compression_threshold = compression_threshold
         self.compression_level = compression_level
-        self.fail_on_connection_error = fail_on_connection_error
+        self.fail_on_connection_error = False  # Always use graceful fallback in secure implementation
         self.redis: Optional["RedisClient"] = None
 
         self.l1_cache: Optional[InMemoryCache] = None
         if self.enable_l1_cache and l1_cache_size > 0:
             self.l1_cache = InMemoryCache(
-                default_ttl=default_ttl, max_size=l1_cache_size, fail_on_connection_error=fail_on_connection_error
+                default_ttl=default_ttl, max_size=l1_cache_size, fail_on_connection_error=False
             )
 
         self.performance_monitor = performance_monitor or CachePerformanceMonitor()
@@ -258,19 +286,7 @@ class GenericRedisCache(CacheInterface):
         self._last_connect_result: Optional[bool] = None
         self._connect_retry_interval: float = 0.5  # seconds
 
-        # Security configuration
-        self.security_config = security_config
-        self.security_manager = None
-        if security_config and SECURITY_AVAILABLE:
-            self.security_manager = RedisCacheSecurityManager(
-                config=security_config,
-                performance_monitor=self.performance_monitor
-            )
-        elif security_config and not SECURITY_AVAILABLE:
-            logger.warning(
-                "Security configuration provided but security module not available. "
-                "Operating without security features."
-            )
+        logger.info("🚀 Always-secure GenericRedisCache initialization completed successfully")
 
     def _fire_callback(self, event: str, *args, **kwargs):
         """Fires all registered callbacks for a given event."""
@@ -302,87 +318,92 @@ class GenericRedisCache(CacheInterface):
         self._callbacks[event].append(callback)
 
     def _compress_data(self, data: Any) -> bytes:
-        """Compress/serialize data efficiently, with JSON fast-path for small payloads.
+        """Serialize, encrypt and compress data with mandatory security.
 
         ### Overview
-        Serializes data with pickle and compresses it using zlib if the data
-        size exceeds the configured compression threshold.
+        Always encrypts data using the security-first architecture, then applies
+        the original compression logic. This method replaces the original
+        serialization with mandatory encryption.
 
         ### Parameters
-        - `data` (Any): The data to compress.
+        - `data` (Any): The data to encrypt and potentially compress.
 
         ### Returns
-        Compressed bytes with appropriate prefix marking compression status.
+        Encrypted (and potentially compressed) bytes ready for Redis storage.
 
         ### Examples
         ```python
-        compressed = cache._compress_data({"large": "data"})
+        encrypted_data = cache._compress_data({"user": "alice", "role": "admin"})
+        # Data is automatically encrypted before storage
         ```
+
+        ### Security
+        All data is encrypted using Fernet encryption before any compression
+        or storage operations. This ensures data-at-rest security in Redis.
         """
-        # JSON fast-path for common small payloads (dict/list/primitives)
-        try:
-            if isinstance(data, (dict, list, str, int, float, bool)) or data is None:
-                json_bytes = json.dumps(data, separators=(",", ":")).encode("utf-8")
-                if len(json_bytes) <= self.compression_threshold:
-                    return b"rawj:" + json_bytes
-        except Exception:
-            # Fallback to pickle path on any serialization error
-            pass
-
-        pickled_data = pickle.dumps(data)
-
-        # Use the size of original content as the decision signal. For strings/bytes,
-        # this better reflects user intent around thresholds used in tests.
-        try:
-            original_size = len(data) if isinstance(data, (str, bytes, bytearray)) else len(pickled_data)
-        except Exception:
-            original_size = len(pickled_data)
-
-        if original_size > self.compression_threshold:
-            compressed = zlib.compress(pickled_data, self.compression_level)
-            logger.debug(
-                f"Compressed data: {len(pickled_data)} -> {len(compressed)} bytes"
-            )
-            return b"compressed:" + compressed
-
-        return b"raw:" + pickled_data
+        return self._serialize_value(data)
 
     def _decompress_data(self, data: bytes) -> Any:
-        """Decompress/deserialize data that was serialized by _compress_data.
+        """Decrypt and decompress data with mandatory security.
 
         ### Overview
-        Decompresses data if it was compressed, then deserializes using pickle.
+        Always decrypts data using the security-first architecture, handling
+        both new encrypted format and legacy unencrypted data for backward
+        compatibility during transition.
 
         ### Parameters
-        - `data` (bytes): The compressed bytes to decompress.
+        - `data` (bytes): The encrypted bytes to decrypt and decompress.
 
         ### Returns
-        The original deserialized data.
+        The original decrypted and deserialized data.
 
         ### Examples
         ```python
-        original_data = cache._decompress_data(compressed_bytes)
+        original_data = cache._decompress_data(encrypted_bytes)
+        # Data is automatically decrypted and deserialized
         ```
+
+        ### Security
+        All data is expected to be encrypted using Fernet encryption. Legacy
+        unencrypted data is handled for backward compatibility but logged.
         """
-        if data.startswith(b"compressed:"):
-            compressed_data = data[11:]
-            pickled_data = zlib.decompress(compressed_data)
-            return pickle.loads(pickled_data)
-        if data.startswith(b"raw:"):
-            pickled_data = data[4:]
-            return pickle.loads(pickled_data)
-        if data.startswith(b"rawj:"):
-            json_bytes = data[5:]
-            return json.loads(json_bytes.decode("utf-8"))
-        # Backward compatibility: attempt pickle if no prefix
         try:
-            return pickle.loads(data)
+            # Try new encrypted format first
+            return self._deserialize_value(data)
         except Exception:
-            # As a last resort, try JSON
+            # Fallback to legacy unencrypted format for backward compatibility
+            logger.warning("🔓 Processing legacy unencrypted cache data - consider data migration")
+
+            if data.startswith(b"compressed:"):
+                compressed_data = data[11:]
+                pickled_data = zlib.decompress(compressed_data)
+                return pickle.loads(pickled_data)
+            if data.startswith(b"raw:"):
+                pickled_data = data[4:]
+                return pickle.loads(pickled_data)
+            if data.startswith(b"rawj:"):
+                json_bytes = data[5:]
+                return json.loads(json_bytes.decode("utf-8"))
+
+            # Backward compatibility: attempt pickle if no prefix
             try:
-                return json.loads(data.decode("utf-8"))
+                return pickle.loads(data)
             except Exception:
-                raise
+                # As a last resort, try JSON
+                try:
+                    return json.loads(data.decode("utf-8"))
+                except Exception as e:
+                    raise ConfigurationError(
+                        "🔒 DECRYPTION ERROR: Unable to decrypt or deserialize cache data.\n"
+                        "\n"
+                        f"Error: {str(e)}\n"
+                        "\n"
+                        "This may indicate:\n"
+                        "- Data corruption\n"
+                        "- Wrong encryption key\n"
+                        "- Incompatible data format\n",
+                        context={"error_type": "cache_deserialization_failure", "original_error": str(e)}
+                    )
 
     async def connect(self) -> bool:
         """Initialize Redis connection with security features and graceful degradation.
@@ -936,3 +957,180 @@ class GenericRedisCache(CacheInterface):
             }
 
         return await self.security_manager.test_security_configuration(self.redis_url)
+
+    def _serialize_value(self, value: Any) -> bytes:
+        """
+        Always encrypt data before storage.
+
+        This method provides transparent encryption for all cache data using the
+        security-first architecture. All data is encrypted before storage in Redis.
+
+        Args:
+            value: Any serializable value to store
+
+        Returns:
+            Encrypted data as bytes
+
+        Examples:
+            # Data is automatically encrypted
+            encrypted_data = cache._serialize_value({"user": "alice", "role": "admin"})
+        """
+        # First serialize the data normally
+        serialized_data = self._serialize_data_only(value)
+
+        # Then encrypt the serialized data
+        if isinstance(serialized_data, dict):
+            # For dictionary data, use the encryption layer directly
+            return self.encryption.encrypt_cache_data(serialized_data)
+        else:
+            # For already serialized data, wrap it in a dictionary and encrypt
+            data_wrapper = {"_serialized_data": serialized_data.decode('utf-8') if isinstance(serialized_data, bytes) else serialized_data}
+            return self.encryption.encrypt_cache_data(data_wrapper)
+
+    def _deserialize_value(self, data: bytes) -> Any:
+        """
+        Always decrypt data after retrieval.
+
+        This method provides transparent decryption for all cache data using the
+        security-first architecture. All data is decrypted after retrieval from Redis.
+
+        Args:
+            data: Encrypted data bytes from cache
+
+        Returns:
+            Decrypted and deserialized original value
+
+        Examples:
+            # Data is automatically decrypted and deserialized
+            original_value = cache._deserialize_value(encrypted_bytes)
+        """
+        try:
+            # First decrypt the data
+            decrypted_data = self.encryption.decrypt_cache_data(data)
+
+            # Check if it's a wrapped serialized value
+            if isinstance(decrypted_data, dict) and "_serialized_data" in decrypted_data:
+                # Unwrap and deserialize
+                wrapped_data = decrypted_data["_serialized_data"]
+                if isinstance(wrapped_data, str):
+                    wrapped_data = wrapped_data.encode('utf-8')
+                return self._deserialize_data_only(wrapped_data)
+            else:
+                # Direct dictionary data
+                return decrypted_data
+
+        except Exception as e:
+            logger.error(f"Failed to decrypt cache data: {e}")
+            raise ConfigurationError(
+                "🔒 DECRYPTION ERROR: Failed to decrypt cache data.\n"
+                "\n"
+                f"Error: {str(e)}\n"
+                "\n"
+                "This may indicate:\n"
+                "- Wrong encryption key\n"
+                "- Data corruption\n"
+                "- Key rotation issues\n",
+                context={"error_type": "cache_decryption_failure", "original_error": str(e)}
+            )
+
+    def _serialize_data_only(self, data: Any) -> bytes:
+        """
+        Serialize data without encryption (internal use only).
+
+        This is the original serialization logic separated for internal use.
+        """
+        # JSON fast-path for common small payloads (dict/list/primitives)
+        try:
+            if isinstance(data, (dict, list, str, int, float, bool)) or data is None:
+                json_bytes = json.dumps(data, separators=(",", ":")).encode("utf-8")
+                if len(json_bytes) <= self.compression_threshold:
+                    return b"rawj:" + json_bytes
+        except Exception:
+            # Fallback to pickle path on any serialization error
+            pass
+
+        pickled_data = pickle.dumps(data)
+
+        # Use the size of original content as the decision signal. For strings/bytes,
+        # this better reflects user intent around thresholds used in tests.
+        try:
+            original_size = len(data) if isinstance(data, (str, bytes, bytearray)) else len(pickled_data)
+        except TypeError:
+            # Fallback for unsupported types
+            original_size = len(pickled_data)
+
+        if original_size > self.compression_threshold:
+            compressed_data = zlib.compress(pickled_data, self.compression_level)
+            return b"zlib:" + compressed_data
+        return b"pick:" + pickled_data
+
+    def _deserialize_data_only(self, data: bytes) -> Any:
+        """
+        Deserialize data without decryption (internal use only).
+
+        This is the original deserialization logic separated for internal use.
+        """
+        if not data:
+            return None
+
+        prefix = data[:5]
+        content = data[5:]
+
+        if prefix == b"rawj:":
+            return json.loads(content.decode("utf-8"))
+        elif prefix == b"zlib:":
+            decompressed = zlib.decompress(content)
+            return pickle.loads(decompressed)
+        elif prefix == b"pick:":
+            return pickle.loads(content)
+        else:
+            # Legacy format fallback
+            try:
+                return pickle.loads(data)
+            except Exception:
+                return json.loads(data.decode("utf-8"))
+
+    @classmethod
+    def create_secure(cls, redis_url: Optional[str] = None) -> 'GenericRedisCache':
+        """
+        Factory method for secure cache creation.
+
+        Creates a GenericRedisCache instance with automatic security configuration
+        based on environment detection. This is the recommended way to create
+        cache instances in the security-first architecture.
+
+        Args:
+            redis_url: Optional Redis connection URL. If None, uses secure defaults.
+
+        Returns:
+            GenericRedisCache instance with mandatory security enabled
+
+        Examples:
+            # Automatic configuration
+            cache = GenericRedisCache.create_secure()
+
+            # Custom Redis URL
+            cache = GenericRedisCache.create_secure("rediss://production:6380")
+
+            # Use with context manager
+            cache = GenericRedisCache.create_secure()
+            async with cache:
+                await cache.set("key", "value")
+                value = await cache.get("key")
+
+        Note:
+            This method automatically configures:
+            - Environment-aware security settings
+            - TLS encryption and authentication
+            - Application-layer data encryption
+            - Fail-fast security validation
+        """
+        import os
+
+        # Use provided URL or default to secure connection
+        if redis_url is None:
+            redis_url = os.getenv('REDIS_URL', 'rediss://localhost:6380')
+
+        logger.info(f"🔐 Creating secure cache instance with URL: {redis_url.split('://')[0]}://...")
+
+        return cls(redis_url=redis_url)
