@@ -88,28 +88,27 @@ async def check_ai_model_health() -> ComponentStatus:
     ...
 
 
-async def check_cache_health() -> ComponentStatus:
+async def check_cache_health(cache_service=None) -> ComponentStatus:
     """
-    Check cache system health and operational status.
-    
-    ⚠️ PERFORMANCE ISSUE: This function currently creates a new AIResponseCache 
-    instance on every health check call, which is extremely inefficient and wasteful.
-    This causes redundant connection setup, memory allocation, and resource usage.
-    
-    REQUIRED FIX: Update to accept cache service as parameter for dependency injection:
-    
-    async def check_cache_health(cache_service: AIResponseCache) -> ComponentStatus:
-        '''Reuse singleton cache service for optimal performance.'''
-        stats = await cache_service.get_cache_stats()  # Reuses existing connections
-        
-    Then update registration in get_health_checker():
-    checker.register_check("cache", lambda: check_cache_health(cache_service))
-    
-    This will eliminate redundant instantiation and significantly improve performance
-    under frequent monitoring scenarios.
-    
+    Check cache system health and operational status using dependency injection for optimal performance.
+
+    This function provides efficient cache health monitoring by accepting an optional cache service
+    parameter for dependency injection. When a cache service is provided, it reuses existing
+    connections and avoids redundant instantiation, making it ideal for frequent health checks.
+    For backward compatibility, it falls back to creating a new cache service when none is provided.
+
+    Args:
+        cache_service: Optional AIResponseCache instance for optimal performance.
+                      When provided, reuses existing connections and avoids instantiation overhead.
+                      If None, creates a new cache service for backward compatibility.
+
     Returns:
         ComponentStatus with cache connectivity and operational status
+
+    Performance Notes:
+        - ✅ OPTIMAL: When cache_service is provided, no instantiation overhead
+        - ⚠️ FALLBACK: When cache_service is None, creates new service instance (less efficient)
+        - For best performance, use dependency injection in get_health_checker()
     """
     ...
 
