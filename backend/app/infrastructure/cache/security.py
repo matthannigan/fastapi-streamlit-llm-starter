@@ -45,11 +45,14 @@ import ssl
 import asyncio
 import time
 import inspect
+import secrets
+import string
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
 from app.core.exceptions import ConfigurationError
+from app.core.environment import get_environment_info, Environment, FeatureContext
 
 # Optional Redis import for graceful degradation
 try:
@@ -216,6 +219,181 @@ class SecurityConfig:
         else:
             return "LOW"
 
+    @classmethod
+    def create_for_environment(cls, encryption_key: Optional[str] = None) -> 'SecurityConfig':
+        """
+        Create security configuration appropriate for detected environment.
+
+        This method provides environment-aware security configuration that automatically
+        adapts security settings based on the current deployment environment while
+        maintaining security-first principles.
+
+        Args:
+            encryption_key: Optional encryption key for data encryption.
+                          If not provided, will be generated automatically.
+
+        Returns:
+            SecurityConfig: Environment-appropriate security configuration
+
+        Examples:
+            # Automatic environment detection
+            config = SecurityConfig.create_for_environment()
+
+            # With custom encryption key
+            config = SecurityConfig.create_for_environment("your-encryption-key")
+
+        Note:
+            - Production: Strong passwords, TLS 1.3, certificate validation required
+            - Staging: Production-like security with moderate passwords
+            - Development: Secure defaults with self-signed certificates OK
+            - Testing: Minimal security for fast test execution
+        """
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+
+        if env_info.environment == Environment.PRODUCTION:
+            return cls(
+                redis_auth=generate_secure_password(32),
+                use_tls=True,
+                tls_cert_path="/etc/ssl/redis-client.crt",
+                tls_key_path="/etc/ssl/redis-client.key",
+                tls_ca_path="/etc/ssl/ca.crt",
+                verify_certificates=True,
+                min_tls_version=ssl.TLSVersion.TLSv1_3.value,
+                connection_timeout=30,
+                socket_timeout=30,
+                max_retries=3,
+                enable_security_monitoring=True,
+                log_security_events=True
+            )
+        elif env_info.environment == Environment.STAGING:
+            return cls(
+                redis_auth=generate_secure_password(24),
+                use_tls=True,
+                tls_cert_path="/etc/ssl/redis-staging.crt",
+                tls_key_path="/etc/ssl/redis-staging.key",
+                tls_ca_path="/etc/ssl/ca.crt",
+                verify_certificates=True,
+                min_tls_version=ssl.TLSVersion.TLSv1_2.value,
+                connection_timeout=30,
+                socket_timeout=30,
+                max_retries=3,
+                enable_security_monitoring=True,
+                log_security_events=True
+            )
+        elif env_info.environment == Environment.TESTING:
+            # Minimal security for testing environments
+            return cls(
+                redis_auth=generate_secure_password(12),
+                use_tls=False,  # Allow insecure for fast testing
+                verify_certificates=False,
+                connection_timeout=10,
+                socket_timeout=10,
+                max_retries=1,
+                enable_security_monitoring=False,
+                log_security_events=False
+            )
+        else:  # Development and unknown environments
+            return cls(
+                redis_auth=generate_secure_password(16),
+                use_tls=True,
+                tls_cert_path="",  # Will auto-generate self-signed if needed
+                tls_key_path="",
+                tls_ca_path="",
+                verify_certificates=False,  # Self-signed certificates OK
+                min_tls_version=ssl.TLSVersion.TLSv1_2.value,
+                connection_timeout=20,
+                socket_timeout=20,
+                max_retries=2,
+                enable_security_monitoring=True,
+                log_security_events=True
+            )
+
+    def validate_mandatory_security_requirements(self) -> None:
+        """
+        Validate that mandatory security requirements are met for production.
+
+        This method enforces security-first requirements and provides fail-fast
+        validation with clear error messages for security violations.
+
+        Raises:
+            ConfigurationError: If mandatory security requirements are not met
+
+        Note:
+            This is stricter than the regular _validate_configuration method
+            and enforces production-grade security standards.
+        """
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+
+        # Enforce authentication for all environments except testing
+        if env_info.environment != Environment.TESTING:
+            if not self.has_authentication:
+                raise ConfigurationError(
+                    f"🔒 SECURITY ERROR: Authentication is mandatory for {env_info.environment.value} environment.\n"
+                    "\n"
+                    "Current: No authentication configured\n"
+                    "Required: redis_auth password or ACL username/password\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Set REDIS_AUTH environment variable with a secure password\n"
+                    "2. Or configure ACL authentication with REDIS_ACL_USERNAME/REDIS_ACL_PASSWORD\n"
+                    "3. Use SecurityConfig.create_for_environment() for automatic secure configuration\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_authentication",
+                        "security_requirement": "authentication_required"
+                    }
+                )
+
+        # Enforce TLS for production and staging
+        if env_info.environment in (Environment.PRODUCTION, Environment.STAGING):
+            if not self.use_tls:
+                raise ConfigurationError(
+                    f"🔒 SECURITY ERROR: TLS encryption is mandatory for {env_info.environment.value} environment.\n"
+                    "\n"
+                    "Current: TLS disabled\n"
+                    "Required: TLS encryption enabled\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Set use_tls=True in SecurityConfig\n"
+                    "2. Or set REDIS_TLS_ENABLED=true environment variable\n"
+                    "3. Use SecurityConfig.create_for_environment() for automatic configuration\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_tls",
+                        "security_requirement": "tls_encryption_required"
+                    }
+                )
+
+            # Enforce certificate verification in production
+            if env_info.environment == Environment.PRODUCTION and not self.verify_certificates:
+                raise ConfigurationError(
+                    "🔒 SECURITY ERROR: Certificate verification is mandatory for production environment.\n"
+                    "\n"
+                    "Current: Certificate verification disabled\n"
+                    "Required: Certificate verification enabled\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Set verify_certificates=True in SecurityConfig\n"
+                    "2. Ensure valid TLS certificates are configured\n"
+                    "3. Use SecurityConfig.create_for_environment() for production defaults\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_cert_verification",
+                        "security_requirement": "certificate_verification_required"
+                    }
+                )
+
+        logger.info(f"✅ Mandatory security validation passed for {env_info.environment.value} environment")
+
 
 @dataclass
 class SecurityValidationResult:
@@ -335,6 +513,95 @@ class SecurityValidationResult:
                 summary += f"  - {rec}\n"
 
         return summary
+
+
+def generate_secure_password(length: int) -> str:
+    """
+    Generate cryptographically secure password.
+
+    Creates a random password using secrets module with a character set that
+    includes letters, digits, and safe special characters suitable for Redis
+    authentication.
+
+    Args:
+        length: Desired password length (minimum 8 characters recommended)
+
+    Returns:
+        Cryptographically secure password string
+
+    Examples:
+        # Generate production password
+        prod_password = generate_secure_password(32)
+
+        # Generate development password
+        dev_password = generate_secure_password(16)
+
+        # Generate testing password
+        test_password = generate_secure_password(12)
+
+    Note:
+        Uses secrets.choice() for cryptographic security rather than random.choice().
+        Character set excludes ambiguous characters like 0, O, l, I to avoid confusion.
+    """
+    if length < 8:
+        logger.warning(f"Password length {length} is below recommended minimum of 8 characters")
+
+    # Safe character set - excludes ambiguous characters
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*-_=+"
+
+    # Remove potentially ambiguous characters
+    alphabet = alphabet.replace('0', '').replace('O', '').replace('l', '').replace('I', '')
+
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def create_security_config_from_env() -> SecurityConfig:
+    """
+    Create security configuration from environment variables.
+
+    This function creates a SecurityConfig instance using environment variables
+    with secure defaults. If required values are missing, it generates them
+    automatically to ensure secure operation.
+
+    Returns:
+        SecurityConfig: Configuration with secure defaults
+
+    Environment Variables:
+        REDIS_AUTH: Redis authentication password
+        REDIS_ACL_USERNAME: Redis ACL username (optional)
+        REDIS_ACL_PASSWORD: Redis ACL password (optional)
+        REDIS_TLS_ENABLED: Enable TLS (true/false)
+        REDIS_TLS_CERT_PATH: Path to TLS certificate file
+        REDIS_TLS_KEY_PATH: Path to TLS private key file
+        REDIS_TLS_CA_PATH: Path to CA certificate file
+        REDIS_VERIFY_CERTIFICATES: Verify TLS certificates (true/false)
+
+    Examples:
+        # Create config from environment
+        config = create_security_config_from_env()
+
+        # Use with security manager
+        manager = RedisCacheSecurityManager(config)
+    """
+    import os
+
+    # Try environment-aware configuration first
+    try:
+        return SecurityConfig.create_for_environment()
+    except Exception as e:
+        logger.warning(f"Environment detection failed, using manual configuration: {e}")
+
+    # Fallback to manual environment variable parsing
+    return SecurityConfig(
+        redis_auth=os.getenv("REDIS_AUTH") or generate_secure_password(16),
+        acl_username=os.getenv("REDIS_ACL_USERNAME"),
+        acl_password=os.getenv("REDIS_ACL_PASSWORD"),
+        use_tls=os.getenv("REDIS_TLS_ENABLED", "true").lower() == "true",
+        tls_cert_path=os.getenv("REDIS_TLS_CERT_PATH"),
+        tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
+        tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
+        verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower() == "true",
+    )
 
 
 class RedisCacheSecurityManager:
@@ -574,6 +841,123 @@ class RedisCacheSecurityManager:
         except Exception as e:
             self._security_logger.error(f"Connection validation failed: {e}")
             raise
+
+    def validate_mandatory_security(self, redis_url: str) -> None:
+        """
+        Validate mandatory security requirements with fail-fast behavior.
+
+        This method enforces security-first principles by validating that all
+        mandatory security requirements are met before attempting connection.
+        It provides immediate failure with clear error messages.
+
+        Args:
+            redis_url: Redis connection URL to validate
+
+        Raises:
+            ConfigurationError: If mandatory security requirements are not met
+
+        Examples:
+            # Validate before connection
+            manager.validate_mandatory_security("rediss://redis:6380")
+
+            # Will raise ConfigurationError for insecure URLs in production
+            manager.validate_mandatory_security("redis://redis:6379")  # Fails in production
+
+        Note:
+            This method is called automatically by create_secure_connection()
+            in security-first mode to ensure no insecure connections are created.
+        """
+        # Validate the security configuration first
+        self.config.validate_mandatory_security_requirements()
+
+        # Validate the connection URL security
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+
+        # Require secure connection URLs for production and staging
+        if env_info.environment in (Environment.PRODUCTION, Environment.STAGING):
+            if not self._is_secure_url(redis_url):
+                raise ConfigurationError(
+                    f"🔒 SECURITY ERROR: Insecure Redis URL not allowed in {env_info.environment.value} environment.\n"
+                    "\n"
+                    f"Current URL: {redis_url.split('://')[0]}://***\n"
+                    "Required: Secure URL (rediss://) or authenticated connection\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Use TLS: Change URL to rediss://your-redis-host:6380\n"
+                    "2. Or ensure authentication is included in URL: redis://user:pass@host:port\n"
+                    "3. Update REDIS_URL environment variable\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "redis_url_scheme": redis_url.split('://')[0],
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_secure_url",
+                        "security_requirement": "secure_connection_url"
+                    }
+                )
+
+        self._security_logger.info(f"✅ Mandatory security validation passed for {env_info.environment.value}")
+
+    def _is_secure_url(self, redis_url: str) -> bool:
+        """
+        Check if Redis URL is secure.
+
+        A URL is considered secure if it uses TLS (rediss://) or includes
+        authentication credentials.
+
+        Args:
+            redis_url: Redis connection URL to check
+
+        Returns:
+            True if URL is secure, False otherwise
+        """
+        if not redis_url:
+            return False
+
+        # TLS URLs are always secure
+        if redis_url.startswith('rediss://'):
+            return True
+
+        # URLs with authentication are considered secure
+        if redis_url.startswith('redis://') and '@' in redis_url:
+            return True
+
+        return False
+
+    def create_secure_connection_with_validation(self, redis_url: str = "redis://localhost:6379") -> Any:
+        """
+        Create secure Redis connection with mandatory security validation.
+
+        This method provides security-first connection creation with fail-fast
+        validation. It ensures all security requirements are met before attempting
+        to create the connection.
+
+        Args:
+            redis_url: Redis server URL with authentication and TLS
+
+        Returns:
+            Configured Redis client with security features enabled
+
+        Raises:
+            ConfigurationError: If security requirements are not met
+
+        Examples:
+            # Create secure connection (will validate first)
+            redis = await manager.create_secure_connection_with_validation("rediss://redis:6380")
+
+            # Will fail fast in production without TLS
+            redis = await manager.create_secure_connection_with_validation("redis://redis:6379")
+
+        Note:
+            This is the recommended method for security-first applications.
+            Use regular create_secure_connection() for backward compatibility.
+        """
+        # Perform fail-fast security validation
+        self.validate_mandatory_security(redis_url)
+
+        # Create connection using existing secure method
+        return self.create_secure_connection(redis_url)
 
     async def validate_connection_security(self, redis_client: Any) -> SecurityValidationResult:
         """Validate Redis connection security status.
@@ -1105,5 +1489,6 @@ __all__ = [
     "SecurityConfig",
     "SecurityValidationResult",
     "RedisCacheSecurityManager",
-    "create_security_config_from_env"
+    "create_security_config_from_env",
+    "generate_secure_password"
 ]

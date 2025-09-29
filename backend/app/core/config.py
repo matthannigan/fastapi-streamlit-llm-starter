@@ -544,6 +544,78 @@ class Settings(BaseSettings):
     )
 
     # ========================================
+    # REDIS SECURITY AND ENCRYPTION CONFIGURATION
+    # ========================================
+    #
+    # Security-First Redis Configuration
+    #
+    # This section implements mandatory security for Redis connections following
+    # the security-first architecture where secure connections and encryption
+    # are mandatory, not optional.
+    #
+    # Core Security Features:
+    # - Mandatory TLS encryption for production environments
+    # - Strong password authentication
+    # - Application-layer data encryption using Fernet
+    # - Environment-aware security configuration
+    # - Fail-fast validation for security violations
+    #
+    # Environment Variables:
+    #   REDIS_URL: Redis connection URL (rediss:// for TLS, redis:// for plain)
+    #   REDIS_PASSWORD: Redis authentication password
+    #   REDIS_ENCRYPTION_KEY: Fernet encryption key for data encryption
+    #   REDIS_TLS_ENABLED: Enable TLS encryption (true/false)
+    #   REDIS_TLS_CERT_PATH: Path to TLS client certificate
+    #   REDIS_TLS_KEY_PATH: Path to TLS private key
+    #   REDIS_TLS_CA_PATH: Path to Certificate Authority certificate
+    #   REDIS_VERIFY_CERTIFICATES: Verify TLS certificates (true/false)
+    #   REDIS_INSECURE_ALLOW_PLAINTEXT: Allow insecure connections with warning
+
+    # Redis Connection Security
+    redis_url: str = Field(
+        default="redis://localhost:6379",
+        description="Redis connection URL (use rediss:// for TLS)"
+    )
+    redis_password: Optional[str] = Field(
+        default=None,
+        description="Redis authentication password"
+    )
+
+    # TLS Security Configuration
+    redis_tls_enabled: bool = Field(
+        default=False,
+        description="Enable TLS encryption for Redis connections"
+    )
+    redis_tls_cert_path: Optional[str] = Field(
+        default=None,
+        description="Path to TLS client certificate file"
+    )
+    redis_tls_key_path: Optional[str] = Field(
+        default=None,
+        description="Path to TLS private key file"
+    )
+    redis_tls_ca_path: Optional[str] = Field(
+        default=None,
+        description="Path to Certificate Authority certificate file"
+    )
+    redis_verify_certificates: bool = Field(
+        default=True,
+        description="Verify TLS certificates (disable only for self-signed certs in development)"
+    )
+
+    # Data Encryption Configuration
+    redis_encryption_key: Optional[str] = Field(
+        default=None,
+        description="Fernet encryption key for application-layer data encryption"
+    )
+
+    # Security Override (with warnings)
+    redis_insecure_allow_plaintext: bool = Field(
+        default=False,
+        description="Allow insecure Redis connections in production (logs security warnings)"
+    )
+
+    # ========================================
     # HEALTH CHECK CONFIGURATION
     # ========================================
     #

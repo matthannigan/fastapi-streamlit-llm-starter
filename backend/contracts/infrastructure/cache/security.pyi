@@ -45,10 +45,13 @@ import ssl
 import asyncio
 import time
 import inspect
+import secrets
+import string
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 from app.core.exceptions import ConfigurationError
+from app.core.environment import get_environment_info, Environment, FeatureContext
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
 
@@ -123,6 +126,53 @@ class SecurityConfig:
     def security_level(self) -> str:
         """
         Get a descriptive security level.
+        """
+        ...
+
+    @classmethod
+    def create_for_environment(cls, encryption_key: Optional[str] = None) -> 'SecurityConfig':
+        """
+        Create security configuration appropriate for detected environment.
+        
+        This method provides environment-aware security configuration that automatically
+        adapts security settings based on the current deployment environment while
+        maintaining security-first principles.
+        
+        Args:
+            encryption_key: Optional encryption key for data encryption.
+                          If not provided, will be generated automatically.
+        
+        Returns:
+            SecurityConfig: Environment-appropriate security configuration
+        
+        Examples:
+            # Automatic environment detection
+            config = SecurityConfig.create_for_environment()
+        
+            # With custom encryption key
+            config = SecurityConfig.create_for_environment("your-encryption-key")
+        
+        Note:
+            - Production: Strong passwords, TLS 1.3, certificate validation required
+            - Staging: Production-like security with moderate passwords
+            - Development: Secure defaults with self-signed certificates OK
+            - Testing: Minimal security for fast test execution
+        """
+        ...
+
+    def validate_mandatory_security_requirements(self) -> None:
+        """
+        Validate that mandatory security requirements are met for production.
+        
+        This method enforces security-first requirements and provides fail-fast
+        validation with clear error messages for security violations.
+        
+        Raises:
+            ConfigurationError: If mandatory security requirements are not met
+        
+        Note:
+            This is stricter than the regular _validate_configuration method
+            and enforces production-grade security standards.
         """
         ...
 
@@ -223,6 +273,63 @@ class RedisCacheSecurityManager:
         """
         ...
 
+    def validate_mandatory_security(self, redis_url: str) -> None:
+        """
+        Validate mandatory security requirements with fail-fast behavior.
+        
+        This method enforces security-first principles by validating that all
+        mandatory security requirements are met before attempting connection.
+        It provides immediate failure with clear error messages.
+        
+        Args:
+            redis_url: Redis connection URL to validate
+        
+        Raises:
+            ConfigurationError: If mandatory security requirements are not met
+        
+        Examples:
+            # Validate before connection
+            manager.validate_mandatory_security("rediss://redis:6380")
+        
+            # Will raise ConfigurationError for insecure URLs in production
+            manager.validate_mandatory_security("redis://redis:6379")  # Fails in production
+        
+        Note:
+            This method is called automatically by create_secure_connection()
+            in security-first mode to ensure no insecure connections are created.
+        """
+        ...
+
+    def create_secure_connection_with_validation(self, redis_url: str = 'redis://localhost:6379') -> Any:
+        """
+        Create secure Redis connection with mandatory security validation.
+        
+        This method provides security-first connection creation with fail-fast
+        validation. It ensures all security requirements are met before attempting
+        to create the connection.
+        
+        Args:
+            redis_url: Redis server URL with authentication and TLS
+        
+        Returns:
+            Configured Redis client with security features enabled
+        
+        Raises:
+            ConfigurationError: If security requirements are not met
+        
+        Examples:
+            # Create secure connection (will validate first)
+            redis = await manager.create_secure_connection_with_validation("rediss://redis:6380")
+        
+            # Will fail fast in production without TLS
+            redis = await manager.create_secure_connection_with_validation("redis://redis:6379")
+        
+        Note:
+            This is the recommended method for security-first applications.
+            Use regular create_secure_connection() for backward compatibility.
+        """
+        ...
+
     async def validate_connection_security(self, redis_client: Any) -> SecurityValidationResult:
         """
         Validate Redis connection security status.
@@ -280,6 +387,68 @@ class RedisCacheSecurityManager:
             Comprehensive security status information
         """
         ...
+
+
+def generate_secure_password(length: int) -> str:
+    """
+    Generate cryptographically secure password.
+    
+    Creates a random password using secrets module with a character set that
+    includes letters, digits, and safe special characters suitable for Redis
+    authentication.
+    
+    Args:
+        length: Desired password length (minimum 8 characters recommended)
+    
+    Returns:
+        Cryptographically secure password string
+    
+    Examples:
+        # Generate production password
+        prod_password = generate_secure_password(32)
+    
+        # Generate development password
+        dev_password = generate_secure_password(16)
+    
+        # Generate testing password
+        test_password = generate_secure_password(12)
+    
+    Note:
+        Uses secrets.choice() for cryptographic security rather than random.choice().
+        Character set excludes ambiguous characters like 0, O, l, I to avoid confusion.
+    """
+    ...
+
+
+def create_security_config_from_env() -> SecurityConfig:
+    """
+    Create security configuration from environment variables.
+    
+    This function creates a SecurityConfig instance using environment variables
+    with secure defaults. If required values are missing, it generates them
+    automatically to ensure secure operation.
+    
+    Returns:
+        SecurityConfig: Configuration with secure defaults
+    
+    Environment Variables:
+        REDIS_AUTH: Redis authentication password
+        REDIS_ACL_USERNAME: Redis ACL username (optional)
+        REDIS_ACL_PASSWORD: Redis ACL password (optional)
+        REDIS_TLS_ENABLED: Enable TLS (true/false)
+        REDIS_TLS_CERT_PATH: Path to TLS certificate file
+        REDIS_TLS_KEY_PATH: Path to TLS private key file
+        REDIS_TLS_CA_PATH: Path to CA certificate file
+        REDIS_VERIFY_CERTIFICATES: Verify TLS certificates (true/false)
+    
+    Examples:
+        # Create config from environment
+        config = create_security_config_from_env()
+    
+        # Use with security manager
+        manager = RedisCacheSecurityManager(config)
+    """
+    ...
 
 
 def create_security_config_from_env() -> Optional[SecurityConfig]:
