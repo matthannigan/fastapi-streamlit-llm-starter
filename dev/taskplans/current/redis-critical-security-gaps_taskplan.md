@@ -285,7 +285,7 @@ Provide one-command secure setup and comprehensive security documentation.
 **Goal**: Provide comprehensive documentation for security-first Redis implementation.
 
 #### Task 7.1: Security Architecture Documentation
-- [ ] Create `docs/infrastructure/redis-security.md` with comprehensive security guide:
+- [ ] Create `docs/guides/infrastructure/cache/security.md` with comprehensive security guide:
   - [ ] Document mandatory security architecture and philosophy
   - [ ] Explain TLS requirements and certificate management
   - [ ] Document encryption implementation and key management
@@ -295,8 +295,6 @@ Provide one-command secure setup and comprehensive security documentation.
   - [ ] Development setup with secure defaults
   - [ ] Staging environment security considerations
   - [ ] Configuration validation and monitoring procedures
-
-#### Task 7.2: Migration and Breaking Changes Documentation
 - [ ] Create comprehensive migration guide:
   - [ ] Document breaking changes from previous Redis implementation
   - [ ] Provide step-by-step migration instructions
@@ -308,17 +306,78 @@ Provide one-command secure setup and comprehensive security documentation.
   - [ ] Network isolation requirements for insecure overrides
   - [ ] Monitoring and alerting for insecure connections
 
-#### Task 7.3: Developer Setup and Operations Guide
-- [ ] Create developer quickstart guide:
+#### Task 7.2: Developer Setup and Operations Guide
+- [ ] Update developer quickstart guide at `docs/guides/infrastructure/cache/usage-guide.md`:
   - [ ] One-command setup instructions
   - [ ] Common development workflows with secure Redis
   - [ ] Debugging security connection issues
   - [ ] Certificate renewal and key rotation procedures
-- [ ] Document operational procedures:
+- [ ] Document operational procedures in `docs/guides/infrastructure/cache/configuration.md` and `docs/guides/infrastructure/cache/troubleshooting.md`:
   - [ ] Production deployment with secure Redis
   - [ ] Security monitoring and alerting setup
   - [ ] Incident response for security violations
   - [ ] Regular security maintenance tasks
+
+#### Task 7.3: Update Existing Cache Documentation
+- [ ] Update `docs/guides/infrastructure/cache/CACHE.md`:
+  - [ ] Add security-first architecture overview section
+  - [ ] Update architecture diagrams to show security components
+  - [ ] Add quick start links to security setup
+  - [ ] Update navigation to include security.md
+- [ ] Update `docs/guides/infrastructure/cache/configuration.md`:
+  - [ ] Add mandatory security configuration section
+  - [ ] Document all Redis security environment variables
+  - [ ] Add security levels by environment table
+  - [ ] Include secure configuration examples
+- [ ] Update `docs/guides/infrastructure/cache/troubleshooting.md`:
+  - [ ] Add TLS connection troubleshooting section
+  - [ ] Add certificate validation issues section
+  - [ ] Add authentication failure debugging
+  - [ ] Add encryption key problems section
+
+#### Task 7.4: Update Quick Start and Setup Documentation
+- [ ] Update `docs/get-started/CACHE_QUICK_START.md`:
+  - [ ] Replace insecure examples with secure Redis setup
+  - [ ] Add one-command secure setup as primary method
+  - [ ] Update all Redis URLs from redis:// to rediss://
+  - [ ] Add security warnings for insecure overrides
+- [ ] Update `docs/get-started/SETUP_INTEGRATION.md`:
+  - [ ] Add secure Redis setup to Quick Start section
+  - [ ] Update Redis configuration examples with TLS
+  - [ ] Add security setup validation steps
+  - [ ] Include certificate generation in setup workflow
+
+#### Task 7.5: Update Project Overview Documentation
+- [ ] Update `README.md`:
+  - [ ] Add security-first Redis to key features
+  - [ ] Update architecture diagrams with security layer
+  - [ ] Add mandatory security messaging
+  - [ ] Update quick start with secure setup
+- [ ] Update `docs/guides/infrastructure/SECURITY.md`:
+  - [ ] Add Redis Security section
+  - [ ] Link to cache/security.md for details
+  - [ ] Include in security overview
+  - [ ] Cross-reference with infrastructure security
+
+#### Task 7.6: Update Documentation Index
+- [ ] Update `docs/DOCS_INDEX.md`:
+  - [ ] Add cache/security.md entry under Cache Infrastructure
+  - [ ] Update all cache documentation last-modified dates
+  - [ ] Update ENVIRONMENT_VARIABLES.md last-modified date
+  - [ ] Ensure security documentation is properly indexed
+
+#### Task 7.7: Update Backend Cache Infrastructure README
+- [ ] Update `backend/app/infrastructure/cache/README.md`:
+  - [ ] Update all Redis URLs from redis:// to rediss:// (7 occurrences)
+  - [ ] Add security-first quick start section at top
+  - [ ] Expand Security Features section with mandatory security
+  - [ ] Add TLS configuration examples to all code samples
+  - [ ] Update factory method examples with secure Redis URLs
+  - [ ] Add authentication and encryption to configuration examples
+  - [ ] Document security parameters in API reference sections
+  - [ ] Add link to docs/guides/infrastructure/cache/security.md
+  - [ ] Update Security Features section with comprehensive security architecture
+  - [ ] Add troubleshooting section for TLS and authentication issues
 
 ---
 
