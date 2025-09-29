@@ -137,7 +137,9 @@ check_dependencies() {
     log_info "Checking system dependencies..."
 
     local missing_deps=()
+    local optional_deps=()
 
+    # Check required dependencies
     if ! command -v docker &> /dev/null; then
         missing_deps+=("docker")
     fi
@@ -150,24 +152,82 @@ check_dependencies() {
         missing_deps+=("openssl")
     fi
 
+    if ! command -v python3 &> /dev/null; then
+        missing_deps+=("python3")
+    fi
+
+    # Check optional but recommended dependencies
+    if ! command -v redis-cli &> /dev/null; then
+        optional_deps+=("redis-cli")
+    fi
+
+    # Report missing required dependencies
     if [ ${#missing_deps[@]} -ne 0 ]; then
         log_error "Missing required dependencies: ${missing_deps[*]}"
         echo
         echo "Installation instructions:"
-        echo "  macOS:   brew install docker docker-compose openssl"
-        echo "  Ubuntu:  sudo apt-get install docker.io docker-compose openssl"
-        echo "  CentOS:  sudo yum install docker docker-compose openssl"
+        echo
+        echo "  macOS (Homebrew):"
+        echo "    brew install docker docker-compose openssl python3"
+        echo "    # For redis-cli: brew install redis"
+        echo
+        echo "  Ubuntu/Debian:"
+        echo "    sudo apt-get update"
+        echo "    sudo apt-get install docker.io docker-compose openssl python3 python3-pip"
+        echo "    # For redis-cli: sudo apt-get install redis-tools"
+        echo
+        echo "  CentOS/RHEL:"
+        echo "    sudo yum install docker docker-compose openssl python3"
+        echo "    # For redis-cli: sudo yum install redis"
+        echo
+        echo "  Fedora:"
+        echo "    sudo dnf install docker docker-compose openssl python3"
+        echo "    # For redis-cli: sudo dnf install redis"
+        echo
         exit 1
+    fi
+
+    # Check Python cryptography library
+    if ! python3 -c "import cryptography" &> /dev/null; then
+        log_warning "Python cryptography library not installed"
+        log_info "Installing cryptography library..."
+        if python3 -m pip install cryptography &> /dev/null; then
+            log_success "Cryptography library installed successfully"
+        else
+            log_error "Failed to install cryptography library"
+            echo "Install manually: python3 -m pip install cryptography"
+            exit 1
+        fi
     fi
 
     # Check Docker daemon
     if ! docker info &> /dev/null; then
         log_error "Docker daemon is not running"
-        echo "Start Docker and try again"
+        echo
+        echo "Start Docker:"
+        echo "  macOS:   Start Docker Desktop application"
+        echo "  Linux:   sudo systemctl start docker"
+        echo "           sudo systemctl enable docker  # Start on boot"
+        echo
         exit 1
     fi
 
-    log_success "All dependencies are available"
+    # Check Docker Compose version
+    local compose_version=""
+    if command -v docker-compose &> /dev/null; then
+        compose_version=$(docker-compose version --short 2>/dev/null || echo "unknown")
+    elif docker compose version &> /dev/null; then
+        compose_version=$(docker compose version --short 2>/dev/null || echo "unknown")
+    fi
+
+    # Warn about optional dependencies
+    if [ ${#optional_deps[@]} -ne 0 ]; then
+        log_warning "Optional dependencies not found: ${optional_deps[*]}"
+        log_info "Setup will continue, but some validation features may be limited"
+    fi
+
+    log_success "All required dependencies are available"
+    log_info "Docker Compose version: $compose_version"
 }
 
 # Generate secure password
@@ -235,9 +295,67 @@ generate_certificates() {
     log_success "TLS certificates generated successfully"
 }
 
+# Backup existing environment file
+backup_env_file() {
+    if [ -f "$ENV_FILE" ]; then
+        local backup_file="${ENV_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+        log_info "Backing up existing environment file..."
+        cp "$ENV_FILE" "$backup_file"
+        log_success "Backup created: $backup_file"
+        return 0
+    fi
+    return 1
+}
+
+# Preserve existing environment variables
+preserve_existing_env() {
+    local existing_env_file="$1"
+    local preserve_vars=("NODE_ENV" "API_KEY" "CACHE_PRESET" "RESILIENCE_PRESET" "CORS_ALLOWED_ORIGINS" "LOG_LEVEL")
+
+    if [ ! -f "$existing_env_file" ]; then
+        return 1
+    fi
+
+    log_info "Preserving existing non-security environment variables..."
+
+    # Create associative array to store preserved values
+    declare -A preserved_values
+
+    for var in "${preserve_vars[@]}"; do
+        local value=$(grep "^${var}=" "$existing_env_file" | cut -d'=' -f2-)
+        if [ -n "$value" ]; then
+            preserved_values[$var]=$value
+            log_info "  Preserving $var"
+        fi
+    done
+
+    # Export preserved values for use in configuration generation
+    for var in "${!preserved_values[@]}"; do
+        export "PRESERVED_${var}=${preserved_values[$var]}"
+    done
+}
+
 # Generate secure configuration
 generate_configuration() {
     log_header "Generating Secure Configuration"
+
+    # Check if environment file exists and handle preservation
+    if [ -f "$ENV_FILE" ]; then
+        log_warning "Environment file already exists: $ENV_FILE"
+
+        if [ "$REGENERATE" = false ]; then
+            read -p "Regenerate environment file? [y/N]: " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_info "Using existing environment file"
+                return 0
+            fi
+        fi
+
+        # Backup and preserve existing environment
+        backup_env_file
+        preserve_existing_env "$ENV_FILE"
+    fi
 
     local redis_password
     local encryption_key
@@ -257,7 +375,7 @@ generate_configuration() {
     log_info "Generating encryption key..."
     encryption_key=$(generate_encryption_key)
 
-    # Create environment file
+    # Create environment file with preserved values
     log_info "Creating secure environment configuration..."
 
     cat > "$ENV_FILE" << EOF
@@ -278,19 +396,19 @@ REDIS_VERIFY_CERTIFICATES=true
 REDIS_ENCRYPTION_KEY=$encryption_key
 
 # Application Settings
-NODE_ENV=${NODE_ENV:-development}
-API_KEY=${API_KEY:-$(generate_secure_password 24)}
+NODE_ENV=${PRESERVED_NODE_ENV:-development}
+API_KEY=${PRESERVED_API_KEY:-$(generate_secure_password 24)}
 
 # Cache Configuration
-CACHE_PRESET=ai-development
+CACHE_PRESET=${PRESERVED_CACHE_PRESET:-ai-development}
 ENABLE_AI_CACHE=true
 
 # Resilience Configuration
-RESILIENCE_PRESET=development
+RESILIENCE_PRESET=${PRESERVED_RESILIENCE_PRESET:-development}
 
 # Security Settings
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8501,http://localhost:8000
-LOG_LEVEL=INFO
+CORS_ALLOWED_ORIGINS=${PRESERVED_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8501,http://localhost:8000}
+LOG_LEVEL=${PRESERVED_LOG_LEVEL:-INFO}
 
 # Docker Configuration
 COMPOSE_PROJECT_NAME=secure_redis_stack
@@ -350,9 +468,55 @@ validate_connection() {
     # Source environment variables
     source "$ENV_FILE"
 
-    # Test Redis connection with TLS
-    log_info "Testing TLS connection to Redis..."
+    local validation_failed=false
 
+    # Test 1: Certificate validity
+    log_info "Validating TLS certificates..."
+    if openssl x509 -in "$REDIS_TLS_CERT_PATH" -checkend 0 &> /dev/null; then
+        log_success "Redis certificate is valid"
+
+        # Check expiration warning (30 days)
+        if ! openssl x509 -in "$REDIS_TLS_CERT_PATH" -checkend 2592000 &> /dev/null; then
+            log_warning "Redis certificate expires within 30 days"
+        fi
+    else
+        log_error "Redis certificate is expired or invalid"
+        validation_failed=true
+    fi
+
+    # Test 2: Certificate chain verification
+    log_info "Verifying certificate chain..."
+    if openssl verify -CAfile "$REDIS_TLS_CA_PATH" "$REDIS_TLS_CERT_PATH" &> /dev/null; then
+        log_success "Certificate chain is valid"
+    else
+        log_error "Certificate chain verification failed"
+        validation_failed=true
+    fi
+
+    # Test 3: Container health status
+    log_info "Checking Redis container health..."
+    local redis_health=$(docker inspect redis_secure --format='{{.State.Health.Status}}' 2>/dev/null || echo "unknown")
+
+    if [ "$redis_health" = "healthy" ]; then
+        log_success "Redis container is healthy"
+    elif [ "$redis_health" = "starting" ]; then
+        log_warning "Redis container is still starting up..."
+        # Wait a bit longer
+        sleep 5
+        redis_health=$(docker inspect redis_secure --format='{{.State.Health.Status}}' 2>/dev/null || echo "unknown")
+        if [ "$redis_health" = "healthy" ]; then
+            log_success "Redis container is now healthy"
+        else
+            log_error "Redis container health status: $redis_health"
+            validation_failed=true
+        fi
+    else
+        log_error "Redis container health status: $redis_health"
+        validation_failed=true
+    fi
+
+    # Test 4: Redis TLS connection
+    log_info "Testing TLS connection to Redis..."
     if command -v redis-cli &> /dev/null; then
         if redis-cli --tls \
            --cert "$REDIS_TLS_CERT_PATH" \
@@ -363,23 +527,89 @@ validate_connection() {
             log_success "Redis TLS connection successful"
         else
             log_error "Redis TLS connection failed"
-            return 1
+            log_info "Checking Redis logs..."
+            docker logs --tail 20 redis_secure 2>&1 | grep -i "error\|warning" || true
+            validation_failed=true
+        fi
+
+        # Test 5: Basic Redis operations
+        if [ "$validation_failed" = false ]; then
+            log_info "Testing basic Redis operations..."
+            local test_key="test_secure_redis_$(date +%s)"
+            local test_value="test_value_$(date +%s)"
+
+            if redis-cli --tls \
+               --cert "$REDIS_TLS_CERT_PATH" \
+               --key "$REDIS_TLS_KEY_PATH" \
+               --cacert "$REDIS_TLS_CA_PATH" \
+               --pass "$REDIS_PASSWORD" \
+               -p 6380 SET "$test_key" "$test_value" &> /dev/null; then
+
+                local retrieved_value=$(redis-cli --tls \
+                   --cert "$REDIS_TLS_CERT_PATH" \
+                   --key "$REDIS_TLS_KEY_PATH" \
+                   --cacert "$REDIS_TLS_CA_PATH" \
+                   --pass "$REDIS_PASSWORD" \
+                   -p 6380 GET "$test_key" 2>/dev/null)
+
+                if [ "$retrieved_value" = "$test_value" ]; then
+                    log_success "Redis operations working correctly"
+                    # Cleanup test key
+                    redis-cli --tls \
+                       --cert "$REDIS_TLS_CERT_PATH" \
+                       --key "$REDIS_TLS_KEY_PATH" \
+                       --cacert "$REDIS_TLS_CA_PATH" \
+                       --pass "$REDIS_PASSWORD" \
+                       -p 6380 DEL "$test_key" &> /dev/null
+                else
+                    log_error "Redis operations failed: value mismatch"
+                    validation_failed=true
+                fi
+            else
+                log_error "Redis operations failed: cannot SET value"
+                validation_failed=true
+            fi
         fi
     else
-        log_warning "redis-cli not available, skipping direct connection test"
+        log_warning "redis-cli not available, skipping connection and operation tests"
     fi
 
-    # Test container connectivity
-    log_info "Testing container health..."
-    local redis_health=$(docker inspect redis_secure --format='{{.State.Health.Status}}' 2>/dev/null || echo "unknown")
-
-    if [ "$redis_health" = "healthy" ]; then
-        log_success "Redis container is healthy"
+    # Test 6: Network isolation
+    log_info "Checking network isolation..."
+    local exposed_ports=$(docker port redis_secure 2>/dev/null | wc -l)
+    if [ "$exposed_ports" -eq 0 ]; then
+        log_success "Redis is not exposed to host (network isolated)"
     else
-        log_warning "Redis container health status: $redis_health"
+        log_warning "Redis has exposed ports (may not be fully isolated)"
     fi
 
-    log_success "Connection validation completed"
+    # Test 7: Encryption key validation
+    log_info "Validating encryption key..."
+    if python3 -c "
+from cryptography.fernet import Fernet
+import sys
+try:
+    key = '$REDIS_ENCRYPTION_KEY'
+    Fernet(key.encode())
+    sys.exit(0)
+except Exception as e:
+    sys.exit(1)
+" 2>/dev/null; then
+        log_success "Encryption key is valid"
+    else
+        log_error "Encryption key is invalid"
+        validation_failed=true
+    fi
+
+    # Summary
+    echo
+    if [ "$validation_failed" = false ]; then
+        log_success "All validation tests passed!"
+    else
+        log_error "Some validation tests failed - review errors above"
+        log_info "Check Docker logs: docker logs redis_secure"
+        return 1
+    fi
 }
 
 # Show setup summary
