@@ -87,6 +87,14 @@ This service demonstrates domain-level health checking that:
 
 **Replace in your project** - Customize the health checks and status logic
 based on your specific infrastructure components and monitoring requirements.
+
+## Developer Reference
+
+For comprehensive documentation on the health check infrastructure, including
+advanced usage patterns, performance optimization, testing strategies, and
+production deployment guidance, see:
+
+**📖 `docs/guides/developer/HEALTH_CHECKS.md`**
 """
 
 from fastapi import APIRouter, Depends

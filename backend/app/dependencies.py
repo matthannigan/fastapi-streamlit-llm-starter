@@ -675,9 +675,15 @@ def get_health_checker() -> HealthChecker:
         retry_count=1,
         backoff_base_seconds=0.1,
     )
-    # Register built-in checks
+    # Register built-in checks with optimal dependency injection
     checker.register_check("ai_model", check_ai_model_health)
-    checker.register_check("cache", check_cache_health)
+
+    # Cache health check with dependency injection for optimal performance
+    async def cache_health_with_service():
+        cache_service = await get_cache_service(settings)
+        return await check_cache_health(cache_service)
+
+    checker.register_check("cache", cache_health_with_service)
     checker.register_check("resilience", check_resilience_health)
     return checker
 
