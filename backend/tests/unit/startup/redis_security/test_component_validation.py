@@ -38,7 +38,7 @@ class TestValidateTlsCertificates:
         - Test graceful handling of missing cryptography library
     """
 
-    def test_validate_tls_certificates_with_existing_files(self):
+    def test_validate_tls_certificates_with_existing_files(self, redis_security_validator, mock_cert_path_exists):
         """
         Test that validate_tls_certificates() validates existing certificate files.
 
@@ -62,9 +62,40 @@ class TestValidateTlsCertificates:
             - redis_security_validator: Real validator instance
             - mock_cert_path_exists: Temporary certificate files
         """
-        pass
+        # Given: Certificate files exist and validator instance
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
+        key_path = str(mock_cert_path_exists["key"])
+        ca_path = str(mock_cert_path_exists["ca"])
 
-    def test_validate_tls_certificates_with_missing_cert_file(self):
+        # When: validate_tls_certificates() is called with existing files
+        result = validator.validate_tls_certificates(
+            cert_path=cert_path,
+            key_path=key_path,
+            ca_path=ca_path
+        )
+
+        # Then: Result structure is correct and validation passes
+        assert isinstance(result, dict)
+        assert "valid" in result
+        assert "errors" in result
+        assert "warnings" in result
+        assert "cert_info" in result
+
+        # And: Validation succeeds with no errors
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+        # And: Certificate info contains file paths
+        cert_info = result["cert_info"]
+        assert "cert_path" in cert_info
+        assert "key_path" in cert_info
+        assert "ca_path" in cert_info
+        assert cert_info["cert_path"] == str(mock_cert_path_exists["cert"].absolute())
+        assert cert_info["key_path"] == str(mock_cert_path_exists["key"].absolute())
+        assert cert_info["ca_path"] == str(mock_cert_path_exists["ca"].absolute())
+
+    def test_validate_tls_certificates_with_missing_cert_file(self, redis_security_validator, mock_cert_paths_missing):
         """
         Test that validate_tls_certificates() detects missing certificate file.
 
@@ -87,9 +118,24 @@ class TestValidateTlsCertificates:
             - redis_security_validator: Real validator instance
             - mock_cert_paths_missing: Non-existent file paths
         """
-        pass
+        # Given: Non-existent certificate file path
+        validator = redis_security_validator
+        cert_path = str(mock_cert_paths_missing["cert"])
 
-    def test_validate_tls_certificates_with_missing_key_file(self):
+        # When: validate_tls_certificates() is called with missing file
+        result = validator.validate_tls_certificates(cert_path=cert_path)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates file not found
+        error_message = result["errors"][0]
+        assert "not found" in error_message
+        assert cert_path in error_message
+        assert "Certificate file" in error_message
+
+    def test_validate_tls_certificates_with_missing_key_file(self, redis_security_validator, mock_cert_paths_missing):
         """
         Test that validate_tls_certificates() detects missing private key file.
 
@@ -112,9 +158,24 @@ class TestValidateTlsCertificates:
             - redis_security_validator: Real validator instance
             - mock_cert_paths_missing: Non-existent file paths
         """
-        pass
+        # Given: Non-existent private key file path
+        validator = redis_security_validator
+        key_path = str(mock_cert_paths_missing["key"])
 
-    def test_validate_tls_certificates_with_missing_ca_file(self):
+        # When: validate_tls_certificates() is called with missing key file
+        result = validator.validate_tls_certificates(key_path=key_path)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates private key file not found
+        error_message = result["errors"][0]
+        assert "not found" in error_message
+        assert key_path in error_message
+        assert "Private key file" in error_message
+
+    def test_validate_tls_certificates_with_missing_ca_file(self, redis_security_validator, mock_cert_paths_missing):
         """
         Test that validate_tls_certificates() detects missing CA certificate file.
 
@@ -137,9 +198,24 @@ class TestValidateTlsCertificates:
             - redis_security_validator: Real validator instance
             - mock_cert_paths_missing: Non-existent file paths
         """
-        pass
+        # Given: Non-existent CA certificate file path
+        validator = redis_security_validator
+        ca_path = str(mock_cert_paths_missing["ca"])
 
-    def test_validate_tls_certificates_extracts_expiration_info(self):
+        # When: validate_tls_certificates() is called with missing CA file
+        result = validator.validate_tls_certificates(ca_path=ca_path)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates CA certificate file not found
+        error_message = result["errors"][0]
+        assert "not found" in error_message
+        assert ca_path in error_message
+        assert "CA certificate file" in error_message
+
+    def test_validate_tls_certificates_extracts_expiration_info(self, redis_security_validator, mock_cert_path_exists, mock_x509_certificate, monkeypatch):
         """
         Test that validate_tls_certificates() extracts certificate expiration.
 
@@ -165,9 +241,35 @@ class TestValidateTlsCertificates:
             - mock_x509_certificate: Mock certificate with expiration
             - monkeypatch: Mock certificate parsing
         """
-        pass
+        # Given: Mock certificate parsing setup
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
 
-    def test_validate_tls_certificates_warns_for_expiring_soon(self):
+        # Mock the certificate loading to return our mock certificate
+        def mock_load_pem_x509_certificate(cert_data, backend):
+            return mock_x509_certificate
+
+        with monkeypatch.context() as m:
+            m.setattr("cryptography.x509.load_pem_x509_certificate", mock_load_pem_x509_certificate)
+
+            # When: validate_tls_certificates() is called
+            result = validator.validate_tls_certificates(cert_path=cert_path)
+
+            # Then: Certificate expiration information is extracted
+            assert result["valid"] is True
+            assert "expires" in result["cert_info"]
+            assert "days_until_expiry" in result["cert_info"]
+
+            # And: Expiration information matches mock certificate
+            expected_expiration = mock_x509_certificate.not_valid_after_utc.isoformat()
+            assert result["cert_info"]["expires"] == expected_expiration
+
+            # And: Days until expiry is calculated correctly (should be positive)
+            days_until_expiry = result["cert_info"]["days_until_expiry"]
+            assert isinstance(days_until_expiry, int)
+            assert days_until_expiry > 0  # Mock cert expires in future
+
+    def test_validate_tls_certificates_warns_for_expiring_soon(self, redis_security_validator, mock_cert_path_exists, mock_expiring_certificate, monkeypatch):
         """
         Test that validate_tls_certificates() warns for certificates expiring soon.
 
@@ -193,9 +295,36 @@ class TestValidateTlsCertificates:
             - mock_expiring_certificate: Certificate expiring in 30 days
             - monkeypatch: Mock certificate parsing
         """
-        pass
+        # Given: Certificate expiring soon
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
 
-    def test_validate_tls_certificates_warns_for_90_day_threshold(self):
+        # Mock the certificate loading to return our expiring certificate
+        def mock_load_pem_x509_certificate(cert_data, backend):
+            return mock_expiring_certificate
+
+        with monkeypatch.context() as m:
+            m.setattr("cryptography.x509.load_pem_x509_certificate", mock_load_pem_x509_certificate)
+
+            # When: validate_tls_certificates() is called
+            result = validator.validate_tls_certificates(cert_path=cert_path)
+
+            # Then: Validation passes but warning is generated
+            assert result["valid"] is True
+            assert len(result["warnings"]) > 0
+
+            # And: Warning mentions expiration and renewal
+            warning_message = result["warnings"][0]
+            assert "expires in" in warning_message
+            assert "days" in warning_message
+            assert "renewal" in warning_message.lower()
+
+            # And: Days until expiry is calculated
+            assert "days_until_expiry" in result["cert_info"]
+            days_until_expiry = result["cert_info"]["days_until_expiry"]
+            assert days_until_expiry <= 30  # Should be 30 days or less
+
+    def test_validate_tls_certificates_warns_for_90_day_threshold(self, redis_security_validator, mock_cert_path_exists, mock_x509_certificate, monkeypatch):
         """
         Test that validate_tls_certificates() warns at 90-day threshold.
 
@@ -221,9 +350,42 @@ class TestValidateTlsCertificates:
             - mock_x509_certificate: Configurable expiration
             - monkeypatch: Mock certificate parsing with 75-day expiry
         """
-        pass
+        # Given: Certificate expiring in 75 days
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
 
-    def test_validate_tls_certificates_fails_for_expired_certificate(self):
+        # Configure mock certificate to expire in 75 days
+        from datetime import datetime, timedelta
+        future_date = datetime.utcnow() + timedelta(days=75)
+        mock_x509_certificate.not_valid_after = future_date
+        mock_x509_certificate.not_valid_after_utc = future_date
+
+        # Mock the certificate loading
+        def mock_load_pem_x509_certificate(cert_data, backend):
+            return mock_x509_certificate
+
+        with monkeypatch.context() as m:
+            m.setattr("cryptography.x509.load_pem_x509_certificate", mock_load_pem_x509_certificate)
+
+            # When: validate_tls_certificates() is called
+            result = validator.validate_tls_certificates(cert_path=cert_path)
+
+            # Then: Validation passes with warning
+            assert result["valid"] is True
+            assert len(result["warnings"]) > 0
+
+            # And: Warning includes days until expiry
+            warning_message = result["warnings"][0]
+            assert "expires in" in warning_message
+            # Check for approximately 75 days (90 - 15), accounting for day calculation variations
+            assert any(day_val in warning_message for day_val in ["74", "75", "76"])
+            assert "days" in warning_message
+
+            # And: Days until expiry is calculated correctly
+            days_until_expiry = result["cert_info"]["days_until_expiry"]
+            assert 70 <= days_until_expiry <= 80  # Should be around 75 days
+
+    def test_validate_tls_certificates_fails_for_expired_certificate(self, redis_security_validator, mock_cert_path_exists, mock_expired_certificate, monkeypatch):
         """
         Test that validate_tls_certificates() fails for expired certificates.
 
@@ -248,9 +410,34 @@ class TestValidateTlsCertificates:
             - mock_expired_certificate: Expired certificate
             - monkeypatch: Mock certificate parsing
         """
-        pass
+        # Given: Expired certificate
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
 
-    def test_validate_tls_certificates_extracts_subject_information(self):
+        # Mock the certificate loading to return our expired certificate
+        def mock_load_pem_x509_certificate(cert_data, backend):
+            return mock_expired_certificate
+
+        with monkeypatch.context() as m:
+            m.setattr("cryptography.x509.load_pem_x509_certificate", mock_load_pem_x509_certificate)
+
+            # When: validate_tls_certificates() is called
+            result = validator.validate_tls_certificates(cert_path=cert_path)
+
+            # Then: Validation fails
+            assert result["valid"] is False
+            assert len(result["errors"]) > 0
+
+            # And: Error message indicates expiration
+            error_message = result["errors"][0]
+            assert "expired" in error_message.lower()
+            assert "days ago" in error_message.lower()
+
+            # And: Days until expiry is negative
+            days_until_expiry = result["cert_info"]["days_until_expiry"]
+            assert days_until_expiry < 0  # Should be negative for expired certs
+
+    def test_validate_tls_certificates_extracts_subject_information(self, redis_security_validator, mock_cert_path_exists, mock_x509_certificate, monkeypatch):
         """
         Test that validate_tls_certificates() extracts certificate subject.
 
@@ -275,9 +462,32 @@ class TestValidateTlsCertificates:
             - mock_x509_certificate: Certificate with subject
             - monkeypatch: Mock certificate parsing
         """
-        pass
+        # Given: Certificate with subject information
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
 
-    def test_validate_tls_certificates_warns_without_cryptography_library(self):
+        # Mock the certificate loading to return our certificate with subject
+        def mock_load_pem_x509_certificate(cert_data, backend):
+            return mock_x509_certificate
+
+        with monkeypatch.context() as m:
+            m.setattr("cryptography.x509.load_pem_x509_certificate", mock_load_pem_x509_certificate)
+
+            # When: validate_tls_certificates() is called
+            result = validator.validate_tls_certificates(cert_path=cert_path)
+
+            # Then: Subject information is extracted
+            assert result["valid"] is True
+            assert "subject" in result["cert_info"]
+
+            # And: Subject format is readable and contains expected fields
+            subject = result["cert_info"]["subject"]
+            assert isinstance(subject, str)
+            assert "CN=redis.example.com" in subject
+            assert "O=TestOrg" in subject
+            assert "C=US" in subject
+
+    def test_validate_tls_certificates_warns_without_cryptography_library(self, redis_security_validator, mock_cert_path_exists, mock_cryptography_unavailable):
         """
         Test that validate_tls_certificates() warns when cryptography unavailable.
 
@@ -302,9 +512,30 @@ class TestValidateTlsCertificates:
             - mock_cert_path_exists: Certificate files
             - mock_cryptography_unavailable: Simulate missing library
         """
-        pass
+        # Given: Certificate files exist but cryptography unavailable
+        validator = redis_security_validator
+        cert_path = str(mock_cert_path_exists["cert"])
 
-    def test_validate_tls_certificates_with_none_paths_returns_valid(self):
+        # When: validate_tls_certificates() is called without cryptography
+        result = validator.validate_tls_certificates(cert_path=cert_path)
+
+        # Then: Basic file validation still works
+        assert result["valid"] is True
+        assert "cert_path" in result["cert_info"]
+        assert result["cert_info"]["cert_path"] == str(mock_cert_path_exists["cert"].absolute())
+
+        # And: Warning about missing cryptography library is generated
+        assert len(result["warnings"]) > 0
+        warning_message = result["warnings"][0]
+        assert "cryptography library not available" in warning_message.lower()
+        assert "limited" in warning_message.lower()
+
+        # And: No certificate parsing information is available
+        assert "expires" not in result["cert_info"]
+        assert "days_until_expiry" not in result["cert_info"]
+        assert "subject" not in result["cert_info"]
+
+    def test_validate_tls_certificates_with_none_paths_returns_valid(self, redis_security_validator):
         """
         Test that validate_tls_certificates() handles None paths gracefully.
 
@@ -327,9 +558,23 @@ class TestValidateTlsCertificates:
         Fixtures Used:
             - redis_security_validator: Real validator instance
         """
-        pass
+        # Given: No certificate paths provided
+        validator = redis_security_validator
 
-    def test_validate_tls_certificates_detects_directory_instead_of_file(self):
+        # When: validate_tls_certificates() is called with all None
+        result = validator.validate_tls_certificates(
+            cert_path=None,
+            key_path=None,
+            ca_path=None
+        )
+
+        # Then: Validation succeeds (no certificates to validate)
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert result["warnings"] == []
+        assert result["cert_info"] == {}
+
+    def test_validate_tls_certificates_detects_directory_instead_of_file(self, redis_security_validator, tmp_path):
         """
         Test that validate_tls_certificates() detects directories as invalid.
 
@@ -352,7 +597,22 @@ class TestValidateTlsCertificates:
             - redis_security_validator: Real validator instance
             - tmp_path: Temporary directory for testing
         """
-        pass
+        # Given: Directory path instead of file path
+        validator = redis_security_validator
+        directory_path = str(tmp_path)  # tmp_path is a directory
+
+        # When: validate_tls_certificates() is called with directory path
+        result = validator.validate_tls_certificates(cert_path=directory_path)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates path is not a file
+        error_message = result["errors"][0]
+        assert "not a file" in error_message
+        assert directory_path in error_message
+        assert "Certificate path" in error_message
 
 
 class TestValidateEncryptionKey:
@@ -375,7 +635,7 @@ class TestValidateEncryptionKey:
         - Test cryptography library availability
     """
 
-    def test_validate_encryption_key_with_valid_fernet_key(self):
+    def test_validate_encryption_key_with_valid_fernet_key(self, redis_security_validator, valid_fernet_key):
         """
         Test that validate_encryption_key() accepts valid Fernet key.
 
@@ -400,9 +660,29 @@ class TestValidateEncryptionKey:
             - redis_security_validator: Real validator instance
             - valid_fernet_key: Valid Fernet encryption key
         """
-        pass
+        # Given: Valid Fernet key and validator
+        validator = redis_security_validator
 
-    def test_validate_encryption_key_with_invalid_length(self):
+        # When: validate_encryption_key() is called with valid key
+        result = validator.validate_encryption_key(encryption_key=valid_fernet_key)
+
+        # Then: Validation succeeds
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+        # And: Key information is provided
+        assert "key_info" in result
+        key_info = result["key_info"]
+        assert "format" in key_info
+        assert "length" in key_info
+        assert "status" in key_info
+
+        # And: Key details are correct
+        assert key_info["format"] == "Fernet (AES-128-CBC with HMAC)"
+        assert key_info["length"] == "256-bit"
+        assert key_info["status"] == "Valid and functional"
+
+    def test_validate_encryption_key_with_invalid_length(self, redis_security_validator, invalid_fernet_key_short):
         """
         Test that validate_encryption_key() rejects keys with wrong length.
 
@@ -425,9 +705,23 @@ class TestValidateEncryptionKey:
             - redis_security_validator: Real validator instance
             - invalid_fernet_key_short: Key below minimum length
         """
-        pass
+        # Given: Invalid short key and validator
+        validator = redis_security_validator
 
-    def test_validate_encryption_key_with_invalid_format(self):
+        # When: validate_encryption_key() is called with short key
+        result = validator.validate_encryption_key(encryption_key=invalid_fernet_key_short)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates length issue
+        error_message = result["errors"][0]
+        assert "Invalid encryption key length" in error_message
+        assert str(len(invalid_fernet_key_short)) in error_message
+        assert "44" in error_message  # Expected length
+
+    def test_validate_encryption_key_with_invalid_format(self, redis_security_validator, invalid_fernet_key_format):
         """
         Test that validate_encryption_key() rejects keys with invalid format.
 
@@ -450,9 +744,21 @@ class TestValidateEncryptionKey:
             - redis_security_validator: Real validator instance
             - invalid_fernet_key_format: Invalid base64 format
         """
-        pass
+        # Given: Invalid format key and validator
+        validator = redis_security_validator
 
-    def test_validate_encryption_key_performs_functional_test(self):
+        # When: validate_encryption_key() is called with invalid format
+        result = validator.validate_encryption_key(encryption_key=invalid_fernet_key_format)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates invalid key
+        error_message = result["errors"][0]
+        assert "Invalid encryption key" in error_message
+
+    def test_validate_encryption_key_performs_functional_test(self, redis_security_validator, valid_fernet_key):
         """
         Test that validate_encryption_key() performs encrypt/decrypt test.
 
@@ -476,9 +782,25 @@ class TestValidateEncryptionKey:
             - redis_security_validator: Real validator instance
             - valid_fernet_key: Functional encryption key
         """
-        pass
+        # Given: Valid Fernet key and validator
+        validator = redis_security_validator
 
-    def test_validate_encryption_key_with_none_key_adds_warning(self):
+        # When: validate_encryption_key() is called with functional key
+        result = validator.validate_encryption_key(encryption_key=valid_fernet_key)
+
+        # Then: Validation succeeds with functional status
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+        # And: Key status confirms functionality
+        key_info = result["key_info"]
+        assert key_info["status"] == "Valid and functional"
+
+        # And: Key format and length are correctly identified
+        assert key_info["format"] == "Fernet (AES-128-CBC with HMAC)"
+        assert key_info["length"] == "256-bit"
+
+    def test_validate_encryption_key_with_none_key_adds_warning(self, redis_security_validator, empty_encryption_key):
         """
         Test that validate_encryption_key() handles None key with warning.
 
@@ -502,9 +824,27 @@ class TestValidateEncryptionKey:
             - redis_security_validator: Real validator instance
             - empty_encryption_key: None value
         """
-        pass
+        # Given: None encryption key and validator
+        validator = redis_security_validator
 
-    def test_validate_encryption_key_includes_key_info_for_valid_key(self):
+        # When: validate_encryption_key() is called with None key
+        result = validator.validate_encryption_key(encryption_key=empty_encryption_key)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates no key provided
+        error_message = result["errors"][0]
+        assert "No encryption key provided" in error_message
+
+        # And: Warning about encryption being disabled is generated
+        assert len(result["warnings"]) > 0
+        warning_message = result["warnings"][0]
+        assert "disabled" in warning_message.lower()
+        assert "not recommended for production" in warning_message.lower()
+
+    def test_validate_encryption_key_includes_key_info_for_valid_key(self, redis_security_validator, valid_fernet_key):
         """
         Test that validate_encryption_key() includes key information.
 
@@ -527,9 +867,23 @@ class TestValidateEncryptionKey:
             - redis_security_validator: Real validator instance
             - valid_fernet_key: Valid encryption key
         """
-        pass
+        # Given: Valid Fernet key and validator
+        validator = redis_security_validator
 
-    def test_validate_encryption_key_fails_without_cryptography_library(self):
+        # When: validate_encryption_key() is called with valid key
+        result = validator.validate_encryption_key(encryption_key=valid_fernet_key)
+
+        # Then: Key information is populated
+        assert result["valid"] is True
+        assert "key_info" in result
+
+        # And: All expected fields are present with correct values
+        key_info = result["key_info"]
+        assert key_info["format"] == "Fernet (AES-128-CBC with HMAC)"
+        assert key_info["length"] == "256-bit"
+        assert key_info["status"] == "Valid and functional"
+
+    def test_validate_encryption_key_fails_without_cryptography_library(self, redis_security_validator, valid_fernet_key, mock_cryptography_unavailable):
         """
         Test that validate_encryption_key() fails when cryptography unavailable.
 
@@ -554,7 +908,20 @@ class TestValidateEncryptionKey:
             - valid_fernet_key: Valid key (but can't validate)
             - mock_cryptography_unavailable: Simulate missing library
         """
-        pass
+        # Given: Valid key but cryptography library unavailable
+        validator = redis_security_validator
+
+        # When: validate_encryption_key() is called without cryptography
+        result = validator.validate_encryption_key(encryption_key=valid_fernet_key)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates library unavailable
+        error_message = result["errors"][0]
+        assert "cryptography library not available" in error_message.lower()
+        assert "cannot be validated" in error_message.lower()
 
 
 class TestValidateRedisAuth:
@@ -577,7 +944,7 @@ class TestValidateRedisAuth:
         - Test warning generation for weak passwords
     """
 
-    def test_validate_redis_auth_recognizes_url_embedded_credentials(self):
+    def test_validate_redis_auth_recognizes_url_embedded_credentials(self, redis_security_validator, secure_redis_url_auth):
         """
         Test that validate_redis_auth() detects authentication in URL.
 
@@ -600,9 +967,23 @@ class TestValidateRedisAuth:
             - redis_security_validator: Real validator instance
             - secure_redis_url_auth: URL with authentication
         """
-        pass
+        # Given: Redis URL with embedded credentials and validator
+        validator = redis_security_validator
 
-    def test_validate_redis_auth_extracts_username_from_url(self):
+        # When: validate_redis_auth() is called with authenticated URL
+        result = validator.validate_redis_auth(redis_url=secure_redis_url_auth)
+
+        # Then: Authentication is recognized and validation succeeds
+        assert result["valid"] is True
+        assert result["errors"] == []
+
+        # And: Authentication information is extracted
+        assert "auth_info" in result
+        auth_info = result["auth_info"]
+        assert auth_info["method"] == "URL-embedded credentials"
+        assert auth_info["status"] == "Present"
+
+    def test_validate_redis_auth_extracts_username_from_url(self, redis_security_validator, secure_redis_url_auth):
         """
         Test that validate_redis_auth() extracts username from URL.
 
@@ -625,9 +1006,24 @@ class TestValidateRedisAuth:
             - redis_security_validator: Real validator instance
             - secure_redis_url_auth: URL with user:pass format
         """
-        pass
+        # Given: Redis URL with username and password
+        validator = redis_security_validator
 
-    def test_validate_redis_auth_warns_for_weak_password_in_url(self):
+        # When: validate_redis_auth() is called with URL containing username
+        result = validator.validate_redis_auth(redis_url=secure_redis_url_auth)
+
+        # Then: Authentication is recognized
+        assert result["valid"] is True
+
+        # And: Username is extracted (should be "user" from fixture)
+        auth_info = result["auth_info"]
+        assert "username" in auth_info
+        assert auth_info["username"] == "user"
+
+        # And: Password is not exposed in auth_info (security)
+        assert "password" not in auth_info
+
+    def test_validate_redis_auth_warns_for_weak_password_in_url(self, redis_security_validator, redis_url_with_weak_password):
         """
         Test that validate_redis_auth() warns about weak passwords.
 
@@ -651,9 +1047,27 @@ class TestValidateRedisAuth:
             - redis_security_validator: Real validator instance
             - redis_url_with_weak_password: Short password
         """
-        pass
+        # Given: Redis URL with weak password and validator
+        validator = redis_security_validator
 
-    def test_validate_redis_auth_with_separate_password_parameter(self):
+        # When: validate_redis_auth() is called with weak password
+        result = validator.validate_redis_auth(redis_url=redis_url_with_weak_password)
+
+        # Then: Authentication is recognized but warning is generated
+        assert result["valid"] is True
+
+        # And: Weak password warning is generated
+        assert len(result["warnings"]) > 0
+        warning_message = result["warnings"][0]
+        assert "Weak password" in warning_message
+        assert "16+ characters" in warning_message
+
+        # And: Auth info shows credentials are present
+        auth_info = result["auth_info"]
+        assert auth_info["status"] == "Present"
+        assert auth_info["method"] == "URL-embedded credentials"
+
+    def test_validate_redis_auth_with_separate_password_parameter(self, redis_security_validator, insecure_redis_url):
         """
         Test that validate_redis_auth() accepts separate password parameter.
 
@@ -677,9 +1091,25 @@ class TestValidateRedisAuth:
             - redis_security_validator: Real validator instance
             - insecure_redis_url: URL without embedded auth
         """
-        pass
+        # Given: Redis URL without embedded auth and separate password
+        validator = redis_security_validator
+        separate_password = "strong_password_123456"
 
-    def test_validate_redis_auth_fails_in_production_without_auth(self):
+        # When: validate_redis_auth() is called with separate password
+        result = validator.validate_redis_auth(
+            redis_url=insecure_redis_url,
+            auth_password=separate_password
+        )
+
+        # Then: Authentication is recognized
+        assert result["valid"] is True
+
+        # And: Authentication method is identified as separate configuration
+        auth_info = result["auth_info"]
+        assert auth_info["method"] == "Separate password configuration"
+        assert auth_info["status"] == "Present"
+
+    def test_validate_redis_auth_fails_in_production_without_auth(self, redis_security_validator, insecure_redis_url, fake_production_environment, monkeypatch):
         """
         Test that validate_redis_auth() fails in production without authentication.
 
@@ -706,9 +1136,32 @@ class TestValidateRedisAuth:
             - fake_production_environment: Production environment
             - monkeypatch: Mock get_environment_info()
         """
-        pass
+        # Given: Production environment and insecure Redis URL
+        validator = redis_security_validator
 
-    def test_validate_redis_auth_warns_in_development_without_auth(self):
+        # Mock environment detection to return production
+        def mock_get_env_info(feature_context):
+            return fake_production_environment
+
+        monkeypatch.setattr("app.core.startup.redis_security.get_environment_info", mock_get_env_info)
+
+        # When: validate_redis_auth() is called in production without auth
+        result = validator.validate_redis_auth(redis_url=insecure_redis_url)
+
+        # Then: Validation fails
+        assert result["valid"] is False
+        assert len(result["errors"]) > 0
+
+        # And: Error message indicates missing authentication for production
+        error_message = result["errors"][0]
+        assert "No authentication configured" in error_message
+        assert "production environment" in error_message.lower()
+
+        # And: Auth status is marked as missing
+        auth_info = result["auth_info"]
+        assert auth_info["status"] == "Missing"
+
+    def test_validate_redis_auth_warns_in_development_without_auth(self, redis_security_validator, local_redis_url, fake_development_environment, monkeypatch):
         """
         Test that validate_redis_auth() warns in development without authentication.
 
@@ -734,9 +1187,32 @@ class TestValidateRedisAuth:
             - fake_development_environment: Development environment
             - monkeypatch: Mock get_environment_info()
         """
-        pass
+        # Given: Development environment and local Redis URL
+        validator = redis_security_validator
 
-    def test_validate_redis_auth_handles_password_only_format(self):
+        # Mock environment detection to return development
+        def mock_get_env_info(feature_context):
+            return fake_development_environment
+
+        monkeypatch.setattr("app.core.startup.redis_security.get_environment_info", mock_get_env_info)
+
+        # When: validate_redis_auth() is called in development without auth
+        result = validator.validate_redis_auth(redis_url=local_redis_url)
+
+        # Then: Validation passes but warning is generated
+        assert result["valid"] is True
+        assert len(result["warnings"]) > 0
+
+        # And: Warning mentions development flexibility
+        warning_message = result["warnings"][0]
+        assert "development only" in warning_message.lower()
+        assert "acceptable" in warning_message.lower()
+
+        # And: Auth status is marked as missing
+        auth_info = result["auth_info"]
+        assert auth_info["status"] == "Missing"
+
+    def test_validate_redis_auth_handles_password_only_format(self, redis_security_validator):
         """
         Test that validate_redis_auth() handles password-only URL format.
 
@@ -758,9 +1234,29 @@ class TestValidateRedisAuth:
         Fixtures Used:
             - redis_security_validator: Real validator instance
         """
-        pass
+        # Given: Password-only Redis URL and validator
+        validator = redis_security_validator
+        password_only_url = "redis://:strongpassword123456@redis.example.com:6379"
 
-    def test_validate_redis_auth_handles_url_parsing_errors_gracefully(self):
+        # When: validate_redis_auth() is called with password-only URL
+        result = validator.validate_redis_auth(redis_url=password_only_url)
+
+        # Then: Authentication is recognized
+        assert result["valid"] is True
+
+        # And: Password-only format is detected
+        auth_info = result["auth_info"]
+        assert auth_info["method"] == "URL-embedded credentials"
+        assert auth_info["status"] == "Present"
+        # Password-only detection - check for either the key or the concept
+        if "password_only" in auth_info:
+            assert auth_info["password_only"] is True
+        else:
+            # If password_only key doesn't exist, verify we have a password-only URL structure
+            # by checking there's no username extracted (only password)
+            assert "username" not in auth_info or auth_info.get("username") == "(default)"
+
+    def test_validate_redis_auth_handles_url_parsing_errors_gracefully(self, redis_security_validator, malformed_redis_url):
         """
         Test that validate_redis_auth() handles malformed URLs gracefully.
 
@@ -783,4 +1279,25 @@ class TestValidateRedisAuth:
             - redis_security_validator: Real validator instance
             - malformed_redis_url: Invalid URL format
         """
-        pass
+        # Given: Malformed Redis URL and validator
+        validator = redis_security_validator
+
+        # When: validate_redis_auth() is called with malformed URL
+        result = validator.validate_redis_auth(redis_url=malformed_redis_url)
+
+        # Then: Validation completes without exceptions
+        assert isinstance(result, dict)
+        assert "valid" in result
+        assert "errors" in result
+        assert "warnings" in result
+        assert "auth_info" in result
+
+        # And: Warning about authentication or parsing is generated
+        assert len(result["warnings"]) > 0
+        warning_message = result["warnings"][0]
+        # Check for either parsing error or no authentication configured message
+        assert any(phrase in warning_message.lower() for phrase in ["parse", "authentication", "no authentication"])
+
+        # And: Authentication is marked as missing
+        auth_info = result["auth_info"]
+        assert auth_info["status"] == "Missing"
