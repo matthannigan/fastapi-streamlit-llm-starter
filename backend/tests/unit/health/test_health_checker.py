@@ -14,6 +14,10 @@ Test Coverage:
 """
 
 import pytest
+import asyncio
+import time
+from unittest.mock import AsyncMock, call
+
 from app.infrastructure.monitoring.health import (
     HealthChecker,
     HealthStatus,
@@ -62,7 +66,11 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests bare instantiation
         """
-        pass
+        checker = HealthChecker()
+        assert checker._default_timeout_ms == 2000
+        assert checker._retry_count == 1
+        assert checker._backoff_base_seconds == 0.1
+        assert checker._checks == {}
 
     def test_healthchecker_accepts_custom_default_timeout(self):
         """
@@ -84,7 +92,8 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests configuration parameter
         """
-        pass
+        checker = HealthChecker(default_timeout_ms=5000)
+        assert checker._default_timeout_ms == 5000
 
     def test_healthchecker_accepts_per_component_timeouts(self):
         """
@@ -111,7 +120,13 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests configuration parameter
         """
-        pass
+        timeouts = {
+            "database": 5000,
+            "cache": 1000,
+            "ai_model": 3000
+        }
+        checker = HealthChecker(per_component_timeouts_ms=timeouts)
+        assert checker._per_component_timeouts_ms == timeouts
 
     def test_healthchecker_accepts_custom_retry_configuration(self):
         """
@@ -134,7 +149,9 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests configuration parameter
         """
-        pass
+        checker = HealthChecker(retry_count=3, backoff_base_seconds=0.5)
+        assert checker._retry_count == 3
+        assert checker._backoff_base_seconds == 0.5
 
     def test_healthchecker_handles_zero_retry_count(self):
         """
@@ -156,7 +173,8 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests configuration parameter
         """
-        pass
+        checker = HealthChecker(retry_count=0)
+        assert checker._retry_count == 0
 
     def test_healthchecker_validates_retry_count_negative_values(self):
         """
@@ -178,7 +196,8 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests defensive parameter validation
         """
-        pass
+        checker = HealthChecker(retry_count=-1)
+        assert checker._retry_count == 0
 
     def test_healthchecker_validates_backoff_negative_values(self):
         """
@@ -200,7 +219,8 @@ class TestHealthCheckerInitialization:
         Fixtures Used:
             None - tests defensive parameter validation
         """
-        pass
+        checker = HealthChecker(backoff_base_seconds=-0.5)
+        assert checker._backoff_base_seconds == 0.0
 
 
 class TestHealthCheckerRegistration:
@@ -240,7 +260,12 @@ class TestHealthCheckerRegistration:
         Fixtures Used:
             None - tests basic registration with simple async lambda
         """
-        pass
+        checker = HealthChecker()
+        async def check_db():
+            return ComponentStatus(name="database", status=HealthStatus.HEALTHY)
+        checker.register_check("database", check_db)
+        assert "database" in checker._checks
+        assert checker._checks["database"] == check_db
 
     def test_register_check_overwrites_existing_registration(self):
         """
@@ -263,7 +288,14 @@ class TestHealthCheckerRegistration:
         Fixtures Used:
             None - tests registration overwrite behavior
         """
-        pass
+        checker = HealthChecker()
+        async def old_check():
+            pass
+        async def new_check():
+            pass
+        checker.register_check("database", old_check)
+        checker.register_check("database", new_check)
+        assert checker._checks["database"] == new_check
 
     def test_register_check_raises_valueerror_for_empty_component_name(self):
         """
@@ -287,7 +319,11 @@ class TestHealthCheckerRegistration:
         Fixtures Used:
             None - tests input validation
         """
-        pass
+        checker = HealthChecker()
+        async def check_func():
+            pass
+        with pytest.raises(ValueError, match="non-empty string"):
+            checker.register_check("", check_func)
 
     def test_register_check_raises_valueerror_for_none_component_name(self):
         """
@@ -310,7 +346,11 @@ class TestHealthCheckerRegistration:
         Fixtures Used:
             None - tests input validation
         """
-        pass
+        checker = HealthChecker()
+        async def check_func():
+            pass
+        with pytest.raises(ValueError):
+            checker.register_check(None, check_func)
 
     def test_register_check_raises_typeerror_for_non_async_function(self):
         """
@@ -333,7 +373,11 @@ class TestHealthCheckerRegistration:
         Fixtures Used:
             None - tests function type validation
         """
-        pass
+        checker = HealthChecker()
+        def sync_func():
+            pass
+        with pytest.raises(TypeError, match="async function"):
+            checker.register_check("service", sync_func)
 
     def test_register_check_accepts_component_names_with_underscores(self):
         """
@@ -356,9 +400,14 @@ class TestHealthCheckerRegistration:
         Fixtures Used:
             None - tests naming convention support
         """
-        pass
+        checker = HealthChecker()
+        async def check_func():
+            pass
+        checker.register_check("ai_model", check_func)
+        assert "ai_model" in checker._checks
 
 
+@pytest.mark.asyncio
 class TestHealthCheckerComponentExecution:
     """
     Test suite for individual component health check execution.
@@ -375,7 +424,7 @@ class TestHealthCheckerComponentExecution:
         alerting, and degradation detection.
     """
 
-    def test_check_component_executes_registered_health_check(self):
+    async def test_check_component_executes_registered_health_check(self):
         """
         Test that check_component executes registered health check successfully.
 
@@ -398,9 +447,19 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with simple async lambda returning ComponentStatus
         """
-        pass
+        checker = HealthChecker()
+        healthy_status = ComponentStatus(name="database", status=HealthStatus.HEALTHY)
+        check_func = AsyncMock(return_value=healthy_status)
+        checker.register_check("database", check_func)
 
-    def test_check_component_raises_valueerror_for_unregistered_component(self):
+        result = await checker.check_component("database")
+
+        check_func.assert_awaited_once()
+        assert result.name == "database"
+        assert result.status == HealthStatus.HEALTHY
+        assert result.response_time_ms > 0
+
+    async def test_check_component_raises_valueerror_for_unregistered_component(self):
         """
         Test that check_component raises ValueError for unregistered component.
 
@@ -421,9 +480,11 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests validation logic
         """
-        pass
+        checker = HealthChecker()
+        with pytest.raises(ValueError, match="not registered"):
+            await checker.check_component("nonexistent")
 
-    def test_check_component_applies_default_timeout(self):
+    async def test_check_component_applies_default_timeout(self):
         """
         Test that check_component applies default timeout to health checks.
 
@@ -435,20 +496,28 @@ class TestHealthCheckerComponentExecution:
             Prevents slow health checks from blocking system health reporting.
 
         Scenario:
-            Given: A HealthChecker instance with default_timeout_ms=1000
-            And: A registered component with slow health check (>1000ms)
+            Given: A HealthChecker instance with default_timeout_ms=10
+            And: A registered component with slow health check (>10ms)
             And: No component-specific timeout configured
             When: check_component("slow_component") is called
-            Then: Health check times out after ~1000ms
+            Then: Health check times out after ~10ms
             And: ComponentStatus is returned with DEGRADED status
             And: Message indicates timeout occurred
 
         Fixtures Used:
             None - tests with async sleep to simulate slow check
         """
-        pass
+        checker = HealthChecker(default_timeout_ms=10, retry_count=0)
+        async def slow_check():
+            await asyncio.sleep(0.1)
+            return ComponentStatus(name="slow", status=HealthStatus.HEALTHY)
+        checker.register_check("slow", slow_check)
 
-    def test_check_component_applies_per_component_timeout(self):
+        result = await checker.check_component("slow")
+        assert result.status == HealthStatus.DEGRADED
+        assert "timed out" in result.message
+
+    async def test_check_component_applies_per_component_timeout(self):
         """
         Test that check_component applies component-specific timeout override.
 
@@ -461,20 +530,27 @@ class TestHealthCheckerComponentExecution:
             performance characteristics.
 
         Scenario:
-            Given: A HealthChecker instance with default_timeout_ms=2000
-            And: Per-component timeout for "database" set to 5000ms
-            And: A registered "database" component with 3000ms health check
-            When: check_component("database") is called
-            Then: Health check completes successfully (within 5000ms)
+            Given: A HealthChecker instance with default_timeout_ms=10
+            And: Per-component timeout for "db" set to 200ms
+            And: A registered "db" component with 100ms health check
+            When: check_component("db") is called
+            Then: Health check completes successfully (within 200ms)
             And: ComponentStatus is returned with HEALTHY status
             And: Health check is not timed out
 
         Fixtures Used:
             None - tests with async sleep to verify timeout override
         """
-        pass
+        checker = HealthChecker(default_timeout_ms=10, per_component_timeouts_ms={"db": 200})
+        async def medium_check():
+            await asyncio.sleep(0.1)
+            return ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+        checker.register_check("db", medium_check)
 
-    def test_check_component_retries_on_failure(self):
+        result = await checker.check_component("db")
+        assert result.status == HealthStatus.HEALTHY
+
+    async def test_check_component_retries_on_failure(self):
         """
         Test that check_component retries failed health checks per retry policy.
 
@@ -497,9 +573,20 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with stateful async function that fails then succeeds
         """
-        pass
+        checker = HealthChecker(retry_count=2)
+        mock_check = AsyncMock(
+            side_effect=[
+                Exception("transient error"),
+                ComponentStatus(name="transient", status=HealthStatus.HEALTHY)
+            ]
+        )
+        checker.register_check("transient", mock_check)
 
-    def test_check_component_implements_exponential_backoff(self):
+        result = await checker.check_component("transient")
+        assert result.status == HealthStatus.HEALTHY
+        assert mock_check.call_count == 2
+
+    async def test_check_component_implements_exponential_backoff(self, monkeypatch):
         """
         Test that check_component uses exponential backoff between retries.
 
@@ -522,9 +609,21 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with timing measurement of retry delays
         """
-        pass
+        checker = HealthChecker(retry_count=3, backoff_base_seconds=0.1)
+        check_func = AsyncMock(side_effect=Exception("permanent error"))
+        checker.register_check("failing", check_func)
 
-    def test_check_component_returns_degraded_for_timeout_errors(self):
+        mock_sleep = AsyncMock()
+        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+
+        await checker.check_component("failing")
+
+        assert mock_sleep.call_count == 3
+        assert mock_sleep.call_args_list[0] == call(0.1)
+        assert mock_sleep.call_args_list[1] == call(0.2)
+        assert mock_sleep.call_args_list[2] == call(0.4)
+
+    async def test_check_component_returns_degraded_for_timeout_errors(self):
         """
         Test that check_component returns DEGRADED status for timeout errors.
 
@@ -547,9 +646,16 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with async sleep to force timeout
         """
-        pass
+        checker = HealthChecker(default_timeout_ms=10, retry_count=1)
+        async def slow_check():
+            await asyncio.sleep(0.1)
+        checker.register_check("slow", slow_check)
 
-    def test_check_component_returns_unhealthy_for_execution_errors(self):
+        result = await checker.check_component("slow")
+        assert result.status == HealthStatus.DEGRADED
+        assert "timed out" in result.message
+
+    async def test_check_component_returns_unhealthy_for_execution_errors(self):
         """
         Test that check_component returns UNHEALTHY status for execution errors.
 
@@ -572,9 +678,16 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with async function that raises exception
         """
-        pass
+        checker = HealthChecker(retry_count=1)
+        check_func = AsyncMock(side_effect=ValueError("permanent error"))
+        checker.register_check("broken", check_func)
 
-    def test_check_component_tracks_total_response_time_including_retries(self):
+        result = await checker.check_component("broken")
+        assert result.status == HealthStatus.UNHEALTHY
+        assert "permanent error" in result.message
+        assert check_func.call_count == 2
+
+    async def test_check_component_tracks_total_response_time_including_retries(self):
         """
         Test that check_component tracks total execution time including retries.
 
@@ -598,9 +711,23 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with timing measurement
         """
-        pass
+        checker = HealthChecker(retry_count=1, backoff_base_seconds=0.1)
+        side_effects = [
+            Exception("transient error"),
+            ComponentStatus(name="c", status=HealthStatus.HEALTHY)
+        ]
+        check_func = AsyncMock(side_effect=side_effects)
+        checker.register_check("c", check_func)
 
-    def test_check_component_preserves_original_response_timing_on_success(self):
+        start_time = time.perf_counter()
+        result = await checker.check_component("c")
+        end_time = time.perf_counter()
+
+        assert result.status == HealthStatus.HEALTHY
+        assert (end_time - start_time) * 1000 >= 100 # backoff is 0.1s
+        assert result.response_time_ms >= 100
+
+    async def test_check_component_preserves_original_response_timing_on_success(self):
         """
         Test that check_component preserves health check response timing when successful.
 
@@ -621,9 +748,13 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with ComponentStatus containing specific timing
         """
-        pass
+        checker = HealthChecker()
+        status = ComponentStatus(name="c", status=HealthStatus.HEALTHY, response_time_ms=25.5)
+        checker.register_check("c", AsyncMock(return_value=status))
+        result = await checker.check_component("c")
+        assert result.response_time_ms >= 25.5
 
-    def test_check_component_logs_warning_for_timeout_failures(self):
+    async def test_check_component_logs_warning_for_timeout_failures(self, caplog):
         """
         Test that check_component logs warnings for timeout errors.
 
@@ -645,9 +776,15 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with caplog fixture to verify logging
         """
-        pass
+        checker = HealthChecker(default_timeout_ms=10, retry_count=0)
+        async def slow_check():
+            await asyncio.sleep(0.1)
+        checker.register_check("slow", slow_check)
+        await checker.check_component("slow")
+        assert "timed out" in caplog.text
+        assert "slow" in caplog.text
 
-    def test_check_component_logs_warning_for_execution_failures(self):
+    async def test_check_component_logs_warning_for_execution_failures(self, caplog):
         """
         Test that check_component logs warnings for execution errors.
 
@@ -669,9 +806,15 @@ class TestHealthCheckerComponentExecution:
         Fixtures Used:
             None - tests with caplog fixture to verify logging
         """
-        pass
+        checker = HealthChecker(retry_count=0)
+        checker.register_check("failing", AsyncMock(side_effect=Exception("error")))
+        await checker.check_component("failing")
+        assert "failed" in caplog.text
+        assert "failing" in caplog.text
+        assert "error" in caplog.text
 
 
+@pytest.mark.asyncio
 class TestHealthCheckerSystemAggregation:
     """
     Test suite for system-wide health check aggregation.
@@ -687,7 +830,7 @@ class TestHealthCheckerSystemAggregation:
         for monitoring dashboards, alerting systems, and load balancers.
     """
 
-    def test_check_all_components_executes_all_registered_checks_concurrently(self):
+    async def test_check_all_components_executes_all_registered_checks_concurrently(self):
         """
         Test that check_all_components executes all registered health checks in parallel.
 
@@ -709,9 +852,24 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with multiple async health check functions
         """
-        pass
+        checker = HealthChecker()
+        async def check1():
+            await asyncio.sleep(0.1)
+            return ComponentStatus(name="c1", status=HealthStatus.HEALTHY)
+        async def check2():
+            await asyncio.sleep(0.2)
+            return ComponentStatus(name="c2", status=HealthStatus.HEALTHY)
+        checker.register_check("c1", check1)
+        checker.register_check("c2", check2)
 
-    def test_check_all_components_returns_healthy_when_all_components_healthy(self):
+        start_time = time.perf_counter()
+        result = await checker.check_all_components()
+        end_time = time.perf_counter()
+
+        assert len(result.components) == 2
+        assert (end_time - start_time) < 0.3 # Should be ~0.2, not 0.3
+
+    async def test_check_all_components_returns_healthy_when_all_components_healthy(self):
         """
         Test that check_all_components returns HEALTHY when all components are healthy.
 
@@ -734,9 +892,15 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with multiple healthy component mocks
         """
-        pass
+        checker = HealthChecker()
+        checker.register_check("c1", AsyncMock(return_value=ComponentStatus(name="c1", status=HealthStatus.HEALTHY)))
+        checker.register_check("c2", AsyncMock(return_value=ComponentStatus(name="c2", status=HealthStatus.HEALTHY)))
+        result = await checker.check_all_components()
+        assert result.overall_status == HealthStatus.HEALTHY
+        assert len(result.components) == 2
+        assert result.timestamp is not None
 
-    def test_check_all_components_returns_degraded_when_any_component_degraded(self):
+    async def test_check_all_components_returns_degraded_when_any_component_degraded(self):
         """
         Test that check_all_components returns DEGRADED when any component is degraded.
 
@@ -761,9 +925,13 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with mixed component statuses
         """
-        pass
+        checker = HealthChecker()
+        checker.register_check("db", AsyncMock(return_value=ComponentStatus(name="db", status=HealthStatus.HEALTHY)))
+        checker.register_check("cache", AsyncMock(return_value=ComponentStatus(name="cache", status=HealthStatus.DEGRADED)))
+        result = await checker.check_all_components()
+        assert result.overall_status == HealthStatus.DEGRADED
 
-    def test_check_all_components_returns_unhealthy_when_any_component_unhealthy(self):
+    async def test_check_all_components_returns_unhealthy_when_any_component_unhealthy(self):
         """
         Test that check_all_components returns UNHEALTHY when any component is unhealthy.
 
@@ -788,9 +956,14 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with worst-case status scenario
         """
-        pass
+        checker = HealthChecker()
+        checker.register_check("db", AsyncMock(return_value=ComponentStatus(name="db", status=HealthStatus.HEALTHY)))
+        checker.register_check("cache", AsyncMock(return_value=ComponentStatus(name="cache", status=HealthStatus.DEGRADED)))
+        checker.register_check("ai", AsyncMock(return_value=ComponentStatus(name="ai", status=HealthStatus.UNHEALTHY)))
+        result = await checker.check_all_components()
+        assert result.overall_status == HealthStatus.UNHEALTHY
 
-    def test_check_all_components_returns_healthy_for_empty_component_list(self):
+    async def test_check_all_components_returns_healthy_for_empty_component_list(self):
         """
         Test that check_all_components returns HEALTHY when no components registered.
 
@@ -812,9 +985,13 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with unconfigured HealthChecker
         """
-        pass
+        checker = HealthChecker()
+        result = await checker.check_all_components()
+        assert result.overall_status == HealthStatus.HEALTHY
+        assert len(result.components) == 0
+        assert result.timestamp is not None
 
-    def test_check_all_components_includes_execution_timestamp(self):
+    async def test_check_all_components_includes_execution_timestamp(self):
         """
         Test that check_all_components includes timestamp in SystemHealthStatus.
 
@@ -835,9 +1012,14 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests timestamp generation
         """
-        pass
+        checker = HealthChecker()
+        checker.register_check("c1", AsyncMock(return_value=ComponentStatus(name="c1", status=HealthStatus.HEALTHY)))
+        start_time = time.time()
+        result = await checker.check_all_components()
+        end_time = time.time()
+        assert start_time <= result.timestamp <= end_time
 
-    def test_check_all_components_preserves_individual_component_response_times(self):
+    async def test_check_all_components_preserves_individual_component_response_times(self):
         """
         Test that check_all_components preserves individual component timing.
 
@@ -859,9 +1041,12 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with components returning specific timing values
         """
-        pass
+        checker = HealthChecker()
+        checker.register_check("c1", AsyncMock(return_value=ComponentStatus(name="c1", status=HealthStatus.HEALTHY, response_time_ms=50)))
+        result = await checker.check_all_components()
+        assert result.components[0].response_time_ms >= 50
 
-    def test_check_all_components_preserves_component_metadata(self):
+    async def test_check_all_components_preserves_component_metadata(self):
         """
         Test that check_all_components preserves component-specific metadata.
 
@@ -883,9 +1068,13 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with components returning metadata dictionaries
         """
-        pass
+        checker = HealthChecker()
+        metadata = {"key": "value"}
+        checker.register_check("c1", AsyncMock(return_value=ComponentStatus(name="c1", status=HealthStatus.HEALTHY, metadata=metadata)))
+        result = await checker.check_all_components()
+        assert result.components[0].metadata == metadata
 
-    def test_check_all_components_applies_timeout_and_retry_to_each_component(self):
+    async def test_check_all_components_applies_timeout_and_retry_to_each_component(self):
         """
         Test that check_all_components applies timeout/retry policies independently.
 
@@ -897,8 +1086,8 @@ class TestHealthCheckerSystemAggregation:
             Ensures resilient health monitoring even with failing components.
 
         Scenario:
-            Given: A HealthChecker instance with retry_count=2
-            And: Multiple components, some failing transiently
+            Given: A HealthChecker instance with retry_count=1
+            And: Multiple components, some failing transiently, some slow
             When: check_all_components() is called
             Then: Each component's health check receives timeout protection
             And: Each component's failures are retried independently
@@ -908,9 +1097,28 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests with mixed failure scenarios
         """
-        pass
+        checker = HealthChecker(default_timeout_ms=50, retry_count=1)
+        
+        # This one will succeed on retry
+        c1_mock = AsyncMock(side_effect=[Exception, ComponentStatus(name="c1", status=HealthStatus.HEALTHY)])
+        checker.register_check("c1", c1_mock)
 
-    def test_check_all_components_handles_component_exceptions_gracefully(self):
+        # This one will time out
+        async def slow_check():
+            await asyncio.sleep(0.1)
+        checker.register_check("c2", slow_check)
+
+        result = await checker.check_all_components()
+        
+        c1_status = next(c for c in result.components if c.name == "c1")
+        c2_status = next(c for c in result.components if c.name == "c2")
+
+        assert c1_status.status == HealthStatus.HEALTHY
+        assert c1_mock.call_count == 2
+        assert c2_status.status == HealthStatus.DEGRADED
+        assert "timed out" in c2_status.message
+
+    async def test_check_all_components_handles_component_exceptions_gracefully(self):
         """
         Test that check_all_components continues when individual components fail.
 
@@ -933,7 +1141,16 @@ class TestHealthCheckerSystemAggregation:
         Fixtures Used:
             None - tests error isolation in concurrent execution
         """
-        pass
+        checker = HealthChecker(retry_count=0)
+        checker.register_check("c1", AsyncMock(return_value=ComponentStatus(name="c1", status=HealthStatus.HEALTHY)))
+        checker.register_check("c2", AsyncMock(side_effect=Exception("error")))
+
+        result = await checker.check_all_components()
+        assert result.overall_status == HealthStatus.UNHEALTHY
+        c1_status = next(c for c in result.components if c.name == "c1")
+        c2_status = next(c for c in result.components if c.name == "c2")
+        assert c1_status.status == HealthStatus.HEALTHY
+        assert c2_status.status == HealthStatus.UNHEALTHY
 
 
 class TestHealthCheckerInternalStatusAggregation:
@@ -969,7 +1186,11 @@ class TestHealthCheckerInternalStatusAggregation:
         Fixtures Used:
             None - tests static method with ComponentStatus list
         """
-        pass
+        components = [
+            ComponentStatus(name="c1", status=HealthStatus.HEALTHY),
+            ComponentStatus(name="c2", status=HealthStatus.HEALTHY),
+        ]
+        assert HealthChecker._determine_overall_status(components) == HealthStatus.HEALTHY
 
     def test_determine_overall_status_returns_degraded_for_any_degraded_component(self):
         """
@@ -990,7 +1211,11 @@ class TestHealthCheckerInternalStatusAggregation:
         Fixtures Used:
             None - tests static method with mixed statuses
         """
-        pass
+        components = [
+            ComponentStatus(name="c1", status=HealthStatus.HEALTHY),
+            ComponentStatus(name="c2", status=HealthStatus.DEGRADED),
+        ]
+        assert HealthChecker._determine_overall_status(components) == HealthStatus.DEGRADED
 
     def test_determine_overall_status_returns_unhealthy_for_any_unhealthy_component(self):
         """
@@ -1012,7 +1237,11 @@ class TestHealthCheckerInternalStatusAggregation:
         Fixtures Used:
             None - tests static method with worst-case scenario
         """
-        pass
+        components = [
+            ComponentStatus(name="c1", status=HealthStatus.HEALTHY),
+            ComponentStatus(name="c2", status=HealthStatus.UNHEALTHY),
+        ]
+        assert HealthChecker._determine_overall_status(components) == HealthStatus.UNHEALTHY
 
     def test_determine_overall_status_returns_healthy_for_empty_component_list(self):
         """
@@ -1033,7 +1262,7 @@ class TestHealthCheckerInternalStatusAggregation:
         Fixtures Used:
             None - tests static method with empty list
         """
-        pass
+        assert HealthChecker._determine_overall_status([]) == HealthStatus.HEALTHY
 
     def test_determine_overall_status_prioritizes_unhealthy_over_degraded(self):
         """
@@ -1055,7 +1284,11 @@ class TestHealthCheckerInternalStatusAggregation:
         Fixtures Used:
             None - tests precedence rules in aggregation
         """
-        pass
+        components = [
+            ComponentStatus(name="c1", status=HealthStatus.DEGRADED),
+            ComponentStatus(name="c2", status=HealthStatus.UNHEALTHY),
+        ]
+        assert HealthChecker._determine_overall_status(components) == HealthStatus.UNHEALTHY
 
     def test_determine_overall_status_ignores_response_times_in_aggregation(self):
         """
@@ -1077,4 +1310,8 @@ class TestHealthCheckerInternalStatusAggregation:
         Fixtures Used:
             None - tests that timing is separate from health status
         """
-        pass
+        components = [
+            ComponentStatus(name="c1", status=HealthStatus.HEALTHY, response_time_ms=1000),
+            ComponentStatus(name="c2", status=HealthStatus.HEALTHY, response_time_ms=2000),
+        ]
+        assert HealthChecker._determine_overall_status(components) == HealthStatus.HEALTHY

@@ -12,6 +12,7 @@ Test Coverage:
 """
 
 import pytest
+import time
 from app.infrastructure.monitoring.health import (
     HealthStatus,
     ComponentStatus,
@@ -54,7 +55,8 @@ class TestHealthStatusEnum:
         Fixtures Used:
             None - tests enum definition
         """
-        pass
+        assert HealthStatus.HEALTHY is not None
+        assert HealthStatus.HEALTHY.value == "healthy"
 
     def test_health_status_has_degraded_value(self):
         """
@@ -75,7 +77,8 @@ class TestHealthStatusEnum:
         Fixtures Used:
             None - tests enum definition
         """
-        pass
+        assert HealthStatus.DEGRADED is not None
+        assert HealthStatus.DEGRADED.value == "degraded"
 
     def test_health_status_has_unhealthy_value(self):
         """
@@ -96,7 +99,8 @@ class TestHealthStatusEnum:
         Fixtures Used:
             None - tests enum definition
         """
-        pass
+        assert HealthStatus.UNHEALTHY is not None
+        assert HealthStatus.UNHEALTHY.value == "unhealthy"
 
     def test_health_status_values_are_lowercase_strings(self):
         """
@@ -119,7 +123,12 @@ class TestHealthStatusEnum:
         Fixtures Used:
             None - tests enum value format
         """
-        pass
+        assert HealthStatus.HEALTHY.value == "healthy"
+        assert HealthStatus.DEGRADED.value == "degraded"
+        assert HealthStatus.UNHEALTHY.value == "unhealthy"
+        for status in HealthStatus:
+            assert isinstance(status.value, str)
+            assert status.value.islower()
 
     def test_health_status_supports_equality_comparison(self):
         """
@@ -141,7 +150,9 @@ class TestHealthStatusEnum:
         Fixtures Used:
             None - tests enum comparison
         """
-        pass
+        assert HealthStatus.HEALTHY == HealthStatus.HEALTHY
+        assert HealthStatus.HEALTHY != HealthStatus.DEGRADED
+        assert HealthStatus.DEGRADED != HealthStatus.UNHEALTHY
 
 
 class TestComponentStatus:
@@ -180,7 +191,9 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests dataclass instantiation
         """
-        pass
+        status = ComponentStatus(name="database", status=HealthStatus.HEALTHY)
+        assert status.name == "database"
+        assert status.status == HealthStatus.HEALTHY
 
     def test_component_status_includes_optional_message_field(self):
         """
@@ -202,7 +215,8 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests optional field
         """
-        pass
+        status = ComponentStatus(name="db", status=HealthStatus.HEALTHY, message="OK")
+        assert status.message == "OK"
 
     def test_component_status_message_defaults_to_empty_string(self):
         """
@@ -223,7 +237,8 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests default value
         """
-        pass
+        status = ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+        assert status.message == ""
 
     def test_component_status_includes_response_time_field(self):
         """
@@ -244,7 +259,8 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests timing field
         """
-        pass
+        status = ComponentStatus(name="db", status=HealthStatus.HEALTHY, response_time_ms=45.2)
+        assert status.response_time_ms == 45.2
 
     def test_component_status_response_time_defaults_to_zero(self):
         """
@@ -265,7 +281,8 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests default value
         """
-        pass
+        status = ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+        assert status.response_time_ms == 0.0
 
     def test_component_status_includes_optional_metadata_field(self):
         """
@@ -288,7 +305,9 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests optional metadata
         """
-        pass
+        metadata = {"key": "value"}
+        status = ComponentStatus(name="db", status=HealthStatus.HEALTHY, metadata=metadata)
+        assert status.metadata == metadata
 
     def test_component_status_metadata_defaults_to_none(self):
         """
@@ -309,7 +328,8 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests default value
         """
-        pass
+        status = ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+        assert status.metadata is None
 
     def test_component_status_supports_complete_instantiation(self):
         """
@@ -336,7 +356,19 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests complete instantiation
         """
-        pass
+        metadata = {"connection_pool": "active", "query_test": "passed"}
+        status = ComponentStatus(
+            name="database",
+            status=HealthStatus.HEALTHY,
+            message="Connection successful",
+            response_time_ms=45.2,
+            metadata=metadata
+        )
+        assert status.name == "database"
+        assert status.status == HealthStatus.HEALTHY
+        assert status.message == "Connection successful"
+        assert status.response_time_ms == 45.2
+        assert status.metadata == metadata
 
     def test_component_status_supports_dataclass_equality(self):
         """
@@ -357,7 +389,11 @@ class TestComponentStatus:
         Fixtures Used:
             None - tests dataclass equality
         """
-        pass
+        s1 = ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+        s2 = ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+        s3 = ComponentStatus(name="db", status=HealthStatus.DEGRADED)
+        assert s1 == s2
+        assert s1 != s3
 
 
 class TestSystemHealthStatus:
@@ -396,7 +432,15 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests dataclass instantiation
         """
-        pass
+        ts = time.time()
+        status = SystemHealthStatus(
+            overall_status=HealthStatus.HEALTHY,
+            components=[],
+            timestamp=ts
+        )
+        assert status.overall_status == HealthStatus.HEALTHY
+        assert status.components == []
+        assert status.timestamp == ts
 
     def test_system_health_status_includes_overall_status_field(self):
         """
@@ -417,7 +461,9 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests required field
         """
-        pass
+        status = SystemHealthStatus(overall_status=HealthStatus.DEGRADED, components=[], timestamp=time.time())
+        assert status.overall_status == HealthStatus.DEGRADED
+        assert isinstance(status.overall_status, HealthStatus)
 
     def test_system_health_status_includes_components_list(self):
         """
@@ -439,7 +485,10 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests components list
         """
-        pass
+        components = [ComponentStatus(name="db", status=HealthStatus.HEALTHY)]
+        status = SystemHealthStatus(overall_status=HealthStatus.HEALTHY, components=components, timestamp=time.time())
+        assert isinstance(status.components, list)
+        assert status.components[0].name == "db"
 
     def test_system_health_status_includes_timestamp_field(self):
         """
@@ -461,7 +510,10 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests timestamp field
         """
-        pass
+        ts = time.time()
+        status = SystemHealthStatus(overall_status=HealthStatus.HEALTHY, components=[], timestamp=ts)
+        assert isinstance(status.timestamp, float)
+        assert status.timestamp == ts
 
     def test_system_health_status_supports_empty_components_list(self):
         """
@@ -483,7 +535,8 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests edge case
         """
-        pass
+        status = SystemHealthStatus(overall_status=HealthStatus.HEALTHY, components=[], timestamp=time.time())
+        assert status.components == []
 
     def test_system_health_status_supports_complete_instantiation(self):
         """
@@ -508,7 +561,15 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests complete instantiation
         """
-        pass
+        components = [
+            ComponentStatus(name="db", status=HealthStatus.HEALTHY),
+            ComponentStatus(name="cache", status=HealthStatus.DEGRADED)
+        ]
+        ts = time.time()
+        status = SystemHealthStatus(overall_status=HealthStatus.DEGRADED, components=components, timestamp=ts)
+        assert status.overall_status == HealthStatus.DEGRADED
+        assert status.components == components
+        assert status.timestamp == ts
 
     def test_system_health_status_supports_dataclass_equality(self):
         """
@@ -529,7 +590,12 @@ class TestSystemHealthStatus:
         Fixtures Used:
             None - tests dataclass equality
         """
-        pass
+        ts = time.time()
+        s1 = SystemHealthStatus(overall_status=HealthStatus.HEALTHY, components=[], timestamp=ts)
+        s2 = SystemHealthStatus(overall_status=HealthStatus.HEALTHY, components=[], timestamp=ts)
+        s3 = SystemHealthStatus(overall_status=HealthStatus.DEGRADED, components=[], timestamp=ts)
+        assert s1 == s2
+        assert s1 != s3
 
 
 class TestHealthCheckExceptions:
@@ -567,7 +633,7 @@ class TestHealthCheckExceptions:
         Fixtures Used:
             None - tests exception hierarchy
         """
-        pass
+        assert issubclass(HealthCheckError, Exception)
 
     def test_health_check_error_can_be_raised_with_message(self):
         """
@@ -590,7 +656,9 @@ class TestHealthCheckExceptions:
         Fixtures Used:
             None - tests exception usage
         """
-        pass
+        with pytest.raises(HealthCheckError, match="failed") as exc_info:
+            raise HealthCheckError("failed")
+        assert str(exc_info.value) == "failed"
 
     def test_health_check_timeout_error_inherits_from_health_check_error(self):
         """
@@ -612,7 +680,7 @@ class TestHealthCheckExceptions:
         Fixtures Used:
             None - tests exception inheritance
         """
-        pass
+        assert issubclass(HealthCheckTimeoutError, HealthCheckError)
 
     def test_health_check_timeout_error_can_be_raised_with_timing_context(self):
         """
@@ -635,7 +703,9 @@ class TestHealthCheckExceptions:
         Fixtures Used:
             None - tests exception with context
         """
-        pass
+        with pytest.raises(HealthCheckTimeoutError, match="timed out after 100ms") as exc_info:
+            raise HealthCheckTimeoutError("timed out after 100ms")
+        assert "100ms" in str(exc_info.value)
 
     def test_health_check_timeout_error_distinguishable_from_base_error(self):
         """
@@ -658,7 +728,11 @@ class TestHealthCheckExceptions:
         Fixtures Used:
             None - tests exception discrimination
         """
-        pass
+        timeout_err = HealthCheckTimeoutError()
+        base_err = HealthCheckError()
+        assert isinstance(timeout_err, HealthCheckTimeoutError)
+        assert isinstance(timeout_err, HealthCheckError)
+        assert not isinstance(base_err, HealthCheckTimeoutError)
 
     def test_health_check_exceptions_support_try_except_handling(self):
         """
@@ -680,4 +754,10 @@ class TestHealthCheckExceptions:
         Fixtures Used:
             None - tests exception handling patterns
         """
-        pass
+        try:
+            raise HealthCheckTimeoutError("timeout")
+        except HealthCheckError as e:
+            assert "timeout" in str(e)
+            assert isinstance(e, HealthCheckTimeoutError)
+        except Exception:
+            pytest.fail("Did not catch specific exception")
