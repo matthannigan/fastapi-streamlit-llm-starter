@@ -316,7 +316,7 @@ def secure_fakeredis_cache(default_generic_redis_config, fake_redis_client):
 **Goal**: Add comprehensive unit tests for startup security validation component.
 
 #### Task 5.1: Create test_redis_security_validator.py
-- [ ] Create `backend/tests/unit/core/startup/test_redis_security_validator.py`:
+- [ ] Create `backend/tests/unit/startup/test_redis_security_validator.py`:
   - [ ] Add test class `TestRedisSecurityValidator`
   - [ ] Add fixtures for validator instance and environment mocking
   - [ ] Import required dependencies (`RedisSecurityValidator`, `ConfigurationError`)
@@ -369,68 +369,7 @@ def secure_fakeredis_cache(default_generic_redis_config, fake_redis_client):
 
 ---
 
-### Deliverable 6: EnvironmentDetector Unit Tests
-**Goal**: Add comprehensive unit tests for environment detection component.
-
-#### Task 6.1: Create test_environment_detector.py
-- [ ] Create `backend/tests/unit/core/environment/test_detector.py`:
-  - [ ] Add test class `TestEnvironmentDetector`
-  - [ ] Add fixtures for detector instance and environment variable mocking
-  - [ ] Import required dependencies (`EnvironmentDetector`, `Environment`, `FeatureContext`)
-  - [ ] Add module docstring explaining test scope
-
-#### Task 6.2: Test Environment Variable Detection
-- [ ] Implement `test_detects_production_from_environment_variable`:
-  - [ ] Use `monkeypatch.setenv("ENVIRONMENT", "production")`
-  - [ ] Call `detector.detect_environment()`
-  - [ ] Assert returns `Environment.PRODUCTION`
-  - [ ] Verify confidence score > 0.8
-  - [ ] Check reasoning includes "ENVIRONMENT variable"
-- [ ] Implement `test_detects_development_from_node_env`:
-  - [ ] Use `monkeypatch.setenv("NODE_ENV", "development")`
-  - [ ] Call `detector.detect_environment()`
-  - [ ] Assert returns `Environment.DEVELOPMENT`
-  - [ ] Verify confidence score appropriate
-- [ ] Implement `test_detects_staging_from_app_env`:
-  - [ ] Use `monkeypatch.setenv("APP_ENV", "staging")`
-  - [ ] Call `detector.detect_environment()`
-  - [ ] Assert returns `Environment.STAGING`
-  - [ ] Verify detection reasoning
-
-#### Task 6.3: Test Confidence Scoring
-- [ ] Implement `test_high_confidence_with_multiple_signals`:
-  - [ ] Set multiple environment variables indicating production
-  - [ ] Call `detector.detect_environment()`
-  - [ ] Assert confidence score > 0.9
-  - [ ] Verify reasoning lists all detected signals
-- [ ] Implement `test_low_confidence_with_conflicting_signals`:
-  - [ ] Set conflicting environment variables (e.g., `ENVIRONMENT=production`, `NODE_ENV=development`)
-  - [ ] Call `detector.detect_environment()`
-  - [ ] Assert confidence score < 0.6
-  - [ ] Verify reasoning explains conflict
-
-#### Task 6.4: Test Feature Context Integration
-- [ ] Implement `test_feature_context_influences_detection`:
-  - [ ] Test detection with `FeatureContext.SECURITY_ENFORCEMENT`
-  - [ ] Verify context affects environment classification
-  - [ ] Test detection with `FeatureContext.AI_ENABLED`
-  - [ ] Verify metadata includes feature-specific hints
-- [ ] Implement `test_default_feature_context`:
-  - [ ] Call `detector.detect_environment()` without context
-  - [ ] Verify uses `FeatureContext.DEFAULT`
-  - [ ] Test detection still works correctly
-
-#### Task 6.5: Test Fallback Behavior
-- [ ] Implement `test_falls_back_to_default_with_low_confidence`:
-  - [ ] Unset all environment variables using `monkeypatch`
-  - [ ] Call `detector.detect_environment()`
-  - [ ] Assert returns safe default (e.g., `Environment.DEVELOPMENT`)
-  - [ ] Verify confidence score < 0.5
-  - [ ] Check reasoning explains lack of signals
-- [ ] Implement `test_fallback_respects_safe_defaults`:
-  - [ ] Test fallback never chooses `PRODUCTION` without strong signals
-  - [ ] Verify fallback prefers `DEVELOPMENT` for safety
-  - [ ] Test reasoning explains safety-first approach
+### Deliverable 6: REMOVED AS DUPLICATIVE
 
 ---
 
@@ -438,7 +377,7 @@ def secure_fakeredis_cache(default_generic_redis_config, fake_redis_client):
 **Goal**: Add comprehensive unit tests for encryption/decryption component.
 
 #### Task 7.1: Create test_encrypted_cache_layer.py
-- [ ] Create `backend/tests/unit/infrastructure/cache/test_encryption.py`:
+- [ ] Create `backend/tests/unit/cache/encryption/test_encryption.py` and `backend/tests/unit/cache/encryption/conftest.py`:
   - [ ] Add test class `TestEncryptedCacheLayer`
   - [ ] Add fixture for `EncryptedCacheLayer` instance with test encryption key
   - [ ] Import required dependencies (`EncryptedCacheLayer`, `Fernet`)
@@ -490,7 +429,7 @@ def secure_fakeredis_cache(default_generic_redis_config, fake_redis_client):
 **Goal**: Add integration tests validating security enforcement during application startup.
 
 #### Task 8.1: Create test_app_startup_security.py
-- [ ] Create `backend/tests/integration/app/test_startup_security.py`:
+- [ ] Create `backend/tests/integration/startup/test_startup_security.py`:
   - [ ] Add test class `TestAppStartupSecurityValidation`
   - [ ] Add fixtures for environment variable mocking
   - [ ] Import required dependencies (`TestClient`, `ConfigurationError`)
@@ -648,7 +587,7 @@ def secure_fakeredis_cache(default_generic_redis_config, fake_redis_client):
 
 **PHASE 3: New Security Component Tests (1 Week)**
 - **Deliverable 5**: RedisSecurityValidator Unit Tests
-- **Deliverable 6**: EnvironmentDetector Unit Tests
+- **Deliverable 6**: REMOVED
 - **Deliverable 7**: EncryptedCacheLayer Unit Tests
 - **Deliverable 8**: App Startup Security Integration Tests
 - **Deliverable 9**: Secure Cache Creation Integration Tests
