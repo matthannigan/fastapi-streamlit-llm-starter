@@ -131,82 +131,14 @@ class FakeInvalidToken(Exception):
 # =============================================================================
 # Encryption Key Fixtures
 # =============================================================================
-
-
-@pytest.fixture
-def valid_encryption_key():
-    """
-    Valid Fernet encryption key for testing encryption functionality.
-
-    Provides a properly formatted base64-encoded Fernet key that can be
-    used with real Fernet or FakeFernet implementations.
-
-    Returns:
-        Base64-encoded Fernet key as string
-
-    Use Cases:
-        - Testing successful encryption initialization
-        - Testing encryption/decryption operations
-        - Testing key validation logic
-
-    Example:
-        def test_encryption_with_valid_key(valid_encryption_key):
-            encryption = EncryptedCacheLayer(encryption_key=valid_encryption_key)
-            assert encryption.is_enabled is True
-    """
-    # Generate a real Fernet key for realistic testing
-    try:
-        from cryptography.fernet import Fernet
-
-        return Fernet.generate_key().decode()
-    except ImportError:
-        # Fallback to fake key if cryptography not available
-        return "dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEhISEhISEhISEhIQ=="
-
-
-@pytest.fixture
-def invalid_encryption_key():
-    """
-    Invalid encryption key for testing error handling.
-
-    Provides a key that doesn't meet Fernet format requirements
-    for testing key validation and error handling behavior.
-
-    Returns:
-        Invalid key string (too short, wrong format)
-
-    Use Cases:
-        - Testing key validation logic
-        - Testing ConfigurationError raising
-        - Testing error messages for invalid keys
-
-    Example:
-        def test_encryption_rejects_invalid_key(invalid_encryption_key):
-            with pytest.raises(ConfigurationError):
-                EncryptedCacheLayer(encryption_key=invalid_encryption_key)
-    """
-    return "invalid-key-too-short"
-
-
-@pytest.fixture
-def empty_encryption_key():
-    """
-    Empty encryption key for testing None/empty key handling.
-
-    Returns:
-        None (no encryption key)
-
-    Use Cases:
-        - Testing disabled encryption behavior
-        - Testing warning messages for missing keys
-        - Testing backward compatibility without encryption
-
-    Example:
-        def test_encryption_disabled_without_key(empty_encryption_key):
-            encryption = EncryptedCacheLayer(encryption_key=empty_encryption_key)
-            assert encryption.is_enabled is False
-    """
-    return None
+# NOTE: Common encryption key fixtures have been moved to backend/tests/unit/conftest.py
+#       and are available to all test modules:
+#       - valid_fernet_key
+#       - invalid_fernet_key_short
+#       - invalid_fernet_key_format
+#       - empty_encryption_key
+#
+# Use those shared fixtures instead of defining module-specific ones.
 
 
 # =============================================================================
@@ -386,12 +318,12 @@ def sample_large_data():
 
 
 @pytest.fixture
-def sample_encrypted_bytes(valid_encryption_key, sample_cache_data):
+def sample_encrypted_bytes(valid_fernet_key, sample_cache_data):
     """
     Pre-encrypted sample data for testing decryption.
 
     Provides encrypted bytes generated from sample_cache_data using
-    valid_encryption_key for testing decryption behavior.
+    valid_fernet_key for testing decryption behavior.
 
     Returns:
         Encrypted bytes from sample_cache_data
@@ -414,7 +346,7 @@ def sample_encrypted_bytes(valid_encryption_key, sample_cache_data):
     try:
         from cryptography.fernet import Fernet
 
-        fernet = Fernet(valid_encryption_key.encode())
+        fernet = Fernet(valid_fernet_key.encode())
         json_data = json.dumps(sample_cache_data, ensure_ascii=False, sort_keys=True)
         return fernet.encrypt(json_data.encode("utf-8"))
     except ImportError:
@@ -484,7 +416,7 @@ def sample_unencrypted_json_bytes(sample_cache_data):
 
 
 @pytest.fixture
-def encryption_with_valid_key(valid_encryption_key):
+def encryption_with_valid_key(valid_fernet_key):
     """
     EncryptedCacheLayer instance with valid encryption key.
 
@@ -506,7 +438,7 @@ def encryption_with_valid_key(valid_encryption_key):
     from app.infrastructure.cache.encryption import EncryptedCacheLayer
 
     return EncryptedCacheLayer(
-        encryption_key=valid_encryption_key, performance_monitoring=True
+        encryption_key=valid_fernet_key, performance_monitoring=True
     )
 
 
@@ -536,7 +468,7 @@ def encryption_without_key():
 
 
 @pytest.fixture
-def encryption_without_monitoring(valid_encryption_key):
+def encryption_without_monitoring(valid_fernet_key):
     """
     EncryptedCacheLayer instance with monitoring disabled.
 
@@ -559,7 +491,7 @@ def encryption_without_monitoring(valid_encryption_key):
     from app.infrastructure.cache.encryption import EncryptedCacheLayer
 
     return EncryptedCacheLayer(
-        encryption_key=valid_encryption_key, performance_monitoring=False
+        encryption_key=valid_fernet_key, performance_monitoring=False
     )
 
 
@@ -593,73 +525,14 @@ def encryption_with_generated_key():
 
 
 # =============================================================================
-# Mock Logger Fixtures (System Boundary)
+# Mock Logger and Cryptography Availability Fixtures
 # =============================================================================
-
-
-@pytest.fixture
-def mock_logger():
-    """
-    Mock logger for testing logging behavior.
-
-    Provides a spec'd mock logger that simulates logging.Logger
-    for testing log message generation without actual I/O.
-
-    Default Behavior:
-        - All log methods available (info, warning, error, debug)
-        - No actual logging output (mocked)
-
-    Use Cases:
-        - Testing warning messages for disabled encryption
-        - Testing error logging for encryption failures
-        - Testing info logging for successful operations
-
-    Test Customization:
-        def test_encryption_logs_warning(mock_logger, monkeypatch):
-            monkeypatch.setattr('app.infrastructure.cache.encryption.logger', mock_logger)
-            encryption = EncryptedCacheLayer(encryption_key=None)
-            mock_logger.warning.assert_called()
-
-    Note:
-        This is a proper system boundary mock - logger performs I/O
-        and should not be tested as part of encryption unit tests.
-    """
-    mock = MagicMock()
-    mock.info = Mock()
-    mock.warning = Mock()
-    mock.error = Mock()
-    mock.debug = Mock()
-    return mock
-
-
-# =============================================================================
-# Cryptography Library Availability Fixtures
-# =============================================================================
-
-
-@pytest.fixture
-def mock_cryptography_unavailable(monkeypatch):
-    """
-    Mock cryptography library unavailability for testing graceful degradation.
-
-    Patches the CRYPTOGRAPHY_AVAILABLE flag to False for testing
-    behavior when cryptography library is not installed.
-
-    Use Cases:
-        - Testing ConfigurationError for missing cryptography
-        - Testing error messages for missing dependencies
-        - Testing graceful failure modes
-
-    Example:
-        def test_encryption_requires_cryptography(mock_cryptography_unavailable):
-            with pytest.raises(ConfigurationError) as exc_info:
-                EncryptedCacheLayer(encryption_key="test-key")
-            assert "cryptography library is required" in str(exc_info.value)
-    """
-    monkeypatch.setattr(
-        "app.infrastructure.cache.encryption.CRYPTOGRAPHY_AVAILABLE", False
-    )
-    monkeypatch.setattr("app.infrastructure.cache.encryption.Fernet", None)
+# NOTE: These common fixtures have been moved to backend/tests/unit/conftest.py
+#       and are available to all test modules:
+#       - mock_logger
+#       - mock_cryptography_unavailable
+#
+# Use those shared fixtures instead of defining module-specific ones.
 
 
 # =============================================================================
@@ -668,7 +541,7 @@ def mock_cryptography_unavailable(monkeypatch):
 
 
 @pytest.fixture
-def encryption_with_fresh_stats(valid_encryption_key):
+def encryption_with_fresh_stats(valid_fernet_key):
     """
     EncryptedCacheLayer with reset performance statistics.
 
@@ -697,7 +570,7 @@ def encryption_with_fresh_stats(valid_encryption_key):
     from app.infrastructure.cache.encryption import EncryptedCacheLayer
 
     encryption = EncryptedCacheLayer(
-        encryption_key=valid_encryption_key, performance_monitoring=True
+        encryption_key=valid_fernet_key, performance_monitoring=True
     )
     encryption.reset_performance_stats()
     return encryption

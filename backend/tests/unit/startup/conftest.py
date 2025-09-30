@@ -466,80 +466,14 @@ def mock_expired_certificate(mock_x509_certificate):
 # =============================================================================
 # Encryption Key Fixtures (Test Data)
 # =============================================================================
-
-
-@pytest.fixture
-def valid_fernet_key():
-    """
-    Valid Fernet encryption key for testing encryption validation.
-
-    Returns:
-        44-character base64-encoded Fernet key
-
-    Use Cases:
-        - Testing encryption key validation
-        - Testing key format verification
-        - Testing encryption functionality
-
-    Note:
-        This is a real Fernet key generated for testing only.
-        Do NOT use in production.
-    """
-    try:
-        from cryptography.fernet import Fernet
-
-        return Fernet.generate_key().decode()
-    except ImportError:
-        # Fallback if cryptography not available
-        return "dGVzdC1rZXktMzItYnl0ZXMtbG9uZyEhISEhISEhISEhIQ=="
-
-
-@pytest.fixture
-def invalid_fernet_key_short():
-    """
-    Invalid encryption key (too short) for testing error handling.
-
-    Returns:
-        String that's too short to be a valid Fernet key
-
-    Use Cases:
-        - Testing key length validation
-        - Testing validation error messages
-        - Testing ConfigurationError raising
-    """
-    return "too-short-key"
-
-
-@pytest.fixture
-def invalid_fernet_key_format():
-    """
-    Invalid encryption key (wrong format) for testing error handling.
-
-    Returns:
-        44-character string that isn't valid base64
-
-    Use Cases:
-        - Testing key format validation
-        - Testing base64 decoding errors
-        - Testing error message clarity
-    """
-    return "!" * 44  # 44 chars but invalid base64
-
-
-@pytest.fixture
-def empty_encryption_key():
-    """
-    None encryption key for testing disabled encryption.
-
-    Returns:
-        None
-
-    Use Cases:
-        - Testing missing encryption key handling
-        - Testing warning generation
-        - Testing development mode flexibility
-    """
-    return None
+# NOTE: Common encryption key fixtures have been moved to backend/tests/unit/conftest.py
+#       and are available to all test modules:
+#       - valid_fernet_key
+#       - invalid_fernet_key_short
+#       - invalid_fernet_key_format
+#       - empty_encryption_key
+#
+# Use those shared fixtures instead of defining module-specific ones.
 
 
 # =============================================================================
@@ -574,47 +508,12 @@ def redis_security_validator():
 
 
 # =============================================================================
-# Mock Logger Fixtures (System Boundary)
+# Mock Logger Fixture (System Boundary)
 # =============================================================================
-
-
-@pytest.fixture
-def mock_logger():
-    """
-    Mock logger for testing logging behavior.
-
-    Provides a spec'd mock logger that simulates logging.Logger
-    for testing log message generation without actual I/O.
-
-    Default Behavior:
-        - All log methods available (info, warning, error, debug)
-        - No actual logging output (mocked)
-
-    Use Cases:
-        - Testing info messages for security status
-        - Testing warning messages for insecure configurations
-        - Testing error logging for validation failures
-
-    Test Customization:
-        def test_validator_logs_warning(mock_logger, monkeypatch):
-            monkeypatch.setattr('app.core.startup.redis_security.logger', mock_logger)
-            validator = RedisSecurityValidator()
-            validator.validate_production_security(
-                "redis://localhost:6379",
-                insecure_override=True
-            )
-            mock_logger.warning.assert_called()
-
-    Note:
-        This is a proper system boundary mock - logger performs I/O
-        and should not be tested as part of security validation unit tests.
-    """
-    mock = MagicMock()
-    mock.info = Mock()
-    mock.warning = Mock()
-    mock.error = Mock()
-    mock.debug = Mock()
-    return mock
+# NOTE: Common mock_logger fixture has been moved to backend/tests/unit/conftest.py
+#       and is available to all test modules.
+#
+# Use the shared fixture instead of defining a module-specific one.
 
 
 # =============================================================================
@@ -715,36 +614,12 @@ def mock_insecure_override_env(monkeypatch):
 
 
 # =============================================================================
-# Cryptography Library Availability Fixtures
+# Cryptography Library Availability Fixture
 # =============================================================================
-
-
-@pytest.fixture
-def mock_cryptography_unavailable(monkeypatch):
-    """
-    Mock cryptography library unavailability for testing graceful degradation.
-
-    Patches cryptography imports to simulate missing library for testing
-    behavior when cryptography is not installed.
-
-    Use Cases:
-        - Testing validation without cryptography library
-        - Testing warning messages for missing dependencies
-        - Testing graceful degradation
-
-    Example:
-        def test_validation_without_cryptography(mock_cryptography_unavailable):
-            result = validator.validate_encryption_key("test-key")
-            assert not result["valid"]
-            assert "library not available" in result["errors"][0]
-    """
-    # Mock ImportError when trying to import cryptography
-    def mock_import_error(*args, **kwargs):
-        if "cryptography" in str(args):
-            raise ImportError("cryptography library not available")
-        return None
-
-    monkeypatch.setattr("builtins.__import__", mock_import_error, raising=False)
+# NOTE: Common mock_cryptography_unavailable fixture has been moved to
+#       backend/tests/unit/conftest.py and is available to all test modules.
+#
+# Use the shared fixture instead of defining a module-specific one.
 
 
 # =============================================================================
