@@ -224,12 +224,18 @@ class TestRedisCacheSecurityManagerConnection:
         
         # And: URL is upgraded to rediss:// for TLS
         assert call_kwargs["url"] == "rediss://localhost:6379"
-        
-        # And: SSL context is provided
-        assert "ssl" in call_kwargs
-        assert call_kwargs["ssl"] is manager._ssl_context
-        
-        # And: Connection validation occurs 
+
+        # And: SSL parameters are configured (redis-py uses individual SSL params, not ssl context)
+        # Certificate verification is enabled
+        assert "ssl_cert_reqs" in call_kwargs
+        assert call_kwargs["ssl_cert_reqs"] == ssl.CERT_REQUIRED
+        assert call_kwargs["ssl_check_hostname"] is True
+
+        # Client certificate paths are provided
+        assert call_kwargs["ssl_certfile"] == "/etc/ssl/redis.crt"
+        assert call_kwargs["ssl_keyfile"] == "/etc/ssl/redis.key"
+
+        # And: Connection validation occurs
         # Note: With fakeredis, we verify the connection worked by checking it's the returned client
         # The ping() and info() calls are handled internally by the security manager
 

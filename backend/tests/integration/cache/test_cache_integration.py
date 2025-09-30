@@ -132,21 +132,22 @@ class TestCacheFactoryIntegration:
         """
         from app.infrastructure.cache.redis_generic import GenericRedisCache
         from app.infrastructure.cache.security import SecurityConfig
-        import secrets
+        from cryptography.fernet import Fernet
 
         # Set required security environment variables
-        test_encryption_key = secrets.token_urlsafe(32)
+        # Generate proper Fernet key for encryption
+        test_encryption_key = Fernet.generate_key().decode()
         monkeypatch.setenv("REDIS_ENCRYPTION_KEY", test_encryption_key)
         monkeypatch.setenv("REDIS_PASSWORD", secure_redis_container["password"])
         monkeypatch.setenv("ENVIRONMENT", "testing")
 
         # Create security configuration
+        # Note: encryption_key is handled via environment variable (set above)
         security_config = SecurityConfig(
             redis_auth=secure_redis_container["password"],
             use_tls=True,
             tls_ca_path=secure_redis_container["ca_cert"],
-            verify_certificates=False,  # Self-signed test certificates
-            encryption_key=test_encryption_key
+            verify_certificates=False  # Self-signed test certificates
         )
 
         try:
@@ -431,10 +432,11 @@ class TestCacheComponentInteroperability:
         """
         from app.infrastructure.cache.factory import CacheFactory
         from app.infrastructure.cache.security import SecurityConfig
-        import secrets
+        from cryptography.fernet import Fernet
 
         # Set required environment variables for security
-        test_encryption_key = secrets.token_urlsafe(32)
+        # Generate proper Fernet key for encryption
+        test_encryption_key = Fernet.generate_key().decode()
         monkeypatch.setenv("REDIS_ENCRYPTION_KEY", test_encryption_key)
         monkeypatch.setenv("REDIS_PASSWORD", secure_redis_container["password"])
         monkeypatch.setenv("ENVIRONMENT", "testing")
@@ -446,12 +448,12 @@ class TestCacheComponentInteroperability:
             factory = CacheFactory()
 
             # Create security config for testing
+            # Note: encryption_key is handled via environment variable (set above)
             security_config = SecurityConfig(
                 redis_auth=secure_redis_container["password"],
                 use_tls=True,
                 tls_ca_path=secure_redis_container["ca_cert"],
-                verify_certificates=False,  # Self-signed test certificates
-                encryption_key=test_encryption_key
+                verify_certificates=False  # Self-signed test certificates
             )
 
             # 1. Real secure Redis cache via factory

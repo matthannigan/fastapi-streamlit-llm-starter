@@ -458,7 +458,8 @@ def secure_redis_container(test_redis_certs):
             - password: Redis password for authentication
             - host: Container host
             - port: Container port
-            - container: RedisContainer instance
+            - container: GenericContainer instance
+            - ca_cert: Path to CA certificate
 
     Raises:
         TimeoutError: If container fails to start within 30 seconds
@@ -467,10 +468,11 @@ def secure_redis_container(test_redis_certs):
     Note:
         - Redis configured with TLS-only mode (--tls-port 6379 --port 0)
         - Strong password generated per session
-        - Health check validates TLS connection
+        - Health check validates TLS connection via docker exec
         - Container automatically cleaned up after session
     """
-    from testcontainers.redis import RedisContainer
+    from testcontainers.core.container import DockerContainer
+    from testcontainers.core.waiting_utils import wait_for_logs
 
     # Generate cryptographically secure password
     password = secrets.token_urlsafe(32)
@@ -481,14 +483,20 @@ def secure_redis_container(test_redis_certs):
     redis_key = Path(test_redis_certs["redis_key"]).name
     ca_cert = Path(test_redis_certs["ca_cert"]).name
 
+    container = None
     try:
-        # Create Redis container with TLS configuration
-        container = RedisContainer(image="redis:7-alpine")
+        # Create generic Docker container (not RedisContainer which has built-in health check)
+        container = DockerContainer("redis:7-alpine")
 
         # Mount certificate directory
-        container.with_volume_mapping(cert_dir, "/tls", mode="ro")
+        container.with_volume_mapping(str(cert_dir), "/tls", mode="ro")
+
+        # Expose TLS port
+        container.with_exposed_ports(6379)
 
         # Configure TLS-only mode (disable plain port)
+        # Use --tls-auth-clients no to allow TLS without requiring client certificates
+        # This enables TLS encryption without mutual TLS (mTLS)
         container.with_command(
             f"redis-server "
             f"--tls-port 6379 "
@@ -496,23 +504,29 @@ def secure_redis_container(test_redis_certs):
             f"--tls-cert-file /tls/{redis_cert} "
             f"--tls-key-file /tls/{redis_key} "
             f"--tls-ca-cert-file /tls/{ca_cert} "
+            f"--tls-auth-clients no "
             f"--requirepass {password}"
         )
 
-        # Start container with timeout
+        # Start container
         container.start()
 
-        # Wait for container to be healthy (30 second timeout)
+        # Wait for Redis to be ready (look for the "Ready to accept connections" log message)
+        wait_for_logs(container, "Ready to accept connections", timeout=30)
+
+        # Custom health check using docker exec with TLS
         import time
         start_time = time.time()
-        max_wait = 30
+        max_wait = 10  # Additional wait after logs appear
+
+        container_id = container.get_wrapped_container().id
 
         while time.time() - start_time < max_wait:
             try:
                 # Check if Redis is responsive via TLS
                 health_check = subprocess.run(
                     [
-                        "docker", "exec", container.get_container_host_ip(),
+                        "docker", "exec", container_id,
                         "redis-cli",
                         "--tls",
                         "--cert", f"/tls/{redis_cert}",
@@ -528,13 +542,20 @@ def secure_redis_container(test_redis_certs):
 
                 if health_check.returncode == 0 and "PONG" in health_check.stdout:
                     break
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                # Log but continue trying
                 pass
 
-            time.sleep(1)
+            time.sleep(0.5)
         else:
+            # Log container status for debugging
+            try:
+                logs = container.get_logs()
+                print(f"Container logs:\n{logs[0].decode() if logs else 'No logs'}")
+            except:
+                pass
             raise TimeoutError(
-                f"Redis container failed to become healthy within {max_wait} seconds"
+                f"Redis container failed TLS health check within {max_wait} seconds"
             )
 
         # Get connection details
@@ -590,25 +611,18 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
     """
     from app.infrastructure.cache.redis_generic import GenericRedisCache
     from app.infrastructure.cache.security import SecurityConfig
-    import os
+    from app.core.exceptions import InfrastructureError
+    from cryptography.fernet import Fernet
 
     # Set required environment variables for security configuration
-    test_encryption_key = secrets.token_urlsafe(32)
+    # Generate proper Fernet key for encryption
+    test_encryption_key = Fernet.generate_key().decode()
     monkeypatch.setenv("REDIS_ENCRYPTION_KEY", test_encryption_key)
     monkeypatch.setenv("REDIS_PASSWORD", secure_redis_container["password"])
-    monkeypatch.setenv("ENVIRONMENT", "testing")  # Use testing environment for self-signed certs
+    # Use 'testing' environment - now properly supports TLS with self-signed certs
+    monkeypatch.setenv("ENVIRONMENT", "testing")
 
-    # Create security configuration for testing
-    # Note: verify_certificates=False for self-signed test certificates
-    security_config = SecurityConfig(
-        redis_auth=secure_redis_container["password"],
-        use_tls=True,
-        tls_ca_path=secure_redis_container["ca_cert"],
-        verify_certificates=False,  # Self-signed test certificates
-        encryption_key=test_encryption_key
-    )
-
-    # Initialize cache with secure configuration
+    # Initialize cache - it will use SecurityConfig.create_for_environment()
     cache = GenericRedisCache(
         redis_url=secure_redis_container["url"],
         default_ttl=3600,
@@ -617,8 +631,17 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
         compression_threshold=1000
     )
 
-    # Override security configuration to use test certificates
-    cache.security_config = security_config
+    # Manually configure security manager to use our test certificates
+    # The auto-generated SecurityConfig doesn't know about our custom certs
+    from app.infrastructure.cache.security import SecurityConfig
+    cache.security_manager.config = SecurityConfig(
+        redis_auth=secure_redis_container["password"],
+        use_tls=True,
+        tls_ca_path=secure_redis_container["ca_cert"],
+        verify_certificates=False,  # Self-signed test certificates
+        connection_timeout=10,
+        socket_timeout=10
+    )
 
     # Connect to secure Redis
     connected = await cache.connect()

@@ -801,8 +801,32 @@ class RedisCacheSecurityManager:
             self._security_logger.info("Basic AUTH authentication configured")
 
         # TLS configuration
-        if self.config.use_tls and self._ssl_context:
-            kwargs["ssl"] = self._ssl_context
+        # Note: redis-py does not accept 'ssl' parameter with SSLContext object
+        # Instead, use individual SSL parameters for SSLConnection class
+        if self.config.use_tls:
+            # Set certificate verification mode
+            if self.config.verify_certificates:
+                kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+                kwargs["ssl_check_hostname"] = True
+            else:
+                kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
+                kwargs["ssl_check_hostname"] = False
+
+            # Set certificate paths if provided
+            if self.config.tls_cert_path:
+                kwargs["ssl_certfile"] = self.config.tls_cert_path
+            if self.config.tls_key_path:
+                kwargs["ssl_keyfile"] = self.config.tls_key_path
+            if self.config.tls_ca_path:
+                kwargs["ssl_ca_certs"] = self.config.tls_ca_path
+
+            # Set TLS version
+            kwargs["ssl_min_version"] = ssl.TLSVersion(int(self.config.min_tls_version))
+
+            # Set cipher suites if specified
+            if self.config.cipher_suites:
+                kwargs["ssl_ciphers"] = ':'.join(self.config.cipher_suites)
+
             # Update URL scheme to rediss://
             if redis_url.startswith("redis://"):
                 redis_url = redis_url.replace("redis://", "rediss://", 1)
