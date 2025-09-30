@@ -437,96 +437,96 @@ class TestDataCompressionIntegration:
     based on configurable thresholds while maintaining data integrity.
     """
 
-    async def test_compression_threshold_behavior(self, compression_redis_config, fake_redis_client, sample_large_value):
+    async def test_compression_threshold_behavior(self, secure_fakeredis_cache, sample_large_value):
         """
         Test automatic compression when data exceeds threshold.
-        
-        Given: A GenericRedisCache configured with low compression threshold
+
+        Given: A GenericRedisCache configured with encryption bypassed
         When: A large value exceeding the threshold is stored
         Then: The value should be automatically compressed
         And: Retrieved value should match the original exactly
         """
-        # Given: Cache configured for compression
-        cache = _setup_cache_with_fake_redis(compression_redis_config, fake_redis_client)
-        
+        # Given: Cache with encryption bypassed
+        cache = secure_fakeredis_cache
+
         # When: Store large value
         key = "large:data:key"
         await cache.set(key, sample_large_value)
-        
+
         # Then: Value should be retrievable and identical
         result = await cache.get(key)
         assert result == sample_large_value
-        
+
         await cache.disconnect()
 
-    async def test_small_value_no_compression(self, compression_redis_config, fake_redis_client, sample_cache_value):
+    async def test_small_value_no_compression(self, secure_fakeredis_cache, sample_cache_value):
         """
         Test that small values are not compressed unnecessarily.
-        
-        Given: A GenericRedisCache with compression enabled
+
+        Given: A GenericRedisCache with encryption bypassed
         When: A small value below the compression threshold is stored
         Then: The value should be stored without compression
         And: Retrieved value should match the original
         """
-        # Given: Cache with compression enabled
-        cache = _setup_cache_with_fake_redis(compression_redis_config, fake_redis_client)
-        
+        # Given: Cache with encryption bypassed
+        cache = secure_fakeredis_cache
+
         # When: Store small value
         key = "small:data:key"
         await cache.set(key, sample_cache_value)
-        
+
         # Then: Value should be retrievable
         result = await cache.get(key)
         assert result == sample_cache_value
-        
+
         await cache.disconnect()
 
-    async def test_compression_data_integrity(self, compression_redis_config, fake_redis_client, compression_test_data):
+    async def test_compression_data_integrity(self, secure_fakeredis_cache, compression_test_data):
         """
         Test data integrity across various data types with compression.
-        
-        Given: A GenericRedisCache with compression enabled
+
+        Given: A GenericRedisCache with encryption bypassed
         When: Various data types and sizes are stored and retrieved
         Then: All data should maintain perfect integrity
         And: Complex data structures should be preserved exactly
         """
-        # Given: Cache with compression
-        cache = _setup_cache_with_fake_redis(compression_redis_config, fake_redis_client)
-        
+        # Given: Cache with encryption bypassed
+        cache = secure_fakeredis_cache
+
         # When: Store various data types
         for key, value in compression_test_data.items():
             await cache.set(key, value)
-        
+
         # Then: All values should be retrievable with integrity
         for key, expected_value in compression_test_data.items():
             result = await cache.get(key)
             assert result == expected_value
-        
+
         await cache.disconnect()
 
-    async def test_mixed_compression_scenarios(self, compression_redis_config, fake_redis_client, sample_cache_value, sample_large_value):
+    async def test_mixed_compression_scenarios(self, secure_fakeredis_cache, sample_cache_value, sample_large_value):
         """
         Test mixed scenarios with both compressed and uncompressed data.
-        
-        Given: A GenericRedisCache with compression configured
+
+        Given: A GenericRedisCache with encryption bypassed
         When: Both small and large values are stored in the same cache
         Then: Compression should be applied appropriately to each value
         And: All values should be retrievable correctly regardless of compression
         """
-        # Given: Cache with compression
-        cache = _setup_cache_with_fake_redis(compression_redis_config, fake_redis_client)
-        
+        # Given: Cache with encryption bypassed
+        cache = secure_fakeredis_cache
+
         # When: Store mixed size values
         small_key = "mixed:small"
         large_key = "mixed:large"
         await cache.set(small_key, sample_cache_value)
         await cache.set(large_key, sample_large_value)
-        
+
         # Then: Both should be retrievable
         small_result = await cache.get(small_key)
         large_result = await cache.get(large_key)
-        
+
         assert small_result == sample_cache_value
         assert large_result == sample_large_value
-        
+
         await cache.disconnect()

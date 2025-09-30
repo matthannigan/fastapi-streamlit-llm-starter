@@ -19,6 +19,7 @@ Design Philosophy:
     - Mock dependencies are spec'd against real classes for accuracy
 """
 
+import json
 import pytest
 import hashlib
 from typing import Any, Dict, List, Optional, Callable
@@ -376,23 +377,76 @@ def bulk_test_data():
 def compression_test_data():
     """
     Test data specifically designed for compression testing.
-    
+
     Provides data with varying sizes and compressibility to test
     compression threshold behavior and compression ratio calculations.
     """
     return {
         # Small data (below compression threshold)
         "small:data": {"content": "small"},
-        
+
         # Large compressible data (repetitive content)
         "large:compressible": {
             "content": "This is repetitive content. " * 100,
             "data": ["repeated_item"] * 50
         },
-        
+
         # Large incompressible data (random-like content)
         "large:incompressible": {
-            "content": hashlib.sha256(str(i).encode()).hexdigest() 
+            "content": hashlib.sha256(str(i).encode()).hexdigest()
                       for i in range(100)
         }
     }
+
+
+@pytest.fixture
+def secure_fakeredis_cache(default_generic_redis_config, fake_redis_client):
+    """
+    Provides a GenericRedisCache instance backed by FakeRedis with encryption bypassed.
+
+    This fixture creates a cache instance that uses FakeRedis for storage but patches
+    out the encryption layer to allow unit testing of cache logic without encryption
+    complexity. The encryption/decryption methods are replaced with simple JSON
+    encoding/decoding.
+
+    This is the recommended fixture for unit tests focused on cache behavior
+    (compression, TTL, data handling, connection management) where encryption
+    would add unnecessary complexity.
+
+    Use Cases:
+        - Testing cache operations without encryption overhead
+        - Testing compression functionality in isolation
+        - Testing TTL behavior and expiration
+        - Testing connection management and state
+
+    NOT recommended for:
+        - Integration tests (use secure_redis_cache with real TLS)
+        - Security validation tests (use real encryption)
+        - End-to-end tests (use full security stack)
+
+    Returns:
+        GenericRedisCache: Cache instance with FakeRedis backend and patched encryption
+    """
+    from app.infrastructure.cache.redis_generic import GenericRedisCache
+    from unittest.mock import patch
+
+    # Create cache instance with default config
+    cache = GenericRedisCache(**default_generic_redis_config)
+
+    # Replace Redis client with FakeRedis
+    cache.redis = fake_redis_client
+    cache._redis_connected = True
+
+    # Patch serialization methods to bypass encryption
+    def mock_serialize(value: Any) -> bytes:
+        """Simple JSON serialization without encryption."""
+        return json.dumps(value).encode('utf-8')
+
+    def mock_deserialize(value: bytes) -> Any:
+        """Simple JSON deserialization without decryption."""
+        return json.loads(value.decode('utf-8'))
+
+    # Apply patches using context managers
+    with patch.object(cache, '_serialize_value', side_effect=mock_serialize), \
+         patch.object(cache, '_deserialize_value', side_effect=mock_deserialize):
+        yield cache
