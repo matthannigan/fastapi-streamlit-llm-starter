@@ -591,35 +591,48 @@ def create_security_config_from_env() -> SecurityConfig:
     with secure defaults. If required values are missing, it generates them
     automatically to ensure secure operation.
 
+    Security-First Approach:
+        1. Tries environment-aware configuration first (auto-detects environment)
+        2. Falls back to explicit environment variable configuration
+        3. Auto-generates secure passwords if not provided (fail-secure)
+        4. Defaults to TLS enabled (security-first principle)
+
     Returns:
         SecurityConfig: Configuration with secure defaults
 
     Environment Variables:
-        REDIS_AUTH: Redis authentication password
+        REDIS_AUTH: Redis authentication password (auto-generated if missing)
         REDIS_ACL_USERNAME: Redis ACL username (optional)
         REDIS_ACL_PASSWORD: Redis ACL password (optional)
-        REDIS_TLS_ENABLED: Enable TLS (true/false)
+        REDIS_TLS_ENABLED: Enable TLS (default: true)
         REDIS_TLS_CERT_PATH: Path to TLS certificate file
         REDIS_TLS_KEY_PATH: Path to TLS private key file
         REDIS_TLS_CA_PATH: Path to CA certificate file
-        REDIS_VERIFY_CERTIFICATES: Verify TLS certificates (true/false)
+        REDIS_VERIFY_CERTIFICATES: Verify TLS certificates (default: true)
+        REDIS_CONNECTION_TIMEOUT: Connection timeout in seconds (default: 30)
+        REDIS_MAX_RETRIES: Maximum connection retries (default: 3)
+        REDIS_RETRY_DELAY: Delay between retries in seconds (default: 1.0)
 
     Examples:
-        # Create config from environment
+        # Create config from environment (auto-detects environment)
         config = create_security_config_from_env()
 
         # Use with security manager
         manager = RedisCacheSecurityManager(config)
+
+    Note:
+        This function always returns a valid SecurityConfig. It never returns None,
+        ensuring fail-secure behavior even when no environment variables are set.
     """
     import os
 
-    # Try environment-aware configuration first
+    # Try environment-aware configuration first (respects ENVIRONMENT variable)
     try:
         return SecurityConfig.create_for_environment()
     except Exception as e:
         logger.warning(f"Environment detection failed, using manual configuration: {e}")
 
-    # Fallback to manual environment variable parsing
+    # Fallback to manual environment variable parsing with secure defaults
     return SecurityConfig(
         redis_auth=os.getenv("REDIS_AUTH") or generate_secure_password(16),
         acl_username=os.getenv("REDIS_ACL_USERNAME"),
@@ -629,6 +642,9 @@ def create_security_config_from_env() -> SecurityConfig:
         tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
         tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
         verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower() == "true",
+        connection_timeout=int(os.getenv("REDIS_CONNECTION_TIMEOUT", "30")),
+        max_retries=int(os.getenv("REDIS_MAX_RETRIES", "3")),
+        retry_delay=float(os.getenv("REDIS_RETRY_DELAY", "1.0"))
     )
 
 
@@ -1488,52 +1504,6 @@ class RedisCacheSecurityManager:
             }
 
         return status
-
-
-def create_security_config_from_env() -> Optional[SecurityConfig]:
-    """Create SecurityConfig from environment variables.
-
-    This utility function creates a SecurityConfig instance from common
-    environment variables, making it easy to configure Redis security
-    in containerized environments.
-
-    Environment Variables:
-        REDIS_AUTH: Redis AUTH password
-        REDIS_USE_TLS: Enable TLS (true/false)
-        REDIS_TLS_CERT_PATH: Path to TLS certificate
-        REDIS_TLS_KEY_PATH: Path to TLS private key
-        REDIS_TLS_CA_PATH: Path to TLS CA certificate
-        REDIS_ACL_USERNAME: ACL username
-        REDIS_ACL_PASSWORD: ACL password
-        REDIS_VERIFY_CERTIFICATES: Verify certificates (true/false)
-        REDIS_CONNECTION_TIMEOUT: Connection timeout in seconds
-
-    Returns:
-        SecurityConfig instance or None if no security settings found
-    """
-    import os
-
-    # Check if any security settings are configured
-    security_env_vars = [
-        "REDIS_AUTH", "REDIS_USE_TLS", "REDIS_ACL_USERNAME", "REDIS_ACL_PASSWORD"
-    ]
-
-    if not any(os.getenv(var) for var in security_env_vars):
-        return None
-
-    return SecurityConfig(
-        redis_auth=os.getenv("REDIS_AUTH"),
-        use_tls=os.getenv("REDIS_USE_TLS", "false").lower() == "true",
-        tls_cert_path=os.getenv("REDIS_TLS_CERT_PATH"),
-        tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
-        tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
-        acl_username=os.getenv("REDIS_ACL_USERNAME"),
-        acl_password=os.getenv("REDIS_ACL_PASSWORD"),
-        verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower() == "true",
-        connection_timeout=int(os.getenv("REDIS_CONNECTION_TIMEOUT", "30")),
-        max_retries=int(os.getenv("REDIS_MAX_RETRIES", "3")),
-        retry_delay=float(os.getenv("REDIS_RETRY_DELAY", "1.0"))
-    )
 
 
 # Export public API

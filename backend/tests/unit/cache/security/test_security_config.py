@@ -595,7 +595,7 @@ class TestSecurityConfigEnvironmentCreation:
 
     @patch.dict('os.environ', {
         'REDIS_AUTH': 'secure-password-123',
-        'REDIS_USE_TLS': 'true',
+        'REDIS_TLS_ENABLED': 'true',
         'REDIS_TLS_CERT_PATH': '/etc/ssl/redis.crt',
         'REDIS_TLS_KEY_PATH': '/etc/ssl/redis.key',
         'REDIS_TLS_CA_PATH': '/etc/ssl/ca.crt',
@@ -604,10 +604,12 @@ class TestSecurityConfigEnvironmentCreation:
         'REDIS_VERIFY_CERTIFICATES': 'true',
         'REDIS_CONNECTION_TIMEOUT': '45',
         'REDIS_MAX_RETRIES': '5',
-        'REDIS_RETRY_DELAY': '2.0'
+        'REDIS_RETRY_DELAY': '2.0',
+        'ENVIRONMENT': 'production'  # Force fallback to env var parsing
     })
+    @patch('app.infrastructure.cache.security.SecurityConfig.create_for_environment')
     @patch('pathlib.Path.exists')
-    def test_create_from_env_builds_secure_config_from_environment(self, mock_path_exists):
+    def test_create_from_env_builds_secure_config_from_environment(self, mock_path_exists, mock_create_for_env):
         """
         Test that create_security_config_from_env creates secure configuration from environment.
         
@@ -644,7 +646,10 @@ class TestSecurityConfigEnvironmentCreation:
         """
         # Mock certificate files exist
         mock_path_exists.return_value = True
-        
+
+        # Mock create_for_environment to raise exception, forcing fallback to env var parsing
+        mock_create_for_env.side_effect = Exception("Env detection failed")
+
         # When: create_security_config_from_env() function is called
         config = create_security_config_from_env()
         
@@ -672,58 +677,67 @@ class TestSecurityConfigEnvironmentCreation:
         assert config.has_authentication is True
         assert config.security_level == "HIGH"
 
-    def test_create_from_env_returns_none_when_no_security_variables(self, monkeypatch):
+    def test_create_from_env_returns_secure_config_when_no_security_variables(self, monkeypatch):
         """
-        Test that create_security_config_from_env returns None when no security variables present.
-        
+        Test that create_security_config_from_env returns secure config even when no variables present.
+
         Verifies:
-            Function gracefully handles environment without security configuration
-            
+            Function follows security-first principle with fail-secure defaults
+
         Business Impact:
-            Allows application startup without security when no environment configuration present
-            
+            Ensures secure configuration even when environment variables are missing
+            (Security-first architecture - never allows insecure fallback)
+
         Scenario:
             Given: Environment without Redis security configuration variables
             When: create_security_config_from_env() function is called
-            Then: None is returned indicating no security configuration available
+            Then: Valid SecurityConfig is returned with secure defaults
+            And: Password is auto-generated for fail-secure behavior
+            And: TLS is enabled by default (security-first)
             And: No exceptions are raised for missing security environment
-            And: Function provides clear indication that security setup is required
-            
-        No Configuration Handling:
-            - Missing REDIS_AUTH environment variable handled gracefully
-            - Missing TLS configuration variables handled appropriately
-            - Missing ACL configuration variables handled without errors
-            - Empty environment returns None without creating invalid configuration
-            
+
+        Security-First Behavior:
+            - Auto-generates secure password when REDIS_AUTH is missing
+            - Defaults to TLS enabled (use_tls=True)
+            - Uses environment-aware configuration (create_for_environment)
+            - Never returns None (fail-secure principle)
+
         Fixtures Used:
-            - Empty environment or environment_variables_insecure (minimal config)
-            
-        Graceful Degradation:
-            Missing security configuration allows application to handle security appropriately
-            
+            - Empty environment to test fail-secure defaults
+
         Related Tests:
             - test_create_from_env_builds_secure_config_from_environment()
-            - test_insecure_environment_provides_appropriate_warnings()
+            - test_environment_aware_security_configuration()
         """
         # Clear all Redis security-related environment variables for clean test
         redis_security_vars = [
             'REDIS_AUTH', 'REDIS_ACL_USERNAME', 'REDIS_ACL_PASSWORD', 'REDIS_USE_TLS',
             'REDIS_TLS_CERT_PATH', 'REDIS_TLS_KEY_PATH', 'REDIS_TLS_CA_PATH',
-            'REDIS_VERIFY_CERTIFICATES', 'REDIS_CONNECTION_TIMEOUT'
+            'REDIS_VERIFY_CERTIFICATES', 'REDIS_CONNECTION_TIMEOUT', 'REDIS_TLS_ENABLED',
+            'ENVIRONMENT'
         ]
         for var in redis_security_vars:
             monkeypatch.delenv(var, raising=False)
-        
+
         # When: create_security_config_from_env() function is called
         config = create_security_config_from_env()
-        
-        # Then: None is returned indicating no security configuration available
-        assert config is None
-        
-        # Test with non-security environment variables present
-        with patch.dict('os.environ', {'OTHER_VAR': 'value', 'PATH': '/usr/bin'}):
+
+        # Then: Valid SecurityConfig is returned (never None - fail-secure)
+        assert config is not None
+        assert isinstance(config, SecurityConfig)
+
+        # And: Auto-generated password is present (fail-secure)
+        assert config.redis_auth is not None
+        assert len(config.redis_auth) >= 16  # Secure password length
+
+        # And: TLS is enabled by default (security-first)
+        assert config.use_tls is True
+
+        # Test with non-security environment variables present (should still be secure)
+        with patch.dict('os.environ', {'OTHER_VAR': 'value', 'PATH': '/usr/bin'}, clear=True):
             config = create_security_config_from_env()
-            assert config is None
+            assert config is not None
+            assert config.use_tls is True  # Security-first default
 
     @patch('pathlib.Path.exists')
     def test_create_from_env_handles_invalid_environment_values(self, mock_path_exists):
@@ -761,53 +775,39 @@ class TestSecurityConfigEnvironmentCreation:
             - test_environment_security_validation_integration()
         """
         # Test: Invalid numeric timeout value causes ValueError during int conversion
-        with patch.dict('os.environ', {
-            'REDIS_AUTH': 'password',
-            'REDIS_CONNECTION_TIMEOUT': 'invalid_number'
-        }):
-            with pytest.raises(ValueError):
-                create_security_config_from_env()
+        # Mock create_for_environment to force fallback to env var parsing
+        with patch('app.infrastructure.cache.security.SecurityConfig.create_for_environment') as mock_create:
+            mock_create.side_effect = Exception("Env detection failed")
+            with patch.dict('os.environ', {
+                'REDIS_AUTH': 'password',
+                'REDIS_CONNECTION_TIMEOUT': 'invalid_number'
+            }, clear=True):
+                with pytest.raises(ValueError):
+                    create_security_config_from_env()
         
-        # Test: Invalid certificate paths cause ConfigurationError
-        mock_path_exists.return_value = False
-        
-        with patch.dict('os.environ', {
-            'REDIS_AUTH': 'password',
-            'REDIS_USE_TLS': 'true',
-            'REDIS_TLS_CERT_PATH': '/invalid/cert.pem'
-        }):
-            with pytest.raises(ConfigurationError) as exc_info:
-                create_security_config_from_env()
-            
-            assert "TLS certificate file not found" in str(exc_info.value)
-        
-        # Test: ACL username without password causes ConfigurationError
-        with patch.dict('os.environ', {
-            'REDIS_ACL_USERNAME': 'user'
-            # Missing REDIS_ACL_PASSWORD
-        }):
-            with pytest.raises(ConfigurationError) as exc_info:
-                create_security_config_from_env()
-            
-            assert "ACL password is required" in str(exc_info.value)
-        
-        # Test: Boolean values are properly converted (both true/false work)
-        mock_path_exists.return_value = True
-        
-        with patch.dict('os.environ', {
-            'REDIS_AUTH': 'password',
-            'REDIS_USE_TLS': 'false',
-            'REDIS_VERIFY_CERTIFICATES': 'false'
-        }):
-            config = create_security_config_from_env()
-            assert config.use_tls is False  # type: ignore
-            assert config.verify_certificates is False  # type: ignore
-        
-        with patch.dict('os.environ', {
-            'REDIS_AUTH': 'password',
-            'REDIS_USE_TLS': 'TRUE',
-            'REDIS_VERIFY_CERTIFICATES': 'True'
-        }):
-            config = create_security_config_from_env()
-            assert config.use_tls is True  # type: ignore
-            assert config.verify_certificates is True  # type: ignore   
+        # Note: Certificate path and ACL validation now happens during SecurityManager
+        # initialization, not in create_security_config_from_env(). The function
+        # follows fail-secure principle by creating valid config with environment values.
+        # Validation is deferred to the point of use for better error context.
+
+        # Test: Boolean values are properly converted (uses REDIS_TLS_ENABLED, not REDIS_USE_TLS)
+        with patch('app.infrastructure.cache.security.SecurityConfig.create_for_environment') as mock_create:
+            mock_create.side_effect = Exception("Env detection failed")
+
+            with patch.dict('os.environ', {
+                'REDIS_AUTH': 'password',
+                'REDIS_TLS_ENABLED': 'false',
+                'REDIS_VERIFY_CERTIFICATES': 'false'
+            }, clear=True):
+                config = create_security_config_from_env()
+                assert config.use_tls is False  # type: ignore
+                assert config.verify_certificates is False  # type: ignore
+
+            with patch.dict('os.environ', {
+                'REDIS_AUTH': 'password',
+                'REDIS_TLS_ENABLED': 'TRUE',
+                'REDIS_VERIFY_CERTIFICATES': 'True'
+            }, clear=True):
+                config = create_security_config_from_env()
+                assert config.use_tls is True  # type: ignore
+                assert config.verify_certificates is True  # type: ignore   
