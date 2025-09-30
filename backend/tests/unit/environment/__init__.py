@@ -1,5 +1,5 @@
 """
-Test suite for backend.app.core.environment module.
+Test suite for app.core.environment module.
 
 This module tests the unified environment detection service that provides
 centralized environment classification across all backend infrastructure
