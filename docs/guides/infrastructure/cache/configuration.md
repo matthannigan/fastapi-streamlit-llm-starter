@@ -19,7 +19,7 @@ CACHE_PRESET=production           # For production web applications
 CACHE_PRESET=ai-production        # For AI-powered applications
 
 # Optional overrides (only when needed)
-CACHE_REDIS_URL=redis://localhost:6379    # Custom Redis connection
+CACHE_REDIS_URL=rediss://localhost:6380    # Custom Redis connection
 ENABLE_AI_CACHE=true                       # Toggle AI features
 CACHE_CUSTOM_CONFIG='{"memory_cache_size": 500}'  # Advanced JSON overrides
 ```
@@ -40,11 +40,149 @@ CACHE_HASH_ALGORITHM=sha256
 **Modern Preset Approach (1-4 variables)**:
 ```bash
 CACHE_PRESET=ai-production
-CACHE_REDIS_URL=redis://redis:6379
+CACHE_REDIS_URL=rediss://redis:6380
 ENABLE_AI_CACHE=true
 ```
 
 **Result**: 96% reduction in configuration complexity while maintaining full customization capabilities.
+
+## Mandatory Security Configuration
+
+### Security-First Architecture
+
+**Security is not optional - it's foundational and always enabled.**
+
+All Redis cache implementations in this template follow a **security-first design** where:
+- All Redis connections **must** use TLS encryption (`rediss://` protocol)
+- All cached data **must** be encrypted at rest using application-layer encryption
+- Applications **fail immediately** if security requirements aren't met in production
+- Configuration automatically adapts to environment while maintaining security
+
+This eliminates configuration complexity, prevents accidental insecure deployments, and creates a robust foundation for production systems.
+
+### Required Security Environment Variables
+
+| Variable | Type | Purpose | Example | Required |
+|----------|------|---------|---------|----------|
+| `REDIS_URL` | string | Secure Redis connection URL | `rediss://redis:6380` | Yes (production) |
+| `REDIS_PASSWORD` | string | Redis authentication password | `<secure-password>` | Yes (production) |
+| `REDIS_ENCRYPTION_KEY` | string | Fernet encryption key for cached data | `<base64-key>` | Yes (all environments) |
+| `REDIS_TLS_ENABLED` | boolean | Enable TLS for Redis connections | `true` | Yes (production) |
+| `REDIS_TLS_CERT_REQS` | string | TLS certificate validation level | `required` (prod), `optional` (dev) | Recommended |
+| `REDIS_TLS_CA_CERT` | string | Path to CA certificate for validation | `/etc/ssl/ca.crt` | Required (production) |
+| `REDIS_INSECURE_ALLOW_PLAINTEXT` | boolean | Override security (⚠️ not recommended) | `false` | Never in production |
+
+### Security Levels by Environment
+
+| Environment | Password Strength | TLS Version | Certificate Validation | Encryption | Override Allowed |
+|-------------|------------------|-------------|----------------------|------------|------------------|
+| **Production** | 48+ chars, 256-bit entropy | TLS 1.3 required | Strict (verified CAs) | Mandatory | ❌ No |
+| **Staging** | 32+ chars, 192-bit entropy | TLS 1.2+ | Verified CAs | Mandatory | ❌ No |
+| **Development** | 24+ chars, 128-bit entropy | TLS 1.2+ | Self-signed OK | Mandatory | ⚠️ With warning |
+
+### Quick Secure Setup
+
+#### Development Environment (Secure by Default)
+```bash
+# One-command secure Redis setup for local development
+./scripts/setup-secure-redis.sh
+
+# This generates:
+# - TLS certificates (4096-bit RSA)
+# - Secure password (24+ characters)
+# - Encryption key (Fernet)
+# - .env.secure configuration
+# - Starts TLS-enabled Redis container
+
+# Application automatically uses secure connection
+export REDIS_URL="rediss://localhost:6380"
+export REDIS_PASSWORD="<generated-password>"
+export REDIS_ENCRYPTION_KEY="<generated-key>"
+make run-backend
+```
+
+#### Production Environment
+```bash
+# Generate production-grade secure configuration
+python scripts/generate-secure-env.py --environment production
+
+# Set production environment variables
+export NODE_ENV=production
+export REDIS_URL="rediss://production-redis:6380"
+export REDIS_PASSWORD="${SECURE_PASSWORD}"
+export REDIS_ENCRYPTION_KEY="${GENERATED_KEY}"
+export REDIS_TLS_CERT_REQS=required
+export REDIS_TLS_CA_CERT=/etc/ssl/certs/redis-ca.crt
+
+# Application validates security at startup
+python -m app.main
+# ✅ Production environment detected
+# ✅ Secure Redis connection validated (TLS + Auth + Encryption)
+# 🚀 Application started successfully
+```
+
+### Secure Configuration Examples for Each Preset
+
+#### Development Preset (Secure)
+```bash
+CACHE_PRESET=development
+CACHE_REDIS_URL=rediss://localhost:6380
+REDIS_PASSWORD=<generated-24-char-password>
+REDIS_ENCRYPTION_KEY=<fernet-key>
+REDIS_TLS_ENABLED=true
+REDIS_TLS_CERT_REQS=optional  # Self-signed OK for development
+REDIS_TLS_CA_CERT=./certs/ca.crt
+ENABLE_AI_CACHE=true
+```
+
+#### Production Preset (Secure)
+```bash
+CACHE_PRESET=production
+CACHE_REDIS_URL=rediss://prod-cache:6380
+REDIS_PASSWORD=<generated-48-char-password>
+REDIS_ENCRYPTION_KEY=<fernet-key>
+REDIS_TLS_ENABLED=true
+REDIS_TLS_CERT_REQS=required  # Strict validation
+REDIS_TLS_CA_CERT=/etc/ssl/certs/redis-ca.crt
+REDIS_TLS_PROTOCOLS="TLSv1.3"
+```
+
+#### AI Production Preset (Secure)
+```bash
+CACHE_PRESET=ai-production
+CACHE_REDIS_URL=rediss://ai-prod-cache:6380
+REDIS_PASSWORD=<generated-48-char-password>
+REDIS_ENCRYPTION_KEY=<fernet-key>
+REDIS_TLS_ENABLED=true
+REDIS_TLS_CERT_REQS=required
+REDIS_TLS_CA_CERT=/etc/ssl/certs/redis-ca.crt
+REDIS_TLS_PROTOCOLS="TLSv1.3"
+ENABLE_AI_CACHE=true
+GEMINI_API_KEY=<production-api-key>
+```
+
+### Security Implementation Details
+
+**Three-Layer Security Model:**
+
+1. **Startup Security Validation** (`backend/app/core/startup/redis_security.py`)
+   - Environment-aware enforcement (TLS required in production)
+   - Fail-fast design (application refuses to start without proper security)
+   - Clear error messages with actionable guidance
+
+2. **TLS Transport Security** (`docker-compose.secure.yml`)
+   - Certificate-based security (4096-bit RSA)
+   - Protocol enforcement (TLS 1.2+ for development, TLS 1.3 for production)
+   - Password authentication required
+   - Protected mode prevents unauthorized network access
+
+3. **Application-Layer Encryption** (`backend/app/infrastructure/cache/encryption.py`)
+   - Fernet symmetric encryption (AES-128 in CBC mode with HMAC)
+   - Automatic serialization (JSON → Encrypt → Store)
+   - Transparent operations for cache consumers
+   - Error handling with fail-fast for invalid keys
+
+**📖 For comprehensive security documentation, see [Redis Cache Security Guide](./security.md).**
 
 ## Available Presets
 
@@ -163,7 +301,7 @@ CACHE_CUSTOM_CONFIG='{"max_connections": 1, "connection_timeout": 2}'
 ```bash
 # Simple web application configuration
 CACHE_PRESET=simple
-CACHE_REDIS_URL=redis://app-redis:6379
+CACHE_REDIS_URL=rediss://app-redis:6380
 
 # With monitoring enhancements
 CACHE_PRESET=simple
@@ -214,7 +352,7 @@ CACHE_CUSTOM_CONFIG='{"monitoring_enabled": true, "log_level": "DEBUG"}'
 ```bash
 # Development environment with AI features
 CACHE_PRESET=development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380
 ENABLE_AI_CACHE=true
 
 # With custom development settings
@@ -261,7 +399,7 @@ CACHE_CUSTOM_CONFIG='{"default_ttl": 600, "log_level": "DEBUG"}'
 ```bash
 # Production web application
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://prod-cache:6379
+CACHE_REDIS_URL=rediss://prod-cache:6380
 
 # High-traffic production with custom tuning
 CACHE_PRESET=production
@@ -316,7 +454,7 @@ CACHE_CUSTOM_CONFIG='{"max_connections": 30, "memory_cache_size": 1000, "compres
 ```bash
 # AI application development
 CACHE_PRESET=ai-development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380
 GEMINI_API_KEY=your-development-api-key
 
 # With custom AI development settings
@@ -381,7 +519,7 @@ CACHE_CUSTOM_CONFIG='{"text_hash_threshold": 300, "max_text_length": 25000}'
 ```bash
 # Production AI application
 CACHE_PRESET=ai-production
-CACHE_REDIS_URL=redis://ai-prod-cache:6379
+CACHE_REDIS_URL=rediss://ai-prod-cache:6380
 GEMINI_API_KEY=your-production-api-key
 
 # High-volume AI production with custom optimization
@@ -495,7 +633,7 @@ The configuration system follows this precedence hierarchy:
 ```bash
 # Use production preset with dedicated cache Redis
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://cache-cluster:6379
+CACHE_REDIS_URL=rediss://cache-cluster:6380
 ```
 
 #### Scenario 2: Development with Enhanced Memory
@@ -639,15 +777,15 @@ The cache infrastructure supports flexible Redis configuration patterns:
 
 #### Basic Redis Configuration
 ```bash
-# Simple Redis connection
-CACHE_REDIS_URL=redis://localhost:6379
+# Simple Redis connection (secure TLS)
+CACHE_REDIS_URL=rediss://localhost:6380
 
-# Redis with database selection
-CACHE_REDIS_URL=redis://localhost:6379/1
+# Redis with database selection (secure TLS)
+CACHE_REDIS_URL=rediss://localhost:6380/1
 
-# Redis with authentication
-CACHE_REDIS_URL=redis://:password@redis:6379
-CACHE_REDIS_URL=redis://username:password@redis:6379
+# Redis with authentication (secure TLS)
+CACHE_REDIS_URL=rediss://:password@redis:6380
+CACHE_REDIS_URL=rediss://username:password@redis:6380
 ```
 
 #### Secure Redis Configuration
@@ -669,15 +807,15 @@ CACHE_CUSTOM_CONFIG='{
 
 #### Redis Cluster Configuration
 ```bash
-# Redis cluster with multiple endpoints
-CACHE_REDIS_URL=redis://node1:6379,node2:6379,node3:6379
+# Redis cluster with multiple endpoints (secure TLS)
+CACHE_REDIS_URL=rediss://node1:6380,node2:6380,node3:6380
 
 # Cluster with custom configuration
 CACHE_CUSTOM_CONFIG='{
   "redis_cluster_nodes": [
-    "redis://node1:6379",
-    "redis://node2:6379", 
-    "redis://node3:6379"
+    "rediss://node1:6380",
+    "rediss://node2:6380",
+    "rediss://node3:6380"
   ],
   "cluster_mode": true,
   "max_connections_per_node": 10
@@ -721,8 +859,8 @@ CACHE_CUSTOM_CONFIG='{
 
 #### Network Security
 ```bash
-# Private network configuration
-CACHE_REDIS_URL=redis://internal-cache.vpc:6379
+# Private network configuration (secure TLS)
+CACHE_REDIS_URL=rediss://internal-cache.vpc:6380
 CACHE_CUSTOM_CONFIG='{
   "connection_timeout": 30,
   "socket_timeout": 30,
@@ -758,7 +896,7 @@ from app.infrastructure.cache.config import CacheConfigBuilder
 # Combine multiple sources
 config = (CacheConfigBuilder()
     .from_preset("ai-production")
-    .with_redis_url("redis://custom-redis:6379")
+    .with_redis_url("rediss://custom-redis:6380")
     .with_ai_enabled(True)
     .with_custom_config({
         "memory_cache_size": 1500,
@@ -790,7 +928,7 @@ def create_cache_config():
         builder.with_redis_url(os.getenv("STAGING_REDIS_URL"))
     else:
         builder.from_preset("development")
-        builder.with_redis_url("redis://localhost:6379")
+        builder.with_redis_url("rediss://localhost:6380")
     
     return builder.build()
 ```
@@ -834,7 +972,7 @@ else:
 ```bash
 # .env.development
 CACHE_PRESET=development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380
 ENABLE_AI_CACHE=true
 GEMINI_API_KEY=your-development-api-key
 
@@ -853,7 +991,7 @@ services:
   backend:
     environment:
       - CACHE_PRESET=${CACHE_PRESET:-development}
-      - CACHE_REDIS_URL=redis://redis:6379
+      - CACHE_REDIS_URL=rediss://redis:6380
       - ENABLE_AI_CACHE=${ENABLE_AI_CACHE:-true}
     depends_on:
       - redis
@@ -861,8 +999,8 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
+      - "6380:6380"
+    command: redis-server --tls-port 6380 --port 0 --appendonly yes
 ```
 
 ### Testing Environment
@@ -871,11 +1009,11 @@ services:
 ```bash
 # .env.testing
 CACHE_PRESET=disabled
-TEST_REDIS_URL=redis://localhost:6379/15
+TEST_REDIS_URL=rediss://localhost:6380/15
 
 # For integration tests
 CACHE_PRESET=minimal
-CACHE_REDIS_URL=redis://localhost:6379/14
+CACHE_REDIS_URL=rediss://localhost:6380/14
 CACHE_CUSTOM_CONFIG='{"default_ttl": 60, "memory_cache_size": 10}'
 ```
 
@@ -884,7 +1022,7 @@ CACHE_CUSTOM_CONFIG='{"default_ttl": 60, "memory_cache_size": 10}'
 # .github/workflows/test.yml
 env:
   CACHE_PRESET: disabled
-  TEST_REDIS_URL: redis://localhost:6379/15
+  TEST_REDIS_URL: rediss://localhost:6380/15
   
 services:
   redis:
@@ -902,7 +1040,7 @@ services:
 ```bash
 # .env.staging
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://staging-cache:6379
+CACHE_REDIS_URL=rediss://staging-cache:6380
 ENABLE_AI_CACHE=true
 
 # Mirror production with reduced resources
@@ -921,7 +1059,7 @@ metadata:
   name: cache-config-staging
 data:
   CACHE_PRESET: "production"
-  CACHE_REDIS_URL: "redis://staging-cache:6379"
+  CACHE_REDIS_URL: "rediss://staging-cache:6380"
   ENABLE_AI_CACHE: "true"
   CACHE_CUSTOM_CONFIG: |
     {
@@ -937,7 +1075,7 @@ data:
 ```bash
 # .env.production
 CACHE_PRESET=ai-production
-CACHE_REDIS_URL=redis://prod-cache-cluster:6379
+CACHE_REDIS_URL=rediss://prod-cache-cluster:6380
 ENABLE_AI_CACHE=true
 
 # Production-specific optimizations
@@ -1070,10 +1208,10 @@ import os
 
 def create_tenant_config(tenant_id: str):
     base_preset = os.getenv("BASE_CACHE_PRESET", "production")
-    
+
     return (CacheConfigBuilder()
         .from_preset(base_preset)
-        .with_redis_url(f"redis://tenant-{tenant_id}-cache:6379")
+        .with_redis_url(f"rediss://tenant-{tenant_id}-cache:6380")
         .with_custom_config({
             "key_prefix": f"tenant:{tenant_id}:",
             "memory_cache_size": 100,  # Per-tenant memory cache
@@ -1097,17 +1235,17 @@ def create_tenant_config(tenant_id: str):
 def create_geo_config(region: str):
     region_configs = {
         "us-east": {
-            "redis_url": "redis://us-east-cache:6379",
+            "redis_url": "rediss://us-east-cache:6380",
             "max_connections": 50,
             "connection_timeout": 5
         },
         "eu-west": {
-            "redis_url": "redis://eu-west-cache:6379", 
+            "redis_url": "rediss://eu-west-cache:6380",
             "max_connections": 30,
             "connection_timeout": 10  # Higher latency
         },
         "ap-south": {
-            "redis_url": "redis://ap-south-cache:6379",
+            "redis_url": "rediss://ap-south-cache:6380",
             "max_connections": 20,
             "connection_timeout": 15  # Highest latency
         }
@@ -1187,11 +1325,12 @@ CACHE_PRESET=production
 #### Invalid Redis URLs
 ```python
 # ❌ Invalid URLs
-CACHE_REDIS_URL=localhost:6379          # Missing protocol
-CACHE_REDIS_URL=redis://invalid:host    # Invalid hostname
+CACHE_REDIS_URL=localhost:6380          # Missing protocol
+CACHE_REDIS_URL=rediss://invalid:host    # Invalid hostname
+CACHE_REDIS_URL=redis://localhost:6379  # Insecure protocol
 
 # ✅ Valid URLs
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380
 CACHE_REDIS_URL=rediss://secure-redis:6380
 ```
 
@@ -1400,15 +1539,16 @@ WARNING Cache: Redis connection failed, using memory-only mode
 
 **Solution**:
 ```bash
-# Test Redis connectivity
-redis-cli -h redis-host -p 6379 ping
+# Test Redis connectivity (secure TLS)
+redis-cli --tls -h redis-host -p 6380 ping
 
 # Check Redis URL format
-CACHE_REDIS_URL=redis://localhost:6379  # ✅ Correct
-CACHE_REDIS_URL=localhost:6379         # ❌ Missing protocol
+CACHE_REDIS_URL=rediss://localhost:6380  # ✅ Correct (secure)
+CACHE_REDIS_URL=redis://localhost:6379   # ❌ Insecure protocol
+CACHE_REDIS_URL=localhost:6380          # ❌ Missing protocol
 
-# Verify authentication
-CACHE_REDIS_URL=redis://:password@redis:6379
+# Verify authentication (secure TLS)
+CACHE_REDIS_URL=rediss://:password@redis:6380
 ```
 
 #### Issue 4: High Memory Usage
@@ -1541,16 +1681,16 @@ CACHE_PRESET=ai-production             # Add AI when needed
 ```bash
 # Development
 CACHE_PRESET=development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380
 
 # Staging (mirror production)
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://staging-cache:6379
+CACHE_REDIS_URL=rediss://staging-cache:6380
 CACHE_CUSTOM_CONFIG='{"memory_cache_size": 200}'  # Reduced resources
 
 # Production
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://prod-cache:6379
+CACHE_REDIS_URL=rediss://prod-cache:6380
 ```
 
 #### 3. Security Considerations
@@ -1605,7 +1745,7 @@ CACHE_CUSTOM_CONFIG='{
 ```bash
 # .env.local
 CACHE_PRESET=development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380
 ENABLE_AI_CACHE=true
 CACHE_CUSTOM_CONFIG='{"log_level": "DEBUG"}'
 ```
@@ -1614,7 +1754,7 @@ CACHE_CUSTOM_CONFIG='{"log_level": "DEBUG"}'
 ```bash
 # .env.test
 CACHE_PRESET=disabled
-TEST_REDIS_URL=redis://localhost:6379/15
+TEST_REDIS_URL=rediss://localhost:6380/15
 
 # For integration tests
 CACHE_PRESET=minimal
@@ -1639,11 +1779,11 @@ CACHE_CUSTOM_CONFIG='{"default_ttl": 60, "memory_cache_size": 10}'
 ```bash
 # Blue environment
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://blue-cache:6379
+CACHE_REDIS_URL=rediss://blue-cache:6380
 
 # Green environment (staging)
-CACHE_PRESET=production  
-CACHE_REDIS_URL=redis://green-cache:6379
+CACHE_PRESET=production
+CACHE_REDIS_URL=rediss://green-cache:6380
 CACHE_CUSTOM_CONFIG='{"memory_cache_size": 200}'  # Test with reduced resources
 ```
 

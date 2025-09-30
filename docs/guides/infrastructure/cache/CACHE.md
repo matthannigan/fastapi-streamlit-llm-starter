@@ -12,6 +12,83 @@ The Cache Infrastructure Service is a **production-ready infrastructure componen
 
 **Quick Start**: New to cache configuration? Start with the [Cache Usage Guide](./usage-guide.md) for step-by-step implementation examples.
 
+## Security-First Architecture
+
+### Built-In Security by Default
+
+**Security is not optional - it's foundational and always enabled.**
+
+All Redis cache implementations in this template follow a **security-first design philosophy**:
+
+- ✅ **TLS Encryption Mandatory**: All Redis connections use encrypted `rediss://` protocol (port 6380)
+- ✅ **Application-Layer Encryption**: All cached data encrypted at rest using Fernet (AES-128-CBC + HMAC)
+- ✅ **Strong Authentication**: Password authentication required for all Redis connections
+- ✅ **Fail-Fast Validation**: Application refuses to start in production without proper security
+- ✅ **Environment-Aware Enforcement**: Security automatically adapts to deployment context
+
+This eliminates configuration complexity, prevents accidental insecure deployments, and creates a robust foundation for production systems.
+
+### Three-Layer Security Model
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Layer 1: Startup Security Validation                  │
+│  • Environment-aware enforcement                        │
+│  • Fail-fast design with clear error messages          │
+│  • Automatic security configuration validation         │
+└────────────────┬────────────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────────────┐
+│  Layer 2: TLS Transport Security                       │
+│  • TLS 1.2+ (development) / TLS 1.3 (production)       │
+│  • Certificate-based authentication (4096-bit RSA)      │
+│  • Password authentication required                     │
+│  • Protected mode and network isolation                │
+└────────────────┬────────────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────────────┐
+│  Layer 3: Application-Layer Encryption                 │
+│  • Fernet encryption (AES-128 in CBC mode)             │
+│  • Transparent encrypt/decrypt operations               │
+│  • HMAC authentication for data integrity               │
+│  • Mandatory encryption keys (never optional)           │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Quick Secure Setup
+
+**One-Command Development Setup:**
+```bash
+# Generate TLS certificates, keys, and start secure Redis
+./scripts/setup-secure-redis.sh
+
+# Application automatically uses secure connection
+export REDIS_URL="rediss://localhost:6380"
+export REDIS_PASSWORD="<generated-password>"
+export REDIS_ENCRYPTION_KEY="<generated-key>"
+make run-backend
+```
+
+**Production Security Configuration:**
+```bash
+# Set production security environment
+export NODE_ENV=production
+export REDIS_URL="rediss://production-redis:6380"
+export REDIS_PASSWORD="${SECURE_PASSWORD}"  # 48+ characters
+export REDIS_ENCRYPTION_KEY="${GENERATED_KEY}"  # Fernet key
+export REDIS_TLS_ENABLED=true
+export REDIS_TLS_CERT_REQS=required
+export REDIS_TLS_PROTOCOLS="TLSv1.3"
+
+# Application validates security at startup
+python -m app.main
+# ✅ Production environment detected
+# ✅ Secure Redis connection validated (TLS + Auth + Encryption)
+# 🚀 Application started successfully
+```
+
+**📖 For comprehensive security documentation, see [Redis Cache Security Guide](./security.md).**
+
 ### Architecture Position
 
 The cache infrastructure sits at the core of the application's performance optimization strategy, providing caching services to all domain services while maintaining clear architectural boundaries.
@@ -218,11 +295,13 @@ CacheInterface (Abstract Base)
 
 ### Getting Started (Choose Your Path)
 
-**📚 New to Caching?** Start with [Cache Usage Guide](./usage-guide.md) for comprehensive examples and step-by-step implementation.
+**🔒 Security Setup?** Start with [Redis Cache Security Guide](./security.md) for comprehensive security implementation with TLS, encryption, and authentication.
 
-**⚡ Quick Setup?** Jump to [Cache Configuration Guide](./configuration.md) for rapid environment-based setup.
+**📚 New to Caching?** Continue with [Cache Usage Guide](./usage-guide.md) for comprehensive examples and step-by-step implementation.
 
-**🔧 Advanced Troubleshooting?** Explore [Cache Troubleshooting Guide](./troubleshooting.md) for comprehensive problem-solving strategies.
+**⚡ Quick Setup?** Jump to [Cache Configuration Guide](./configuration.md) for rapid environment-based setup with security-first defaults.
+
+**🔧 Advanced Troubleshooting?** Explore [Cache Troubleshooting Guide](./troubleshooting.md) for comprehensive problem-solving strategies including security troubleshooting.
 
 ### Implementation Guides
 
@@ -336,10 +415,12 @@ graph TD
 The cache infrastructure supports flexible configuration through environment variables and preset systems, leveraging the unified [Environment Detection Service](../../developer/ENVIRONMENT_DETECTION.md) for consistent environment classification:
 
 ```bash
-# Quick Setup with Presets
-CACHE_PRESET=ai-production          # Use AI-optimized production settings
-CACHE_REDIS_URL=redis://redis:6379  # Optional Redis URL override
-ENABLE_AI_CACHE=true               # Enable AI-specific features
+# Quick Setup with Presets (Security-First)
+CACHE_PRESET=ai-production           # Use AI-optimized production settings
+CACHE_REDIS_URL=rediss://redis:6380  # Secure Redis URL (TLS encryption)
+REDIS_PASSWORD=<secure-password>     # Redis authentication
+REDIS_ENCRYPTION_KEY=<fernet-key>    # Data encryption key
+ENABLE_AI_CACHE=true                 # Enable AI-specific features
 
 # Custom Configuration
 CACHE_CUSTOM_CONFIG='{"compression_threshold": 500, "memory_cache_size": 200}'
@@ -354,7 +435,9 @@ CACHE_CUSTOM_CONFIG='{"compression_threshold": 500, "memory_cache_size": 200}'
 | **ai-production** | AI-heavy workloads | 200 entries | Aggressive | AI-optimized TTLs |
 | **minimal** | Resource-constrained | 25 entries | High compression | Extended TTLs |
 
-**Next Steps**: See [Cache Configuration Guide](./configuration.md) for detailed configuration examples and preset-specific guidance.
+**Next Steps**:
+- See [Redis Cache Security Guide](./security.md) for comprehensive security setup and configuration
+- See [Cache Configuration Guide](./configuration.md) for detailed configuration examples and preset-specific guidance
 
 ## Cache Instantiation Patterns
 
@@ -530,11 +613,12 @@ The Cache Infrastructure Service integrates seamlessly with other infrastructure
 - **[Backend Guide](../BACKEND.md)**: Basic understanding of the backend architecture and service integration
 
 ### Cache Documentation Suite
+- **[Redis Cache Security Guide](./security.md)**: Security-first Redis architecture with TLS, encryption, and authentication
 - **[Cache Usage Guide](./usage-guide.md)**: Comprehensive implementation examples and integration patterns
-- **[Cache API Reference](./api-reference.md)**: Detailed method documentation and parameter specifications  
-- **[Cache Configuration Guide](./configuration.md)**: Configuration management, environment setup, and preset system
+- **[Cache API Reference](./api-reference.md)**: Detailed method documentation and parameter specifications
+- **[Cache Configuration Guide](./configuration.md)**: Configuration management, environment setup, and preset system with security defaults
 - **[Cache Testing Guide](./testing.md)**: Testing strategies and development workflow guidance
-- **[Cache Troubleshooting Guide](./troubleshooting.md)**: Development workflows, debugging, and comprehensive problem-solving strategies
+- **[Cache Troubleshooting Guide](./troubleshooting.md)**: Development workflows, debugging, and security troubleshooting strategies
 
 ### Related Infrastructure Services
 - **[AI Infrastructure](../AI.md)**: AI service integration that benefits from intelligent response caching

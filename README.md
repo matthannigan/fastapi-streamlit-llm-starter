@@ -18,6 +18,7 @@ This starter template demonstrates:
 - **Infrastructure vs Domain Separation**: Clear boundaries between reusable components and customizable business logic
 - **Comprehensive Resilience Patterns**: Circuit breakers, retry logic, graceful degradation
 - **Advanced Multi-tier Caching System**: Redis-backed with automatic fallback to in-memory cache, featuring inheritance-based architecture and AI-optimized patterns
+- **Security-First Redis**: TLS encryption, password authentication, and at-rest encryption with one-command setup for development
 
 ### 🤖 AI Integration Excellence
 - **PydanticAI Agents**: Built-in security and validation for AI model interactions
@@ -151,7 +152,7 @@ CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 1800}'
 
 # NEW WAY (1-4 variables)
 CACHE_PRESET=development                    # Choose preset for your use case
-CACHE_REDIS_URL=redis://localhost:6379     # Optional Redis override
+CACHE_REDIS_URL=rediss://localhost:6380     # Secure Redis with TLS (optional override)
 ENABLE_AI_CACHE=true                        # Optional AI features toggle
 ```
 
@@ -177,6 +178,9 @@ cd fastapi-streamlit-llm-starter
 
 # Complete setup - creates venv and installs all dependencies
 make install
+
+# Optional: Setup secure Redis for production-like development
+./scripts/setup-secure-redis.sh
 ```
 
 ### 2. Configure Environment Variables
@@ -196,16 +200,16 @@ AI_TEMPERATURE=0.7
 
 # Resilience Configuration (Choose one preset)
 RESILIENCE_PRESET=simple      # General use, testing
-# RESILIENCE_PRESET=development # Local dev, fast feedback  
+# RESILIENCE_PRESET=development # Local dev, fast feedback
 # RESILIENCE_PRESET=production  # Production workloads
 
 # Cache Configuration (Choose one preset)
 CACHE_PRESET=development      # Choose: disabled, minimal, simple, development, production, ai-development, ai-production
 
-# Optional: Redis override (auto-configured per preset if not specified)
-CACHE_REDIS_URL=redis://localhost:6379
+# Optional: Secure Redis connection (recommended for production)
+CACHE_REDIS_URL=rediss://localhost:6380
 
-# Optional: AI cache features toggle  
+# Optional: AI cache features toggle
 ENABLE_AI_CACHE=true
 ```
 
@@ -427,7 +431,7 @@ if __name__ == "__main__":
 ```bash
 # NEW: Simplified preset-based configuration (replaces 28+ variables)
 CACHE_PRESET=ai-development           # Choose preset for your use case
-CACHE_REDIS_URL=redis://localhost:6379  # Essential Redis connection override  
+CACHE_REDIS_URL=rediss://localhost:6380  # Secure Redis with TLS (essential connection override)
 ENABLE_AI_CACHE=true                  # Enable AI-specific features
 
 # Available presets: disabled, minimal, simple, development, production, ai-development, ai-production
@@ -466,7 +470,7 @@ cached_result = await cache.get_cached_response(
 ```bash
 # Preset with custom overrides for specific requirements
 CACHE_PRESET=ai-production
-CACHE_REDIS_URL=redis://prod-cache:6379
+CACHE_REDIS_URL=rediss://prod-cache:6380
 CACHE_CUSTOM_CONFIG='{"memory_cache_size": 1000, "max_connections": 50}'
 ```
 
@@ -924,12 +928,18 @@ curl http://localhost:8000/v1/health
 
 **3. Redis Connection Errors**
 ```bash
+# For secure Redis, verify TLS configuration
+redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key ping
+
 # Check Redis connectivity
 make redis-cli
 
 # Application automatically falls back to memory cache
 # Verify cache status
 curl http://localhost:8000/internal/cache/status
+
+# Verify secure Redis health
+curl http://localhost:8000/internal/cache/health
 ```
 
 **4. Port Conflicts**
