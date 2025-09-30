@@ -37,7 +37,7 @@ class TestIsEnabledProperty:
         - Test property behavior matches initialization state
     """
 
-    def test_is_enabled_returns_true_with_valid_key(self):
+    def test_is_enabled_returns_true_with_valid_key(self, encryption_with_valid_key):
         """
         Test that is_enabled returns True when encryption is enabled.
 
@@ -59,9 +59,22 @@ class TestIsEnabledProperty:
         Fixtures Used:
             - encryption_with_valid_key: Instance with encryption enabled
         """
-        pass
+        # Given: EncryptedCacheLayer initialized with valid encryption key
+        encryption = encryption_with_valid_key
 
-    def test_is_enabled_returns_false_without_key(self):
+        # When: is_enabled property is accessed
+        is_encrypted = encryption.is_enabled
+
+        # Then: Property returns True
+        assert is_encrypted is True
+
+        # And: Return value is boolean type
+        assert isinstance(is_encrypted, bool)
+
+        # And: Value correctly reflects encryption status
+        assert is_encrypted == encryption.is_enabled  # Consistent access
+
+    def test_is_enabled_returns_false_without_key(self, encryption_without_key):
         """
         Test that is_enabled returns False when encryption is disabled.
 
@@ -83,9 +96,22 @@ class TestIsEnabledProperty:
         Fixtures Used:
             - encryption_without_key: Instance with encryption disabled
         """
-        pass
+        # Given: EncryptedCacheLayer initialized with None encryption key
+        encryption = encryption_without_key
 
-    def test_is_enabled_matches_initialization_state(self):
+        # When: is_enabled property is accessed
+        is_encrypted = encryption.is_enabled
+
+        # Then: Property returns False
+        assert is_encrypted is False
+
+        # And: Return value is boolean type
+        assert isinstance(is_encrypted, bool)
+
+        # And: Value indicates encryption is disabled
+        assert is_encrypted == encryption.is_enabled  # Consistent access
+
+    def test_is_enabled_matches_initialization_state(self, encryption_with_valid_key, encryption_without_key):
         """
         Test that is_enabled property reflects initialization configuration.
 
@@ -109,9 +135,28 @@ class TestIsEnabledProperty:
             - encryption_with_valid_key: Enabled encryption
             - encryption_without_key: Disabled encryption
         """
-        pass
+        # Given: Multiple EncryptedCacheLayer instances with different configs
+        enabled_encryption = encryption_with_valid_key
+        disabled_encryption = encryption_without_key
 
-    def test_is_enabled_can_be_used_in_conditional_logic(self):
+        # When: is_enabled is checked on each instance
+        enabled_status = enabled_encryption.is_enabled
+        disabled_status = disabled_encryption.is_enabled
+
+        # Then: Property value matches initialization state for each
+        assert enabled_status is True
+        assert disabled_status is False
+
+        # And: Enabled instances return True
+        # And: Disabled instances return False
+        assert enabled_status is not disabled_status
+
+        # And: Values remain consistent over instance lifetime
+        # Access property multiple times to ensure consistency
+        assert enabled_encryption.is_enabled == enabled_encryption.is_enabled
+        assert disabled_encryption.is_enabled == disabled_encryption.is_enabled
+
+    def test_is_enabled_can_be_used_in_conditional_logic(self, encryption_with_valid_key, encryption_without_key):
         """
         Test that is_enabled works correctly in if statements.
 
@@ -135,7 +180,40 @@ class TestIsEnabledProperty:
             - encryption_with_valid_key: For True branch testing
             - encryption_without_key: For False branch testing
         """
-        pass
+        # Given: EncryptedCacheLayer instances (enabled and disabled)
+        enabled_encryption = encryption_with_valid_key
+        disabled_encryption = encryption_without_key
+
+        # When: is_enabled is used in if statement
+        result_enabled = []
+        result_disabled = []
+
+        # Test enabled instance triggers True branch
+        if enabled_encryption.is_enabled:
+            result_enabled.append("encryption_active")
+        else:
+            result_enabled.append("encryption_inactive")
+
+        # Test disabled instance triggers False branch
+        if disabled_encryption.is_enabled:
+            result_disabled.append("encryption_active")
+        else:
+            result_disabled.append("encryption_inactive")
+
+        # Then: Conditional logic works as expected
+        # And: Enabled instance triggers True branch
+        assert result_enabled == ["encryption_active"]
+
+        # And: Disabled instance triggers False branch
+        assert result_disabled == ["encryption_inactive"]
+
+        # And: Property behaves like boolean in all contexts
+        # Test in boolean expressions
+        assert bool(enabled_encryption.is_enabled) is True
+        assert bool(disabled_encryption.is_enabled) is False
+        assert not disabled_encryption.is_enabled is True
+        assert enabled_encryption.is_enabled or False is True
+        assert (disabled_encryption.is_enabled and True) is False
 
 
 class TestGetPerformanceStats:
@@ -158,7 +236,7 @@ class TestGetPerformanceStats:
         - Verify all documented fields are present
     """
 
-    def test_get_performance_stats_returns_complete_structure(self):
+    def test_get_performance_stats_returns_complete_structure(self, encryption_with_valid_key):
         """
         Test that get_performance_stats() returns all documented fields.
 
@@ -187,9 +265,32 @@ class TestGetPerformanceStats:
         Fixtures Used:
             - encryption_with_valid_key: Instance with monitoring enabled
         """
-        pass
+        # Given: EncryptedCacheLayer with performance monitoring enabled
+        encryption = encryption_with_valid_key
 
-    def test_get_performance_stats_shows_zero_operations_initially(self):
+        # When: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: Dictionary is returned
+        assert isinstance(stats, dict)
+
+        # And: Dict contains all documented fields
+        expected_fields = [
+            "encryption_enabled",
+            "encryption_operations",
+            "decryption_operations",
+            "total_operations",
+            "total_encryption_time",
+            "total_decryption_time",
+            "avg_encryption_time",
+            "avg_decryption_time",
+            "performance_monitoring"
+        ]
+
+        for field in expected_fields:
+            assert field in stats, f"Missing field: {field}"
+
+    def test_get_performance_stats_shows_zero_operations_initially(self, encryption_with_fresh_stats):
         """
         Test that performance stats show zero operations after reset.
 
@@ -215,9 +316,24 @@ class TestGetPerformanceStats:
         Fixtures Used:
             - encryption_with_fresh_stats: Instance with reset stats
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_increments_encryption_operations(self):
+        # When: get_performance_stats() is called before any operations
+        stats = encryption.get_performance_stats()
+
+        # Then: All operation counts are zero
+        assert stats["encryption_operations"] == 0
+        assert stats["decryption_operations"] == 0
+        assert stats["total_operations"] == 0
+
+        # And: All timing values are zero
+        assert stats["total_encryption_time"] == 0.0
+        assert stats["total_decryption_time"] == 0.0
+        assert stats["avg_encryption_time"] == 0.0
+        assert stats["avg_decryption_time"] == 0.0
+
+    def test_get_performance_stats_increments_encryption_operations(self, encryption_with_fresh_stats, sample_cache_data):
         """
         Test that encryption operations are counted correctly.
 
@@ -241,9 +357,26 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_cache_data: Data for operations
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_increments_decryption_operations(self):
+        # When: encrypt_cache_data() is called 5 times
+        for _ in range(5):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: encryption_operations equals 5
+        assert stats["encryption_operations"] == 5
+
+        # And: total_operations equals 5
+        assert stats["total_operations"] == 5
+
+        # And: decryption_operations equals 0
+        assert stats["decryption_operations"] == 0
+
+    def test_get_performance_stats_increments_decryption_operations(self, encryption_with_fresh_stats, sample_encrypted_bytes):
         """
         Test that decryption operations are counted correctly.
 
@@ -268,9 +401,26 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_encrypted_bytes: Pre-encrypted data
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_accumulates_encryption_time(self):
+        # When: decrypt_cache_data() is called 3 times
+        for _ in range(3):
+            encryption.decrypt_cache_data(sample_encrypted_bytes)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: decryption_operations equals 3
+        assert stats["decryption_operations"] == 3
+
+        # And: total_operations equals 3
+        assert stats["total_operations"] == 3
+
+        # And: encryption_operations equals 0
+        assert stats["encryption_operations"] == 0
+
+    def test_get_performance_stats_accumulates_encryption_time(self, encryption_with_fresh_stats, sample_cache_data):
         """
         Test that total_encryption_time accumulates across operations.
 
@@ -294,9 +444,33 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_cache_data: Data for operations
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_accumulates_decryption_time(self):
+        # When: encrypt_cache_data() is called multiple times
+        # Get initial stats to verify time accumulation
+        initial_stats = encryption.get_performance_stats()
+        initial_time = initial_stats["total_encryption_time"]
+
+        # Perform first operation
+        encryption.encrypt_cache_data(sample_cache_data)
+        stats_after_first = encryption.get_performance_stats()
+
+        # Perform second operation
+        encryption.encrypt_cache_data(sample_cache_data)
+        stats_after_second = encryption.get_performance_stats()
+
+        # Then: total_encryption_time is greater than 0
+        assert stats_after_first["total_encryption_time"] > 0
+
+        # And: total_encryption_time increases with each operation
+        assert stats_after_first["total_encryption_time"] > initial_time
+        assert stats_after_second["total_encryption_time"] > stats_after_first["total_encryption_time"]
+
+        # And: Time value is reasonable for operations performed (should be positive but not extremely large)
+        assert stats_after_second["total_encryption_time"] < 1000  # Less than 1000ms (1 second) total
+
+    def test_get_performance_stats_accumulates_decryption_time(self, encryption_with_fresh_stats, sample_encrypted_bytes):
         """
         Test that total_decryption_time accumulates across operations.
 
@@ -321,9 +495,33 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_encrypted_bytes: Pre-encrypted data
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_calculates_average_encryption_time(self):
+        # When: decrypt_cache_data() is called multiple times
+        # Get initial stats to verify time accumulation
+        initial_stats = encryption.get_performance_stats()
+        initial_time = initial_stats["total_decryption_time"]
+
+        # Perform first operation
+        encryption.decrypt_cache_data(sample_encrypted_bytes)
+        stats_after_first = encryption.get_performance_stats()
+
+        # Perform second operation
+        encryption.decrypt_cache_data(sample_encrypted_bytes)
+        stats_after_second = encryption.get_performance_stats()
+
+        # Then: total_decryption_time is greater than 0
+        assert stats_after_first["total_decryption_time"] > 0
+
+        # And: total_decryption_time increases with each operation
+        assert stats_after_first["total_decryption_time"] > initial_time
+        assert stats_after_second["total_decryption_time"] > stats_after_first["total_decryption_time"]
+
+        # And: Time value is reasonable for operations performed (should be positive but not extremely large)
+        assert stats_after_second["total_decryption_time"] < 1000  # Less than 1000ms (1 second) total
+
+    def test_get_performance_stats_calculates_average_encryption_time(self, encryption_with_fresh_stats, sample_cache_data):
         """
         Test that avg_encryption_time is calculated correctly.
 
@@ -347,9 +545,31 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_cache_data: Data for operations
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_calculates_average_decryption_time(self):
+        # When: Multiple encrypt operations are performed
+        operation_count = 4
+        for _ in range(operation_count):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: avg_encryption_time equals total_time / operation_count (converted to milliseconds)
+        expected_avg = (stats["total_encryption_time"] / stats["encryption_operations"]) * 1000
+        actual_avg = stats["avg_encryption_time"]
+
+        assert abs(actual_avg - expected_avg) < 0.001  # Allow for floating point precision
+
+        # And: Average is expressed in milliseconds (positive value)
+        assert actual_avg > 0
+
+        # And: Calculation is mathematically correct
+        assert stats["encryption_operations"] == operation_count
+        assert stats["total_encryption_time"] > 0
+
+    def test_get_performance_stats_calculates_average_decryption_time(self, encryption_with_fresh_stats, sample_encrypted_bytes):
         """
         Test that avg_decryption_time is calculated correctly.
 
@@ -374,9 +594,31 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_encrypted_bytes: Pre-encrypted data
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_returns_zero_average_with_no_operations(self):
+        # When: Multiple decrypt operations are performed
+        operation_count = 3
+        for _ in range(operation_count):
+            encryption.decrypt_cache_data(sample_encrypted_bytes)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: avg_decryption_time equals total_time / operation_count (converted to milliseconds)
+        expected_avg = (stats["total_decryption_time"] / stats["decryption_operations"]) * 1000
+        actual_avg = stats["avg_decryption_time"]
+
+        assert abs(actual_avg - expected_avg) < 0.001  # Allow for floating point precision
+
+        # And: Average is expressed in milliseconds (positive value)
+        assert actual_avg > 0
+
+        # And: Calculation is mathematically correct
+        assert stats["decryption_operations"] == operation_count
+        assert stats["total_decryption_time"] > 0
+
+    def test_get_performance_stats_returns_zero_average_with_no_operations(self, encryption_with_fresh_stats):
         """
         Test that average times are zero when no operations performed.
 
@@ -398,9 +640,22 @@ class TestGetPerformanceStats:
         Fixtures Used:
             - encryption_with_fresh_stats: Clean baseline, no operations
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_get_performance_stats_reports_encryption_enabled_status(self):
+        # When: get_performance_stats() is called immediately
+        stats = encryption.get_performance_stats()
+
+        # Then: avg_encryption_time is 0
+        assert stats["avg_encryption_time"] == 0.0
+
+        # And: avg_decryption_time is 0
+        assert stats["avg_decryption_time"] == 0.0
+
+        # And: No division by zero error occurs (test passes without exception)
+        # The fact that we reach this assertion means no exception was raised
+
+    def test_get_performance_stats_reports_encryption_enabled_status(self, encryption_with_valid_key, encryption_without_key):
         """
         Test that performance stats include encryption_enabled field.
 
@@ -424,9 +679,28 @@ class TestGetPerformanceStats:
             - encryption_with_valid_key: Enabled encryption
             - encryption_without_key: Disabled encryption
         """
-        pass
+        # Given: EncryptedCacheLayer instances (enabled and disabled)
+        enabled_encryption = encryption_with_valid_key
+        disabled_encryption = encryption_without_key
 
-    def test_get_performance_stats_reports_monitoring_status(self):
+        # When: get_performance_stats() is called on each
+        enabled_stats = enabled_encryption.get_performance_stats()
+        disabled_stats = disabled_encryption.get_performance_stats()
+
+        # Then: encryption_enabled field is present
+        assert "encryption_enabled" in enabled_stats
+        assert "encryption_enabled" in disabled_stats
+
+        # And: Field matches is_enabled property value
+        assert enabled_stats["encryption_enabled"] == enabled_encryption.is_enabled
+        assert disabled_stats["encryption_enabled"] == disabled_encryption.is_enabled
+
+        # And: Enabled instance shows True
+        # And: Disabled instance shows False
+        assert enabled_stats["encryption_enabled"] is True
+        assert disabled_stats["encryption_enabled"] is False
+
+    def test_get_performance_stats_reports_monitoring_status(self, encryption_with_valid_key):
         """
         Test that performance stats include performance_monitoring field.
 
@@ -448,9 +722,22 @@ class TestGetPerformanceStats:
         Fixtures Used:
             - encryption_with_valid_key: Monitoring enabled by default
         """
-        pass
+        # Given: EncryptedCacheLayer with monitoring enabled
+        encryption = encryption_with_valid_key
 
-    def test_get_performance_stats_with_monitoring_disabled_returns_error(self):
+        # When: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: performance_monitoring field is present
+        assert "performance_monitoring" in stats
+
+        # And: Field value is True
+        assert stats["performance_monitoring"] is True
+
+        # And: Field accurately reflects initialization setting
+        # (fixture creates instance with performance_monitoring=True)
+
+    def test_get_performance_stats_with_monitoring_disabled_returns_error(self, encryption_without_monitoring):
         """
         Test that stats query with disabled monitoring returns error message.
 
@@ -472,9 +759,22 @@ class TestGetPerformanceStats:
         Fixtures Used:
             - encryption_without_monitoring: Monitoring disabled
         """
-        pass
+        # Given: EncryptedCacheLayer with performance_monitoring=False
+        encryption = encryption_without_monitoring
 
-    def test_get_performance_stats_time_values_are_in_milliseconds(self):
+        # When: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: Dictionary is returned
+        assert isinstance(stats, dict)
+
+        # And: Dict contains "error" field
+        assert "error" in stats
+
+        # And: Error message indicates "Performance monitoring is disabled"
+        assert "Performance monitoring is disabled" in stats["error"]
+
+    def test_get_performance_stats_time_values_are_in_milliseconds(self, encryption_with_fresh_stats, sample_cache_data):
         """
         Test that average times are reported in milliseconds.
 
@@ -498,7 +798,36 @@ class TestGetPerformanceStats:
             - encryption_with_fresh_stats: Clean baseline
             - sample_cache_data: For operations
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
+
+        # When: Operations are performed and stats are retrieved
+        # Perform encryption operations
+        for _ in range(5):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        # Perform decryption operations
+        encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+        for _ in range(3):
+            encryption.decrypt_cache_data(encrypted_data)
+
+        stats = encryption.get_performance_stats()
+
+        # Then: avg_encryption_time is in milliseconds (positive float)
+        assert isinstance(stats["avg_encryption_time"], (int, float))
+        assert stats["avg_encryption_time"] > 0
+
+        # And: avg_decryption_time is in milliseconds (positive float)
+        assert isinstance(stats["avg_decryption_time"], (int, float))
+        assert stats["avg_decryption_time"] > 0
+
+        # And: Values are reasonable (typically < 50ms per operation)
+        assert stats["avg_encryption_time"] < 50.0  # Less than 50ms per operation
+        assert stats["avg_decryption_time"] < 50.0  # Less than 50ms per operation
+
+        # And: Precision allows meaningful performance tracking (float precision)
+        assert stats["avg_encryption_time"] != int(stats["avg_encryption_time"]) or stats["avg_encryption_time"] == 0
+        assert stats["avg_decryption_time"] != int(stats["avg_decryption_time"]) or stats["avg_decryption_time"] == 0
 
 
 class TestResetPerformanceStats:
@@ -520,7 +849,7 @@ class TestResetPerformanceStats:
         - Confirm stats accumulate correctly after reset
     """
 
-    def test_reset_performance_stats_clears_all_counters(self):
+    def test_reset_performance_stats_clears_all_counters(self, encryption_with_valid_key, sample_cache_data):
         """
         Test that reset_performance_stats() clears all operation counters.
 
@@ -545,9 +874,37 @@ class TestResetPerformanceStats:
             - encryption_with_valid_key: Perform operations first
             - sample_cache_data: Generate some stats
         """
-        pass
+        # Given: EncryptedCacheLayer with accumulated statistics
+        encryption = encryption_with_valid_key
 
-    def test_reset_performance_stats_clears_accumulated_times(self):
+        # And: Multiple operations have been performed
+        # Generate some encryption operations
+        for _ in range(5):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        # Generate some decryption operations
+        encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+        for _ in range(3):
+            encryption.decrypt_cache_data(encrypted_data)
+
+        # Verify stats are accumulated before reset
+        pre_reset_stats = encryption.get_performance_stats()
+        assert pre_reset_stats["encryption_operations"] > 0
+        assert pre_reset_stats["decryption_operations"] > 0
+        assert pre_reset_stats["total_operations"] > 0
+
+        # When: reset_performance_stats() is called
+        encryption.reset_performance_stats()
+
+        # And: get_performance_stats() is called
+        post_reset_stats = encryption.get_performance_stats()
+
+        # Then: All operation counters are zero
+        assert post_reset_stats["encryption_operations"] == 0
+        assert post_reset_stats["decryption_operations"] == 0
+        assert post_reset_stats["total_operations"] == 0
+
+    def test_reset_performance_stats_clears_accumulated_times(self, encryption_with_valid_key, sample_cache_data):
         """
         Test that reset_performance_stats() clears accumulated time values.
 
@@ -573,9 +930,38 @@ class TestResetPerformanceStats:
             - encryption_with_valid_key: Perform operations first
             - sample_cache_data: Generate timing stats
         """
-        pass
+        # Given: EncryptedCacheLayer with accumulated time statistics
+        encryption = encryption_with_valid_key
 
-    def test_reset_performance_stats_logs_reset_action(self):
+        # And: Operations have added to total times
+        # Generate some operations to accumulate timing data
+        for _ in range(5):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+        for _ in range(3):
+            encryption.decrypt_cache_data(encrypted_data)
+
+        # Verify timing stats are accumulated before reset
+        pre_reset_stats = encryption.get_performance_stats()
+        assert pre_reset_stats["total_encryption_time"] > 0
+        assert pre_reset_stats["total_decryption_time"] > 0
+        assert pre_reset_stats["avg_encryption_time"] > 0
+        assert pre_reset_stats["avg_decryption_time"] > 0
+
+        # When: reset_performance_stats() is called
+        encryption.reset_performance_stats()
+
+        # And: get_performance_stats() is called
+        post_reset_stats = encryption.get_performance_stats()
+
+        # Then: All timing values are zero
+        assert post_reset_stats["total_encryption_time"] == 0.0
+        assert post_reset_stats["total_decryption_time"] == 0.0
+        assert post_reset_stats["avg_encryption_time"] == 0.0
+        assert post_reset_stats["avg_decryption_time"] == 0.0
+
+    def test_reset_performance_stats_logs_reset_action(self, encryption_with_valid_key, mock_logger, monkeypatch):
         """
         Test that reset_performance_stats() logs the reset action.
 
@@ -598,9 +984,27 @@ class TestResetPerformanceStats:
             - encryption_with_valid_key: Instance with logging
             - mock_logger: Captures log messages
         """
-        pass
+        # Given: EncryptedCacheLayer with logger
+        encryption = encryption_with_valid_key
 
-    def test_reset_performance_stats_allows_fresh_accumulation(self):
+        # Patch the logger to capture log messages
+        # Need to patch the instance logger, not module logger
+        encryption.logger = mock_logger
+
+        # When: reset_performance_stats() is called
+        encryption.reset_performance_stats()
+
+        # Then: Info-level log message is emitted
+        mock_logger.info.assert_called_once()
+
+        # And: Message indicates "Performance statistics reset"
+        call_args = mock_logger.info.call_args[0][0]
+        assert "Performance statistics reset" in call_args
+
+        # And: Log provides confirmation of action
+        assert len(call_args) > 0  # Message is not empty
+
+    def test_reset_performance_stats_allows_fresh_accumulation(self, encryption_with_valid_key, sample_cache_data):
         """
         Test that statistics accumulate correctly after reset.
 
@@ -626,9 +1030,54 @@ class TestResetPerformanceStats:
             - encryption_with_valid_key: For operations
             - sample_cache_data: Pre and post reset operations
         """
-        pass
+        # Given: EncryptedCacheLayer with accumulated statistics
+        encryption = encryption_with_valid_key
 
-    def test_reset_performance_stats_can_be_called_multiple_times(self):
+        # Generate initial statistics
+        for _ in range(5):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+        for _ in range(3):
+            encryption.decrypt_cache_data(encrypted_data)
+
+        # Verify pre-reset stats
+        pre_reset_stats = encryption.get_performance_stats()
+        assert pre_reset_stats["total_operations"] == 9  # 5 + 1 (for encrypted_data) + 3 = 9
+
+        # When: reset_performance_stats() is called
+        encryption.reset_performance_stats()
+
+        # And: New operations are performed
+        post_reset_encrypt_count = 2
+        post_reset_decrypt_count = 4
+
+        for _ in range(post_reset_encrypt_count):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        fresh_encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+        for _ in range(post_reset_decrypt_count):
+            encryption.decrypt_cache_data(fresh_encrypted_data)
+
+        # And: get_performance_stats() is called
+        final_stats = encryption.get_performance_stats()
+
+        # Then: Statistics reflect only post-reset operations
+        assert final_stats["total_operations"] == post_reset_encrypt_count + post_reset_decrypt_count + 1  # +1 for fresh_encrypted_data
+
+        # And: Operation counts start from zero
+        assert final_stats["encryption_operations"] == post_reset_encrypt_count + 1  # +1 for fresh_encrypted_data
+        assert final_stats["decryption_operations"] == post_reset_decrypt_count
+
+        # And: Time accumulations start from zero
+        assert final_stats["total_encryption_time"] > 0
+        assert final_stats["total_decryption_time"] > 0
+
+        # And: Averages are calculated from fresh data
+        assert final_stats["avg_encryption_time"] > 0
+        assert final_stats["avg_decryption_time"] > 0
+
+    def test_reset_performance_stats_can_be_called_multiple_times(self, encryption_with_valid_key):
         """
         Test that reset_performance_stats() can be called repeatedly.
 
@@ -650,9 +1099,37 @@ class TestResetPerformanceStats:
         Fixtures Used:
             - encryption_with_valid_key: For reset calls
         """
-        pass
+        # Given: EncryptedCacheLayer with any statistics state
+        encryption = encryption_with_valid_key
 
-    def test_reset_performance_stats_works_with_monitoring_disabled(self):
+        # Generate some initial statistics
+        encryption.encrypt_cache_data({"test": "data"})
+
+        # Verify initial state has non-zero stats
+        initial_stats = encryption.get_performance_stats()
+        assert initial_stats["total_operations"] > 0
+
+        # When: reset_performance_stats() is called multiple times
+        encryption.reset_performance_stats()
+        stats_after_first = encryption.get_performance_stats()
+
+        encryption.reset_performance_stats()
+        stats_after_second = encryption.get_performance_stats()
+
+        encryption.reset_performance_stats()
+        stats_after_third = encryption.get_performance_stats()
+
+        # Then: Each call succeeds without errors (test reaches this point)
+
+        # And: Statistics remain at zero between calls
+        assert stats_after_first["total_operations"] == 0
+        assert stats_after_second["total_operations"] == 0
+        assert stats_after_third["total_operations"] == 0
+
+        # And: No side effects occur from repeated resets
+        assert stats_after_first == stats_after_second == stats_after_third
+
+    def test_reset_performance_stats_works_with_monitoring_disabled(self, encryption_without_monitoring):
         """
         Test that reset_performance_stats() works with monitoring disabled.
 
@@ -674,7 +1151,24 @@ class TestResetPerformanceStats:
         Fixtures Used:
             - encryption_without_monitoring: Monitoring disabled
         """
-        pass
+        # Given: EncryptedCacheLayer with performance_monitoring=False
+        encryption = encryption_without_monitoring
+
+        # When: reset_performance_stats() is called
+        try:
+            encryption.reset_performance_stats()
+        except Exception as e:
+            pytest.fail(f"reset_performance_stats() raised an exception: {e}")
+
+        # Then: Method completes without errors (test reaches this point)
+
+        # And: No exceptions are raised
+        # (Implicitly verified by not catching any exceptions)
+
+        # And: Subsequent stats queries still show monitoring disabled
+        stats = encryption.get_performance_stats()
+        assert "error" in stats
+        assert "Performance monitoring is disabled" in stats["error"]
 
 
 class TestPerformanceMonitoringIntegration:
@@ -696,7 +1190,7 @@ class TestPerformanceMonitoringIntegration:
         - Validate Examples section usage patterns
     """
 
-    def test_performance_monitoring_workflow_as_documented(self):
+    def test_performance_monitoring_workflow_as_documented(self, encryption_with_fresh_stats, sample_cache_data):
         """
         Test complete performance monitoring workflow from Examples.
 
@@ -721,9 +1215,50 @@ class TestPerformanceMonitoringIntegration:
             - encryption_with_fresh_stats: Clean starting point
             - sample_cache_data: For operations
         """
-        pass
+        # Given: EncryptedCacheLayer with monitoring enabled
+        encryption = encryption_with_fresh_stats
 
-    def test_performance_monitoring_distinguishes_operation_types(self):
+        # When: reset_performance_stats() is called (following Examples pattern)
+        encryption.reset_performance_stats()
+
+        # And: Multiple encrypt/decrypt operations are performed
+        encrypt_count = 5
+        decrypt_count = 3
+
+        # Perform encryption operations
+        encrypted_data_list = []
+        for _ in range(encrypt_count):
+            encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+            encrypted_data_list.append(encrypted_data)
+
+        # Perform decryption operations
+        for encrypted_data in encrypted_data_list[:decrypt_count]:
+            encryption.decrypt_cache_data(encrypted_data)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: Statistics accurately reflect performed operations
+        assert stats["encryption_operations"] == encrypt_count
+        assert stats["decryption_operations"] == decrypt_count
+        assert stats["total_operations"] == encrypt_count + decrypt_count
+
+        # And: All fields are populated correctly
+        expected_fields = [
+            "encryption_enabled", "encryption_operations", "decryption_operations",
+            "total_operations", "total_encryption_time", "total_decryption_time",
+            "avg_encryption_time", "avg_decryption_time", "performance_monitoring"
+        ]
+        for field in expected_fields:
+            assert field in stats
+
+        # And: Workflow matches Examples documentation (basic pattern verified)
+        assert stats["performance_monitoring"] is True
+        assert stats["encryption_enabled"] is True
+        assert stats["total_encryption_time"] > 0
+        assert stats["total_decryption_time"] > 0
+
+    def test_performance_monitoring_distinguishes_operation_types(self, encryption_with_fresh_stats, sample_cache_data, sample_encrypted_bytes):
         """
         Test that monitoring tracks encryption and decryption separately.
 
@@ -750,9 +1285,42 @@ class TestPerformanceMonitoringIntegration:
             - sample_cache_data: For encrypt operations
             - sample_encrypted_bytes: For decrypt operations
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_performance_monitoring_overhead_is_minimal(self):
+        # When: 5 encryption operations are performed
+        encrypt_count = 5
+        for _ in range(encrypt_count):
+            encryption.encrypt_cache_data(sample_cache_data)
+
+        # And: 3 decryption operations are performed
+        decrypt_count = 3
+        for _ in range(decrypt_count):
+            encryption.decrypt_cache_data(sample_encrypted_bytes)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: encryption_operations is 5
+        assert stats["encryption_operations"] == encrypt_count
+
+        # And: decryption_operations is 3
+        assert stats["decryption_operations"] == decrypt_count
+
+        # And: total_operations is 8
+        assert stats["total_operations"] == encrypt_count + decrypt_count
+
+        # And: Time totals and averages are tracked separately
+        assert stats["total_encryption_time"] > 0
+        assert stats["total_decryption_time"] > 0
+        assert stats["avg_encryption_time"] > 0
+        assert stats["avg_decryption_time"] > 0
+
+        # Verify they are separate values (not necessarily different)
+        assert isinstance(stats["total_encryption_time"], (int, float))
+        assert isinstance(stats["total_decryption_time"], (int, float))
+
+    def test_performance_monitoring_overhead_is_minimal(self, encryption_with_valid_key, encryption_without_monitoring, sample_cache_data):
         """
         Test that performance monitoring has minimal overhead.
 
@@ -777,9 +1345,40 @@ class TestPerformanceMonitoringIntegration:
             - encryption_without_monitoring: Monitoring disabled
             - sample_cache_data: For comparative operations
         """
-        pass
+        import time
 
-    def test_performance_stats_match_actual_operation_count(self):
+        # Given: Two EncryptedCacheLayer instances (monitoring on/off)
+        encryption_with_monitoring = encryption_with_valid_key
+        encryption_without_monitoring = encryption_without_monitoring
+
+        operation_count = 10
+
+        # When: Same operations are performed on both
+        # Time operations with monitoring enabled
+        start_time = time.time()
+        for _ in range(operation_count):
+            encryption_with_monitoring.encrypt_cache_data(sample_cache_data)
+        time_with_monitoring = time.time() - start_time
+
+        # Time operations with monitoring disabled
+        start_time = time.time()
+        for _ in range(operation_count):
+            encryption_without_monitoring.encrypt_cache_data(sample_cache_data)
+        time_without_monitoring = time.time() - start_time
+
+        # Then: Operations complete in similar time
+        # Allow for some variation but ensure they're in the same ballpark
+        max_acceptable_ratio = 2.0  # Monitoring could take up to 2x time in worst case
+        actual_ratio = time_with_monitoring / time_without_monitoring if time_without_monitoring > 0 else 1.0
+
+        assert actual_ratio < max_acceptable_ratio, f"Monitoring overhead too high: {actual_ratio:.2f}x"
+
+        # And: Monitoring is safe for production use (reasonable performance)
+        # Both should complete operations in reasonable time (< 1 second for 10 ops)
+        assert time_with_monitoring < 1.0
+        assert time_without_monitoring < 1.0
+
+    def test_performance_stats_match_actual_operation_count(self, encryption_with_fresh_stats, sample_cache_data):
         """
         Test that reported operation counts exactly match performed operations.
 
@@ -805,9 +1404,38 @@ class TestPerformanceMonitoringIntegration:
             - encryption_with_fresh_stats: Clean baseline
             - sample_cache_data: Controlled operation count
         """
-        pass
+        # Given: EncryptedCacheLayer with fresh statistics
+        encryption = encryption_with_fresh_stats
 
-    def test_performance_stats_available_throughout_instance_lifetime(self):
+        # When: Exactly N encrypt operations are performed
+        N = 7  # Exact number of encrypt operations
+        for i in range(N):
+            encryption.encrypt_cache_data({f"test_data_{i}": f"value_{i}"})
+
+        # And: Exactly M decrypt operations are performed
+        M = 4  # Exact number of decrypt operations
+        encrypted_data = encryption.encrypt_cache_data(sample_cache_data)
+        for i in range(M):
+            encryption.decrypt_cache_data(encrypted_data)
+
+        # And: get_performance_stats() is called
+        stats = encryption.get_performance_stats()
+
+        # Then: encryption_operations equals N + 1 (for the encrypted_data generation)
+        assert stats["encryption_operations"] == N + 1
+
+        # And: decryption_operations equals M
+        assert stats["decryption_operations"] == M
+
+        # And: total_operations equals N + M + 1 (for the encrypted_data generation)
+        assert stats["total_operations"] == N + M + 1
+
+        # And: Counts are exact, not approximate
+        assert isinstance(stats["encryption_operations"], int)
+        assert isinstance(stats["decryption_operations"], int)
+        assert isinstance(stats["total_operations"], int)
+
+    def test_performance_stats_available_throughout_instance_lifetime(self, encryption_with_valid_key, sample_cache_data):
         """
         Test that performance stats can be queried at any time.
 
@@ -834,4 +1462,43 @@ class TestPerformanceMonitoringIntegration:
             - encryption_with_valid_key: Long-lived instance
             - sample_cache_data: For varied operations
         """
-        pass
+        # Given: EncryptedCacheLayer instance
+        encryption = encryption_with_valid_key
+
+        # When: get_performance_stats() is called at various times
+
+        # - Immediately after initialization
+        stats_initial = encryption.get_performance_stats()
+        assert isinstance(stats_initial, dict)
+        assert stats_initial["total_operations"] == 0
+
+        # - After some operations
+        encryption.encrypt_cache_data(sample_cache_data)
+        encryption.encrypt_cache_data({"additional": "data"})
+        stats_after_ops = encryption.get_performance_stats()
+        assert isinstance(stats_after_ops, dict)
+        assert stats_after_ops["total_operations"] == 2
+
+        # - After reset
+        encryption.reset_performance_stats()
+        stats_after_reset = encryption.get_performance_stats()
+        assert isinstance(stats_after_reset, dict)
+        assert stats_after_reset["total_operations"] == 0
+
+        # - After more operations
+        encryption.encrypt_cache_data(sample_cache_data)
+        stats_final = encryption.get_performance_stats()
+        assert isinstance(stats_final, dict)
+        assert stats_final["total_operations"] == 1
+
+        # Then: Each call returns valid statistics dict
+        # (Verified above with isinstance checks)
+
+        # And: Statistics accurately reflect state at query time
+        assert stats_initial["total_operations"] == 0
+        assert stats_after_ops["total_operations"] == 2
+        assert stats_after_reset["total_operations"] == 0
+        assert stats_final["total_operations"] == 1
+
+        # And: No errors occur from timing of queries
+        # (Test reaching this point confirms no exceptions were raised)
