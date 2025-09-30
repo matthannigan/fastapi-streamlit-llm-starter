@@ -242,11 +242,16 @@ class SecurityConfig:
             # With custom encryption key
             config = SecurityConfig.create_for_environment("your-encryption-key")
 
-        Note:
-            - Production: Strong passwords, TLS 1.3, certificate validation required
+        Security-First Principles:
+            - All environments require TLS encryption (no plaintext connections)
+            - Unknown environments default to production-level security (fail-secure)
+
+        Environment-Specific Settings:
+            - Production: Strong passwords, TLS 1.3, certificate validation REQUIRED
             - Staging: Production-like security with moderate passwords
-            - Development: Secure defaults with self-signed certificates OK
-            - Testing: Minimal security for fast test execution
+            - Development: TLS required, self-signed certificates acceptable
+            - Testing: TLS required, self-signed certificates acceptable, reduced monitoring
+            - Unknown: Production-level security as fail-safe default
         """
         env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
 
@@ -281,29 +286,52 @@ class SecurityConfig:
                 log_security_events=True
             )
         elif env_info.environment == Environment.TESTING:
-            # Minimal security for testing environments
+            # Security-first: Even testing environments require TLS
+            # Self-signed certificates acceptable, but encryption is mandatory
             return cls(
                 redis_auth=generate_secure_password(12),
-                use_tls=False,  # Allow insecure for fast testing
-                verify_certificates=False,
+                use_tls=True,  # MANDATORY: Security-first architecture requires TLS even in testing
+                verify_certificates=False,  # Self-signed certificates OK for testing
                 connection_timeout=10,
                 socket_timeout=10,
                 max_retries=1,
-                enable_security_monitoring=False,
-                log_security_events=False
+                enable_security_monitoring=False,  # Reduced monitoring for test performance
+                log_security_events=False  # Reduced logging for test performance
             )
-        else:  # Development and unknown environments
+        elif env_info.environment == Environment.DEVELOPMENT:
+            # Development: TLS required, self-signed certificates acceptable
             return cls(
                 redis_auth=generate_secure_password(16),
                 use_tls=True,
                 tls_cert_path="",  # Will auto-generate self-signed if needed
                 tls_key_path="",
                 tls_ca_path="",
-                verify_certificates=False,  # Self-signed certificates OK
+                verify_certificates=False,  # Self-signed certificates OK in development
                 min_tls_version=ssl.TLSVersion.TLSv1_2.value,
                 connection_timeout=20,
                 socket_timeout=20,
                 max_retries=2,
+                enable_security_monitoring=True,
+                log_security_events=True
+            )
+        else:
+            # Unknown environments: Fail-secure with production-level security
+            # Security-first principle: When in doubt, use maximum security
+            logger.warning(
+                f"Unknown environment detected: {env_info.environment}. "
+                f"Applying production-level security as fail-safe default."
+            )
+            return cls(
+                redis_auth=generate_secure_password(32),
+                use_tls=True,
+                tls_cert_path="/etc/ssl/redis-client.crt",
+                tls_key_path="/etc/ssl/redis-client.key",
+                tls_ca_path="/etc/ssl/ca.crt",
+                verify_certificates=True,  # MANDATORY for unknown environments
+                min_tls_version=ssl.TLSVersion.TLSv1_3.value,
+                connection_timeout=30,
+                socket_timeout=30,
+                max_retries=3,
                 enable_security_monitoring=True,
                 log_security_events=True
             )
