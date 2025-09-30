@@ -11,7 +11,6 @@ but currently contains no fixtures as cache_validator has no external dependenci
 
 import pytest
 
-
 # Note: No fixtures needed for cache_validator module as it has no external dependencies.
 # The module only uses standard library components (json, logging, hashlib, dataclasses, typing, enum)
 # which don't require mocking in unit tests following the testing philosophy of mocking

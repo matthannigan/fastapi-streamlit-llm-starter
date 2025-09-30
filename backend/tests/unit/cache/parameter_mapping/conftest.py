@@ -11,7 +11,6 @@ cache conftest.py file. The ValidationResult is defined within the module itself
 
 import pytest
 
-
 # Note: No additional fixtures needed for parameter_mapping module as its dependencies
 # (ValidationError, ConfigurationError) are already available in the shared
 # cache conftest.py file. The ValidationResult class is defined within the

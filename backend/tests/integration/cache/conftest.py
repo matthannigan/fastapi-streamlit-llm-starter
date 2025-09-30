@@ -8,20 +8,21 @@ Fixtures are imported from the main cache conftest.py to maintain consistency
 and avoid duplication while enabling integration test isolation.
 """
 
-import pytest
-import tempfile
 import json
 import os
-import subprocess
 import secrets
+import subprocess
+import tempfile
 from pathlib import Path
+from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, MagicMock
-from typing import Dict, Any, Optional
 
+import pytest
 
 # =============================================================================
 # Settings Fixtures (imported from main conftest.py)
 # =============================================================================
+
 
 @pytest.fixture
 def test_settings():
@@ -50,11 +51,11 @@ def test_settings():
         "log_level": "INFO",
         "cache_preset": "development",
         "resilience_preset": "simple",
-        "health_check_timeout_ms": 2000
+        "health_check_timeout_ms": 2000,
     }
 
     # Create temporary config file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(test_config, f, indent=2)
         config_file = f.name
 
@@ -65,7 +66,7 @@ def test_settings():
             "GEMINI_API_KEY": "test-gemini-api-key-12345",
             "API_KEY": "test-api-key-12345",
             "CACHE_PRESET": "development",
-            "RESILIENCE_PRESET": "simple"
+            "RESILIENCE_PRESET": "simple",
         }
 
         # Temporarily set test environment variables
@@ -106,7 +107,7 @@ def development_settings():
         "API_KEY": "test-dev-api-key",
         "CACHE_PRESET": "development",
         "RESILIENCE_PRESET": "development",
-        "DEBUG": "true"
+        "DEBUG": "true",
     }
 
     original_env = {}
@@ -116,6 +117,7 @@ def development_settings():
 
     try:
         from app.core.config import Settings
+
         settings = Settings()
         yield settings
     finally:
@@ -142,7 +144,7 @@ def production_settings():
         "API_KEY": "test-prod-api-key",
         "CACHE_PRESET": "production",
         "RESILIENCE_PRESET": "production",
-        "DEBUG": "false"
+        "DEBUG": "false",
     }
 
     original_env = {}
@@ -152,6 +154,7 @@ def production_settings():
 
     try:
         from app.core.config import Settings
+
         settings = Settings()
         yield settings
     finally:
@@ -167,6 +170,7 @@ def production_settings():
 # Factory Fixtures (imported from main conftest.py)
 # =============================================================================
 
+
 @pytest.fixture
 async def real_cache_factory():
     """
@@ -179,6 +183,7 @@ async def real_cache_factory():
     This enables behavior-driven testing of the factory's actual logic.
     """
     from app.infrastructure.cache.factory import CacheFactory
+
     return CacheFactory()
 
 
@@ -205,7 +210,7 @@ async def factory_web_cache(real_cache_factory):
     """
     cache = await real_cache_factory.for_web_app(fail_on_connection_error=False)
     yield cache
-    if hasattr(cache, 'clear'):
+    if hasattr(cache, "clear"):
         await cache.clear()
 
 
@@ -219,13 +224,14 @@ async def factory_ai_cache(real_cache_factory):
     """
     cache = await real_cache_factory.for_ai_app(fail_on_connection_error=False)
     yield cache
-    if hasattr(cache, 'clear'):
+    if hasattr(cache, "clear"):
         await cache.clear()
 
 
 # =============================================================================
 # Basic Test Data Fixtures (imported from main conftest.py)
 # =============================================================================
+
 
 @pytest.fixture
 def sample_cache_key():
@@ -250,11 +256,8 @@ def sample_cache_value():
         "user_id": 123,
         "name": "John Doe",
         "email": "john@example.com",
-        "preferences": {
-            "theme": "dark",
-            "language": "en"
-        },
-        "created_at": "2023-01-01T12:00:00Z"
+        "preferences": {"theme": "dark", "language": "en"},
+        "created_at": "2023-01-01T12:00:00Z",
     }
 
 
@@ -283,12 +286,14 @@ def default_memory_cache():
         - max_size: 1000 entries
     """
     from app.infrastructure.cache.memory import InMemoryCache
+
     return InMemoryCache()
 
 
 # =============================================================================
 # Secure Redis Testcontainer Infrastructure (Phase 1, Deliverable 1)
 # =============================================================================
+
 
 @pytest.fixture(scope="session")
 def test_redis_certs(tmp_path_factory):
@@ -324,75 +329,83 @@ def test_redis_certs(tmp_path_factory):
     try:
         # Generate CA private key (2048-bit RSA)
         subprocess.run(
-            [
-                "openssl", "genrsa",
-                "-out", str(ca_key),
-                "2048"
-            ],
+            ["openssl", "genrsa", "-out", str(ca_key), "2048"],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Generate self-signed CA certificate (valid for 1 day)
         subprocess.run(
             [
-                "openssl", "req",
-                "-new", "-x509",
-                "-days", "1",
-                "-key", str(ca_key),
-                "-out", str(ca_cert),
-                "-subj", "/CN=test.redis.ca"
+                "openssl",
+                "req",
+                "-new",
+                "-x509",
+                "-days",
+                "1",
+                "-key",
+                str(ca_key),
+                "-out",
+                str(ca_cert),
+                "-subj",
+                "/CN=test.redis.ca",
             ],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Generate Redis server private key
         redis_key = cert_dir / "redis.key"
         subprocess.run(
-            [
-                "openssl", "genrsa",
-                "-out", str(redis_key),
-                "2048"
-            ],
+            ["openssl", "genrsa", "-out", str(redis_key), "2048"],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Generate certificate signing request for Redis server
         redis_csr = cert_dir / "redis.csr"
         subprocess.run(
             [
-                "openssl", "req",
+                "openssl",
+                "req",
                 "-new",
-                "-key", str(redis_key),
-                "-out", str(redis_csr),
-                "-subj", "/CN=test.redis"
+                "-key",
+                str(redis_key),
+                "-out",
+                str(redis_csr),
+                "-subj",
+                "/CN=test.redis",
             ],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Sign Redis server certificate with CA (valid for 1 day)
         redis_cert = cert_dir / "redis.crt"
         subprocess.run(
             [
-                "openssl", "x509",
+                "openssl",
+                "x509",
                 "-req",
-                "-days", "1",
-                "-in", str(redis_csr),
-                "-CA", str(ca_cert),
-                "-CAkey", str(ca_key),
+                "-days",
+                "1",
+                "-in",
+                str(redis_csr),
+                "-CA",
+                str(ca_cert),
+                "-CAkey",
+                str(ca_key),
                 "-CAcreateserial",
-                "-out", str(redis_cert)
+                "-out",
+                str(redis_cert),
             ],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Set proper file permissions (600 for keys, 644 for certs)
@@ -403,20 +416,20 @@ def test_redis_certs(tmp_path_factory):
 
         # Validate certificate generation succeeded
         if not ca_cert.exists() or not redis_cert.exists():
-            raise RuntimeError("Certificate generation failed - certificate files not created")
+            raise RuntimeError(
+                "Certificate generation failed - certificate files not created"
+            )
 
         if ca_cert.stat().st_size == 0 or redis_cert.stat().st_size == 0:
-            raise RuntimeError("Certificate generation failed - certificate files are empty")
+            raise RuntimeError(
+                "Certificate generation failed - certificate files are empty"
+            )
 
         # Validate certificate chain (CA → server cert)
         verify_result = subprocess.run(
-            [
-                "openssl", "verify",
-                "-CAfile", str(ca_cert),
-                str(redis_cert)
-            ],
+            ["openssl", "verify", "-CAfile", str(ca_cert), str(redis_cert)],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         if verify_result.returncode != 0 or "OK" not in verify_result.stdout:
@@ -430,7 +443,7 @@ def test_redis_certs(tmp_path_factory):
             "ca_key": str(ca_key),
             "redis_cert": str(redis_cert),
             "redis_key": str(redis_key),
-            "cert_dir": str(cert_dir)
+            "cert_dir": str(cert_dir),
         }
 
     except subprocess.CalledProcessError as e:
@@ -516,6 +529,7 @@ def secure_redis_container(test_redis_certs):
 
         # Custom health check using docker exec with TLS
         import time
+
         start_time = time.time()
         max_wait = 10  # Additional wait after logs appear
 
@@ -526,18 +540,24 @@ def secure_redis_container(test_redis_certs):
                 # Check if Redis is responsive via TLS
                 health_check = subprocess.run(
                     [
-                        "docker", "exec", container_id,
+                        "docker",
+                        "exec",
+                        container_id,
                         "redis-cli",
                         "--tls",
-                        "--cert", f"/tls/{redis_cert}",
-                        "--key", f"/tls/{redis_key}",
-                        "--cacert", f"/tls/{ca_cert}",
-                        "-a", password,
-                        "ping"
+                        "--cert",
+                        f"/tls/{redis_cert}",
+                        "--key",
+                        f"/tls/{redis_key}",
+                        "--cacert",
+                        f"/tls/{ca_cert}",
+                        "-a",
+                        password,
+                        "ping",
                     ],
                     capture_output=True,
                     text=True,
-                    timeout=5
+                    timeout=5,
                 )
 
                 if health_check.returncode == 0 and "PONG" in health_check.stdout:
@@ -571,7 +591,7 @@ def secure_redis_container(test_redis_certs):
             "host": host,
             "port": port,
             "container": container,
-            "ca_cert": test_redis_certs["ca_cert"]
+            "ca_cert": test_redis_certs["ca_cert"],
         }
 
     finally:
@@ -609,10 +629,11 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
         - Encryption enabled with test encryption key
         - Automatic cleanup on teardown
     """
+    from cryptography.fernet import Fernet
+
+    from app.core.exceptions import InfrastructureError
     from app.infrastructure.cache.redis_generic import GenericRedisCache
     from app.infrastructure.cache.security import SecurityConfig
-    from app.core.exceptions import InfrastructureError
-    from cryptography.fernet import Fernet
 
     # Set required environment variables for security configuration
     # Generate proper Fernet key for encryption
@@ -628,19 +649,20 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
         default_ttl=3600,
         enable_l1_cache=True,
         l1_cache_size=100,
-        compression_threshold=1000
+        compression_threshold=1000,
     )
 
     # Manually configure security manager to use our test certificates
     # The auto-generated SecurityConfig doesn't know about our custom certs
     from app.infrastructure.cache.security import SecurityConfig
+
     cache.security_manager.config = SecurityConfig(
         redis_auth=secure_redis_container["password"],
         use_tls=True,
         tls_ca_path=secure_redis_container["ca_cert"],
         verify_certificates=False,  # Self-signed test certificates
         connection_timeout=10,
-        socket_timeout=10
+        socket_timeout=10,
     )
 
     # Connect to secure Redis
@@ -651,8 +673,8 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
             "Failed to connect to secure Redis container for integration testing",
             context={
                 "url": secure_redis_container["url"],
-                "security": "TLS + auth + encryption"
-            }
+                "security": "TLS + auth + encryption",
+            },
         )
 
     try:
@@ -689,9 +711,7 @@ async def cache_instances(secure_redis_cache):
         # ("fake_redis", fakeredis_cache_with_patched_encryption)
         ```
     """
-    instances = [
-        ("real_redis", secure_redis_cache)
-    ]
+    instances = [("real_redis", secure_redis_cache)]
 
     try:
         yield instances
@@ -699,7 +719,7 @@ async def cache_instances(secure_redis_cache):
         # Cleanup all cache instances
         for name, cache in instances:
             try:
-                if hasattr(cache, 'clear'):
+                if hasattr(cache, "clear"):
                     await cache.clear()
             except Exception as e:
                 print(f"Warning: Failed to cleanup {name} cache: {e}")

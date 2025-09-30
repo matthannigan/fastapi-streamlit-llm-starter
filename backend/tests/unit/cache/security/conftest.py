@@ -12,7 +12,6 @@ and returned by the methods, so they don't need mocking at the fixture level.
 
 import pytest
 
-
 # Note: No additional fixtures needed for security module as its dependencies
 # (ConfigurationError, CachePerformanceMonitor) are already available in the shared
 # cache conftest.py file. Redis clients are created dynamically within methods

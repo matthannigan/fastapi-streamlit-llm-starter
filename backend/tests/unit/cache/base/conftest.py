@@ -20,16 +20,17 @@ Design Philosophy:
     - Focus on testing that concrete implementations honor the contract
 """
 
-import pytest
 from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
 @pytest.fixture
 def interface_test_keys():
     """
     Set of diverse cache keys for interface compliance testing.
-    
+
     Provides a variety of cache key patterns to test that concrete
     implementations properly handle different key formats as allowed
     by the CacheInterface contract.
@@ -43,7 +44,7 @@ def interface_test_keys():
         "UPPERCASE_KEY",
         "mixedCase_Key",
         "key.with.dots",
-        "very_long_key_name_that_tests_length_handling_by_implementations"
+        "very_long_key_name_that_tests_length_handling_by_implementations",
     ]
 
 
@@ -51,7 +52,7 @@ def interface_test_keys():
 def interface_test_values():
     """
     Set of diverse cache values for interface compliance testing.
-    
+
     Provides a variety of value types and structures to test that
     concrete implementations properly handle different data types
     as specified in the CacheInterface contract.
@@ -59,40 +60,23 @@ def interface_test_values():
     return [
         # Simple string
         "simple string value",
-        
         # Integer
         42,
-        
-        # Float  
+        # Float
         3.14159,
-        
         # Boolean
         True,
-        
         # None value
         None,
-        
         # List
         ["item1", "item2", "item3"],
-        
         # Dictionary
-        {
-            "name": "test",
-            "value": 123,
-            "nested": {"key": "value"}
-        },
-        
+        {"name": "test", "value": 123, "nested": {"key": "value"}},
         # Complex nested structure
         {
-            "users": [
-                {"id": 1, "name": "Alice"},
-                {"id": 2, "name": "Bob"}
-            ],
-            "metadata": {
-                "created_at": "2023-01-01T12:00:00Z",
-                "version": 1.0
-            }
-        }
+            "users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}],
+            "metadata": {"created_at": "2023-01-01T12:00:00Z", "version": 1.0},
+        },
     ]
 
 
@@ -100,7 +84,7 @@ def interface_test_values():
 def interface_compliance_test_cases():
     """
     Test cases for verifying CacheInterface contract compliance.
-    
+
     Provides a set of test scenarios that can be used to verify that
     concrete implementations properly follow the CacheInterface contract
     including behavior specifications from the docstrings.
@@ -111,26 +95,26 @@ def interface_compliance_test_cases():
             "description": "Test basic cache operations work as documented",
             "key": "test:basic",
             "value": {"data": "basic test"},
-            "ttl": None
+            "ttl": None,
         },
         {
             "name": "get_nonexistent_key",
             "description": "Test get returns None for missing keys",
             "key": "nonexistent:key",
-            "expected_result": None
+            "expected_result": None,
         },
         {
             "name": "set_with_ttl",
             "description": "Test set operation with TTL parameter",
             "key": "test:ttl",
             "value": {"data": "ttl test"},
-            "ttl": 3600
+            "ttl": 3600,
         },
         {
             "name": "delete_nonexistent_key",
             "description": "Test delete is idempotent for missing keys",
             "key": "nonexistent:delete",
-            "should_not_raise": True
+            "should_not_raise": True,
         },
         {
             "name": "overwrite_existing_key",
@@ -138,7 +122,7 @@ def interface_compliance_test_cases():
             "key": "test:overwrite",
             "initial_value": {"data": "initial"},
             "new_value": {"data": "updated"},
-            "ttl": None
+            "ttl": None,
         },
         {
             "name": "type_preservation",
@@ -149,9 +133,9 @@ def interface_compliance_test_cases():
                 ("float", 3.14),
                 ("boolean", True),
                 ("list", [1, 2, 3]),
-                ("dict", {"key": "value"})
-            ]
-        }
+                ("dict", {"key": "value"}),
+            ],
+        },
     ]
 
 
@@ -159,7 +143,7 @@ def interface_compliance_test_cases():
 def polymorphism_test_scenarios():
     """
     Test scenarios for verifying polymorphic usage of CacheInterface.
-    
+
     Provides test scenarios that verify code can work with any
     CacheInterface implementation without knowing the specific
     concrete type, ensuring the interface abstraction works correctly.
@@ -171,20 +155,20 @@ def polymorphism_test_scenarios():
             "test_operations": [
                 ("store_user", "user:123", {"name": "John", "active": True}),
                 ("retrieve_user", "user:123"),
-                ("remove_user", "user:123")
-            ]
+                ("remove_user", "user:123"),
+            ],
         },
         {
             "name": "cache_factory_pattern",
             "description": "Test factory that returns different CacheInterface implementations",
             "implementations": ["memory", "redis", "mock"],
-            "common_operations": ["get", "set", "delete"]
+            "common_operations": ["get", "set", "delete"],
         },
         {
             "name": "cache_switching",
             "description": "Test code that can switch between cache implementations",
-            "scenario": "fallback_on_failure"
-        }
+            "scenario": "fallback_on_failure",
+        },
     ]
 
 

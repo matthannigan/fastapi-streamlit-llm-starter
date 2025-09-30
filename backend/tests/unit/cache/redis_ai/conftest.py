@@ -12,14 +12,16 @@ Fixture Categories:
     - Error scenario fixtures (exception mocks, connection failures)
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Dict, Any, Optional
 import hashlib
-from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
+from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
-# Note: sample_text, sample_short_text, sample_long_text, sample_ai_response, 
+from app.core.exceptions import (ConfigurationError, InfrastructureError,
+                                 ValidationError)
+
+# Note: sample_text, sample_short_text, sample_long_text, sample_ai_response,
 # and sample_options fixtures are now provided by the parent conftest.py
 
 
@@ -27,7 +29,7 @@ from app.core.exceptions import ConfigurationError, ValidationError, Infrastruct
 def valid_ai_params():
     """
     Valid AIResponseCache initialization parameters.
-    
+
     Provides a complete set of valid parameters that should pass
     validation and allow successful cache initialization.
     """
@@ -38,17 +40,9 @@ def valid_ai_params():
         "hash_algorithm": hashlib.sha256,
         "compression_threshold": 1000,
         "compression_level": 6,
-        "text_size_tiers": {
-            "small": 500,
-            "medium": 5000,
-            "large": 50000
-        },
+        "text_size_tiers": {"small": 500, "medium": 5000, "large": 50000},
         "memory_cache_size": 100,
-        "operation_ttls": {
-            "summarize": 7200,
-            "sentiment": 1800,
-            "questions": 3600
-        }
+        "operation_ttls": {"summarize": 7200, "sentiment": 1800, "questions": 3600},
     }
 
 
@@ -62,7 +56,7 @@ def invalid_ai_params():
         "default_ttl": -1,  # Negative TTL should fail
         "text_hash_threshold": "invalid",  # Wrong type
         "memory_cache_size": 0,  # Zero cache size should fail
-        "compression_level": 15  # Out of range (1-9)
+        "compression_level": 15,  # Out of range (1-9)
     }
 
 

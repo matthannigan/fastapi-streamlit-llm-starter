@@ -12,7 +12,6 @@ following the testing philosophy of mocking only at system boundaries.
 
 import pytest
 
-
 # Note: No fixtures needed for monitoring module as it has no external dependencies.
 # The module only uses standard library components which don't require mocking
 # in unit tests following the testing philosophy of mocking only at system boundaries.
