@@ -112,72 +112,92 @@ class TestCacheFactoryIntegration:
         await cache.delete(test_key)
 
     @pytest.mark.asyncio
-    async def test_factory_testing_database_isolation_with_testcontainers(self):
+    async def test_factory_testing_database_isolation_with_testcontainers(self, secure_redis_container, monkeypatch):
         """
-        Test factory creates cache with proper test database isolation using real Redis.
-        
+        Test factory creates cache with proper test database isolation using secure Redis.
+
         Verifies:
             Factory.for_testing() uses Redis database 15 for test isolation when using default URL
-            
+            Factory properly handles secure Redis connections with TLS and authentication
+
         Business Impact:
             Ensures test data isolation preventing interference between test runs
-            
+            Validates security configuration works correctly with factory methods
+
         Integration Points:
             - CacheFactory -> Test cache creation with database isolation
-            - Testcontainers -> Real Redis for accurate testing
+            - Secure Testcontainer -> TLS-enabled Redis with authentication
+            - Security configuration -> Proper TLS and auth handling
             - Default database behavior -> Standard test database isolation
         """
-        from testcontainers.redis import RedisContainer
         from app.infrastructure.cache.redis_generic import GenericRedisCache
-        
-        # Start real Redis container
-        redis_container = RedisContainer("redis:7-alpine")
-        redis_container.start()
-        
+        from app.infrastructure.cache.security import SecurityConfig
+        import secrets
+
+        # Set required security environment variables
+        test_encryption_key = secrets.token_urlsafe(32)
+        monkeypatch.setenv("REDIS_ENCRYPTION_KEY", test_encryption_key)
+        monkeypatch.setenv("REDIS_PASSWORD", secure_redis_container["password"])
+        monkeypatch.setenv("ENVIRONMENT", "testing")
+
+        # Create security configuration
+        security_config = SecurityConfig(
+            redis_auth=secure_redis_container["password"],
+            use_tls=True,
+            tls_ca_path=secure_redis_container["ca_cert"],
+            verify_certificates=False,  # Self-signed test certificates
+            encryption_key=test_encryption_key
+        )
+
         try:
-            # Get connection details
-            redis_host = redis_container.get_container_host_ip()
-            redis_port = redis_container.get_exposed_port(6379)
-            
+            # Get secure connection URL
+            secure_url = secure_redis_container["url"]
+
             # Test 1: Use default behavior (factory adds /15 automatically)
             factory = CacheFactory()
             cache_with_default_url = await factory.for_testing(
-                redis_url=f"redis://{redis_host}:{redis_port}"  # No database specified
+                redis_url=secure_url,  # Secure rediss:// URL, no database specified
+                security_config=security_config
             )
-            
+
             # Verify we got a real Redis cache (not InMemoryCache fallback)
             assert isinstance(cache_with_default_url, GenericRedisCache), f"Expected GenericRedisCache, got {type(cache_with_default_url)}"
-            
-            # Prove isolation works with real operations
+
+            # Prove isolation works with real operations (encrypted)
             test_key = "test:db_isolation_default"
             await cache_with_default_url.set(test_key, "isolated_data_default")
             assert await cache_with_default_url.get(test_key) == "isolated_data_default"
-            
+
             # Cleanup
             await cache_with_default_url.delete(test_key)
-            
+
             # Test 2: Explicitly specify database 15 (should behave the same)
+            secure_url_with_db = secure_url.replace("/0", "/15") if "/0" in secure_url else f"{secure_url}/15"
             cache_with_explicit_db = await factory.for_testing(
-                redis_url=f"redis://{redis_host}:{redis_port}/15"
+                redis_url=secure_url_with_db,
+                security_config=security_config
             )
-            
+
             # Verify we got a real Redis cache
             assert isinstance(cache_with_explicit_db, GenericRedisCache), f"Expected GenericRedisCache, got {type(cache_with_explicit_db)}"
-            
+
             # Prove explicit database isolation works
             test_key_explicit = "test:db_isolation_explicit"
             await cache_with_explicit_db.set(test_key_explicit, "isolated_data_explicit")
             assert await cache_with_explicit_db.get(test_key_explicit) == "isolated_data_explicit"
-            
+
             # Cleanup
             await cache_with_explicit_db.delete(test_key_explicit)
-            
+
             # Verify both caches are functional and isolated
             assert cache_with_default_url.redis is not None, "Redis connection should be established for default URL"
             assert cache_with_explicit_db.redis is not None, "Redis connection should be established for explicit URL"
-            
-        finally:
-            redis_container.stop()
+
+        except Exception as e:
+            # Better error reporting for debugging
+            import logging
+            logging.getLogger(__name__).error(f"Test failed with secure Redis: {e}")
+            raise
 
 
 class TestCacheKeyGeneratorIntegration:
@@ -389,209 +409,79 @@ class TestCacheComponentInteroperability:
         - Identical test logic ensures true behavioral equivalence
     """
     
-    def _create_fakeredis_backed_cache(self, performance_monitor=None):
-        """
-        Helper function to create a GenericRedisCache backed by FakeRedis.
-        
-        This encapsulates the "hot-swap" pattern where we create a real GenericRedisCache
-        instance and replace its Redis client with a FakeRedis client. This provides
-        Redis-compatible behavior for testing without requiring an external Redis server.
-        
-        Args:
-            performance_monitor: Optional performance monitor for the cache
-            
-        Returns:
-            GenericRedisCache instance backed by FakeRedis
-        """
-        import fakeredis.aioredis
-        from app.infrastructure.cache.redis_generic import GenericRedisCache
-        
-        # Create a real GenericRedisCache instance
-        cache = GenericRedisCache(
-            redis_url="redis://localhost:6379/15",  # URL for interface consistency
-            performance_monitor=performance_monitor,
-            enable_l1_cache=False,  # Test pure Redis behavior
-            fail_on_connection_error=False
-        )
-        
-        # Hot-swap the Redis client with FakeRedis for testing
-        cache.redis = fakeredis.aioredis.FakeRedis(
-            decode_responses=False,
-            connection_pool=None
-        )
-        
-        return cache
+    # Note: _create_fakeredis_backed_cache helper removed
+    # FakeRedis integration will be added in Phase 2 with encryption patching
+    # For now, all shared contract tests use only secure real Redis testcontainer
     
     @pytest.fixture
-    async def cache_instances_via_factory(self):
+    async def cache_instances_via_factory(self, secure_redis_container, monkeypatch):
         """
-        Alternative fixture demonstrating factory-based cache instance creation.
-        
-        This approach uses CacheFactory.for_testing() to create cache instances,
-        then performs hot-swapping for the FakeRedis variant. This provides broader
-        scope testing that includes the factory's assembly logic.
-        
+        Alternative fixture demonstrating factory-based cache instance creation with security.
+
+        This approach uses CacheFactory.for_testing() to create cache instances
+        using the secure Redis testcontainer. This provides broader scope testing
+        that includes the factory's assembly logic with proper security configuration.
+
         Use this fixture when you want to test:
         - The complete service assembly process via CacheFactory
-        - Factory configuration handling and parameter mapping
-        - Integration between factory, cache, and monitoring components
-        
-        The trade-off is slightly less isolation compared to direct instantiation,
-        but broader coverage of the service creation pipeline.
+        - Factory configuration handling and parameter mapping with security
+        - Integration between factory, cache, monitoring, and security components
+
+        Note: FakeRedis variant will be added in Phase 2 with encryption patching.
         """
-        from testcontainers.redis import RedisContainer
-        import fakeredis.aioredis
         from app.infrastructure.cache.factory import CacheFactory
-        
-        # Start real Redis container for high-fidelity testing
-        redis_container = RedisContainer("redis:7-alpine")
-        redis_container.start()
-        
+        from app.infrastructure.cache.security import SecurityConfig
+        import secrets
+
+        # Set required environment variables for security
+        test_encryption_key = secrets.token_urlsafe(32)
+        monkeypatch.setenv("REDIS_ENCRYPTION_KEY", test_encryption_key)
+        monkeypatch.setenv("REDIS_PASSWORD", secure_redis_container["password"])
+        monkeypatch.setenv("ENVIRONMENT", "testing")
+
         cache_instances = []
-        
+
         try:
             # Create factory for service assembly
             factory = CacheFactory()
-            
-            # 1. Real Redis cache via factory
-            redis_host = redis_container.get_container_host_ip()
-            redis_port = redis_container.get_exposed_port(6379)
-            redis_url = f"redis://{redis_host}:{redis_port}"
-            
+
+            # Create security config for testing
+            security_config = SecurityConfig(
+                redis_auth=secure_redis_container["password"],
+                use_tls=True,
+                tls_ca_path=secure_redis_container["ca_cert"],
+                verify_certificates=False,  # Self-signed test certificates
+                encryption_key=test_encryption_key
+            )
+
+            # 1. Real secure Redis cache via factory
             real_redis_cache = await factory.for_testing(
-                redis_url=redis_url,
+                redis_url=secure_redis_container["url"],
                 enable_l1_cache=False,
-                fail_on_connection_error=True
+                fail_on_connection_error=True,
+                security_config=security_config
             )
-            
-            # 2. Factory-created cache with FakeRedis hot-swap
-            fakeredis_cache = await factory.for_testing(
-                redis_url="redis://localhost:6379/15",
-                enable_l1_cache=False, 
-                fail_on_connection_error=False
-            )
-            
-            # Hot-swap the factory-created cache's Redis client with FakeRedis
-            if hasattr(fakeredis_cache, 'redis'):
-                fakeredis_cache.redis = fakeredis.aioredis.FakeRedis(  #type: ignore
-                    decode_responses=False,
-                    connection_pool=None
-                )
-            
+
             cache_instances = [
-                ("factory_real_redis", real_redis_cache),
-                ("factory_fake_redis", fakeredis_cache)
+                ("factory_real_redis", real_redis_cache)
+                # Phase 2 TODO: Add factory_fake_redis with encryption patched
             ]
-            
+
             yield cache_instances
-            
+
         finally:
-            # Cleanup: Clear caches and stop container
+            # Cleanup: Clear caches
             for cache_name, cache in cache_instances:
                 try:
-                    if hasattr(cache, 'disconnect'):
-                        await cache.disconnect()  #type: ignore
-                    if hasattr(cache, 'redis') and cache.redis:  #type: ignore
-                        if hasattr(cache.redis, 'flushall'):  #type: ignore
-                            await cache.redis.flushall()  #type: ignore
-                        if hasattr(cache.redis, 'close'):  #type: ignore
-                            await cache.redis.close()  #type: ignore
+                    if hasattr(cache, 'clear'):
+                        await cache.clear()
                 except Exception as e:
                     import logging
                     logging.getLogger(__name__).warning(f"Cache cleanup error for {cache_name}: {e}")
-            
-            # Stop Redis container
-            try:
-                redis_container.stop()
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Redis container cleanup error: {e}")
     
-    @pytest.fixture
-    async def cache_instances(self):
-        """
-        Provides actual cache instances for shared contract testing.
-        
-        Creates two cache instances for behavioral equivalence testing:
-        1. Real Redis cache using Testcontainers for full Redis fidelity
-        2. Fast in-memory fake using FakeRedis for Redis-compatible behavior
-        
-        Both instances are fully-formed, real cache objects that implement the
-        CacheInterface contract, ensuring identical behavioral contracts.
-        This is a true "Shared Contract Test" - the exact same test code runs
-        against both backends to guarantee behavioral equivalence.
-        
-        Design Choice: Direct GenericRedisCache Instantiation
-            This fixture uses direct instantiation for focused contract testing
-            of the GenericRedisCache class itself.
-            
-            Alternative Approach: Could use CacheFactory.for_testing() for broader
-            scope testing that includes factory assembly logic, then perform the
-            hot-swap on factory-created instances. Both approaches are valid:
-            - Current (direct): Better for isolated GenericRedisCache contract testing
-            - Alternative (factory): Better for testing fully assembled service contracts
-        """
-        from testcontainers.redis import RedisContainer
-        from app.infrastructure.cache.redis_generic import GenericRedisCache
-        from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-        
-        # Create performance monitor for both caches
-        performance_monitor = CachePerformanceMonitor()
-        
-        # Start real Redis container for high-fidelity testing
-        redis_container = RedisContainer("redis:7-alpine")
-        redis_container.start()
-        
-        cache_instances = []
-        
-        try:
-            # 1. Real Redis cache using Testcontainers
-            # This provides complete Redis fidelity including all Redis features
-            redis_host = redis_container.get_container_host_ip()
-            redis_port = redis_container.get_exposed_port(6379)
-            redis_url = f"redis://{redis_host}:{redis_port}"
-            real_redis_cache = GenericRedisCache(
-                redis_url=redis_url,
-                performance_monitor=performance_monitor,
-                enable_l1_cache=False,  # Test pure Redis behavior
-                fail_on_connection_error=True  # Should connect to real Redis
-            )
-            
-            # Connect to the real Redis instance
-            await real_redis_cache.connect()
-            
-            # 2. Fast in-memory fake using FakeRedis (via helper function)
-            # This provides Redis-compatible behavior without external dependencies
-            fakeredis_cache = self._create_fakeredis_backed_cache(performance_monitor)
-            
-            cache_instances = [
-                ("real_redis", real_redis_cache),
-                ("fake_redis", fakeredis_cache)
-            ]
-            
-            yield cache_instances
-            
-        finally:
-            # Cleanup: Clear caches and stop container
-            for cache_name, cache in cache_instances:
-                try:
-                    if hasattr(cache, 'disconnect'):
-                        await cache.disconnect()
-                    if hasattr(cache, 'redis') and cache.redis:
-                        if hasattr(cache.redis, 'flushall'):
-                            await cache.redis.flushall()
-                        if hasattr(cache.redis, 'close'):
-                            await cache.redis.close()
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).warning(f"Cache cleanup error for {cache_name}: {e}")
-            
-            # Stop Redis container
-            try:
-                redis_container.stop()
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Redis container cleanup error: {e}")
+    # Note: cache_instances fixture now provided by conftest.py
+    # Uses secure Redis testcontainer with TLS, authentication, and encryption
+    # Removed local fixture definition to use global secure fixture
     
     @pytest.mark.asyncio
     async def test_cache_shared_contract_basic_operations(self, cache_instances):

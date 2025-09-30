@@ -12,6 +12,9 @@ import pytest
 import tempfile
 import json
 import os
+import subprocess
+import secrets
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from typing import Dict, Any, Optional
 
@@ -281,3 +284,399 @@ def default_memory_cache():
     """
     from app.infrastructure.cache.memory import InMemoryCache
     return InMemoryCache()
+
+
+# =============================================================================
+# Secure Redis Testcontainer Infrastructure (Phase 1, Deliverable 1)
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def test_redis_certs(tmp_path_factory):
+    """
+    Generate self-signed TLS certificates for secure Redis testing.
+
+    Creates a session-scoped certificate authority and Redis server certificate
+    for integration testing with TLS-enabled Redis containers.
+
+    Yields:
+        Dict containing:
+            - ca_cert: Path to CA certificate
+            - ca_key: Path to CA private key
+            - redis_cert: Path to Redis server certificate
+            - redis_key: Path to Redis server private key
+            - cert_dir: Path to certificate directory
+
+    Raises:
+        RuntimeError: If certificate generation fails
+        subprocess.CalledProcessError: If OpenSSL command execution fails
+
+    Note:
+        Certificates are valid for 1 day (sufficient for test sessions).
+        Subject name is /CN=test.redis for consistency.
+    """
+    # Create temporary directory for certificates
+    cert_dir = tmp_path_factory.mktemp("redis_certs")
+
+    # Generate CA certificate and key
+    ca_key = cert_dir / "ca.key"
+    ca_cert = cert_dir / "ca.crt"
+
+    try:
+        # Generate CA private key (2048-bit RSA)
+        subprocess.run(
+            [
+                "openssl", "genrsa",
+                "-out", str(ca_key),
+                "2048"
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Generate self-signed CA certificate (valid for 1 day)
+        subprocess.run(
+            [
+                "openssl", "req",
+                "-new", "-x509",
+                "-days", "1",
+                "-key", str(ca_key),
+                "-out", str(ca_cert),
+                "-subj", "/CN=test.redis.ca"
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Generate Redis server private key
+        redis_key = cert_dir / "redis.key"
+        subprocess.run(
+            [
+                "openssl", "genrsa",
+                "-out", str(redis_key),
+                "2048"
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Generate certificate signing request for Redis server
+        redis_csr = cert_dir / "redis.csr"
+        subprocess.run(
+            [
+                "openssl", "req",
+                "-new",
+                "-key", str(redis_key),
+                "-out", str(redis_csr),
+                "-subj", "/CN=test.redis"
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Sign Redis server certificate with CA (valid for 1 day)
+        redis_cert = cert_dir / "redis.crt"
+        subprocess.run(
+            [
+                "openssl", "x509",
+                "-req",
+                "-days", "1",
+                "-in", str(redis_csr),
+                "-CA", str(ca_cert),
+                "-CAkey", str(ca_key),
+                "-CAcreateserial",
+                "-out", str(redis_cert)
+            ],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Set proper file permissions (600 for keys, 644 for certs)
+        os.chmod(ca_key, 0o600)
+        os.chmod(redis_key, 0o600)
+        os.chmod(ca_cert, 0o644)
+        os.chmod(redis_cert, 0o644)
+
+        # Validate certificate generation succeeded
+        if not ca_cert.exists() or not redis_cert.exists():
+            raise RuntimeError("Certificate generation failed - certificate files not created")
+
+        if ca_cert.stat().st_size == 0 or redis_cert.stat().st_size == 0:
+            raise RuntimeError("Certificate generation failed - certificate files are empty")
+
+        # Validate certificate chain (CA → server cert)
+        verify_result = subprocess.run(
+            [
+                "openssl", "verify",
+                "-CAfile", str(ca_cert),
+                str(redis_cert)
+            ],
+            capture_output=True,
+            text=True
+        )
+
+        if verify_result.returncode != 0 or "OK" not in verify_result.stdout:
+            raise RuntimeError(
+                f"Certificate validation failed: {verify_result.stdout}\n{verify_result.stderr}"
+            )
+
+        # Return certificate paths
+        return {
+            "ca_cert": str(ca_cert),
+            "ca_key": str(ca_key),
+            "redis_cert": str(redis_cert),
+            "redis_key": str(redis_key),
+            "cert_dir": str(cert_dir)
+        }
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"OpenSSL command failed: {e.cmd}\n"
+            f"stdout: {e.stdout}\n"
+            f"stderr: {e.stderr}"
+        ) from e
+
+
+@pytest.fixture(scope="session")
+def secure_redis_container(test_redis_certs):
+    """
+    TLS-enabled Redis container for secure integration testing.
+
+    Creates a Redis container with mandatory TLS encryption and authentication,
+    using self-signed certificates from test_redis_certs fixture.
+
+    Args:
+        test_redis_certs: Certificate paths from test_redis_certs fixture
+
+    Yields:
+        Dict containing:
+            - url: rediss:// connection URL with password
+            - password: Redis password for authentication
+            - host: Container host
+            - port: Container port
+            - container: RedisContainer instance
+
+    Raises:
+        TimeoutError: If container fails to start within 30 seconds
+        RuntimeError: If health check fails
+
+    Note:
+        - Redis configured with TLS-only mode (--tls-port 6379 --port 0)
+        - Strong password generated per session
+        - Health check validates TLS connection
+        - Container automatically cleaned up after session
+    """
+    from testcontainers.redis import RedisContainer
+
+    # Generate cryptographically secure password
+    password = secrets.token_urlsafe(32)
+
+    # Extract certificate paths
+    cert_dir = test_redis_certs["cert_dir"]
+    redis_cert = Path(test_redis_certs["redis_cert"]).name
+    redis_key = Path(test_redis_certs["redis_key"]).name
+    ca_cert = Path(test_redis_certs["ca_cert"]).name
+
+    try:
+        # Create Redis container with TLS configuration
+        container = RedisContainer(image="redis:7-alpine")
+
+        # Mount certificate directory
+        container.with_volume_mapping(cert_dir, "/tls", mode="ro")
+
+        # Configure TLS-only mode (disable plain port)
+        container.with_command(
+            f"redis-server "
+            f"--tls-port 6379 "
+            f"--port 0 "
+            f"--tls-cert-file /tls/{redis_cert} "
+            f"--tls-key-file /tls/{redis_key} "
+            f"--tls-ca-cert-file /tls/{ca_cert} "
+            f"--requirepass {password}"
+        )
+
+        # Start container with timeout
+        container.start()
+
+        # Wait for container to be healthy (30 second timeout)
+        import time
+        start_time = time.time()
+        max_wait = 30
+
+        while time.time() - start_time < max_wait:
+            try:
+                # Check if Redis is responsive via TLS
+                health_check = subprocess.run(
+                    [
+                        "docker", "exec", container.get_container_host_ip(),
+                        "redis-cli",
+                        "--tls",
+                        "--cert", f"/tls/{redis_cert}",
+                        "--key", f"/tls/{redis_key}",
+                        "--cacert", f"/tls/{ca_cert}",
+                        "-a", password,
+                        "ping"
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+
+                if health_check.returncode == 0 and "PONG" in health_check.stdout:
+                    break
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                pass
+
+            time.sleep(1)
+        else:
+            raise TimeoutError(
+                f"Redis container failed to become healthy within {max_wait} seconds"
+            )
+
+        # Get connection details
+        host = container.get_container_host_ip()
+        port = container.get_exposed_port(6379)
+
+        # Build secure connection URL
+        url = f"rediss://:{password}@{host}:{port}/0"
+
+        yield {
+            "url": url,
+            "password": password,
+            "host": host,
+            "port": port,
+            "container": container,
+            "ca_cert": test_redis_certs["ca_cert"]
+        }
+
+    finally:
+        # Graceful cleanup
+        try:
+            if container:
+                container.stop()
+        except Exception as e:
+            # Log but don't fail on cleanup errors
+            print(f"Warning: Failed to stop Redis container: {e}")
+
+
+@pytest.fixture
+async def secure_redis_cache(secure_redis_container, monkeypatch):
+    """
+    GenericRedisCache instance connected to secure TLS-enabled Redis container.
+
+    Creates a fully configured GenericRedisCache with TLS, authentication, and
+    encryption for integration testing. Uses real secure Redis container.
+
+    Args:
+        secure_redis_container: Secure Redis container fixture
+        monkeypatch: Pytest fixture for environment variable manipulation
+
+    Yields:
+        GenericRedisCache: Connected cache instance with security enabled
+
+    Raises:
+        InfrastructureError: If connection to secure Redis fails
+        ConfigurationError: If security configuration invalid
+
+    Note:
+        - Uses rediss:// URL with TLS encryption
+        - Self-signed certificates (verify_certificates=False)
+        - Encryption enabled with test encryption key
+        - Automatic cleanup on teardown
+    """
+    from app.infrastructure.cache.redis_generic import GenericRedisCache
+    from app.infrastructure.cache.security import SecurityConfig
+    import os
+
+    # Set required environment variables for security configuration
+    test_encryption_key = secrets.token_urlsafe(32)
+    monkeypatch.setenv("REDIS_ENCRYPTION_KEY", test_encryption_key)
+    monkeypatch.setenv("REDIS_PASSWORD", secure_redis_container["password"])
+    monkeypatch.setenv("ENVIRONMENT", "testing")  # Use testing environment for self-signed certs
+
+    # Create security configuration for testing
+    # Note: verify_certificates=False for self-signed test certificates
+    security_config = SecurityConfig(
+        redis_auth=secure_redis_container["password"],
+        use_tls=True,
+        tls_ca_path=secure_redis_container["ca_cert"],
+        verify_certificates=False,  # Self-signed test certificates
+        encryption_key=test_encryption_key
+    )
+
+    # Initialize cache with secure configuration
+    cache = GenericRedisCache(
+        redis_url=secure_redis_container["url"],
+        default_ttl=3600,
+        enable_l1_cache=True,
+        l1_cache_size=100,
+        compression_threshold=1000
+    )
+
+    # Override security configuration to use test certificates
+    cache.security_config = security_config
+
+    # Connect to secure Redis
+    connected = await cache.connect()
+
+    if not connected:
+        raise InfrastructureError(
+            "Failed to connect to secure Redis container for integration testing",
+            context={
+                "url": secure_redis_container["url"],
+                "security": "TLS + auth + encryption"
+            }
+        )
+
+    try:
+        yield cache
+    finally:
+        # Cleanup: clear cache and disconnect
+        try:
+            await cache.clear()
+        except Exception as e:
+            print(f"Warning: Failed to clear cache during teardown: {e}")
+
+
+@pytest.fixture
+async def cache_instances(secure_redis_cache):
+    """
+    List of cache instances for shared contract testing.
+
+    Provides multiple cache implementations to test against same behavioral contract.
+    Currently includes real Redis (secure container). fakeredis will be added in Phase 2.
+
+    Args:
+        secure_redis_cache: Secure Redis cache fixture
+
+    Yields:
+        List[Tuple[str, CacheInterface]]: List of (name, cache_instance) tuples
+
+    Note:
+        - "real_redis": Uses secure TLS-enabled container
+        - "fake_redis": Will be added in Phase 2 with encryption patched
+
+    Phase 2 TODO:
+        Add fakeredis implementation with encryption bypassed for unit testing:
+        ```python
+        # ("fake_redis", fakeredis_cache_with_patched_encryption)
+        ```
+    """
+    instances = [
+        ("real_redis", secure_redis_cache)
+    ]
+
+    try:
+        yield instances
+    finally:
+        # Cleanup all cache instances
+        for name, cache in instances:
+            try:
+                if hasattr(cache, 'clear'):
+                    await cache.clear()
+            except Exception as e:
+                print(f"Warning: Failed to cleanup {name} cache: {e}")
