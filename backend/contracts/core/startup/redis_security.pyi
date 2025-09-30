@@ -26,13 +26,49 @@ validator.validate_production_security(
     redis_url="rediss://redis:6380",
     insecure_override=False
 )
+
+# Comprehensive configuration validation
+validation_report = validator.validate_security_configuration(
+    redis_url="rediss://redis:6380",
+    encryption_key="your-fernet-key",
+    tls_cert_path="/path/to/cert.pem"
+)
+print(validation_report.summary())
 ```
 """
 
 import logging
-from typing import Optional
+import os
+from typing import Optional, Dict, Any, List
+from dataclasses import dataclass, field
+from pathlib import Path
+from datetime import datetime, timedelta
 from app.core.environment import get_environment_info, Environment, FeatureContext
 from app.core.exceptions import ConfigurationError
+
+
+@dataclass
+class SecurityValidationResult:
+    """
+    Results from comprehensive security configuration validation.
+    
+    Attributes:
+        is_valid: Overall validation status
+        tls_status: TLS configuration validation status
+        encryption_status: Encryption key validation status
+        auth_status: Authentication configuration status
+        connectivity_status: Redis connectivity test status
+        warnings: List of security warnings
+        errors: List of validation errors
+        recommendations: Security improvement recommendations
+        certificate_info: TLS certificate information if available
+    """
+
+    def summary(self) -> str:
+        """
+        Generate human-readable validation summary.
+        """
+        ...
 
 
 class RedisSecurityValidator:
@@ -83,6 +119,89 @@ class RedisSecurityValidator:
                 "redis://internal:6379",
                 insecure_override=True
             )
+        """
+        ...
+
+    def validate_tls_certificates(self, cert_path: Optional[str] = None, key_path: Optional[str] = None, ca_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Validate TLS certificate files and their properties.
+        
+        Args:
+            cert_path: Path to client certificate file
+            key_path: Path to private key file
+            ca_path: Path to CA certificate file
+        
+        Returns:
+            Dictionary with validation results and certificate info
+        
+        Examples:
+            result = validator.validate_tls_certificates(
+                cert_path="/path/to/cert.pem",
+                key_path="/path/to/key.pem",
+                ca_path="/path/to/ca.pem"
+            )
+        """
+        ...
+
+    def validate_encryption_key(self, encryption_key: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Validate encryption key format and strength.
+        
+        Args:
+            encryption_key: Fernet encryption key to validate
+        
+        Returns:
+            Dictionary with validation results
+        
+        Examples:
+            result = validator.validate_encryption_key("your-fernet-key")
+        """
+        ...
+
+    def validate_redis_auth(self, redis_url: str, auth_password: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Validate Redis authentication configuration.
+        
+        Args:
+            redis_url: Redis connection URL
+            auth_password: Redis AUTH password (if not in URL)
+        
+        Returns:
+            Dictionary with validation results
+        
+        Examples:
+            result = validator.validate_redis_auth("redis://user:pass@localhost:6379")
+        """
+        ...
+
+    def validate_security_configuration(self, redis_url: str, encryption_key: Optional[str] = None, tls_cert_path: Optional[str] = None, tls_key_path: Optional[str] = None, tls_ca_path: Optional[str] = None, auth_password: Optional[str] = None, test_connectivity: bool = False) -> SecurityValidationResult:
+        """
+        Perform comprehensive security configuration validation.
+        
+        This method validates all aspects of Redis security configuration including
+        TLS, encryption, authentication, and optionally connectivity testing.
+        
+        Args:
+            redis_url: Redis connection URL
+            encryption_key: Fernet encryption key
+            tls_cert_path: Path to TLS client certificate
+            tls_key_path: Path to TLS private key
+            tls_ca_path: Path to TLS CA certificate
+            auth_password: Redis authentication password
+            test_connectivity: Whether to test actual Redis connectivity
+        
+        Returns:
+            SecurityValidationResult with detailed validation information
+        
+        Examples:
+            # Full validation
+            result = validator.validate_security_configuration(
+                redis_url="rediss://redis:6380",
+                encryption_key=os.getenv("REDIS_ENCRYPTION_KEY"),
+                tls_cert_path="/path/to/cert.pem",
+                test_connectivity=True
+            )
+            print(result.summary())
         """
         ...
 

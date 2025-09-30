@@ -227,7 +227,7 @@ class GenericRedisCache(CacheInterface):
 
             # Initialize encryption layer with required encryption key
             self.encryption = EncryptedCacheLayer(
-                encryption_key=self.security_config.encryption_key if hasattr(self.security_config, 'encryption_key') else None,
+                encryption_key=self.security_config.encryption_key if hasattr(self.security_config, 'encryption_key') else None,  # type: ignore
                 performance_monitoring=True
             )
 
