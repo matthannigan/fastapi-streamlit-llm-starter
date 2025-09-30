@@ -131,27 +131,29 @@ Error Handling:
 """
 
 import hashlib
+import inspect
 import logging
 import time
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import inspect
 from unittest.mock import MagicMock
 
 # Optional Redis import for graceful degradation
 try:
     from redis import asyncio as aioredis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
     aioredis = None  # type: ignore
 
-from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
-from app.infrastructure.cache.redis_generic import GenericRedisCache
-from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+from app.core.exceptions import (ConfigurationError, InfrastructureError,
+                                 ValidationError)
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 # Configure module-level logging
 logger = logging.getLogger(__name__)
@@ -236,12 +238,14 @@ class AIResponseCache(GenericRedisCache):
         compression_threshold: int = 1000,
         compression_level: int = 6,
         text_size_tiers: Optional[Dict[str, int]] = None,
-        memory_cache_size: Optional[int] = None,  # Legacy parameter for backward compatibility
+        memory_cache_size: Optional[
+            int
+        ] = None,  # Legacy parameter for backward compatibility
         l1_cache_size: int = 100,  # Modern parameter naming
         enable_l1_cache: bool = True,  # Explicit L1 cache control
         performance_monitor: Optional[CachePerformanceMonitor] = None,
         operation_ttls: Optional[Dict[str, int]] = None,
-        **kwargs  # Accept additional parameters for backward compatibility
+        **kwargs,  # Accept additional parameters for backward compatibility
     ):
         """
         Initialize AIResponseCache with automatic security inheritance.
@@ -288,12 +292,25 @@ class AIResponseCache(GenericRedisCache):
 
             # Warn about removed security parameters
             security_params = {
-                'security_config', 'redis_password', 'use_tls', 'tls_cert_path', 'tls_key_path',
-                'tls_ca_path', 'verify_certificates', 'redis_auth', 'acl_username', 'acl_password',
-                'connection_timeout', 'socket_timeout', 'min_tls_version', 'cipher_suites',
-                'fail_on_connection_error'
+                "security_config",
+                "redis_password",
+                "use_tls",
+                "tls_cert_path",
+                "tls_key_path",
+                "tls_ca_path",
+                "verify_certificates",
+                "redis_auth",
+                "acl_username",
+                "acl_password",
+                "connection_timeout",
+                "socket_timeout",
+                "min_tls_version",
+                "cipher_suites",
+                "fail_on_connection_error",
             }
-            found_security_params = {k: v for k, v in kwargs.items() if k in security_params}
+            found_security_params = {
+                k: v for k, v in kwargs.items() if k in security_params
+            }
             if found_security_params:
                 logger.warning(
                     f"Security parameters {list(found_security_params.keys())} are no longer needed. "
@@ -305,38 +322,47 @@ class AIResponseCache(GenericRedisCache):
 
             # Collect AI-specific parameters only - security handled by parent automatically
             ai_params = {
-                'redis_url': redis_url,
-                'default_ttl': default_ttl,
-                'text_hash_threshold': text_hash_threshold,
-                'hash_algorithm': hash_algorithm,
-                'compression_threshold': compression_threshold,
-                'compression_level': compression_level,
-                'text_size_tiers': text_size_tiers,
-                'l1_cache_size': resolved_l1_cache_size,  # Use resolved value
-                'enable_l1_cache': enable_l1_cache,
-                'performance_monitor': performance_monitor,
-                'operation_ttls': operation_ttls,
-                **kwargs  # Include any remaining non-security kwargs
+                "redis_url": redis_url,
+                "default_ttl": default_ttl,
+                "text_hash_threshold": text_hash_threshold,
+                "hash_algorithm": hash_algorithm,
+                "compression_threshold": compression_threshold,
+                "compression_level": compression_level,
+                "text_size_tiers": text_size_tiers,
+                "l1_cache_size": resolved_l1_cache_size,  # Use resolved value
+                "enable_l1_cache": enable_l1_cache,
+                "performance_monitor": performance_monitor,
+                "operation_ttls": operation_ttls,
+                **kwargs,  # Include any remaining non-security kwargs
             }
 
             # Remove None values to avoid validation issues, but keep performance_monitor
-            ai_params = {k: v for k, v in ai_params.items() if v is not None or k in ('performance_monitor',)}
+            ai_params = {
+                k: v
+                for k, v in ai_params.items()
+                if v is not None or k in ("performance_monitor",)
+            }
 
             # Use CacheParameterMapper to separate parameters
             self._parameter_mapper = CacheParameterMapper()
-            generic_params, ai_specific_params = self._parameter_mapper.map_ai_to_generic_params(ai_params)
+            (
+                generic_params,
+                ai_specific_params,
+            ) = self._parameter_mapper.map_ai_to_generic_params(ai_params)
 
             # Validate parameter compatibility
-            validation_result = self._parameter_mapper.validate_parameter_compatibility(ai_params)
+            validation_result = self._parameter_mapper.validate_parameter_compatibility(
+                ai_params
+            )
             if not validation_result.is_valid:
                 error_details = "; ".join(validation_result.errors)
                 raise ValidationError(
                     f"AIResponseCache parameter validation failed: {error_details}",
                     context={
-                        'validation_errors': validation_result.errors,
-                        'validation_warnings': validation_result.warnings,
-                        'ai_params': list(ai_params.keys())
-                    }
+                        "validation_errors": validation_result.errors,
+                        "validation_warnings": validation_result.warnings,
+                        "ai_params": list(ai_params.keys()),
+                    },
                 )
 
             # Log validation warnings
@@ -355,7 +381,9 @@ class AIResponseCache(GenericRedisCache):
             # Register AI-specific callbacks after parent initialization
             self._register_ai_callbacks()
 
-            logger.info("AIResponseCache initialized successfully with automatic security inheritance")
+            logger.info(
+                "AIResponseCache initialized successfully with automatic security inheritance"
+            )
 
         except Exception as e:
             error_msg = f"Failed to initialize AIResponseCache: {e}"
@@ -367,9 +395,11 @@ class AIResponseCache(GenericRedisCache):
                 raise ConfigurationError(
                     error_msg,
                     context={
-                        'initialization_params': list(ai_params.keys()) if 'ai_params' in locals() else [],
-                        'error_type': type(e).__name__
-                    }
+                        "initialization_params": list(ai_params.keys())
+                        if "ai_params" in locals()
+                        else [],
+                        "error_type": type(e).__name__,
+                    },
                 )
 
     def _setup_ai_configuration(
@@ -380,7 +410,7 @@ class AIResponseCache(GenericRedisCache):
         operation_ttls: Optional[Dict[str, int]] = None,
         performance_monitor=None,
         default_ttl: int = 3600,
-        **kwargs
+        **kwargs,
     ):
         """
         Set up AI-specific configuration parameters.
@@ -417,7 +447,7 @@ class AIResponseCache(GenericRedisCache):
 
             # Set up text size tiers with defaults
             tiers = text_size_tiers or {
-                "small": 500,    # < 500 chars - cache with full text and use memory cache
+                "small": 500,  # < 500 chars - cache with full text and use memory cache
                 "medium": 5000,  # 500-5000 chars - cache with text hash
                 "large": 50000,  # 5000-50000 chars - cache with content hash + metadata
             }
@@ -432,7 +462,9 @@ class AIResponseCache(GenericRedisCache):
 
             # Log any unexpected parameters
             if kwargs:
-                logger.debug(f"Additional AI parameters received: {list(kwargs.keys())}")
+                logger.debug(
+                    f"Additional AI parameters received: {list(kwargs.keys())}"
+                )
 
             logger.info(
                 f"AI configuration setup complete: text_hash_threshold={text_hash_threshold}, "
@@ -446,10 +478,14 @@ class AIResponseCache(GenericRedisCache):
             raise ConfigurationError(
                 error_msg,
                 context={
-                    'text_hash_threshold': text_hash_threshold,
-                    'operation_ttls_count': len(operation_ttls) if operation_ttls else 0,
-                    'text_size_tiers_count': len(text_size_tiers) if text_size_tiers else 0
-                }
+                    "text_hash_threshold": text_hash_threshold,
+                    "operation_ttls_count": len(operation_ttls)
+                    if operation_ttls
+                    else 0,
+                    "text_size_tiers_count": len(text_size_tiers)
+                    if text_size_tiers
+                    else 0,
+                },
             )
 
     def _setup_ai_components(self):
@@ -474,16 +510,18 @@ class AIResponseCache(GenericRedisCache):
 
             # Initialize AI-specific metrics tracking
             self.ai_metrics = {
-                'cache_hits_by_operation': defaultdict(int),
-                'cache_misses_by_operation': defaultdict(int),
-                'text_tier_distribution': defaultdict(int),
-                'operation_performance': [],
+                "cache_hits_by_operation": defaultdict(int),
+                "cache_misses_by_operation": defaultdict(int),
+                "text_tier_distribution": defaultdict(int),
+                "operation_performance": [],
             }
 
             # Backward compatibility - all memory cache attributes are provided as properties
             # No assignments needed here since properties handle the compatibility layer
 
-            logger.info("AI components setup complete: key generator and metrics initialized")
+            logger.info(
+                "AI components setup complete: key generator and metrics initialized"
+            )
 
         except Exception as e:
             error_msg = f"Failed to setup AI components: {e}"
@@ -491,10 +529,11 @@ class AIResponseCache(GenericRedisCache):
             raise InfrastructureError(
                 error_msg,
                 context={
-                    'text_hash_threshold': getattr(self, 'text_hash_threshold', None),
-                    'hash_algorithm': str(getattr(self, 'hash_algorithm', None)),
-                    'performance_monitor_available': self.performance_monitor is not None
-                }
+                    "text_hash_threshold": getattr(self, "text_hash_threshold", None),
+                    "hash_algorithm": str(getattr(self, "hash_algorithm", None)),
+                    "performance_monitor_available": self.performance_monitor
+                    is not None,
+                },
             )
 
     def _register_ai_callbacks(self):
@@ -508,9 +547,9 @@ class AIResponseCache(GenericRedisCache):
 
         try:
             # Register callbacks for cache events
-            self.register_callback('get_success', self._ai_get_success_callback)
-            self.register_callback('get_miss', self._ai_get_miss_callback)
-            self.register_callback('set_success', self._ai_set_success_callback)
+            self.register_callback("get_success", self._ai_get_success_callback)
+            self.register_callback("get_miss", self._ai_get_miss_callback)
+            self.register_callback("set_success", self._ai_set_success_callback)
 
             logger.debug("AI callbacks registered successfully")
 
@@ -533,18 +572,20 @@ class AIResponseCache(GenericRedisCache):
         """
         try:
             # Extract operation and text tier from cache key for metrics
-            if key.startswith('ai_cache:'):
+            if key.startswith("ai_cache:"):
                 # Parse operation from key format: ai_cache:op:operation|...
-                key_parts = key.split('|')
-                if len(key_parts) > 0 and key_parts[0].startswith('ai_cache:op:'):
-                    operation = key_parts[0].split(':')[2]
-                    self.ai_metrics['cache_hits_by_operation'][operation] += 1
+                key_parts = key.split("|")
+                if len(key_parts) > 0 and key_parts[0].startswith("ai_cache:op:"):
+                    operation = key_parts[0].split(":")[2]
+                    self.ai_metrics["cache_hits_by_operation"][operation] += 1
 
                     # Determine text tier if available in context
-                    text_tier = kwargs.get('text_tier', 'unknown')
-                    self.ai_metrics['text_tier_distribution'][text_tier] += 1
+                    text_tier = kwargs.get("text_tier", "unknown")
+                    self.ai_metrics["text_tier_distribution"][text_tier] += 1
 
-                    logger.debug(f"AI cache hit recorded: operation={operation}, tier={text_tier}")
+                    logger.debug(
+                        f"AI cache hit recorded: operation={operation}, tier={text_tier}"
+                    )
         except Exception as e:
             logger.warning(f"AI get success callback failed: {e}")
 
@@ -561,15 +602,17 @@ class AIResponseCache(GenericRedisCache):
         """
         try:
             # Extract operation from cache key for metrics
-            if key.startswith('ai_cache:'):
+            if key.startswith("ai_cache:"):
                 # Parse operation from key format: ai_cache:op:operation|...
-                key_parts = key.split('|')
-                if len(key_parts) > 0 and key_parts[0].startswith('ai_cache:op:'):
-                    operation = key_parts[0].split(':')[2]
-                    self.ai_metrics['cache_misses_by_operation'][operation] += 1
+                key_parts = key.split("|")
+                if len(key_parts) > 0 and key_parts[0].startswith("ai_cache:op:"):
+                    operation = key_parts[0].split(":")[2]
+                    self.ai_metrics["cache_misses_by_operation"][operation] += 1
 
-                    miss_reason = kwargs.get('reason', 'unknown')
-                    logger.debug(f"AI cache miss recorded: operation={operation}, reason={miss_reason}")
+                    miss_reason = kwargs.get("reason", "unknown")
+                    logger.debug(
+                        f"AI cache miss recorded: operation={operation}, reason={miss_reason}"
+                    )
         except Exception as e:
             logger.warning(f"AI get miss callback failed: {e}")
 
@@ -587,27 +630,30 @@ class AIResponseCache(GenericRedisCache):
         """
         try:
             # Extract operation from cache key for metrics
-            if key.startswith('ai_cache:'):
+            if key.startswith("ai_cache:"):
                 # Parse operation from key format: ai_cache:op:operation|...
-                key_parts = key.split('|')
-                if len(key_parts) > 0 and key_parts[0].startswith('ai_cache:op:'):
-                    operation = key_parts[0].split(':')[2]
+                key_parts = key.split("|")
+                if len(key_parts) > 0 and key_parts[0].startswith("ai_cache:op:"):
+                    operation = key_parts[0].split(":")[2]
 
                     # Record operation performance data
                     operation_data = {
-                        'operation': operation,
-                        'timestamp': time.time(),
-                        'data_size': len(str(value)),
-                        'ttl': kwargs.get('ttl', self.default_ttl)
+                        "operation": operation,
+                        "timestamp": time.time(),
+                        "data_size": len(str(value)),
+                        "ttl": kwargs.get("ttl", self.default_ttl),
                     }
-                    self.ai_metrics['operation_performance'].append(operation_data)
+                    self.ai_metrics["operation_performance"].append(operation_data)
 
                     # Keep only recent performance data (last 1000 operations)
-                    if len(self.ai_metrics['operation_performance']) > 1000:
-                        self.ai_metrics['operation_performance'] = \
-                            self.ai_metrics['operation_performance'][-1000:]
+                    if len(self.ai_metrics["operation_performance"]) > 1000:
+                        self.ai_metrics["operation_performance"] = self.ai_metrics[
+                            "operation_performance"
+                        ][-1000:]
 
-                    logger.debug(f"AI cache set recorded: operation={operation}, size={operation_data['data_size']}")
+                    logger.debug(
+                        f"AI cache set recorded: operation={operation}, size={operation_data['data_size']}"
+                    )
         except Exception as e:
             logger.warning(f"AI set success callback failed: {e}")
 
@@ -678,7 +724,7 @@ class AIResponseCache(GenericRedisCache):
             if not isinstance(text, str):
                 raise ValidationError(
                     "Invalid text parameter: must be string",
-                    context={'text_type': type(text)}
+                    context={"text_type": type(text)},
                 )
 
             text_len = len(text)
@@ -757,7 +803,9 @@ class AIResponseCache(GenericRedisCache):
                 if not text_part.startswith("hash_"):
                     text_len = len(text_part)
                     tier = self._get_text_tier(text_part)
-                    logger.debug(f"Inferred tier from embedded text: length={text_len}, tier={tier}")
+                    logger.debug(
+                        f"Inferred tier from embedded text: length={text_len}, tier={tier}"
+                    )
                     return tier
 
             # Check for size indicators in key format
@@ -823,7 +871,9 @@ class AIResponseCache(GenericRedisCache):
                 if len(parts) > 1:
                     operation_part = parts[1].split("|")[0]
                     if operation_part and operation_part.replace("_", "").isalnum():
-                        logger.debug(f"Extracted operation from alternative format: {operation_part}")
+                        logger.debug(
+                            f"Extracted operation from alternative format: {operation_part}"
+                        )
                         return operation_part
 
             # If no structured operation found, return generic unknown
@@ -843,7 +893,7 @@ class AIResponseCache(GenericRedisCache):
         text_tier: str,
         duration: float,
         success: bool,
-        additional_data: Optional[Dict[str, Any]] = None
+        additional_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Record comprehensive AI-specific cache operation metrics.
@@ -879,52 +929,55 @@ class AIResponseCache(GenericRedisCache):
                     duration=duration,
                     cache_hit=success,
                     additional_data={
-                        'ai_operation': operation,
-                        'text_tier': text_tier,
-                        'success': success,
-                        **(additional_data or {})
-                    }
+                        "ai_operation": operation,
+                        "text_tier": text_tier,
+                        "success": success,
+                        **(additional_data or {}),
+                    },
                 )
 
             # Update AI-specific metrics
             if success:
-                if cache_operation == 'get':
+                if cache_operation == "get":
                     # Cache hit
-                    self.ai_metrics['cache_hits_by_operation'][operation] += 1
-                elif cache_operation == 'set':
+                    self.ai_metrics["cache_hits_by_operation"][operation] += 1
+                elif cache_operation == "set":
                     # Successful cache store
-                    if 'cache_stores_by_operation' not in self.ai_metrics:
-                        self.ai_metrics['cache_stores_by_operation'] = defaultdict(int)
-                    self.ai_metrics['cache_stores_by_operation'][operation] += 1
+                    if "cache_stores_by_operation" not in self.ai_metrics:
+                        self.ai_metrics["cache_stores_by_operation"] = defaultdict(int)
+                    self.ai_metrics["cache_stores_by_operation"][operation] += 1
             else:
-                if cache_operation == 'get':
+                if cache_operation == "get":
                     # Cache miss
-                    self.ai_metrics['cache_misses_by_operation'][operation] += 1
-                elif cache_operation == 'set':
+                    self.ai_metrics["cache_misses_by_operation"][operation] += 1
+                elif cache_operation == "set":
                     # Failed cache store
-                    if 'cache_store_failures_by_operation' not in self.ai_metrics:
-                        self.ai_metrics['cache_store_failures_by_operation'] = defaultdict(int)
-                    self.ai_metrics['cache_store_failures_by_operation'][operation] += 1
+                    if "cache_store_failures_by_operation" not in self.ai_metrics:
+                        self.ai_metrics[
+                            "cache_store_failures_by_operation"
+                        ] = defaultdict(int)
+                    self.ai_metrics["cache_store_failures_by_operation"][operation] += 1
 
             # Update text tier distribution
-            self.ai_metrics['text_tier_distribution'][text_tier] += 1
+            self.ai_metrics["text_tier_distribution"][text_tier] += 1
 
             # Record operation performance data with enhanced context
             operation_data = {
-                'operation': operation,
-                'cache_operation': cache_operation,
-                'text_tier': text_tier,
-                'timestamp': time.time(),
-                'duration': duration,
-                'success': success,
-                **(additional_data or {})
+                "operation": operation,
+                "cache_operation": cache_operation,
+                "text_tier": text_tier,
+                "timestamp": time.time(),
+                "duration": duration,
+                "success": success,
+                **(additional_data or {}),
             }
-            self.ai_metrics['operation_performance'].append(operation_data)
+            self.ai_metrics["operation_performance"].append(operation_data)
 
             # Keep only recent performance data (last 1000 operations) to prevent memory growth
-            if len(self.ai_metrics['operation_performance']) > 1000:
-                self.ai_metrics['operation_performance'] = \
-                    self.ai_metrics['operation_performance'][-1000:]
+            if len(self.ai_metrics["operation_performance"]) > 1000:
+                self.ai_metrics["operation_performance"] = self.ai_metrics[
+                    "operation_performance"
+                ][-1000:]
 
             logger.debug(
                 f"Recorded AI cache operation: operation={operation}, "
@@ -1134,7 +1187,9 @@ class AIResponseCache(GenericRedisCache):
                     l1_keys = self.l1_cache.get_keys()  # type: ignore[union-attr]
                 except Exception:
                     l1_keys = []
-                matching_l1_keys = [k for k in l1_keys if isinstance(k, str) and pattern in k]
+                matching_l1_keys = [
+                    k for k in l1_keys if isinstance(k, str) and pattern in k
+                ]
                 for key in matching_l1_keys:
                     try:
                         await self.l1_cache.delete(key)  # type: ignore[union-attr]
@@ -1158,8 +1213,8 @@ class AIResponseCache(GenericRedisCache):
                         "status": "partial",
                         "reason": "redis_connection_failed",
                         "l1_invalidated": l1_invalidated,
-                },
-            )
+                    },
+                )
             return
 
         try:
@@ -1193,9 +1248,9 @@ class AIResponseCache(GenericRedisCache):
                     additional_data={
                         "status": "success",
                         "search_pattern": f"ai_cache:*{pattern}*",
-                    "l1_invalidated": l1_invalidated,
-                },
-            )
+                        "l1_invalidated": l1_invalidated,
+                    },
+                )
 
         except Exception as e:
             # Record failed invalidation
@@ -1213,7 +1268,7 @@ class AIResponseCache(GenericRedisCache):
                         "error": str(e),
                         "l1_invalidated": l1_invalidated,
                     },
-            )
+                )
             logger.warning(f"Cache invalidation error: {e}")
 
     async def invalidate_by_operation(
@@ -1255,7 +1310,7 @@ class AIResponseCache(GenericRedisCache):
             if not operation or not isinstance(operation, str):
                 raise ValidationError(
                     "Invalid operation parameter: must be non-empty string",
-                    context={'operation': operation, 'operation_type': type(operation)}
+                    context={"operation": operation, "operation_type": type(operation)},
                 )
 
             # Build pattern string for operation matching
@@ -1276,7 +1331,9 @@ class AIResponseCache(GenericRedisCache):
                     except Exception:
                         l1_keys = []
                     # L1 keys are full cache keys like "ai_cache:op:<op>|..."; match substring
-                    matching_l1_keys = [k for k in l1_keys if isinstance(k, str) and pattern in k]
+                    matching_l1_keys = [
+                        k for k in l1_keys if isinstance(k, str) and pattern in k
+                    ]
                     for key in matching_l1_keys:
                         try:
                             await self.l1_cache.delete(key)  # type: ignore[union-attr]
@@ -1288,7 +1345,9 @@ class AIResponseCache(GenericRedisCache):
 
             # If Redis is unavailable, return L1-only invalidation count
             if not await self.connect():
-                logger.warning(f"Cannot invalidate operation {operation} - Redis unavailable")
+                logger.warning(
+                    f"Cannot invalidate operation {operation} - Redis unavailable"
+                )
                 duration = time.time() - start_time
                 if self.performance_monitor is not None:
                     self.performance_monitor.record_invalidation_event(
@@ -1302,7 +1361,7 @@ class AIResponseCache(GenericRedisCache):
                             "status": "partial",
                             "reason": "redis_connection_failed",
                             "l1_invalidated": total_invalidated,
-                        }
+                        },
                     )
                 return total_invalidated
 
@@ -1314,19 +1373,31 @@ class AIResponseCache(GenericRedisCache):
                     assert self.redis is not None
                     search_pattern = f"ai_cache:*{pattern}*"
                     _keys_call = self.redis.keys(search_pattern.encode("utf-8"))
-                    keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                    keys = (
+                        await _keys_call
+                        if inspect.isawaitable(_keys_call)
+                        else _keys_call
+                    )
                     keys_count = len(keys) if keys else 0
                     if keys:
                         # Delete the matching keys
                         _del_call = self.redis.delete(*keys)
                         if inspect.isawaitable(_del_call):
                             await _del_call
-                        logger.info(f"Invalidated {keys_count} cache entries for operation {operation}")
+                        logger.info(
+                            f"Invalidated {keys_count} cache entries for operation {operation}"
+                        )
                     else:
-                        logger.debug(f"No cache entries found for operation {operation}")
+                        logger.debug(
+                            f"No cache entries found for operation {operation}"
+                        )
                     try:
                         redis_key_strs = [
-                            (k.decode("utf-8") if isinstance(k, (bytes, bytearray)) else (k if isinstance(k, str) else str(k)))
+                            (
+                                k.decode("utf-8")
+                                if isinstance(k, (bytes, bytearray))
+                                else (k if isinstance(k, str) else str(k))
+                            )
                             for k in (keys or [])
                         ]
                     except Exception:
@@ -1343,21 +1414,26 @@ class AIResponseCache(GenericRedisCache):
                             keys_invalidated=unique_invalidated,
                             duration=duration,
                             invalidation_type="operation_specific",
-                        operation_context=operation_context,
-                        additional_data={
-                            "operation": operation,
-                            "search_pattern": search_pattern,
-                            "status": "success",
-                            "l1_invalidated": total_invalidated,
-                        }
-                    )
+                            operation_context=operation_context,
+                            additional_data={
+                                "operation": operation,
+                                "search_pattern": search_pattern,
+                                "status": "success",
+                                "l1_invalidated": total_invalidated,
+                            },
+                        )
 
                     # Update AI-specific invalidation metrics
-                    if hasattr(self, 'ai_metrics') and 'invalidations_by_operation' not in self.ai_metrics:
-                        self.ai_metrics['invalidations_by_operation'] = defaultdict(int)
+                    if (
+                        hasattr(self, "ai_metrics")
+                        and "invalidations_by_operation" not in self.ai_metrics
+                    ):
+                        self.ai_metrics["invalidations_by_operation"] = defaultdict(int)
 
-                    if hasattr(self, 'ai_metrics'):
-                        self.ai_metrics['invalidations_by_operation'][operation] += keys_count
+                    if hasattr(self, "ai_metrics"):
+                        self.ai_metrics["invalidations_by_operation"][
+                            operation
+                        ] += keys_count
 
                     logger.info(
                         f"Operation invalidation completed: operation={operation}, "
@@ -1376,17 +1452,19 @@ class AIResponseCache(GenericRedisCache):
                         keys_invalidated=total_invalidated,
                         duration=duration,
                         invalidation_type="operation_specific",
-                    operation_context=operation_context,
-                    additional_data={
-                        "operation": operation,
-                        "status": "partial",
-                        "reason": "redis_error",
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "l1_invalidated": total_invalidated
-                    }
+                        operation_context=operation_context,
+                        additional_data={
+                            "operation": operation,
+                            "status": "partial",
+                            "reason": "redis_error",
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                            "l1_invalidated": total_invalidated,
+                        },
+                    )
+                logger.warning(
+                    f"Operation invalidation degraded to L1 only due to Redis error: {e}"
                 )
-                logger.warning(f"Operation invalidation degraded to L1 only due to Redis error: {e}")
                 return total_invalidated
 
         except ValidationError:
@@ -1401,19 +1479,19 @@ class AIResponseCache(GenericRedisCache):
                 f"Unexpected error during operation invalidation: {e}",
                 exc_info=True,
                 extra={
-                    'operation': operation if 'operation' in locals() else 'unknown',
-                    'operation_context': operation_context,
-                    'duration': duration,
-                    'error_type': type(e).__name__
-                }
+                    "operation": operation if "operation" in locals() else "unknown",
+                    "operation_context": operation_context,
+                    "duration": duration,
+                    "error_type": type(e).__name__,
+                },
             )
             raise InfrastructureError(
                 f"Unexpected error during operation invalidation: {e}",
                 context={
-                    'operation': operation,
-                    'operation_context': operation_context,
-                    'duration': duration
-                }
+                    "operation": operation,
+                    "operation_context": operation_context,
+                    "duration": duration,
+                },
             )
 
     async def clear(self, operation_context: str = "test_clear") -> None:
@@ -1465,7 +1543,9 @@ class AIResponseCache(GenericRedisCache):
             try:
                 assert self.redis is not None
                 _keys_call = self.redis.keys(b"ai_cache:*")
-                keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                keys = (
+                    await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                )
                 if keys:
                     redis_invalidated = len(keys)
                     _del_call = self.redis.delete(*keys)
@@ -1483,13 +1563,13 @@ class AIResponseCache(GenericRedisCache):
                     keys_invalidated=redis_invalidated + l1_invalidated,
                     duration=duration,
                     invalidation_type="clear",
-                operation_context=operation_context,
-                additional_data={
-                    "status": "success",
-                    "l1_invalidated": l1_invalidated,
-                    "redis_invalidated": redis_invalidated,
-                },
-            )
+                    operation_context=operation_context,
+                    additional_data={
+                        "status": "success",
+                        "l1_invalidated": l1_invalidated,
+                        "redis_invalidated": redis_invalidated,
+                    },
+                )
         except Exception:
             pass
 
@@ -1549,39 +1629,54 @@ class AIResponseCache(GenericRedisCache):
             # Strategy 2: Promote stable operations for medium texts
             # These operations produce consistent, reusable results
             stable_operations = {
-                "sentiment",    # Sentiment rarely changes for same text
-                "summarize",    # Summaries are generally stable for same parameters
-                "key_points",   # Key points extraction is deterministic
-                "classify"      # Classification results are stable
+                "sentiment",  # Sentiment rarely changes for same text
+                "summarize",  # Summaries are generally stable for same parameters
+                "key_points",  # Key points extraction is deterministic
+                "classify",  # Classification results are stable
             }
 
             if operation in stable_operations:
                 if text_tier == "medium":
-                    logger.debug(f"Promoting stable medium operation to memory: operation={operation}")
+                    logger.debug(
+                        f"Promoting stable medium operation to memory: operation={operation}"
+                    )
                     return True
                 elif text_tier == "large":
                     # Only promote large texts for highly stable operations
                     highly_stable = {"sentiment"}  # Most stable operation
                     if operation in highly_stable:
-                        logger.debug(f"Promoting highly stable large operation to memory: operation={operation}")
+                        logger.debug(
+                            f"Promoting highly stable large operation to memory: operation={operation}"
+                        )
                         return True
 
             # Strategy 3: Consider operation frequency and access patterns
             # Check if this operation has been frequently accessed recently
-            if hasattr(self, 'ai_metrics') and 'cache_hits_by_operation' in self.ai_metrics:
-                operation_hits = self.ai_metrics['cache_hits_by_operation'].get(operation, 0)
+            if (
+                hasattr(self, "ai_metrics")
+                and "cache_hits_by_operation" in self.ai_metrics
+            ):
+                operation_hits = self.ai_metrics["cache_hits_by_operation"].get(
+                    operation, 0
+                )
                 if operation_hits >= 10 and text_tier in ["small", "medium"]:
-                    logger.debug(f"Promoting frequently accessed operation to memory: operation={operation}, hits={operation_hits}")
+                    logger.debug(
+                        f"Promoting frequently accessed operation to memory: operation={operation}, hits={operation_hits}"
+                    )
                     return True
 
             # Strategy 4: Avoid promoting large/xlarge texts to conserve memory
             # These consume significant memory and may not provide proportional benefit
             if text_tier in ["large", "xlarge"]:
-                logger.debug(f"Not promoting large text to memory: tier={text_tier}, operation={operation}")
+                logger.debug(
+                    f"Not promoting large text to memory: tier={text_tier}, operation={operation}"
+                )
                 return False
 
             # Default: Don't promote if no clear benefit identified
-            logger.debug(f"No promotion criteria met: tier={text_tier}, operation={operation}")
+            logger.debug(
+                f"No promotion criteria met: tier={text_tier}, operation={operation}"
+            )
             return False
 
         except Exception as e:
@@ -1621,9 +1716,13 @@ class AIResponseCache(GenericRedisCache):
                     self.redis is not None
                 )  # Type checker hint: redis is available after successful connect()
                 _keys_call = self.redis.keys(b"ai_cache:*")
-                keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                keys = (
+                    await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
+                )
                 _info_call = self.redis.info()
-                info = await _info_call if inspect.isawaitable(_info_call) else _info_call
+                info = (
+                    await _info_call if inspect.isawaitable(_info_call) else _info_call
+                )
                 redis_stats = {
                     "status": "connected",
                     "keys": len(keys),
@@ -1638,12 +1737,16 @@ class AIResponseCache(GenericRedisCache):
         # Add memory cache statistics
         memory_stats = {
             "memory_cache_entries": len(self.memory_cache),
-            "memory_cache_size_limit": getattr(self, 'memory_cache_size', 0),
+            "memory_cache_size_limit": getattr(self, "memory_cache_size", 0),
             "memory_cache_utilization": f"{len(self.memory_cache)}/{getattr(self, 'memory_cache_size', 0)}",
         }
 
         # Add performance statistics
-        performance_stats = self.performance_monitor.get_performance_stats() if self.performance_monitor is not None else {}
+        performance_stats = (
+            self.performance_monitor.get_performance_stats()
+            if self.performance_monitor is not None
+            else {}
+        )
 
         return {
             "redis": redis_stats,
@@ -1670,7 +1773,11 @@ class AIResponseCache(GenericRedisCache):
             >>> print(f"Cache hit ratio: {hit_ratio:.1f}%")
             Cache hit ratio: 75.3%
         """
-        return self.performance_monitor._calculate_hit_rate() if self.performance_monitor is not None else 0.0
+        return (
+            self.performance_monitor._calculate_hit_rate()
+            if self.performance_monitor is not None
+            else 0.0
+        )
 
     def get_performance_summary(self) -> Dict[str, Any]:
         """
@@ -1698,14 +1805,20 @@ class AIResponseCache(GenericRedisCache):
         """
         summary = {
             "hit_ratio": self.get_cache_hit_ratio(),
-            "total_operations": self.performance_monitor.total_operations if self.performance_monitor is not None else 0,
-            "cache_hits": self.performance_monitor.cache_hits if self.performance_monitor is not None else 0,
-            "cache_misses": self.performance_monitor.cache_misses if self.performance_monitor is not None else 0,
+            "total_operations": self.performance_monitor.total_operations
+            if self.performance_monitor is not None
+            else 0,
+            "cache_hits": self.performance_monitor.cache_hits
+            if self.performance_monitor is not None
+            else 0,
+            "cache_misses": self.performance_monitor.cache_misses
+            if self.performance_monitor is not None
+            else 0,
             "recent_avg_cache_operation_time": self._get_recent_avg_cache_operation_time(),
-            "ai_operation_metrics": dict(self.ai_metrics['cache_hits_by_operation']),
-            "ai_miss_metrics": dict(self.ai_metrics['cache_misses_by_operation']),
-            "text_tier_distribution": dict(self.ai_metrics['text_tier_distribution']),
-            "recent_ai_operations": len(self.ai_metrics['operation_performance']),
+            "ai_operation_metrics": dict(self.ai_metrics["cache_hits_by_operation"]),
+            "ai_miss_metrics": dict(self.ai_metrics["cache_misses_by_operation"]),
+            "text_tier_distribution": dict(self.ai_metrics["text_tier_distribution"]),
+            "recent_ai_operations": len(self.ai_metrics["operation_performance"]),
         }
 
         return summary
@@ -1725,7 +1838,10 @@ class AIResponseCache(GenericRedisCache):
             Only considers the 10 most recent measurements to provide
             current performance rather than historical averages.
         """
-        if self.performance_monitor is None or not self.performance_monitor.cache_operation_times:
+        if (
+            self.performance_monitor is None
+            or not self.performance_monitor.cache_operation_times
+        ):
             return 0.0
 
         recent_times = [
@@ -1760,9 +1876,7 @@ class AIResponseCache(GenericRedisCache):
                 logger.info(f"Connected to Redis at {self.redis_url}")
                 return True
             except Exception as e:
-                logger.warning(
-                    f"Redis connection failed: {e} - using memory-only mode"
-                )
+                logger.warning(f"Redis connection failed: {e} - using memory-only mode")
                 self.redis = None
                 return False
         return True
@@ -1801,8 +1915,8 @@ class AIResponseCache(GenericRedisCache):
             logger.debug("Generating AI performance summary")
 
             # Calculate total operations from hits and misses
-            total_hits = sum(self.ai_metrics['cache_hits_by_operation'].values())
-            total_misses = sum(self.ai_metrics['cache_misses_by_operation'].values())
+            total_hits = sum(self.ai_metrics["cache_hits_by_operation"].values())
+            total_misses = sum(self.ai_metrics["cache_misses_by_operation"].values())
             total_operations = total_hits + total_misses
 
             # Early return for zero operations to avoid division by zero
@@ -1815,7 +1929,9 @@ class AIResponseCache(GenericRedisCache):
                     "text_tier_distribution": {},
                     "key_generation_stats": self.key_generator.get_key_generation_stats(),
                     "optimization_recommendations": [],
-                    "inherited_stats": self.performance_monitor.get_performance_stats() if self.performance_monitor is not None else {}
+                    "inherited_stats": self.performance_monitor.get_performance_stats()
+                    if self.performance_monitor is not None
+                    else {},
                 }
 
             # Calculate overall hit rate
@@ -1824,13 +1940,13 @@ class AIResponseCache(GenericRedisCache):
             # Create hit rate by operation dictionary with percentages
             hit_rate_by_operation = {}
             all_operations = set(
-                list(self.ai_metrics['cache_hits_by_operation'].keys()) +
-                list(self.ai_metrics['cache_misses_by_operation'].keys())
+                list(self.ai_metrics["cache_hits_by_operation"].keys())
+                + list(self.ai_metrics["cache_misses_by_operation"].keys())
             )
 
             for operation in all_operations:
-                hits = self.ai_metrics['cache_hits_by_operation'].get(operation, 0)
-                misses = self.ai_metrics['cache_misses_by_operation'].get(operation, 0)
+                hits = self.ai_metrics["cache_hits_by_operation"].get(operation, 0)
+                misses = self.ai_metrics["cache_misses_by_operation"].get(operation, 0)
                 operation_total = hits + misses
 
                 if operation_total > 0:
@@ -1839,7 +1955,7 @@ class AIResponseCache(GenericRedisCache):
                     hit_rate_by_operation[operation] = 0.0
 
             # Convert text tier distribution to regular dict for JSON serialization
-            text_tier_distribution = dict(self.ai_metrics['text_tier_distribution'])
+            text_tier_distribution = dict(self.ai_metrics["text_tier_distribution"])
 
             # Get key generation statistics
             try:
@@ -1852,11 +1968,13 @@ class AIResponseCache(GenericRedisCache):
                     "text_size_distribution": {},
                     "operation_distribution": {},
                     "monitor_available": False,
-                    "error": str(e)
+                    "error": str(e),
                 }
 
             # Generate AI-specific optimization recommendations
-            optimization_recommendations = self._generate_ai_optimization_recommendations()
+            optimization_recommendations = (
+                self._generate_ai_optimization_recommendations()
+            )
 
             # Include inherited stats from parent GenericRedisCache
             inherited_stats = {}
@@ -1870,14 +1988,18 @@ class AIResponseCache(GenericRedisCache):
             summary = {
                 "total_operations": total_operations,
                 "overall_hit_rate": round(overall_hit_rate, 2),
-                "hit_rate_by_operation": {k: round(v, 2) for k, v in hit_rate_by_operation.items()},
+                "hit_rate_by_operation": {
+                    k: round(v, 2) for k, v in hit_rate_by_operation.items()
+                },
                 "text_tier_distribution": text_tier_distribution,
                 "key_generation_stats": key_generation_stats,
                 "optimization_recommendations": optimization_recommendations,
-                "inherited_stats": inherited_stats
+                "inherited_stats": inherited_stats,
             }
 
-            logger.info(f"AI performance summary generated: {total_operations} operations, {overall_hit_rate:.1f}% hit rate")
+            logger.info(
+                f"AI performance summary generated: {total_operations} operations, {overall_hit_rate:.1f}% hit rate"
+            )
             return summary
 
         except Exception as e:
@@ -1891,7 +2013,7 @@ class AIResponseCache(GenericRedisCache):
                 "text_tier_distribution": {},
                 "key_generation_stats": {},
                 "optimization_recommendations": [],
-                "inherited_stats": {}
+                "inherited_stats": {},
             }
 
     def get_text_tier_statistics(self) -> Dict[str, Any]:
@@ -1922,24 +2044,20 @@ class AIResponseCache(GenericRedisCache):
             tier_configuration = {}
             try:
                 # Handle both regular dict and MagicMock objects
-                if hasattr(self.text_size_tiers, '__getitem__'):
+                if hasattr(self.text_size_tiers, "__getitem__"):
                     tier_configuration = {
                         "small": self.text_size_tiers["small"],
                         "medium": self.text_size_tiers["medium"],
-                        "large": self.text_size_tiers["large"]
+                        "large": self.text_size_tiers["large"],
                     }
                 else:
                     tier_configuration = dict(self.text_size_tiers)
             except Exception as e:
                 logger.warning(f"Could not retrieve tier configuration: {e}")
-                tier_configuration = {
-                    "small": 500,
-                    "medium": 5000,
-                    "large": 50000
-                }
+                tier_configuration = {"small": 500, "medium": 5000, "large": 50000}
 
             # Convert text_tier_distribution to regular dict
-            tier_distribution = dict(self.ai_metrics['text_tier_distribution'])
+            tier_distribution = dict(self.ai_metrics["text_tier_distribution"])
 
             # Call _analyze_tier_performance helper for detailed analysis
             tier_performance_analysis = self._analyze_tier_performance()
@@ -1966,11 +2084,15 @@ class AIResponseCache(GenericRedisCache):
                     "missing_tiers": list(missing_tiers),
                     "completeness_percentage": round(
                         (len(recorded_tiers) / len(expected_tiers)) * 100, 1
-                    ) if expected_tiers else 100.0
-                }
+                    )
+                    if expected_tiers
+                    else 100.0,
+                },
             }
 
-            logger.info(f"Text tier statistics generated for {len(tier_distribution)} tiers")
+            logger.info(
+                f"Text tier statistics generated for {len(tier_distribution)} tiers"
+            )
             return statistics
 
         except Exception as e:
@@ -1985,8 +2107,8 @@ class AIResponseCache(GenericRedisCache):
                     "expected_tiers": [],
                     "recorded_tiers": [],
                     "missing_tiers": [],
-                    "completeness_percentage": 0.0
-                }
+                    "completeness_percentage": 0.0,
+                },
             }
 
     def _analyze_tier_performance(self) -> Dict[str, Any]:
@@ -2019,18 +2141,18 @@ class AIResponseCache(GenericRedisCache):
 
             # Get all unique tiers from various metrics (handle defaultdict properly)
             try:
-                all_tiers = set(dict(self.ai_metrics['text_tier_distribution']).keys())
+                all_tiers = set(dict(self.ai_metrics["text_tier_distribution"]).keys())
             except Exception:
                 all_tiers = set()
 
             # Add tiers from operation performance data
-            for perf_data in self.ai_metrics['operation_performance']:
-                if isinstance(perf_data, dict) and 'text_tier' in perf_data:
-                    all_tiers.add(perf_data['text_tier'])
+            for perf_data in self.ai_metrics["operation_performance"]:
+                if isinstance(perf_data, dict) and "text_tier" in perf_data:
+                    all_tiers.add(perf_data["text_tier"])
 
             # Analyze each tier
             for tier in all_tiers:
-                if not tier or tier == 'unknown':
+                if not tier or tier == "unknown":
                     continue
 
                 # Calculate hit rate for this tier
@@ -2040,19 +2162,22 @@ class AIResponseCache(GenericRedisCache):
                 tier_response_times = []
 
                 # Collect tier-specific performance data
-                for perf_data in self.ai_metrics['operation_performance']:
-                    if isinstance(perf_data, dict) and perf_data.get('text_tier') == tier:
+                for perf_data in self.ai_metrics["operation_performance"]:
+                    if (
+                        isinstance(perf_data, dict)
+                        and perf_data.get("text_tier") == tier
+                    ):
                         tier_operations.append(perf_data)
 
                         # Count hits and misses
-                        if perf_data.get('cache_operation') == 'get':
+                        if perf_data.get("cache_operation") == "get":
                             tier_total += 1
-                            if perf_data.get('success', False):
+                            if perf_data.get("success", False):
                                 tier_hits += 1
 
                         # Collect response times
-                        if 'duration' in perf_data:
-                            tier_response_times.append(perf_data['duration'])
+                        if "duration" in perf_data:
+                            tier_response_times.append(perf_data["duration"])
 
                 # Calculate hit rate for this tier
                 if tier_total > 0:
@@ -2063,17 +2188,20 @@ class AIResponseCache(GenericRedisCache):
                 # Calculate average response time for this tier
                 if tier_response_times:
                     average_response_times[tier] = {
-                        "avg_ms": round(sum(tier_response_times) / len(tier_response_times) * 1000, 2),
+                        "avg_ms": round(
+                            sum(tier_response_times) / len(tier_response_times) * 1000,
+                            2,
+                        ),
                         "min_ms": round(min(tier_response_times) * 1000, 2),
                         "max_ms": round(max(tier_response_times) * 1000, 2),
-                        "sample_count": len(tier_response_times)
+                        "sample_count": len(tier_response_times),
                     }
                 else:
                     average_response_times[tier] = {
                         "avg_ms": 0.0,
                         "min_ms": 0.0,
                         "max_ms": 0.0,
-                        "sample_count": 0
+                        "sample_count": 0,
                     }
 
                 # Generate tier-specific optimization opportunities
@@ -2082,22 +2210,34 @@ class AIResponseCache(GenericRedisCache):
                 avg_time = average_response_times[tier]["avg_ms"]
 
                 if hit_rate < 30:
-                    tier_opportunities.append(f"Low hit rate ({hit_rate:.1f}%) - consider reviewing caching strategy")
+                    tier_opportunities.append(
+                        f"Low hit rate ({hit_rate:.1f}%) - consider reviewing caching strategy"
+                    )
                 elif hit_rate > 90:
-                    tier_opportunities.append(f"Excellent hit rate ({hit_rate:.1f}%) - tier is well optimized")
+                    tier_opportunities.append(
+                        f"Excellent hit rate ({hit_rate:.1f}%) - tier is well optimized"
+                    )
 
                 if avg_time > 100:  # >100ms is slow
-                    tier_opportunities.append(f"Slow response times ({avg_time:.1f}ms) - consider optimization")
+                    tier_opportunities.append(
+                        f"Slow response times ({avg_time:.1f}ms) - consider optimization"
+                    )
                 elif avg_time < 10:  # <10ms is excellent
-                    tier_opportunities.append(f"Fast response times ({avg_time:.1f}ms) - tier performs well")
+                    tier_opportunities.append(
+                        f"Fast response times ({avg_time:.1f}ms) - tier performs well"
+                    )
 
                 # Tier-specific recommendations based on characteristics
                 if tier == "small":
                     if hit_rate < 80:
-                        tier_opportunities.append("Small texts should have high hit rates - check memory cache promotion")
+                        tier_opportunities.append(
+                            "Small texts should have high hit rates - check memory cache promotion"
+                        )
                 elif tier == "xlarge":
                     if hit_rate > 60:
-                        tier_opportunities.append("Unexpectedly high hit rate for large texts - verify tier thresholds")
+                        tier_opportunities.append(
+                            "Unexpectedly high hit rate for large texts - verify tier thresholds"
+                        )
 
                 tier_optimization_opportunities[tier] = tier_opportunities
 
@@ -2106,25 +2246,33 @@ class AIResponseCache(GenericRedisCache):
             for tier, hit_rate in tier_hit_rates.items():
                 avg_time = average_response_times.get(tier, {}).get("avg_ms", 0)
                 # Performance score: hit rate weighted by inverse of response time
-                performance_score = hit_rate * (1000 / max(avg_time, 1))  # Avoid division by zero
-                performance_rankings.append({
-                    "tier": tier,
-                    "hit_rate": round(hit_rate, 1),
-                    "avg_response_time_ms": round(avg_time, 1),
-                    "performance_score": round(performance_score, 1)
-                })
+                performance_score = hit_rate * (
+                    1000 / max(avg_time, 1)
+                )  # Avoid division by zero
+                performance_rankings.append(
+                    {
+                        "tier": tier,
+                        "hit_rate": round(hit_rate, 1),
+                        "avg_response_time_ms": round(avg_time, 1),
+                        "performance_score": round(performance_score, 1),
+                    }
+                )
 
             # Sort by performance score descending
-            performance_rankings.sort(key=lambda x: x["performance_score"], reverse=True)
+            performance_rankings.sort(
+                key=lambda x: x["performance_score"], reverse=True
+            )
 
             analysis = {
                 "tier_hit_rates": {k: round(v, 2) for k, v in tier_hit_rates.items()},
                 "average_response_times": average_response_times,
                 "tier_optimization_opportunities": tier_optimization_opportunities,
-                "performance_rankings": performance_rankings
+                "performance_rankings": performance_rankings,
             }
 
-            logger.info(f"Tier performance analysis completed for {len(all_tiers)} tiers")
+            logger.info(
+                f"Tier performance analysis completed for {len(all_tiers)} tiers"
+            )
             return analysis
 
         except Exception as e:
@@ -2135,7 +2283,7 @@ class AIResponseCache(GenericRedisCache):
                 "tier_hit_rates": {},
                 "average_response_times": {},
                 "tier_optimization_opportunities": {},
-                "performance_rankings": []
+                "performance_rankings": [],
             }
 
     def get_operation_performance(self) -> Dict[str, Any]:
@@ -2170,15 +2318,15 @@ class AIResponseCache(GenericRedisCache):
             operation_counts: Dict[str, int] = defaultdict(int)
 
             # Iterate through operation_performance metrics
-            for perf_record in self.ai_metrics['operation_performance']:
-                if isinstance(perf_record, dict) and 'operation' in perf_record:
-                    operation = perf_record['operation']
+            for perf_record in self.ai_metrics["operation_performance"]:
+                if isinstance(perf_record, dict) and "operation" in perf_record:
+                    operation = perf_record["operation"]
                     operation_counts[operation] += 1
 
                     # Collect duration data if available
-                    if 'duration' in perf_record:
+                    if "duration" in perf_record:
                         # Convert duration to milliseconds
-                        duration_ms = perf_record['duration'] * 1000
+                        duration_ms = perf_record["duration"] * 1000
                         operation_data[operation].append(duration_ms)
 
             # Calculate metrics for each operation
@@ -2196,15 +2344,25 @@ class AIResponseCache(GenericRedisCache):
                     # Calculate percentiles (p50, p95, p99)
                     percentiles = {}
                     if n > 0:
-                        percentiles['p50'] = durations_sorted[int(n * 0.5)]
-                        percentiles['p95'] = durations_sorted[int(n * 0.95)] if n > 1 else durations_sorted[0]
-                        percentiles['p99'] = durations_sorted[int(n * 0.99)] if n > 2 else durations_sorted[-1]
+                        percentiles["p50"] = durations_sorted[int(n * 0.5)]
+                        percentiles["p95"] = (
+                            durations_sorted[int(n * 0.95)]
+                            if n > 1
+                            else durations_sorted[0]
+                        )
+                        percentiles["p99"] = (
+                            durations_sorted[int(n * 0.99)]
+                            if n > 2
+                            else durations_sorted[-1]
+                        )
 
                     # Count total operations performed
                     total_operations = operation_counts[operation]
 
                     # Include configured TTL for each operation
-                    configured_ttl = self.operation_ttls.get(operation, self.default_ttl)
+                    configured_ttl = self.operation_ttls.get(
+                        operation, self.default_ttl
+                    )
 
                     operations_metrics[operation] = {
                         "avg_duration_ms": round(avg_duration_ms, 2),
@@ -2213,12 +2371,14 @@ class AIResponseCache(GenericRedisCache):
                         "percentiles": {k: round(v, 2) for k, v in percentiles.items()},
                         "total_operations": total_operations,
                         "configured_ttl": configured_ttl,
-                        "sample_count": len(durations)
+                        "sample_count": len(durations),
                     }
                 else:
                     # Operation with no duration data
                     total_operations = operation_counts.get(operation, 0)
-                    configured_ttl = self.operation_ttls.get(operation, self.default_ttl)
+                    configured_ttl = self.operation_ttls.get(
+                        operation, self.default_ttl
+                    )
 
                     operations_metrics[operation] = {
                         "avg_duration_ms": 0.0,
@@ -2227,7 +2387,7 @@ class AIResponseCache(GenericRedisCache):
                         "percentiles": {"p50": 0.0, "p95": 0.0, "p99": 0.0},
                         "total_operations": total_operations,
                         "configured_ttl": configured_ttl,
-                        "sample_count": 0
+                        "sample_count": 0,
                     }
 
             # Calculate summary statistics across all operations
@@ -2240,23 +2400,34 @@ class AIResponseCache(GenericRedisCache):
             summary = {
                 "total_operations_measured": total_ops,
                 "total_operation_types": len(operations_metrics),
-                "overall_avg_duration_ms": round(sum(all_durations) / len(all_durations), 2) if all_durations else 0.0,
+                "overall_avg_duration_ms": round(
+                    sum(all_durations) / len(all_durations), 2
+                )
+                if all_durations
+                else 0.0,
                 "fastest_operation": (
-                    min(operations_metrics.items(), key=lambda x: x[1]["avg_duration_ms"])[0]
-                    if operations_metrics else None
+                    min(
+                        operations_metrics.items(),
+                        key=lambda x: x[1]["avg_duration_ms"],
+                    )[0]
+                    if operations_metrics
+                    else None
                 ),
                 "slowest_operation": (
-                    max(operations_metrics.items(), key=lambda x: x[1]["avg_duration_ms"])[0]
-                    if operations_metrics else None
-                )
+                    max(
+                        operations_metrics.items(),
+                        key=lambda x: x[1]["avg_duration_ms"],
+                    )[0]
+                    if operations_metrics
+                    else None
+                ),
             }
 
-            performance_data = {
-                "operations": operations_metrics,
-                "summary": summary
-            }
+            performance_data = {"operations": operations_metrics, "summary": summary}
 
-            logger.info(f"Operation performance metrics generated for {len(operations_metrics)} operations")
+            logger.info(
+                f"Operation performance metrics generated for {len(operations_metrics)} operations"
+            )
             return performance_data
 
         except Exception as e:
@@ -2270,11 +2441,13 @@ class AIResponseCache(GenericRedisCache):
                     "total_operation_types": 0,
                     "overall_avg_duration_ms": 0.0,
                     "fastest_operation": None,
-                    "slowest_operation": None
-                }
+                    "slowest_operation": None,
+                },
             }
 
-    def _record_ai_cache_hit(self, cache_type: str, text: str, operation: str, text_tier: str) -> None:
+    def _record_ai_cache_hit(
+        self, cache_type: str, text: str, operation: str, text_tier: str
+    ) -> None:
         """
         Record AI-specific cache hit with detailed context and metrics.
 
@@ -2297,7 +2470,9 @@ class AIResponseCache(GenericRedisCache):
             ... )
         """
         try:
-            logger.debug(f"Recording AI cache hit: {cache_type} hit for {operation} operation, tier {text_tier}")
+            logger.debug(
+                f"Recording AI cache hit: {cache_type} hit for {operation} operation, tier {text_tier}"
+            )
 
             # Input validation
             if not cache_type or not isinstance(cache_type, str):
@@ -2323,19 +2498,19 @@ class AIResponseCache(GenericRedisCache):
                         "cache_type": cache_type,
                         "ai_operation": operation,
                         "text_tier": text_tier,
-                    "cache_result": "hit",
-                    "hit_source": cache_type
-                }
-            )
+                        "cache_result": "hit",
+                        "hit_source": cache_type,
+                    },
+                )
 
             # Update internal AI hit counters
-            self.ai_metrics['cache_hits_by_operation'][operation] += 1
-            self.ai_metrics['text_tier_distribution'][text_tier] += 1
+            self.ai_metrics["cache_hits_by_operation"][operation] += 1
+            self.ai_metrics["text_tier_distribution"][text_tier] += 1
 
             # Add cache type specific metrics if not present
-            if 'cache_hits_by_type' not in self.ai_metrics:
-                self.ai_metrics['cache_hits_by_type'] = defaultdict(int)
-            self.ai_metrics['cache_hits_by_type'][cache_type] += 1
+            if "cache_hits_by_type" not in self.ai_metrics:
+                self.ai_metrics["cache_hits_by_type"] = defaultdict(int)
+            self.ai_metrics["cache_hits_by_type"][cache_type] += 1
 
             # Add debug logging with operation and tier details
             logger.debug(
@@ -2368,7 +2543,9 @@ class AIResponseCache(GenericRedisCache):
             ... )
         """
         try:
-            logger.debug(f"Recording AI cache miss for {operation} operation, tier {text_tier}")
+            logger.debug(
+                f"Recording AI cache miss for {operation} operation, tier {text_tier}"
+            )
 
             # Input validation
             if not operation or not isinstance(operation, str):
@@ -2388,20 +2565,20 @@ class AIResponseCache(GenericRedisCache):
                     text_length=len(text) if text else 0,
                     additional_data={
                         "ai_operation": operation,
-                    "text_tier": text_tier,
-                    "cache_result": "miss",
-                    "miss_reason": "key_not_found"
-                }
-            )
+                        "text_tier": text_tier,
+                        "cache_result": "miss",
+                        "miss_reason": "key_not_found",
+                    },
+                )
 
             # Update internal AI miss counters
-            self.ai_metrics['cache_misses_by_operation'][operation] += 1
-            self.ai_metrics['text_tier_distribution'][text_tier] += 1
+            self.ai_metrics["cache_misses_by_operation"][operation] += 1
+            self.ai_metrics["text_tier_distribution"][text_tier] += 1
 
             # Add miss reason tracking if not present
-            if 'cache_miss_reasons' not in self.ai_metrics:
-                self.ai_metrics['cache_miss_reasons'] = defaultdict(int)
-            self.ai_metrics['cache_miss_reasons']['key_not_found'] += 1
+            if "cache_miss_reasons" not in self.ai_metrics:
+                self.ai_metrics["cache_miss_reasons"] = defaultdict(int)
+            self.ai_metrics["cache_miss_reasons"]["key_not_found"] += 1
 
             # Add debug logging with miss details
             logger.debug(
@@ -2413,7 +2590,9 @@ class AIResponseCache(GenericRedisCache):
             logger.warning(f"Failed to record AI cache miss: {e}")
             # Don't raise - metrics recording failure shouldn't interrupt cache operations
 
-    def _record_operation_performance(self, operation_type: str, duration: float) -> None:
+    def _record_operation_performance(
+        self, operation_type: str, duration: float
+    ) -> None:
         """
         Record AI operation performance with duration tracking and memory management.
 
@@ -2433,15 +2612,21 @@ class AIResponseCache(GenericRedisCache):
             >>> cache._record_operation_performance("summarize", time.time() - start)
         """
         try:
-            logger.debug(f"Recording operation performance: {operation_type} took {duration:.3f}s")
+            logger.debug(
+                f"Recording operation performance: {operation_type} took {duration:.3f}s"
+            )
 
             # Input validation
             if not operation_type or not isinstance(operation_type, str):
-                logger.warning(f"Invalid operation_type for performance recording: {operation_type}")
+                logger.warning(
+                    f"Invalid operation_type for performance recording: {operation_type}"
+                )
                 return
 
             if not isinstance(duration, (int, float)) or duration < 0:
-                logger.warning(f"Invalid duration for performance recording: {duration}")
+                logger.warning(
+                    f"Invalid duration for performance recording: {duration}"
+                )
                 return
 
             # Convert duration to milliseconds and append to operation_performance
@@ -2450,33 +2635,36 @@ class AIResponseCache(GenericRedisCache):
 
             # Create performance record with enhanced context
             performance_record = {
-                'operation': operation_type,
-                'duration': duration,
-                'duration_ms': duration_ms,
-                'timestamp': timestamp,
-                'iso_timestamp': datetime.fromtimestamp(timestamp).isoformat()
+                "operation": operation_type,
+                "duration": duration,
+                "duration_ms": duration_ms,
+                "timestamp": timestamp,
+                "iso_timestamp": datetime.fromtimestamp(timestamp).isoformat(),
             }
 
             # Append to operation_performance list
-            self.ai_metrics['operation_performance'].append(performance_record)
+            self.ai_metrics["operation_performance"].append(performance_record)
 
             # Implement list size limits to prevent memory growth (keep only recent 1000 operations)
             max_records = 1000
-            if len(self.ai_metrics['operation_performance']) > max_records:
+            if len(self.ai_metrics["operation_performance"]) > max_records:
                 # Keep only the most recent records
-                self.ai_metrics['operation_performance'] = \
-                    self.ai_metrics['operation_performance'][-max_records:]
+                self.ai_metrics["operation_performance"] = self.ai_metrics[
+                    "operation_performance"
+                ][-max_records:]
 
-                logger.debug(f"Trimmed operation_performance list to {max_records} most recent records")
+                logger.debug(
+                    f"Trimmed operation_performance list to {max_records} most recent records"
+                )
 
             # Add operation type specific tracking if not present
-            if 'operation_duration_totals' not in self.ai_metrics:
-                self.ai_metrics['operation_duration_totals'] = defaultdict(float)
-                self.ai_metrics['operation_count_totals'] = defaultdict(int)
+            if "operation_duration_totals" not in self.ai_metrics:
+                self.ai_metrics["operation_duration_totals"] = defaultdict(float)
+                self.ai_metrics["operation_count_totals"] = defaultdict(int)
 
             # Update running totals for quick statistics
-            self.ai_metrics['operation_duration_totals'][operation_type] += duration
-            self.ai_metrics['operation_count_totals'][operation_type] += 1
+            self.ai_metrics["operation_duration_totals"][operation_type] += duration
+            self.ai_metrics["operation_count_totals"][operation_type] += 1
 
             logger.debug(
                 f"Operation performance recorded: operation={operation_type}, "
@@ -2519,9 +2707,9 @@ class AIResponseCache(GenericRedisCache):
             # Analyze hit rates by operation (skip operations with <10 requests for statistical significance)
             hit_rate_threshold_requests = 10
 
-            for operation in self.ai_metrics['cache_hits_by_operation'].keys():
-                hits = self.ai_metrics['cache_hits_by_operation'].get(operation, 0)
-                misses = self.ai_metrics['cache_misses_by_operation'].get(operation, 0)
+            for operation in self.ai_metrics["cache_hits_by_operation"].keys():
+                hits = self.ai_metrics["cache_hits_by_operation"].get(operation, 0)
+                misses = self.ai_metrics["cache_misses_by_operation"].get(operation, 0)
                 total_requests = hits + misses
 
                 if total_requests < hit_rate_threshold_requests:
@@ -2531,150 +2719,178 @@ class AIResponseCache(GenericRedisCache):
 
                 # Generate recommendations for low hit rates (<30%)
                 if hit_rate < 30:
-                    recommendations.append({
-                        "type": "hit_rate",
-                        "priority": "high",
-                        "title": f"Low hit rate for {operation} operation",
-                        "description": (
-                            f"Operation '{operation}' has a {hit_rate:.1f}% hit rate from "
-                            f"{total_requests} requests. This indicates poor cache effectiveness."
-                        ),
-                        "action": (
-                            f"Review caching strategy for {operation}. Consider increasing TTL from "
-                            f"{self.operation_ttls.get(operation, self.default_ttl)}s or analyzing request patterns."
-                        ),
-                        "estimated_impact": "20-40% performance improvement",
-                        "metrics": {
-                            "current_hit_rate": round(hit_rate, 1),
-                            "total_requests": total_requests,
-                            "current_ttl": self.operation_ttls.get(operation, self.default_ttl)
+                    recommendations.append(
+                        {
+                            "type": "hit_rate",
+                            "priority": "high",
+                            "title": f"Low hit rate for {operation} operation",
+                            "description": (
+                                f"Operation '{operation}' has a {hit_rate:.1f}% hit rate from "
+                                f"{total_requests} requests. This indicates poor cache effectiveness."
+                            ),
+                            "action": (
+                                f"Review caching strategy for {operation}. Consider increasing TTL from "
+                                f"{self.operation_ttls.get(operation, self.default_ttl)}s or analyzing request patterns."
+                            ),
+                            "estimated_impact": "20-40% performance improvement",
+                            "metrics": {
+                                "current_hit_rate": round(hit_rate, 1),
+                                "total_requests": total_requests,
+                                "current_ttl": self.operation_ttls.get(
+                                    operation, self.default_ttl
+                                ),
+                            },
                         }
-                    })
+                    )
 
                 # Generate recommendations for excellent hit rates (>90%)
                 elif hit_rate > 90:
-                    recommendations.append({
-                        "type": "hit_rate",
-                        "priority": "low",
-                        "title": f"Excellent hit rate for {operation} operation",
-                        "description": (
-                            f"Operation '{operation}' has an excellent {hit_rate:.1f}% hit rate. "
-                            f"Consider if TTL can be increased further."
-                        ),
-                        "action": (
-                            f"Consider increasing TTL beyond {self.operation_ttls.get(operation, self.default_ttl)}s to "
-                            f"reduce cache churn, or use as reference for optimizing other operations."
-                        ),
-                        "estimated_impact": "5-10% efficiency improvement",
-                        "metrics": {
-                            "current_hit_rate": round(hit_rate, 1),
-                            "total_requests": total_requests,
-                            "current_ttl": self.operation_ttls.get(operation, self.default_ttl)
+                    recommendations.append(
+                        {
+                            "type": "hit_rate",
+                            "priority": "low",
+                            "title": f"Excellent hit rate for {operation} operation",
+                            "description": (
+                                f"Operation '{operation}' has an excellent {hit_rate:.1f}% hit rate. "
+                                f"Consider if TTL can be increased further."
+                            ),
+                            "action": (
+                                f"Consider increasing TTL beyond {self.operation_ttls.get(operation, self.default_ttl)}s to "
+                                f"reduce cache churn, or use as reference for optimizing other operations."
+                            ),
+                            "estimated_impact": "5-10% efficiency improvement",
+                            "metrics": {
+                                "current_hit_rate": round(hit_rate, 1),
+                                "total_requests": total_requests,
+                                "current_ttl": self.operation_ttls.get(
+                                    operation, self.default_ttl
+                                ),
+                            },
                         }
-                    })
+                    )
 
             # Analyze text tier distribution and recommend optimizations
-            total_tier_operations = sum(self.ai_metrics['text_tier_distribution'].values())
+            total_tier_operations = sum(
+                self.ai_metrics["text_tier_distribution"].values()
+            )
             if total_tier_operations > 0:
-                for tier, count in self.ai_metrics['text_tier_distribution'].items():
+                for tier, count in self.ai_metrics["text_tier_distribution"].items():
                     tier_percentage = (count / total_tier_operations) * 100
 
                     if tier == "xlarge" and tier_percentage > 20:
-                        recommendations.append({
-                            "type": "text_tier",
-                            "priority": "medium",
-                            "title": "High proportion of extra-large texts",
-                            "description": (
-                                f"Extra-large texts comprise {tier_percentage:.1f}% of operations, "
-                                f"which may impact cache efficiency."
-                            ),
-                            "action": (
-                                "Consider implementing text chunking, increasing large text threshold, or "
-                                "optimizing xlarge text handling strategies."
-                            ),
-                            "estimated_impact": "15-25% memory efficiency improvement",
-                            "metrics": {
-                                "tier_percentage": round(tier_percentage, 1),
-                                "tier_count": count,
-                                "current_threshold": (
-                                    getattr(self.text_size_tiers, 'large', 50000)
-                                    if hasattr(self.text_size_tiers, 'large') else 50000
-                                )
+                        recommendations.append(
+                            {
+                                "type": "text_tier",
+                                "priority": "medium",
+                                "title": "High proportion of extra-large texts",
+                                "description": (
+                                    f"Extra-large texts comprise {tier_percentage:.1f}% of operations, "
+                                    f"which may impact cache efficiency."
+                                ),
+                                "action": (
+                                    "Consider implementing text chunking, increasing large text threshold, or "
+                                    "optimizing xlarge text handling strategies."
+                                ),
+                                "estimated_impact": "15-25% memory efficiency improvement",
+                                "metrics": {
+                                    "tier_percentage": round(tier_percentage, 1),
+                                    "tier_count": count,
+                                    "current_threshold": (
+                                        getattr(self.text_size_tiers, "large", 50000)
+                                        if hasattr(self.text_size_tiers, "large")
+                                        else 50000
+                                    ),
+                                },
                             }
-                        })
+                        )
 
                     elif tier == "small" and tier_percentage < 10:
-                        recommendations.append({
-                            "type": "text_tier",
-                            "priority": "low",
-                            "title": "Low proportion of small texts",
-                            "description": (
-                                f"Small texts only comprise {tier_percentage:.1f}% of operations. "
-                                f"Memory cache may be underutilized."
-                            ),
-                            "action": (
-                                "Review small text threshold or investigate if more content could "
-                                "benefit from aggressive memory caching."
-                            ),
-                            "estimated_impact": "5-15% response time improvement",
-                            "metrics": {
-                                "tier_percentage": round(tier_percentage, 1),
-                                "tier_count": count,
-                                "current_threshold": (
-                                    getattr(self.text_size_tiers, 'small', 500)
-                                    if hasattr(self.text_size_tiers, 'small') else 500
-                                )
+                        recommendations.append(
+                            {
+                                "type": "text_tier",
+                                "priority": "low",
+                                "title": "Low proportion of small texts",
+                                "description": (
+                                    f"Small texts only comprise {tier_percentage:.1f}% of operations. "
+                                    f"Memory cache may be underutilized."
+                                ),
+                                "action": (
+                                    "Review small text threshold or investigate if more content could "
+                                    "benefit from aggressive memory caching."
+                                ),
+                                "estimated_impact": "5-15% response time improvement",
+                                "metrics": {
+                                    "tier_percentage": round(tier_percentage, 1),
+                                    "tier_count": count,
+                                    "current_threshold": (
+                                        getattr(self.text_size_tiers, "small", 500)
+                                        if hasattr(self.text_size_tiers, "small")
+                                        else 500
+                                    ),
+                                },
                             }
-                        })
+                        )
 
             # Memory cache size recommendations
-            memory_utilization = len(self.memory_cache) / max(self.memory_cache_size, 1) * 100
+            memory_utilization = (
+                len(self.memory_cache) / max(self.memory_cache_size, 1) * 100
+            )
             if memory_utilization > 90:
-                recommendations.append({
-                    "type": "memory",
-                    "priority": "high",
-                    "title": "Memory cache near capacity",
-                    "description": (
-                        f"Memory cache is {memory_utilization:.1f}% full "
-                        f"({len(self.memory_cache)}/{self.memory_cache_size} entries)."
-                    ),
-                    "action": (
-                        f"Consider increasing memory_cache_size from {self.memory_cache_size} to "
-                        f"{self.memory_cache_size * 2} entries."
-                    ),
-                    "estimated_impact": "10-20% response time improvement",
-                    "metrics": {
-                        "current_utilization": round(memory_utilization, 1),
-                        "current_size": self.memory_cache_size,
-                        "current_entries": len(self.memory_cache)
+                recommendations.append(
+                    {
+                        "type": "memory",
+                        "priority": "high",
+                        "title": "Memory cache near capacity",
+                        "description": (
+                            f"Memory cache is {memory_utilization:.1f}% full "
+                            f"({len(self.memory_cache)}/{self.memory_cache_size} entries)."
+                        ),
+                        "action": (
+                            f"Consider increasing memory_cache_size from {self.memory_cache_size} to "
+                            f"{self.memory_cache_size * 2} entries."
+                        ),
+                        "estimated_impact": "10-20% response time improvement",
+                        "metrics": {
+                            "current_utilization": round(memory_utilization, 1),
+                            "current_size": self.memory_cache_size,
+                            "current_entries": len(self.memory_cache),
+                        },
                     }
-                })
+                )
             elif memory_utilization < 30:
-                recommendations.append({
-                    "type": "memory",
-                    "priority": "low",
-                    "title": "Memory cache underutilized",
-                    "description": f"Memory cache is only {memory_utilization:.1f}% utilized. Consider reducing size to free memory.",
-                    "action": (
-                        f"Consider reducing memory_cache_size from {self.memory_cache_size} to "
-                        f"{max(50, int(self.memory_cache_size * 0.7))} entries."
-                    ),
-                    "estimated_impact": "Memory efficiency improvement",
-                    "metrics": {
-                        "current_utilization": round(memory_utilization, 1),
-                        "current_size": self.memory_cache_size,
-                        "current_entries": len(self.memory_cache)
+                recommendations.append(
+                    {
+                        "type": "memory",
+                        "priority": "low",
+                        "title": "Memory cache underutilized",
+                        "description": f"Memory cache is only {memory_utilization:.1f}% utilized. Consider reducing size to free memory.",
+                        "action": (
+                            f"Consider reducing memory_cache_size from {self.memory_cache_size} to "
+                            f"{max(50, int(self.memory_cache_size * 0.7))} entries."
+                        ),
+                        "estimated_impact": "Memory efficiency improvement",
+                        "metrics": {
+                            "current_utilization": round(memory_utilization, 1),
+                            "current_size": self.memory_cache_size,
+                            "current_entries": len(self.memory_cache),
+                        },
                     }
-                })
+                )
 
             # TTL optimization recommendations based on operation performance
             avg_operation_times: Dict[str, List[float]] = {}
-            for perf_record in self.ai_metrics['operation_performance'][-100:]:  # Last 100 operations
-                if isinstance(perf_record, dict) and 'operation' in perf_record and 'duration' in perf_record:
-                    op = perf_record['operation']
+            for perf_record in self.ai_metrics["operation_performance"][
+                -100:
+            ]:  # Last 100 operations
+                if (
+                    isinstance(perf_record, dict)
+                    and "operation" in perf_record
+                    and "duration" in perf_record
+                ):
+                    op = perf_record["operation"]
                     if op not in avg_operation_times:
                         avg_operation_times[op] = []
-                    avg_operation_times[op].append(perf_record['duration'])
+                    avg_operation_times[op].append(perf_record["duration"])
 
             for operation, durations in avg_operation_times.items():
                 if len(durations) >= 5:  # Need sufficient samples
@@ -2682,71 +2898,94 @@ class AIResponseCache(GenericRedisCache):
                     current_ttl = self.operation_ttls.get(operation, self.default_ttl)
 
                     # If operation is consistently fast but has low TTL, recommend increasing TTL
-                    if avg_duration < 0.1 and current_ttl < 7200:  # Fast operation (<100ms) with TTL < 2hrs
-                        recommendations.append({
-                            "type": "ttl",
-                            "priority": "medium",
-                            "title": f"Consider increasing TTL for fast {operation} operation",
-                            "description": (
-                                f"Operation '{operation}' completes quickly ({avg_duration*1000:.1f}ms avg) "
-                                f"but has moderate TTL ({current_ttl}s)."
-                            ),
-                            "action": f"Consider increasing TTL from {current_ttl}s to {current_ttl * 2}s to reduce cache churn.",
-                            "estimated_impact": "10-15% cache efficiency improvement",
-                            "metrics": {
-                                "avg_duration_ms": round(avg_duration * 1000, 1),
-                                "current_ttl": current_ttl,
-                                "sample_count": len(durations)
+                    if (
+                        avg_duration < 0.1 and current_ttl < 7200
+                    ):  # Fast operation (<100ms) with TTL < 2hrs
+                        recommendations.append(
+                            {
+                                "type": "ttl",
+                                "priority": "medium",
+                                "title": f"Consider increasing TTL for fast {operation} operation",
+                                "description": (
+                                    f"Operation '{operation}' completes quickly ({avg_duration*1000:.1f}ms avg) "
+                                    f"but has moderate TTL ({current_ttl}s)."
+                                ),
+                                "action": f"Consider increasing TTL from {current_ttl}s to {current_ttl * 2}s to reduce cache churn.",
+                                "estimated_impact": "10-15% cache efficiency improvement",
+                                "metrics": {
+                                    "avg_duration_ms": round(avg_duration * 1000, 1),
+                                    "current_ttl": current_ttl,
+                                    "sample_count": len(durations),
+                                },
                             }
-                        })
+                        )
 
             # Compression recommendations (if compression stats are available)
             try:
-                compression_stats = self.performance_monitor.get_performance_stats().get('compression', {}) if self.performance_monitor is not None else {}
-                if compression_stats and compression_stats.get('total_compressions', 0) > 10:
-                    avg_ratio = compression_stats.get('avg_compression_ratio', 1.0)
+                compression_stats = (
+                    self.performance_monitor.get_performance_stats().get(
+                        "compression", {}
+                    )
+                    if self.performance_monitor is not None
+                    else {}
+                )
+                if (
+                    compression_stats
+                    and compression_stats.get("total_compressions", 0) > 10
+                ):
+                    avg_ratio = compression_stats.get("avg_compression_ratio", 1.0)
                     if avg_ratio > 0.8:  # Poor compression ratio
-                        recommendations.append({
-                            "type": "compression",
-                            "priority": "medium",
-                            "title": "Poor compression efficiency detected",
-                            "description": (
-                                f"Average compression ratio is {avg_ratio:.2f}, "
-                                f"indicating limited compression benefits."
-                            ),
-                            "action": (
-                                f"Consider increasing compression_threshold from {self.compression_threshold} bytes or "
-                                f"review data types being cached."
-                            ),
-                            "estimated_impact": "Storage efficiency improvement",
-                            "metrics": {
-                                "avg_compression_ratio": round(avg_ratio, 2),
-                                "current_threshold": self.compression_threshold,
-                                "total_compressions": compression_stats.get('total_compressions', 0)
+                        recommendations.append(
+                            {
+                                "type": "compression",
+                                "priority": "medium",
+                                "title": "Poor compression efficiency detected",
+                                "description": (
+                                    f"Average compression ratio is {avg_ratio:.2f}, "
+                                    f"indicating limited compression benefits."
+                                ),
+                                "action": (
+                                    f"Consider increasing compression_threshold from {self.compression_threshold} bytes or "
+                                    f"review data types being cached."
+                                ),
+                                "estimated_impact": "Storage efficiency improvement",
+                                "metrics": {
+                                    "avg_compression_ratio": round(avg_ratio, 2),
+                                    "current_threshold": self.compression_threshold,
+                                    "total_compressions": compression_stats.get(
+                                        "total_compressions", 0
+                                    ),
+                                },
                             }
-                        })
+                        )
             except Exception as e:
                 logger.debug(f"Could not analyze compression stats: {e}")
 
             # Sort recommendations by priority (high -> medium -> low)
             priority_order = {"high": 0, "medium": 1, "low": 2}
-            recommendations.sort(key=lambda x: priority_order.get(str(x["priority"]), 3))
+            recommendations.sort(
+                key=lambda x: priority_order.get(str(x["priority"]), 3)
+            )
 
-            logger.info(f"Generated {len(recommendations)} optimization recommendations")
+            logger.info(
+                f"Generated {len(recommendations)} optimization recommendations"
+            )
             return recommendations
 
         except Exception as e:
             error_msg = f"Failed to generate optimization recommendations: {e}"
             logger.error(error_msg, exc_info=True)
-            return [{
-                "type": "error",
-                "priority": "high",
-                "title": "Failed to generate recommendations",
-                "description": error_msg,
-                "action": "Check logs and system health",
-                "estimated_impact": "Unknown",
-                "metrics": {}
-            }]
+            return [
+                {
+                    "type": "error",
+                    "priority": "high",
+                    "title": "Failed to generate recommendations",
+                    "description": error_msg,
+                    "action": "Check logs and system health",
+                    "estimated_impact": "Unknown",
+                    "metrics": {},
+                }
+            ]
 
     # Legacy compatibility methods and properties
 
@@ -2758,7 +2997,9 @@ class AIResponseCache(GenericRedisCache):
     @memory_cache.setter
     def memory_cache(self, value: Dict[str, Any]) -> None:
         """Legacy compatibility setter for memory cache (not used in new implementation)."""
-        logger.warning("memory_cache setter is deprecated - use L1 cache methods instead")
+        logger.warning(
+            "memory_cache setter is deprecated - use L1 cache methods instead"
+        )
         pass  # No-op for backward compatibility
 
     @memory_cache.deleter

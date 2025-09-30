@@ -44,18 +44,19 @@ settings across the application, providing both simplified preset-based configur
 and advanced customization capabilities.
 """
 
-from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Optional, Any, NamedTuple
-from enum import Enum
 import logging
 import os
 import re
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import Any, Dict, List, NamedTuple, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class EnvironmentRecommendation(NamedTuple):
     """Environment-based preset recommendation with confidence and reasoning."""
+
     preset_name: str
     confidence: float  # 0.0 to 1.0
     reasoning: str
@@ -97,10 +98,11 @@ class CacheStrategy(str, Enum):
         ... else:
         ...     strategy = CacheStrategy.FAST
     """
-    FAST = "fast"                    # Fast access, minimal TTLs, development-friendly
-    BALANCED = "balanced"            # Default strategy, balanced TTL and performance
-    ROBUST = "robust"               # Long TTLs, high reliability, production-ready
-    AI_OPTIMIZED = "ai_optimized"   # AI-specific optimizations with text hashing
+
+    FAST = "fast"  # Fast access, minimal TTLs, development-friendly
+    BALANCED = "balanced"  # Default strategy, balanced TTL and performance
+    ROBUST = "robust"  # Long TTLs, high reliability, production-ready
+    AI_OPTIMIZED = "ai_optimized"  # AI-specific optimizations with text hashing
 
 
 @dataclass
@@ -153,6 +155,7 @@ class CacheConfig:
             redis_password=os.environ["REDIS_PASSWORD"]
         )
     """
+
     strategy: CacheStrategy = CacheStrategy.BALANCED
 
     # Redis configuration
@@ -174,18 +177,18 @@ class CacheConfig:
     enable_ai_cache: bool = False
     text_hash_threshold: int = 1000
     hash_algorithm: str = "sha256"
-    text_size_tiers: Dict[str, int] = field(default_factory=lambda: {
-        "small": 1000,
-        "medium": 5000,
-        "large": 20000
-    })
-    operation_ttls: Dict[str, int] = field(default_factory=lambda: {
-        "summarize": 7200,  # 2 hours
-        "sentiment": 3600,  # 1 hour
-        "key_points": 5400,  # 1.5 hours
-        "questions": 4800,  # 1.33 hours
-        "qa": 3600         # 1 hour
-    })
+    text_size_tiers: Dict[str, int] = field(
+        default_factory=lambda: {"small": 1000, "medium": 5000, "large": 20000}
+    )
+    operation_ttls: Dict[str, int] = field(
+        default_factory=lambda: {
+            "summarize": 7200,  # 2 hours
+            "sentiment": 3600,  # 1 hour
+            "key_points": 5400,  # 1.5 hours
+            "questions": 4800,  # 1.33 hours
+            "qa": 3600,  # 1 hour
+        }
+    )
     enable_smart_promotion: bool = True
     max_text_length: int = 100000
 
@@ -202,17 +205,24 @@ class CacheConfig:
 
         # Create SecurityConfig from security-related fields
         security_config = None
-        if any([config_dict["redis_password"], config_dict["use_tls"], 
-                config_dict["tls_cert_path"], config_dict["tls_key_path"]]):
+        if any(
+            [
+                config_dict["redis_password"],
+                config_dict["use_tls"],
+                config_dict["tls_cert_path"],
+                config_dict["tls_key_path"],
+            ]
+        ):
             try:
                 from app.infrastructure.cache.security import SecurityConfig
+
                 security_config = SecurityConfig(
                     redis_auth=config_dict["redis_password"],
                     use_tls=config_dict["use_tls"],
                     tls_cert_path=config_dict["tls_cert_path"],
                     tls_key_path=config_dict["tls_key_path"],
                     connection_timeout=config_dict["connection_timeout"],
-                    max_retries=3  # Default retry attempts
+                    max_retries=3,  # Default retry attempts
                 )
             except ImportError as e:
                 # SecurityConfig not available, fall back to individual parameters
@@ -221,37 +231,46 @@ class CacheConfig:
             except Exception as e:
                 # SecurityConfig creation failed, fall back to individual parameters
                 security_config = None
-        
+
         # Map fields to factory-expected names
         factory_dict = {
             # Redis configuration (core connectivity)
             "redis_url": config_dict["redis_url"],
-            
             # Security configuration (proper architecture)
             "security_config": security_config,
-
             # Cache behavior (factory expects these names)
             "default_ttl": config_dict["default_ttl"],
-            "l1_cache_size": config_dict["memory_cache_size"],  # Factory expects l1_cache_size
+            "l1_cache_size": config_dict[
+                "memory_cache_size"
+            ],  # Factory expects l1_cache_size
             "enable_l1_cache": True,  # Enable L1 cache by default
             "compression_threshold": config_dict["compression_threshold"],
             "compression_level": config_dict["compression_level"],
-
             # AI features (only include if AI is enabled)
-            "text_hash_threshold": config_dict["text_hash_threshold"] if config_dict["enable_ai_cache"] else None,
-            "operation_ttls": config_dict["operation_ttls"] if config_dict["enable_ai_cache"] else None,
-            "text_size_tiers": config_dict["text_size_tiers"] if config_dict["enable_ai_cache"] else None,
-            "hash_algorithm": config_dict["hash_algorithm"] if config_dict["enable_ai_cache"] else None,
-            "enable_smart_promotion": config_dict["enable_smart_promotion"] if config_dict["enable_ai_cache"] else None,
-            "max_text_length": config_dict["max_text_length"] if config_dict["enable_ai_cache"] else None,
-
+            "text_hash_threshold": config_dict["text_hash_threshold"]
+            if config_dict["enable_ai_cache"]
+            else None,
+            "operation_ttls": config_dict["operation_ttls"]
+            if config_dict["enable_ai_cache"]
+            else None,
+            "text_size_tiers": config_dict["text_size_tiers"]
+            if config_dict["enable_ai_cache"]
+            else None,
+            "hash_algorithm": config_dict["hash_algorithm"]
+            if config_dict["enable_ai_cache"]
+            else None,
+            "enable_smart_promotion": config_dict["enable_smart_promotion"]
+            if config_dict["enable_ai_cache"]
+            else None,
+            "max_text_length": config_dict["max_text_length"]
+            if config_dict["enable_ai_cache"]
+            else None,
             # Additional factory parameters
             "enable_ai_cache": config_dict["enable_ai_cache"],
             "enable_monitoring": config_dict["enable_monitoring"],
             "log_level": config_dict["log_level"],
-
             # Strategy for logging/debugging
-            "cache_strategy": config_dict["strategy"]
+            "cache_strategy": config_dict["strategy"],
         }
 
         # Remove None values to avoid passing them to factory
@@ -267,7 +286,9 @@ class CacheConfig:
             ValidationResult with any errors or warnings found
         """
         try:
-            from app.infrastructure.cache.cache_validator import cache_validator
+            from app.infrastructure.cache.cache_validator import \
+                cache_validator
+
             return cache_validator.validate_configuration(self.to_dict())
         except ImportError:
             # Fallback to basic validation if validator not available
@@ -351,6 +372,7 @@ class CachePreset:
             cache_config = custom_preset.to_cache_config()
             cache = initialize_cache(cache_config)
     """
+
     name: str
     description: str
     strategy: CacheStrategy
@@ -373,28 +395,35 @@ class CachePreset:
     def to_cache_config(self):
         """Convert preset to cache configuration object compatible with config.py CacheConfig."""
         # Import the actual CacheConfig from config.py to ensure compatibility
-        from app.infrastructure.cache.config import CacheConfig as ConfigCacheConfig, AICacheConfig
+        from app.infrastructure.cache.config import AICacheConfig
+        from app.infrastructure.cache.config import \
+            CacheConfig as ConfigCacheConfig
 
         # Create AI configuration if AI features are enabled
         ai_config = None
         if self.enable_ai_cache:
             ai_config = AICacheConfig(
-                text_hash_threshold=self.ai_optimizations.get('text_hash_threshold', 1000),
-                hash_algorithm=self.ai_optimizations.get('hash_algorithm', 'sha256'),
-                text_size_tiers=self.ai_optimizations.get('text_size_tiers', {
-                    "small": 1000,
-                    "medium": 5000,
-                    "large": 20000
-                }),
-                operation_ttls=self.ai_optimizations.get('operation_ttls', {
-                    "summarize": 7200,
-                    "sentiment": 3600,
-                    "key_points": 5400,
-                    "questions": 4800,
-                    "qa": 3600
-                }),
-                enable_smart_promotion=self.ai_optimizations.get('enable_smart_promotion', True),
-                max_text_length=self.ai_optimizations.get('max_text_length', 100000)
+                text_hash_threshold=self.ai_optimizations.get(
+                    "text_hash_threshold", 1000
+                ),
+                hash_algorithm=self.ai_optimizations.get("hash_algorithm", "sha256"),
+                text_size_tiers=self.ai_optimizations.get(
+                    "text_size_tiers", {"small": 1000, "medium": 5000, "large": 20000}
+                ),
+                operation_ttls=self.ai_optimizations.get(
+                    "operation_ttls",
+                    {
+                        "summarize": 7200,
+                        "sentiment": 3600,
+                        "key_points": 5400,
+                        "questions": 4800,
+                        "qa": 3600,
+                    },
+                ),
+                enable_smart_promotion=self.ai_optimizations.get(
+                    "enable_smart_promotion", True
+                ),
+                max_text_length=self.ai_optimizations.get("max_text_length", 100000),
             )
 
         # Create base configuration using config.py CacheConfig structure
@@ -405,19 +434,18 @@ class CachePreset:
             use_tls=False,
             tls_cert_path=None,
             tls_key_path=None,
-
             # Cache behavior
             default_ttl=self.default_ttl,
             memory_cache_size=self.memory_cache_size,
             compression_threshold=self.compression_threshold,
             compression_level=self.compression_level,
-
             # Environment
-            environment=self.environment_contexts[0] if self.environment_contexts else "development",
-
+            environment=self.environment_contexts[0]
+            if self.environment_contexts
+            else "development",
             # AI configuration (nested structure)
             ai_config=ai_config,
-            enable_ai_cache=self.enable_ai_cache
+            enable_ai_cache=self.enable_ai_cache,
         )
 
         return config
@@ -429,8 +457,8 @@ CACHE_PRESETS = {
         name="Disabled",
         description="Cache completely disabled, no Redis connection, memory-only fallback",
         strategy=CacheStrategy.FAST,
-        default_ttl=300,     # 5 minutes for minimal memory usage
-        max_connections=1,    # Minimal connection pool
+        default_ttl=300,  # 5 minutes for minimal memory usage
+        max_connections=1,  # Minimal connection pool
         connection_timeout=1,  # Fast timeout
         memory_cache_size=10,  # Very small memory cache
         compression_threshold=10000,  # High threshold, minimal compression
@@ -439,31 +467,29 @@ CACHE_PRESETS = {
         enable_monitoring=False,
         log_level="WARNING",
         environment_contexts=["testing", "minimal"],
-        ai_optimizations={}
+        ai_optimizations={},
     ),
-
     "minimal": CachePreset(
         name="Minimal",
         description="Ultra-lightweight caching for resource-constrained environments",
         strategy=CacheStrategy.FAST,
-        default_ttl=900,     # 15 minutes - longer than disabled but still short
-        max_connections=2,   # Very minimal connection pool
+        default_ttl=900,  # 15 minutes - longer than disabled but still short
+        max_connections=2,  # Very minimal connection pool
         connection_timeout=3,  # Short timeout to avoid hanging
         memory_cache_size=25,  # Small but functional memory cache
         compression_threshold=5000,  # High threshold, minimal compression usage
         compression_level=1,  # Fastest compression level
         enable_ai_cache=False,  # No AI features to save resources
         enable_monitoring=False,  # Minimal monitoring to save overhead
-        log_level="ERROR",   # Only log errors to reduce I/O
+        log_level="ERROR",  # Only log errors to reduce I/O
         environment_contexts=["minimal", "embedded", "iot", "container", "serverless"],
-        ai_optimizations={}
+        ai_optimizations={},
     ),
-
     "simple": CachePreset(
         name="Simple",
         description="Basic cache configuration suitable for most use cases",
         strategy=CacheStrategy.BALANCED,
-        default_ttl=3600,    # 1 hour
+        default_ttl=3600,  # 1 hour
         max_connections=5,
         connection_timeout=5,
         memory_cache_size=100,
@@ -473,32 +499,30 @@ CACHE_PRESETS = {
         enable_monitoring=True,
         log_level="INFO",
         environment_contexts=["development", "testing", "staging", "production"],
-        ai_optimizations={}
+        ai_optimizations={},
     ),
-
     "development": CachePreset(
         name="Development",
         description="Fast-feedback configuration optimized for development speed",
         strategy=CacheStrategy.FAST,
-        default_ttl=600,     # 10 minutes for quick development cycles
-        max_connections=3,   # Minimal connections for local development
+        default_ttl=600,  # 10 minutes for quick development cycles
+        max_connections=3,  # Minimal connections for local development
         connection_timeout=2,  # Fast timeout for quick feedback
         memory_cache_size=50,  # Smaller cache for memory efficiency
         compression_threshold=2000,  # Higher threshold, less CPU usage
         compression_level=3,  # Lower compression for speed
         enable_ai_cache=False,
         enable_monitoring=True,
-        log_level="DEBUG",   # Detailed logging for development
+        log_level="DEBUG",  # Detailed logging for development
         environment_contexts=["development", "local"],
-        ai_optimizations={}
+        ai_optimizations={},
     ),
-
     "production": CachePreset(
         name="Production",
         description="High-performance configuration for production workloads",
         strategy=CacheStrategy.ROBUST,
-        default_ttl=7200,    # 2 hours for production efficiency
-        max_connections=20,   # High connection pool for production load
+        default_ttl=7200,  # 2 hours for production efficiency
+        max_connections=20,  # High connection pool for production load
         connection_timeout=10,  # Longer timeout for reliability
         memory_cache_size=500,  # Large memory cache for performance
         compression_threshold=500,  # Low threshold, aggressive compression
@@ -507,15 +531,14 @@ CACHE_PRESETS = {
         enable_monitoring=True,
         log_level="INFO",
         environment_contexts=["production", "staging"],
-        ai_optimizations={}
+        ai_optimizations={},
     ),
-
     "ai-development": CachePreset(
         name="AI Development",
         description="AI-optimized configuration for development with text processing features",
         strategy=CacheStrategy.AI_OPTIMIZED,
-        default_ttl=1800,    # 30 minutes for AI development
-        max_connections=5,   # Moderate connections
+        default_ttl=1800,  # 30 minutes for AI development
+        max_connections=5,  # Moderate connections
         connection_timeout=5,
         memory_cache_size=100,
         compression_threshold=1000,
@@ -527,28 +550,23 @@ CACHE_PRESETS = {
         ai_optimizations={
             "text_hash_threshold": 500,  # Lower threshold for development
             "hash_algorithm": "sha256",
-            "text_size_tiers": {
-                "small": 500,
-                "medium": 2000,
-                "large": 10000
-            },
+            "text_size_tiers": {"small": 500, "medium": 2000, "large": 10000},
             "operation_ttls": {
                 "summarize": 1800,  # 30 minutes for development
-                "sentiment": 900,   # 15 minutes
+                "sentiment": 900,  # 15 minutes
                 "key_points": 1200,  # 20 minutes
                 "questions": 1500,  # 25 minutes
-                "qa": 900          # 15 minutes
+                "qa": 900,  # 15 minutes
             },
             "enable_smart_promotion": True,
-            "max_text_length": 50000
-        }
+            "max_text_length": 50000,
+        },
     ),
-
     "ai-production": CachePreset(
         name="AI Production",
         description="AI-optimized configuration for production with advanced text processing",
         strategy=CacheStrategy.AI_OPTIMIZED,
-        default_ttl=14400,   # 4 hours for production AI workloads
+        default_ttl=14400,  # 4 hours for production AI workloads
         max_connections=25,  # High connection pool for AI workloads
         connection_timeout=15,  # Longer timeout for AI operations
         memory_cache_size=1000,  # Large memory cache for AI data
@@ -561,22 +579,18 @@ CACHE_PRESETS = {
         ai_optimizations={
             "text_hash_threshold": 1000,
             "hash_algorithm": "sha256",
-            "text_size_tiers": {
-                "small": 1000,
-                "medium": 5000,
-                "large": 25000
-            },
+            "text_size_tiers": {"small": 1000, "medium": 5000, "large": 25000},
             "operation_ttls": {
                 "summarize": 14400,  # 4 hours for production
                 "sentiment": 7200,  # 2 hours
                 "key_points": 10800,  # 3 hours
                 "questions": 9600,  # 2.67 hours
-                "qa": 7200         # 2 hours
+                "qa": 7200,  # 2 hours
             },
             "enable_smart_promotion": True,
-            "max_text_length": 200000
-        }
-    )
+            "max_text_length": 200000,
+        },
+    ),
 }
 
 
@@ -605,10 +619,11 @@ class CachePresetManager:
         """
         if name not in self.presets:
             from app.core.exceptions import ConfigurationError
+
             available = list(self.presets.keys())
             raise ConfigurationError(
                 f"Unknown preset '{name}'. Available presets: {available}",
-                context={"requested_preset": name, "available": available}
+                context={"requested_preset": name, "available": available},
             )
         return self.presets[name]
 
@@ -629,10 +644,12 @@ class CachePresetManager:
                 "memory_cache_size": preset.memory_cache_size,
                 "enable_ai_cache": preset.enable_ai_cache,
                 "enable_monitoring": preset.enable_monitoring,
-                "log_level": preset.log_level
+                "log_level": preset.log_level,
             },
             "environment_contexts": preset.environment_contexts,
-            "ai_optimizations": preset.ai_optimizations if preset.enable_ai_cache else None
+            "ai_optimizations": preset.ai_optimizations
+            if preset.enable_ai_cache
+            else None,
         }
 
     def validate_preset(self, preset: CachePreset) -> bool:
@@ -646,7 +663,8 @@ class CachePresetManager:
             True if valid, False otherwise
         """
         try:
-            from app.infrastructure.cache.cache_validator import cache_validator
+            from app.infrastructure.cache.cache_validator import \
+                cache_validator
 
             # Convert preset to dict for validation
             preset_dict = preset.to_dict()
@@ -673,31 +691,41 @@ class CachePresetManager:
         """Basic preset validation without JSON schema."""
         # Validate TTL
         if preset.default_ttl < 1 or preset.default_ttl > 604800:  # 1 second to 1 week
-            logger.error(f"Invalid default_ttl: {preset.default_ttl} (must be 1-604800)")
+            logger.error(
+                f"Invalid default_ttl: {preset.default_ttl} (must be 1-604800)"
+            )
             return False
 
         # Validate connection settings
         if preset.max_connections < 1 or preset.max_connections > 100:
-            logger.error(f"Invalid max_connections: {preset.max_connections} (must be 1-100)")
+            logger.error(
+                f"Invalid max_connections: {preset.max_connections} (must be 1-100)"
+            )
             return False
 
         if preset.connection_timeout < 1 or preset.connection_timeout > 60:
-            logger.error(f"Invalid connection_timeout: {preset.connection_timeout} (must be 1-60)")
+            logger.error(
+                f"Invalid connection_timeout: {preset.connection_timeout} (must be 1-60)"
+            )
             return False
 
         # Validate cache size
         if preset.memory_cache_size < 1 or preset.memory_cache_size > 10000:
-            logger.error(f"Invalid memory_cache_size: {preset.memory_cache_size} (must be 1-10000)")
+            logger.error(
+                f"Invalid memory_cache_size: {preset.memory_cache_size} (must be 1-10000)"
+            )
             return False
 
         # Validate compression settings
         if preset.compression_level < 1 or preset.compression_level > 9:
-            logger.error(f"Invalid compression_level: {preset.compression_level} (must be 1-9)")
+            logger.error(
+                f"Invalid compression_level: {preset.compression_level} (must be 1-9)"
+            )
             return False
 
         # Validate AI optimizations if AI is enabled
         if preset.enable_ai_cache and preset.ai_optimizations:
-            operation_ttls = preset.ai_optimizations.get('operation_ttls', {})
+            operation_ttls = preset.ai_optimizations.get("operation_ttls", {})
             for operation, ttl in operation_ttls.items():
                 if not isinstance(ttl, int) or ttl < 1:
                     logger.error(f"Invalid AI operation TTL for {operation}: {ttl}")
@@ -719,7 +747,9 @@ class CachePresetManager:
         recommendation = self.recommend_preset_with_details(environment)
         return recommendation.preset_name
 
-    def recommend_preset_with_details(self, environment: Optional[str] = None) -> EnvironmentRecommendation:
+    def recommend_preset_with_details(
+        self, environment: Optional[str] = None
+    ) -> EnvironmentRecommendation:
         """
         Get detailed environment-aware preset recommendation.
 
@@ -736,16 +766,36 @@ class CachePresetManager:
 
         # High-confidence exact matches
         exact_matches = {
-            "development": ("development", 0.95, "Exact match for development environment"),
+            "development": (
+                "development",
+                0.95,
+                "Exact match for development environment",
+            ),
             "dev": ("development", 0.90, "Standard abbreviation for development"),
-            "testing": ("development", 0.85, "Testing typically uses development-like settings"),
+            "testing": (
+                "development",
+                0.85,
+                "Testing typically uses development-like settings",
+            ),
             "test": ("development", 0.85, "Test environment should fail fast"),
-            "staging": ("production", 0.90, "Staging should mirror production settings"),
+            "staging": (
+                "production",
+                0.90,
+                "Staging should mirror production settings",
+            ),
             "stage": ("production", 0.85, "Stage environment abbreviation"),
-            "production": ("production", 0.95, "Exact match for production environment"),
+            "production": (
+                "production",
+                0.95,
+                "Exact match for production environment",
+            ),
             "prod": ("production", 0.90, "Standard abbreviation for production"),
             "live": ("production", 0.85, "Live environment implies production"),
-            "ai-development": ("ai-development", 0.95, "Exact match for AI development"),
+            "ai-development": (
+                "ai-development",
+                0.95,
+                "Exact match for AI development",
+            ),
             "ai-dev": ("ai-development", 0.90, "AI development abbreviation"),
             "ai-production": ("ai-production", 0.95, "Exact match for AI production"),
             "ai-prod": ("ai-production", 0.90, "AI production abbreviation"),
@@ -757,7 +807,7 @@ class CachePresetManager:
                 preset_name=preset,
                 confidence=confidence,
                 reasoning=reasoning,
-                environment_detected=environment
+                environment_detected=environment,
             )
 
         # Pattern-based matching for complex environment names
@@ -767,7 +817,7 @@ class CachePresetManager:
             preset_name=preset,
             confidence=confidence,
             reasoning=reasoning,
-            environment_detected=environment
+            environment_detected=environment,
         )
 
     def _auto_detect_environment(self) -> EnvironmentRecommendation:
@@ -781,19 +831,19 @@ class CachePresetManager:
             identical format and behavior to original implementation
         """
         # Import unified environment service
-        from app.core.environment import get_environment_info, FeatureContext
+        from app.core.environment import FeatureContext, get_environment_info
 
         # Check for AI cache enablement first (preserve original logic order)
-        enable_ai = os.getenv('ENABLE_AI_CACHE', '').lower() in ('true', '1', 'yes')
+        enable_ai = os.getenv("ENABLE_AI_CACHE", "").lower() in ("true", "1", "yes")
 
         # Check for explicit CACHE_PRESET override first (preserve original fallback behavior)
-        cache_preset = os.getenv('CACHE_PRESET')
+        cache_preset = os.getenv("CACHE_PRESET")
         if cache_preset and cache_preset in self.presets:
             return EnvironmentRecommendation(
                 preset_name=cache_preset,
                 confidence=0.60,  # Match original confidence for preset override
                 reasoning=f"Using explicit CACHE_PRESET={cache_preset} as fallback override",
-                environment_detected=f"{cache_preset} (CACHE_PRESET)"
+                environment_detected=f"{cache_preset} (CACHE_PRESET)",
             )
 
         # Get environment info with AI-enabled context for cache-specific decisions
@@ -803,9 +853,9 @@ class CachePresetManager:
         preset_mapping = {
             "development": "development",
             "testing": "development",  # Testing uses development-like settings
-            "staging": "production",   # Staging mirrors production settings
+            "staging": "production",  # Staging mirrors production settings
             "production": "production",
-            "unknown": "simple"        # Safe fallback for unknown environments
+            "unknown": "simple",  # Safe fallback for unknown environments
         }
 
         base_preset = preset_mapping.get(env_info.environment, "simple")
@@ -813,7 +863,10 @@ class CachePresetManager:
         # Handle special fallback case for very low confidence (no clear signals)
         # Match original behavior: when confidence is low and environment is unknown/development,
         # fall back to 'simple' or 'ai-development' based on AI enablement
-        if env_info.confidence <= 0.5 and env_info.environment in ["unknown", "development"]:
+        if env_info.confidence <= 0.5 and env_info.environment in [
+            "unknown",
+            "development",
+        ]:
             if enable_ai:
                 preset_name = "ai-development"
                 reasoning = "No clear environment indicators found, using AI development preset as safe default"
@@ -829,11 +882,15 @@ class CachePresetManager:
                 if ai_preset in self.presets:
                     preset_name = ai_preset
                     reasoning = f"{env_info.reasoning} with AI cache features enabled"
-                    environment_detected = f"{env_info.environment} (auto-detected, AI-enabled)"
+                    environment_detected = (
+                        f"{env_info.environment} (auto-detected, AI-enabled)"
+                    )
                 else:
                     preset_name = base_preset
                     reasoning = f"{env_info.reasoning} (AI preset not available, using base preset)"
-                    environment_detected = f"{env_info.environment} (auto-detected, fallback)"
+                    environment_detected = (
+                        f"{env_info.environment} (auto-detected, fallback)"
+                    )
             else:
                 preset_name = base_preset
                 reasoning = env_info.reasoning
@@ -841,10 +898,13 @@ class CachePresetManager:
 
         # Special handling for AI environment detection via ENVIRONMENT variable
         # Preserve original AI detection behavior for backward compatibility
-        env_var = os.getenv('ENVIRONMENT', '').lower()
-        if env_var and 'ai' in env_var:
-            if any(prod_indicator in env_var for prod_indicator in ['prod', 'production', 'live']):
-                preset_name = 'ai-production'
+        env_var = os.getenv("ENVIRONMENT", "").lower()
+        if env_var and "ai" in env_var:
+            if any(
+                prod_indicator in env_var
+                for prod_indicator in ["prod", "production", "live"]
+            ):
+                preset_name = "ai-production"
                 reasoning = f"Explicit AI production environment from ENVIRONMENT={os.getenv('ENVIRONMENT')}"
                 environment_detected = f"{os.getenv('ENVIRONMENT')} (auto-detected)"
                 # Match original confidence for explicit AI environments
@@ -852,10 +912,10 @@ class CachePresetManager:
                     preset_name=preset_name,
                     confidence=0.90,  # Match original high confidence for explicit AI environments
                     reasoning=reasoning,
-                    environment_detected=environment_detected
+                    environment_detected=environment_detected,
                 )
             else:
-                preset_name = 'ai-development'
+                preset_name = "ai-development"
                 reasoning = f"Explicit AI development environment from ENVIRONMENT={os.getenv('ENVIRONMENT')}"
                 environment_detected = f"{os.getenv('ENVIRONMENT')} (auto-detected)"
                 # Match original confidence for explicit AI environments
@@ -863,14 +923,14 @@ class CachePresetManager:
                     preset_name=preset_name,
                     confidence=0.90,  # Match original high confidence for explicit AI environments
                     reasoning=reasoning,
-                    environment_detected=environment_detected
+                    environment_detected=environment_detected,
                 )
 
         return EnvironmentRecommendation(
             preset_name=preset_name,
             confidence=env_info.confidence,
             reasoning=reasoning,
-            environment_detected=environment_detected
+            environment_detected=environment_detected,
         )
 
     def _pattern_match_environment(self, env_str: str) -> tuple[str, float, str]:
@@ -884,63 +944,83 @@ class CachePresetManager:
             Tuple of (preset_name, confidence, reasoning)
         """
         # Check for AI patterns first
-        if 'ai' in env_str:
+        if "ai" in env_str:
             # AI Production patterns
-            ai_prod_patterns = [
-                r'.*ai.*prod.*',
-                r'.*ai.*production.*',
-                r'.*ai.*live.*'
-            ]
+            ai_prod_patterns = [r".*ai.*prod.*", r".*ai.*production.*", r".*ai.*live.*"]
 
             for pattern in ai_prod_patterns:
                 if re.match(pattern, env_str, re.IGNORECASE):
-                    return ("ai-production", 0.80, f"Environment name '{env_str}' matches AI production pattern")
+                    return (
+                        "ai-production",
+                        0.80,
+                        f"Environment name '{env_str}' matches AI production pattern",
+                    )
 
             # AI Development patterns (default for AI environments)
-            return ("ai-development", 0.75, f"Environment name '{env_str}' contains 'ai', using AI development preset")
+            return (
+                "ai-development",
+                0.75,
+                f"Environment name '{env_str}' contains 'ai', using AI development preset",
+            )
 
         # Staging patterns (check first to avoid conflicts with other patterns)
         staging_patterns = [
-            r'.*stag.*',
-            r'.*pre-?prod.*',
-            r'.*preprod.*',
-            r'.*uat.*',
-            r'.*integration.*'
+            r".*stag.*",
+            r".*pre-?prod.*",
+            r".*preprod.*",
+            r".*uat.*",
+            r".*integration.*",
         ]
 
         for pattern in staging_patterns:
             if re.match(pattern, env_str, re.IGNORECASE):
-                return ("production", 0.70, f"Environment name '{env_str}' matches staging pattern, using production preset")
+                return (
+                    "production",
+                    0.70,
+                    f"Environment name '{env_str}' matches staging pattern, using production preset",
+                )
 
         # Development patterns
         dev_patterns = [
-            r'.*dev.*',
-            r'.*local.*',
-            r'.*test.*',
-            r'.*sandbox.*',
-            r'.*demo.*'
+            r".*dev.*",
+            r".*local.*",
+            r".*test.*",
+            r".*sandbox.*",
+            r".*demo.*",
         ]
 
         for pattern in dev_patterns:
             if re.match(pattern, env_str, re.IGNORECASE):
-                return ("development", 0.75, f"Environment name '{env_str}' matches development pattern")
+                return (
+                    "development",
+                    0.75,
+                    f"Environment name '{env_str}' matches development pattern",
+                )
 
         # Production patterns
         prod_patterns = [
-            r'.*prod.*',
-            r'.*live.*',
-            r'.*release.*',
-            r'.*stable.*',
-            r'.*main.*',
-            r'.*master.*'
+            r".*prod.*",
+            r".*live.*",
+            r".*release.*",
+            r".*stable.*",
+            r".*main.*",
+            r".*master.*",
         ]
 
         for pattern in prod_patterns:
             if re.match(pattern, env_str, re.IGNORECASE):
-                return ("production", 0.75, f"Environment name '{env_str}' matches production pattern")
+                return (
+                    "production",
+                    0.75,
+                    f"Environment name '{env_str}' matches production pattern",
+                )
 
         # Unknown pattern
-        return ("simple", 0.40, f"Unknown environment pattern '{env_str}', defaulting to simple preset")
+        return (
+            "simple",
+            0.40,
+            f"Unknown environment pattern '{env_str}', defaulting to simple preset",
+        )
 
     def get_all_presets_summary(self) -> Dict[str, Dict[str, Any]]:
         """Get summary of all available presets."""
@@ -955,40 +1035,40 @@ def get_default_presets() -> Dict[CacheStrategy, CacheConfig]:
     return {
         CacheStrategy.FAST: CacheConfig(
             strategy=CacheStrategy.FAST,
-            default_ttl=600,     # 10 minutes
+            default_ttl=600,  # 10 minutes
             max_connections=3,
             connection_timeout=2,
             memory_cache_size=50,
             compression_threshold=2000,
             compression_level=3,
             enable_monitoring=True,
-            log_level="DEBUG"
+            log_level="DEBUG",
         ),
         CacheStrategy.BALANCED: CacheConfig(
             strategy=CacheStrategy.BALANCED,
-            default_ttl=3600,    # 1 hour
+            default_ttl=3600,  # 1 hour
             max_connections=10,
             connection_timeout=5,
             memory_cache_size=100,
             compression_threshold=1000,
             compression_level=6,
             enable_monitoring=True,
-            log_level="INFO"
+            log_level="INFO",
         ),
         CacheStrategy.ROBUST: CacheConfig(
             strategy=CacheStrategy.ROBUST,
-            default_ttl=7200,    # 2 hours
+            default_ttl=7200,  # 2 hours
             max_connections=20,
             connection_timeout=10,
             memory_cache_size=500,
             compression_threshold=500,
             compression_level=9,
             enable_monitoring=True,
-            log_level="INFO"
+            log_level="INFO",
         ),
         CacheStrategy.AI_OPTIMIZED: CacheConfig(
             strategy=CacheStrategy.AI_OPTIMIZED,
-            default_ttl=14400,   # 4 hours
+            default_ttl=14400,  # 4 hours
             max_connections=25,
             connection_timeout=15,
             memory_cache_size=1000,
@@ -997,8 +1077,8 @@ def get_default_presets() -> Dict[CacheStrategy, CacheConfig]:
             enable_ai_cache=True,
             text_hash_threshold=1000,
             enable_monitoring=True,
-            log_level="INFO"
-        )
+            log_level="INFO",
+        ),
     }
 
 

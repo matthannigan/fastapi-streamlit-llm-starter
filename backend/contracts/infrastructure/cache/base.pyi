@@ -140,10 +140,10 @@ class CacheInterface(ABC):
         
         Args:
             key: Cache key string to check for existence.
-            
+        
         Returns:
             True if key exists and is not expired, False otherwise.
-            
+        
         Behavior:
             - Does not affect cache access patterns or LRU ordering
             - Respects TTL expiration rules per implementation

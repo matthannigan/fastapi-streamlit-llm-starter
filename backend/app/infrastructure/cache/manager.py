@@ -34,7 +34,7 @@ cache_type = manager.cache_type  # "redis_secure" or "memory"
 """
 
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
 from app.core.exceptions import ConfigurationError
 
@@ -90,7 +90,8 @@ class CacheManager:
 
         # Try secure Redis first
         try:
-            from app.infrastructure.cache.redis_generic import GenericRedisCache
+            from app.infrastructure.cache.redis_generic import \
+                GenericRedisCache
 
             if self.redis_url:
                 self.cache = GenericRedisCache.create_secure(self.redis_url)
@@ -102,12 +103,16 @@ class CacheManager:
 
         except (ConfigurationError, ImportError) as e:
             # Graceful fallback to memory cache
-            self.logger.warning(f"Redis unavailable ({e}), falling back to memory cache")
+            self.logger.warning(
+                f"Redis unavailable ({e}), falling back to memory cache"
+            )
             self._initialize_memory_fallback()
 
         except Exception as e:
             # Unexpected errors also trigger fallback
-            self.logger.error(f"Unexpected error initializing Redis ({e}), falling back to memory cache")
+            self.logger.error(
+                f"Unexpected error initializing Redis ({e}), falling back to memory cache"
+            )
             self._initialize_memory_fallback()
 
     def _initialize_memory_fallback(self) -> None:
@@ -128,7 +133,10 @@ class CacheManager:
                 "Ensure cache modules are properly installed:\n"
                 "- app.infrastructure.cache.redis_generic\n"
                 "- app.infrastructure.cache.memory\n",
-                context={"error_type": "no_cache_backend_available", "original_error": str(e)}
+                context={
+                    "error_type": "no_cache_backend_available",
+                    "original_error": str(e),
+                },
             )
 
     async def get(self, key: str) -> Any:
@@ -223,10 +231,12 @@ class CacheManager:
         if not self.cache:
             raise ConfigurationError("Cache manager not initialized")
 
-        if hasattr(self.cache, 'clear'):
+        if hasattr(self.cache, "clear"):
             await self.cache.clear()
         else:
-            self.logger.warning(f"Clear operation not supported by {self.cache_type} cache")
+            self.logger.warning(
+                f"Clear operation not supported by {self.cache_type} cache"
+            )
 
     async def exists(self, key: str) -> bool:
         """
@@ -247,7 +257,7 @@ class CacheManager:
             raise ConfigurationError("Cache manager not initialized")
 
         # Use get method as fallback if exists method not available
-        if hasattr(self.cache, 'exists'):
+        if hasattr(self.cache, "exists"):
             return await self.cache.exists(key)
         else:
             return (await self.cache.get(key)) is not None
@@ -273,7 +283,7 @@ class CacheManager:
         if not self.cache:
             raise ConfigurationError("Cache manager not initialized")
 
-        if hasattr(self.cache, 'connect'):
+        if hasattr(self.cache, "connect"):
             return await self.cache.connect()
         else:
             # Memory cache doesn't need explicit connection
@@ -294,7 +304,7 @@ class CacheManager:
         if not self.cache:
             return
 
-        if hasattr(self.cache, 'disconnect'):
+        if hasattr(self.cache, "disconnect"):
             await self.cache.disconnect()
 
     def get_cache_info(self) -> Dict[str, Any]:
@@ -319,10 +329,10 @@ class CacheManager:
         info = {
             "cache_type": self.cache_type,
             "security_enabled": self.cache_type == "redis_secure",
-            "initialized": self.cache is not None
+            "initialized": self.cache is not None,
         }
 
-        if self.cache and hasattr(self.cache, 'get_performance_stats'):
+        if self.cache and hasattr(self.cache, "get_performance_stats"):
             try:
                 info["performance_stats"] = self.cache.get_performance_stats()
             except Exception:
@@ -332,7 +342,7 @@ class CacheManager:
             info["encryption_active"] = True
             info["connection_secure"] = True
             if self.redis_url:
-                info["connection_scheme"] = self.redis_url.split('://')[0]
+                info["connection_scheme"] = self.redis_url.split("://")[0]
         else:
             info["encryption_active"] = False
             info["connection_secure"] = False
@@ -358,7 +368,7 @@ class CacheManager:
             "timestamp": __import__("time").time(),
             "cache_type": self.cache_type,
             "healthy": False,
-            "errors": []
+            "errors": [],
         }
 
         try:
@@ -384,11 +394,15 @@ class CacheManager:
                 health["errors"].append("Cache delete test failed")
 
             # Additional Redis-specific health checks
-            if self.cache_type == "redis_secure" and hasattr(self.cache, 'test_security_configuration'):
+            if self.cache_type == "redis_secure" and hasattr(
+                self.cache, "test_security_configuration"
+            ):
                 try:
                     security_test = await self.cache.test_security_configuration()
                     if not security_test.get("overall_secure", False):
-                        health["errors"].extend(security_test.get("errors", ["Security test failed"]))
+                        health["errors"].extend(
+                            security_test.get("errors", ["Security test failed"])
+                        )
                 except Exception as e:
                     health["errors"].append(f"Security test failed: {e}")
 

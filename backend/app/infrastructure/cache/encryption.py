@@ -34,16 +34,17 @@ if encryption.is_enabled:
 ```
 """
 
-import logging
 import json
+import logging
 import time
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from app.core.exceptions import ConfigurationError
 
 # Optional cryptography import for graceful degradation
 try:
     from cryptography.fernet import Fernet, InvalidToken
+
     CRYPTOGRAPHY_AVAILABLE = True
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
@@ -65,7 +66,9 @@ class EncryptedCacheLayer:
     monitoring to ensure encryption overhead stays within acceptable limits.
     """
 
-    def __init__(self, encryption_key: Optional[str] = None, performance_monitoring: bool = True):
+    def __init__(
+        self, encryption_key: Optional[str] = None, performance_monitoring: bool = True
+    ):
         """
         Initialize the encrypted cache layer.
 
@@ -107,7 +110,10 @@ class EncryptedCacheLayer:
                 "Install with: pip install cryptography\n"
                 "\n"
                 "This is a mandatory dependency for secure Redis operations.",
-                context={"error_type": "missing_dependency", "required_package": "cryptography"}
+                context={
+                    "error_type": "missing_dependency",
+                    "required_package": "cryptography",
+                },
             )
 
         # Initialize encryption
@@ -133,7 +139,7 @@ class EncryptedCacheLayer:
         try:
             # Validate and create Fernet instance
             if isinstance(encryption_key, str):
-                key_bytes = encryption_key.encode('utf-8')
+                key_bytes = encryption_key.encode("utf-8")
             else:
                 key_bytes = encryption_key
 
@@ -157,10 +163,13 @@ class EncryptedCacheLayer:
                 f"Error: {str(e)}\n"
                 "\n"
                 "To fix this issue:\n"
-                "1. Generate a new key: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
+                '1. Generate a new key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"\n'
                 "2. Set REDIS_ENCRYPTION_KEY environment variable\n"
                 "3. Use SecurityConfig.create_for_environment() for automatic key generation\n",
-                context={"error_type": "invalid_encryption_key", "original_error": str(e)}
+                context={
+                    "error_type": "invalid_encryption_key",
+                    "original_error": str(e),
+                },
             )
 
     def encrypt_cache_data(self, data: Dict[str, Any]) -> bytes:
@@ -197,7 +206,7 @@ class EncryptedCacheLayer:
         try:
             # Serialize data to JSON
             json_data = json.dumps(data, ensure_ascii=False, sort_keys=True)
-            json_bytes = json_data.encode('utf-8')
+            json_bytes = json_data.encode("utf-8")
 
             # Encrypt if enabled
             if self.fernet:
@@ -205,7 +214,9 @@ class EncryptedCacheLayer:
                 result = encrypted_data
             else:
                 # No encryption - return raw JSON bytes with warning
-                self.logger.warning("🔓 Data stored without encryption (encryption disabled)")
+                self.logger.warning(
+                    "🔓 Data stored without encryption (encryption disabled)"
+                )
                 result = json_bytes
 
             # Performance tracking
@@ -216,7 +227,9 @@ class EncryptedCacheLayer:
 
                 # Log performance warning if operation is slow
                 if elapsed > 0.05:  # 50ms threshold
-                    self.logger.warning(f"Slow encryption operation: {elapsed:.3f}s for {len(json_bytes)} bytes")
+                    self.logger.warning(
+                        f"Slow encryption operation: {elapsed:.3f}s for {len(json_bytes)} bytes"
+                    )
 
             return result
 
@@ -230,7 +243,11 @@ class EncryptedCacheLayer:
                 "- Basic types: str, int, float, bool, None\n"
                 "- Collections: list, dict\n"
                 "- Avoid: datetime, custom objects, functions\n",
-                context={"error_type": "serialization_error", "data_type": type(data).__name__, "original_error": str(e)}
+                context={
+                    "error_type": "serialization_error",
+                    "data_type": type(data).__name__,
+                    "original_error": str(e),
+                },
             )
         except Exception as e:
             self.logger.error(f"Encryption failed: {e}")
@@ -243,7 +260,7 @@ class EncryptedCacheLayer:
                 "- Corrupted encryption key\n"
                 "- System resource constraints\n"
                 "- Cryptographic library issues\n",
-                context={"error_type": "encryption_failure", "original_error": str(e)}
+                context={"error_type": "encryption_failure", "original_error": str(e)},
             )
 
     def decrypt_cache_data(self, encrypted_data: bytes) -> Dict[str, Any]:
@@ -285,14 +302,16 @@ class EncryptedCacheLayer:
                     decrypted_bytes = self.fernet.decrypt(encrypted_data)
                 except InvalidToken:
                     # Try to handle unencrypted data (backward compatibility)
-                    self.logger.warning("🔓 Attempting to read unencrypted cache data (backward compatibility)")
+                    self.logger.warning(
+                        "🔓 Attempting to read unencrypted cache data (backward compatibility)"
+                    )
                     decrypted_bytes = encrypted_data
             else:
                 # No encryption - treat as raw JSON bytes
                 decrypted_bytes = encrypted_data
 
             # Deserialize JSON data
-            json_string = decrypted_bytes.decode('utf-8')
+            json_string = decrypted_bytes.decode("utf-8")
             data = json.loads(json_string)
 
             # Performance tracking
@@ -303,7 +322,9 @@ class EncryptedCacheLayer:
 
                 # Log performance warning if operation is slow
                 if elapsed > 0.03:  # 30ms threshold
-                    self.logger.warning(f"Slow decryption operation: {elapsed:.3f}s for {len(encrypted_data)} bytes")
+                    self.logger.warning(
+                        f"Slow decryption operation: {elapsed:.3f}s for {len(encrypted_data)} bytes"
+                    )
 
             return data
 
@@ -318,7 +339,11 @@ class EncryptedCacheLayer:
                 "- Wrong encryption key\n"
                 "- Data format mismatch\n"
                 "- Cache corruption\n",
-                context={"error_type": "deserialization_error", "data_size": len(encrypted_data), "original_error": str(e)}
+                context={
+                    "error_type": "deserialization_error",
+                    "data_size": len(encrypted_data),
+                    "original_error": str(e),
+                },
             )
         except Exception as e:
             self.logger.error(f"Decryption failed: {e}")
@@ -332,7 +357,7 @@ class EncryptedCacheLayer:
                 "- Data corruption\n"
                 "- Key rotation issues\n"
                 "- Cryptographic library problems\n",
-                context={"error_type": "decryption_failure", "original_error": str(e)}
+                context={"error_type": "decryption_failure", "original_error": str(e)},
             )
 
     @property
@@ -372,18 +397,23 @@ class EncryptedCacheLayer:
             "encryption_enabled": self.is_enabled,
             "encryption_operations": self._encryption_operations,
             "decryption_operations": self._decryption_operations,
-            "total_operations": self._encryption_operations + self._decryption_operations,
+            "total_operations": self._encryption_operations
+            + self._decryption_operations,
             "total_encryption_time": self._total_encryption_time,
             "total_decryption_time": self._total_decryption_time,
             "avg_encryption_time": (
                 self._total_encryption_time / self._encryption_operations
-                if self._encryption_operations > 0 else 0
-            ) * 1000,  # Convert to milliseconds
+                if self._encryption_operations > 0
+                else 0
+            )
+            * 1000,  # Convert to milliseconds
             "avg_decryption_time": (
                 self._total_decryption_time / self._decryption_operations
-                if self._decryption_operations > 0 else 0
-            ) * 1000,  # Convert to milliseconds
-            "performance_monitoring": self.performance_monitoring
+                if self._decryption_operations > 0
+                else 0
+            )
+            * 1000,  # Convert to milliseconds
+            "performance_monitoring": self.performance_monitoring,
         }
 
     def reset_performance_stats(self) -> None:
@@ -404,7 +434,7 @@ class EncryptedCacheLayer:
         self.logger.info("Performance statistics reset")
 
     @classmethod
-    def create_with_generated_key(cls, **kwargs) -> 'EncryptedCacheLayer':
+    def create_with_generated_key(cls, **kwargs) -> "EncryptedCacheLayer":
         """
         Create EncryptedCacheLayer with a generated encryption key.
 

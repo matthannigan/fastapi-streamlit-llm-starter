@@ -131,18 +131,18 @@ Error Handling:
 """
 
 import hashlib
+import inspect
 import logging
 import time
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-import inspect
 from unittest.mock import MagicMock
-from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
-from app.infrastructure.cache.redis_generic import GenericRedisCache
-from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+from app.core.exceptions import ConfigurationError, InfrastructureError, ValidationError
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+from app.infrastructure.cache.parameter_mapping import CacheParameterMapper
+from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 
 class AIResponseCache(GenericRedisCache):

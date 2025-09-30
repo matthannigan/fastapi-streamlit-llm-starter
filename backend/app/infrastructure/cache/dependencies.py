@@ -118,16 +118,17 @@ from app.infrastructure.cache.memory import InMemoryCache
 # Optional imports for enhanced functionality
 try:
     from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-    MONITORING_AVAILABLE  =  True
-except ImportError:
-    MONITORING_AVAILABLE  =  False
-    CachePerformanceMonitor  =  None
 
-logger  =  logging.getLogger(__name__)
+    MONITORING_AVAILABLE = True
+except ImportError:
+    MONITORING_AVAILABLE = False
+    CachePerformanceMonitor = None
+
+logger = logging.getLogger(__name__)
 
 # Module-level cache registry with weak references to prevent memory leaks
-_cache_registry: Dict[str, weakref.ReferenceType]  =  {}
-_cache_lock  =  asyncio.Lock()
+_cache_registry: Dict[str, weakref.ReferenceType] = {}
+_cache_lock = asyncio.Lock()
 
 
 class CacheDependencyManager:
@@ -169,18 +170,22 @@ class CacheDependencyManager:
         Raises:
             InfrastructureError: Critical connection failures that should be reported
         """
-        if not hasattr(cache, 'connect'):
-            logger.debug(f"Cache {type(cache).__name__} does not have connect method, assuming ready")
+        if not hasattr(cache, "connect"):
+            logger.debug(
+                f"Cache {type(cache).__name__} does not have connect method, assuming ready"
+            )
             return cache
 
         try:
             logger.debug(f"Ensuring connection for cache {type(cache).__name__}")
-            connected  =  await cache.connect()
+            connected = await cache.connect()
 
             if connected:
                 logger.debug(f"Cache {type(cache).__name__} connected successfully")
             else:
-                logger.warning(f"Cache {type(cache).__name__} connection failed, operating in degraded mode")
+                logger.warning(
+                    f"Cache {type(cache).__name__} connection failed, operating in degraded mode"
+                )
 
             return cache
 
@@ -191,10 +196,7 @@ class CacheDependencyManager:
 
     @staticmethod
     async def _get_or_create_cache(
-        cache_key: str,
-        factory_func,
-        *args,
-        **kwargs
+        cache_key: str, factory_func, *args, **kwargs
     ) -> CacheInterface:
         """
         Get existing cache from registry or create new one with factory function.
@@ -219,8 +221,8 @@ class CacheDependencyManager:
         async with _cache_lock:
             # Check if cache exists in registry
             if cache_key in _cache_registry:
-                cache_ref  =  _cache_registry[cache_key]
-                cache  =  cache_ref()
+                cache_ref = _cache_registry[cache_key]
+                cache = cache_ref()
 
                 if cache is not None:
                     logger.debug(f"Using existing cache from registry: {cache_key}")
@@ -233,13 +235,13 @@ class CacheDependencyManager:
             # Create new cache instance
             logger.info(f"Creating new cache instance: {cache_key}")
             try:
-                cache  =  await factory_func(*args, **kwargs)
+                cache = await factory_func(*args, **kwargs)
 
                 # Ensure cache is connected
-                cache  =  await CacheDependencyManager._ensure_cache_connected(cache)
+                cache = await CacheDependencyManager._ensure_cache_connected(cache)
 
                 # Register with weak reference
-                _cache_registry[cache_key]  =  weakref.ref(cache)
+                _cache_registry[cache_key] = weakref.ref(cache)
                 logger.debug(f"Cache registered in registry: {cache_key}")
 
                 return cache
@@ -248,19 +250,22 @@ class CacheDependencyManager:
                 logger.error(f"Failed to create cache {cache_key}: {e}")
                 raise InfrastructureError(
                     f"Failed to create cache instance: {str(e)}",
-                    context = {
+                    context={
                         "cache_key": cache_key,
-                        "factory_func": factory_func.__name__ if hasattr(factory_func, '__name__') else str(factory_func),
+                        "factory_func": factory_func.__name__
+                        if hasattr(factory_func, "__name__")
+                        else str(factory_func),
                         "args": args,
                         "kwargs": {k: str(v) for k, v in kwargs.items()},
-                        "original_error": str(e)
-                    }
+                        "original_error": str(e),
+                    },
                 )
 
 
 # ============================================================================
 # Core Settings and Configuration Dependencies
 # ============================================================================
+
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -322,9 +327,11 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
         logger.debug("Building cache configuration from preset system")
 
         # Use the new preset-based configuration loading from settings
-        cache_config  =  settings.get_cache_config()
+        cache_config = settings.get_cache_config()
 
-        logger.info(f"Cache configuration loaded successfully from preset '{settings.cache_preset}'")
+        logger.info(
+            f"Cache configuration loaded successfully from preset '{settings.cache_preset}'"
+        )
 
         # Convert to the expected return type if needed
         # The settings.get_cache_config() returns the new CacheConfig from cache_presets
@@ -336,11 +343,15 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
         logger.error(f"Failed to build cache configuration from preset system: {e}")
 
         # Fallback to simple preset on configuration errors
-        logger.warning("Falling back to 'simple' cache preset due to configuration error")
+        logger.warning(
+            "Falling back to 'simple' cache preset due to configuration error"
+        )
         try:
-            from app.infrastructure.cache.cache_presets import cache_preset_manager
-            fallback_preset  =  cache_preset_manager.get_preset("simple")
-            fallback_config  =  fallback_preset.to_cache_config()
+            from app.infrastructure.cache.cache_presets import \
+                cache_preset_manager
+
+            fallback_preset = cache_preset_manager.get_preset("simple")
+            fallback_config = fallback_preset.to_cache_config()
             logger.info("Using fallback 'simple' cache configuration")
             return fallback_config
 
@@ -348,12 +359,12 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
             logger.error(f"Fallback cache configuration also failed: {fallback_error}")
             raise ConfigurationError(
                 f"Failed to build cache configuration and fallback failed: {str(e)}",
-                context = {
+                context={
                     "original_error": str(e),
                     "fallback_error": str(fallback_error),
-                    "cache_preset": getattr(settings, 'cache_preset', 'unknown'),
-                    "preset_system": "cache_presets"
-                }
+                    "cache_preset": getattr(settings, "cache_preset", "unknown"),
+                    "preset_system": "cache_presets",
+                },
             )
 
 
@@ -361,7 +372,8 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
 # Main Cache Service Dependencies
 # ============================================================================
 
-async def get_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
+
+async def get_cache_service(config=Depends(get_cache_config)) -> CacheInterface:
     """
     Get main cache service with explicit factory usage and registry management.
 
@@ -390,22 +402,21 @@ async def get_cache_service(config = Depends(get_cache_config)) -> CacheInterfac
         logger.debug("Getting main cache service with explicit factory usage")
 
         # Create cache key for registry
-        config_dict  =  config.to_dict()
-        cache_key  =  f"main_cache_{hash(str(sorted(config_dict.items())))}"
+        config_dict = config.to_dict()
+        cache_key = f"main_cache_{hash(str(sorted(config_dict.items())))}"
 
         # Use factory for explicit cache creation
-        factory  =  CacheFactory()
+        factory = CacheFactory()
 
         async def create_cache():
             logger.info("Creating cache using CacheFactory.create_cache_from_config()")
             return await factory.create_cache_from_config(
                 config_dict,
-                fail_on_connection_error = False  # Enable graceful degradation
+                fail_on_connection_error=False,  # Enable graceful degradation
             )
 
-        cache  =  await CacheDependencyManager._get_or_create_cache(
-            cache_key = cache_key,
-            factory_func = create_cache
+        cache = await CacheDependencyManager._get_or_create_cache(
+            cache_key=cache_key, factory_func=create_cache
         )
 
         logger.info(f"Main cache service ready: {type(cache).__name__}")
@@ -416,13 +427,10 @@ async def get_cache_service(config = Depends(get_cache_config)) -> CacheInterfac
 
         # Fallback to InMemoryCache for graceful degradation
         logger.warning("Falling back to InMemoryCache for main cache service")
-        return InMemoryCache(
-            default_ttl = 1800,  # 30 minutes
-            max_size = 100
-        )
+        return InMemoryCache(default_ttl=1800, max_size=100)  # 30 minutes
 
 
-async def get_web_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
+async def get_web_cache_service(config=Depends(get_cache_config)) -> CacheInterface:
     """
     Get web-optimized cache service ensuring no AI configuration.
 
@@ -453,25 +461,25 @@ async def get_web_cache_service(config = Depends(get_cache_config)) -> CacheInte
         logger.debug("Getting web-optimized cache service")
 
         # Ensure no AI configuration for web cache
-        config_dict  =  config.to_dict()
-        if 'ai_config' in config_dict:
-            config_dict = {k: v for k, v in config_dict.items() if k != 'ai_config'}
+        config_dict = config.to_dict()
+        if "ai_config" in config_dict:
+            config_dict = {k: v for k, v in config_dict.items() if k != "ai_config"}
             logger.debug("Removed AI configuration for web cache service")
 
-        cache_key  =  f"web_cache_{hash(str(sorted(config_dict.items())))}"
+        cache_key = f"web_cache_{hash(str(sorted(config_dict.items())))}"
 
-        factory  =  CacheFactory()
+        factory = CacheFactory()
 
         async def create_web_cache():
-            logger.info("Creating web cache using CacheFactory.create_cache_from_config()")
+            logger.info(
+                "Creating web cache using CacheFactory.create_cache_from_config()"
+            )
             return await factory.create_cache_from_config(
-                config_dict,
-                fail_on_connection_error = False
+                config_dict, fail_on_connection_error=False
             )
 
-        cache  =  await CacheDependencyManager._get_or_create_cache(
-            cache_key = cache_key,
-            factory_func = create_web_cache
+        cache = await CacheDependencyManager._get_or_create_cache(
+            cache_key=cache_key, factory_func=create_web_cache
         )
 
         logger.info(f"Web cache service ready: {type(cache).__name__}")
@@ -483,12 +491,12 @@ async def get_web_cache_service(config = Depends(get_cache_config)) -> CacheInte
         # Fallback to InMemoryCache optimized for web usage
         logger.warning("Falling back to InMemoryCache for web cache service")
         return InMemoryCache(
-            default_ttl = 1800,  # 30 minutes for web sessions
-            max_size = 200       # Larger cache for web usage
+            default_ttl=1800,  # 30 minutes for web sessions
+            max_size=200,  # Larger cache for web usage
         )
 
 
-async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
+async def get_ai_cache_service(config=Depends(get_cache_config)) -> CacheInterface:
     """
     Get AI-optimized cache service ensuring AI configuration is present.
 
@@ -523,35 +531,35 @@ async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInter
     try:
         logger.debug("Getting AI-optimized cache service")
 
-        config_dict  =  config.to_dict()
+        config_dict = config.to_dict()
 
         # Ensure AI configuration is present
-        if 'ai_config' not in config_dict:
+        if "ai_config" not in config_dict:
             logger.warning("No AI configuration found, adding default AI features")
             # Add minimal AI configuration
-            config_dict['ai_config']  =  {
-                'text_hash_threshold': 500,
-                'operation_ttls': {},
-                'text_size_tiers': {'small': 1000, 'medium': 5000, 'large': 20000},
-                'enable_smart_promotion': True,
-                'max_text_length': 100000,
-                'hash_algorithm': 'sha256'
+            config_dict["ai_config"] = {
+                "text_hash_threshold": 500,
+                "operation_ttls": {},
+                "text_size_tiers": {"small": 1000, "medium": 5000, "large": 20000},
+                "enable_smart_promotion": True,
+                "max_text_length": 100000,
+                "hash_algorithm": "sha256",
             }
 
-        cache_key  =  f"ai_cache_{hash(str(sorted(config_dict.items())))}"
+        cache_key = f"ai_cache_{hash(str(sorted(config_dict.items())))}"
 
-        factory  =  CacheFactory()
+        factory = CacheFactory()
 
         async def create_ai_cache():
-            logger.info("Creating AI cache using CacheFactory.create_cache_from_config()")
+            logger.info(
+                "Creating AI cache using CacheFactory.create_cache_from_config()"
+            )
             return await factory.create_cache_from_config(
-                config_dict,
-                fail_on_connection_error = False
+                config_dict, fail_on_connection_error=False
             )
 
-        cache  =  await CacheDependencyManager._get_or_create_cache(
-            cache_key = cache_key,
-            factory_func = create_ai_cache
+        cache = await CacheDependencyManager._get_or_create_cache(
+            cache_key=cache_key, factory_func=create_ai_cache
         )
 
         logger.info(f"AI cache service ready: {type(cache).__name__}")
@@ -563,14 +571,15 @@ async def get_ai_cache_service(config = Depends(get_cache_config)) -> CacheInter
         # Fallback to InMemoryCache optimized for AI usage
         logger.warning("Falling back to InMemoryCache for AI cache service")
         return InMemoryCache(
-            default_ttl = 300,   # 5 minutes for AI operations
-            max_size = 50        # Smaller cache for AI operations
+            default_ttl=300,  # 5 minutes for AI operations
+            max_size=50,  # Smaller cache for AI operations
         )
 
 
 # ============================================================================
 # Testing Dependencies
 # ============================================================================
+
 
 async def get_test_cache() -> CacheInterface:
     """
@@ -594,8 +603,8 @@ async def get_test_cache() -> CacheInterface:
     """
     logger.debug("Creating memory-only test cache")
 
-    factory  =  CacheFactory()
-    cache  =  await factory.for_testing(use_memory_cache = True)
+    factory = CacheFactory()
+    cache = await factory.for_testing(use_memory_cache=True)
 
     logger.info(f"Test cache ready: {type(cache).__name__}")
     return cache
@@ -622,28 +631,31 @@ async def get_test_redis_cache() -> CacheInterface:
     logger.debug("Creating Redis test cache for integration testing")
 
     try:
-        factory  =  CacheFactory()
+        factory = CacheFactory()
 
         # Use environment variable for test Redis URL or default
-        test_redis_url  =  os.environ.get('TEST_REDIS_URL', 'redis://localhost:6379/15')
+        test_redis_url = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
 
-        cache  =  await factory.for_testing(
-            redis_url = test_redis_url,
-            use_memory_cache = False,
-            fail_on_connection_error = False
+        cache = await factory.for_testing(
+            redis_url=test_redis_url,
+            use_memory_cache=False,
+            fail_on_connection_error=False,
         )
 
         logger.info(f"Test Redis cache ready: {type(cache).__name__}")
         return cache
 
     except Exception as e:
-        logger.warning(f"Failed to create Redis test cache, falling back to memory: {e}")
+        logger.warning(
+            f"Failed to create Redis test cache, falling back to memory: {e}"
+        )
         return await get_test_cache()
 
 
 # ============================================================================
 # Utility Dependencies
 # ============================================================================
+
 
 async def get_fallback_cache_service() -> CacheInterface:
     """
@@ -666,16 +678,15 @@ async def get_fallback_cache_service() -> CacheInterface:
     """
     logger.debug("Creating fallback cache service (InMemoryCache)")
 
-    cache  =  InMemoryCache(
-        default_ttl = 1800,  # 30 minutes
-        max_size = 100       # Conservative memory usage
+    cache = InMemoryCache(
+        default_ttl=1800, max_size=100  # 30 minutes  # Conservative memory usage
     )
 
     logger.info("Fallback cache service ready: InMemoryCache")
     return cache
 
 
-async def validate_cache_configuration(config = Depends(get_cache_config)):
+async def validate_cache_configuration(config=Depends(get_cache_config)):
     """
     Validate cache configuration and raise HTTP errors for invalid configs.
 
@@ -702,23 +713,29 @@ async def validate_cache_configuration(config = Depends(get_cache_config)):
         logger.debug("Validating cache configuration")
 
         # Run validation if available
-        if hasattr(config, 'validate'):
-            validation_result  =  config.validate()
+        if hasattr(config, "validate"):
+            validation_result = config.validate()
 
             if not validation_result.is_valid:
-                logger.error(f"Cache configuration validation failed: {validation_result.errors}")
+                logger.error(
+                    f"Cache configuration validation failed: {validation_result.errors}"
+                )
                 raise HTTPException(
-                    status_code = 500,
-                    detail = {
+                    status_code=500,
+                    detail={
                         "error": "Invalid cache configuration",
                         "validation_errors": validation_result.errors,
-                        "warnings": validation_result.warnings if hasattr(validation_result, 'warnings') else []
-                    }
+                        "warnings": validation_result.warnings
+                        if hasattr(validation_result, "warnings")
+                        else [],
+                    },
                 )
 
             # Log warnings if present
-            if hasattr(validation_result, 'warnings') and validation_result.warnings:
-                logger.warning(f"Cache configuration warnings: {validation_result.warnings}")
+            if hasattr(validation_result, "warnings") and validation_result.warnings:
+                logger.warning(
+                    f"Cache configuration warnings: {validation_result.warnings}"
+                )
 
         logger.debug("Cache configuration validation passed")
         return config
@@ -728,18 +745,15 @@ async def validate_cache_configuration(config = Depends(get_cache_config)):
     except Exception as e:
         logger.error(f"Configuration validation error: {e}")
         raise HTTPException(
-            status_code = 500,
-            detail = {
-                "error": "Configuration validation failed",
-                "message": str(e)
-            }
+            status_code=500,
+            detail={"error": "Configuration validation failed", "message": str(e)},
         )
 
 
 async def get_cache_service_conditional(
-    enable_ai: bool  =  False,
-    fallback_only: bool  =  False,
-    settings: Settings = Depends(get_settings)
+    enable_ai: bool = False,
+    fallback_only: bool = False,
+    settings: Settings = Depends(get_settings),
 ) -> CacheInterface:
     """
     Get cache service based on conditional parameters.
@@ -767,14 +781,16 @@ async def get_cache_service_conditional(
             return await cache.get("conditional_data")
     """
     try:
-        logger.debug(f"Getting conditional cache service: ai = {enable_ai}, fallback = {fallback_only}")
+        logger.debug(
+            f"Getting conditional cache service: ai = {enable_ai}, fallback = {fallback_only}"
+        )
 
         if fallback_only:
             logger.info("Conditional cache: using fallback cache")
             return await get_fallback_cache_service()
 
         # Build configuration for conditional cache
-        config  =  await get_cache_config(settings)
+        config = await get_cache_config(settings)
 
         if enable_ai:
             logger.info("Conditional cache: using AI cache service")
@@ -793,6 +809,7 @@ async def get_cache_service_conditional(
 # Lifecycle Management
 # ============================================================================
 
+
 async def cleanup_cache_registry() -> Dict[str, Any]:
     """
     Clean up cache registry and disconnect active caches.
@@ -810,24 +827,24 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
             cleanup_stats  =  await cleanup_cache_registry()
             logger.info(f"Cache cleanup completed: {cleanup_stats}")
     """
-    cleanup_stats  =  {
+    cleanup_stats = {
         "total_entries": 0,
         "active_caches": 0,
         "dead_references": 0,
         "disconnected_caches": 0,
-        "errors": []
+        "errors": [],
     }
 
     try:
         logger.info("Starting cache registry cleanup")
 
         async with _cache_lock:
-            cleanup_stats["total_entries"]  =  len(_cache_registry)
+            cleanup_stats["total_entries"] = len(_cache_registry)
 
             # Process each cache in registry
-            dead_keys  =  []
+            dead_keys = []
             for cache_key, cache_ref in _cache_registry.items():
-                cache  =  cache_ref()
+                cache = cache_ref()
 
                 if cache is None:
                     # Dead reference
@@ -839,13 +856,15 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
                     cleanup_stats["active_caches"] += 1
 
                     # Try to disconnect if cache has disconnect method
-                    if hasattr(cache, 'disconnect'):
+                    if hasattr(cache, "disconnect"):
                         try:
                             await cache.disconnect()
                             cleanup_stats["disconnected_caches"] += 1
                             logger.debug(f"Disconnected cache: {cache_key}")
                         except Exception as e:
-                            error_msg  =  f"Failed to disconnect cache {cache_key}: {str(e)}"
+                            error_msg = (
+                                f"Failed to disconnect cache {cache_key}: {str(e)}"
+                            )
                             cleanup_stats["errors"].append(error_msg)
                             logger.error(error_msg)
 
@@ -860,7 +879,7 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
         return cleanup_stats
 
     except Exception as e:
-        error_msg  =  f"Cache registry cleanup failed: {str(e)}"
+        error_msg = f"Cache registry cleanup failed: {str(e)}"
         cleanup_stats["errors"].append(error_msg)
         logger.error(error_msg)
         return cleanup_stats
@@ -870,7 +889,10 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
 # Health Check Dependencies
 # ============================================================================
 
-async def get_cache_health_status(cache: CacheInterface = Depends(get_cache_service)) -> Dict[str, Any]:
+
+async def get_cache_health_status(
+    cache: CacheInterface = Depends(get_cache_service),
+) -> Dict[str, Any]:
     """
     Get comprehensive cache health status with ping() method support.
 
@@ -900,7 +922,7 @@ async def get_cache_health_status(cache: CacheInterface = Depends(get_cache_serv
                 "timestamp": datetime.utcnow().isoformat()
             }
     """
-    health_status  =  {
+    health_status = {
         "cache_type": type(cache).__name__,
         "status": "unknown",
         "ping_available": False,
@@ -908,32 +930,34 @@ async def get_cache_health_status(cache: CacheInterface = Depends(get_cache_serv
         "operation_test": False,
         "errors": [],
         "warnings": [],
-        "statistics": {}
+        "statistics": {},
     }
 
     try:
         logger.debug(f"Performing health check on cache: {type(cache).__name__}")
 
         # Check for ping() method availability (preferred for health checks)
-        if hasattr(cache, 'ping'):
-            health_status["ping_available"]  =  True
+        if hasattr(cache, "ping"):
+            health_status["ping_available"] = True
             logger.debug("Using ping() method for health check")
 
             try:
-                ping_result  =  await cache.ping()
-                health_status["ping_success"]  =  ping_result
+                ping_result = await cache.ping()
+                health_status["ping_success"] = ping_result
 
                 if ping_result:
-                    health_status["status"]  =  "healthy"
+                    health_status["status"] = "healthy"
                     logger.debug("Cache ping successful")
                 else:
-                    health_status["status"]  =  "degraded"
-                    health_status["warnings"].append("Cache ping failed but cache may still be operational")
+                    health_status["status"] = "degraded"
+                    health_status["warnings"].append(
+                        "Cache ping failed but cache may still be operational"
+                    )
                     logger.warning("Cache ping failed")
 
             except Exception as e:
-                health_status["ping_success"]  =  False
-                health_status["status"]  =  "degraded"
+                health_status["ping_success"] = False
+                health_status["status"] = "degraded"
                 health_status["errors"].append(f"Ping operation failed: {str(e)}")
                 logger.warning(f"Cache ping operation failed: {e}")
 
@@ -943,58 +967,66 @@ async def get_cache_health_status(cache: CacheInterface = Depends(get_cache_serv
 
             try:
                 # Lightweight operation test
-                test_key  =  f"health_check_{asyncio.get_event_loop().time()}"
-                test_value  =  "health_check_value"
+                test_key = f"health_check_{asyncio.get_event_loop().time()}"
+                test_value = "health_check_value"
 
                 # Test set operation
-                await cache.set(test_key, test_value, ttl = 60)
+                await cache.set(test_key, test_value, ttl=60)
 
                 # Test get operation
-                retrieved_value  =  await cache.get(test_key)
+                retrieved_value = await cache.get(test_key)
 
                 if retrieved_value == test_value:
-                    health_status["operation_test"]  =  True
-                    health_status["status"]  =  "healthy"
+                    health_status["operation_test"] = True
+                    health_status["status"] = "healthy"
                     logger.debug("Cache operation test successful")
                 else:
-                    health_status["status"]  =  "degraded"
-                    health_status["warnings"].append("Cache operation test failed - data integrity issue")
+                    health_status["status"] = "degraded"
+                    health_status["warnings"].append(
+                        "Cache operation test failed - data integrity issue"
+                    )
                     logger.warning("Cache operation test failed: data mismatch")
 
                 # Clean up test data
                 try:
                     await cache.delete(test_key)
                 except Exception as cleanup_error:
-                    health_status["warnings"].append(f"Failed to clean up test data: {str(cleanup_error)}")
-                    logger.warning(f"Failed to clean up health check test data: {cleanup_error}")
+                    health_status["warnings"].append(
+                        f"Failed to clean up test data: {str(cleanup_error)}"
+                    )
+                    logger.warning(
+                        f"Failed to clean up health check test data: {cleanup_error}"
+                    )
 
             except Exception as e:
-                health_status["status"]  =  "unhealthy"
+                health_status["status"] = "unhealthy"
                 health_status["errors"].append(f"Operation test failed: {str(e)}")
                 logger.error(f"Cache operation test failed: {e}")
 
         # Add cache statistics if available
-        if hasattr(cache, 'get_stats'):
+        if hasattr(cache, "get_stats"):
             try:
-                stats  =  await cache.get_stats()
-                health_status["statistics"]  =  stats
+                stats = await cache.get_stats()
+                health_status["statistics"] = stats
                 logger.debug("Added cache statistics to health status")
             except Exception as e:
-                health_status["warnings"].append(f"Failed to get cache statistics: {str(e)}")
+                health_status["warnings"].append(
+                    f"Failed to get cache statistics: {str(e)}"
+                )
                 logger.warning(f"Failed to get cache statistics: {e}")
 
         # Final status determination
         if health_status["status"] == "unknown":
             if health_status.get("ping_success") or health_status.get("operation_test"):
-                health_status["status"]  =  "healthy"
+                health_status["status"] = "healthy"
             else:
-                health_status["status"]  =  "unhealthy"
+                health_status["status"] = "unhealthy"
 
         logger.info(f"Cache health check completed: {health_status['status']}")
         return health_status
 
     except Exception as e:
         logger.error(f"Cache health check failed: {e}")
-        health_status["status"]  =  "error"
+        health_status["status"] = "error"
         health_status["errors"].append(f"Health check failed: {str(e)}")
         return health_status

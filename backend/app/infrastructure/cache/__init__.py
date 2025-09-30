@@ -65,39 +65,42 @@ See the component README.md for comprehensive usage examples and configuration d
 See docs/guides/infrastructure/cache/security.md for security architecture and setup.
 """
 
+# AI configuration management
+from .ai_config import AIResponseCacheConfig
 # Base interface
 from .base import CacheInterface
+# Enhanced configuration management
+from .config import (AICacheConfig, CacheConfig, CacheConfigBuilder,
+                     EnvironmentPresets)
+from .config import ValidationResult as ConfigValidationResult
+# FastAPI dependency integration
+from .dependencies import (CacheDependencyManager, cleanup_cache_registry,
+                           get_ai_cache_service, get_cache_config,
+                           get_cache_health_status, get_cache_service,
+                           get_cache_service_conditional,
+                           get_fallback_cache_service, get_settings,
+                           get_test_cache, get_test_redis_cache,
+                           get_web_cache_service, validate_cache_configuration)
+# Factory for explicit cache instantiation
+from .factory import CacheFactory
+# Cache key generation
+from .key_generator import CacheKeyGenerator
 # Memory implementation
 from .memory import InMemoryCache
 # Monitoring and metrics
 from .monitoring import (CachePerformanceMonitor, CompressionMetric,
                          InvalidationMetric, MemoryUsageMetric,
                          PerformanceMetric)
+# Parameter mapping utilities
+from .parameter_mapping import CacheParameterMapper, ValidationResult
 # AI-specific Redis implementation
 from .redis_ai import AIResponseCache
 # Generic Redis implementation
-from .redis_generic import GenericRedisCache, REDIS_AVAILABLE, aioredis
-# Cache key generation
-from .key_generator import CacheKeyGenerator
-# AI configuration management
-from .ai_config import AIResponseCacheConfig
-# Parameter mapping utilities
-from .parameter_mapping import ValidationResult, CacheParameterMapper
+from .redis_generic import REDIS_AVAILABLE, GenericRedisCache, aioredis
 # Security components
 from .security import (RedisCacheSecurityManager, SecurityConfig,
-                       SecurityValidationResult, create_security_config_from_env)
-# Factory for explicit cache instantiation
-from .factory import CacheFactory
-# Enhanced configuration management
-from .config import (CacheConfig, AICacheConfig, CacheConfigBuilder,
-                     EnvironmentPresets, ValidationResult as ConfigValidationResult)
-# FastAPI dependency integration
-from .dependencies import (get_settings, get_cache_config, get_cache_service,
-                           get_web_cache_service, get_ai_cache_service,
-                           get_test_cache, get_test_redis_cache,
-                           get_fallback_cache_service, validate_cache_configuration,
-                           get_cache_service_conditional, cleanup_cache_registry,
-                           get_cache_health_status, CacheDependencyManager)
+                       SecurityValidationResult,
+                       create_security_config_from_env)
 
 # Export all public components
 __all__ = [

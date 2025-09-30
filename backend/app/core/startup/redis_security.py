@@ -39,12 +39,13 @@ print(validation_report.summary())
 
 import logging
 import os
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from app.core.environment import get_environment_info, Environment, FeatureContext
+from app.core.environment import (Environment, FeatureContext,
+                                  get_environment_info)
 from app.core.exceptions import ConfigurationError
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,7 @@ class SecurityValidationResult:
         recommendations: Security improvement recommendations
         certificate_info: TLS certificate information if available
     """
+
     is_valid: bool
     tls_status: str
     encryption_status: str
@@ -84,7 +86,9 @@ class SecurityValidationResult:
         lines.append("")
 
         status_icon = "✅" if self.is_valid else "❌"
-        lines.append(f"{status_icon} Overall Status: {'PASSED' if self.is_valid else 'FAILED'}")
+        lines.append(
+            f"{status_icon} Overall Status: {'PASSED' if self.is_valid else 'FAILED'}"
+        )
         lines.append("")
 
         lines.append("Security Components:")
@@ -138,7 +142,9 @@ class RedisSecurityValidator:
         """Initialize the Redis security validator."""
         self.logger = logging.getLogger(__name__)
 
-    def validate_production_security(self, redis_url: str, insecure_override: bool = False) -> None:
+    def validate_production_security(
+        self, redis_url: str, insecure_override: bool = False
+    ) -> None:
         """
         Validate Redis security for production environments.
 
@@ -209,7 +215,9 @@ class RedisSecurityValidator:
 
         # Validate TLS usage in production - provide detailed guidance
         if not self._is_secure_connection(redis_url):
-            connection_type = redis_url.split('://')[0] if '://' in redis_url else 'unknown'
+            connection_type = (
+                redis_url.split("://")[0] if "://" in redis_url else "unknown"
+            )
 
             raise ConfigurationError(
                 "🔒 SECURITY ERROR: Production environment requires secure Redis connection\n"
@@ -262,8 +270,12 @@ class RedisSecurityValidator:
                     "confidence": env_info.confidence,
                     "validation_type": "production_security",
                     "required_fix": "tls_connection",
-                    "fix_options": ["tls_connection", "automated_setup", "insecure_override"]
-                }
+                    "fix_options": [
+                        "tls_connection",
+                        "automated_setup",
+                        "insecure_override",
+                    ],
+                },
             )
 
         # Success message - provide security confirmation
@@ -300,19 +312,22 @@ class RedisSecurityValidator:
             return False
 
         # TLS connections are always secure
-        if redis_url.startswith('rediss://'):
+        if redis_url.startswith("rediss://"):
             return True
 
         # Redis connections with authentication are considered secure
-        if redis_url.startswith('redis://') and '@' in redis_url:
+        if redis_url.startswith("redis://") and "@" in redis_url:
             return True
 
         # All other connections are insecure
         return False
 
-    def validate_tls_certificates(self, cert_path: Optional[str] = None,
-                                   key_path: Optional[str] = None,
-                                   ca_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_tls_certificates(
+        self,
+        cert_path: Optional[str] = None,
+        key_path: Optional[str] = None,
+        ca_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Validate TLS certificate files and their properties.
 
@@ -331,12 +346,7 @@ class RedisSecurityValidator:
                 ca_path="/path/to/ca.pem"
             )
         """
-        result = {
-            "valid": True,
-            "errors": [],
-            "warnings": [],
-            "cert_info": {}
-        }
+        result = {"valid": True, "errors": [], "warnings": [], "cert_info": {}}
 
         # Check certificate file existence
         if cert_path:
@@ -355,31 +365,47 @@ class RedisSecurityValidator:
                     from cryptography import x509
                     from cryptography.hazmat.backends import default_backend
 
-                    with open(cert_file, 'rb') as f:
+                    with open(cert_file, "rb") as f:
                         cert_data = f.read()
-                        cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+                        cert = x509.load_pem_x509_certificate(
+                            cert_data, default_backend()
+                        )
 
-                        expiration = cert.not_valid_after_utc if hasattr(cert, 'not_valid_after_utc') else cert.not_valid_after
+                        expiration = (
+                            cert.not_valid_after_utc
+                            if hasattr(cert, "not_valid_after_utc")
+                            else cert.not_valid_after
+                        )
                         result["cert_info"]["expires"] = expiration.isoformat()
 
                         # Check expiration warnings
-                        days_until_expiry = (expiration.replace(tzinfo=None) - datetime.utcnow()).days
+                        days_until_expiry = (
+                            expiration.replace(tzinfo=None) - datetime.utcnow()
+                        ).days
                         result["cert_info"]["days_until_expiry"] = days_until_expiry
 
                         if days_until_expiry < 0:
                             result["valid"] = False
-                            result["errors"].append(f"Certificate expired {-days_until_expiry} days ago")
+                            result["errors"].append(
+                                f"Certificate expired {-days_until_expiry} days ago"
+                            )
                         elif days_until_expiry < 30:
-                            result["warnings"].append(f"Certificate expires in {days_until_expiry} days - renewal recommended")
+                            result["warnings"].append(
+                                f"Certificate expires in {days_until_expiry} days - renewal recommended"
+                            )
                         elif days_until_expiry < 90:
-                            result["warnings"].append(f"Certificate expires in {days_until_expiry} days")
+                            result["warnings"].append(
+                                f"Certificate expires in {days_until_expiry} days"
+                            )
 
                         # Get subject information
                         subject = cert.subject
                         result["cert_info"]["subject"] = subject.rfc4514_string()
 
                 except ImportError:
-                    result["warnings"].append("cryptography library not available - certificate validation limited")
+                    result["warnings"].append(
+                        "cryptography library not available - certificate validation limited"
+                    )
                 except Exception as e:
                     result["warnings"].append(f"Could not parse certificate: {str(e)}")
 
@@ -409,7 +435,9 @@ class RedisSecurityValidator:
 
         return result
 
-    def validate_encryption_key(self, encryption_key: Optional[str] = None) -> Dict[str, Any]:
+    def validate_encryption_key(
+        self, encryption_key: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Validate encryption key format and strength.
 
@@ -422,17 +450,14 @@ class RedisSecurityValidator:
         Examples:
             result = validator.validate_encryption_key("your-fernet-key")
         """
-        result = {
-            "valid": True,
-            "errors": [],
-            "warnings": [],
-            "key_info": {}
-        }
+        result = {"valid": True, "errors": [], "warnings": [], "key_info": {}}
 
         if not encryption_key:
             result["valid"] = False
             result["errors"].append("No encryption key provided")
-            result["warnings"].append("Data encryption is disabled - not recommended for production")
+            result["warnings"].append(
+                "Data encryption is disabled - not recommended for production"
+            )
             return result
 
         # Check key format (Fernet keys are 44 characters base64-encoded)
@@ -449,7 +474,7 @@ class RedisSecurityValidator:
 
             # Attempt to create Fernet instance
             if isinstance(encryption_key, str):
-                key_bytes = encryption_key.encode('utf-8')
+                key_bytes = encryption_key.encode("utf-8")
             else:
                 key_bytes = encryption_key
 
@@ -462,7 +487,9 @@ class RedisSecurityValidator:
 
             if decrypted != test_data:
                 result["valid"] = False
-                result["errors"].append("Encryption key validation failed - encrypt/decrypt test failed")
+                result["errors"].append(
+                    "Encryption key validation failed - encrypt/decrypt test failed"
+                )
             else:
                 result["key_info"]["format"] = "Fernet (AES-128-CBC with HMAC)"
                 result["key_info"]["length"] = "256-bit"
@@ -470,14 +497,18 @@ class RedisSecurityValidator:
 
         except ImportError:
             result["valid"] = False
-            result["errors"].append("cryptography library not available - encryption key cannot be validated")
+            result["errors"].append(
+                "cryptography library not available - encryption key cannot be validated"
+            )
         except Exception as e:
             result["valid"] = False
             result["errors"].append(f"Invalid encryption key: {str(e)}")
 
         return result
 
-    def validate_redis_auth(self, redis_url: str, auth_password: Optional[str] = None) -> Dict[str, Any]:
+    def validate_redis_auth(
+        self, redis_url: str, auth_password: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Validate Redis authentication configuration.
 
@@ -491,15 +522,10 @@ class RedisSecurityValidator:
         Examples:
             result = validator.validate_redis_auth("redis://user:pass@localhost:6379")
         """
-        result = {
-            "valid": True,
-            "errors": [],
-            "warnings": [],
-            "auth_info": {}
-        }
+        result = {"valid": True, "errors": [], "warnings": [], "auth_info": {}}
 
         # Check if URL contains authentication
-        has_auth_in_url = '@' in redis_url and '://' in redis_url
+        has_auth_in_url = "@" in redis_url and "://" in redis_url
 
         if has_auth_in_url:
             result["auth_info"]["method"] = "URL-embedded credentials"
@@ -507,12 +533,14 @@ class RedisSecurityValidator:
 
             # Extract username/password if present
             try:
-                url_parts = redis_url.split('://', 1)[1]
-                if '@' in url_parts:
-                    auth_part = url_parts.split('@')[0]
-                    if ':' in auth_part:
-                        username, password = auth_part.split(':', 1)
-                        result["auth_info"]["username"] = username if username else "(default)"
+                url_parts = redis_url.split("://", 1)[1]
+                if "@" in url_parts:
+                    auth_part = url_parts.split("@")[0]
+                    if ":" in auth_part:
+                        username, password = auth_part.split(":", 1)
+                        result["auth_info"]["username"] = (
+                            username if username else "(default)"
+                        )
 
                         # Check password strength
                         if len(password) < 16:
@@ -522,7 +550,9 @@ class RedisSecurityValidator:
                     else:
                         result["auth_info"]["password_only"] = True
             except Exception as e:
-                result["warnings"].append(f"Could not parse authentication from URL: {str(e)}")
+                result["warnings"].append(
+                    f"Could not parse authentication from URL: {str(e)}"
+                )
 
         elif auth_password:
             result["auth_info"]["method"] = "Separate password configuration"
@@ -537,9 +567,13 @@ class RedisSecurityValidator:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             if env_info.environment == Environment.PRODUCTION:
                 result["valid"] = False
-                result["errors"].append("No authentication configured for production environment")
+                result["errors"].append(
+                    "No authentication configured for production environment"
+                )
             else:
-                result["warnings"].append("No authentication configured - acceptable for development only")
+                result["warnings"].append(
+                    "No authentication configured - acceptable for development only"
+                )
             result["auth_info"]["status"] = "Missing"
 
         return result
@@ -552,7 +586,7 @@ class RedisSecurityValidator:
         tls_key_path: Optional[str] = None,
         tls_ca_path: Optional[str] = None,
         auth_password: Optional[str] = None,
-        test_connectivity: bool = False
+        test_connectivity: bool = False,
     ) -> SecurityValidationResult:
         """
         Perform comprehensive security configuration validation.
@@ -585,13 +619,15 @@ class RedisSecurityValidator:
         env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
 
         # Validate TLS
-        tls_result = self.validate_tls_certificates(tls_cert_path, tls_key_path, tls_ca_path)
+        tls_result = self.validate_tls_certificates(
+            tls_cert_path, tls_key_path, tls_ca_path
+        )
         tls_status = "✅ Valid" if tls_result["valid"] else "❌ Invalid"
 
-        if redis_url.startswith('rediss://'):
+        if redis_url.startswith("rediss://"):
             if not tls_result["valid"]:
                 tls_status = "⚠️  TLS URL but certificate issues"
-        elif redis_url.startswith('redis://'):
+        elif redis_url.startswith("redis://"):
             if env_info.environment == Environment.PRODUCTION:
                 tls_status = "❌ No TLS in production"
             else:
@@ -606,7 +642,9 @@ class RedisSecurityValidator:
         auth_status = "✅ Configured" if auth_result["valid"] else "❌ Missing"
 
         # Connectivity status (placeholder for actual test)
-        connectivity_status = "⏭️  Skipped" if not test_connectivity else "⚠️  Not implemented"
+        connectivity_status = (
+            "⏭️  Skipped" if not test_connectivity else "⚠️  Not implemented"
+        )
 
         # Collect all warnings and errors
         all_warnings = []
@@ -622,14 +660,21 @@ class RedisSecurityValidator:
         all_errors.extend(auth_result.get("errors", []))
 
         # Generate recommendations
-        if not redis_url.startswith('rediss://') and env_info.environment == Environment.PRODUCTION:
+        if (
+            not redis_url.startswith("rediss://")
+            and env_info.environment == Environment.PRODUCTION
+        ):
             recommendations.append("Use TLS (rediss://) for production deployments")
 
         if not encryption_result["valid"]:
-            recommendations.append("Enable encryption with REDIS_ENCRYPTION_KEY environment variable")
+            recommendations.append(
+                "Enable encryption with REDIS_ENCRYPTION_KEY environment variable"
+            )
 
         if not auth_result["valid"]:
-            recommendations.append("Configure Redis authentication with strong password")
+            recommendations.append(
+                "Configure Redis authentication with strong password"
+            )
 
         if tls_result.get("cert_info", {}).get("days_until_expiry", 365) < 90:
             recommendations.append("Plan certificate renewal soon")
@@ -651,10 +696,12 @@ class RedisSecurityValidator:
             warnings=all_warnings,
             errors=all_errors,
             recommendations=recommendations,
-            certificate_info=cert_info
+            certificate_info=cert_info,
         )
 
-    def validate_startup_security(self, redis_url: str, insecure_override: Optional[bool] = None) -> None:
+    def validate_startup_security(
+        self, redis_url: str, insecure_override: Optional[bool] = None
+    ) -> None:
         """
         Comprehensive Redis security validation for application startup.
 
@@ -681,7 +728,9 @@ class RedisSecurityValidator:
 
         # Determine insecure override from environment if not provided
         if insecure_override is None:
-            insecure_override = os.getenv("REDIS_INSECURE_ALLOW_PLAINTEXT", "false").lower() == "true"
+            insecure_override = (
+                os.getenv("REDIS_INSECURE_ALLOW_PLAINTEXT", "false").lower() == "true"
+            )
 
         # Log security validation attempt
         self.logger.info(
@@ -705,21 +754,25 @@ class RedisSecurityValidator:
             tls_key_path=tls_key_path,
             tls_ca_path=tls_ca_path,
             auth_password=auth_password,
-            test_connectivity=False
+            test_connectivity=False,
         )
 
         # Log validation summary
         self.logger.info(f"\n{validation_result.summary()}")
 
         # Log final security status
-        security_status = "SECURE" if self._is_secure_connection(redis_url) else "INSECURE"
+        security_status = (
+            "SECURE" if self._is_secure_connection(redis_url) else "INSECURE"
+        )
         self.logger.info(
             f"✅ Redis security validation complete: {security_status} connection in "
             f"{env_info.environment.value} environment"
         )
 
 
-def validate_redis_security(redis_url: str, insecure_override: Optional[bool] = None) -> None:
+def validate_redis_security(
+    redis_url: str, insecure_override: Optional[bool] = None
+) -> None:
     """
     Convenience function for Redis security validation.
 

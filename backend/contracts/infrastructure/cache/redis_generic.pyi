@@ -95,11 +95,11 @@ import pickle
 import time
 import zlib
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-from app.core.exceptions import InfrastructureError, ConfigurationError
 
 
 class GenericRedisCache(CacheInterface):

@@ -195,8 +195,8 @@ import sys
 import time
 from typing import Any, Dict, List, Optional
 
-from app.infrastructure.cache.base import CacheInterface
 from app.core.exceptions import ConfigurationError
+from app.infrastructure.cache.base import CacheInterface
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +251,12 @@ class InMemoryCache(CacheInterface):
         cache.clear()  # Remove all entries for clean test state
     """
 
-    def __init__(self, default_ttl: int = 3600, max_size: int = 1000, fail_on_connection_error: bool = False):
+    def __init__(
+        self,
+        default_ttl: int = 3600,
+        max_size: int = 1000,
+        fail_on_connection_error: bool = False,
+    ):
         """
         Initialize in-memory cache with TTL and LRU eviction configuration.
 
@@ -276,13 +281,22 @@ class InMemoryCache(CacheInterface):
         """
         # Validate parameters per public contract
         if not isinstance(default_ttl, int):
-            raise ConfigurationError("default_ttl must be an integer", {"default_ttl": default_ttl})
+            raise ConfigurationError(
+                "default_ttl must be an integer", {"default_ttl": default_ttl}
+            )
         if not isinstance(max_size, int):
-            raise ConfigurationError("max_size must be an integer", {"max_size": max_size})
+            raise ConfigurationError(
+                "max_size must be an integer", {"max_size": max_size}
+            )
         if not (1 <= default_ttl <= 86400):
-            raise ConfigurationError("default_ttl must be between 1 and 86400 seconds", {"default_ttl": default_ttl})
+            raise ConfigurationError(
+                "default_ttl must be between 1 and 86400 seconds",
+                {"default_ttl": default_ttl},
+            )
         if not (1 <= max_size <= 100000):
-            raise ConfigurationError("max_size must be between 1 and 100000 entries", {"max_size": max_size})
+            raise ConfigurationError(
+                "max_size must be between 1 and 100000 entries", {"max_size": max_size}
+            )
 
         self.default_ttl = default_ttl
         self.max_size = max_size
@@ -537,7 +551,9 @@ class InMemoryCache(CacheInterface):
             "active_entries": active_entries,
             "max_size": self.max_size,
             "utilization": f"{active_entries}/{self.max_size}",
-            "utilization_percent": (active_entries / self.max_size) * 100 if self.max_size > 0 else 0.0,
+            "utilization_percent": (active_entries / self.max_size) * 100
+            if self.max_size > 0
+            else 0.0,
             "default_ttl": self.default_ttl,
             # Monitoring metrics per public contract
             "hits": self._hits,
@@ -557,11 +573,13 @@ class InMemoryCache(CacheInterface):
         else:
             mem_str = f"{bytes_val}B"
 
-        stats.update({
-            "memory_cache_entries": active_entries,
-            "memory_cache_size": self.max_size,
-            "memory_usage": mem_str,
-        })
+        stats.update(
+            {
+                "memory_cache_entries": active_entries,
+                "memory_cache_size": self.max_size,
+                "memory_usage": mem_str,
+            }
+        )
 
         return stats
 
@@ -633,48 +651,49 @@ class InMemoryCache(CacheInterface):
         remaining = int(expires_at - time.time())
         return max(0, remaining)  # Don't return negative values
 
-    async def invalidate_pattern(self, pattern: str, operation_context: str = "") -> int:
+    async def invalidate_pattern(
+        self, pattern: str, operation_context: str = ""
+    ) -> int:
         """
         Invalidate cache entries matching a glob-style pattern.
-        
-        Removes all cache entries whose keys match the specified pattern. 
+
+        Removes all cache entries whose keys match the specified pattern.
         This method provides compatibility with Redis-based cache APIs that
         support pattern-based invalidation for administrative operations.
-        
+
         Args:
             pattern: Glob-style pattern to match cache keys. Empty string matches all keys.
                     Supports wildcards: * (any characters), ? (single character)
             operation_context: Context information for logging/monitoring (optional)
-        
+
         Returns:
             int: Number of cache entries that were invalidated
-            
+
         Behavior:
             - Pattern matching uses Python fnmatch for glob-style patterns
             - Empty pattern matches all entries (complete cache clear)
             - Expired entries are also removed during pattern matching
             - Operation is atomic - either all matching keys are removed or none
-            
+
         Example:
             >>> cache = InMemoryCache()
             >>> await cache.set("user:123", "data1")
-            >>> await cache.set("user:456", "data2") 
+            >>> await cache.set("user:456", "data2")
             >>> await cache.set("session:abc", "session_data")
             >>> count = await cache.invalidate_pattern("user:*")
             >>> assert count == 2  # Removed user:123 and user:456
         """
         import fnmatch
-        
+
         if not pattern:
             # Empty pattern means invalidate all
             keys_to_remove = list(self._cache.keys())
         else:
             # Find keys matching the pattern
             keys_to_remove = [
-                key for key in self._cache.keys()
-                if fnmatch.fnmatch(key, pattern)
+                key for key in self._cache.keys() if fnmatch.fnmatch(key, pattern)
             ]
-        
+
         # Remove matching keys
         removed_count = 0
         for key in keys_to_remove:
@@ -683,22 +702,22 @@ class InMemoryCache(CacheInterface):
                 if key in self._access_order:
                     self._access_order.remove(key)
                 removed_count += 1
-        
+
         if operation_context and removed_count > 0:
             logger.debug(
                 f"InMemoryCache invalidated {removed_count} entries "
                 f"for pattern '{pattern}' (context: {operation_context})"
             )
-        
+
         return removed_count
 
     def get_invalidation_frequency_stats(self) -> dict:
         """
         Get cache invalidation frequency and pattern statistics.
-        
+
         For InMemoryCache, this is a stub implementation that returns empty stats
         since invalidation tracking is not implemented for memory-only cache.
-        
+
         Returns:
             dict: Empty statistics structure for consistency with API contract
         """
@@ -706,16 +725,16 @@ class InMemoryCache(CacheInterface):
             "frequency": {},
             "patterns": {},
             "total_operations": 0,
-            "performance": {}
+            "performance": {},
         }
 
     def get_invalidation_recommendations(self) -> list:
         """
         Get optimization recommendations based on invalidation patterns.
-        
+
         For InMemoryCache, this returns no recommendations since pattern
         analysis is not implemented for memory-only cache.
-        
+
         Returns:
             list: Empty recommendations list
         """
@@ -724,21 +743,21 @@ class InMemoryCache(CacheInterface):
     def get_cache_statistics(self) -> dict:
         """
         Get current memory cache statistics for internal use.
-        
+
         Returns:
             dict: Basic cache statistics including entry count and memory usage
         """
         active_entries = len(self.get_active_keys())
         total_entries = len(self._cache)
-        
+
         # Calculate approximate memory usage
         memory_bytes = 0
         for entry in self._cache.values():
             try:
-                memory_bytes += len(str(entry).encode('utf-8'))
+                memory_bytes += len(str(entry).encode("utf-8"))
             except:
                 memory_bytes += 100  # Rough estimate for non-string data
-        
+
         # Format memory size
         if memory_bytes >= 1024 * 1024:
             memory_str = f"{memory_bytes / (1024 * 1024):.1f}MB"
@@ -746,13 +765,15 @@ class InMemoryCache(CacheInterface):
             memory_str = f"{memory_bytes / 1024:.1f}KB"
         else:
             memory_str = f"{memory_bytes}B"
-        
+
         return {
             "active_entries": active_entries,
             "total_entries": total_entries,
             "memory_usage": memory_str,
             "max_size": self.max_size,
-            "utilization_percent": (active_entries / self.max_size) * 100 if self.max_size > 0 else 0
+            "utilization_percent": (active_entries / self.max_size) * 100
+            if self.max_size > 0
+            else 0,
         }
 
     async def get_cache_stats(self) -> dict:
@@ -779,14 +800,16 @@ class InMemoryCache(CacheInterface):
         return {
             "redis": {
                 "status": "disconnected",
-                "message": "InMemoryCache does not use Redis backend"
+                "message": "InMemoryCache does not use Redis backend",
             },
             "memory": {
                 "status": "active",
                 "entries": active_entries,
                 "max_size": self.max_size,
-                "utilization_percent": (active_entries / self.max_size) * 100 if self.max_size > 0 else 0,
-                "memory_usage": memory_stats.get("memory_usage", "0B")
+                "utilization_percent": (active_entries / self.max_size) * 100
+                if self.max_size > 0
+                else 0,
+                "memory_usage": memory_stats.get("memory_usage", "0B"),
             },
             "performance": {
                 "status": "active",
@@ -794,6 +817,6 @@ class InMemoryCache(CacheInterface):
                 "total_operations": total_operations,
                 "hits": self._hits,
                 "misses": self._misses,
-                "cache_type": "memory_only"
-            }
+                "cache_type": "memory_only",
+            },
         }

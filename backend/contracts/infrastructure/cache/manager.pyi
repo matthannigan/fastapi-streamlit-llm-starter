@@ -34,7 +34,7 @@ cache_type = manager.cache_type  # "redis_secure" or "memory"
 """
 
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 from app.core.exceptions import ConfigurationError
 
 

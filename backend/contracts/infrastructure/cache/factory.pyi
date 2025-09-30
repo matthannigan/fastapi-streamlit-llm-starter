@@ -106,12 +106,12 @@ Dependencies:
 """
 
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
-from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
+from typing import TYPE_CHECKING, Any, Dict, Optional
+from app.core.exceptions import ConfigurationError, InfrastructureError, ValidationError
 from app.infrastructure.cache.base import CacheInterface
-from app.infrastructure.cache.redis_generic import GenericRedisCache
-from app.infrastructure.cache.redis_ai import AIResponseCache
 from app.infrastructure.cache.memory import InMemoryCache
+from app.infrastructure.cache.redis_ai import AIResponseCache
+from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 
 class CacheFactory:

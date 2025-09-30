@@ -8,6 +8,6 @@ components including security, configuration, and infrastructure validation.
 from .redis_security import RedisSecurityValidator, validate_redis_security
 
 __all__ = [
-    'RedisSecurityValidator',
-    'validate_redis_security',
+    "RedisSecurityValidator",
+    "validate_redis_security",
 ]

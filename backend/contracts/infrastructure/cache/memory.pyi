@@ -194,8 +194,8 @@ import logging
 import sys
 import time
 from typing import Any, Dict, List, Optional
-from app.infrastructure.cache.base import CacheInterface
 from app.core.exceptions import ConfigurationError
+from app.infrastructure.cache.base import CacheInterface
 
 
 class InMemoryCache(CacheInterface):
@@ -375,7 +375,7 @@ class InMemoryCache(CacheInterface):
         """
         Invalidate cache entries matching a glob-style pattern.
         
-        Removes all cache entries whose keys match the specified pattern. 
+        Removes all cache entries whose keys match the specified pattern.
         This method provides compatibility with Redis-based cache APIs that
         support pattern-based invalidation for administrative operations.
         
@@ -386,17 +386,17 @@ class InMemoryCache(CacheInterface):
         
         Returns:
             int: Number of cache entries that were invalidated
-            
+        
         Behavior:
             - Pattern matching uses Python fnmatch for glob-style patterns
             - Empty pattern matches all entries (complete cache clear)
             - Expired entries are also removed during pattern matching
             - Operation is atomic - either all matching keys are removed or none
-            
+        
         Example:
             >>> cache = InMemoryCache()
             >>> await cache.set("user:123", "data1")
-            >>> await cache.set("user:456", "data2") 
+            >>> await cache.set("user:456", "data2")
             >>> await cache.set("session:abc", "session_data")
             >>> count = await cache.invalidate_pattern("user:*")
             >>> assert count == 2  # Removed user:123 and user:456

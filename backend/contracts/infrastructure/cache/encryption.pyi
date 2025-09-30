@@ -34,10 +34,10 @@ if encryption.is_enabled:
 ```
 """
 
-import logging
 import json
+import logging
 import time
-from typing import Dict, Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 from app.core.exceptions import ConfigurationError
 
 
