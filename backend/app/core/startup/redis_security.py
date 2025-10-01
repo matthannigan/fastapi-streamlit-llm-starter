@@ -143,7 +143,7 @@ class RedisSecurityValidator:
         self.logger = logging.getLogger(__name__)
 
     def validate_production_security(
-        self, redis_url: str, insecure_override: bool = False
+        self, redis_url: Optional[str], insecure_override: bool = False
     ) -> None:
         """
         Validate Redis security for production environments.
@@ -154,13 +154,13 @@ class RedisSecurityValidator:
         are not met.
 
         Args:
-            redis_url: Redis connection string to validate
+            redis_url: Redis connection string to validate. Must not be None or empty.
             insecure_override: Explicit override to allow insecure connections
                              in production (logs prominent security warning)
 
         Raises:
-            ConfigurationError: If production environment lacks required security
-                              and no explicit override is provided
+            ConfigurationError: If redis_url is None/empty, or if production environment
+                              lacks required security and no explicit override is provided
 
         Examples:
             # Production validation (must be secure)
@@ -175,6 +175,35 @@ class RedisSecurityValidator:
                 insecure_override=True
             )
         """
+        # Defensive validation - fail fast with clear error message
+        if not redis_url:
+            raise ConfigurationError(
+                "🔒 CONFIGURATION ERROR: Redis URL is required for security validation\n"
+                "\n"
+                "The Redis connection URL must be provided and cannot be empty.\n"
+                "This typically indicates a missing or incorrectly configured environment variable.\n"
+                "\n"
+                "🔧 How to fix this:\n"
+                "\n"
+                "  1. Set the REDIS_URL environment variable:\n"
+                "     export REDIS_URL='redis://localhost:6379'  # Development\n"
+                "     export REDIS_URL='rediss://redis:6380'     # Production (TLS)\n"
+                "\n"
+                "  2. Verify environment variable is loaded:\n"
+                "     echo $REDIS_URL\n"
+                "\n"
+                "  3. Check your .env file or environment configuration\n"
+                "\n"
+                "📚 Documentation:\n"
+                "   • Environment variables: docs/get-started/ENVIRONMENT_VARIABLES.md\n"
+                "   • Cache setup: docs/guides/infrastructure/CACHE.md\n",
+                context={
+                    "redis_url": redis_url,
+                    "validation_type": "production_security",
+                    "required_fix": "set_redis_url",
+                },
+            )
+
         env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
 
         # Only enforce TLS in production environments
@@ -580,7 +609,7 @@ class RedisSecurityValidator:
 
     def validate_security_configuration(
         self,
-        redis_url: str,
+        redis_url: Optional[str],
         encryption_key: Optional[str] = None,
         tls_cert_path: Optional[str] = None,
         tls_key_path: Optional[str] = None,
@@ -595,7 +624,7 @@ class RedisSecurityValidator:
         TLS, encryption, authentication, and optionally connectivity testing.
 
         Args:
-            redis_url: Redis connection URL
+            redis_url: Redis connection URL. Must not be None or empty.
             encryption_key: Fernet encryption key
             tls_cert_path: Path to TLS client certificate
             tls_key_path: Path to TLS private key
@@ -605,6 +634,9 @@ class RedisSecurityValidator:
 
         Returns:
             SecurityValidationResult with detailed validation information
+
+        Raises:
+            ConfigurationError: If redis_url is None or empty
 
         Examples:
             # Full validation
@@ -616,6 +648,23 @@ class RedisSecurityValidator:
             )
             print(result.summary())
         """
+        # Defensive validation - fail fast with clear error message
+        if not redis_url:
+            raise ConfigurationError(
+                "🔒 CONFIGURATION ERROR: Redis URL is required for security validation\n"
+                "\n"
+                "The Redis connection URL must be provided and cannot be empty.\n"
+                "\n"
+                "📚 Documentation:\n"
+                "   • Environment variables: docs/get-started/ENVIRONMENT_VARIABLES.md\n"
+                "   • Cache setup: docs/guides/infrastructure/CACHE.md\n",
+                context={
+                    "redis_url": redis_url,
+                    "validation_type": "security_configuration",
+                    "required_fix": "set_redis_url",
+                },
+            )
+
         env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
 
         # Validate TLS
@@ -700,7 +749,7 @@ class RedisSecurityValidator:
         )
 
     def validate_startup_security(
-        self, redis_url: str, insecure_override: Optional[bool] = None
+        self, redis_url: Optional[str], insecure_override: Optional[bool] = None
     ) -> None:
         """
         Comprehensive Redis security validation for application startup.
@@ -710,12 +759,12 @@ class RedisSecurityValidator:
         security status.
 
         Args:
-            redis_url: Redis connection string to validate
+            redis_url: Redis connection string to validate. Must not be None or empty.
             insecure_override: Optional explicit override for insecure connections
                              If None, will be determined from environment variables
 
         Raises:
-            ConfigurationError: If security requirements are not met
+            ConfigurationError: If redis_url is None/empty, or if security requirements are not met
 
         Examples:
             # Standard startup validation
@@ -771,7 +820,7 @@ class RedisSecurityValidator:
 
 
 def validate_redis_security(
-    redis_url: str, insecure_override: Optional[bool] = None
+    redis_url: Optional[str], insecure_override: Optional[bool] = None
 ) -> None:
     """
     Convenience function for Redis security validation.
@@ -780,11 +829,11 @@ def validate_redis_security(
     without requiring explicit validator instantiation.
 
     Args:
-        redis_url: Redis connection string to validate
+        redis_url: Redis connection string to validate. Must not be None or empty.
         insecure_override: Optional explicit override for insecure connections
 
     Raises:
-        ConfigurationError: If security requirements are not met
+        ConfigurationError: If redis_url is None/empty, or if security requirements are not met
 
     Examples:
         # Simple validation
