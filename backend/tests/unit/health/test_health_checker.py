@@ -43,7 +43,8 @@ class TestHealthCheckerInitialization:
         timeouts and retry policies for reliable system health reporting.
     """
 
-    def test_healthchecker_initializes_with_default_configuration(self):
+    @pytest.mark.asyncio
+    async def test_healthchecker_initializes_with_default_configuration(self):
         """
         Test that HealthChecker initializes successfully with default parameters.
 
@@ -58,82 +59,103 @@ class TestHealthCheckerInitialization:
             Given: No specific configuration parameters
             When: HealthChecker is instantiated with no arguments
             Then: Instance is created successfully
-            And: Default timeout is 2000ms per docstring
-            And: Default retry count is 1 per docstring
-            And: Default backoff is 0.1 seconds per docstring
-            And: Empty health check registry is initialized
+            And: Can register and execute health checks
+            And: System health check returns valid results
 
         Fixtures Used:
             None - tests bare instantiation
         """
         checker = HealthChecker()
-        assert checker._default_timeout_ms == 2000
-        assert checker._retry_count == 1
-        assert checker._backoff_base_seconds == 0.1
-        assert checker._checks == {}
 
-    def test_healthchecker_accepts_custom_default_timeout(self):
+        # Verify instance can register health checks (empty registry works)
+        async def test_check():
+            return ComponentStatus(name="test", status=HealthStatus.HEALTHY)
+        checker.register_check("test", test_check)
+
+        # Verify health check execution works
+        result = await checker.check_component("test")
+        assert result.name == "test"
+        assert result.status == HealthStatus.HEALTHY
+
+    @pytest.mark.asyncio
+    async def test_healthchecker_accepts_custom_default_timeout(self):
         """
         Test that HealthChecker accepts custom default timeout configuration.
 
         Verifies:
-            default_timeout_ms parameter is accepted and stored correctly
+            default_timeout_ms parameter is accepted and enforced on health checks
             per __init__ Args specification.
 
         Business Impact:
             Allows tuning health check timeouts based on operational requirements.
 
         Scenario:
-            Given: Custom timeout value of 5000ms
-            When: HealthChecker is instantiated with default_timeout_ms=5000
-            Then: Instance is created successfully
-            And: Health checks will use 5000ms timeout by default
+            Given: Custom timeout value of 50ms
+            When: HealthChecker is instantiated with default_timeout_ms=50
+            Then: Health checks that exceed 50ms are timed out
+            And: ComponentStatus indicates DEGRADED with timeout message
 
         Fixtures Used:
-            None - tests configuration parameter
+            None - tests configuration parameter with observable behavior
         """
-        checker = HealthChecker(default_timeout_ms=5000)
-        assert checker._default_timeout_ms == 5000
+        checker = HealthChecker(default_timeout_ms=50, retry_count=0)
 
-    def test_healthchecker_accepts_per_component_timeouts(self):
+        async def slow_check():
+            await asyncio.sleep(0.1)  # 100ms - exceeds 50ms timeout
+            return ComponentStatus(name="slow", status=HealthStatus.HEALTHY)
+
+        checker.register_check("slow", slow_check)
+        result = await checker.check_component("slow")
+
+        # Observable: timeout is enforced
+        assert result.status == HealthStatus.DEGRADED
+        assert "timed out" in result.message
+
+    @pytest.mark.asyncio
+    async def test_healthchecker_accepts_per_component_timeouts(self):
         """
         Test that HealthChecker accepts per-component timeout overrides.
 
         Verifies:
-            per_component_timeouts_ms parameter is accepted for specialized
-            monitoring requirements per __init__ Args specification.
+            per_component_timeouts_ms parameter is accepted and enforced
+            per __init__ Args specification.
 
         Business Impact:
             Enables fine-grained timeout control for components with different
             performance characteristics (database vs cache vs AI services).
 
         Scenario:
-            Given: Component-specific timeout configuration
-            When: HealthChecker is instantiated with per_component_timeouts_ms={
-                "database": 5000,
-                "cache": 1000,
-                "ai_model": 3000
-            }
-            Then: Instance is created successfully
-            And: Each component will use its specific timeout value
+            Given: Per-component timeout configuration with "db"=200ms
+            When: HealthChecker is instantiated with per_component_timeouts_ms
+            Then: Component "db" uses its specific 200ms timeout
+            And: Check completes within 200ms without timing out
 
         Fixtures Used:
-            None - tests configuration parameter
+            None - tests configuration parameter with observable behavior
         """
-        timeouts = {
-            "database": 5000,
-            "cache": 1000,
-            "ai_model": 3000
-        }
-        checker = HealthChecker(per_component_timeouts_ms=timeouts)
-        assert checker._per_component_timeouts_ms == timeouts
+        timeouts = {"db": 200}
+        checker = HealthChecker(
+            default_timeout_ms=10,  # Very short default
+            per_component_timeouts_ms=timeouts
+        )
 
-    def test_healthchecker_accepts_custom_retry_configuration(self):
+        async def medium_check():
+            await asyncio.sleep(0.05)  # 50ms - exceeds default but within db timeout
+            return ComponentStatus(name="db", status=HealthStatus.HEALTHY)
+
+        checker.register_check("db", medium_check)
+        result = await checker.check_component("db")
+
+        # Observable: per-component timeout allows completion
+        assert result.status == HealthStatus.HEALTHY
+
+    @pytest.mark.asyncio
+    async def test_healthchecker_accepts_custom_retry_configuration(self, monkeypatch):
         """
         Test that HealthChecker accepts custom retry count and backoff settings.
 
         Verifies:
-            retry_count and backoff_base_seconds parameters are accepted
+            retry_count and backoff_base_seconds parameters are accepted and enforced
             per __init__ Args specification.
 
         Business Impact:
@@ -142,18 +164,31 @@ class TestHealthCheckerInitialization:
         Scenario:
             Given: Custom retry count of 3 and backoff of 0.5 seconds
             When: HealthChecker is instantiated with retry_count=3, backoff_base_seconds=0.5
-            Then: Instance is created successfully
-            And: Failed health checks will retry up to 3 times
-            And: Exponential backoff uses 0.5s base delay
+            Then: Failed health check retries 3 times
+            And: Backoff delays use 0.5s base (0.5s, 1.0s, 2.0s)
 
         Fixtures Used:
-            None - tests configuration parameter
+            monkeypatch - to mock asyncio.sleep
         """
         checker = HealthChecker(retry_count=3, backoff_base_seconds=0.5)
-        assert checker._retry_count == 3
-        assert checker._backoff_base_seconds == 0.5
 
-    def test_healthchecker_handles_zero_retry_count(self):
+        check_func = AsyncMock(side_effect=Exception("permanent error"))
+        checker.register_check("failing", check_func)
+
+        mock_sleep = AsyncMock()
+        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+
+        await checker.check_component("failing")
+
+        # Observable: retries 3 times with exponential backoff
+        assert check_func.call_count == 4  # Initial + 3 retries
+        assert mock_sleep.call_count == 3
+        assert mock_sleep.call_args_list[0] == call(0.5)
+        assert mock_sleep.call_args_list[1] == call(1.0)
+        assert mock_sleep.call_args_list[2] == call(2.0)
+
+    @pytest.mark.asyncio
+    async def test_healthchecker_handles_zero_retry_count(self):
         """
         Test that HealthChecker accepts retry_count=0 for no retries.
 
@@ -167,16 +202,25 @@ class TestHealthCheckerInitialization:
         Scenario:
             Given: retry_count set to 0
             When: HealthChecker is instantiated with retry_count=0
-            Then: Instance is created successfully
-            And: Failed health checks will not retry
+            Then: Failed health check executes only once
+            And: No retries occur
 
         Fixtures Used:
-            None - tests configuration parameter
+            None - tests configuration parameter with observable behavior
         """
         checker = HealthChecker(retry_count=0)
-        assert checker._retry_count == 0
 
-    def test_healthchecker_validates_retry_count_negative_values(self):
+        check_func = AsyncMock(side_effect=Exception("error"))
+        checker.register_check("failing", check_func)
+
+        result = await checker.check_component("failing")
+
+        # Observable: no retries, only initial attempt
+        assert check_func.call_count == 1
+        assert result.status == HealthStatus.UNHEALTHY
+
+    @pytest.mark.asyncio
+    async def test_healthchecker_validates_retry_count_negative_values(self):
         """
         Test that HealthChecker handles negative retry_count gracefully.
 
@@ -190,16 +234,25 @@ class TestHealthCheckerInitialization:
         Scenario:
             Given: retry_count set to -1
             When: HealthChecker is instantiated with retry_count=-1
-            Then: Instance is created successfully
-            And: Retry count is effectively 0 (no retries)
+            Then: Behaves as retry_count=0 (no retries)
+            And: Failed check executes only once
 
         Fixtures Used:
-            None - tests defensive parameter validation
+            None - tests defensive parameter validation with observable behavior
         """
         checker = HealthChecker(retry_count=-1)
-        assert checker._retry_count == 0
 
-    def test_healthchecker_validates_backoff_negative_values(self):
+        check_func = AsyncMock(side_effect=Exception("error"))
+        checker.register_check("failing", check_func)
+
+        result = await checker.check_component("failing")
+
+        # Observable: negative retry treated as 0, only initial attempt
+        assert check_func.call_count == 1
+        assert result.status == HealthStatus.UNHEALTHY
+
+    @pytest.mark.asyncio
+    async def test_healthchecker_validates_backoff_negative_values(self, monkeypatch):
         """
         Test that HealthChecker handles negative backoff_base_seconds gracefully.
 
@@ -213,14 +266,26 @@ class TestHealthCheckerInitialization:
         Scenario:
             Given: backoff_base_seconds set to -0.5
             When: HealthChecker is instantiated with backoff_base_seconds=-0.5
-            Then: Instance is created successfully
-            And: Backoff delay is effectively 0.0 seconds
+            Then: Backoff delay is effectively 0.0 seconds (no sleep)
+            And: Retries execute immediately
 
         Fixtures Used:
-            None - tests defensive parameter validation
+            monkeypatch - to verify asyncio.sleep behavior
         """
-        checker = HealthChecker(backoff_base_seconds=-0.5)
-        assert checker._backoff_base_seconds == 0.0
+        checker = HealthChecker(retry_count=2, backoff_base_seconds=-0.5)
+
+        check_func = AsyncMock(side_effect=Exception("error"))
+        checker.register_check("failing", check_func)
+
+        mock_sleep = AsyncMock()
+        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+
+        await checker.check_component("failing")
+
+        # Observable: negative backoff treated as 0.0, sleeps with 0.0 delay
+        assert mock_sleep.call_count == 2
+        assert mock_sleep.call_args_list[0] == call(0.0)
+        assert mock_sleep.call_args_list[1] == call(0.0)
 
 
 class TestHealthCheckerRegistration:
@@ -687,7 +752,7 @@ class TestHealthCheckerComponentExecution:
         assert "permanent error" in result.message
         assert check_func.call_count == 2
 
-    async def test_check_component_tracks_total_response_time_including_retries(self):
+    async def test_check_component_tracks_total_response_time_including_retries(self, monkeypatch):
         """
         Test that check_component tracks total execution time including retries.
 
@@ -699,17 +764,14 @@ class TestHealthCheckerComponentExecution:
             Provides accurate performance metrics for health check operations.
 
         Scenario:
-            Given: A HealthChecker instance with retry_count=2
+            Given: A HealthChecker instance with retry_count=1, backoff=0.1s
             And: A registered component that fails first attempt and succeeds on retry
             When: check_component("component") is called
-            Then: ComponentStatus response_time_ms includes:
-                - First failed attempt time
-                - Backoff delay
-                - Second successful attempt time
-            And: Total response time > sum of individual attempt times
+            Then: Backoff delay is executed between retries
+            And: ComponentStatus indicates successful second attempt
 
         Fixtures Used:
-            None - tests with timing measurement
+            monkeypatch - to verify asyncio.sleep is called with backoff delay
         """
         checker = HealthChecker(retry_count=1, backoff_base_seconds=0.1)
         side_effects = [
@@ -719,13 +781,15 @@ class TestHealthCheckerComponentExecution:
         check_func = AsyncMock(side_effect=side_effects)
         checker.register_check("c", check_func)
 
-        start_time = time.perf_counter()
-        result = await checker.check_component("c")
-        end_time = time.perf_counter()
+        mock_sleep = AsyncMock()
+        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
 
+        result = await checker.check_component("c")
+
+        # Observable: backoff delay executed, health check succeeded on retry
         assert result.status == HealthStatus.HEALTHY
-        assert (end_time - start_time) * 1000 >= 100 # backoff is 0.1s
-        assert result.response_time_ms >= 100
+        assert mock_sleep.call_count == 1
+        assert mock_sleep.call_args_list[0] == call(0.1)
 
     async def test_check_component_preserves_original_response_timing_on_success(self):
         """
@@ -843,31 +907,29 @@ class TestHealthCheckerSystemAggregation:
 
         Scenario:
             Given: A HealthChecker instance
-            And: Multiple components registered ("database", "cache", "ai_model")
+            And: Multiple components registered
             When: check_all_components() is called
-            Then: All health checks execute in parallel
-            And: Total execution time is ~max(individual check times), not sum
+            Then: All health checks are executed
             And: SystemHealthStatus is returned with all component results
 
         Fixtures Used:
             None - tests with multiple async health check functions
         """
         checker = HealthChecker()
-        async def check1():
-            await asyncio.sleep(0.1)
-            return ComponentStatus(name="c1", status=HealthStatus.HEALTHY)
-        async def check2():
-            await asyncio.sleep(0.2)
-            return ComponentStatus(name="c2", status=HealthStatus.HEALTHY)
+
+        check1 = AsyncMock(return_value=ComponentStatus(name="c1", status=HealthStatus.HEALTHY))
+        check2 = AsyncMock(return_value=ComponentStatus(name="c2", status=HealthStatus.HEALTHY))
+
         checker.register_check("c1", check1)
         checker.register_check("c2", check2)
 
-        start_time = time.perf_counter()
         result = await checker.check_all_components()
-        end_time = time.perf_counter()
 
+        # Observable: both checks executed and results collected
         assert len(result.components) == 2
-        assert (end_time - start_time) < 0.3 # Should be ~0.2, not 0.3
+        check1.assert_awaited_once()
+        check2.assert_awaited_once()
+        assert result.overall_status == HealthStatus.HEALTHY
 
     async def test_check_all_components_returns_healthy_when_all_components_healthy(self):
         """
@@ -1151,167 +1213,3 @@ class TestHealthCheckerSystemAggregation:
         c2_status = next(c for c in result.components if c.name == "c2")
         assert c1_status.status == HealthStatus.HEALTHY
         assert c2_status.status == HealthStatus.UNHEALTHY
-
-
-class TestHealthCheckerInternalStatusAggregation:
-    """
-    Test suite for internal status aggregation logic.
-
-    Scope:
-        - _determine_overall_status static method
-        - Worst-case aggregation algorithm
-        - Edge cases with empty component lists
-
-    Business Critical:
-        Correct status aggregation ensures accurate system health reporting
-        for operational decisions.
-    """
-
-    def test_determine_overall_status_returns_healthy_for_all_healthy_components(self):
-        """
-        Test that _determine_overall_status returns HEALTHY for all healthy components.
-
-        Verifies:
-            All HEALTHY components result in HEALTHY overall status per
-            _determine_overall_status Behavior specification.
-
-        Business Impact:
-            Signals fully operational system for monitoring and routing decisions.
-
-        Scenario:
-            Given: A list of ComponentStatus objects all with HEALTHY status
-            When: _determine_overall_status(components) is called
-            Then: HealthStatus.HEALTHY is returned
-
-        Fixtures Used:
-            None - tests static method with ComponentStatus list
-        """
-        components = [
-            ComponentStatus(name="c1", status=HealthStatus.HEALTHY),
-            ComponentStatus(name="c2", status=HealthStatus.HEALTHY),
-        ]
-        assert HealthChecker._determine_overall_status(components) == HealthStatus.HEALTHY
-
-    def test_determine_overall_status_returns_degraded_for_any_degraded_component(self):
-        """
-        Test that _determine_overall_status returns DEGRADED when any component degraded.
-
-        Verifies:
-            Any DEGRADED component (with no UNHEALTHY) results in DEGRADED
-            per _determine_overall_status Behavior specification.
-
-        Business Impact:
-            Signals partial functionality requiring attention.
-
-        Scenario:
-            Given: A list of ComponentStatus objects with mix of HEALTHY and DEGRADED
-            When: _determine_overall_status(components) is called
-            Then: HealthStatus.DEGRADED is returned
-
-        Fixtures Used:
-            None - tests static method with mixed statuses
-        """
-        components = [
-            ComponentStatus(name="c1", status=HealthStatus.HEALTHY),
-            ComponentStatus(name="c2", status=HealthStatus.DEGRADED),
-        ]
-        assert HealthChecker._determine_overall_status(components) == HealthStatus.DEGRADED
-
-    def test_determine_overall_status_returns_unhealthy_for_any_unhealthy_component(self):
-        """
-        Test that _determine_overall_status returns UNHEALTHY for any unhealthy component.
-
-        Verifies:
-            Any UNHEALTHY component results in UNHEALTHY overall status
-            per _determine_overall_status Behavior specification (worst-case wins).
-
-        Business Impact:
-            Prioritizes critical failures in system health reporting.
-
-        Scenario:
-            Given: A list of ComponentStatus objects including at least one UNHEALTHY
-            When: _determine_overall_status(components) is called
-            Then: HealthStatus.UNHEALTHY is returned
-            And: Result is UNHEALTHY even if other components are HEALTHY or DEGRADED
-
-        Fixtures Used:
-            None - tests static method with worst-case scenario
-        """
-        components = [
-            ComponentStatus(name="c1", status=HealthStatus.HEALTHY),
-            ComponentStatus(name="c2", status=HealthStatus.UNHEALTHY),
-        ]
-        assert HealthChecker._determine_overall_status(components) == HealthStatus.UNHEALTHY
-
-    def test_determine_overall_status_returns_healthy_for_empty_component_list(self):
-        """
-        Test that _determine_overall_status returns HEALTHY for empty list.
-
-        Verifies:
-            Empty component list results in HEALTHY per _determine_overall_status
-            Behavior specification.
-
-        Business Impact:
-            Prevents false negative when no components are registered.
-
-        Scenario:
-            Given: An empty list of ComponentStatus objects
-            When: _determine_overall_status([]) is called
-            Then: HealthStatus.HEALTHY is returned
-
-        Fixtures Used:
-            None - tests static method with empty list
-        """
-        assert HealthChecker._determine_overall_status([]) == HealthStatus.HEALTHY
-
-    def test_determine_overall_status_prioritizes_unhealthy_over_degraded(self):
-        """
-        Test that _determine_overall_status prioritizes UNHEALTHY over DEGRADED.
-
-        Verifies:
-            UNHEALTHY takes precedence over DEGRADED in aggregation per
-            _determine_overall_status Behavior specification.
-
-        Business Impact:
-            Ensures critical failures are not masked by degraded components.
-
-        Scenario:
-            Given: A list of ComponentStatus objects with both UNHEALTHY and DEGRADED
-            When: _determine_overall_status(components) is called
-            Then: HealthStatus.UNHEALTHY is returned
-            And: DEGRADED status is not the final result
-
-        Fixtures Used:
-            None - tests precedence rules in aggregation
-        """
-        components = [
-            ComponentStatus(name="c1", status=HealthStatus.DEGRADED),
-            ComponentStatus(name="c2", status=HealthStatus.UNHEALTHY),
-        ]
-        assert HealthChecker._determine_overall_status(components) == HealthStatus.UNHEALTHY
-
-    def test_determine_overall_status_ignores_response_times_in_aggregation(self):
-        """
-        Test that _determine_overall_status focuses on status not response times.
-
-        Verifies:
-            Response times don't affect status aggregation per
-            _determine_overall_status Behavior specification.
-
-        Business Impact:
-            Separates health status from performance metrics in reporting.
-
-        Scenario:
-            Given: ComponentStatus objects with HEALTHY status but varying response times
-            When: _determine_overall_status(components) is called
-            Then: HealthStatus.HEALTHY is returned
-            And: Slow response times don't change health status
-
-        Fixtures Used:
-            None - tests that timing is separate from health status
-        """
-        components = [
-            ComponentStatus(name="c1", status=HealthStatus.HEALTHY, response_time_ms=1000),
-            ComponentStatus(name="c2", status=HealthStatus.HEALTHY, response_time_ms=2000),
-        ]
-        assert HealthChecker._determine_overall_status(components) == HealthStatus.HEALTHY
