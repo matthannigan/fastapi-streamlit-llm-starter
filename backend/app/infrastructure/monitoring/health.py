@@ -857,8 +857,12 @@ async def check_cache_health(cache_service=None) -> ComponentStatus:
         cache_type = "redis" if redis_status == "connected" else "memory"
 
         # Extract security information
+        # Check actual TLS status from Redis connection, not just config
+        # rediss:// = TLS enabled, redis:// = no TLS
+        redis_url = getattr(cache_service, 'redis_url', '')
+        tls_enabled = redis_url.startswith('rediss://')
+
         security_info = stats.get("security", {})
-        tls_enabled = security_info.get("configuration", {}).get("tls_enabled", False)
         has_authentication = security_info.get("configuration", {}).get("has_authentication", False)
 
         return ComponentStatus(

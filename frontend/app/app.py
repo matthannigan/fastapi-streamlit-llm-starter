@@ -213,9 +213,9 @@ def check_api_health() -> bool:
 
                 if cache_type == "redis":
                     if tls_enabled:
-                        st.success("✅ TLS-secure Redis active 🔐")
+                        st.success("✅ TLS-secure Redis cache active")
                     else:
-                        st.info("✅ Insecure Redis active 🔓")
+                        st.warning("⚠️ Insecure Redis cache active")
                 else:
                     st.info("🔄 Memory Cache active")
             elif cache_healthy is False:
