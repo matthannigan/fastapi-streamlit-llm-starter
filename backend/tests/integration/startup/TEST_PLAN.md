@@ -9,9 +9,10 @@ This test plan identifies and prioritizes integration test scenarios for the Red
 **Component Under Test:** Redis security validation at application startup
 - **Public Contract:** `backend/contracts/core/startup/redis_security.pyi`
 - **Implementation:** `backend/app/core/startup/redis_security.py`
-- **Current Integration Status:** NOT currently integrated into application startup (potential future integration)
+- **Current Integration Status:** ✅ INTEGRATED into application startup sequence
+- **Integration Point:** `backend/app/main.py` lifespan() function (lines 468-479)
 
-**Key Insight:** While the component exists and is well-documented, it is NOT currently called during application startup in `main.py`. This affects prioritization - tests should prepare for future integration while validating current standalone functionality.
+**Key Implementation Details:** The component is actively called during application startup in `main.py`, performing security validation before health infrastructure initialization. Production environments enforce TLS requirements and fail fast on security violations.
 
 ## Integration Testing Philosophy
 
@@ -500,11 +501,11 @@ RedisSecurityValidator
 
 ---
 
-### Priority 3: LOW (Future Integration, Advanced Scenarios)
+### Priority 1: HIGH (Security-Critical, Startup Blockers) - Continued
 
-#### SEAM 6: FUTURE - Application Startup → Security Validation → Cache Initialization
+#### SEAM 6: Application Startup → Security Validation → Cache Initialization
 
-**Status:** NOT CURRENTLY INTEGRATED - Planned for future implementation
+**Status:** INTEGRATED - Active in production startup sequence
 
 **Components:** `app.main:lifespan`, `validate_redis_security()`, `app.dependencies:get_cache_service`
 
@@ -512,15 +513,14 @@ RedisSecurityValidator
 
 **Business Impact:** Ensures application fails fast if Redis security is misconfigured
 
-**Test Scenarios (Deferred - for future implementation):**
+**Test Scenarios:**
 
 1. **Application Startup Validates Redis Security**
    ```python
-   # File: tests/integration/startup/test_app_startup_security.py (FUTURE)
-   @pytest.mark.skip(reason="Security validation not yet integrated into startup")
+   # File: tests/integration/startup/test_app_startup_security.py
    async def test_application_startup_validates_redis_security(monkeypatch):
        """
-       FUTURE INTEGRATION: App startup → Security validation → Startup success/failure
+       INTEGRATION: App startup → Security validation → Startup success/failure
 
        Verify that application startup performs Redis security validation and
        fails fast if security requirements are not met.
@@ -538,10 +538,9 @@ RedisSecurityValidator
 
 2. **Cache Service Respects Security Validation**
    ```python
-   @pytest.mark.skip(reason="Security validation not yet integrated into cache init")
    async def test_cache_service_respects_security_validation(monkeypatch):
        """
-       FUTURE INTEGRATION: Cache init → Security check → Initialization decision
+       INTEGRATION: Cache init → Security check → Initialization decision
 
        Verify that cache service initialization respects Redis security
        validation results.
@@ -555,7 +554,7 @@ RedisSecurityValidator
 
 **Infrastructure Needs:** TestClient, async test fixtures, application lifecycle management
 
-**Priority Justification:** LOW - Future integration, not currently active in codebase
+**Priority Justification:** HIGH - Security validation is now integrated into startup, critical for production safety
 
 ---
 
@@ -625,9 +624,9 @@ tests/integration/startup/
 ├── test_environment_aware_security.py    # Priority 1: Environment integration
 ├── test_certificate_validation.py        # Priority 1: Certificate validation
 ├── test_encryption_key_validation.py     # Priority 1: Encryption key validation
+├── test_app_startup_security.py          # Priority 1: Startup integration (ACTIVE)
 ├── test_comprehensive_validation.py      # Priority 2: Full validation flow
-├── test_authentication_validation.py     # Priority 2: Auth validation
-└── test_app_startup_security.py          # Priority 3: Future startup integration (skipped)
+└── test_authentication_validation.py     # Priority 2: Auth validation
 ```
 
 ## Success Criteria
