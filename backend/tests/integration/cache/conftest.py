@@ -680,11 +680,11 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
     try:
         yield cache
     finally:
-        # Cleanup: clear cache and disconnect
+        # Cleanup: disconnect cache (GenericRedisCache doesn't have clear method)
         try:
-            await cache.clear()
+            await cache.disconnect()
         except Exception as e:
-            print(f"Warning: Failed to clear cache during teardown: {e}")
+            print(f"Warning: Failed to disconnect cache during teardown: {e}")
 
 
 @pytest.fixture
