@@ -271,6 +271,9 @@ async def health_check(health_checker = Depends(get_health_checker)):
         cache_healthy = None if cache_comp is None else (cache_comp.status.value == "healthy")
         resilience_healthy = None if resilience_comp is None else (resilience_comp.status.value == "healthy")
 
+        # Include cache metadata (TLS, auth, cache type)
+        cache_metadata = cache_comp.metadata if cache_comp is not None else None
+
         overall_status = "healthy" if system_status.overall_status.value == "healthy" else "degraded"
 
         return HealthResponse(
@@ -278,6 +281,7 @@ async def health_check(health_checker = Depends(get_health_checker)):
             ai_model_available=ai_healthy,
             resilience_healthy=resilience_healthy,
             cache_healthy=cache_healthy,
+            cache_metadata=cache_metadata,
         )
     except Exception as e:
         # Graceful degradation: never fail the health endpoint due to infra issues
@@ -288,4 +292,5 @@ async def health_check(health_checker = Depends(get_health_checker)):
             ai_model_available=ai_healthy,
             resilience_healthy=None,
             cache_healthy=None,
+            cache_metadata=None,
         )

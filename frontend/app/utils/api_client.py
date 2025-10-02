@@ -71,15 +71,28 @@ class APIClient:
         self.base_url = settings.api_base_url
         self.timeout = httpx.Timeout(60.0)  # 60 second timeout
     
-    async def health_check(self) -> bool:
-        """Check if the API is healthy."""
+    async def health_check(self) -> Optional[Dict[str, Any]]:
+        """Check API health and return full health status.
+
+        Returns:
+            Optional[Dict[str, Any]]: Health status dictionary containing:
+                - status: Overall health status ("healthy", "degraded", "unhealthy")
+                - ai_model_available: Boolean indicating AI model availability
+                - cache_healthy: Optional boolean indicating cache system health
+                - resilience_healthy: Optional boolean indicating resilience health
+                Returns None if health check fails
+        """
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(f"{self.base_url}/v1/health")
-                return response.status_code == 200
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.error(f"Health check returned status {response.status_code}")
+                    return None
         except Exception as e:
             logger.error(f"Health check failed: {e}")
-            return False
+            return None
     
     async def get_operations(self) -> Optional[Dict[str, Any]]:
         """Get available processing operations."""

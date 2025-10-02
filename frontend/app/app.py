@@ -181,14 +181,14 @@ def display_header() -> None:
 
 def check_api_health() -> bool:
     """Check the health status of the backend API service.
-    
+
     Performs a health check against the backend API and displays the
     connection status in the sidebar. This provides immediate feedback
     to users about service availability and helps with troubleshooting.
-    
+
     Returns:
         bool: True if the API is healthy and accessible, False otherwise.
-        
+
     Side Effects:
         - Displays health status in the sidebar
         - Shows error message if API is unavailable
@@ -197,10 +197,33 @@ def check_api_health() -> bool:
         st.subheader("🔧 System Status")
 
         # Perform async health check with error handling
-        is_healthy = run_async(api_client.health_check())
+        health_status = run_async(api_client.health_check())
 
-        if is_healthy:
+        if health_status:
             st.success("✅ API Connected")
+
+            # Display cache/Redis status with TLS security information
+            cache_healthy = health_status.get("cache_healthy")
+            cache_metadata = health_status.get("cache_metadata", {}) or {}
+
+            if cache_healthy is True:
+                # Redis is connected and healthy
+                cache_type = cache_metadata.get("cache_type", "unknown")
+                tls_enabled = cache_metadata.get("tls_enabled", False)
+
+                if cache_type == "redis":
+                    if tls_enabled:
+                        st.success("✅ TLS-secure Redis active 🔐")
+                    else:
+                        st.info("✅ Insecure Redis active 🔓")
+                else:
+                    st.info("🔄 Memory Cache active")
+            elif cache_healthy is False:
+                # Redis explicitly failed
+                st.warning("❌ Redis failure")
+            else:
+                # Cache disabled or memory-only mode (cache_healthy is None)
+                st.info("🔄 Memory Cache active")
         else:
             st.error("❌ API Unavailable")
             st.warning("Please ensure the backend service is running.")

@@ -854,14 +854,23 @@ async def check_cache_health(cache_service=None) -> ComponentStatus:
         error_present = "error" in stats
 
         is_healthy = not error_present and redis_status != "error" and memory_status != "unavailable"
-        cache_type = "redis" if redis_status == "ok" else "memory"
+        cache_type = "redis" if redis_status == "connected" else "memory"
+
+        # Extract security information
+        security_info = stats.get("security", {})
+        tls_enabled = security_info.get("configuration", {}).get("tls_enabled", False)
+        has_authentication = security_info.get("configuration", {}).get("has_authentication", False)
 
         return ComponentStatus(
             name=name,
             status=HealthStatus.HEALTHY if is_healthy else HealthStatus.DEGRADED,
             message="Cache operational" if is_healthy else "Cache degraded",
             response_time_ms=(time.perf_counter() - start) * 1000.0,
-            metadata={"cache_type": cache_type},
+            metadata={
+                "cache_type": cache_type,
+                "tls_enabled": tls_enabled,
+                "has_authentication": has_authentication,
+            },
         )
     except Exception as e:  # noqa: BLE001
         return ComponentStatus(

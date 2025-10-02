@@ -29,7 +29,7 @@ This schema is used by health check endpoints to provide standardized status
 information for load balancers, monitoring systems, and operational dashboards.
 """
 
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
 
@@ -123,6 +123,7 @@ class HealthResponse(BaseModel):
     ai_model_available: bool = Field(default=True, description="AI model accessibility status")
     resilience_healthy: Optional[bool] = Field(default=None, description="Resilience patterns health")
     cache_healthy: Optional[bool] = Field(default=None, description="Cache system health")
+    cache_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Cache-specific metadata including TLS and auth status")
 
     @field_serializer('timestamp')
     def serialize_timestamp(self, dt: datetime, _info):

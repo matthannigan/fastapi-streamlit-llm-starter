@@ -1748,11 +1748,15 @@ class AIResponseCache(GenericRedisCache):
             else {}
         )
 
+        # Add security status (TLS, auth, etc.)
+        security_status = self.get_security_status()
+
         return {
             "redis": redis_stats,
             "memory": memory_stats,
             "performance": performance_stats,
             "ai_metrics": self.ai_metrics,
+            "security": security_status,
         }
 
     def get_cache_hit_ratio(self) -> float:
