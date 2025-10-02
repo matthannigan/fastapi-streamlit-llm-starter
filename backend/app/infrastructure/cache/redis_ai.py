@@ -1751,6 +1751,12 @@ class AIResponseCache(GenericRedisCache):
         # Add security status (TLS, auth, etc.)
         security_status = self.get_security_status()
 
+        # Override TLS status based on actual Redis URL (not just config)
+        # rediss:// = TLS enabled, redis:// = no TLS
+        if security_status and "configuration" in security_status:
+            actual_tls = self.redis_url.startswith('rediss://') if hasattr(self, 'redis_url') else False
+            security_status["configuration"]["tls_enabled"] = actual_tls
+
         return {
             "redis": redis_stats,
             "memory": memory_stats,

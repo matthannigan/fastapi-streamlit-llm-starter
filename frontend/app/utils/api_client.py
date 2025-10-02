@@ -93,6 +93,29 @@ class APIClient:
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return None
+
+    async def get_cache_status(self) -> Optional[Dict[str, Any]]:
+        """Get detailed cache infrastructure status from internal API.
+
+        Returns:
+            Optional[Dict[str, Any]]: Cache status dictionary containing:
+                - redis: Redis backend status with connection state and metrics
+                - memory: In-memory cache status with entry counts
+                - performance: Cache performance metrics including hit rates
+                - security: Security configuration including TLS and auth status
+                Returns None if request fails
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(f"{self.base_url}/internal/cache/status")
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.error(f"Cache status check returned status {response.status_code}")
+                    return None
+        except Exception as e:
+            logger.error(f"Cache status check failed: {e}")
+            return None
     
     async def get_operations(self) -> Optional[Dict[str, Any]]:
         """Get available processing operations."""

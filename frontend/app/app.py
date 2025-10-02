@@ -202,28 +202,38 @@ def check_api_health() -> bool:
         if health_status:
             st.success("✅ API Connected")
 
-            # Display cache/Redis status with TLS security information
+            # Get detailed cache status from internal API for security info
             cache_healthy = health_status.get("cache_healthy")
-            cache_metadata = health_status.get("cache_metadata", {}) or {}
 
-            if cache_healthy is True:
-                # Redis is connected and healthy
-                cache_type = cache_metadata.get("cache_type", "unknown")
-                tls_enabled = cache_metadata.get("tls_enabled", False)
+            if cache_healthy is not None:
+                # Fetch detailed cache status from internal API
+                cache_status = run_async(api_client.get_cache_status())
 
-                if cache_type == "redis":
-                    if tls_enabled:
-                        st.success("✅ TLS-secure Redis cache active")
+                if cache_status:
+                    redis_status = cache_status.get("redis", {}).get("status")
+                    security_info = cache_status.get("security", {})
+                    tls_enabled = security_info.get("configuration", {}).get("tls_enabled", False)
+
+                    if cache_healthy is True and redis_status == "connected":
+                        # Redis is connected and healthy
+                        if tls_enabled:
+                            st.success("✅ TLS-secure Redis active 🔒")
+                        else:
+                            st.warning("⚠️ Insecure Redis cache active")
+                    elif cache_healthy is False:
+                        # Redis explicitly failed
+                        st.warning("❌ Redis failure")
                     else:
-                        st.warning("⚠️ Insecure Redis cache active")
+                        # Memory-only fallback
+                        st.info("🔄 Memory Cache active")
                 else:
-                    st.info("🔄 Memory Cache active")
-            elif cache_healthy is False:
-                # Redis explicitly failed
-                st.warning("❌ Redis failure")
-            else:
-                # Cache disabled or memory-only mode (cache_healthy is None)
-                st.info("🔄 Memory Cache active")
+                    # Fallback if cache status unavailable
+                    if cache_healthy is True:
+                        st.info("✅ Cache active")
+                    elif cache_healthy is False:
+                        st.warning("❌ Cache failure")
+                    else:
+                        st.info("🔄 Memory Cache active")
         else:
             st.error("❌ API Unavailable")
             st.warning("Please ensure the backend service is running.")

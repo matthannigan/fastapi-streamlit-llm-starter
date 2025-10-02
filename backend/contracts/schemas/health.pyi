@@ -30,7 +30,7 @@ This schema is used by health check endpoints to provide standardized status
 information for load balancers, monitoring systems, and operational dashboards.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional
 from pydantic import BaseModel, Field, field_serializer
 from datetime import datetime
 
@@ -56,8 +56,6 @@ class HealthResponse(BaseModel):
                           circuit breakers, retry mechanisms, and failure recovery systems
         cache_healthy: Optional health status of caching infrastructure including
                       Redis connectivity, memory cache, and cache performance
-        cache_metadata: Optional dictionary containing cache-specific information including
-                       cache type (redis/memory), TLS status, and authentication status
     
     State Management:
         - Immutable health snapshot through Pydantic model behavior
