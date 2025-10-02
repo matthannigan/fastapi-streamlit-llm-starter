@@ -465,6 +465,20 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Environment detection failed: {e}")
         logger.info("Public API docs available at: /docs")
         logger.info("Internal API docs available at: /internal/docs")
+
+    # Validate Redis security configuration before initializing services
+    try:
+        from app.core.startup.redis_security import validate_redis_security
+        logger.info("Validating Redis security configuration...")
+        validate_redis_security(
+            redis_url=settings.redis_url,
+            insecure_override=settings.redis_insecure_allow_plaintext
+        )
+        logger.info("Redis security validation passed")
+    except Exception as e:
+        logger.error(f"Redis security validation failed: {e}")
+        raise  # Fail fast on security violations
+
     # Initialize health infrastructure
     try:
         from app.dependencies import initialize_health_infrastructure
