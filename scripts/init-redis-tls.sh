@@ -121,12 +121,13 @@ generate_redis_cert() {
 
     # Create extension file for Subject Alternative Names
     cat > redis.ext << EOF
+[ v3_req ]
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
 subjectAltName = @alt_names
 
-[alt_names]
+[ alt_names ]
 DNS.1 = $REDIS_HOST
 DNS.2 = localhost
 DNS.3 = *.local
