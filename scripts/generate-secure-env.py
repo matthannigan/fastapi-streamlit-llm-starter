@@ -29,7 +29,7 @@ import os
 import secrets
 import string
 import sys
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -313,7 +313,7 @@ class EnvironmentConfigGenerator:
     ) -> str:
         """Generate configuration file content."""
         return f"""# Secure Redis Environment Configuration
-# Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+# Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
 # Environment: {self.environment.value}
 # Security Level: {self.security.description}
 #
