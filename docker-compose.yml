@@ -101,4 +101,4 @@ volumes:
 
 networks:
   llm-starter-network:
-    driver: bridge 
+    driver: bridge
