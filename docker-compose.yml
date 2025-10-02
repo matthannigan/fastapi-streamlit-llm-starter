@@ -70,7 +70,7 @@ services:
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - redis_data:/data
+      - redis_data_legacy:/data
     networks:
       - llm-starter-network
     restart: unless-stopped
@@ -97,7 +97,7 @@ services:
       - frontend
 
 volumes:
-  redis_data:
+  redis_data_legacy:
 
 networks:
   llm-starter-network:

@@ -43,7 +43,7 @@ services:
     # Volume mounts for TLS certificates and data persistence
     volumes:
       - ./certs:/tls:ro                    # TLS certificates (read-only)
-      - redis_data:/data                   # Persistent Redis data
+      - redis_data_secure:/data                   # Persistent Redis data
 
     # Secure Redis configuration with TLS-only mode
     command: >
@@ -232,12 +232,12 @@ networks:
 
 # Volume configuration for data persistence
 volumes:
-  redis_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data/redis
+  redis_data_secure:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      o: bind
+#      device: ./redis_data/secure
 
 # Additional security and monitoring services (optional)
 #

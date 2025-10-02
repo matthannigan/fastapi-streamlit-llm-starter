@@ -47,6 +47,7 @@ ifneq (,$(wildcard .env))
     BACKEND_PORT  ?= $(shell grep -E '^[[:space:]]*BACKEND_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*BACKEND_PORT[[:space:]]*=[[:space:]]*//')
     FRONTEND_PORT ?= $(shell grep -E '^[[:space:]]*FRONTEND_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*FRONTEND_PORT[[:space:]]*=[[:space:]]*//')
     REDIS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_PORT[[:space:]]*=[[:space:]]*//')
+    REDIS_TLS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_TLS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_TLS_PORT[[:space:]]*=[[:space:]]*//')
     REPOMIX_CMD   ?= $(shell grep -E '^[[:space:]]*REPOMIX_CMD[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REPOMIX_CMD[[:space:]]*=[[:space:]]*//')
     export BACKEND_PORT FRONTEND_PORT REDIS_PORT REPOMIX_CMD
 endif
@@ -55,6 +56,7 @@ endif
 BACKEND_PORT  ?= 8000
 FRONTEND_PORT ?= 8501
 REDIS_PORT    ?= 6379
+REDIS_TLS_PORT    ?= 6380
 REPOMIX_CMD   ?= npx repomix
 
 # Also default when value exists but is empty
@@ -66,6 +68,9 @@ FRONTEND_PORT := 8501
 endif
 ifeq ($(strip $(REDIS_PORT))),)
 REDIS_PORT := 6379
+endif
+ifeq ($(strip $(REDIS_TLS_PORT))),)
+REDIS_TLS_PORT := 6380
 endif
 ifeq ($(strip $(REPOMIX_CMD))),)
 REPOMIX_CMD := npx repomix
@@ -119,6 +124,7 @@ show-env-vars:
 	@echo "Backend Port is: $(BACKEND_PORT)"
 	@echo "Frontend Port is: $(FRONTEND_PORT)"
 	@echo "Redis Port is: $(REDIS_PORT)"
+	@echo "Redis TLS Port is: $(REDIS_TLS_PORT)"
 	@echo "API Base URL is: $(API_BASE_URL)"
 	@echo "Repomix Command is: $(REPOMIX_CMD)"
 	@echo "---"
@@ -397,7 +403,7 @@ dev:
 	@echo "📍 Services will be available at:"
 	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
 	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
-	@echo "   🗄️  Redis:               localhost:$(REDIS_PORT)"
+	@echo "   🗄️  Redis:               redis://localhost:$(REDIS_PORT)"
 	@echo ""
 	@echo "💡 File watching enabled - changes will trigger automatic reloads"
 	@echo "⏹️  Press Ctrl+C to stop all services"
@@ -408,9 +414,9 @@ dev:
 dev-secure:
 	@echo "🔐 Starting secure development environment..."
 	@echo "📍 Services will be available at:"
-	@echo "   🌐 Frontend (Streamlit): http://localhost:8501"
-	@echo "   🔌 Backend (FastAPI):    http://localhost:8000"
-	@echo "   🗄️  Redis (TLS):         rediss://localhost:6380"
+	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
+	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
+	@echo "   🗄️  Redis (TLS):         rediss://localhost:$(REDIS_TLS_PORT)"
 	@echo ""
 	@echo "🔒 Security features enabled:"
 	@echo "   ✓ TLS encryption for Redis connections"
