@@ -64,6 +64,7 @@ WORKDIR /app
 
 # Install system dependencies (minimal for production)
 RUN apt-get update && apt-get install -y \
+    gcc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

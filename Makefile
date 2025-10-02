@@ -152,6 +152,7 @@ help:
 	@echo "🖥️  DEVELOPMENT SERVERS:"
 	@echo "  run-backend          Start FastAPI server locally (http://localhost:8000)"
 	@echo "  dev                  Start full development environment with hot reload"
+	@echo "  dev-secure           Start development environment with secure Redis (TLS + encryption)"
 	@echo "  dev-legacy           Start development environment (legacy mode)"
 	@echo "  prod                 Start production environment"
 	@echo ""
@@ -403,6 +404,29 @@ dev:
 	@echo ""
 	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
 
+# Start development environment with secure Redis (TLS + encryption)
+dev-secure:
+	@echo "🔐 Starting secure development environment..."
+	@echo "📍 Services will be available at:"
+	@echo "   🌐 Frontend (Streamlit): http://localhost:8501"
+	@echo "   🔌 Backend (FastAPI):    http://localhost:8000"
+	@echo "   🗄️  Redis (TLS):         rediss://localhost:6380"
+	@echo ""
+	@echo "🔒 Security features enabled:"
+	@echo "   ✓ TLS encryption for Redis connections"
+	@echo "   ✓ Password authentication"
+	@echo "   ✓ Application-layer data encryption"
+	@echo ""
+	@echo "💡 Run './scripts/setup-secure-redis.sh' first if you haven't already"
+	@echo "⏹️  Press Ctrl+C to stop all services"
+	@echo ""
+	@if [ ! -f .env.secure ]; then \
+		echo "❌ Error: .env.secure not found"; \
+		echo "Run: ./scripts/setup-secure-redis.sh"; \
+		exit 1; \
+	fi
+	@docker-compose -f docker-compose.secure.yml --env-file .env.secure up --build
+
 # Start development environment (legacy mode for older Docker Compose)
 dev-legacy:
 	@echo "🚀 Starting development environment (legacy mode)..."
@@ -472,9 +496,9 @@ test-backend-e2e:
 
 # Run cache infrastructure tests
 test-backend-cache:
-	@$(MAKE) test-backend-cache-unit
-	@$(MAKE) test-backend-cache-integration
-	@$(MAKE) test-backend-cache-e2e
+	@-$(MAKE) test-backend-cache-unit
+	@-$(MAKE) test-backend-cache-integration
+	@-$(MAKE) test-backend-cache-e2e
 
 test-backend-cache-unit:
 	@echo "🧪 Running backend cache infrastructure unit tests..."

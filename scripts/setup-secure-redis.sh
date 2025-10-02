@@ -31,6 +31,7 @@ DATA_DIR="$PROJECT_ROOT/data/redis"
 REGENERATE=false
 PRODUCTION=false
 REDIS_HOST="redis"
+PYTHON_CMD="python3"  # Will be overridden if venv is found
 
 # Colors for output
 RED='\033[0;31m'
@@ -188,14 +189,24 @@ check_dependencies() {
     fi
 
     # Check Python cryptography library
-    if ! python3 -c "import cryptography" &> /dev/null; then
+    # Prefer project venv if available, otherwise use system Python
+    PYTHON_CMD="python3"
+    if [ -f "$PROJECT_ROOT/.venv/bin/python" ]; then
+        PYTHON_CMD="$PROJECT_ROOT/.venv/bin/python"
+        log_info "Using project virtual environment Python"
+    fi
+
+    if ! $PYTHON_CMD -c "import cryptography" &> /dev/null; then
         log_warning "Python cryptography library not installed"
         log_info "Installing cryptography library..."
-        if python3 -m pip install cryptography &> /dev/null; then
+        if $PYTHON_CMD -m pip install cryptography &> /dev/null; then
             log_success "Cryptography library installed successfully"
         else
             log_error "Failed to install cryptography library"
-            echo "Install manually: python3 -m pip install cryptography"
+            echo "Install manually with your project venv:"
+            echo "  source .venv/bin/activate"
+            echo "  pip install cryptography"
+            echo "Or install system-wide: python3 -m pip install --user cryptography"
             exit 1
         fi
     fi
@@ -243,7 +254,8 @@ generate_secure_password() {
 
 # Generate encryption key
 generate_encryption_key() {
-    python3 -c "
+    local python_cmd="${PYTHON_CMD:-python3}"
+    $python_cmd -c "
 from cryptography.fernet import Fernet
 import sys
 try:
@@ -318,20 +330,13 @@ preserve_existing_env() {
 
     log_info "Preserving existing non-security environment variables..."
 
-    # Create associative array to store preserved values
-    declare -A preserved_values
-
+    # Read and export preserved values (compatible with bash 3.2+)
     for var in "${preserve_vars[@]}"; do
-        local value=$(grep "^${var}=" "$existing_env_file" | cut -d'=' -f2-)
+        local value=$(grep "^${var}=" "$existing_env_file" 2>/dev/null | head -1 | cut -d'=' -f2-)
         if [ -n "$value" ]; then
-            preserved_values[$var]=$value
+            export "PRESERVED_${var}=${value}"
             log_info "  Preserving $var"
         fi
-    done
-
-    # Export preserved values for use in configuration generation
-    for var in "${!preserved_values[@]}"; do
-        export "PRESERVED_${var}=${preserved_values[$var]}"
     done
 }
 
@@ -385,6 +390,7 @@ generate_configuration() {
 
 # Redis Connection Settings
 REDIS_URL=rediss://localhost:6380
+REDIS_TLS_PORT=6380
 REDIS_PASSWORD=$redis_password
 REDIS_TLS_ENABLED=true
 REDIS_TLS_CERT_PATH=$CERT_DIR/redis.crt
@@ -585,7 +591,8 @@ validate_connection() {
 
     # Test 7: Encryption key validation
     log_info "Validating encryption key..."
-    if python3 -c "
+    local python_cmd="${PYTHON_CMD:-python3}"
+    if $python_cmd -c "
 from cryptography.fernet import Fernet
 import sys
 try:
