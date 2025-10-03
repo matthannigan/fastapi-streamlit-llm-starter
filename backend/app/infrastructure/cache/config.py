@@ -204,6 +204,7 @@ class CacheConfig:
 
     # Environment configuration
     environment: str = "development"
+    preset_name: str = ""  # Track which preset was used
 
     # AI-specific configuration
     ai_config: Optional[AICacheConfig] = None

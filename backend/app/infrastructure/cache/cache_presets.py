@@ -443,6 +443,7 @@ class CachePreset:
             environment=self.environment_contexts[0]
             if self.environment_contexts
             else "development",
+            preset_name=self.name,  # Track which preset was used
             # AI configuration (nested structure)
             ai_config=ai_config,
             enable_ai_cache=self.enable_ai_cache,

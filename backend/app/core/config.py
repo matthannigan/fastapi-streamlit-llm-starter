@@ -1115,18 +1115,24 @@ class Settings(BaseSettings):
             redis_url = os.getenv('CACHE_REDIS_URL')
             if redis_url:
                 cache_config.redis_url = redis_url
-                logger.info(f"Applied CACHE_REDIS_URL override: {redis_url}")
-            
+                # Only log override if cache is actually being used
+                if preset_name != 'disabled':
+                    logger.info(f"Applied CACHE_REDIS_URL override: {redis_url}")
+
             enable_ai_cache = os.getenv('ENABLE_AI_CACHE', '').lower() in ('true', '1', 'yes')
             if enable_ai_cache and not cache_config.enable_ai_cache:
                 cache_config.enable_ai_cache = True
-                logger.info("Applied ENABLE_AI_CACHE override: enabled AI features")
+                # Only log override if cache is actually being used
+                if preset_name != 'disabled':
+                    logger.info("Applied ENABLE_AI_CACHE override: enabled AI features")
             elif not enable_ai_cache and cache_config.enable_ai_cache:
                 # If preset enables AI but env var explicitly disables it
                 env_disable = os.getenv('ENABLE_AI_CACHE', '').lower() in ('false', '0', 'no')
                 if env_disable:
                     cache_config.enable_ai_cache = False
-                    logger.info("Applied ENABLE_AI_CACHE override: disabled AI features")
+                    # Only log override if cache is actually being used
+                    if preset_name != 'disabled':
+                        logger.info("Applied ENABLE_AI_CACHE override: disabled AI features")
             
             # Apply custom overrides if provided
             custom_config_json = self.cache_custom_config

@@ -937,8 +937,17 @@ class CacheFactory:
 
         logger.info(f"Creating cache from configuration with {len(config)} parameters")
 
-        # Extract and validate common parameters
+        # Early detection of disabled preset - skip directly to memory cache
+        preset_name = config.get('preset_name', '').lower()
         redis_url = config["redis_url"]
+        if preset_name == 'disabled' or not redis_url:
+            logger.info("Cache disabled or no Redis URL - using InMemoryCache")
+            return InMemoryCache(
+                default_ttl=config.get('default_ttl', 300),
+                max_size=config.get('l1_cache_size', 100)
+            )
+
+        # Extract and validate common parameters
         default_ttl = config.get("default_ttl", 3600)
         enable_l1_cache = config.get("enable_l1_cache", True)
         l1_cache_size = config.get("l1_cache_size", 100)
