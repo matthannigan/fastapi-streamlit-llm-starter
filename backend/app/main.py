@@ -467,17 +467,21 @@ async def lifespan(app: FastAPI):
         logger.info("Internal API docs available at: /internal/docs")
 
     # Validate Redis security configuration before initializing services
-    try:
-        from app.core.startup.redis_security import validate_redis_security
-        logger.info("Validating Redis security configuration...")
-        validate_redis_security(
-            redis_url=settings.redis_url,
-            insecure_override=settings.redis_insecure_allow_plaintext
-        )
-        logger.info("Redis security validation passed")
-    except Exception as e:
-        logger.error(f"Redis security validation failed: {e}")
-        raise  # Fail fast on security violations
+    # Skip validation if cache is disabled (memory-only mode)
+    if settings.cache_preset == "disabled":
+        logger.info("💾 Cache disabled - using memory-only mode, skipping Redis security validation")
+    else:
+        try:
+            from app.core.startup.redis_security import validate_redis_security
+            logger.info("Validating Redis security configuration...")
+            validate_redis_security(
+                redis_url=settings.redis_url,
+                insecure_override=settings.redis_insecure_allow_plaintext
+            )
+            logger.info("Redis security validation passed")
+        except Exception as e:
+            logger.error(f"Redis security validation failed: {e}")
+            raise  # Fail fast on security violations
 
     # Initialize health infrastructure
     try:
