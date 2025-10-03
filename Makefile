@@ -49,7 +49,7 @@ ifneq (,$(wildcard .env))
     REDIS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_PORT[[:space:]]*=[[:space:]]*//')
     REDIS_TLS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_TLS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_TLS_PORT[[:space:]]*=[[:space:]]*//')
     REPOMIX_CMD   ?= $(shell grep -E '^[[:space:]]*REPOMIX_CMD[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REPOMIX_CMD[[:space:]]*=[[:space:]]*//')
-    export BACKEND_PORT FRONTEND_PORT REDIS_PORT REPOMIX_CMD
+    export BACKEND_PORT FRONTEND_PORT REDIS_PORT REDIS_TLS_PORT REPOMIX_CMD
 endif
 
 # Set sensible defaults when not provided
@@ -399,39 +399,61 @@ run-backend:
 
 # Start full development environment with hot reload (Docker Compose v2.22+)
 dev:
-	@echo "🚀 Starting development environment..."
-	@echo "📍 Services will be available at:"
-	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
-	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
-	@echo "   🗄️  Redis:               redis://localhost:$(REDIS_PORT)"
-	@echo ""
-	@echo "💡 File watching enabled - changes will trigger automatic reloads"
-	@echo "⏹️  Press Ctrl+C to stop all services"
-	@echo ""
-	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+	@CACHE_PRESET=$$(grep -E '^[[:space:]]*CACHE_PRESET[[:space:]]*=' .env 2>/dev/null | tail -n1 | sed -E 's/^[[:space:]]*CACHE_PRESET[[:space:]]*=[[:space:]]*//'); \
+	CACHE_PRESET=$${CACHE_PRESET:-development}; \
+	echo "🚀 Starting development environment..."; \
+	echo "📍 Services will be available at:"; \
+	echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"; \
+	echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"; \
+	if [ "$$CACHE_PRESET" != "disabled" ]; then \
+		echo "   🗄️  Redis:               redis://localhost:$(REDIS_PORT)"; \
+	else \
+		echo "   💾 Cache:                Memory-only (Redis disabled)"; \
+	fi; \
+	echo ""; \
+	echo "💡 File watching enabled - changes will trigger automatic reloads"; \
+	echo "⏹️  Press Ctrl+C to stop all services"; \
+	echo ""; \
+	if [ "$$CACHE_PRESET" = "disabled" ]; then \
+		docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch; \
+	else \
+		docker-compose -f docker-compose.yml -f docker-compose.dev.yml --profile with-cache up --build --watch; \
+	fi
 
 # Start development environment with secure Redis (TLS + encryption)
 dev-secure:
-	@echo "🔐 Starting secure development environment..."
-	@echo "📍 Services will be available at:"
-	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
-	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
-	@echo "   🗄️  Redis (TLS):         rediss://localhost:$(REDIS_TLS_PORT)"
-	@echo ""
-	@echo "🔒 Security features enabled:"
-	@echo "   ✓ TLS encryption for Redis connections"
-	@echo "   ✓ Password authentication"
-	@echo "   ✓ Application-layer data encryption"
-	@echo ""
-	@echo "💡 Run './scripts/setup-secure-redis.sh' first if you haven't already"
-	@echo "⏹️  Press Ctrl+C to stop all services"
-	@echo ""
-	@if [ ! -f .env.secure ]; then \
+	@CACHE_PRESET=$$(grep -E '^[[:space:]]*CACHE_PRESET[[:space:]]*=' .env.secure 2>/dev/null | tail -n1 | sed -E 's/^[[:space:]]*CACHE_PRESET[[:space:]]*=[[:space:]]*//'); \
+	CACHE_PRESET=$${CACHE_PRESET:-development}; \
+	echo "🔐 Starting secure development environment..."; \
+	echo "📍 Services will be available at:"; \
+	echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"; \
+	echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"; \
+	if [ "$$CACHE_PRESET" != "disabled" ]; then \
+		echo "   🗄️  Redis (TLS):         rediss://localhost:$(REDIS_TLS_PORT)"; \
+	else \
+		echo "   💾 Cache:                Memory-only (Redis disabled)"; \
+	fi; \
+	echo ""; \
+	if [ "$$CACHE_PRESET" != "disabled" ]; then \
+		echo "🔒 Security features enabled:"; \
+		echo "   ✓ TLS encryption for Redis connections"; \
+		echo "   ✓ Password authentication"; \
+		echo "   ✓ Application-layer data encryption"; \
+		echo ""; \
+		echo "💡 Run './scripts/setup-secure-redis.sh' first if you haven't already"; \
+	fi; \
+	echo "⏹️  Press Ctrl+C to stop all services"; \
+	echo ""; \
+	if [ ! -f .env.secure ]; then \
 		echo "❌ Error: .env.secure not found"; \
 		echo "Run: ./scripts/setup-secure-redis.sh"; \
 		exit 1; \
+	fi; \
+	if [ "$$CACHE_PRESET" = "disabled" ]; then \
+		docker-compose -f docker-compose.secure.yml --env-file .env.secure up --build; \
+	else \
+		docker-compose -f docker-compose.secure.yml --env-file .env.secure --profile with-cache up --build; \
 	fi
-	@docker-compose -f docker-compose.secure.yml --env-file .env.secure up --build
 
 # Start development environment (legacy mode for older Docker Compose)
 dev-legacy:

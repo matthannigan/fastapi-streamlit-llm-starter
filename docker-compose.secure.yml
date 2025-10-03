@@ -26,6 +26,7 @@
 
 services:
   redis:
+    profiles: ["with-cache"]  # Only run when cache is enabled
     image: redis:7-alpine
     container_name: redis_secure_${GIT_BRANCH:-main}
     restart: unless-stopped
@@ -154,6 +155,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+        required: false  # Make Redis optional when CACHE_PRESET=disabled
 
     # Health check for backend service
     healthcheck:
