@@ -197,6 +197,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.base import CacheInterface
+from app.infrastructure.cache.key_generator import CacheKeyGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -308,6 +309,9 @@ class InMemoryCache(CacheInterface):
         self._misses: int = 0
         self._evictions: int = 0
         self._memory_usage_bytes: int = 0
+
+        # Initialize cache key generator for build_key compatibility
+        self.key_generator = CacheKeyGenerator()
 
         logger.info(
             f"InMemoryCache initialized with default_ttl={default_ttl}s, max_size={max_size}"
@@ -820,3 +824,44 @@ class InMemoryCache(CacheInterface):
                 "cache_type": "memory_only",
             },
         }
+
+    def build_key(self, text: str, operation: str, options: Dict[str, Any]) -> str:
+        """
+        Build cache key using generic key generation logic.
+
+        This helper method provides a generic interface for cache key generation
+        without any domain-specific knowledge. It delegates to the CacheKeyGenerator
+        for actual key generation, allowing domain services to build keys using
+        the infrastructure layer's key generation patterns.
+
+        Args:
+            text: Input text for key generation
+            operation: Operation type (generic string)
+            options: Options dictionary containing all operation-specific data
+
+        Returns:
+            Generated cache key string
+
+        Behavior:
+            - Delegates to CacheKeyGenerator for actual key generation
+            - No domain-specific logic or knowledge about operations
+            - Generic interface suitable for any domain service usage
+            - Maintains consistency with existing key generation patterns
+
+        Examples:
+            >>> # Basic operation key generation
+            >>> cache = InMemoryCache()
+            >>> key = cache.build_key(
+            ...     text="Sample text",
+            ...     operation="process",
+            ...     options={"param": "value"}
+            ... )
+
+            >>> # Key generation with embedded question
+            >>> key = cache.build_key(
+            ...     text="Document content",
+            ...     operation="qa",
+            ...     options={"question": "What is this about?", "max_tokens": 150}
+            ... )
+        """
+        return self.key_generator.generate_cache_key(text, operation, options)
