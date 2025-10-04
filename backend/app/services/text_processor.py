@@ -115,13 +115,14 @@ import time
 import asyncio
 import uuid
 import re
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
 import logging
 from pydantic_ai import Agent
 
 # Only import for type checking to avoid circular dependencies
 if TYPE_CHECKING:
-    from app.infrastructure.cache import AIResponseCache
+    from app.infrastructure.cache.redis_ai import AIResponseCache
+    from app.infrastructure.cache.memory import InMemoryCache
 
 from app.schemas import (
     TextProcessingOperation,
@@ -163,8 +164,8 @@ class TextProcessorService:
     Attributes:
         settings: Application configuration containing AI model settings, resilience configuration,
                  and operational parameters for text processing operations
-        cache_service: AI response cache service for storing and retrieving processed results,
-                      improving performance and reducing API costs
+        cache_service: AI-capable cache service (AIResponseCache or InMemoryCache) for storing and
+                      retrieving processed results. Uses InMemoryCache as fallback when Redis unavailable
         agent: PydanticAI agent configured for text processing operations with proper model integration
         sanitizer: Input sanitizer for security validation and prompt injection prevention
         response_validator: Output validator for security and quality assurance of AI responses
@@ -239,15 +240,16 @@ class TextProcessorService:
         >>> print(f"Processed {batch_response.completed_items} of {batch_response.total_items} items")
     """
     
-    def __init__(self, settings: Settings, cache: "AIResponseCache"):
+    def __init__(self, settings: Settings, cache: Union["AIResponseCache", "InMemoryCache"]):
         """
         Initialize the text processor with AI agent, resilience patterns, and security validation.
-        
+
         Args:
             settings: Application settings instance containing AI model configuration,
                      resilience parameters, and operational settings for text processing
-            cache: AI response cache service instance for storing and retrieving processed results,
-                  improving performance and reducing redundant API calls
+            cache: AI-capable cache service (AIResponseCache or InMemoryCache) for storing and
+                  retrieving processed results. InMemoryCache is used as fallback when Redis is
+                  unavailable (CACHE_PRESET=disabled)
         
         Behavior:
             - Initializes PydanticAI agent with configured model and temperature settings
