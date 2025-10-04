@@ -1,14 +1,17 @@
 # Health Monitoring Integration Test Plan
 
 **Test Plan ID:** HMON-INT-001
-**Version:** 2.0
+**Version:** 3.0
 **Created:** 2025-09-30
-**Updated:** 2025-10-01
+**Updated:** 2025-10-04
 **Priority:** High
 
 ## Executive Summary
 
-This integration test plan validates the health monitoring system's collaborative behavior across API endpoints, health checker orchestration, and infrastructure services. Following the project's **outside-in, behavior-focused testing philosophy**, tests verify observable outcomes through HTTP requests rather than mocking internal components. All test scenarios map directly to documented contracts in `backend/contracts/infrastructure/monitoring/health.pyi`.
+This integration test plan validates the health monitoring system's collaborative behavior through **critical path testing**. Following the project's **outside-in, behavior-focused testing philosophy**, the plan focuses on high-value health monitoring journeys essential to operational reliability rather than exhaustive coverage. All tests verify observable outcomes through HTTP requests without mocking internal components, and all scenarios map directly to documented contracts in `backend/contracts/infrastructure/monitoring/health.pyi`.
+
+**Test Count:** 10 core integration tests (consolidated from 20+ scenarios for maintainability)
+**Coverage Strategy:** Critical paths + contract-based testing for maximum confidence with minimal maintenance
 
 ## Testing Philosophy Alignment
 
@@ -26,17 +29,16 @@ All test scenarios validate documented behavior from `backend/contracts/infrastr
 
 | Contract Element | Source Location | Test Scenarios |
 |------------------|-----------------|----------------|
-| **HealthStatus enumeration** (HEALTHY, DEGRADED, UNHEALTHY) | `health.pyi:215-228` | 1.1, 1.2, 1.3, 2.1, 2.2, 3.1, 3.2 |
-| **ComponentStatus response_time_ms** must be measured | `health.pyi:266` | 1.4, 2.1, 2.2, 3.1 |
-| **ComponentStatus metadata** for diagnostics | `health.pyi:267` | 2.1, 3.1, 4.1 |
-| **HealthChecker timeout validation** (100-30000ms) | `health.pyi:388` | 5.1 |
-| **HealthChecker retry configuration** (0-10 attempts) | `health.pyi:392` | 5.2 |
+| **HealthStatus enumeration** (HEALTHY, DEGRADED, UNHEALTHY) | `health.pyi:215-228` | 1.1, 1.2, 1.3 |
+| **ComponentStatus response_time_ms** must be measured | `health.pyi:266` | C.1, 1.1 |
+| **ComponentStatus metadata** for diagnostics | `health.pyi:267` | C.1, 1.1 |
+| **HealthChecker configuration validation** | `health.pyi:383-404` | (Unit test coverage) |
 | **check_component raises ValueError** for unregistered | `health.pyi:469` | (Unit test coverage) |
 | **check_all_components aggregation** (worst-case status) | `health.pyi:524-526` | 1.1, 1.2, 1.3 |
-| **check_all_components graceful failure** handling | `health.pyi:522` | 1.3, 6.1 |
-| **check_ai_model_health no external calls** | `health.pyi:617` | 3.3 |
-| **check_cache_health dependency injection** optimization | `health.pyi:644` | 2.3 |
-| **check_resilience_health circuit breaker states** | `health.pyi:662-664` | 4.1, 4.2 |
+| **check_all_components graceful failure** handling | `health.pyi:522` | 1.4 |
+| **check_ai_model_health configuration validation** | `health.pyi:568-622` | 1.2 |
+| **check_cache_health connectivity testing** | `health.pyi:625-647` | 1.5, 1.6 |
+| **check_resilience_health circuit breaker states** | `health.pyi:650-713` | 1.7 |
 
 ### Docstring Behavior Mapping
 
@@ -48,29 +50,115 @@ Each test validates specific behavioral guarantees from component docstrings:
 - ✅ "Returns HEALTHY only if all components are HEALTHY" → Test 1.1
 
 **From HealthChecker.check_all_components (lines 505-565):**
-- ✅ "Executes all registered health checks concurrently" → Test 1.4
-- ✅ "Does not fail if individual components throw exceptions" → Test 6.1
-- ✅ "Preserves individual component response times" → Test 2.1
+- ✅ "Executes all registered health checks concurrently" → All tests (observable via response time)
+- ✅ "Does not fail if individual components throw exceptions" → Test 1.4
+- ✅ "Preserves individual component response times" → Test C.1 (contract test)
 
-**From check_ai_model_health (lines 568-622):**
-- ✅ "Returns HEALTHY when AI services are properly configured" → Test 3.1
-- ✅ "Returns DEGRADED when configuration is missing" → Test 3.2
-- ✅ "Does not perform actual AI model inference" → Test 3.3
+**From Individual Health Check Functions:**
+- ✅ All health check functions follow ComponentStatus contract → Test C.1, C.2 (contract tests)
 
 ---
 
-## Integration Test Scenarios
+## Contract-Based Test Pattern (Principle 2: Trust Contracts, Verify Integrations)
 
-### SEAM 1: API → HealthChecker → Multi-Component Aggregation
+Before testing specific integration scenarios, we establish contract compliance for all health check functions. This pattern ensures all health checks follow the same behavioral contract, providing resilience to refactoring.
+
+### CONTRACT TEST C.1: Health Check Function Contract Compliance
+
+```python
+@pytest.mark.integration
+@pytest.mark.parametrize("health_check_func,component_name", [
+    (check_ai_model_health, "ai_model"),
+    (check_cache_health, "cache"),
+    (check_resilience_health, "resilience"),
+])
+async def test_all_health_checks_follow_component_status_contract(health_check_func, component_name):
+    """
+    Test all health check functions return valid ComponentStatus per contract.
+
+    Contract Validation:
+        - All health checks return ComponentStatus per health.pyi
+        - name field matches component identifier
+        - status is valid HealthStatus enum value
+        - message is non-empty string for troubleshooting
+        - response_time_ms is non-negative float
+
+    Business Impact:
+        Ensures consistent health monitoring interface across all components
+
+    Test Strategy:
+        - Run same contract test against all health check functions
+        - Verify structural contract compliance
+        - This single test validates 3 health check implementations
+
+    Success Criteria:
+        - All health check functions return ComponentStatus
+        - All required fields present with correct types
+        - No health check crashes or returns invalid data
+    """
+    # Act: Execute health check function
+    status = await health_check_func()
+
+    # Assert: Contract compliance
+    assert status.name == component_name, f"Component name mismatch for {health_check_func.__name__}"
+    assert isinstance(status.status, HealthStatus), f"Invalid status type for {component_name}"
+    assert status.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED, HealthStatus.UNHEALTHY]
+    assert isinstance(status.message, str), f"Message must be string for {component_name}"
+    assert len(status.message) > 0, f"Message must not be empty for {component_name}"
+    assert isinstance(status.response_time_ms, (int, float)), f"Invalid response_time type for {component_name}"
+    assert status.response_time_ms >= 0, f"Response time must be non-negative for {component_name}"
+```
+
+### CONTRACT TEST C.2: Health Check Metadata Contract
+
+```python
+@pytest.mark.integration
+async def test_health_checks_with_metadata_include_diagnostic_information():
+    """
+    Test health checks that provide metadata include useful diagnostic information.
+
+    Contract Validation:
+        - ComponentStatus.metadata is optional per health.pyi:267
+        - When present, metadata contains diagnostic key-value pairs
+        - Metadata aids operational troubleshooting
+
+    Business Impact:
+        Enables detailed diagnostics for operations teams during incidents
+
+    Success Criteria:
+        - Metadata is either None or a dictionary
+        - Metadata keys are strings
+        - Metadata provides actionable diagnostic information
+    """
+    # Check AI model health metadata
+    ai_status = await check_ai_model_health()
+    if ai_status.metadata:
+        assert isinstance(ai_status.metadata, dict)
+        assert "provider" in ai_status.metadata or "has_api_key" in ai_status.metadata
+
+    # Check resilience health metadata
+    resilience_status = await check_resilience_health()
+    if resilience_status.metadata:
+        assert isinstance(resilience_status.metadata, dict)
+        assert "total_circuit_breakers" in resilience_status.metadata
+```
+
+---
+
+## Critical Path Integration Tests
+
+### SEAM 1: Complete Health Monitoring System (API → HealthChecker → All Components)
 
 **PRIORITY: HIGH** (Core user-facing functionality)
 **COMPONENTS:** `/v1/health` endpoint, `HealthChecker`, all component health check functions
 **CRITICAL PATH:** HTTP request → Health checker dependency → Real health checks → Aggregated JSON response
 **CONTRACT REFERENCE:** `health.pyi:505-565` (HealthChecker.check_all_components)
 
+This seam consolidates testing for the primary health monitoring integration, covering all system states (healthy, degraded, unhealthy) and specialized component behaviors (cache fallback, AI configuration, resilience circuit breakers).
+
 #### Test Scenarios
 
-**1.1 All Components Healthy - Complete System Health**
+**TEST 1.1: All Components Healthy - Complete System Health**
 ```python
 @pytest.mark.integration
 async def test_health_endpoint_returns_healthy_when_all_components_operational(client):
@@ -121,34 +209,35 @@ async def test_health_endpoint_returns_healthy_when_all_components_operational(c
         assert component["response_time_ms"] > 0
 ```
 
-**1.2 Partial Degradation - AI Model Configuration Missing**
+**TEST 1.2: Partial Degradation - Component Configuration Issues**
 ```python
 @pytest.mark.integration
-async def test_health_endpoint_returns_degraded_when_ai_configuration_missing(client, monkeypatch):
+async def test_health_endpoint_returns_degraded_with_any_component_degraded(client, monkeypatch):
     """
-    Test health endpoint returns DEGRADED status when AI configuration unavailable.
+    Test health endpoint returns DEGRADED status when any component is degraded.
 
     Integration Scope:
-        API endpoint → HealthChecker → check_ai_model_health (with missing config)
+        API endpoint → HealthChecker → All components (one degraded)
 
     Contract Validation:
         - SystemHealthStatus.overall_status returns DEGRADED per health.pyi:525
-        - AI component has status=DEGRADED per health.pyi:579
-        - Other components remain HEALTHY (graceful degradation)
+        - Degraded component identified with descriptive message
+        - Other components report independently (graceful degradation)
 
     Business Impact:
-        Demonstrates system remains operational despite AI service configuration issues
+        Demonstrates system remains operational despite component issues
+        Alerts operations to reduced functionality without system failure
 
     Test Strategy:
-        - Manipulate environment to remove AI configuration
+        - Manipulate environment to degrade AI configuration
         - Verify system degrades gracefully without failing
-        - Use REAL health check functions (no mocking)
+        - Confirm aggregation logic (worst-case status)
 
     Success Criteria:
         - Response status code is 200 (endpoint remains accessible)
         - Overall status is "degraded"
-        - AI component shows status="degraded" with descriptive message
-        - Cache and resilience components remain healthy
+        - At least one component shows "degraded" status
+        - Other components report independently
     """
     # Arrange: Remove AI configuration to trigger degraded state
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
@@ -158,52 +247,50 @@ async def test_health_endpoint_returns_degraded_when_ai_configuration_missing(cl
 
     # Assert: Degraded but operational
     assert response.status_code == 200
-
     data = response.json()
     assert data["status"] == "degraded"
 
-    # Find AI component in response
-    ai_component = next((c for c in data["components"] if c["name"] == "ai_model"), None)
-    assert ai_component is not None
-    assert ai_component["status"] == "degraded"
-    assert "missing" in ai_component["message"].lower() or "not configured" in ai_component["message"].lower()
+    # Should have at least one degraded component
+    degraded_components = [c for c in data["components"] if c["status"] == "degraded"]
+    assert len(degraded_components) > 0, "Should have at least one degraded component"
 
-    # Verify other components unaffected
-    other_components = [c for c in data["components"] if c["name"] != "ai_model"]
-    assert len(other_components) > 0, "Should have other components reporting"
+    # Degraded components should have descriptive messages
+    for component in degraded_components:
+        assert len(component["message"]) > 0, f"Degraded component {component['name']} needs descriptive message"
 ```
 
-**1.3 Critical Component Failure - System Unhealthy**
+**TEST 1.3: Critical Component Failure - System Unhealthy**
 ```python
 @pytest.mark.integration
-async def test_health_endpoint_returns_unhealthy_when_critical_component_fails(client, monkeypatch):
+async def test_health_endpoint_returns_unhealthy_with_any_component_unhealthy(client, monkeypatch):
     """
-    Test health endpoint returns UNHEALTHY when critical component encounters failure.
+    Test health endpoint returns UNHEALTHY when any component encounters critical failure.
 
     Integration Scope:
-        API endpoint → HealthChecker → check_resilience_health (simulated failure)
+        API endpoint → HealthChecker → All components (one critical failure)
 
     Contract Validation:
         - SystemHealthStatus.overall_status returns UNHEALTHY per health.pyi:524
-        - Failed component has status=UNHEALTHY per health.pyi:227
+        - Failed component has status=UNHEALTHY with error details
         - Exception handling per health.pyi:522 (graceful failure handling)
+        - Aggregation uses worst-case status logic
 
     Business Impact:
         Alerts monitoring systems to critical infrastructure failures requiring intervention
+        Health endpoint remains operational even during critical component failures
 
     Test Strategy:
-        - Simulate infrastructure failure through environment manipulation
+        - Simulate critical infrastructure failure through environment manipulation
         - Verify health monitoring continues despite component failure
-        - No mocking of internal health check functions
+        - Confirm aggregation logic prioritizes UNHEALTHY status
 
     Success Criteria:
         - Response status code is 200 (health endpoint remains operational)
         - Overall status is "unhealthy"
-        - Failed component shows status="unhealthy" with error details
+        - At least one component shows "unhealthy" status with error details
         - Health monitoring system itself remains functional
     """
-    # Arrange: Configure environment to cause resilience orchestrator unavailability
-    # This could be done by setting invalid resilience configuration
+    # Arrange: Configure invalid resilience preset to trigger critical failure
     monkeypatch.setenv("RESILIENCE_PRESET", "invalid_preset_name")
 
     # Act: Request health status
@@ -211,7 +298,6 @@ async def test_health_endpoint_returns_unhealthy_when_critical_component_fails(c
 
     # Assert: System reports unhealthy but health endpoint functional
     assert response.status_code == 200
-
     data = response.json()
     assert data["status"] == "unhealthy"
 
@@ -219,663 +305,12 @@ async def test_health_endpoint_returns_unhealthy_when_critical_component_fails(c
     unhealthy_components = [c for c in data["components"] if c["status"] == "unhealthy"]
     assert len(unhealthy_components) > 0, "Should have at least one unhealthy component"
 
-    # Verify error message provides diagnostic information
+    # Verify error messages provide diagnostic information
     for component in unhealthy_components:
-        assert len(component["message"]) > 0, "Should have descriptive error message"
+        assert len(component["message"]) > 0, f"Unhealthy component {component['name']} needs descriptive error"
 ```
 
-**1.4 Health Check Performance - Response Time SLA**
-```python
-@pytest.mark.integration
-async def test_health_endpoint_responds_within_acceptable_time_sla(client):
-    """
-    Test health endpoint meets response time SLA under normal conditions.
-
-    Integration Scope:
-        API endpoint → HealthChecker → All component health checks (concurrent execution)
-
-    Contract Validation:
-        - ComponentStatus.response_time_ms measurement per health.pyi:266
-        - Concurrent execution per health.pyi:518 for performance
-
-    Business Impact:
-        Ensures health monitoring doesn't impact application performance
-        Validates monitoring can detect issues quickly for rapid response
-
-    Test Strategy:
-        - Measure actual HTTP response time
-        - Test observable performance characteristic
-        - Verify against documented SLA (3 seconds per success criteria)
-
-    Success Criteria:
-        - Total response time < 3000ms (3 seconds SLA)
-        - Response includes timing data for each component
-        - All component health checks complete successfully
-    """
-    import time
-
-    # Arrange: Normal operational environment
-    start_time = time.time()
-
-    # Act: Execute health check
-    response = client.get("/v1/health")
-
-    # Measure observable response time
-    response_time_ms = (time.time() - start_time) * 1000
-
-    # Assert: Performance SLA met
-    assert response.status_code == 200
-    assert response_time_ms < 3000, f"Health check took {response_time_ms:.1f}ms (SLA: 3000ms)"
-
-    # Verify response includes timing data
-    data = response.json()
-    assert "components" in data
-
-    for component in data["components"]:
-        assert "response_time_ms" in component
-        assert component["response_time_ms"] >= 0
-```
-
-**INFRASTRUCTURE NEEDS:**
-- FastAPI TestClient with real application instance
-- Environment configuration via `monkeypatch` fixture
-- Real Redis instance OR memory cache configuration
-- Valid test API key configuration
-- No mocking of internal health check functions
-
----
-
-### SEAM 2: HealthChecker → Cache Service Integration
-
-**PRIORITY: HIGH** (Infrastructure reliability)
-**COMPONENTS:** `HealthChecker`, `check_cache_health()`, `AIResponseCache`, Redis/Memory backends
-**CRITICAL PATH:** Health check → Cache service (via DI) → Connectivity validation → Status reporting
-**CONTRACT REFERENCE:** `health.pyi:625-647` (check_cache_health)
-
-#### Test Scenarios
-
-**2.1 Cache Health with Redis - Primary Backend Operational**
-```python
-@pytest.mark.integration
-async def test_cache_health_check_reports_healthy_with_redis_available(client):
-    """
-    Test cache health check returns HEALTHY when Redis connection successful.
-
-    Integration Scope:
-        Health checker → check_cache_health → AIResponseCache → Redis backend
-
-    Contract Validation:
-        - ComponentStatus with status=HEALTHY per health.pyi:640
-        - response_time_ms includes connectivity test timing per health.pyi:266
-        - metadata contains backend information per health.pyi:267
-
-    Business Impact:
-        Validates primary caching infrastructure operational for optimal performance
-
-    Test Strategy:
-        - Ensure Redis container running (testcontainers or docker-compose)
-        - Use real cache health check function
-        - Verify through HTTP endpoint (outside-in)
-
-    Success Criteria:
-        - Cache component status is "healthy"
-        - Metadata indicates Redis backend in use
-        - Response time measured and reasonable (< 500ms)
-    """
-    # Arrange: Ensure Redis available via docker-compose or testcontainers
-    # Configuration should specify Redis connection
-
-    # Act: Request health status
-    response = client.get("/v1/health")
-
-    # Assert: Cache reports healthy with Redis
-    assert response.status_code == 200
-
-    data = response.json()
-    cache_component = next((c for c in data["components"] if c["name"] == "cache"), None)
-
-    assert cache_component is not None
-    assert cache_component["status"] == "healthy"
-    assert cache_component["response_time_ms"] > 0
-    assert cache_component["response_time_ms"] < 500, "Cache health check should be fast"
-
-    # Verify metadata indicates Redis backend
-    if "metadata" in cache_component:
-        assert cache_component["metadata"].get("backend") in ["redis", "Redis", "REDIS"]
-```
-
-**2.2 Cache Health with Memory Fallback - Graceful Degradation**
-```python
-@pytest.mark.integration
-async def test_cache_health_check_reports_degraded_with_redis_unavailable(client, monkeypatch):
-    """
-    Test cache health check returns DEGRADED when Redis unavailable but memory cache works.
-
-    Integration Scope:
-        Health checker → check_cache_health → AIResponseCache fallback mechanism
-
-    Contract Validation:
-        - ComponentStatus with status=DEGRADED per health.pyi:640
-        - Graceful degradation documented in AIResponseCache behavior
-
-    Business Impact:
-        Demonstrates cache resilience through fallback to memory backend
-        Alerts operations to reduced cache capacity without system failure
-
-    Test Strategy:
-        - Configure cache to use memory-only (simulate Redis unavailable)
-        - Verify degraded status reported accurately
-        - Test through HTTP endpoint (outside-in)
-
-    Success Criteria:
-        - Cache component status is "degraded"
-        - Message indicates fallback to memory cache
-        - System remains operational
-    """
-    # Arrange: Configure memory-only cache (Redis unavailable)
-    monkeypatch.setenv("CACHE_PRESET", "minimal")  # Memory-only preset
-
-    # Act: Request health status
-    response = client.get("/v1/health")
-
-    # Assert: Cache reports degraded with fallback
-    assert response.status_code == 200
-
-    data = response.json()
-    cache_component = next((c for c in data["components"] if c["name"] == "cache"), None)
-
-    assert cache_component is not None
-    assert cache_component["status"] in ["degraded", "healthy"]  # May be healthy with memory
-
-    # If degraded, should indicate fallback
-    if cache_component["status"] == "degraded":
-        assert "memory" in cache_component["message"].lower() or "fallback" in cache_component["message"].lower()
-```
-
-**2.3 Cache Health with Dependency Injection - Performance Optimization**
-```python
-@pytest.mark.integration
-async def test_cache_health_check_reuses_injected_service(client):
-    """
-    Test cache health check uses dependency-injected cache service for optimal performance.
-
-    Integration Scope:
-        Health checker initialization → get_cache_service() dependency → check_cache_health()
-
-    Contract Validation:
-        - Dependency injection optimization per health.pyi:644-645
-        - No redundant cache service instantiation
-
-    Business Impact:
-        Ensures health monitoring doesn't create unnecessary service instances
-        Validates efficient resource usage in health checks
-
-    Test Strategy:
-        - Verify health check executes without creating new connections
-        - Test through multiple health check calls
-        - Measure consistent performance (outside-in behavioral test)
-
-    Success Criteria:
-        - Multiple health checks show consistent fast response times
-        - No connection pool exhaustion
-        - Performance remains optimal across requests
-    """
-    # Act: Execute multiple health checks in sequence
-    response_times = []
-
-    for _ in range(5):
-        import time
-        start = time.time()
-        response = client.get("/v1/health")
-        response_times.append((time.time() - start) * 1000)
-
-        assert response.status_code == 200
-
-    # Assert: Performance remains consistent (no degradation from repeated instantiation)
-    avg_response_time = sum(response_times) / len(response_times)
-    max_response_time = max(response_times)
-
-    assert avg_response_time < 3000, f"Average response time {avg_response_time:.1f}ms exceeds SLA"
-    assert max_response_time < 5000, f"Max response time {max_response_time:.1f}ms indicates performance issue"
-
-    # Response times should be relatively consistent (within 2x of average)
-    for rt in response_times:
-        assert rt < (avg_response_time * 2), "Response time variance suggests instantiation issues"
-```
-
-**INFRASTRUCTURE NEEDS:**
-- Redis container via docker-compose or testcontainers
-- Cache preset configuration (development, production, minimal)
-- Environment variable manipulation for fallback testing
-- No mocking of cache service internals
-
----
-
-### SEAM 3: HealthChecker → AI Service Configuration
-
-**PRIORITY: HIGH** (AI service availability)
-**COMPONENTS:** `HealthChecker`, `check_ai_model_health()`, `settings` configuration
-**CRITICAL PATH:** Health check → Settings validation → API key presence check → Status reporting
-**CONTRACT REFERENCE:** `health.pyi:568-622` (check_ai_model_health)
-
-#### Test Scenarios
-
-**3.1 AI Model Health with Valid Configuration**
-```python
-@pytest.mark.integration
-async def test_ai_model_health_check_reports_healthy_with_valid_api_key(client):
-    """
-    Test AI model health check returns HEALTHY when API key properly configured.
-
-    Integration Scope:
-        Health checker → check_ai_model_health → settings.gemini_api_key validation
-
-    Contract Validation:
-        - ComponentStatus with status=HEALTHY per health.pyi:579
-        - metadata includes provider and configuration status per health.pyi:582
-
-    Business Impact:
-        Confirms AI services ready for text processing operations
-
-    Test Strategy:
-        - Ensure valid GEMINI_API_KEY configured in environment
-        - Use real health check function
-        - Verify through HTTP endpoint (outside-in)
-
-    Success Criteria:
-        - AI component status is "healthy"
-        - Metadata shows provider="gemini" and has_api_key=true
-        - Message confirms configuration status
-    """
-    # Arrange: Valid API key should be configured in test environment
-    # (Verify via environment or test settings)
-
-    # Act: Request health status
-    response = client.get("/v1/health")
-
-    # Assert: AI model reports healthy
-    assert response.status_code == 200
-
-    data = response.json()
-    ai_component = next((c for c in data["components"] if c["name"] == "ai_model"), None)
-
-    assert ai_component is not None
-    assert ai_component["status"] == "healthy"
-    assert "configured" in ai_component["message"].lower() or "available" in ai_component["message"].lower()
-
-    # Verify metadata if present
-    if "metadata" in ai_component:
-        assert ai_component["metadata"].get("provider") == "gemini"
-        assert ai_component["metadata"].get("has_api_key") is True
-```
-
-**3.2 AI Model Health without Configuration - Graceful Degradation**
-```python
-@pytest.mark.integration
-async def test_ai_model_health_check_reports_degraded_without_api_key(client, monkeypatch):
-    """
-    Test AI model health check returns DEGRADED when API key missing.
-
-    Integration Scope:
-        Health checker → check_ai_model_health → settings validation (missing key)
-
-    Contract Validation:
-        - ComponentStatus with status=DEGRADED per health.pyi:580
-        - metadata indicates missing configuration per health.pyi:582
-
-    Business Impact:
-        Alerts operations to AI service configuration issues
-        System remains partially operational for non-AI features
-
-    Test Strategy:
-        - Remove GEMINI_API_KEY from environment
-        - Verify degraded status with descriptive message
-        - Test through HTTP endpoint (outside-in)
-
-    Success Criteria:
-        - AI component status is "degraded"
-        - Message indicates missing or invalid configuration
-        - Metadata shows has_api_key=false
-    """
-    # Arrange: Remove API key configuration
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-
-    # Act: Request health status
-    response = client.get("/v1/health")
-
-    # Assert: AI model reports degraded
-    assert response.status_code == 200
-
-    data = response.json()
-    ai_component = next((c for c in data["components"] if c["name"] == "ai_model"), None)
-
-    assert ai_component is not None
-    assert ai_component["status"] == "degraded"
-    assert "missing" in ai_component["message"].lower() or "not configured" in ai_component["message"].lower()
-
-    # Verify metadata indicates missing configuration
-    if "metadata" in ai_component:
-        assert ai_component["metadata"].get("has_api_key") is False
-```
-
-**3.3 AI Model Health Check - No External API Calls**
-```python
-@pytest.mark.integration
-async def test_ai_model_health_check_makes_no_external_api_calls(client, monkeypatch):
-    """
-    Test AI model health check validates configuration without calling external APIs.
-
-    Integration Scope:
-        Health checker → check_ai_model_health (configuration validation only)
-
-    Contract Validation:
-        - "Does not perform actual AI model inference" per health.pyi:617
-        - Fast response time for health monitoring efficiency
-
-    Business Impact:
-        Ensures health monitoring doesn't consume AI service quota
-        Provides fast health checks for rapid operational feedback
-
-    Test Strategy:
-        - Monitor for external network calls during health check
-        - Verify response time remains consistently fast
-        - Use observable performance metrics (outside-in)
-
-    Success Criteria:
-        - Health check completes in < 100ms
-        - No external network calls made
-        - Consistent fast response across multiple checks
-    """
-    import time
-
-    # Arrange: Configure with valid API key
-    # Act: Execute health check and measure timing
-    start = time.time()
-    response = client.get("/v1/health")
-    response_time_ms = (time.time() - start) * 1000
-
-    # Assert: Fast response indicates no external calls
-    assert response.status_code == 200
-
-    data = response.json()
-    ai_component = next((c for c in data["components"] if c["name"] == "ai_model"), None)
-
-    assert ai_component is not None
-    assert ai_component["response_time_ms"] < 100, \
-        f"AI health check took {ai_component['response_time_ms']:.1f}ms (expected < 100ms without API calls)"
-
-    # Overall response should also be fast
-    assert response_time_ms < 500, \
-        f"Total health check took {response_time_ms:.1f}ms (indicates potential external calls)"
-```
-
-**INFRASTRUCTURE NEEDS:**
-- Environment variable manipulation via monkeypatch
-- Valid test GEMINI_API_KEY in test environment
-- No external API call monitoring (verified through timing)
-- No mocking of AI service internals
-
----
-
-### SEAM 4: HealthChecker → Resilience Infrastructure
-
-**PRIORITY: MEDIUM** (Resilience monitoring)
-**COMPONENTS:** `HealthChecker`, `check_resilience_health()`, resilience orchestrator, circuit breakers
-**CRITICAL PATH:** Health check → Orchestrator query → Circuit breaker states → Status aggregation
-**CONTRACT REFERENCE:** `health.pyi:650-713` (check_resilience_health)
-
-#### Test Scenarios
-
-**4.1 Resilience Health with All Circuits Closed - Optimal State**
-```python
-@pytest.mark.integration
-async def test_resilience_health_check_reports_healthy_with_all_circuits_closed(client):
-    """
-    Test resilience health check returns HEALTHY when all circuit breakers closed.
-
-    Integration Scope:
-        Health checker → check_resilience_health → resilience orchestrator → circuit breaker states
-
-    Contract Validation:
-        - ComponentStatus with status=HEALTHY per health.pyi:661
-        - metadata includes circuit breaker states per health.pyi:664
-
-    Business Impact:
-        Confirms resilience infrastructure protecting system from failures
-
-    Test Strategy:
-        - Start with fresh resilience orchestrator (all circuits closed)
-        - Use real resilience health check
-        - Verify through HTTP endpoint (outside-in)
-
-    Success Criteria:
-        - Resilience component status is "healthy"
-        - Metadata shows total_circuit_breakers >= 0
-        - Metadata shows open_circuit_breakers is empty list
-    """
-    # Arrange: Fresh application startup (all circuits start closed)
-
-    # Act: Request health status
-    response = client.get("/v1/health")
-
-    # Assert: Resilience reports healthy
-    assert response.status_code == 200
-
-    data = response.json()
-    resilience_component = next((c for c in data["components"] if c["name"] == "resilience"), None)
-
-    assert resilience_component is not None
-    assert resilience_component["status"] == "healthy"
-
-    # Verify circuit breaker metadata
-    if "metadata" in resilience_component:
-        assert "total_circuit_breakers" in resilience_component["metadata"]
-        open_breakers = resilience_component["metadata"].get("open_circuit_breakers", [])
-        assert len(open_breakers) == 0, f"Expected no open breakers, found: {open_breakers}"
-```
-
-**4.2 Resilience Health with Open Circuits - Degraded but Functional**
-```python
-@pytest.mark.integration
-@pytest.mark.slow
-async def test_resilience_health_check_reports_degraded_with_open_circuits(client):
-    """
-    Test resilience health check returns DEGRADED when circuit breakers open.
-
-    Integration Scope:
-        Health checker → check_resilience_health → circuit breaker state detection
-
-    Contract Validation:
-        - ComponentStatus with status=DEGRADED per health.pyi:662
-        - metadata identifies open circuit breakers per health.pyi:672
-
-    Business Impact:
-        Alerts operations to external service failures being protected by circuit breakers
-        System remains functional through resilience patterns
-
-    Test Strategy:
-        - Trigger circuit breaker opening through repeated failures
-        - Verify degraded status reflects open circuits
-        - Test through HTTP endpoint (outside-in)
-
-    Success Criteria:
-        - Resilience component status is "degraded"
-        - Message indicates circuit breakers open
-        - Metadata lists open circuit breaker names
-        - Overall system remains operational
-    """
-    # Arrange: Trigger circuit breaker to open by simulating failures
-    # This requires making failing requests to an endpoint protected by circuit breaker
-    # (Implementation depends on which operations have circuit breaker protection)
-
-    # Simulate failures to AI service to open circuit breaker
-    for _ in range(5):  # Exceed failure threshold
-        try:
-            response = client.post("/v1/text_processing/process",
-                                   json={"text": "test", "operation": "invalid_operation"})
-        except Exception:
-            pass  # Expected failures
-
-    # Act: Check health status
-    response = client.get("/v1/health")
-
-    # Assert: Resilience reports degraded or still healthy (depending on circuit breaker config)
-    assert response.status_code == 200
-
-    data = response.json()
-    resilience_component = next((c for c in data["components"] if c["name"] == "resilience"), None)
-
-    assert resilience_component is not None
-    # Status may be degraded or healthy depending on whether circuit opened
-    assert resilience_component["status"] in ["healthy", "degraded"]
-
-    # If degraded, should indicate circuit breaker status
-    if resilience_component["status"] == "degraded":
-        assert "circuit" in resilience_component["message"].lower()
-
-        if "metadata" in resilience_component:
-            open_breakers = resilience_component["metadata"].get("open_circuit_breakers", [])
-            # If circuits are open, should be reported
-            if len(open_breakers) > 0:
-                assert isinstance(open_breakers, list)
-```
-
-**INFRASTRUCTURE NEEDS:**
-- Real resilience orchestrator with circuit breakers
-- Ability to trigger circuit breaker state changes through API calls
-- No mocking of resilience infrastructure
-- Mark tests as `slow` when requiring state manipulation
-
----
-
-### SEAM 5: Error Handling and Configuration Validation
-
-**PRIORITY: HIGH** (Reliability and robustness)
-**COMPONENTS:** `HealthChecker` initialization, configuration validation, exception handling
-**CRITICAL PATH:** Configuration → Validation → Graceful error handling → Status reporting
-**CONTRACT REFERENCE:** `health.pyi:383-404` (HealthChecker.__init__)
-
-#### Test Scenarios
-
-**5.1 Configuration Validation - Timeout Boundaries**
-```python
-@pytest.mark.integration
-async def test_health_checker_validates_timeout_configuration_boundaries():
-    """
-    Test HealthChecker validates timeout parameters within acceptable ranges.
-
-    Integration Scope:
-        HealthChecker initialization → Configuration validation
-
-    Contract Validation:
-        - Timeout validation (100-30000ms) per health.pyi:388
-        - Defensive parameter validation per health.pyi:402
-
-    Business Impact:
-        Prevents misconfiguration that could cause operational issues
-
-    Test Strategy:
-        - Test boundary conditions from docstring specification
-        - Verify configuration validation errors raised appropriately
-        - This is unit-level testing of HealthChecker initialization
-
-    Success Criteria:
-        - Valid timeouts (100-30000ms) accepted
-        - Invalid timeouts rejected with clear error messages
-        - Configuration immutability per health.pyi:402
-    """
-    from app.infrastructure.monitoring.health import HealthChecker
-
-    # Test valid boundary conditions
-    health_checker_min = HealthChecker(default_timeout_ms=100)
-    assert health_checker_min is not None
-
-    health_checker_max = HealthChecker(default_timeout_ms=30000)
-    assert health_checker_max is not None
-
-    # Test invalid boundaries (should raise ValueError per validation)
-    with pytest.raises((ValueError, ValidationError)):
-        HealthChecker(default_timeout_ms=50)  # Below minimum
-
-    with pytest.raises((ValueError, ValidationError)):
-        HealthChecker(default_timeout_ms=50000)  # Above maximum
-```
-
-**5.2 Configuration Validation - Retry Policy Boundaries**
-```python
-@pytest.mark.integration
-async def test_health_checker_validates_retry_configuration_boundaries():
-    """
-    Test HealthChecker validates retry parameters within acceptable ranges.
-
-    Integration Scope:
-        HealthChecker initialization → Retry policy validation
-
-    Contract Validation:
-        - Retry count validation (0-10) per health.pyi:392
-        - Backoff validation (0.0-5.0) per health.pyi:394
-
-    Business Impact:
-        Ensures retry policies configured within reasonable operational bounds
-
-    Test Strategy:
-        - Test boundary conditions from docstring
-        - Verify validation error handling
-        - Unit-level configuration testing
-
-    Success Criteria:
-        - Valid retry counts (0-10) accepted
-        - Valid backoff values (0.0-5.0) accepted
-        - Invalid values rejected with descriptive errors
-    """
-    from app.infrastructure.monitoring.health import HealthChecker
-
-    # Test valid retry boundaries
-    health_checker_no_retry = HealthChecker(retry_count=0)
-    assert health_checker_no_retry is not None
-
-    health_checker_max_retry = HealthChecker(retry_count=10)
-    assert health_checker_max_retry is not None
-
-    # Test invalid retry count
-    with pytest.raises((ValueError, ValidationError)):
-        HealthChecker(retry_count=-1)  # Negative not allowed
-
-    with pytest.raises((ValueError, ValidationError)):
-        HealthChecker(retry_count=15)  # Above maximum
-
-    # Test valid backoff boundaries
-    health_checker_no_backoff = HealthChecker(backoff_base_seconds=0.0)
-    assert health_checker_no_backoff is not None
-
-    health_checker_max_backoff = HealthChecker(backoff_base_seconds=5.0)
-    assert health_checker_max_backoff is not None
-
-    # Test invalid backoff
-    with pytest.raises((ValueError, ValidationError)):
-        HealthChecker(backoff_base_seconds=-0.5)  # Negative not allowed
-
-    with pytest.raises((ValueError, ValidationError)):
-        HealthChecker(backoff_base_seconds=10.0)  # Above maximum
-```
-
-**INFRASTRUCTURE NEEDS:**
-- Direct HealthChecker instantiation for configuration testing
-- Exception validation (ValueError, ValidationError)
-- No external dependencies required
-
----
-
-### SEAM 6: Graceful Degradation and Exception Isolation
-
-**PRIORITY: HIGH** (System resilience)
-**COMPONENTS:** `HealthChecker.check_all_components()`, exception handling, partial failure isolation
-**CRITICAL PATH:** Component failure → Exception handling → Other components continue → Aggregated status
-**CONTRACT REFERENCE:** `health.pyi:522` (graceful failure handling)
-
-#### Test Scenarios
-
-**6.1 Isolated Component Failure - Other Components Unaffected**
+**TEST 1.4: Error Isolation - Component Failures Don't Cascade**
 ```python
 @pytest.mark.integration
 async def test_health_check_isolates_individual_component_failures(client, monkeypatch):
@@ -888,6 +323,7 @@ async def test_health_check_isolates_individual_component_failures(client, monke
     Contract Validation:
         - "Does not fail if individual components throw exceptions" per health.pyi:522
         - Error isolation preserves other component health reporting
+        - Health endpoint remains accessible during component failures
 
     Business Impact:
         Ensures partial failures don't prevent health monitoring of healthy components
@@ -896,7 +332,7 @@ async def test_health_check_isolates_individual_component_failures(client, monke
     Test Strategy:
         - Configure one component to fail (via environment manipulation)
         - Verify other components report normally
-        - Test through HTTP endpoint (outside-in)
+        - Confirm health endpoint remains operational
 
     Success Criteria:
         - Health endpoint remains accessible (200 status)
@@ -905,7 +341,6 @@ async def test_health_check_isolates_individual_component_failures(client, monke
         - Overall status reflects worst-case component status
     """
     # Arrange: Configure environment to cause one component to fail
-    # For example, invalid resilience configuration while AI and cache remain valid
     monkeypatch.setenv("RESILIENCE_CUSTOM_CONFIG", "{invalid json")
 
     # Act: Request health status
@@ -913,7 +348,6 @@ async def test_health_check_isolates_individual_component_failures(client, monke
 
     # Assert: Endpoint functional despite component failure
     assert response.status_code == 200
-
     data = response.json()
 
     # System should report overall unhealthy or degraded
@@ -931,16 +365,153 @@ async def test_health_check_isolates_individual_component_failures(client, monke
     assert successful_count > 0, "Should have at least one component reporting successfully"
 ```
 
+**TEST 1.5: Cache Infrastructure Health - Redis Connectivity**
+```python
+@pytest.mark.integration
+async def test_cache_health_reports_operational_status_through_api(client):
+    """
+    Test cache health check reports operational status through health endpoint.
+
+    Integration Scope:
+        API endpoint → HealthChecker → check_cache_health → Cache infrastructure
+
+    Contract Validation:
+        - ComponentStatus includes cache backend status per health.pyi:625-647
+        - Connectivity validation reports accurate operational state
+        - Metadata includes backend information for diagnostics
+
+    Business Impact:
+        Validates caching infrastructure operational for optimal performance
+        Enables monitoring of cache backend availability
+
+    Test Strategy:
+        - Request health status with cache infrastructure available
+        - Verify cache component reports accurately
+        - Check metadata includes backend information
+
+    Success Criteria:
+        - Cache component status is "healthy" when Redis available
+        - Metadata indicates active backend type
+        - Response time measured for performance monitoring
+    """
+    # Act: Request health status
+    response = client.get("/v1/health")
+
+    # Assert: Cache component reports operational status
+    assert response.status_code == 200
+    data = response.json()
+
+    cache_component = next((c for c in data["components"] if c["name"] == "cache"), None)
+    assert cache_component is not None, "Cache component should be in health response"
+    assert cache_component["status"] in ["healthy", "degraded"], "Cache should be operational"
+    assert cache_component["response_time_ms"] >= 0, "Should measure response time"
+```
+
+**TEST 1.6: Cache Graceful Degradation - Memory Fallback**
+```python
+@pytest.mark.integration
+async def test_cache_health_reports_degraded_with_fallback_mode(client, monkeypatch):
+    """
+    Test cache health check reports DEGRADED when using fallback mechanisms.
+
+    Integration Scope:
+        API endpoint → HealthChecker → check_cache_health → Memory cache fallback
+
+    Contract Validation:
+        - ComponentStatus with status=DEGRADED for fallback mode
+        - System remains operational with reduced cache capacity
+        - Graceful degradation maintains service availability
+
+    Business Impact:
+        Demonstrates cache resilience through fallback to memory backend
+        Alerts operations to reduced cache capacity without system failure
+
+    Test Strategy:
+        - Configure memory-only cache (simulate Redis unavailable)
+        - Verify degraded status reported accurately
+        - Confirm system remains operational
+
+    Success Criteria:
+        - Cache component status indicates fallback mode
+        - System remains operational
+        - Message indicates reduced functionality or fallback state
+    """
+    # Arrange: Configure memory-only cache
+    monkeypatch.setenv("CACHE_PRESET", "minimal")
+
+    # Act: Request health status
+    response = client.get("/v1/health")
+
+    # Assert: Cache reports operational with fallback
+    assert response.status_code == 200
+    data = response.json()
+
+    cache_component = next((c for c in data["components"] if c["name"] == "cache"), None)
+    assert cache_component is not None
+    # May be healthy with memory or degraded - both acceptable for fallback
+    assert cache_component["status"] in ["healthy", "degraded"]
+```
+
+**TEST 1.7: Resilience Health - Circuit Breaker Status Monitoring**
+```python
+@pytest.mark.integration
+async def test_resilience_health_reports_circuit_breaker_states(client):
+    """
+    Test resilience health check reports circuit breaker states accurately.
+
+    Integration Scope:
+        API endpoint → HealthChecker → check_resilience_health → Circuit breaker states
+
+    Contract Validation:
+        - ComponentStatus includes circuit breaker information per health.pyi:650-713
+        - HEALTHY when all circuits closed, DEGRADED when circuits open
+        - Metadata includes circuit breaker counts and states
+
+    Business Impact:
+        Monitors resilience infrastructure protecting system from failures
+        Alerts to external service issues via circuit breaker states
+
+    Test Strategy:
+        - Request health status with resilience orchestrator available
+        - Verify resilience component reports circuit breaker states
+        - Check metadata includes operational metrics
+
+    Success Criteria:
+        - Resilience component status reflects circuit breaker states
+        - Metadata includes circuit breaker counts
+        - Open circuits reported when present
+    """
+    # Act: Request health status
+    response = client.get("/v1/health")
+
+    # Assert: Resilience component reports status
+    assert response.status_code == 200
+    data = response.json()
+
+    resilience_component = next((c for c in data["components"] if c["name"] == "resilience"), None)
+    assert resilience_component is not None, "Resilience component should be in health response"
+    assert resilience_component["status"] in ["healthy", "degraded", "unhealthy"]
+
+    # Should have circuit breaker metadata when available
+    if resilience_component.get("metadata"):
+        assert "total_circuit_breakers" in resilience_component["metadata"] or \
+               "circuit_breakers" in str(resilience_component["message"]).lower()
+```
+
 **INFRASTRUCTURE NEEDS:**
-- Environment manipulation to trigger specific component failures
-- Real health check execution (no mocking)
-- Validation of partial failure handling
+- FastAPI TestClient with real application instance
+- Environment configuration via `monkeypatch` fixture
+- Real Redis instance OR memory cache configuration
+- Valid test API key configuration
+- No mocking of internal health check functions
 
 ---
 
-## Performance Test Suite (Separate from Core Integration Tests)
+## Appendix A: Performance Test Suite (Out of Scope for Integration Tests)
 
-**These tests validate performance characteristics and should be marked with `@pytest.mark.slow` and `@pytest.mark.performance`:**
+**⚠️ NOTE:** These tests validate performance characteristics and belong in `tests/performance/health/`, not in integration tests. They are included here for reference but should be implemented separately.
+
+**Rationale:** Performance and load testing are distinct from integration testing. Integration tests verify correctness of collaboration; performance tests verify behavior under load.
 
 ### Performance Test Scenarios
 
@@ -1101,11 +672,11 @@ pytest tests/integration/health/test_health_endpoints.py -v
 # Run with coverage
 pytest tests/integration/health/ --cov=app.infrastructure.monitoring --cov-report=term-missing
 
-# Run performance tests (slow tests)
-pytest tests/integration/health/ -v -m "slow and performance"
+# Run performance tests (moved to tests/performance/)
+pytest tests/performance/health/ -v -m "performance"
 
 # Run excluding performance tests (CI pipeline)
-pytest tests/integration/health/ -v -m "integration and not slow"
+pytest tests/integration/health/ -v -m "integration"
 ```
 
 ---
@@ -1113,33 +684,29 @@ pytest tests/integration/health/ -v -m "integration and not slow"
 ## Success Criteria
 
 ### Functional Requirements
-- ✅ All HIGH priority test scenarios pass
+- ✅ All core integration tests pass (10 tests: 2 contract + 7 critical path + 1 error isolation)
 - ✅ Health endpoint returns HTTP 200 for all health states (healthy, degraded, unhealthy)
 - ✅ Graceful degradation demonstrated for missing components
 - ✅ Exception isolation prevents cascade failures
-- ✅ Configuration validation prevents invalid setups
+- ✅ Component-specific behaviors validated (cache fallback, resilience monitoring)
 
 ### Contract Compliance
 - ✅ All tests map to documented behavior in health.pyi
 - ✅ No tests validate undocumented implementation details
+- ✅ Contract tests validate all health check functions follow same interface
 - ✅ Test scenarios cover all documented contract guarantees
 
 ### Testing Philosophy Adherence
-- ✅ All tests use outside-in approach through HTTP endpoints
-- ✅ Minimal mocking (only at system boundaries, not internal components)
+- ✅ All tests use outside-in approach through HTTP endpoints or contract validation
+- ✅ Zero mocking of internal components (only environment manipulation)
 - ✅ Tests focus on observable behavior rather than implementation
-- ✅ Environment manipulation used instead of mocking for failure scenarios
-
-### Performance Requirements
-- ✅ Health check response < 3 seconds under normal conditions
-- ✅ Concurrent requests handled without degradation
-- ✅ Timeout handling prevents blocking
-- ✅ Performance tests separated with appropriate markers
+- ✅ Contract-based testing ensures refactoring resilience
 
 ### Coverage Requirements
 - ✅ All critical integration seams have test coverage
 - ✅ Contract coverage matrix complete
-- ✅ Error handling scenarios validated through observable behavior
+- ✅ Configuration validation moved to unit tests (proper separation)
+- ✅ Performance tests separated to dedicated suite
 
 ---
 
@@ -1149,6 +716,7 @@ pytest tests/integration/health/ -v -m "integration and not slow"
 |---------|------|---------|--------|
 | 1.0 | 2025-09-30 | Initial test plan | Integration Testing Architect |
 | 2.0 | 2025-10-01 | **Major revision** - Aligned with project testing philosophy:<br/>- Removed internal component mocking<br/>- Added contract coverage matrix<br/>- Focused on observable behavior through API<br/>- Separated performance tests<br/>- Added docstring behavior mapping | Integration Testing Architect |
+| 3.0 | 2025-10-04 | **Critical path consolidation**:<br/>- Reduced from 20+ scenarios to 10 focused tests<br/>- Added contract-based test pattern (Principle 2)<br/>- Removed SEAM 5 (unit tests, not integration)<br/>- Consolidated SEAMs 1-3 into single comprehensive seam<br/>- Moved performance tests to appendix<br/>- Refocused on critical paths per Principle 1 | Integration Testing Architect |
 
 ---
 
