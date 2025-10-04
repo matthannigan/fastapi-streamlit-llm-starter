@@ -180,15 +180,32 @@ logger = logging.getLogger(__name__)
 class HealthCheckError(Exception):
     """
     Base exception for health check operations with contextual error information.
-    
+
     Provides the foundation for health check error handling, enabling specific error
     classification and appropriate response strategies for monitoring system failures.
-    
+
     Usage:
         >>> try:
         ...     await health_checker.check_component("database")
         ... except HealthCheckError as e:
         ...     logger.error(f"Health check failed: {e}")
+
+    Examples:
+        >>> # Basic health check error handling
+        >>> try:
+        ...     status = await checker.check_component("cache")
+        ... except HealthCheckError:
+        ...     # Log and continue with degraded status
+        ...     logger.warning("Cache health check failed")
+        ...     status = ComponentStatus("cache", HealthStatus.DEGRADED, "Health check error")
+        >>>
+        >>> # Component health monitoring with error recovery
+        >>> async def monitor_component(checker, component_name):
+        ...     try:
+        ...         return await checker.check_component(component_name)
+        ...     except HealthCheckError as e:
+        ...         logger.error(f"Health check failed for {component_name}: {e}")
+        ...         return ComponentStatus(component_name, HealthStatus.UNHEALTHY, str(e))
     """
 
 
@@ -246,24 +263,42 @@ class ComponentStatus:
         response_time_ms: Health check execution time in milliseconds for performance monitoring
         metadata: Optional component-specific health information and diagnostic data
 
-    Usage:
-        # Create component status for healthy service
-        status = ComponentStatus(
-            name="database",
-            status=HealthStatus.HEALTHY,
-            message="Connection successful",
-            response_time_ms=45.2,
-            metadata={"connection_pool": "active", "query_test": "passed"}
-        )
+    Examples:
+        >>> # Healthy component status
+        >>> status = ComponentStatus(
+        ...     name="database",
+        ...     status=HealthStatus.HEALTHY,
+        ...     message="Connection successful",
+        ...     response_time_ms=45.2,
+        ...     metadata={"connection_pool": "active", "query_test": "passed"}
+        ... )
+        >>> assert status.name == "database"
+        >>> assert status.status == HealthStatus.HEALTHY
 
-        # Create status for degraded service
-        degraded_status = ComponentStatus(
-            name="cache",
-            status=HealthStatus.DEGRADED,
-            message="Redis unavailable, using memory fallback",
-            response_time_ms=12.1,
-            metadata={"cache_type": "memory", "redis_error": "connection_timeout"}
-        )
+        >>> # Degraded component status
+        >>> degraded = ComponentStatus(
+        ...     name="cache",
+        ...     status=HealthStatus.DEGRADED,
+        ...     message="Redis unavailable, using memory fallback",
+        ...     response_time_ms=12.1,
+        ...     metadata={"cache_type": "memory", "redis_error": "connection_timeout"}
+        ... )
+        >>> assert degraded.status == HealthStatus.DEGRADED
+
+        >>> # Performance monitoring
+        >>> def monitor_performance(status: ComponentStatus) -> bool:
+        ...     return status.response_time_ms < 1000  # Alert if slow
+        >>>
+        >>> # Component-specific troubleshooting
+        >>> if status.metadata and "connection_pool" in status.metadata:
+        ...     print(f"Database pool status: {status.metadata['connection_pool']}")
+
+    Behavior:
+        - Immutable data structure ensuring consistent health status representation
+        - Supports performance monitoring through response time tracking
+        - Enables component-specific diagnostics through metadata field
+        - Provides human-readable messages for operational troubleshooting
+        - Integrates with health aggregation logic for overall system status
     """
     name: str
     status: HealthStatus
@@ -286,25 +321,40 @@ class SystemHealthStatus:
         components: List of individual component health statuses for detailed analysis
         timestamp: Unix timestamp when health check execution completed for caching and monitoring
 
-    Usage:
-        # Comprehensive system health evaluation
-        system_health = SystemHealthStatus(
-            overall_status=HealthStatus.DEGRADED,
-            components=[
-                ComponentStatus("database", HealthStatus.HEALTHY, "OK"),
-                ComponentStatus("cache", HealthStatus.DEGRADED, "Memory only"),
-                ComponentStatus("ai_model", HealthStatus.HEALTHY, "Configured")
-            ],
-            timestamp=time.time()
-        )
+    Examples:
+        >>> # System health with mixed component status
+        >>> system_health = SystemHealthStatus(
+        ...     overall_status=HealthStatus.DEGRADED,
+        ...     components=[
+        ...         ComponentStatus("database", HealthStatus.HEALTHY, "OK"),
+        ...         ComponentStatus("cache", HealthStatus.DEGRADED, "Memory only"),
+        ...         ComponentStatus("ai_model", HealthStatus.HEALTHY, "Configured")
+        ...     ],
+        ...     timestamp=time.time()
+        ... )
+        >>> assert system_health.overall_status == HealthStatus.DEGRADED
 
-        # Operational monitoring integration
-        if system_health.overall_status != HealthStatus.HEALTHY:
-            unhealthy_components = [
-                c for c in system_health.components
-                if c.status != HealthStatus.HEALTHY
-            ]
-            alert_operations_team(unhealthy_components)
+        >>> # Monitoring system integration
+        >>> def check_system_health(health: SystemHealthStatus) -> bool:
+        ...     return health.overall_status == HealthStatus.HEALTHY
+        >>>
+        >>> # Alert on unhealthy components
+        >>> if system_health.overall_status != HealthStatus.HEALTHY:
+        ...     unhealthy = [c for c in system_health.components if c.status != HealthStatus.HEALTHY]
+        ...     for component in unhealthy:
+        ...         print(f"Alert: {component.name} is {component.status.value}")
+
+        >>> # Performance analysis
+        >>> avg_response_time = sum(c.response_time_ms for c in system_health.components) / len(system_health.components)
+        >>> if avg_response_time > 1000:
+        ...     print("Health checks are slow - investigate performance")
+
+    Behavior:
+        - Aggregates component health using worst-case logic for conservative reporting
+        - Provides timing information for health check performance monitoring
+        - Enables detailed component-level analysis alongside overall system status
+        - Supports caching and trending analysis through timestamp tracking
+        - Integrates with monitoring systems for automated alerting and reporting
     """
     overall_status: HealthStatus
     components: List[ComponentStatus]
@@ -951,8 +1001,15 @@ async def check_database_health() -> ComponentStatus:
         >>> assert status.message == "Not implemented"
         >>> assert status.response_time_ms >= 0
 
-    Production Implementation Example:
-        Replace this placeholder with actual database health validation:
+        >>> # Integration with health checker
+        >>> checker = HealthChecker()
+        >>> checker.register_check("database", check_database_health)
+        >>> health = await checker.check_all_components()
+        >>> db_status = next(c for c in health.components if c.name == "database")
+        >>> assert db_status.status == HealthStatus.HEALTHY
+
+    Production Implementation:
+        Replace this placeholder with actual database connectivity validation:
 
         ```python
         async def check_database_health() -> ComponentStatus:
@@ -988,10 +1045,9 @@ async def check_database_health() -> ComponentStatus:
         ```
 
     Note:
-        This placeholder function is included to demonstrate health check infrastructure
-        patterns without requiring actual database dependencies. Template users should
-        implement proper database connectivity validation based on their specific
-        database technology and connection patterns.
+        This placeholder demonstrates health check infrastructure patterns without requiring
+        actual database dependencies. Template users should implement proper database
+        connectivity validation based on their specific database technology and patterns.
     """
     name = "database"
     start = time.perf_counter()
