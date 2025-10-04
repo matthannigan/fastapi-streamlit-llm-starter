@@ -31,7 +31,7 @@ class TestEnvironmentAwareAuthenticationFlow:
     """
 
     def test_production_environment_requires_valid_api_key_success(
-        self, client, production_environment, auth_headers_valid
+        self, production_client, auth_headers_valid
     ):
         """
         Test production environment successfully authenticates valid API keys.
@@ -55,7 +55,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - No authentication errors or warnings in response
         """
         # Act: Make authenticated request to protected endpoint
-        response = client.get("/v1/auth/status", headers=auth_headers_valid)
+        response = production_client.get("/v1/auth/status", headers=auth_headers_valid)
 
         # Assert: Verify successful authentication
         assert response.status_code == status.HTTP_200_OK
@@ -66,7 +66,7 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert "Authentication successful" in response_data["message"]
 
     def test_production_environment_rejects_invalid_api_key_with_proper_http_error(
-        self, client, production_environment, auth_headers_invalid
+        self, production_client, auth_headers_invalid
     ):
         """
         Test production environment returns proper 401 for invalid API keys.
@@ -91,7 +91,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - No sensitive information exposed in error response
         """
         # Act: Attempt authentication with invalid key
-        response = client.get("/v1/auth/status", headers=auth_headers_invalid)
+        response = production_client.get("/v1/auth/status", headers=auth_headers_invalid)
 
         # Assert: Verify proper authentication failure response
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -108,7 +108,7 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert response_data["detail"]["context"]["environment"] == "production"
 
     def test_production_environment_rejects_missing_credentials_with_auth_challenge(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test production environment requires credentials with proper authentication challenge.
@@ -133,7 +133,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - Response includes environment context for debugging
         """
         # Act: Make unauthenticated request to protected endpoint
-        response = client.get("/v1/auth/status")
+        response = production_client.get("/v1/auth/status")
 
         # Assert: Verify authentication challenge
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -246,10 +246,6 @@ class TestEnvironmentAwareAuthenticationFlow:
         # Arrange: Configure environment that may cause detection uncertainty
         clean_environment.setenv("API_KEY", "fallback-test-key")
         # Intentionally leave ENVIRONMENT undefined to test detection failure handling
-
-        # Reload authentication system after setting environment variables
-        from tests.integration.auth.conftest import reload_auth_system
-        reload_auth_system()
 
         # Act: Make unauthenticated request with uncertain environment
         response = client.get("/v1/auth/status")

@@ -183,6 +183,7 @@ The application implements comprehensive error handling:
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional, Callable
 from fastapi import FastAPI, HTTPException, status, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse

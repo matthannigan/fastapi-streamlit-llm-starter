@@ -8,44 +8,64 @@ configuration for testing authentication system integration.
 import pytest
 import os
 from fastapi.testclient import TestClient
-from app.main import app
-
-
-def reload_auth_system():
-    """
-    Force authentication system to reload configuration and keys.
-
-    Must be called after environment variables are modified to ensure
-    the authentication system picks up the changes.
-    """
-    from app.infrastructure.security.auth import api_key_auth, auth_config
-    from app.core.config import settings
-
-    # Reload the global settings to pick up environment variable changes
-    # This forces Pydantic to re-read environment variables
-    settings.__init__()
-
-    # Reload the auth configuration to pick up environment variable changes
-    auth_config.__init__()
-
-    # Reload the API keys to pick up environment variable changes
-    api_key_auth.reload_keys()
+from app.main import create_app
 
 
 @pytest.fixture
 def client():
     """
     FastAPI test client for authentication integration testing.
-    
+
     Provides real HTTP client that exercises complete FastAPI middleware
     stack including authentication dependencies and exception handling.
-    
+
+    Uses app factory pattern to ensure complete test isolation - each test
+    gets a fresh app instance that picks up current environment variables
+    without any cached state from previous tests.
+
+    Note: This creates a client with default environment. For specific
+    environment testing, use environment-specific fixtures or set
+    environment variables in your test methods.
+
     Use Cases:
         - Testing complete HTTP authentication flows
         - Validating HTTP response codes and headers
         - Testing middleware integration and compatibility
     """
-    return TestClient(app)
+    with TestClient(create_app()) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def production_client(production_environment):
+    """
+    Test client with production environment pre-configured.
+
+    This fixture ensures the production environment is set up before
+    creating the app, so the app picks up the correct environment
+    variables from the start.
+
+    Use Cases:
+        - Testing production-specific authentication behavior
+        - Validating API key requirements in production
+        - Testing security enforcement scenarios
+    """
+    with TestClient(create_app()) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def development_client(development_environment):
+    """
+    Test client with development environment pre-configured.
+
+    Use Cases:
+        - Testing development mode behavior
+        - Validating relaxed security in development
+        - Testing optional authentication scenarios
+    """
+    with TestClient(create_app()) as test_client:
+        yield test_client
 
 
 @pytest.fixture
@@ -76,10 +96,10 @@ def clean_environment(monkeypatch):
 def production_environment(clean_environment):
     """
     Configure production environment for testing production security enforcement.
-    
+
     Sets up environment variables that trigger production security mode
     with API key requirements and strict validation.
-    
+
     Configuration:
         - ENVIRONMENT=production (triggers production security)
         - API_KEY=test-production-key (primary key)
@@ -89,9 +109,6 @@ def production_environment(clean_environment):
     clean_environment.setenv("API_KEY", "test-production-key")
     clean_environment.setenv("ADDITIONAL_API_KEYS", "test-secondary-key")
 
-    # Reload authentication system after setting environment variables
-    reload_auth_system()
-
     return clean_environment
 
 
@@ -99,18 +116,15 @@ def production_environment(clean_environment):
 def development_environment(clean_environment):
     """
     Configure development environment for testing development mode behavior.
-    
+
     Sets up environment that triggers development mode with optional
     authentication and appropriate warnings.
-    
+
     Configuration:
         - ENVIRONMENT=development (triggers development mode)
         - No API keys configured (enables development mode)
     """
     clean_environment.setenv("ENVIRONMENT", "development")
-
-    # Reload authentication system after setting environment variables
-    reload_auth_system()
 
     return clean_environment
 
@@ -119,19 +133,16 @@ def development_environment(clean_environment):
 def development_with_keys_environment(clean_environment):
     """
     Configure development environment with API keys for mixed-mode testing.
-    
+
     Tests scenario where development environment has API keys configured,
     ensuring authentication still works but with development-appropriate behavior.
-    
+
     Configuration:
         - ENVIRONMENT=development
         - API_KEY=test-dev-key (development key)
     """
     clean_environment.setenv("ENVIRONMENT", "development")
     clean_environment.setenv("API_KEY", "test-dev-key")
-
-    # Reload authentication system after setting environment variables
-    reload_auth_system()
 
     return clean_environment
 
@@ -140,10 +151,10 @@ def development_with_keys_environment(clean_environment):
 def multiple_api_keys_environment(clean_environment):
     """
     Configure environment with multiple API keys for key management testing.
-    
+
     Tests multi-key authentication scenarios including primary key,
     additional keys, and whitespace handling.
-    
+
     Configuration:
         - Primary key via API_KEY
         - Multiple additional keys via ADDITIONAL_API_KEYS
@@ -151,9 +162,6 @@ def multiple_api_keys_environment(clean_environment):
     """
     clean_environment.setenv("API_KEY", "primary-key-12345")
     clean_environment.setenv("ADDITIONAL_API_KEYS", " secondary-key-67890 , tertiary-key-11111 ")
-
-    # Reload authentication system after setting environment variables
-    reload_auth_system()
 
     return clean_environment
 
