@@ -130,6 +130,7 @@ celerybeat.pid
 # Environment files
 .env
 .env.local
+.env.secure
 .venv
 env/
 venv/
@@ -234,3 +235,6 @@ backend/app.old/
 docs-mkdocs/
 backend/tests/infrastructure/cache/failures.txt
 backend/tests/infrastructure/cache/failures.json
+
+certs/
+redis_data/

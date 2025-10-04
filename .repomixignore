@@ -2,25 +2,29 @@
 # Example:
 # *.log
 # tmp/
-.cursor/
-.roo/
-.venv/
-taskplans/
-tasks/
-.windsurfrules
-PRD*.*
-.env
 .*ignore
+.claude/
+.cursor/
+.env
+.flake8
+.github/
+.roo/
 .roomodes
 .taskmasterconfig
-repomix.config.json
-.flake8
-dev/
-docs-website/
-.claude/
-CLAUDE.md
-docs.old/
-.github/
-backend/tests.old/
-docs-mkdocs/
+.venv/
+.windsurfrules
 backend/scripts/old/
+backend/tests.new/
+backend/tests.old/
+CLAUDE.md
+dev/
+docs-mkdocs/
+docs-website/
+docs.old/
+PRD*.*
+repomix.config.json
+taskplans/
+tasks/
+*.backup
+*.bak
+*.lock

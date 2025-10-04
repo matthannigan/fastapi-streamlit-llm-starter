@@ -1,1 +1,5 @@
 You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read `docs/guides/testing/WRITING_TESTS.md`. Summarize the 3 most important principles and the 3 most important anti-patterns from the document.
+
+You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read `@docs/guides/testing/WRITING_TESTS.md` and `@docs/guides/testing/UNIT_TESTS.md `. Summarize the 3 most important principles and the 3 most important anti-patterns from the documents.
+
+You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read `@docs/guides/testing/WRITING_TESTS.md` and `@docs/guides/testing/INTEGRATION_TESTS.md`. Summarize the 3 most important principles and the 3 most important anti-patterns from the documents.
