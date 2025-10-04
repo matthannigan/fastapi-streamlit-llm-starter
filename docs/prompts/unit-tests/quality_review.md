@@ -1,0 +1,1 @@
+I worked with another coding assistant to implement the unit tests in `backend/tests/unit/health/test_*.py` for the component defined by `@backend/contracts/infrastructure/monitoring/health.pyi`. Based on our standards and guidance for `@docs/guides/testing/WRITING_TESTS.md` and `@docs/guides/testing/UNIT_TESTS.md`, please assess the quality of the implementation.
