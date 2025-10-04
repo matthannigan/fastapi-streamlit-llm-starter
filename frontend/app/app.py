@@ -143,6 +143,7 @@ Template: FastAPI + Streamlit + AI Starter
 import streamlit as st
 import json
 import re
+import time
 from typing import Dict, Any, Optional, Tuple
 
 from shared.models import TextProcessingRequest, TextProcessingOperation
@@ -186,18 +187,36 @@ def check_api_health() -> bool:
     connection status in the sidebar. This provides immediate feedback
     to users about service availability and helps with troubleshooting.
 
+    Implements session state caching with 10-second TTL to reduce
+    unnecessary backend requests during frequent Streamlit reruns.
+
     Returns:
         bool: True if the API is healthy and accessible, False otherwise.
 
     Side Effects:
         - Displays health status in the sidebar
         - Shows error message if API is unavailable
+        - Caches health status in session state for 10 seconds
     """
     with st.sidebar:
         st.subheader("🔧 System Status")
 
-        # Perform async health check with error handling
-        health_status = run_async(api_client.health_check())
+        # Check if we have a cached health status (within 10 seconds)
+        current_time = time.time()
+        cache_ttl = 10  # seconds
+
+        if ('health_status' in st.session_state and
+            'health_check_time' in st.session_state and
+            (current_time - st.session_state.health_check_time) < cache_ttl):
+            # Use cached health status
+            health_status = st.session_state.health_status
+        else:
+            # Perform fresh async health check with error handling
+            health_status = run_async(api_client.health_check())
+
+            # Cache the result
+            st.session_state.health_status = health_status
+            st.session_state.health_check_time = current_time
 
         if health_status:
             st.success("✅ API Connected")

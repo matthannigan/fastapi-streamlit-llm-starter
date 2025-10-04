@@ -178,7 +178,7 @@ class CacheDependencyManager:
 
         try:
             logger.debug(f"Ensuring connection for cache {type(cache).__name__}")
-            connected = await cache.connect()
+            connected = await cache.connect()  # type: ignore
 
             if connected:
                 logger.debug(f"Cache {type(cache).__name__} connected successfully")
@@ -942,7 +942,7 @@ async def get_cache_health_status(
             logger.debug("Using ping() method for health check")
 
             try:
-                ping_result = await cache.ping()
+                ping_result = await cache.ping()  # type: ignore
                 health_status["ping_success"] = ping_result
 
                 if ping_result:
@@ -1006,7 +1006,7 @@ async def get_cache_health_status(
         # Add cache statistics if available
         if hasattr(cache, "get_stats"):
             try:
-                stats = await cache.get_stats()
+                stats = await cache.get_stats()  # type: ignore
                 health_status["statistics"] = stats
                 logger.debug("Added cache statistics to health status")
             except Exception as e:
