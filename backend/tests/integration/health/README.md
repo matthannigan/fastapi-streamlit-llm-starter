@@ -181,10 +181,10 @@ CACHE_REDIS_URL=redis://invalid-host:6379
 ## Performance Expectations
 
 - **Health Endpoint Response**: <200ms for complete system health check
-- **Individual Component Checks**: <100ms per component health check
+- **Individual Component Checks**: <100ms per component health check (most complete in <10ms)
 - **Contract Validation**: <50ms for health check function contract compliance
 - **Error Handling**: <150ms for health checks with component failures
-- **Response Time Accuracy**: ±5ms measurement precision for performance monitoring
+- **Response Time Accuracy**: Microsecond-precision measurement (simple checks may complete in <0.01ms)
 
 ## Debugging Failed Tests
 

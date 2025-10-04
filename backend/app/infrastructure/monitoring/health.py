@@ -791,10 +791,12 @@ async def check_cache_health(cache_service=None) -> ComponentStatus:
             from app.dependencies import get_cache_service
             cache_service = await get_cache_service(settings)
 
-            try:
-                await cache_service.connect()
-            except Exception as e:  # noqa: BLE001
-                logger.warning(f"Cache Redis connection failed, using memory-only: {e}")
+            # Only connect if cache service has connect method (Redis cache)
+            if hasattr(cache_service, 'connect'):
+                try:
+                    await cache_service.connect()
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(f"Cache Redis connection failed, using memory-only: {e}")
 
             stats = await cache_service.get_cache_stats()
         redis_status = stats.get("redis", {}).get("status")

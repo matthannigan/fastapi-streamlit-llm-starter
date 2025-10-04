@@ -270,14 +270,14 @@ class TestHealthCheckContractCompliance:
         Test Strategy:
             - Execute all health check functions
             - Verify response_time_ms is greater than 0
-            - Ensure response times are reasonable (not extremely fast)
+            - Ensure response times are reasonable (not extremely slow)
             - Validate response times are float values for precision
 
         Success Criteria:
-            - All health checks report positive response times
-            - Response times are realistic (> 0.1ms to account for actual execution)
+            - All health checks report positive response times (> 0ms)
+            - Response times are measured with microsecond precision (simple checks may be <0.01ms)
             - Response times are properly typed as float
-            - No health check reports 0ms (indicates timing issue)
+            - No health check exceeds reasonable timeout (10000ms indicates performance issue)
         """
         health_checks = [
             (check_ai_model_health, "ai_model"),
@@ -292,16 +292,12 @@ class TestHealthCheckContractCompliance:
             # Assert: Response time measurement
             assert status.response_time_ms > 0.0, (
                 f"Response time for {component_name} should be > 0ms: "
-                f"got {status.response_time_ms}ms (may indicate timing bug)"
-            )
-
-            # Health checks should take at least minimal time (not instantaneous)
-            assert status.response_time_ms >= 0.01, (
-                f"Response time for {component_name} seems unrealistically fast: "
-                f"{status.response_time_ms}ms (may indicate timing measurement issue)"
+                f"got {status.response_time_ms}ms (indicates timing not measured)"
             )
 
             # Response times should be reasonable (not extremely slow in normal operation)
+            # Note: Simple configuration checks can legitimately complete in microseconds,
+            # so we only verify upper bound to catch performance issues
             assert status.response_time_ms < 10000.0, (
                 f"Response time for {component_name} is unexpectedly slow: "
                 f"{status.response_time_ms}ms (may indicate performance issue)"
