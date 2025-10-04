@@ -85,6 +85,8 @@ def enhanced_cache_preset_app(monkeypatch, redis_config):
             "ENABLE_AI_CACHE",
             "REDIS_AUTH",
             "REDIS_PASSWORD",
+            "REDIS_USE_TLS",
+            "REDIS_TLS_ENABLED",
             "USE_TLS",
             "CACHE_CUSTOM_CONFIG",
             "RESILIENCE_PRESET",
@@ -95,6 +97,9 @@ def enhanced_cache_preset_app(monkeypatch, redis_config):
         # Set test environment with real Redis
         monkeypatch.setenv("CACHE_PRESET", preset)
         monkeypatch.setenv("CACHE_REDIS_URL", redis_config["url"])
+
+        # Testcontainers Redis doesn't support TLS - explicitly disable it
+        monkeypatch.setenv("REDIS_USE_TLS", "false")
 
         # Log configuration for debugging
         print(f"Redis-enhanced test using Redis URL: {redis_config['url']}")
@@ -161,9 +166,9 @@ REDIS_PRESET_SCENARIOS = [
     ),  # Simple preset with Redis available via testcontainers
     (
         "disabled",
-        "connected",
+        "disconnected",
         "active",
-    ),  # Even disabled presets may show Redis connected when testcontainers provides Redis
+    ),  # Disabled preset uses InMemoryCache, so Redis is disconnected
 ]
 
 

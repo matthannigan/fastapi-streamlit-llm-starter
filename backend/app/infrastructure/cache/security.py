@@ -632,8 +632,8 @@ def create_security_config_from_env() -> SecurityConfig:
     automatically to ensure secure operation.
 
     Security-First Approach:
-        1. Tries environment-aware configuration first (auto-detects environment)
-        2. Falls back to explicit environment variable configuration
+        1. Tries to read explicit environment variables first (REDIS_AUTH, etc.)
+        2. Falls back to environment-aware configuration (auto-detects environment)
         3. Auto-generates secure passwords if not provided (fail-secure)
         4. Defaults to TLS enabled (security-first principle)
 
@@ -666,27 +666,54 @@ def create_security_config_from_env() -> SecurityConfig:
     """
     import os
 
-    # Try environment-aware configuration first (respects ENVIRONMENT variable)
+    # Check if explicit environment variables are set
+    # If any REDIS_* security variables are set, use explicit configuration
+    has_explicit_config = any([
+        os.getenv("REDIS_AUTH"),
+        os.getenv("REDIS_ACL_USERNAME"),
+        os.getenv("REDIS_ACL_PASSWORD"),
+        os.getenv("REDIS_USE_TLS"),
+        os.getenv("REDIS_TLS_ENABLED"),
+        os.getenv("REDIS_TLS_CERT_PATH"),
+        os.getenv("REDIS_TLS_KEY_PATH"),
+        os.getenv("REDIS_TLS_CA_PATH"),
+        os.getenv("REDIS_VERIFY_CERTIFICATES"),
+        os.getenv("REDIS_CONNECTION_TIMEOUT"),
+        os.getenv("REDIS_MAX_RETRIES"),
+        os.getenv("REDIS_RETRY_DELAY"),
+    ])
+
+    if has_explicit_config:
+        # Use explicit environment variable configuration
+        return SecurityConfig(
+            redis_auth=os.getenv("REDIS_AUTH") or generate_secure_password(16),
+            acl_username=os.getenv("REDIS_ACL_USERNAME"),
+            acl_password=os.getenv("REDIS_ACL_PASSWORD"),
+            use_tls=os.getenv("REDIS_USE_TLS", os.getenv("REDIS_TLS_ENABLED", "true")).lower() == "true",
+            tls_cert_path=os.getenv("REDIS_TLS_CERT_PATH"),
+            tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
+            tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
+            verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower()
+            == "true",
+            connection_timeout=int(os.getenv("REDIS_CONNECTION_TIMEOUT", "30")),
+            max_retries=int(os.getenv("REDIS_MAX_RETRIES", "3")),
+            retry_delay=float(os.getenv("REDIS_RETRY_DELAY", "1.0")),
+        )
+
+    # Fallback to environment-aware configuration (auto-detects environment type)
     try:
         return SecurityConfig.create_for_environment()
     except Exception as e:
-        logger.warning(f"Environment detection failed, using manual configuration: {e}")
-
-    # Fallback to manual environment variable parsing with secure defaults
-    return SecurityConfig(
-        redis_auth=os.getenv("REDIS_AUTH") or generate_secure_password(16),
-        acl_username=os.getenv("REDIS_ACL_USERNAME"),
-        acl_password=os.getenv("REDIS_ACL_PASSWORD"),
-        use_tls=os.getenv("REDIS_TLS_ENABLED", "true").lower() == "true",
-        tls_cert_path=os.getenv("REDIS_TLS_CERT_PATH"),
-        tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
-        tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
-        verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower()
-        == "true",
-        connection_timeout=int(os.getenv("REDIS_CONNECTION_TIMEOUT", "30")),
-        max_retries=int(os.getenv("REDIS_MAX_RETRIES", "3")),
-        retry_delay=float(os.getenv("REDIS_RETRY_DELAY", "1.0")),
-    )
+        logger.warning(f"Environment detection failed, using defaults: {e}")
+        # Final fallback with secure defaults
+        return SecurityConfig(
+            redis_auth=generate_secure_password(16),
+            use_tls=True,
+            verify_certificates=False,  # Self-signed certs OK in development
+            connection_timeout=30,
+            max_retries=3,
+            retry_delay=1.0,
+        )
 
 
 class RedisCacheSecurityManager:

@@ -434,8 +434,8 @@ def create_security_config_from_env() -> SecurityConfig:
     automatically to ensure secure operation.
     
     Security-First Approach:
-        1. Tries environment-aware configuration first (auto-detects environment)
-        2. Falls back to explicit environment variable configuration
+        1. Tries to read explicit environment variables first (REDIS_AUTH, etc.)
+        2. Falls back to environment-aware configuration (auto-detects environment)
         3. Auto-generates secure passwords if not provided (fail-secure)
         4. Defaults to TLS enabled (security-first principle)
     
