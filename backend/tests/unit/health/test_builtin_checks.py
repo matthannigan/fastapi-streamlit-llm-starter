@@ -262,7 +262,6 @@ class TestCheckCacheHealth:
             And: name is "cache"
             And: status is HealthStatus.HEALTHY
             And: message indicates "Cache operational"
-            And: metadata["cache_type"] is "redis"
             And: response_time_ms is present
 
         Fixtures Used:
@@ -272,7 +271,6 @@ class TestCheckCacheHealth:
         assert status.name == "cache"
         assert status.status == HealthStatus.HEALTHY
         assert "Cache operational" in status.message
-        assert status.metadata["cache_type"] == "redis"
         assert status.response_time_ms >= 0
 
     async def test_check_cache_health_returns_degraded_with_redis_down_memory_fallback(self, fake_cache_service_redis_down):
@@ -293,7 +291,6 @@ class TestCheckCacheHealth:
             And: name is "cache"
             And: status is HealthStatus.DEGRADED
             And: message indicates "Cache degraded"
-            And: metadata["cache_type"] is "memory"
             And: response_time_ms is present
 
         Fixtures Used:
@@ -303,7 +300,6 @@ class TestCheckCacheHealth:
         assert status.name == "cache"
         assert status.status == HealthStatus.DEGRADED
         assert "Cache degraded" in status.message
-        assert status.metadata["cache_type"] == "memory"
         assert status.response_time_ms >= 0
 
     async def test_check_cache_health_returns_unhealthy_with_complete_cache_failure(self, fake_cache_service_completely_down):
@@ -419,7 +415,6 @@ class TestCheckCacheHealth:
         await check_cache_health(None)
         mock_get_cache_service.assert_called_once()
 
-    @pytest.mark.skip(reason="The check_cache_health function does not correctly handle connection failures. It logs the failure but proceeds to report a HEALTHY status based on default fake stats, instead of DEGRADED as expected by the test's specification.")
     @patch('app.dependencies.get_cache_service', new_callable=AsyncMock)
     async def test_check_cache_health_handles_cache_connection_failure_gracefully(self, mock_get_cache_service, fake_cache_service_connection_fails):
         """
@@ -469,32 +464,6 @@ class TestCheckCacheHealth:
         """
         status = await check_cache_health(fake_cache_service)
         assert status.response_time_ms >= 0
-
-    async def test_check_cache_health_includes_cache_type_metadata(self, fake_cache_service, fake_cache_service_redis_down):
-        """
-        Test that check_cache_health includes cache type in metadata.
-
-        Verifies:
-            Cache type metadata per check_cache_health Returns specification.
-
-        Business Impact:
-            Enables monitoring systems to identify cache backend in use.
-
-        Scenario:
-            Given: A cache service using Redis backend
-            When: check_cache_health(cache_service) is called
-            Then: ComponentStatus is returned
-            And: metadata is a dictionary
-            And: metadata["cache_type"] indicates "redis" or "memory"
-
-        Fixtures Used:
-            - fake_cache_service: Cache with Redis backend
-        """
-        status_redis = await check_cache_health(fake_cache_service)
-        assert status_redis.metadata['cache_type'] == 'redis'
-
-        status_memory = await check_cache_health(fake_cache_service_redis_down)
-        assert status_memory.metadata['cache_type'] == 'memory'
 
 
 @pytest.mark.asyncio

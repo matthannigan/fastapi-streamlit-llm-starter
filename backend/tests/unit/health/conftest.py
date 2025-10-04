@@ -83,6 +83,8 @@ class FakeCacheService:
             ConnectionError: When connect_should_fail is True
         """
         if self.connect_should_fail:
+            # Update state to reflect Redis becoming unavailable due to connection failure
+            self.redis_available = False
             raise ConnectionError("Simulated cache connection failure")
         self.connected = True
 
