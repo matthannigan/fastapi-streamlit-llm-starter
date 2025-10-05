@@ -1035,6 +1035,53 @@ def create_app(
         >>> assert app1 is not app2  # Different instances
         >>> # Each app has independent configuration and services
 
+        >>> # Production deployment (unchanged)
+        >>> # Module-level app still works: from app.main import app
+        >>> # uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+        >>> # Testing with custom configuration
+        >>> test_settings = create_settings()
+        >>> test_settings.debug = True
+        >>> test_settings.log_level = "DEBUG"
+        >>> test_app = create_app(settings_obj=test_settings)
+        >>> # Test app uses provided settings for complete configuration control
+
+    Production Usage:
+        Traditional deployment (no changes required)::
+
+            from app.main import app  # Uses factory-created module-level app
+
+        Custom deployment with specific settings::
+
+            from app.main import create_app
+            from app.core.config import create_settings
+
+            production_settings = create_settings()
+            production_settings.debug = False
+            custom_app = create_app(settings_obj=production_settings)
+
+    Testing Usage:
+        Create isolated test fixtures with custom configuration::
+
+            import pytest
+            from fastapi.testclient import TestClient
+            from app.main import create_app
+            from app.core.config import create_settings
+
+            @pytest.fixture
+            def test_client():
+                \"\"\"Create isolated test client with fresh app instance.\"\"\"
+                test_settings = create_settings()
+                test_settings.debug = True
+                app = create_app(settings_obj=test_settings)
+                return TestClient(app)
+
+        Test middleware configuration without endpoints::
+
+            def test_middleware_only():
+                minimal_app = create_app(include_routers=False, include_middleware=True)
+                assert isinstance(minimal_app, FastAPI)
+
     Note:
         This factory function enables test isolation and multi-instance deployment scenarios
         while maintaining complete backward compatibility. For production deployment where

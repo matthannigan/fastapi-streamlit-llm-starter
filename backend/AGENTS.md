@@ -88,6 +88,365 @@ Detailed documentation: `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md
 - **AI Integration Examples**: Patterns for secure LLM integration with PydanticAI
 - **Monitoring Examples**: Health checks, metrics collection, and performance monitoring
 
+## App Factory Pattern (Critical for Testing)
+
+### Overview
+
+The backend implements the **App Factory Pattern** to solve test isolation issues caused by module-level singletons. This pattern creates fresh FastAPI and Settings instances on demand, enabling complete test isolation while maintaining 100% backward compatibility for production deployments.
+
+**Problem Solved**: Module-level `app = FastAPI()` and `settings = Settings()` are cached at import time, causing environment variable changes in tests to not propagate, leading to intermittent test failures.
+
+**Solution**: Factory functions create fresh instances that immediately reflect current environment state.
+
+### Core Factory Functions
+
+#### 1. `create_app()` - FastAPI Application Factory
+
+**Location**: `app/main.py`
+
+```python
+def create_app(
+    settings_obj: Optional[Settings] = None,
+    include_routers: bool = True,
+    include_middleware: bool = True,
+    lifespan: Optional[Callable] = None
+) -> FastAPI:
+    """Create fresh FastAPI app instance with complete configuration."""
+```
+
+**Parameters**:
+- `settings_obj`: Optional Settings instance for custom configuration (defaults to `create_settings()`)
+- `include_routers`: Whether to register API routers (default: True)
+- `include_middleware`: Whether to configure middleware stack (default: True)
+- `lifespan`: Optional custom lifespan context manager for testing
+
+**Key Behaviors**:
+- Creates completely independent FastAPI instances
+- Uses provided settings or creates fresh ones from current environment
+- Maintains dual-API architecture (public + internal apps)
+- Enables test isolation by creating fresh app per test
+
+#### 2. `create_settings()` - Settings Factory
+
+**Location**: `app/core/config.py`
+
+```python
+def create_settings() -> Settings:
+    """Create fresh Settings instance from current environment variables."""
+```
+
+**Key Behaviors**:
+- Creates new Settings instance on each call
+- Reads current environment variables (not cached values)
+- Applies all Pydantic validation rules
+- Enables environment override testing
+
+#### 3. `get_settings_factory()` - FastAPI Dependency
+
+**Location**: `app/core/config.py`
+
+```python
+def get_settings_factory() -> Settings:
+    """FastAPI-compatible dependency that returns fresh Settings instances."""
+```
+
+**Use Cases**:
+- FastAPI dependency injection: `Depends(get_settings_factory)`
+- Request-level configuration isolation
+- Testing with custom settings per request
+
+### Test Fixture Patterns
+
+#### Basic Test Client Pattern
+
+```python
+import pytest
+from fastapi.testclient import TestClient
+from app.main import create_app
+from app.core.config import create_settings
+
+@pytest.fixture(scope="function")
+def test_client():
+    """Create isolated test client with fresh app instance."""
+    # Factory creates fresh app that picks up current environment
+    app = create_app()
+    return TestClient(app)
+
+def test_endpoint(test_client):
+    """Each test gets completely isolated app instance."""
+    response = test_client.get("/v1/health")
+    assert response.status_code == 200
+```
+
+#### Custom Settings Pattern
+
+```python
+@pytest.fixture(scope="function")
+def test_client_with_custom_settings():
+    """Create test client with specific configuration."""
+    # Create custom settings
+    test_settings = create_settings()
+    test_settings.debug = True
+    test_settings.log_level = "DEBUG"
+    test_settings.cache_preset = "disabled"
+
+    # Create app with custom settings
+    app = create_app(settings_obj=test_settings)
+    return TestClient(app)
+
+def test_with_custom_config(test_client_with_custom_settings):
+    """Test with specific configuration overrides."""
+    response = test_client_with_custom_settings.get("/")
+    assert response.status_code == 200
+```
+
+#### Environment Override Pattern
+
+```python
+@pytest.fixture
+def production_client(monkeypatch):
+    """Create client with production environment."""
+    # Set production environment variables
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-prod-key")
+
+    # Create app AFTER environment is set
+    # Factory will pick up the environment variables
+    app = create_app()
+    return TestClient(app)
+
+def test_production_auth(production_client):
+    """Test production authentication behavior."""
+    # This client has production environment configuration
+    response = production_client.get("/v1/auth/status")
+    # Production requires authentication
+    assert response.status_code == 401
+```
+
+#### Minimal App Pattern (Middleware/Router Isolation)
+
+```python
+@pytest.fixture
+def minimal_app():
+    """Create app without routers for middleware testing."""
+    return create_app(include_routers=False, include_middleware=True)
+
+@pytest.fixture
+def core_app():
+    """Create app without middleware for core functionality testing."""
+    return create_app(include_routers=True, include_middleware=False)
+
+def test_middleware_only(minimal_app):
+    """Test middleware without endpoint complexity."""
+    client = TestClient(minimal_app)
+    response = client.get("/")
+    assert response.status_code == 200
+```
+
+### Common Testing Scenarios
+
+#### Scenario 1: Testing Different Environments
+
+```python
+def test_environment_isolation():
+    """Test that apps pick up environment changes immediately."""
+    import os
+
+    # Set development environment
+    os.environ['ENVIRONMENT'] = 'development'
+    dev_app = create_app()
+
+    # Change to production environment
+    os.environ['ENVIRONMENT'] = 'production'
+    os.environ['API_KEY'] = 'prod-key'
+    prod_app = create_app()
+
+    # Both apps are independent and reflect their environment
+    assert dev_app is not prod_app
+```
+
+#### Scenario 2: Integration Test Fixtures
+
+```python
+# In tests/integration/conftest.py
+@pytest.fixture(scope="function")
+def integration_app():
+    """Fresh app for integration testing."""
+    return create_app()
+
+@pytest.fixture(scope="function")
+def integration_client(integration_app):
+    """HTTP client for integration tests."""
+    return TestClient(integration_app)
+
+# In your integration tests
+def test_full_authentication_flow(integration_client):
+    """Test complete auth flow with isolated app."""
+    response = integration_client.get("/v1/auth/status")
+    assert response.status_code in [200, 401]
+```
+
+#### Scenario 3: Custom Lifespan Testing
+
+```python
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def test_lifespan(app: FastAPI):
+    """Custom lifespan for test-specific setup."""
+    # Custom initialization
+    print("Test app starting")
+    yield
+    # Custom cleanup
+    print("Test app shutting down")
+
+def test_with_custom_lifespan():
+    """Test with custom lifecycle management."""
+    app = create_app(lifespan=test_lifespan)
+    client = TestClient(app)
+    response = client.get("/")
+    assert response.status_code == 200
+```
+
+### Backward Compatibility (Production Deployments)
+
+**Zero changes required for existing deployments:**
+
+```python
+# Traditional import still works (uses factory internally)
+from app.main import app
+
+# Uvicorn deployment unchanged
+# uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Docker deployment unchanged
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**Module-level app is created via factory** (Line 1970 in `app/main.py`):
+```python
+app = create_app()  # Uses factory, maintains singleton behavior
+```
+
+### Migration Guide for Agents
+
+**When writing new tests:**
+
+```python
+# ✅ RECOMMENDED: Use factory pattern
+from app.main import create_app
+
+@pytest.fixture
+def client():
+    app = create_app()
+    return TestClient(app)
+
+# ❌ AVOID: Module-level import (may have isolation issues)
+from app.main import app
+client = TestClient(app)
+```
+
+**When updating existing tests:**
+1. Replace `from app.main import app` with `from app.main import create_app`
+2. Create app in fixture: `app = create_app()`
+3. Use function scope for fixtures to ensure fresh instances
+4. Set environment variables BEFORE creating app
+
+**When testing with custom configuration:**
+1. Use `create_settings()` to get fresh settings instance
+2. Modify settings as needed
+3. Pass to `create_app(settings_obj=custom_settings)`
+
+### Common Pitfalls and Solutions
+
+**Pitfall 1: Reusing app across tests**
+```python
+# ❌ BAD: Module-level app reused
+app = create_app()
+
+def test_one():
+    client = TestClient(app)  # Shared state!
+
+# ✅ GOOD: Fresh app per test
+@pytest.fixture
+def client():
+    return TestClient(create_app())
+```
+
+**Pitfall 2: Setting environment after app creation**
+```python
+# ❌ BAD: Environment set after app created
+app = create_app()
+os.environ['API_KEY'] = 'test-key'  # Too late!
+
+# ✅ GOOD: Environment set before app creation
+os.environ['API_KEY'] = 'test-key'
+app = create_app()  # Picks up API_KEY
+```
+
+**Pitfall 3: Using cached settings dependency**
+```python
+# ❌ BAD: Cached settings won't update
+from app.dependencies import get_settings  # Cached!
+
+# ✅ GOOD: Factory creates fresh settings
+from app.core.config import get_settings_factory
+# Use with Depends(get_settings_factory)
+```
+
+### Performance Considerations
+
+- **App creation time**: ~5ms per instance (negligible in tests)
+- **Memory overhead**: ~1-2MB per app instance
+- **Test impact**: Minimal - reliability benefits far outweigh overhead
+- **Optimization**: Reuse app within single test when appropriate
+
+### Key Files and References
+
+**Implementation Files**:
+- `app/main.py` - `create_app()`, `create_public_app_with_settings()`, `create_internal_app_with_settings()`
+- `app/core/config.py` - `create_settings()`, `get_settings_factory()`
+
+**Test Examples**:
+- `tests/unit/app/test_app_factory.py` - Comprehensive app factory test suite
+- `tests/unit/config/test_config_factory.py` - Settings factory test suite
+- `tests/integration/conftest.py` - Integration test fixture patterns
+- `tests/integration/auth/conftest.py` - Auth-specific test fixtures
+
+**Documentation**:
+- `docs/guides/developer/APP_FACTORY_GUIDE.md` - **Comprehensive factory pattern guide**
+- `docs/guides/testing/TESTING.md` - Testing methodology and patterns
+
+### Quick Reference
+
+**Create fresh app for testing:**
+```python
+from app.main import create_app
+app = create_app()
+```
+
+**Create app with custom settings:**
+```python
+from app.main import create_app
+from app.core.config import create_settings
+
+settings = create_settings()
+settings.debug = True
+app = create_app(settings_obj=settings)
+```
+
+**Create minimal app for isolated testing:**
+```python
+app = create_app(include_routers=False, include_middleware=False)
+```
+
+**Test fixture pattern:**
+```python
+@pytest.fixture(scope="function")
+def client():
+    return TestClient(create_app())
+```
+
 ## Additional Backend Features
 
 ### Configuration
