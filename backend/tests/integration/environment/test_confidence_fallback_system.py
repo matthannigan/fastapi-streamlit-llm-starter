@@ -132,23 +132,23 @@ class TestEnvironmentDetectionConfidenceFallback:
         # This depends on implementation - could be True (fail secure) or False (conservative)
         assert isinstance(production_check, bool), "Should return boolean even with low confidence"
 
-    def test_conflicting_signals_resolution_maintains_service_consistency(self, clean_environment, reload_environment_module):
+    def test_conflicting_signals_resolution_maintains_service_consistency(self, clean_environment):
         """
         Test that conflicting environment signals are resolved consistently across services.
-        
+
         Integration Scope:
             Conflicting signals → Resolution algorithm → Consistent environment determination → Service alignment
-            
+
         Business Impact:
             Ensures all services see the same environment determination despite
             conflicting signals, preventing service behavior divergence
-            
+
         Test Strategy:
             - Set up multiple conflicting environment indicators
             - Test that all services get consistent environment determination
             - Verify resolution algorithm is deterministic
             - Test consistency across multiple detection calls
-            
+
         Success Criteria:
             - All services see identical environment determination
             - Resolution is deterministic and repeatable
@@ -156,11 +156,10 @@ class TestEnvironmentDetectionConfidenceFallback:
             - Service behavior remains consistent despite uncertainty
         """
         # Create multiple conflicting signals
-        os.environ["ENVIRONMENT"] = "production"      # Explicit production
-        os.environ["NODE_ENV"] = "development"        # Development indicator
-        os.environ["DEBUG"] = "true"                  # Usually development
-        os.environ["API_KEY"] = "prod-key-123"        # Production indicator
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")      # Explicit production
+        clean_environment.setenv("NODE_ENV", "development")        # Development indicator
+        clean_environment.setenv("DEBUG", "true")                  # Usually development
+        clean_environment.setenv("API_KEY", "prod-key-123")        # Production indicator
         
         # Get environment info multiple times to test consistency
         results = []
@@ -197,23 +196,23 @@ class TestEnvironmentDetectionConfidenceFallback:
             for env in context_environments[1:]:
                 assert env == base_env, "Base environment should be consistent across contexts"
 
-    def test_service_recovery_when_detection_signals_become_available(self, clean_environment, reload_environment_module):
+    def test_service_recovery_when_detection_signals_become_available(self, clean_environment):
         """
         Test that services recover automatically when environment detection signals become available.
-        
+
         Integration Scope:
             Signal absence → Fallback behavior → Signal availability → Detection recovery → Service restoration
-            
+
         Business Impact:
             Ensures system automatically recovers from configuration issues without
             requiring restart when environment becomes properly detectable
-            
+
         Test Strategy:
             - Start with no clear environment signals
             - Verify fallback behavior is active
             - Add clear environment signals
             - Test that services recover automatically
-            
+
         Success Criteria:
             - Initial state uses fallback behavior
             - After signals are added, confidence increases
@@ -221,21 +220,18 @@ class TestEnvironmentDetectionConfidenceFallback:
             - Recovery happens within one detection cycle
         """
         # Start with no clear environment signals (should trigger fallback)
-        reload_environment_module()
-        
         # Should have low confidence detection or unknown environment
         initial_env = get_environment_info()
         initial_confidence = initial_env.confidence
         initial_environment = initial_env.environment
-        
+
         # Should be using some form of fallback
         assert initial_confidence < 0.8 or initial_environment == Environment.UNKNOWN
-        
+
         # Now add clear production signals
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "recovery-test-key"
-        os.environ["HOSTNAME"] = "prod-server-01"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "recovery-test-key")
+        clean_environment.setenv("HOSTNAME", "prod-server-01")
         
         # Should recover to high confidence production detection
         recovered_env = get_environment_info()
@@ -302,23 +298,23 @@ class TestEnvironmentDetectionConfidenceFallback:
         assert hasattr(env_info, 'environment')
         assert hasattr(env_info, 'confidence')
 
-    def test_confidence_scoring_reflects_signal_quality_appropriately(self, clean_environment, reload_environment_module):
+    def test_confidence_scoring_reflects_signal_quality_appropriately(self, clean_environment):
         """
         Test that confidence scoring accurately reflects the quality and consistency of signals.
-        
+
         Integration Scope:
             Signal collection → Quality assessment → Confidence calculation → Score assignment
-            
+
         Business Impact:
             Ensures confidence scores provide reliable indicators of detection quality,
             enabling services to make appropriate decisions based on detection certainty
-            
+
         Test Strategy:
             - Test various signal quality scenarios
             - Verify confidence scores reflect signal strength
             - Test edge cases and boundary conditions
             - Validate score calculation consistency
-            
+
         Success Criteria:
             - Strong signals result in high confidence (>0.8)
             - Weak signals result in low confidence (<0.5)
@@ -326,31 +322,27 @@ class TestEnvironmentDetectionConfidenceFallback:
             - Confidence scores are consistent and deterministic
         """
         # Test scenario 1: Strong, consistent signals (should have high confidence)
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "strong-signal-key"
-        os.environ["HOSTNAME"] = "prod-api-01.example.com"
-        reload_environment_module()
-        
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "strong-signal-key")
+        clean_environment.setenv("HOSTNAME", "prod-api-01.example.com")
+
         strong_env = get_environment_info()
         assert strong_env.confidence >= 0.8, f"Strong signals should have high confidence: {strong_env.confidence}"
         assert strong_env.environment == Environment.PRODUCTION
-        
+
         # Clear environment for next test
         for key in ["ENVIRONMENT", "API_KEY", "HOSTNAME"]:
-            if key in os.environ:
-                del os.environ[key]
-        
+            clean_environment.delenv(key, raising=False)
+
         # Test scenario 2: Weak signals (should have lower confidence)
-        os.environ["DEBUG"] = "false"  # Weak production indicator
-        reload_environment_module()
-        
+        clean_environment.setenv("DEBUG", "false")  # Weak production indicator
+
         weak_env = get_environment_info()
         assert weak_env.confidence < 0.8, f"Weak signals should have lower confidence: {weak_env.confidence}"
-        
+
         # Test scenario 3: Mixed/conflicting signals (should have medium confidence)
-        os.environ["ENVIRONMENT"] = "production"     # Strong production signal
-        os.environ["NODE_ENV"] = "development"       # Conflicting signal
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")     # Strong production signal
+        clean_environment.setenv("NODE_ENV", "development")       # Conflicting signal
         
         mixed_env = get_environment_info()
         assert 0.3 <= mixed_env.confidence <= 0.98, f"Mixed signals should have reasonable confidence range: {mixed_env.confidence}"
@@ -462,23 +454,23 @@ class TestEnvironmentDetectionConfidenceFallback:
             # If we have perfect error isolation, all calls might succeed despite the mock
             # This indicates robust error handling, which is actually desirable
 
-    def test_signal_precedence_and_override_behavior(self, clean_environment, reload_environment_module):
+    def test_signal_precedence_and_override_behavior(self, clean_environment):
         """
         Test that environment signal precedence and override behavior works correctly.
-        
+
         Integration Scope:
             Multiple signals → Precedence rules → Override logic → Final determination
-            
+
         Business Impact:
             Ensures predictable environment detection when multiple signals are present,
             following documented precedence rules for reliable configuration
-            
+
         Test Strategy:
             - Set signals with different precedence levels
             - Test that higher precedence signals override lower ones
             - Verify override behavior is consistent and documented
             - Test edge cases and boundary conditions
-            
+
         Success Criteria:
             - Higher precedence signals override lower precedence ones
             - Override behavior is consistent across detection calls
@@ -486,22 +478,20 @@ class TestEnvironmentDetectionConfidenceFallback:
             - Edge cases are handled gracefully
         """
         # Test explicit ENVIRONMENT variable (should have high precedence)
-        os.environ["ENVIRONMENT"] = "staging"
-        os.environ["NODE_ENV"] = "production"      # Lower precedence
-        os.environ["DEBUG"] = "false"              # Even lower precedence
-        reload_environment_module()
-        
+        clean_environment.setenv("ENVIRONMENT", "staging")
+        clean_environment.setenv("NODE_ENV", "production")      # Lower precedence
+        clean_environment.setenv("DEBUG", "false")              # Even lower precedence
+
         env_info = get_environment_info()
         # ENVIRONMENT should take precedence over NODE_ENV
         assert env_info.environment == Environment.STAGING, f"Expected STAGING but got {env_info.environment}"
-        
+
         # Test that reasoning explains precedence
         reasoning = env_info.reasoning.lower()
         assert "environment" in reasoning or "staging" in reasoning
-        
+
         # Test security context override (should have very high precedence)
-        os.environ["ENFORCE_AUTH"] = "true"
-        reload_environment_module()
+        clean_environment.setenv("ENFORCE_AUTH", "true")
         
         security_env = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
         # Security enforcement should override to production regardless of base environment

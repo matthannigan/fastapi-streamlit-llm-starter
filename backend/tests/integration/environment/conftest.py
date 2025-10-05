@@ -26,31 +26,28 @@ from app.core.environment import (
 
 
 @pytest.fixture(scope="function")
-def clean_environment():
+def clean_environment(monkeypatch):
     """
     Provides a clean environment for testing by backing up and restoring os.environ.
-    
+
     This fixture ensures test isolation by:
     1. Backing up the current environment variables
     2. Clearing variables that affect environment detection
     3. Restoring the original environment after the test
-    
+
     Use this fixture in ALL environment detection tests to prevent test pollution.
-    
+
     Business Impact:
         Critical for test reliability and preventing test interference
-        
+
     Use Cases:
         - Testing environment detection in controlled conditions
         - Verifying environment-specific behavior
         - Ensuring test isolation between different environment scenarios
-        
+
     Cleanup:
         Original environment is completely restored after test completion
     """
-    # Store original environment
-    original_environ = os.environ.copy()
-    
     # Clear environment variables that affect detection
     env_vars_to_clear = [
         "ENVIRONMENT", "ENV", "APP_ENV", "STAGE", "DEPLOYMENT_ENVIRONMENT",
@@ -60,19 +57,14 @@ def clean_environment():
         "ENABLE_AI_CACHE", "ENFORCE_AUTH", "DEBUG", "PRODUCTION",
         "PROD", "HOSTNAME", "CI", "RATE_LIMITING_ENABLED"
     ]
-    
+
     for var in env_vars_to_clear:
-        if var in os.environ:
-            del os.environ[var]
-    
+        monkeypatch.delenv(var, raising=False)
+
     # Disable rate limiting for testing
-    os.environ['RATE_LIMITING_ENABLED'] = 'false'
-    
-    yield
-    
-    # Restore original environment
-    os.environ.clear()
-    os.environ.update(original_environ)
+    monkeypatch.setenv('RATE_LIMITING_ENABLED', 'false')
+
+    yield monkeypatch
 
 
 # Note: The reload_environment_module fixture and its dependent fixtures have been removed

@@ -216,12 +216,18 @@ The module provides extensive customization capabilities:
 import os
 import sys
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from fastapi import Depends, status, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError, ConfigurationError
 from app.core.environment import get_environment_info, FeatureContext, Environment
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
+
+# Import get_settings for dependency injection
+from app.dependencies import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -594,7 +600,8 @@ api_key_auth = APIKeyAuth(auth_config)
 
 async def verify_api_key(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    settings: 'Settings' = Depends(get_settings)
 ) -> str:
     """
     Environment-aware FastAPI dependency for API key authentication with production security.
@@ -659,8 +666,12 @@ async def verify_api_key(
     # Extract API key from either Bearer or X-API-Key header
     api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
 
+    # Create auth instance from current settings (ensures test isolation)
+    current_auth_config = AuthConfig()
+    current_api_key_auth = APIKeyAuth(current_auth_config)
+
     # If no API keys are configured, allow access (development mode)
-    if not api_key_auth.api_keys:
+    if not current_api_key_auth.api_keys:
         # Only get environment info when needed for logging
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
@@ -693,7 +704,7 @@ async def verify_api_key(
         )
 
     # Verify the API key (preserve original logic)
-    if not api_key_auth.verify_api_key(api_key):
+    if not current_api_key_auth.verify_api_key(api_key):
         logger.warning(f"Invalid API key attempted via {auth_method}: {api_key[:8]}...")
 
         # Get environment info for enhanced context, but preserve original message

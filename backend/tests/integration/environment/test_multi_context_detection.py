@@ -266,23 +266,23 @@ class TestMultiContextEnvironmentDetection:
                           if 'override' in s.source.lower()]
         assert len(override_signals) == 0, "Default context should not include override signals"
 
-    def test_context_consistency_across_environments(self, clean_environment, reload_environment_module):
+    def test_context_consistency_across_environments(self, clean_environment):
         """
         Test that feature contexts provide consistent behavior across different environments.
-        
+
         Integration Scope:
             Multiple environments → Feature contexts → Consistent metadata patterns → Cross-environment service behavior
-            
+
         Business Impact:
             Ensures feature contexts provide consistent metadata regardless
             of underlying environment, enabling predictable service behavior
-            
+
         Test Strategy:
             - Test each feature context across multiple environments
             - Verify metadata format consistency
             - Test context-specific behavior is preserved
             - Validate cross-environment service integration points
-            
+
         Success Criteria:
             - AI context always provides AI metadata regardless of environment
             - Security context always provides security metadata
@@ -295,15 +295,14 @@ class TestMultiContextEnvironmentDetection:
             ('production', Environment.PRODUCTION),
             ('testing', Environment.TESTING)
         ]
-        
+
         context_results = {}
-        
+
         for env_name, env_enum in environments_to_test:
             # Set environment
-            os.environ['ENVIRONMENT'] = env_name
+            clean_environment.setenv('ENVIRONMENT', env_name)
             if env_name == 'production':
-                os.environ['API_KEY'] = 'test-key-for-prod'
-            reload_environment_module()
+                clean_environment.setenv('API_KEY', 'test-key-for-prod')
             
             # Test each context
             contexts_to_test = [
@@ -497,32 +496,31 @@ class TestMultiContextEnvironmentDetection:
             thread_ids = set(r['thread_id'] for r in context_results)
             assert len(thread_ids) >= 2, f"Expected multiple threads for {context}, got {len(thread_ids)}"
 
-    def test_context_switching_state_management(self, clean_environment, reload_environment_module):
+    def test_context_switching_state_management(self, clean_environment):
         """
         Test that switching between contexts maintains proper state management.
-        
+
         Integration Scope:
             Context switching → State management → Consistent detection → Service state consistency
-            
+
         Business Impact:
             Ensures services can switch between different contexts without
             state pollution or inconsistent behavior
-            
+
         Test Strategy:
             - Switch between different contexts rapidly
             - Verify each context maintains proper state
             - Test context isolation and independence
             - Validate state cleanup between context switches
-            
+
         Success Criteria:
             - Each context returns appropriate metadata regardless of previous context
             - No state pollution between contexts
             - Context switching doesn't affect detection consistency
             - Context metadata is properly isolated
         """
-        os.environ['ENVIRONMENT'] = 'production'
-        os.environ['API_KEY'] = 'context-switching-test'
-        reload_environment_module()
+        clean_environment.setenv('ENVIRONMENT', 'production')
+        clean_environment.setenv('API_KEY', 'context-switching-test')
         
         # Test rapid context switching
         contexts = [

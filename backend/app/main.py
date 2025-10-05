@@ -1165,6 +1165,11 @@ def create_public_app_with_settings(
         lifespan=app_lifespan
     )
 
+    # Override dependency injection to use provided settings
+    # This ensures all route dependencies use the settings passed to create_app
+    from app.dependencies import get_settings
+    public_app.dependency_overrides[get_settings] = lambda: settings_obj
+
     # Setup middleware for public app if requested
     if include_middleware:
         setup_enhanced_middleware(public_app, settings_obj)
@@ -1451,6 +1456,11 @@ def create_internal_app_with_settings(
         openapi_url="/openapi.json" if not is_production else None,  # Available at /internal/openapi.json; disabled in production
         openapi_tags=internal_tags_metadata,
     )
+
+    # Override dependency injection to use provided settings
+    # This ensures all route dependencies use the settings passed to create_app
+    from app.dependencies import get_settings
+    internal_app.dependency_overrides[get_settings] = lambda: settings_obj
 
     # Note: Internal app doesn't need CORS middleware as it's for internal use
     # But we may want to add specific security middleware for internal endpoints
