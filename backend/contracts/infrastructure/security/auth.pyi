@@ -217,12 +217,13 @@ The module provides extensive customization capabilities:
 import os
 import sys
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 from fastapi import Depends, status, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError, ConfigurationError
 from app.core.environment import get_environment_info, FeatureContext, Environment
+from app.dependencies import get_settings
 
 
 class AuthConfig:
@@ -442,7 +443,7 @@ def get_api_key_from_request(request: Request, bearer_credentials: Optional[HTTP
     ...
 
 
-async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
+async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str:
     """
     Environment-aware FastAPI dependency for API key authentication with production security.
     
@@ -454,6 +455,7 @@ async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuth
         bearer_credentials: HTTP Bearer authorization credentials from request headers.
                            Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
                            Automatically injected by FastAPI's HTTPBearer security scheme.
+        settings: Settings instance injected via dependency for configuration isolation.
     
     Returns:
         str: The validated API key string when authentication succeeds.
@@ -466,9 +468,11 @@ async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuth
                            - Invalid API key format or unrecognized key value
                            - Environment detection information and confidence scores
                            - Authentication method and credential status for debugging
+        ConfigurationError: When production environment lacks API key configuration.
     
     Behavior:
         - Returns "development" immediately if no API keys are configured (development mode)
+        - Validates production environments have API keys configured (fail-fast)
         - Requires valid credentials when API keys are configured in any environment
         - Validates provided API key against all configured valid keys (O(1) lookup)
         - Includes environment detection context in all error messages and logging
@@ -506,17 +510,26 @@ async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuth
     ...
 
 
-async def verify_api_key_with_metadata(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
+async def verify_api_key_with_metadata(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> Dict[str, Any]:
     """
     Enhanced dependency that returns API key with metadata (extension point).
     
+    Args:
+        request: FastAPI Request object containing headers for X-API-Key support
+        bearer_credentials: HTTP Bearer credentials from the request
+        settings: Settings instance injected via dependency for configuration isolation.
+    
     Returns:
         Dictionary with api_key and metadata
+    
+    Raises:
+        AuthenticationError: If authentication fails
+        ConfigurationError: If production environment lacks API key configuration
     """
     ...
 
 
-async def optional_verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[str]:
+async def optional_verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> Optional[str]:
     """
     Optional dependency to verify API key authentication.
     Returns None if no credentials provided, otherwise verifies the key.
@@ -524,12 +537,14 @@ async def optional_verify_api_key(request: Request, bearer_credentials: Optional
     Args:
         request: FastAPI Request object containing headers for X-API-Key support
         bearer_credentials: HTTP Bearer credentials from the request
-        
+        settings: Settings instance injected via dependency for configuration isolation.
+    
     Returns:
         The verified API key or None if no credentials provided
-        
+    
     Raises:
-        HTTPException: If invalid credentials are provided
+        AuthenticationError: If invalid credentials are provided
+        ConfigurationError: If production environment lacks API key configuration
     """
     ...
 
@@ -652,19 +667,20 @@ def supports_feature(feature: str) -> bool:
     ...
 
 
-async def verify_api_key_http(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
+async def verify_api_key_http(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str:
     """
     FastAPI-compatible authentication dependency with HTTP exception handling.
     
     Provides the same authentication functionality as verify_api_key but converts
-    AuthenticationError exceptions to HTTPException for proper FastAPI middleware
-    compatibility and standardized HTTP error responses.
+    AuthenticationError and ConfigurationError exceptions to HTTPException for proper
+    FastAPI middleware compatibility and standardized HTTP error responses.
     
     Args:
         request: FastAPI Request object containing headers for X-API-Key support
         bearer_credentials: HTTP Bearer authorization credentials from request headers.
                            Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
                            Automatically injected by FastAPI's HTTPBearer security scheme.
+        settings: Settings instance injected via dependency for configuration isolation.
     
     Returns:
         str: The validated API key string when authentication succeeds.
@@ -677,10 +693,12 @@ async def verify_api_key_http(request: Request, bearer_credentials: Optional[HTT
                       - WWW-Authenticate header for proper HTTP authentication flow
                       - Environment detection context for operational debugging
                       - Original exception context preserved for troubleshooting
+        HTTPException: 500 Internal Server Error when configuration validation fails
     
     Behavior:
         - Delegates authentication logic to verify_api_key for consistency
-        - Converts AuthenticationError to HTTPException for middleware compatibility
+        - Converts AuthenticationError to HTTPException 401 for middleware compatibility
+        - Converts ConfigurationError to HTTPException 500 for configuration issues
         - Preserves all authentication context and environment information
         - Returns proper HTTP 401 status with WWW-Authenticate header
         - Provides structured error response format for API clients

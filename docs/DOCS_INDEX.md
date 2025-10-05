@@ -38,6 +38,7 @@
 
 ### Developer Guides
 
+- **[App Factory Pattern](./guides/developer/APP_FACTORY_GUIDE.md)**: Comprehensive guide to using the app factory pattern for test isolation, multi-instance deployments, and flexible configuration while maintaining backward compatibility *(Last updated 2025-10-04)*
 - **[Authentication & Authorization](./guides/developer/AUTHENTICATION.md)**: Comprehensive authentication and authorization system with multi-key authentication, dual-API architecture protection, and flexible security modes *(Last updated 2025-07-31)*
 - **[Code Standards & Examples](./guides/developer/CODE_STANDARDS.md)**: Standardized patterns for code examples, imports, error handling, and architectural guidelines for infrastructure vs domain service separation *(Last updated 2025-07-31)*
 - **[Core Module Integration](./guides/developer/CORE_MODULE_INTEGRATION.md)**: Essential guide to the critical integration layer between template infrastructure and custom domain services, covering configuration management, exception handling, and middleware patterns *(Last updated 2025-08-03)*

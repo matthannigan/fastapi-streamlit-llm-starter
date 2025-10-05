@@ -31,7 +31,7 @@ class TestEnvironmentAwareAuthenticationFlow:
     """
 
     def test_production_environment_requires_valid_api_key_success(
-        self, client, production_environment, auth_headers_valid
+        self, production_client, auth_headers_valid
     ):
         """
         Test production environment successfully authenticates valid API keys.
@@ -55,7 +55,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - No authentication errors or warnings in response
         """
         # Act: Make authenticated request to protected endpoint
-        response = client.get("/v1/auth/status", headers=auth_headers_valid)
+        response = production_client.get("/v1/auth/status", headers=auth_headers_valid)
 
         # Assert: Verify successful authentication
         assert response.status_code == status.HTTP_200_OK
@@ -66,7 +66,7 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert "Authentication successful" in response_data["message"]
 
     def test_production_environment_rejects_invalid_api_key_with_proper_http_error(
-        self, client, production_environment, auth_headers_invalid
+        self, production_client, auth_headers_invalid
     ):
         """
         Test production environment returns proper 401 for invalid API keys.
@@ -91,7 +91,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - No sensitive information exposed in error response
         """
         # Act: Attempt authentication with invalid key
-        response = client.get("/v1/auth/status", headers=auth_headers_invalid)
+        response = production_client.get("/v1/auth/status", headers=auth_headers_invalid)
 
         # Assert: Verify proper authentication failure response
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -108,7 +108,7 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert response_data["detail"]["context"]["environment"] == "production"
 
     def test_production_environment_rejects_missing_credentials_with_auth_challenge(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test production environment requires credentials with proper authentication challenge.
@@ -133,7 +133,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - Response includes environment context for debugging
         """
         # Act: Make unauthenticated request to protected endpoint
-        response = client.get("/v1/auth/status")
+        response = production_client.get("/v1/auth/status")
 
         # Assert: Verify authentication challenge
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -144,24 +144,24 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert response_data["detail"]["context"]["environment"] == "production"
 
     def test_development_environment_allows_unauthenticated_access(
-        self, client, development_environment
+        self, development_client
     ):
         """
         Test development environment allows access without authentication.
-        
+
         Integration Scope:
             Tests development mode flow through environment detection,
             security policy determination, and development mode response.
-            
+
         Business Impact:
             Enables frictionless local development without requiring
             API key configuration while maintaining security awareness.
-            
+
         Test Strategy:
             - Configure development environment with no API keys
             - Make unauthenticated request to protected endpoint
             - Verify successful access with development mode indicators
-            
+
         Success Criteria:
             - Returns 200 status indicating successful access
             - Response indicates development mode operation
@@ -169,7 +169,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - Authentication context shows development mode status
         """
         # Act: Make unauthenticated request in development environment
-        response = client.get("/v1/auth/status")
+        response = development_client.get("/v1/auth/status")
 
         # Assert: Verify development mode access
         assert response.status_code == status.HTTP_200_OK
@@ -180,24 +180,24 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert "Authentication successful" in response_data["message"]
 
     def test_development_environment_authenticates_valid_keys_normally(
-        self, client, development_with_keys_environment
+        self, development_with_keys_client
     ):
         """
         Test development environment with configured keys works normally.
-        
+
         Integration Scope:
             Tests mixed development configuration where environment is development
             but API keys are configured, ensuring normal authentication flow.
-            
+
         Business Impact:
             Supports development environments that choose to use authentication
             while maintaining development-appropriate behavior.
-            
+
         Test Strategy:
             - Configure development environment with API key
             - Make authenticated request with valid key
             - Verify normal authentication with development context
-            
+
         Success Criteria:
             - Returns 200 for valid authentication
             - Shows actual API key prefix (not "development")
@@ -208,7 +208,7 @@ class TestEnvironmentAwareAuthenticationFlow:
         auth_headers = {"Authorization": "Bearer test-dev-key"}
 
         # Act: Make authenticated request in development environment
-        response = client.get("/v1/auth/status", headers=auth_headers)
+        response = development_with_keys_client.get("/v1/auth/status", headers=auth_headers)
 
         # Assert: Verify normal authentication in development
         assert response.status_code == status.HTTP_200_OK
@@ -219,24 +219,24 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert "Authentication successful" in response_data["message"]
 
     def test_environment_detection_failure_defaults_to_production_security(
-        self, client, clean_environment, monkeypatch
+        self, clean_environment
     ):
         """
         Test system defaults to production security when environment detection fails.
-        
+
         Integration Scope:
             Tests fallback behavior when environment detection service fails,
             ensuring system defaults to secure production mode.
-            
+
         Business Impact:
             Ensures system security is maintained even when environment
             detection fails, preventing accidental security bypasses.
-            
+
         Test Strategy:
             - Configure environment that causes detection failure
             - Attempt unauthenticated access
             - Verify system defaults to production security requirements
-            
+
         Success Criteria:
             - Requires authentication even with detection failure
             - Returns 401 for missing credentials
@@ -247,18 +247,18 @@ class TestEnvironmentAwareAuthenticationFlow:
         clean_environment.setenv("API_KEY", "fallback-test-key")
         # Intentionally leave ENVIRONMENT undefined to test detection failure handling
 
-        # Reload authentication system after setting environment variables
-        from tests.integration.auth.conftest import reload_auth_system
-        reload_auth_system()
+        # Create client AFTER environment is configured
+        from fastapi.testclient import TestClient
+        from app.main import create_app
+        with TestClient(create_app()) as client:
+            # Act: Make unauthenticated request with uncertain environment
+            response = client.get("/v1/auth/status")
 
-        # Act: Make unauthenticated request with uncertain environment
-        response = client.get("/v1/auth/status")
+            # Assert: Verify fallback to production security
+            assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-        # Assert: Verify fallback to production security
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-        response_data = response.json()
-        assert "API key required" in response_data["detail"]["message"]
-        # Should indicate production security enforcement as fallback
-        context = response_data["detail"]["context"]
-        assert context["credentials_provided"] is False
+            response_data = response.json()
+            assert "API key required" in response_data["detail"]["message"]
+            # Should indicate production security enforcement as fallback
+            context = response_data["detail"]["context"]
+            assert context["credentials_provided"] is False

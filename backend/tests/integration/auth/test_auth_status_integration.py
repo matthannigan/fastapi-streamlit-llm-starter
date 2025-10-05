@@ -31,7 +31,7 @@ class TestAuthStatusIntegration:
     """
 
     def test_auth_status_endpoint_demonstrates_complete_integration_success(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test /v1/auth/status demonstrates complete authentication integration.
@@ -60,7 +60,7 @@ class TestAuthStatusIntegration:
         auth_headers = {"Authorization": "Bearer test-production-key"}
 
         # Act: Request authentication status
-        response = client.get("/v1/auth/status", headers=auth_headers)
+        response = production_client.get("/v1/auth/status", headers=auth_headers)
 
         # Assert: Verify complete integration demonstration
         assert response.status_code == status.HTTP_200_OK
@@ -73,7 +73,7 @@ class TestAuthStatusIntegration:
         assert "Authentication successful" in response_data["message"]
 
     def test_auth_status_error_responses_demonstrate_http_exception_integration(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test /v1/auth/status error handling demonstrates HTTP exception integration.
@@ -101,7 +101,7 @@ class TestAuthStatusIntegration:
         invalid_headers = {"Authorization": "Bearer invalid-status-key"}
 
         # Act: Attempt status check with invalid authentication
-        response = client.get("/v1/auth/status", headers=invalid_headers)
+        response = production_client.get("/v1/auth/status", headers=invalid_headers)
 
         # Assert: Verify HTTP exception integration
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -123,7 +123,7 @@ class TestAuthStatusIntegration:
         assert context["credentials_provided"] is True
 
     def test_auth_status_missing_credentials_shows_proper_authentication_challenge(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test /v1/auth/status returns proper authentication challenge for missing credentials.
@@ -148,7 +148,7 @@ class TestAuthStatusIntegration:
             - HTTP response complies with authentication challenge standards
         """
         # Act: Request status without authentication
-        response = client.get("/v1/auth/status")
+        response = production_client.get("/v1/auth/status")
 
         # Assert: Verify authentication challenge
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -163,7 +163,7 @@ class TestAuthStatusIntegration:
         assert context["environment"] == "production"
 
     def test_auth_status_environment_context_integration_production_vs_development(
-        self, client, development_environment
+        self, development_client
     ):
         """
         Test status endpoint responses vary correctly between environments.
@@ -188,7 +188,7 @@ class TestAuthStatusIntegration:
             - Response format appropriate for development vs production
         """
         # Act: Request status in development environment (no auth required)
-        response = client.get("/v1/auth/status")
+        response = development_client.get("/v1/auth/status")
 
         # Assert: Verify development environment integration
         assert response.status_code == status.HTTP_200_OK
@@ -199,7 +199,7 @@ class TestAuthStatusIntegration:
         assert "Authentication successful" in response_data["message"]
 
     def test_auth_status_response_format_consistency_across_authentication_methods(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test status response format consistent regardless of authentication method.
@@ -225,11 +225,11 @@ class TestAuthStatusIntegration:
         """
         # Test Bearer token authentication
         bearer_headers = {"Authorization": "Bearer test-production-key"}
-        bearer_response = client.get("/v1/auth/status", headers=bearer_headers)
+        bearer_response = production_client.get("/v1/auth/status", headers=bearer_headers)
 
         # Test X-API-Key authentication
         api_key_headers = {"X-API-Key": "test-production-key"}
-        api_key_response = client.get("/v1/auth/status", headers=api_key_headers)
+        api_key_response = production_client.get("/v1/auth/status", headers=api_key_headers)
 
         # Assert: Verify consistent response format
         assert bearer_response.status_code == status.HTTP_200_OK
@@ -244,7 +244,7 @@ class TestAuthStatusIntegration:
         assert bearer_data["message"] == api_key_data["message"]
 
     def test_auth_status_secure_key_prefix_truncation(
-        self, client, multiple_api_keys_environment
+        self, multiple_api_keys_client
     ):
         """
         Test status endpoint securely truncates API key prefixes in responses.
@@ -270,7 +270,7 @@ class TestAuthStatusIntegration:
         """
         # Test primary key truncation
         primary_headers = {"Authorization": "Bearer primary-key-12345"}
-        response = client.get("/v1/auth/status", headers=primary_headers)
+        response = multiple_api_keys_client.get("/v1/auth/status", headers=primary_headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -279,7 +279,7 @@ class TestAuthStatusIntegration:
 
         # Test secondary key truncation
         secondary_headers = {"Authorization": "Bearer secondary-key-67890"}
-        response = client.get("/v1/auth/status", headers=secondary_headers)
+        response = multiple_api_keys_client.get("/v1/auth/status", headers=secondary_headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()

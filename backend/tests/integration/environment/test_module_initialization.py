@@ -129,7 +129,7 @@ class TestModuleInitializationIntegration:
         for result in results[1:]:
             assert result == first_result, f"Inconsistent results: {first_result} != {result}"
 
-    def test_environment_variables_captured_at_startup(self, clean_environment, reload_environment_module):
+    def test_environment_variables_captured_at_startup(self, clean_environment):
         """
         Test that environment variables present at startup are correctly captured.
         
@@ -373,39 +373,37 @@ class TestModuleInitializationIntegration:
         for i, result in enumerate(results[1:], 1):
             assert result == first_result, f"Thread {i} got different result: {result} != {first_result}"
 
-    def test_module_reloading_during_runtime(self, clean_environment, reload_environment_module):
+    def test_module_reloading_during_runtime(self, clean_environment):
         """
         Test that module can be reloaded during runtime to pick up environment changes.
-        
+
         Integration Scope:
             Runtime environment changes → Module reloading → Updated detection
-            
+
         Business Impact:
             Allows environment configuration updates without application restart
-            
+
         Test Strategy:
             - Set initial environment
             - Change environment variables
             - Reload module
             - Verify changes are reflected
-            
+
         Success Criteria:
             - Module reloading succeeds without errors
             - New environment variables are detected
             - Environment detection reflects changes
         """
         # Set initial environment
-        os.environ["ENVIRONMENT"] = "development"
-        reload_environment_module()
-        
+        clean_environment.setenv("ENVIRONMENT", "development")
+
         from app.core import environment
         initial_env = environment.get_environment_info()
         assert initial_env.environment == Environment.DEVELOPMENT
-        
+
         # Change environment
-        os.environ["ENVIRONMENT"] = "production"  
-        os.environ["API_KEY"] = "runtime-change-key"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "runtime-change-key")
         
         # Should detect new environment
         updated_env = environment.get_environment_info()

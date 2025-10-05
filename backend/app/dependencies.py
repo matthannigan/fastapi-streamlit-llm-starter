@@ -216,7 +216,7 @@ from functools import lru_cache
 import logging
 from fastapi import Depends
 
-from app.core.config import Settings, settings
+from app.core.config import Settings, settings, create_settings
 from app.infrastructure.cache import AIResponseCache
 from app.infrastructure.monitoring import (
     HealthChecker,
@@ -319,97 +319,97 @@ def get_settings() -> Settings:
 def get_fresh_settings() -> Settings:
     """
     Testing-focused dependency provider that creates fresh Settings instances for each invocation.
-    
+
     This function provides an alternative to the cached `get_settings()` dependency, specifically designed
     for testing scenarios where configuration isolation, environment variable overrides, or multiple
     configuration variations are required. Unlike the singleton pattern of `get_settings()`, this provider
     creates a completely new Settings instance on every call, enabling test isolation and configuration
     flexibility.
-    
+
     Returns:
         Settings: Fresh Settings instance containing:
                  - Newly parsed environment variables (allowing test-time overrides)
                  - Independent configuration state isolated from other tests
                  - Complete Settings validation and initialization
                  - All configuration fields populated from current environment state
-    
+
     Behavior:
         **Fresh Instance Creation:**
         - Creates a completely new Settings instance on every function call
         - Re-parses all environment variables from current environment state
         - Provides complete configuration isolation between function calls
         - Enables environment variable overrides to take effect immediately
-        
+
         **Testing Integration:**
         - Designed specifically for test scenarios requiring configuration isolation
         - Supports pytest fixtures with environment variable overrides via `monkeypatch.setenv()`
         - Enables testing different configuration scenarios within the same test session
         - Facilitates testing of configuration validation and error handling
-        
+
         **Configuration Override Patterns:**
         - Reads current environment variables on each invocation
         - Picks up test-time environment variable changes immediately
         - Supports dynamic configuration testing across multiple test scenarios
         - Enables validation of configuration-dependent behavior under different settings
-        
+
         **Performance Characteristics:**
         - Higher computational overhead compared to cached `get_settings()`
         - Full environment variable parsing and validation on each call
         - Suitable for test scenarios where isolation is more important than performance
         - Not recommended for production use due to performance implications
-    
+
     Examples:
         >>> # Basic testing with configuration overrides
         >>> import os
         >>> from unittest.mock import patch
-        >>> 
+        >>>
         >>> # Test different debug configurations
         >>> with patch.dict(os.environ, {"DEBUG": "true"}):
         ...     settings = get_fresh_settings()
         ...     assert settings.debug is True
-        >>> 
+        >>>
         >>> with patch.dict(os.environ, {"DEBUG": "false"}):
         ...     settings = get_fresh_settings()
         ...     assert settings.debug is False
-        
+
         >>> # pytest integration with monkeypatch
         >>> def test_redis_configuration(monkeypatch):
         ...     # Test with Redis configured
         ...     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
         ...     settings = get_fresh_settings()
         ...     assert settings.redis_url == "redis://localhost:6379"
-        ...     
+        ...
         ...     # Test without Redis configured
         ...     monkeypatch.delenv("REDIS_URL", raising=False)
         ...     settings = get_fresh_settings()
         ...     assert settings.redis_url is None
-        
+
         >>> # FastAPI dependency override for testing
         >>> from fastapi.testclient import TestClient
         >>> from app.main import app
         >>> from app.dependencies import get_settings, get_fresh_settings
-        >>> 
+        >>>
         >>> # Override default dependency with fresh settings
         >>> app.dependency_overrides[get_settings] = get_fresh_settings
         >>> client = TestClient(app)
-        >>> 
+        >>>
         >>> # Each test request gets fresh configuration
         >>> response = client.get("/config-info")
         >>> assert response.status_code == 200
-        
+
         >>> # Configuration isolation verification
         >>> settings1 = get_fresh_settings()
         >>> settings2 = get_fresh_settings()
         >>> assert settings1 is not settings2  # Different object instances
         >>> assert settings1.debug == settings2.debug  # Same configuration values
-    
+
     Note:
         This provider is specifically designed for testing scenarios and should not be used
         in production environments due to performance overhead. Use `get_settings()` for
         production deployments to benefit from singleton caching and optimal performance.
         When using this provider in tests, ensure proper environment cleanup between tests.
     """
-    return Settings()
+    return create_settings()
 
 
 async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIResponseCache:
@@ -553,56 +553,49 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         return InMemoryCache()
 
 
-@lru_cache()
-def get_health_checker() -> HealthChecker:
+async def get_health_checker(settings: Settings = Depends(get_settings)) -> HealthChecker:
     """
-    Cached health monitoring service dependency provider with comprehensive system health checks.
-    
+    Settings-aware health monitoring service dependency provider with comprehensive system health checks.
+
     This function creates and configures a centralized health monitoring service that provides comprehensive
-    system health validation across all application components. It implements a singleton pattern using LRU
-    caching to ensure consistent health monitoring configuration and optimal performance across all health
-    check requests throughout the application lifecycle.
-    
-    ⚠️ **IMPLEMENTATION LIMITATION**: This function currently uses hardcoded configuration values instead of
-    integrating with application settings dependency injection. This is a known architectural limitation
-    that should be addressed in future versions to provide proper configuration integration.
-    
-    **Required Future Enhancements:**
-    - Add Settings dependency injection: `settings: Settings = Depends(get_settings)`
-    - Replace hardcoded values with settings-based configuration
-    - Add cache service dependency for optimized health checking
-    - Implement per-component timeout configuration from settings
-    
+    system health validation across all application components. It now integrates with application settings
+    dependency injection to provide configurable timeout policies, retry mechanisms, and component-specific
+    health validation parameters, enabling flexible health monitoring tailored to deployment requirements.
+
+    Args:
+        settings: Application configuration dependency containing health monitoring settings including
+                 timeout configurations, retry policies, and component-specific validation parameters
+
     Returns:
-        HealthChecker: Singleton health monitoring service instance providing:
-                      - Comprehensive system component health validation
+        HealthChecker: Configured health monitoring service instance providing:
+                      - Comprehensive system component health validation with settings-based configuration
                       - Standard health checks for AI model, cache, and resilience components
-                      - Configurable timeout and retry mechanisms for reliable health assessment
+                      - Configurable timeout and retry mechanisms from application settings
                       - Centralized health status aggregation and reporting
-                      - Thread-safe concurrent health check execution
-                      - Performance-optimized health validation with caching
-    
+                      - Async-first health check execution for optimal performance
+                      - Settings-driven component health validation policies
+
     Behavior:
-        **Singleton Pattern Implementation:**
-        - Returns the exact same HealthChecker instance across all function calls
-        - Uses `@lru_cache()` decorator for O(1) access after first invocation
-        - Ensures consistent health monitoring configuration throughout application
-        - Provides thread-safe access for concurrent health check requests
-        
+        **Settings Integration:**
+        - Extracts health check configuration from provided settings dependency
+        - Applies configurable timeout policies based on deployment environment
+        - Implements settings-driven retry mechanisms and backoff strategies
+        - Enables per-component health check configuration through settings
+
         **Health Check Registration:**
         - Automatically registers standard health checks for core system components
         - Includes AI model connectivity and functionality validation
         - Registers cache infrastructure health monitoring capabilities
         - Provides resilience system health validation and circuit breaker status
-        - Configures component-specific health validation logic
-        
+        - Configures component-specific health validation logic based on settings
+
         **Configuration Management:**
-        - **Current**: Uses hardcoded timeout and retry configuration
-        - **Limitation**: Does not integrate with application settings system
-        - Applies default timeout of 2000ms for balanced responsiveness and reliability
-        - Sets conservative retry count of 1 to minimize health check latency
-        - Configures backoff strategy for failed health check retries
-        
+        - **Enhanced**: Integrates with application settings for dynamic configuration
+        - Applies health_check_timeout_ms from settings with sensible fallbacks
+        - Sets health_check_retry_count from settings with default values
+        - Configures per-component timeouts based on settings or defaults
+        - Implements backoff strategy from settings for failed health check retries
+
         **Component Health Validation:**
         - **AI Model Health**: Validates AI service connectivity and model availability
         - **Cache Health**: Monitors cache infrastructure status and connectivity
@@ -669,11 +662,22 @@ def get_health_checker() -> HealthChecker:
         validation parameters. The current implementation provides reliable health
         monitoring with conservative defaults suitable for most deployment scenarios.
     """
+    # Extract health check configuration from settings with sensible defaults
+    default_timeout_ms = getattr(settings, 'health_check_timeout_ms', 2000)
+    retry_count = getattr(settings, 'health_check_retry_count', 1)
+    backoff_base_seconds = getattr(settings, 'health_check_backoff_base_seconds', 0.1)
+
+    # Configure per-component timeouts from settings or defaults
+    per_component_timeouts_ms = {}
+    if hasattr(settings, 'health_check_component_timeouts_ms'):
+        per_component_timeouts_ms = settings.health_check_component_timeouts_ms
+
+    # Create health checker with settings-based configuration
     checker = HealthChecker(
-        default_timeout_ms=2000,
-        per_component_timeouts_ms={},
-        retry_count=1,
-        backoff_base_seconds=0.1,
+        default_timeout_ms=default_timeout_ms,
+        per_component_timeouts_ms=per_component_timeouts_ms,
+        retry_count=retry_count,
+        backoff_base_seconds=backoff_base_seconds,
     )
     # Register built-in checks with optimal dependency injection
     checker.register_check("ai_model", check_ai_model_health)
@@ -688,85 +692,187 @@ def get_health_checker() -> HealthChecker:
     return checker
 
 
+def create_dependency_factory(settings_obj: Settings):
+    """
+    Factory function that creates a dependency factory for use with specific Settings instances.
+
+    This function creates a specialized dependency factory that uses the provided Settings instance
+    instead of the global singleton settings. This enables the app factory pattern to create
+    dependencies with isolated settings for testing and multi-instance scenarios.
+
+    Args:
+        settings_obj: Specific Settings instance to use for dependency creation
+
+    Returns:
+        DependencyFactory: Factory object containing settings-specific dependency providers
+    """
+
+    class DependencyFactory:
+        """Settings-specific dependency factory for app factory integration."""
+
+        def __init__(self, settings: Settings):
+            self.settings = settings
+            self._cache_service = None
+            self._health_checker = None
+
+        async def get_cache_service(self) -> AIResponseCache:
+            """Settings-specific cache service provider."""
+            if self._cache_service is None:
+                from app.infrastructure.cache.dependencies import get_cache_config
+                from app.infrastructure.cache.factory import CacheFactory
+
+                cache_config = await get_cache_config(self.settings)
+                factory = CacheFactory()
+
+                try:
+                    self._cache_service = await factory.create_cache_from_config(
+                        cache_config.to_dict(),
+                        fail_on_connection_error=False
+                    )
+                except Exception as e:
+                    logger.warning(f"Cache factory creation failed for settings-specific factory: {e}")
+                    from app.infrastructure.cache.memory import InMemoryCache
+                    self._cache_service = InMemoryCache()
+
+            return self._cache_service
+
+        async def get_health_checker(self) -> HealthChecker:
+            """Settings-specific health checker provider."""
+            if self._health_checker is None:
+                # Extract health check configuration from settings
+                default_timeout_ms = getattr(self.settings, 'health_check_timeout_ms', 2000)
+                retry_count = getattr(self.settings, 'health_check_retry_count', 1)
+                backoff_base_seconds = getattr(self.settings, 'health_check_backoff_base_seconds', 0.1)
+
+                per_component_timeouts_ms = {}
+                if hasattr(self.settings, 'health_check_component_timeouts_ms'):
+                    per_component_timeouts_ms = self.settings.health_check_component_timeouts_ms
+
+                # Create health checker with settings-based configuration
+                self._health_checker = HealthChecker(
+                    default_timeout_ms=default_timeout_ms,
+                    per_component_timeouts_ms=per_component_timeouts_ms,
+                    retry_count=retry_count,
+                    backoff_base_seconds=backoff_base_seconds,
+                )
+
+                # Register built-in checks with optimal dependency injection
+                self._health_checker.register_check("ai_model", check_ai_model_health)
+
+                # Cache health check with dependency injection
+                async def cache_health_with_service():
+                    cache_service = await self.get_cache_service()
+                    return await check_cache_health(cache_service)
+
+                self._health_checker.register_check("cache", cache_health_with_service)
+                self._health_checker.register_check("resilience", check_resilience_health)
+
+            return self._health_checker
+
+        def get_settings(self) -> Settings:
+            """Return the settings instance for this factory."""
+            return self.settings
+
+        def get_health_checker_dep(self):
+            """FastAPI dependency provider for health checker using this factory's settings."""
+            async def health_checker_dep() -> HealthChecker:
+                return await self.get_health_checker()
+            return health_checker_dep
+
+        def get_cache_service_dep(self):
+            """FastAPI dependency provider for cache service using this factory's settings."""
+            async def cache_service_dep() -> AIResponseCache:
+                return await self.get_cache_service()
+            return cache_service_dep
+
+        def get_settings_dep(self):
+            """FastAPI dependency provider for settings using this factory's settings."""
+            def settings_dep() -> Settings:
+                return self.get_settings()
+            return settings_dep
+
+    return DependencyFactory(settings_obj)
+
+
 async def initialize_health_infrastructure() -> None:
     """
     Application startup health monitoring infrastructure initialization with comprehensive validation.
-    
+
     This function performs essential health monitoring system initialization during application startup,
     ensuring that all required health checks are properly registered and the health monitoring infrastructure
     is ready for operation. It implements a fast-boot strategy that validates health check registration
     without executing potentially slow external health validation calls that could delay application startup.
-    
+
     Behavior:
         **Health Checker Initialization:**
-        - Triggers creation of the singleton HealthChecker instance through `get_health_checker()`
+        - Triggers creation of the async HealthChecker instance through `get_health_checker()`
         - Ensures all standard health checks are properly registered during startup
         - Validates health monitoring infrastructure is ready for incoming requests
         - Prepares centralized health status reporting capabilities
-        
+
         **Required Health Check Validation:**
         - Validates presence of AI model health check registration
         - Confirms cache infrastructure health monitoring is properly configured
         - Ensures resilience system health validation is available
         - Provides comprehensive logging of missing health check components
-        
+
         **Fast-Boot Strategy:**
         - Avoids executing actual health checks that could delay application startup
         - Focuses on infrastructure validation rather than external service calls
         - Maintains quick application boot times while ensuring monitoring readiness
         - Defers actual health validation to runtime when health endpoints are called
-        
+
         **Error Handling and Resilience:**
         - Logs missing health checks as errors without blocking application startup
         - Continues application initialization even when some health checks are missing
         - Provides detailed error messages for operational troubleshooting
         - Maintains graceful degradation approach for health monitoring failures
-        
+
         **Operational Integration:**
         - Prepares health monitoring for production deployment scenarios
         - Enables health check endpoints to function properly from first request
         - Provides startup-time validation of health monitoring configuration
         - Facilitates early detection of health monitoring configuration issues
-    
+
     Examples:
         >>> # Application startup integration (typically in main.py)
         >>> from contextlib import asynccontextmanager
         >>> from fastapi import FastAPI
         >>> from app.dependencies import initialize_health_infrastructure
-        >>> 
+        >>>
         >>> @asynccontextmanager
         >>> async def lifespan(app: FastAPI):
         ...     # Startup: Initialize health infrastructure
         ...     await initialize_health_infrastructure()
         ...     yield
         ...     # Shutdown: Cleanup if needed
-        >>> 
+        >>>
         >>> app = FastAPI(lifespan=lifespan)
-        
+
         >>> # Manual initialization for testing
         >>> import asyncio
-        >>> 
+        >>>
         >>> async def setup_test_environment():
         ...     await initialize_health_infrastructure()
         ...     # Health infrastructure is now ready for testing
-        
+
         >>> # Startup validation logging example
         >>> # INFO: Health checker initialized with standard checks: ai_model, cache, resilience
         >>> # or
         >>> # ERROR: Health checker missing required checks: ['ai_model']
-        
+
         >>> # Health check availability verification after initialization
         >>> from app.dependencies import get_health_checker
-        >>> 
+        >>>
         >>> async def verify_health_infrastructure():
         ...     await initialize_health_infrastructure()
-        ...     checker = get_health_checker()
-        ...     
+        ...     checker = await get_health_checker()
+        ...
         ...     # All required checks should be available
         ...     assert "ai_model" in checker._checks
         ...     assert "cache" in checker._checks
         ...     assert "resilience" in checker._checks
-    
+
     Note:
         This function is designed to be called during FastAPI application startup through
         the lifespan context manager. It focuses on infrastructure validation rather than
@@ -774,7 +880,7 @@ async def initialize_health_infrastructure() -> None:
         health validation occurs when health endpoints are called during runtime, ensuring
         optimal startup performance while maintaining comprehensive health monitoring capabilities.
     """
-    checker = get_health_checker()
+    checker = await get_health_checker()
     required = {"ai_model", "cache", "resilience"}
     missing = [name for name in required if name not in getattr(checker, "_checks", {})]
     if missing:

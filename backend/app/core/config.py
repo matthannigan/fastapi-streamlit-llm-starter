@@ -1,7 +1,8 @@
 """
 Core Application Configuration
 
-This module provides centralized configuration management for the FastAPI backend application.
+This module provides centralized configuration management for the FastAPI backend application
+with both traditional singleton access and modern factory-based instantiation patterns.
 All application settings are consolidated here with comprehensive preset-based configuration,
 validation, and environment variable support.
 
@@ -13,19 +14,67 @@ environment variable validation, and methods for accessing resilience and cache 
 ## Module Variables
 
 **settings**: Global Settings instance for dependency injection throughout the application.
+            Maintains backward compatibility for existing code patterns.
+
+## Factory Functions
+
+**create_settings()**: Factory function that creates fresh Settings instances from current
+                     environment variables. Enables test isolation and multi-instance scenarios.
+
+**get_settings_factory()**: FastAPI-compatible dependency injection function that returns
+                          fresh Settings instances for each dependency resolution.
 
 ## Architecture Overview
 
-The configuration system uses a **preset-based architecture** that dramatically simplifies
-setup and maintenance by reducing complex environment variable configurations to simple
-preset selections with optional overrides.
+The configuration system uses a **hybrid architecture** that supports both traditional
+singleton patterns for production performance and factory patterns for test isolation
+and multi-instance scenarios.
+
+### Dual Access Patterns
+
+**1. Traditional Singleton Pattern (Production-Optimized)**:
+```python
+from app.core.config import settings
+
+# Module-level singleton - optimal performance
+debug_mode = settings.debug
+cache_config = settings.get_cache_config()
+```
+
+**2. Factory Pattern (Test Isolation & Multi-Instance)**:
+```python
+from app.core.config import create_settings, get_settings_factory
+
+# Fresh instances for test isolation
+test_settings = create_settings()
+
+# FastAPI dependency injection
+@router.get("/config")
+async def get_config(settings: Settings = Depends(get_settings_factory())):
+    return {"debug": settings.debug}
+```
 
 ### Core Design Principles
+- **Dual Pattern Support**: Both singleton and factory patterns for different use cases
 - **Preset-First**: Choose configuration presets instead of managing dozens of variables
 - **Override Capable**: Environment variables and JSON overrides for customization
 - **Configuration Presets**: Simplified preset-based configuration system
 - **Validation-First**: Comprehensive Pydantic validation with clear error messages
 - **Observable Behavior**: Configuration loading behavior is logged and monitorable
+
+### When to Use Each Pattern
+
+**Use Singleton (`settings`) for:**
+- Production applications with optimal performance requirements
+- Services that can share configuration across all requests
+- Existing code that depends on module-level settings
+- High-traffic endpoints where configuration creation overhead matters
+
+**Use Factory (`create_settings()`) for:**
+- Test environments requiring configuration isolation
+- Multi-instance deployments with different configurations
+- Scenarios requiring environment variable override testing
+- Applications that need multiple independent Settings instances
 
 ## Configuration Domains
 
@@ -126,16 +175,52 @@ except ConfigurationError as e:
     # Fallback to default configuration
 ```
 
+### Factory Pattern Usage (Test Isolation)
+```python
+from app.core.config import create_settings, get_settings_factory
+from fastapi import Depends
+
+# Create fresh instances for testing
+test_settings = create_settings()
+assert hasattr(test_settings, 'debug')
+assert hasattr(test_settings, 'get_cache_config')
+
+# Environment variable override testing
+import os
+os.environ['DEBUG'] = 'true'
+debug_settings = create_settings()
+assert debug_settings.debug is True
+
+# FastAPI dependency injection
+@router.get("/test-config")
+async def test_config(settings: Settings = Depends(get_settings_factory())):
+    return {
+        "debug": settings.debug,
+        "cache_preset": settings.cache_preset,
+        "environment": os.getenv('ENVIRONMENT', 'unknown')
+    }
+
+# Multiple independent instances
+settings_a = create_settings()
+settings_b = create_settings()
+assert settings_a is not settings_b  # Different objects
+assert settings_a.debug == settings_b.debug  # Same values
+```
+
 ### Environment-Specific Setup
 ```python
 # Development environment
 os.environ['CACHE_PRESET'] = 'development'
 os.environ['RESILIENCE_PRESET'] = 'development'
 
-# Production environment  
+# Production environment
 os.environ['CACHE_PRESET'] = 'production'
 os.environ['RESILIENCE_PRESET'] = 'production'
 os.environ['CACHE_REDIS_URL'] = 'redis://prod-cluster:6379'
+
+# Factory instances pick up environment changes
+prod_settings = create_settings()
+assert prod_settings.cache_preset == 'production'
 ```
 
 ## Behavior and Guarantees
@@ -1658,8 +1743,180 @@ class Settings(BaseSettings):
     
 
 # ========================================
+# SETTINGS FACTORY FUNCTIONS
+# ========================================
+
+def create_settings() -> Settings:
+    """
+    Factory function to create fresh Settings instances from current environment variables.
+
+    This function enables the creation of multiple independent Settings instances, each
+    initialized from the current environment state. It provides the foundation for
+    test isolation and multi-instance scenarios while maintaining the same validation
+    and configuration logic as the module-level singleton.
+
+    Returns:
+        Settings: Fresh Settings instance with complete configuration from current environment.
+                 Each call creates a new instance that independently reads environment variables,
+                 applies field validation, and initializes preset-based configurations.
+
+    Behavior:
+        **Fresh Instance Creation:**
+        - Creates completely new Settings instance on each function call
+        - Reads all environment variables from current environment state
+        - Applies all field validators and configuration logic
+        - Initializes preset-based configurations (cache, resilience) from current env
+        - Provides complete isolation from other Settings instances
+
+        **Environment Variable Processing:**
+        - Processes all configuration sources in standard precedence order
+        - Applies dotenv loading rules based on pytest detection
+        - Handles custom JSON configurations for cache and resilience presets
+        - Validates all fields according to Settings class rules
+        - Provides same configuration behavior as module-level singleton
+
+        **Preset Configuration Integration:**
+        - Initializes cache preset system from current CACHE_PRESET environment variable
+        - Configures resilience preset system from current RESILIENCE_PRESET environment variable
+        - Applies custom configuration overrides from env variables or JSON strings
+        - Maintains comprehensive preset validation and fallback behavior
+
+        **Test Isolation Support:**
+        - Enables complete test isolation through fresh instance creation
+        - Allows environment variable changes to take effect immediately
+        - Supports configuration testing scenarios with different settings
+        - Provides foundation for factory-based application initialization
+
+        **Configuration Consistency:**
+        - Uses identical configuration logic as module-level singleton
+        - Maintains all field validation rules and preset behaviors
+        - Provides same error handling and fallback mechanisms
+        - Ensures predictable configuration across all factory instances
+
+    Examples:
+        >>> # Basic factory usage
+        >>> settings1 = create_settings()
+        >>> settings2 = create_settings()
+        >>> assert settings1 is not settings2  # Different instances
+        >>> assert settings1.debug == settings2.debug  # Same configuration values
+
+        >>> # Environment variable override behavior
+        >>> import os
+        >>> os.environ['DEBUG'] = 'true'
+        >>> debug_settings = create_settings()
+        >>> assert debug_settings.debug is True
+
+        >>> os.environ['DEBUG'] = 'false'
+        >>> non_debug_settings = create_settings()
+        >>> assert non_debug_settings.debug is False
+
+        >>> # Preset configuration testing
+        >>> os.environ['CACHE_PRESET'] = 'production'
+        >>> prod_settings = create_settings()
+        >>> cache_config = prod_settings.get_cache_config()
+        >>> assert cache_config.redis_url is not None  # Production preset configured
+
+        >>> # Custom configuration testing
+        >>> custom_resilience = '{"retry_attempts": 5}'
+        >>> os.environ['RESILIENCE_CUSTOM_CONFIG'] = custom_resilience
+        >>> custom_settings = create_settings()
+        >>> resilience_config = custom_settings.get_resilience_config()
+        >>> assert resilience_config.retry_config.max_attempts == 5
+
+        >>> # Test isolation pattern
+        >>> def test_with_different_configs():
+        ...     # Test with debug mode
+        ...     os.environ['DEBUG'] = 'true'
+        ...     debug_settings = create_settings()
+        ...     assert debug_settings.debug is True
+        ...
+        ...     # Test with production mode
+        ...     os.environ['DEBUG'] = 'false'
+        ...     os.environ['CACHE_PRESET'] = 'production'
+        ...     prod_settings = create_settings()
+        ...     assert prod_settings.debug is False
+        ...     assert prod_settings.cache_preset == 'production'
+        ...
+        ...     # Settings are completely independent
+        ...     assert debug_settings.debug != prod_settings.debug
+
+    Note:
+        This factory function enables test isolation and multi-instance scenarios by creating
+        fresh Settings instances. It provides the foundation for the app factory pattern while
+        maintaining complete backward compatibility with existing module-level singleton usage.
+        Use this function when you need independent Settings instances for testing or multi-app
+        scenarios. For standard production usage, the module-level `settings` singleton is
+        recommended for optimal performance.
+    """
+    return Settings()
+
+
+def get_settings_factory() -> Settings:
+    """
+    FastAPI-compatible dependency injection function that returns fresh Settings instances.
+
+    This function serves as a drop-in replacement for the existing cached get_settings()
+    dependency when fresh instances are needed. It's designed for use in testing scenarios,
+        multi-instance deployments, or when configuration isolation is required.
+
+    Returns:
+        Settings: Fresh Settings instance for each dependency injection resolution.
+                 Provides complete configuration isolation between dependency resolution calls.
+
+    Behavior:
+        **Dependency Injection Integration:**
+        - Compatible with FastAPI's Depends() system
+        - Returns fresh instance for each dependency resolution
+        - Enables configuration isolation at the request level
+        - Supports dependency override patterns in tests
+
+        **Performance Characteristics:**
+        - Higher overhead than cached get_settings() due to fresh instance creation
+        - Suitable for testing and development scenarios
+        - Not recommended for high-traffic production endpoints
+        - Use cached get_settings() for optimal production performance
+
+        **Testing Integration:**
+        - Supports pytest fixtures with environment variable overrides
+        - Enables request-level configuration testing
+        - Provides foundation for test client isolation
+        - Compatible with FastAPI TestClient dependency override patterns
+
+    Examples:
+        >>> # FastAPI endpoint with fresh settings
+        >>> from fastapi import FastAPI, Depends
+        >>> from app.core.config import get_settings_factory
+        >>>
+        >>> app = FastAPI()
+        >>>
+        >>> @app.get("/config-debug")
+        >>> async def debug_config(settings: Settings = Depends(get_settings_factory)):
+        ...     return {"debug": settings.debug, "cache_preset": settings.cache_preset}
+
+        >>> # Testing with dependency overrides
+        >>> from fastapi.testclient import TestClient
+        >>>
+        >>> def test_configuration_isolation():
+        ...     client = TestClient(app)
+        ...     response1 = client.get("/config-debug")
+        ...     response2 = client.get("/config-debug")
+        ...     # Each request gets fresh settings (though values may be same)
+        ...     assert response1.status_code == 200
+        ...     assert response2.status_code == 200
+
+    Note:
+        This function is designed for scenarios requiring fresh Settings instances per request.
+        For standard production usage, prefer the cached get_settings() dependency for optimal
+        performance. Use this function when configuration isolation or testing scenarios require
+        fresh instances.
+    """
+    return create_settings()
+
+
+# ========================================
 # GLOBAL SETTINGS INSTANCE
 # ========================================
 
 # Global settings instance for dependency injection throughout the application
+# This maintains backward compatibility for existing code
 settings = Settings()

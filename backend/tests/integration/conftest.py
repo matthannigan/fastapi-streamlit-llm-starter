@@ -9,7 +9,7 @@ from httpx import AsyncClient, ASGITransport
 # Disable rate limiting during integration tests
 os.environ['RATE_LIMITING_ENABLED'] = 'false'
 
-from app.main import app
+from app.main import create_app
 
 
 @pytest.fixture(scope="module")
@@ -20,16 +20,6 @@ def production_environment_integration():
     os.environ['API_KEY'] = 'test-api-key-12345'
     os.environ['ADDITIONAL_API_KEYS'] = 'test-key-2,test-key-3'
 
-    # Reflect changes in runtime settings and auth
-    try:
-        from app.core.config import settings
-        from app.infrastructure.security.auth import api_key_auth
-        settings.api_key = os.environ.get('API_KEY', '')
-        settings.additional_api_keys = os.environ.get('ADDITIONAL_API_KEYS', '')
-        api_key_auth.reload_keys()
-    except Exception:
-        pass
-
     yield
 
     # Cleanup after tests
@@ -38,21 +28,37 @@ def production_environment_integration():
     os.environ.pop('ADDITIONAL_API_KEYS', None)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def integration_app():
-    """Application instance for integration testing."""
-    return app
+    """
+    Fresh application instance for integration testing.
+
+    Uses app factory pattern to ensure complete test isolation.
+    Each test gets a fresh app instance that picks up current
+    environment variables without any cached state.
+    """
+    return create_app()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def integration_client(integration_app, production_environment_integration):
-    """HTTP client for integration testing with production environment setup."""
+    """
+    HTTP client for integration testing with production environment setup.
+
+    Uses function scope to ensure each test gets a fresh client with a fresh
+    app instance, providing complete test isolation.
+    """
     return TestClient(integration_app)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 async def async_integration_client(integration_app):
-    """Async HTTP client for integration testing."""
+    """
+    Async HTTP client for integration testing.
+
+    Uses function scope to ensure each test gets a fresh client with a fresh
+    app instance, providing complete test isolation.
+    """
     async with AsyncClient(
         transport=ASGITransport(app=integration_app),
         base_url="http://testserver"

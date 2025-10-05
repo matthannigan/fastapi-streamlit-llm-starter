@@ -26,31 +26,28 @@ from app.core.environment import (
 
 
 @pytest.fixture(scope="function")
-def clean_environment():
+def clean_environment(monkeypatch):
     """
     Provides a clean environment for testing by backing up and restoring os.environ.
-    
+
     This fixture ensures test isolation by:
     1. Backing up the current environment variables
     2. Clearing variables that affect environment detection
     3. Restoring the original environment after the test
-    
+
     Use this fixture in ALL environment detection tests to prevent test pollution.
-    
+
     Business Impact:
         Critical for test reliability and preventing test interference
-        
+
     Use Cases:
         - Testing environment detection in controlled conditions
         - Verifying environment-specific behavior
         - Ensuring test isolation between different environment scenarios
-        
+
     Cleanup:
         Original environment is completely restored after test completion
     """
-    # Store original environment
-    original_environ = os.environ.copy()
-    
     # Clear environment variables that affect detection
     env_vars_to_clear = [
         "ENVIRONMENT", "ENV", "APP_ENV", "STAGE", "DEPLOYMENT_ENVIRONMENT",
@@ -60,93 +57,56 @@ def clean_environment():
         "ENABLE_AI_CACHE", "ENFORCE_AUTH", "DEBUG", "PRODUCTION",
         "PROD", "HOSTNAME", "CI", "RATE_LIMITING_ENABLED"
     ]
-    
+
     for var in env_vars_to_clear:
-        if var in os.environ:
-            del os.environ[var]
-    
+        monkeypatch.delenv(var, raising=False)
+
     # Disable rate limiting for testing
-    os.environ['RATE_LIMITING_ENABLED'] = 'false'
-    
-    yield
-    
-    # Restore original environment
-    os.environ.clear()
-    os.environ.update(original_environ)
+    monkeypatch.setenv('RATE_LIMITING_ENABLED', 'false')
+
+    yield monkeypatch
+
+
+# Note: The reload_environment_module fixture and its dependent fixtures have been removed
+# as they are no longer needed with the app factory pattern. Each test now gets a fresh
+# app instance that automatically picks up the current environment variables without
+# requiring manual module reloading.
 
 
 @pytest.fixture(scope="function")
-def reload_environment_module():
-    """
-    Utility fixture for reloading the environment module after changes.
-    
-    This fixture provides a function to reload the environment module
-    to pick up environment variable changes during testing.
-    
-    Business Impact:
-        Ensures environment variable changes are reflected in module state
-        
-    Use Cases:
-        - Testing environment changes mid-application
-        - Verifying module initialization behavior
-        - Testing service adaptation to environment changes
-    """
-    def reload_module():
-        if 'app.core.environment' in sys.modules:
-            importlib.reload(sys.modules['app.core.environment'])
-        # Also reload dependent modules that cache environment state
-        modules_to_reload = [
-            'app.core.config',
-            'app.infrastructure.security.auth',
-        ]
-        for module_name in modules_to_reload:
-            if module_name in sys.modules:
-                try:
-                    importlib.reload(sys.modules[module_name])
-                except Exception:
-                    # Some modules may not support reloading
-                    pass
-    
-    yield reload_module
-
-
-@pytest.fixture(scope="function") 
-def development_environment(clean_environment, reload_environment_module):
+def development_environment(clean_environment):
     """
     Configures environment variables for a development environment.
-    
-    This fixture:
-    1. Sets ENVIRONMENT=development
-    2. Sets development-specific indicators
-    3. Reloads environment module to pick up changes
-    
+
+    This fixture sets ENVIRONMENT=development and development-specific indicators.
+    The app factory pattern ensures these changes are automatically picked up
+    by fresh app instances in each test.
+
     Business Impact:
         Enables testing of development-specific behaviors and configurations
-        
+
     Use Cases:
         - Testing development-specific behavior
         - Verifying relaxed security in development
         - Testing cache optimization for development
     """
     os.environ["ENVIRONMENT"] = "development"
-    reload_environment_module()
-    
+
     yield Environment.DEVELOPMENT
 
 
 @pytest.fixture(scope="function")
-def production_environment(clean_environment, reload_environment_module):
+def production_environment(clean_environment):
     """
     Configures environment variables for a production environment.
-    
-    This fixture:
-    1. Sets ENVIRONMENT=production
-    2. Sets API keys for production security
-    3. Reloads environment module to pick up changes
-    
+
+    This fixture sets ENVIRONMENT=production and API keys for production security.
+    The app factory pattern ensures these changes are automatically picked up
+    by fresh app instances in each test.
+
     Business Impact:
         Enables testing of production security enforcement and configurations
-        
+
     Use Cases:
         - Testing production security enforcement
         - Verifying API key requirements
@@ -155,19 +115,18 @@ def production_environment(clean_environment, reload_environment_module):
     os.environ["ENVIRONMENT"] = "production"
     os.environ["API_KEY"] = "test-api-key-12345"
     os.environ["ADDITIONAL_API_KEYS"] = "test-key-2,test-key-3"
-    reload_environment_module()
-    
+
     yield Environment.PRODUCTION
 
 
 @pytest.fixture(scope="function")
-def staging_environment(clean_environment, reload_environment_module):
+def staging_environment(clean_environment):
     """
     Configures environment variables for a staging environment.
-    
+
     Business Impact:
         Enables testing of staging-specific configurations and behaviors
-        
+
     Use Cases:
         - Testing staging-specific behavior
         - Verifying pre-production configurations
@@ -175,19 +134,18 @@ def staging_environment(clean_environment, reload_environment_module):
     """
     os.environ["ENVIRONMENT"] = "staging"
     os.environ["API_KEY"] = "test-staging-api-key"
-    reload_environment_module()
-    
+
     yield Environment.STAGING
 
 
 @pytest.fixture(scope="function")
-def testing_environment(clean_environment, reload_environment_module):
+def testing_environment(clean_environment):
     """
     Configures environment variables for a testing environment.
-    
+
     Business Impact:
         Enables testing of CI/CD pipeline behaviors
-        
+
     Use Cases:
         - Testing CI/CD pipeline behavior
         - Verifying automated test configurations
@@ -195,85 +153,80 @@ def testing_environment(clean_environment, reload_environment_module):
     """
     os.environ["ENVIRONMENT"] = "testing"
     os.environ["CI"] = "true"
-    reload_environment_module()
-    
+
     yield Environment.TESTING
 
 
 @pytest.fixture(scope="function")
-def ai_enabled_environment(clean_environment, reload_environment_module):
+def ai_enabled_environment(clean_environment):
     """
     Set up environment with AI features enabled.
-    
+
     Business Impact:
         Enables testing of AI-specific feature contexts and optimizations
-        
+
     Configuration:
         - ENABLE_AI_CACHE=true
         - AI-specific feature context testing
         - Cache optimization for AI workloads
     """
     os.environ["ENABLE_AI_CACHE"] = "true"
-    reload_environment_module()
-    
+
     yield
 
 
 @pytest.fixture(scope="function")
-def security_enforcement_environment(clean_environment, reload_environment_module):
+def security_enforcement_environment(clean_environment):
     """
     Set up environment with security enforcement enabled.
-    
+
     Business Impact:
         Enables testing of security context overrides and enforcement
-        
+
     Configuration:
         - ENFORCE_AUTH=true
         - Security enforcement feature context
         - Production security requirements
     """
     os.environ["ENFORCE_AUTH"] = "true"
-    reload_environment_module()
-    
+
     yield
 
 
 @pytest.fixture(scope="function")
-def conflicting_signals_environment(clean_environment, reload_environment_module):
+def conflicting_signals_environment(clean_environment):
     """
     Set up environment with conflicting signals for fallback testing.
-    
+
     Business Impact:
         Tests system reliability when environment detection is uncertain
-        
+
     Configuration:
         - Conflicting environment indicators
         - Tests fallback behavior
         - Tests confidence scoring with conflicts
     """
     os.environ["ENVIRONMENT"] = "production"
-    os.environ["NODE_ENV"] = "development" 
+    os.environ["NODE_ENV"] = "development"
     os.environ["DEBUG"] = "true"  # Usually indicates development
-    reload_environment_module()
-    
+
     yield
 
 
 @pytest.fixture(scope="function")
-def unknown_environment(clean_environment, reload_environment_module):
+def unknown_environment(clean_environment):
     """
     Environment with no clear indicators for fallback testing.
-    
+
     Business Impact:
         Tests system behavior when environment cannot be determined
-        
+
     Use Cases:
         - Testing fallback behavior
         - Verifying safe defaults
         - Testing low confidence detection
     """
     # Explicitly ensure no environment indicators are present
-    reload_environment_module()
     yield
 
 
@@ -358,21 +311,19 @@ def mock_system_indicators(tmp_path, monkeypatch):
 # Convenience fixtures for common testing scenarios
 
 @pytest.fixture(scope="function")
-def prod_with_ai_features(clean_environment, reload_environment_module):
+def prod_with_ai_features(clean_environment):
     """Production environment with AI features enabled."""
     os.environ["ENVIRONMENT"] = "production"
     os.environ["ENABLE_AI_CACHE"] = "true"
     os.environ["API_KEY"] = "test-api-key-12345"
-    reload_environment_module()
     yield
 
 
 @pytest.fixture(scope="function")
-def dev_with_security_enforcement(clean_environment, reload_environment_module):
+def dev_with_security_enforcement(clean_environment):
     """Development environment with security enforcement enabled."""
     os.environ["ENVIRONMENT"] = "development"
     os.environ["ENFORCE_AUTH"] = "true"
-    reload_environment_module()
     yield
 
 
@@ -381,19 +332,24 @@ def dev_with_security_enforcement(clean_environment, reload_environment_module):
 def test_client():
     """
     Test client for API endpoint testing.
-    
+
+    Uses app factory pattern to ensure each test gets a fresh app instance
+    that picks up the current environment configuration without any cached
+    state from previous tests.
+
     Business Impact:
         Enables testing of API behavior under different environment configurations
-        
+        with complete test isolation.
+
     Use Cases:
         - Testing authentication behavior
         - Verifying API response differences by environment
         - Testing environment-aware API functionality
     """
     from fastapi.testclient import TestClient
-    from app.main import app
-    
-    with TestClient(app) as client:
+    from app.main import create_app
+
+    with TestClient(create_app()) as client:
         yield client
 
 

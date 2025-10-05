@@ -104,23 +104,23 @@ class TestSecurityEnvironmentEnforcement:
             # 200 (success) or 404 (endpoint doesn't exist) are both acceptable
             assert response.status_code in [200, 404, 405], f"Valid key should be accepted for {endpoint}"
 
-    def test_production_environment_rejects_missing_api_key_configuration(self, clean_environment, reload_environment_module):
+    def test_production_environment_rejects_missing_api_key_configuration(self, clean_environment):
         """
         Test that production environment without API keys fails securely at startup.
-        
+
         Integration Scope:
             Production environment → Missing API key configuration → Startup validation → Secure failure
-            
+
         Business Impact:
             Prevents production deployments without proper API key configuration,
             ensuring security is not accidentally bypassed
-            
+
         Test Strategy:
             - Set production environment without API keys
             - Attempt to initialize security components
             - Verify secure failure behavior
             - Test error messages are informative
-            
+
         Success Criteria:
             - Application startup fails with clear error message
             - Security components refuse to initialize
@@ -128,13 +128,10 @@ class TestSecurityEnvironmentEnforcement:
             - No fallback to insecure mode
         """
         # Set production environment without API keys
-        os.environ["ENVIRONMENT"] = "production"
+        clean_environment.setenv("ENVIRONMENT", "production")
         # Explicitly ensure no API keys are configured
         for key in ["API_KEY", "ADDITIONAL_API_KEYS"]:
-            if key in os.environ:
-                del os.environ[key]
-        
-        reload_environment_module()
+            clean_environment.delenv(key, raising=False)
         
         # Environment should be detected as production
         env_info = get_environment_info()
@@ -198,23 +195,23 @@ class TestSecurityEnvironmentEnforcement:
             
             # Contract does not require specific wording in responses; environment context may not be echoed
 
-    def test_development_environment_with_api_key_still_validates(self, clean_environment, reload_environment_module, test_client):
+    def test_development_environment_with_api_key_still_validates(self, clean_environment, test_client):
         """
         Test that development environment with API key still validates keys when provided.
-        
+
         Integration Scope:
             Development environment → Optional API key → Validation logic → Consistent behavior
-            
+
         Business Impact:
             Ensures API key validation works correctly in development when keys are
             provided, maintaining consistency between environments
-            
+
         Test Strategy:
             - Set development environment with API key configured
             - Test that valid keys are accepted
             - Test that invalid keys are rejected
             - Verify authentication logic works consistently
-            
+
         Success Criteria:
             - Valid API keys are accepted in development
             - Invalid API keys are rejected even in development
@@ -222,9 +219,8 @@ class TestSecurityEnvironmentEnforcement:
             - Development environment doesn't bypass validation when keys are present
         """
         # Set development environment with API key
-        os.environ["ENVIRONMENT"] = "development"
-        os.environ["API_KEY"] = "dev-api-key-12345"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "development")
+        clean_environment.setenv("API_KEY", "dev-api-key-12345")
         
         # Environment should be detected as development
         env_info = get_environment_info()
@@ -336,23 +332,23 @@ class TestSecurityEnvironmentEnforcement:
             # Should require authentication due to fail-secure behavior
             assert response.status_code == 401, "Should require auth when environment detection is uncertain"
 
-    def test_multiple_api_key_support_in_production(self, clean_environment, reload_environment_module, test_client):
+    def test_multiple_api_key_support_in_production(self, clean_environment, test_client):
         """
         Test that production environment supports multiple API keys for different services.
-        
+
         Integration Scope:
             Production environment → Multiple API keys → Authentication validation → Multi-service support
-            
+
         Business Impact:
             Enables production deployments to support multiple API keys for different
             services or clients while maintaining security
-            
+
         Test Strategy:
             - Configure multiple API keys in production
             - Test authentication with different valid keys
             - Verify all configured keys are accepted
             - Test key precedence and validation logic
-            
+
         Success Criteria:
             - Primary API key is accepted
             - Additional API keys are accepted
@@ -360,10 +356,9 @@ class TestSecurityEnvironmentEnforcement:
             - All key formats work consistently
         """
         # Set production with multiple API keys
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "primary-api-key"
-        os.environ["ADDITIONAL_API_KEYS"] = "secondary-key,third-key,service-key"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "primary-api-key")
+        clean_environment.setenv("ADDITIONAL_API_KEYS", "secondary-key,third-key,service-key")
         
         # Verify production environment
         env_info = get_environment_info()
@@ -429,23 +424,23 @@ class TestSecurityEnvironmentEnforcement:
                 response_data = response.json()
                 assert response_data.get("authenticated") is True
 
-    def test_environment_change_propagates_to_security_enforcement(self, clean_environment, reload_environment_module, test_client):
+    def test_environment_change_propagates_to_security_enforcement(self, clean_environment, test_client):
         """
         Test that environment changes are reflected in security enforcement within one request cycle.
-        
+
         Integration Scope:
             Environment change → Module reloading → Security enforcement update → API behavior change
-            
+
         Business Impact:
             Ensures security enforcement adapts to environment changes without
             requiring application restart, enabling dynamic configuration
-            
+
         Test Strategy:
             - Start in development environment
             - Change to production environment
             - Reload modules to simulate runtime change
             - Verify security enforcement changes immediately
-            
+
         Success Criteria:
             - Initial development environment allows relaxed access
             - After change to production, enforcement becomes strict
@@ -453,21 +448,19 @@ class TestSecurityEnvironmentEnforcement:
             - API behavior reflects new environment immediately
         """
         # Start in development
-        os.environ["ENVIRONMENT"] = "development"
-        reload_environment_module()
-        
+        clean_environment.setenv("ENVIRONMENT", "development")
+
         # Verify development environment and behavior
         env_info = get_environment_info()
         assert env_info.environment == Environment.DEVELOPMENT
-        
+
         # Test relaxed access in development
         response = test_client.get("/health")
         assert response.status_code in [200, 404]  # Should be accessible
-        
+
         # Change to production with API key
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "runtime-change-key"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "runtime-change-key")
         
         # Verify environment changed to production
         updated_env = get_environment_info()

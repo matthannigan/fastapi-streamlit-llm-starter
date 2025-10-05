@@ -41,7 +41,7 @@ class TestEndToEndEnvironmentValidation:
         across all environments and that users receive consistent, appropriate responses
     """
 
-    def test_production_environment_enables_complete_production_stack(self, clean_environment, reload_environment_module, test_client):
+    def test_production_environment_enables_complete_production_stack(self, clean_environment, test_client):
         """
         Test that ENVIRONMENT=production enables complete production-level behavior across all services.
         
@@ -65,10 +65,9 @@ class TestEndToEndEnvironmentValidation:
             - All service behaviors align with production requirements
         """
         # Set complete production environment
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "prod-stack-test-key"
-        os.environ["ADDITIONAL_API_KEYS"] = "service-key-1,service-key-2"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "prod-stack-test-key")
+        clean_environment.setenv("ADDITIONAL_API_KEYS", "service-key-1,service-key-2")
         
         # Verify environment detection
         env_info = get_environment_info()
@@ -119,7 +118,7 @@ class TestEndToEndEnvironmentValidation:
             if context != FeatureContext.SECURITY_ENFORCEMENT:  # Security context may override
                 assert context_env.environment == Environment.PRODUCTION
 
-    def test_development_environment_enables_development_workflow(self, clean_environment, reload_environment_module, test_client):
+    def test_development_environment_enables_development_workflow(self, clean_environment, test_client):
         """
         Test that ENVIRONMENT=development enables development-friendly behavior across services.
         
@@ -143,8 +142,7 @@ class TestEndToEndEnvironmentValidation:
             - Development workflows are supported
         """
         # Set development environment without API keys
-        os.environ["ENVIRONMENT"] = "development"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "development")
         
         # Verify environment detection
         env_info = get_environment_info()
@@ -173,7 +171,7 @@ class TestEndToEndEnvironmentValidation:
             if context != FeatureContext.SECURITY_ENFORCEMENT:  # Security may override
                 assert context_env.environment == Environment.DEVELOPMENT
 
-    def test_environment_change_propagates_to_all_services_consistently(self, clean_environment, reload_environment_module, test_client):
+    def test_environment_change_propagates_to_all_services_consistently(self, clean_environment, test_client):
         """
         Test that changing environment propagates consistently to all services within one request cycle.
         
@@ -197,8 +195,7 @@ class TestEndToEndEnvironmentValidation:
             - Change is reflected in both authentication and service responses
         """
         # Start in development
-        os.environ["ENVIRONMENT"] = "development"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "development")
         
         # Verify initial development state
         initial_env = get_environment_info()
@@ -209,9 +206,8 @@ class TestEndToEndEnvironmentValidation:
         initial_status_code = initial_auth_response.status_code
         
         # Change to production with API key
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "env-change-test-key"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "env-change-test-key")
         
         # Verify environment changed across all contexts
         updated_env = get_environment_info()
@@ -257,7 +253,7 @@ class TestEndToEndEnvironmentValidation:
                     assert auth_data.get("environment") in ["production", "prod"]
                     assert auth_data.get("authenticated") is True
 
-    def test_mixed_environment_signals_resolve_to_consistent_service_behavior(self, clean_environment, reload_environment_module, test_client):
+    def test_mixed_environment_signals_resolve_to_consistent_service_behavior(self, clean_environment, test_client):
         """
         Test that complex deployment scenarios with mixed signals are handled consistently across all services.
         
@@ -281,11 +277,10 @@ class TestEndToEndEnvironmentValidation:
             - System behavior is predictable and documented
         """
         # Set up complex environment signals
-        os.environ["ENVIRONMENT"] = "production"          # Strong production signal
-        os.environ["NODE_ENV"] = "development"            # Conflicting signal
-        os.environ["API_KEY"] = "complex-deployment-key"  # Production indicator
-        os.environ["DEBUG"] = "true"                      # Development indicator
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")          # Strong production signal
+        clean_environment.setenv("NODE_ENV", "development")            # Conflicting signal
+        clean_environment.setenv("API_KEY", "complex-deployment-key")  # Production indicator
+        clean_environment.setenv("DEBUG", "true")                      # Development indicator
         
         # Get environment resolution
         env_info = get_environment_info()
@@ -325,7 +320,7 @@ class TestEndToEndEnvironmentValidation:
         # Should have multiple signals contributing to decision
         assert len(env_info.additional_signals) >= 2, "Should have multiple signals for complex resolution"
 
-    def test_environment_detection_failure_maintains_system_stability(self, clean_environment, test_client, reload_environment_module):
+    def test_environment_detection_failure_maintains_system_stability(self, clean_environment, test_client):
         """
         Test that environment detection failures don't cause system instability or service outages.
         
@@ -349,7 +344,6 @@ class TestEndToEndEnvironmentValidation:
             - Service degradation is graceful and documented
         """
         # Start with clean environment (may cause detection uncertainty)
-        reload_environment_module()
         
         # System should still be operational
         try:
@@ -452,7 +446,7 @@ class TestEndToEndEnvironmentValidation:
                 assert result['status_code'] == first_unauth_result['status_code']
                 assert result['endpoint_exists'] == first_unauth_result['endpoint_exists']
 
-    def test_background_tasks_respect_environment_configuration(self, clean_environment, reload_environment_module):
+    def test_background_tasks_respect_environment_configuration(self, clean_environment):
         """
         Test that background tasks and scheduled jobs respect environment configuration.
         
@@ -476,9 +470,8 @@ class TestEndToEndEnvironmentValidation:
             - Background tasks handle environment detection failures gracefully
         """
         # Set production environment
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "background-task-key"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "background-task-key")
         
         # Simulate background task accessing environment information
         def background_task_simulation():
@@ -531,7 +524,7 @@ class TestEndToEndEnvironmentValidation:
             assert result['environment'] == first_result['environment']
             assert result['is_production'] == first_result['is_production']
 
-    def test_application_startup_and_shutdown_cycle_with_environment_detection(self, clean_environment, reload_environment_module):
+    def test_application_startup_and_shutdown_cycle_with_environment_detection(self, clean_environment):
         """
         Test complete application startup and shutdown cycle with environment detection.
         
@@ -558,13 +551,12 @@ class TestEndToEndEnvironmentValidation:
         startup_phases = []
         
         # Phase 1: Environment variable setup (deployment/container startup)
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "startup-test-key"
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("API_KEY", "startup-test-key")
         startup_phases.append("environment_variables_set")
         
         # Phase 2: Module loading (Python import time)
         try:
-            reload_environment_module()
             startup_phases.append("modules_loaded")
         except Exception as e:
             pytest.fail(f"Module loading failed: {e}")
@@ -618,7 +610,7 @@ class TestEndToEndEnvironmentValidation:
         except Exception as e:
             pytest.fail(f"Environment detection failed during shutdown: {e}")
 
-    def test_feature_flag_environment_integration_end_to_end(self, clean_environment, reload_environment_module):
+    def test_feature_flag_environment_integration_end_to_end(self, clean_environment):
         """
         Test that feature flags and environment-specific features work end-to-end.
         
@@ -642,10 +634,9 @@ class TestEndToEndEnvironmentValidation:
             - Features degrade gracefully when not available
         """
         # Test AI features in production environment
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["ENABLE_AI_CACHE"] = "true"
-        os.environ["API_KEY"] = "feature-test-key"
-        reload_environment_module()
+        clean_environment.setenv("ENVIRONMENT", "production")
+        clean_environment.setenv("ENABLE_AI_CACHE", "true")
+        clean_environment.setenv("API_KEY", "feature-test-key")
         
         # Test AI context
         ai_env = get_environment_info(FeatureContext.AI_ENABLED)
@@ -657,8 +648,7 @@ class TestEndToEndEnvironmentValidation:
         assert ai_metadata['feature_context'] == 'ai_enabled'
         
         # Test security enforcement features
-        os.environ["ENFORCE_AUTH"] = "true"
-        reload_environment_module()
+        clean_environment.setenv("ENFORCE_AUTH", "true")
         
         security_env = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
         assert security_env.environment == Environment.PRODUCTION

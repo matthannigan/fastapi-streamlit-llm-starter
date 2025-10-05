@@ -36,8 +36,10 @@ This `AGENTS.md` file contains **general instructions** for the repository. For 
 
 **Testing:**
 - Follow docstring-driven test development
+- Use App Factory Pattern for test isolation (`create_app()` instead of module-level `app`)
 - Reference: `docs/guides/testing/TESTING.md`
-- Reference: `docs/guides/developer/DOCSTRINGS_TESTS.md` 
+- Reference: `docs/guides/developer/DOCSTRINGS_TESTS.md`
+- Reference: `backend/CLAUDE.md` - "App Factory Pattern" section for test fixture patterns 
 
 **API Design:**
 - Maintain dual API structure (Public `/v1/`, Internal `/internal/`)
@@ -48,6 +50,14 @@ This `AGENTS.md` file contains **general instructions** for the repository. For 
 - Domain Services are application-specific business logic
 - This maintains template reusability while providing clear customization points for developers
 - Reference: `docs/reference/key-concepts/INFRASTRUCTURE_VS_DOMAIN.md`
+
+**App Factory Pattern (Critical for Test Isolation):**
+- Backend uses factory pattern to create fresh FastAPI and Settings instances
+- Solves test isolation issues caused by module-level singletons
+- Enables environment variable changes to propagate correctly in tests
+- Maintains 100% backward compatibility for production deployments
+- Reference: `backend/CLAUDE.md` - "App Factory Pattern" section
+- Reference: `docs/guides/developer/APP_FACTORY_GUIDE.md` - Comprehensive guide
 
 ## Preferred Development Commands
 
