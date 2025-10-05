@@ -72,14 +72,15 @@ def development_client(development_environment):
 def clean_environment(monkeypatch):
     """
     Clean environment fixture that removes all auth-related variables.
-    
+
     Ensures test isolation by clearing authentication configuration
     before each test, preventing environment variable pollution.
-    
+
     Cleanup Actions:
         - Removes API_KEY and ADDITIONAL_API_KEYS
         - Clears AUTH_MODE and tracking settings
         - Resets ENVIRONMENT variable
+        - Clears cached settings to ensure fresh configuration
     """
     auth_vars = [
         "API_KEY", "ADDITIONAL_API_KEYS", "AUTH_MODE",
@@ -89,7 +90,14 @@ def clean_environment(monkeypatch):
     for var in auth_vars:
         monkeypatch.delenv(var, raising=False)
 
+    # Clear the LRU cache for get_settings to ensure fresh settings are created
+    from app.dependencies import get_settings
+    get_settings.cache_clear()
+
     yield monkeypatch
+
+    # Clear again after the test to prevent pollution to next test
+    get_settings.cache_clear()
 
 
 @pytest.fixture
@@ -148,6 +156,19 @@ def development_with_keys_environment(clean_environment):
 
 
 @pytest.fixture
+def development_with_keys_client(development_with_keys_environment):
+    """
+    Test client with development environment and API keys pre-configured.
+
+    Use Cases:
+        - Testing development mode with authentication enabled
+        - Validating mixed development scenarios
+    """
+    with TestClient(create_app()) as test_client:
+        yield test_client
+
+
+@pytest.fixture
 def multiple_api_keys_environment(clean_environment):
     """
     Configure environment with multiple API keys for key management testing.
@@ -164,6 +185,19 @@ def multiple_api_keys_environment(clean_environment):
     clean_environment.setenv("ADDITIONAL_API_KEYS", " secondary-key-67890 , tertiary-key-11111 ")
 
     return clean_environment
+
+
+@pytest.fixture
+def multiple_api_keys_client(multiple_api_keys_environment):
+    """
+    Test client with multiple API keys pre-configured.
+
+    Use Cases:
+        - Testing multi-key authentication scenarios
+        - Validating additional API keys handling
+    """
+    with TestClient(create_app()) as test_client:
+        yield test_client
 
 
 @pytest.fixture

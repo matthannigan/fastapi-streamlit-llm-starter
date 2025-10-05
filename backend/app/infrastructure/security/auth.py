@@ -614,6 +614,7 @@ async def verify_api_key(
         bearer_credentials: HTTP Bearer authorization credentials from request headers.
                            Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
                            Automatically injected by FastAPI's HTTPBearer security scheme.
+        settings: Settings instance injected via dependency for configuration isolation.
 
     Returns:
         str: The validated API key string when authentication succeeds.
@@ -626,9 +627,11 @@ async def verify_api_key(
                            - Invalid API key format or unrecognized key value
                            - Environment detection information and confidence scores
                            - Authentication method and credential status for debugging
+        ConfigurationError: When production environment lacks API key configuration.
 
     Behavior:
         - Returns "development" immediately if no API keys are configured (development mode)
+        - Validates production environments have API keys configured (fail-fast)
         - Requires valid credentials when API keys are configured in any environment
         - Validates provided API key against all configured valid keys (O(1) lookup)
         - Includes environment detection context in all error messages and logging
@@ -666,27 +669,55 @@ async def verify_api_key(
     # Extract API key from either Bearer or X-API-Key header
     api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
 
-    # Create auth instance from current settings (ensures test isolation)
-    current_auth_config = AuthConfig()
-    current_api_key_auth = APIKeyAuth(current_auth_config)
+    # Get valid API keys from settings (uses dependency-injected settings)
+    valid_api_keys = settings.get_valid_api_keys()
 
-    # If no API keys are configured, allow access (development mode)
-    if not current_api_key_auth.api_keys:
-        # Only get environment info when needed for logging
+    # Validate production security - no keys configured
+    if not valid_api_keys:
         try:
+            # Detect environment with security enforcement context
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
-            logger.warning(
-                f"No API keys configured in {env_info.environment} environment "
-                f"(confidence: {env_info.confidence:.2f}) - allowing unauthenticated access"
+        except Exception as e:
+            # Fallback to conservative behavior on environment detection failure
+            logger.warning(f"Environment detection failed ({e}), assuming production environment for security")
+            # Create fallback environment info assuming production for safety
+            from dataclasses import dataclass
+
+            @dataclass
+            class FallbackEnvironmentInfo:
+                environment = Environment.PRODUCTION
+                confidence = 0.5  # Low confidence due to detection failure
+                reasoning = f"Environment detection failed, assuming production for security: {e}"
+
+            env_info = FallbackEnvironmentInfo()
+
+        # Production/staging requires API keys
+        if env_info.environment in [Environment.PRODUCTION, Environment.STAGING]:
+            error_message = (
+                f"Production security validation failed: No API keys configured in "
+                f"{env_info.environment} environment (confidence: {env_info.confidence:.2f}). "
+                f"Please configure API_KEY or ADDITIONAL_API_KEYS environment variables "
+                f"before deploying to production."
             )
-        except Exception:
-            # Fallback to original behavior if environment detection fails
-            logger.warning("No API keys configured - allowing unauthenticated access")
+            context = {
+                "environment": env_info.environment.value,
+                "confidence": env_info.confidence,
+                "reasoning": env_info.reasoning,
+                "required_vars": ["API_KEY", "ADDITIONAL_API_KEYS"],
+                "current_keys_count": 0
+            }
+            logger.error(f"SECURITY VALIDATION FAILED: {error_message}")
+            raise ConfigurationError(error_message, context=context)
+
+        # Development mode - allow unauthenticated access
+        logger.warning(
+            f"No API keys configured in {env_info.environment} environment "
+            f"(confidence: {env_info.confidence:.2f}) - allowing unauthenticated access"
+        )
         return "development"
 
-    # Check if credentials are provided (preserve original error message but support both methods)
+    # Check if credentials are provided
     if not api_key:
-        # Get environment info for enhanced context, but preserve original message
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             context = {
@@ -703,11 +734,10 @@ async def verify_api_key(
             context=context
         )
 
-    # Verify the API key (preserve original logic)
-    if not current_api_key_auth.verify_api_key(api_key):
+    # Verify the API key against valid keys from settings
+    if api_key not in valid_api_keys:
         logger.warning(f"Invalid API key attempted via {auth_method}: {api_key[:8]}...")
 
-        # Get environment info for enhanced context, but preserve original message
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             context = {
@@ -731,19 +761,29 @@ async def verify_api_key(
 
 async def verify_api_key_with_metadata(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    settings: 'Settings' = Depends(get_settings)
 ) -> Dict[str, Any]:
     """
     Enhanced dependency that returns API key with metadata (extension point).
-    
+
+    Args:
+        request: FastAPI Request object containing headers for X-API-Key support
+        bearer_credentials: HTTP Bearer credentials from the request
+        settings: Settings instance injected via dependency for configuration isolation.
+
     Returns:
         Dictionary with api_key and metadata
+
+    Raises:
+        AuthenticationError: If authentication fails
+        ConfigurationError: If production environment lacks API key configuration
     """
-    api_key = await verify_api_key(request, bearer_credentials)
-    
+    api_key = await verify_api_key(request, bearer_credentials, settings)
+
     # Extension point: return metadata along with key
     result = {"api_key": api_key}
-    
+
     if auth_config.enable_user_tracking or auth_config.enable_request_logging:
         metadata = api_key_auth.add_request_metadata(api_key, {
             "timestamp": "now",  # In real implementation, use actual timestamp
@@ -751,26 +791,29 @@ async def verify_api_key_with_metadata(
             "method": "unknown"
         })
         result.update(metadata)
-    
+
     return result
 
 async def optional_verify_api_key(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    settings: 'Settings' = Depends(get_settings)
 ) -> Optional[str]:
     """
     Optional dependency to verify API key authentication.
     Returns None if no credentials provided, otherwise verifies the key.
-    
+
     Args:
         request: FastAPI Request object containing headers for X-API-Key support
         bearer_credentials: HTTP Bearer credentials from the request
-        
+        settings: Settings instance injected via dependency for configuration isolation.
+
     Returns:
         The verified API key or None if no credentials provided
-        
+
     Raises:
-        HTTPException: If invalid credentials are provided
+        AuthenticationError: If invalid credentials are provided
+        ConfigurationError: If production environment lacks API key configuration
     """
     # Extract API key from either Bearer or X-API-Key header
     api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
@@ -779,7 +822,7 @@ async def optional_verify_api_key(
         return None
 
     # If credentials are provided, they must be valid
-    return await verify_api_key(request, bearer_credentials)
+    return await verify_api_key(request, bearer_credentials, settings)
 
 # Convenience functions
 def verify_api_key_string(api_key: str) -> bool:
@@ -911,20 +954,22 @@ def supports_feature(feature: str) -> bool:
 
 async def verify_api_key_http(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    settings: 'Settings' = Depends(get_settings)
 ) -> str:
     """
     FastAPI-compatible authentication dependency with HTTP exception handling.
 
     Provides the same authentication functionality as verify_api_key but converts
-    AuthenticationError exceptions to HTTPException for proper FastAPI middleware
-    compatibility and standardized HTTP error responses.
+    AuthenticationError and ConfigurationError exceptions to HTTPException for proper
+    FastAPI middleware compatibility and standardized HTTP error responses.
 
     Args:
         request: FastAPI Request object containing headers for X-API-Key support
         bearer_credentials: HTTP Bearer authorization credentials from request headers.
                            Expected format: "Bearer sk-1234567890abcdef" or None for missing auth.
                            Automatically injected by FastAPI's HTTPBearer security scheme.
+        settings: Settings instance injected via dependency for configuration isolation.
 
     Returns:
         str: The validated API key string when authentication succeeds.
@@ -937,10 +982,12 @@ async def verify_api_key_http(
                       - WWW-Authenticate header for proper HTTP authentication flow
                       - Environment detection context for operational debugging
                       - Original exception context preserved for troubleshooting
+        HTTPException: 500 Internal Server Error when configuration validation fails
 
     Behavior:
         - Delegates authentication logic to verify_api_key for consistency
-        - Converts AuthenticationError to HTTPException for middleware compatibility
+        - Converts AuthenticationError to HTTPException 401 for middleware compatibility
+        - Converts ConfigurationError to HTTPException 500 for configuration issues
         - Preserves all authentication context and environment information
         - Returns proper HTTP 401 status with WWW-Authenticate header
         - Provides structured error response format for API clients
@@ -981,13 +1028,17 @@ async def verify_api_key_http(
         >>> # Returns: 401 Unauthorized with "API key required" message
     """
     try:
-        return await verify_api_key(request, bearer_credentials)
+        return await verify_api_key(request, bearer_credentials, settings)
     except AuthenticationError as exc:
-        # 1. Use the status module for clarity and standardization.
-        # 2. Preserve the original, more specific error message from the exception.
-        # 3. Include the exception's context for better debugging, just like your global handler.
+        # Convert authentication errors to HTTP 401
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"message": str(exc), "context": exc.context},
             headers={"WWW-Authenticate": "Bearer"}
+        )
+    except ConfigurationError as exc:
+        # Convert configuration errors to HTTP 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": str(exc), "context": exc.context}
         )
