@@ -59,55 +59,55 @@ Run extended test validation (100+ runs), remove deprecated workarounds, and ens
 **Goal**: Create factory functions for Settings initialization that allow fresh instances while maintaining existing module-level singleton for backward compatibility.
 
 #### Task 1.1: Analyze Current Settings Usage
-- [ ] Audit all imports of `from app.core.config import settings` across codebase
-  - [ ] Identify route handlers using settings directly (should use dependency injection)
-  - [ ] Identify startup/shutdown hooks accessing settings
-  - [ ] Identify middleware and dependencies using settings
-  - [ ] Document all module-level settings access patterns
-- [ ] Analyze Settings class structure in `app/core/config.py`:
-  - [ ] Review BaseSettings inheritance and Pydantic caching behavior
-  - [ ] Identify computed properties and `@validator` methods that may cache values
-  - [ ] Document settings fields that access environment variables
-  - [ ] Review nested settings objects (resilience config, cache config, etc.)
+- [x] Audit all imports of `from app.core.config import settings` across codebase
+  - [x] Identify route handlers using settings directly (should use dependency injection)
+  - [x] Identify startup/shutdown hooks accessing settings
+  - [x] Identify middleware and dependencies using settings
+  - [x] Document all module-level settings access patterns
+- [x] Analyze Settings class structure in `app/core/config.py`:
+  - [x] Review BaseSettings inheritance and Pydantic caching behavior
+  - [x] Identify computed properties and `@validator` methods that may cache values
+  - [x] Document settings fields that access environment variables
+  - [x] Review nested settings objects (resilience config, cache config, etc.)
 
 #### Task 1.2: Create Settings Factory Functions
-- [ ] Implement `create_settings()` factory function in `app/core/config.py`:
-  - [ ] Function signature: `def create_settings() -> Settings:`
-  - [ ] Creates fresh Settings instance from current environment variables
-  - [ ] Comprehensive docstring explaining factory pattern usage
-  - [ ] No global state or caching within factory function
-- [ ] Implement `get_settings()` dependency injection function:
-  - [ ] Function signature: `def get_settings() -> Settings:`
-  - [ ] Compatible with FastAPI's `Depends()` injection pattern
-  - [ ] Returns fresh Settings instance for each request context
-  - [ ] Docstring explaining when to use vs. direct settings access
-- [ ] Maintain backward-compatible module-level singleton:
-  - [ ] Keep `settings = Settings()` at module level for existing code
-  - [ ] Add deprecation comment noting future migration path
-  - [ ] Ensure existing code continues to work without modification
+- [x] Implement `create_settings()` factory function in `app/core/config.py`:
+  - [x] Function signature: `def create_settings() -> Settings:`
+  - [x] Creates fresh Settings instance from current environment variables
+  - [x] Comprehensive docstring explaining factory pattern usage
+  - [x] No global state or caching within factory function
+- [x] Implement `get_settings()` dependency injection function:
+  - [x] Function signature: `def get_settings_factory() -> Settings:`
+  - [x] Compatible with FastAPI's `Depends()` injection pattern
+  - [x] Returns fresh Settings instance for each request context
+  - [x] Docstring explaining when to use vs. direct settings access
+- [x] Maintain backward-compatible module-level singleton:
+  - [x] Keep `settings = Settings()` at module level for existing code
+  - [x] Add deprecation comment noting future migration path
+  - [x] Ensure existing code continues to work without modification
 
 #### Task 1.3: Update Dependency Injection Patterns
-- [ ] Review existing dependency injection in `app/dependencies.py`:
-  - [ ] Audit current usage of module-level settings import
-  - [ ] Identify opportunities to inject Settings via `Depends(get_settings)`
-  - [ ] Document functions that should receive Settings as parameter
-- [ ] Update route handlers to use settings injection where appropriate:
-  - [ ] Convert direct settings imports to `Depends(get_settings)` in new code
-  - [ ] Maintain backward compatibility for existing direct imports
-  - [ ] Add examples of proper settings injection to documentation
-  - [ ] Preserve existing functionality—no breaking changes
+- [x] Review existing dependency injection in `app/dependencies.py`:
+  - [x] Audit current usage of module-level settings import
+  - [x] Identify opportunities to inject Settings via `Depends(get_settings)`
+  - [x] Document functions that should receive Settings as parameter
+- [x] Update route handlers to use settings injection where appropriate:
+  - [x] Convert direct settings imports to `Depends(get_settings)` in new code
+  - [x] Maintain backward compatibility for existing direct imports
+  - [x] Add examples of proper settings injection to documentation
+  - [x] Preserve existing functionality—no breaking changes
 
 #### Task 1.4: Settings Factory Testing
-- [ ] Create test suite for settings factory in `tests/core/test_config_factory.py`:
-  - [ ] Test `create_settings()` creates fresh instances
-  - [ ] Test settings picks up environment variable changes
-  - [ ] Test settings isolation between multiple factory calls
-  - [ ] Test backward compatibility of module-level `settings` singleton
-- [ ] Test environment variable reloading behavior:
-  - [ ] Test settings created after env var change reflects new values
-  - [ ] Test module-level singleton maintains cached values (expected behavior)
-  - [ ] Test Pydantic validation with different environment configurations
-  - [ ] Test resilience and cache config presets with fresh settings
+- [x] Create test suite for settings factory in `tests/core/test_config_factory.py`:
+  - [x] Test `create_settings()` creates fresh instances
+  - [x] Test settings picks up environment variable changes
+  - [x] Test settings isolation between multiple factory calls
+  - [x] Test backward compatibility of module-level `settings` singleton
+- [x] Test environment variable reloading behavior:
+  - [x] Test settings created after env var change reflects new values
+  - [x] Test module-level singleton maintains cached values (expected behavior)
+  - [x] Test Pydantic validation with different environment configurations
+  - [x] Test resilience and cache config presets with fresh settings
 
 ---
 
@@ -115,28 +115,28 @@ Run extended test validation (100+ runs), remove deprecated workarounds, and ens
 **Goal**: Verify settings factory works correctly and maintains backward compatibility without breaking existing code.
 
 #### Task 2.1: Backward Compatibility Testing
-- [ ] Test existing settings access patterns continue to work:
-  - [ ] Direct import: `from app.core.config import settings` works unchanged
-  - [ ] Module-level singleton maintains same behavior as before
-  - [ ] No breaking changes to existing route handlers or middleware
-  - [ ] Startup/shutdown hooks using settings work identically
-- [ ] Validate settings behavior consistency:
-  - [ ] Module-level settings and `create_settings()` return equivalent values
-  - [ ] Environment variable precedence works identically
-  - [ ] Preset selection (cache, resilience) works correctly with factory
-  - [ ] Validation errors occur at same points as before
+- [x] Test existing settings access patterns continue to work:
+  - [x] Direct import: `from app.core.config import settings` works unchanged
+  - [x] Module-level singleton maintains same behavior as before
+  - [x] No breaking changes to existing route handlers or middleware
+  - [x] Startup/shutdown hooks using settings work identically
+- [x] Validate settings behavior consistency:
+  - [x] Module-level settings and `create_settings()` return equivalent values
+  - [x] Environment variable precedence works identically
+  - [x] Preset selection (cache, resilience) works correctly with factory
+  - [x] Validation errors occur at same points as before
 
 #### Task 2.2: Settings Factory Documentation
-- [ ] Document settings factory pattern in `app/core/config.py`:
-  - [ ] Add module-level docstring explaining factory vs. singleton usage
-  - [ ] Document when to use `create_settings()` vs. module-level `settings`
-  - [ ] Provide examples of dependency injection with `get_settings()`
-  - [ ] Explain Pydantic caching behavior and why factory is needed
-- [ ] Create migration guide for settings usage:
-  - [ ] When to use factory pattern (tests, multi-instance scenarios)
-  - [ ] When module-level singleton is acceptable (production single-instance)
-  - [ ] Best practices for settings access in route handlers
-  - [ ] Examples of proper dependency injection patterns
+- [x] Document settings factory pattern in `app/core/config.py`:
+  - [x] Add module-level docstring explaining factory vs. singleton usage
+  - [x] Document when to use `create_settings()` vs. module-level `settings`
+  - [x] Provide examples of dependency injection with `get_settings_factory()`
+  - [x] Explain Pydantic caching behavior and why factory is needed
+- [x] Create migration guide for settings usage:
+  - [x] When to use factory pattern (tests, multi-instance scenarios)
+  - [x] When module-level singleton is acceptable (production single-instance)
+  - [x] Best practices for settings access in route handlers
+  - [x] Examples of proper dependency injection patterns
 
 ---
 

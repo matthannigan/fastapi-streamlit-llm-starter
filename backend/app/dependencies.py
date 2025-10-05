@@ -216,7 +216,7 @@ from functools import lru_cache
 import logging
 from fastapi import Depends
 
-from app.core.config import Settings, settings
+from app.core.config import Settings, settings, create_settings
 from app.infrastructure.cache import AIResponseCache
 from app.infrastructure.monitoring import (
     HealthChecker,
@@ -319,97 +319,97 @@ def get_settings() -> Settings:
 def get_fresh_settings() -> Settings:
     """
     Testing-focused dependency provider that creates fresh Settings instances for each invocation.
-    
+
     This function provides an alternative to the cached `get_settings()` dependency, specifically designed
     for testing scenarios where configuration isolation, environment variable overrides, or multiple
     configuration variations are required. Unlike the singleton pattern of `get_settings()`, this provider
     creates a completely new Settings instance on every call, enabling test isolation and configuration
     flexibility.
-    
+
     Returns:
         Settings: Fresh Settings instance containing:
                  - Newly parsed environment variables (allowing test-time overrides)
                  - Independent configuration state isolated from other tests
                  - Complete Settings validation and initialization
                  - All configuration fields populated from current environment state
-    
+
     Behavior:
         **Fresh Instance Creation:**
         - Creates a completely new Settings instance on every function call
         - Re-parses all environment variables from current environment state
         - Provides complete configuration isolation between function calls
         - Enables environment variable overrides to take effect immediately
-        
+
         **Testing Integration:**
         - Designed specifically for test scenarios requiring configuration isolation
         - Supports pytest fixtures with environment variable overrides via `monkeypatch.setenv()`
         - Enables testing different configuration scenarios within the same test session
         - Facilitates testing of configuration validation and error handling
-        
+
         **Configuration Override Patterns:**
         - Reads current environment variables on each invocation
         - Picks up test-time environment variable changes immediately
         - Supports dynamic configuration testing across multiple test scenarios
         - Enables validation of configuration-dependent behavior under different settings
-        
+
         **Performance Characteristics:**
         - Higher computational overhead compared to cached `get_settings()`
         - Full environment variable parsing and validation on each call
         - Suitable for test scenarios where isolation is more important than performance
         - Not recommended for production use due to performance implications
-    
+
     Examples:
         >>> # Basic testing with configuration overrides
         >>> import os
         >>> from unittest.mock import patch
-        >>> 
+        >>>
         >>> # Test different debug configurations
         >>> with patch.dict(os.environ, {"DEBUG": "true"}):
         ...     settings = get_fresh_settings()
         ...     assert settings.debug is True
-        >>> 
+        >>>
         >>> with patch.dict(os.environ, {"DEBUG": "false"}):
         ...     settings = get_fresh_settings()
         ...     assert settings.debug is False
-        
+
         >>> # pytest integration with monkeypatch
         >>> def test_redis_configuration(monkeypatch):
         ...     # Test with Redis configured
         ...     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
         ...     settings = get_fresh_settings()
         ...     assert settings.redis_url == "redis://localhost:6379"
-        ...     
+        ...
         ...     # Test without Redis configured
         ...     monkeypatch.delenv("REDIS_URL", raising=False)
         ...     settings = get_fresh_settings()
         ...     assert settings.redis_url is None
-        
+
         >>> # FastAPI dependency override for testing
         >>> from fastapi.testclient import TestClient
         >>> from app.main import app
         >>> from app.dependencies import get_settings, get_fresh_settings
-        >>> 
+        >>>
         >>> # Override default dependency with fresh settings
         >>> app.dependency_overrides[get_settings] = get_fresh_settings
         >>> client = TestClient(app)
-        >>> 
+        >>>
         >>> # Each test request gets fresh configuration
         >>> response = client.get("/config-info")
         >>> assert response.status_code == 200
-        
+
         >>> # Configuration isolation verification
         >>> settings1 = get_fresh_settings()
         >>> settings2 = get_fresh_settings()
         >>> assert settings1 is not settings2  # Different object instances
         >>> assert settings1.debug == settings2.debug  # Same configuration values
-    
+
     Note:
         This provider is specifically designed for testing scenarios and should not be used
         in production environments due to performance overhead. Use `get_settings()` for
         production deployments to benefit from singleton caching and optimal performance.
         When using this provider in tests, ensure proper environment cleanup between tests.
     """
-    return Settings()
+    return create_settings()
 
 
 async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIResponseCache:
