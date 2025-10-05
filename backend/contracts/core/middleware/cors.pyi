@@ -33,46 +33,85 @@ from app.core.config import Settings
 
 def setup_cors_middleware(app: FastAPI, settings: Settings) -> None:
     """
-    Configure Cross-Origin Resource Sharing (CORS) middleware for the application.
+    Configure Cross-Origin Resource Sharing (CORS) middleware with production-grade security controls.
     
-    Sets up CORS middleware with production-ready security settings that allow
-    controlled cross-origin access while preventing unauthorized requests. The
-    configuration supports development and production environments with appropriate
-    security controls.
-    
-    CORS Features:
-        * Configurable allowed origins from settings
-        * Support for credentials in cross-origin requests
-        * All HTTP methods allowed for API flexibility
-        * All headers allowed for maximum compatibility
-        * Preflight request handling for complex requests
-        * Security-conscious defaults with explicit configuration
+    Sets up CORS middleware with security-conscious settings that enable controlled
+    cross-origin access while preventing unauthorized requests. The configuration
+    supports both development and production environments with appropriate security
+    controls and explicit origin allowlisting.
     
     Args:
-        app (FastAPI): The FastAPI application instance to configure
-        settings (Settings): Application settings containing CORS configuration
-            including allowed_origins list
+        app: FastAPI application instance to configure with CORS middleware
+        settings: Application settings containing CORS configuration including
+                 allowed_origins list and other security parameters
     
-    Configuration:
-        The middleware uses the following settings:
-        * settings.allowed_origins: List of allowed origin URLs
-        * Credentials: Enabled to support authentication cookies/headers
-        * Methods: All HTTP methods (*) for maximum API flexibility
-        * Headers: All headers (*) for client compatibility
+    Returns:
+        None - Configures the FastAPI app instance in-place by adding CORS middleware
     
-    Security Notes:
-        * Origins are explicitly configured, not using wildcard in production
-        * Credentials support requires specific origin configuration
-        * Preflight requests are properly handled for complex CORS scenarios
-        * Settings validation ensures only valid origins are configured
+    Behavior:
+        - Configures explicit origin allowlist from settings.allowed_origins
+        - Enables credentials support for authentication cookies/headers
+        - Allows all HTTP methods (*) for maximum API flexibility
+        - Allows all headers (*) for maximum client compatibility
+        - Handles preflight OPTIONS requests automatically
+        - Logs configured origins for monitoring and debugging
+        - Validates origin configuration to prevent security misconfigurations
     
-    Example:
+    CORS Features:
+        * Explicit origin allowlist (no wildcards in production)
+        * Credentials support for authenticated cross-origin requests
+        * All HTTP methods supported (GET, POST, PUT, DELETE, etc.)
+        * All headers allowed for maximum compatibility
+        * Automatic preflight request handling
+        * Production-ready security defaults
+    
+    Security Configuration:
+        - Origins must be explicitly listed in settings.allowed_origins
+        - No wildcard (*) origins used for production security
+        - Credentials enabled requires specific origin configuration
+        - Settings validation ensures only valid origins are accepted
+        - Prevents unauthorized cross-origin access while maintaining functionality
+    
+    Examples:
+        >>> # Basic setup with configured origins
+        >>> from fastapi import FastAPI
+        >>> from app.core.config import Settings
+        >>>
+        >>> app = FastAPI()
+        >>> settings = Settings(allowed_origins=["https://example.com", "https://app.example.com"])
         >>> setup_cors_middleware(app, settings)
-        >>> # CORS middleware now configured with settings.allowed_origins
+        >>> # CORS middleware now configured for specified origins
+    
+        >>> # Development setup with localhost
+        >>> dev_settings = Settings(allowed_origins=["http://localhost:3000", "http://localhost:8080"])
+        >>> setup_cors_middleware(app, dev_settings)
+    
+        >>> # Production setup with multiple domains
+        >>> prod_settings = Settings(
+        ...     allowed_origins=[
+        ...         "https://app.example.com",
+        ...         "https://admin.example.com",
+        ...         "https://api.example.com"
+        ...     ]
+        ... )
+        >>> setup_cors_middleware(app, prod_settings)
+    
+    Configuration Parameters:
+        - settings.allowed_origins: List of allowed origin URLs (required)
+        - allow_credentials: True (supports authentication cookies/headers)
+        - allow_methods: ["*"] (all HTTP methods supported)
+        - allow_headers: ["*"] (all headers supported)
     
     Note:
         CORS middleware should be added last in the middleware stack to ensure
-        it processes responses after all other middleware has completed. This
-        is handled automatically by the setup_middleware() function.
+        it processes responses after all other middleware have completed. This
+        is typically handled automatically by the application's setup_middleware()
+        function which configures middleware in the correct order.
+    
+    Warning:
+        Always use explicit origins in production environments. Avoid wildcard
+        origins ("*") when credentials are enabled as this creates security
+        vulnerabilities. The allowed_origins list should be carefully reviewed
+        and limited to only the domains that require cross-origin access.
     """
     ...

@@ -85,46 +85,61 @@ request_id_context: ContextVar[str] = ContextVar('request_id', default='')
 def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
     """
     Configure global exception handling for unhandled application errors.
-    
-    Provides a centralized error handling mechanism that catches all unhandled
-    exceptions across the application and returns consistent, secure error responses.
+
+    Sets up comprehensive exception handlers that catch all unhandled exceptions
+    across the FastAPI application and return consistent, secure error responses.
     The handler ensures clients receive predictable error responses while protecting
     internal implementation details and sensitive information.
-    
-    Exception Handling Features:
-        * Comprehensive logging of all unhandled exceptions with full context
-        * Standardized error response format using shared.models.ErrorResponse
-        * HTTP status code mapping based on exception types
-        * Security-conscious error messages that don't expose internal details
-        * Request context preservation for debugging and monitoring
-        * Integration with the custom exception hierarchy
-    
+
     Args:
-        app (FastAPI): The FastAPI application instance to configure
-        settings (Settings): Application settings for error handling configuration
-    
-    Exception Processing:
-        The handler processes exceptions in the following order:
-        1. Log the full exception with context for debugging
-        2. Determine appropriate HTTP status code based on exception type
-        3. Generate secure, user-friendly error message
-        4. Create standardized ErrorResponse model
-        5. Return JSONResponse with appropriate status code
-    
+        app (FastAPI): The FastAPI application instance to configure with exception handlers
+        settings (Settings): Application settings that influence error handling behavior
+
+    Returns:
+        None: This function configures the app in-place and returns nothing
+
+    Raises:
+        ConfigurationError: If the app instance is invalid or settings are malformed
+
+    Behavior:
+        - Registers RequestValidationError handler for Pydantic validation errors (HTTP 422)
+        - Registers global Exception handler for all uncaught exceptions
+        - Logs full exception details server-side with request context for debugging
+        - Maps exception types to appropriate HTTP status codes
+        - Generates secure, user-friendly error messages that don't expose internals
+        - Preserves request correlation IDs for debugging and monitoring
+        - Returns standardized ErrorResponse format for all error types
+        - Handles special cases like API versioning errors with custom responses
+        - Ensures the application never returns unhandled exceptions to clients
+
     HTTP Status Code Mapping:
-        * ApplicationError -> 400 Bad Request (validation, business logic errors)
-        * InfrastructureError -> 502 Bad Gateway (external service failures)
-        * TransientAIError -> 503 Service Unavailable (temporary AI issues)
-        * PermanentAIError -> 502 Bad Gateway (permanent AI issues)
-        * All other exceptions -> 500 Internal Server Error
-    
+        - ApplicationError -> 400 Bad Request (validation, business logic errors)
+        - InfrastructureError -> 502 Bad Gateway (external service failures)
+        - TransientAIError -> 503 Service Unavailable (temporary AI issues)
+        - PermanentAIError -> 502 Bad Gateway (permanent AI issues)
+        - RequestValidationError -> 422 Unprocessable Entity (Pydantic validation)
+        - All other exceptions -> 500 Internal Server Error
+
     Security Features:
-        * Generic error messages prevent information disclosure
-        * Full exception details logged server-side only
-        * No stack traces or internal paths exposed to clients
-        * Request correlation IDs for secure debugging
-    
-    Example Response:
+        - Generic error messages prevent information disclosure attacks
+        - Full exception details logged server-side only
+        - No stack traces or internal paths exposed to clients
+        - Request correlation IDs enable secure debugging without exposing data
+
+    Examples:
+        >>> from fastapi import FastAPI
+        >>> from app.core.config import create_settings
+        >>> from app.core.middleware.global_exception_handler import setup_global_exception_handler
+        >>>
+        >>> # Basic setup
+        >>> app = FastAPI()
+        >>> settings = create_settings()
+        >>> setup_global_exception_handler(app, settings)
+        >>>
+        >>> # All unhandled exceptions now return standardized JSON responses
+        >>> # instead of HTML error pages or unstructured errors
+
+    Example Response Format:
         ```json
         {
             "success": false,
@@ -133,29 +148,66 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
             "timestamp": "2025-07-12T12:34:56.789012"
         }
         ```
-    
-    Note:
-        This handler is the last resort for exception handling and will catch
-        any exception not handled by more specific exception handlers. It ensures
-        the application never returns unhandled exceptions to clients.
+
+    Example Validation Error Response:
+        ```json
+        {
+            "success": false,
+            "error": "Invalid request data: field_name: field is required",
+            "error_code": "VALIDATION_ERROR",
+            "timestamp": "2025-07-12T12:34:56.789012"
+        }
+        ```
     """
     
     @app.exception_handler(RequestValidationError)
     async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """
         Handle FastAPI request validation errors with consistent formatting.
-        
-        This handler catches Pydantic validation errors that occur during request
-        parsing and converts them to the standardized ErrorResponse format. This
-        ensures all validation errors (both automatic and custom) follow the same
-        response structure.
-        
+
+        Catches Pydantic validation errors that occur during request parsing and converts
+        them to the standardized ErrorResponse format. This ensures all validation errors
+        (both automatic and custom) follow the same response structure with proper
+        HTTP status codes and detailed logging.
+
         Args:
             request (Request): The FastAPI request object that failed validation
-            exc (RequestValidationError): The Pydantic validation error
-        
+            exc (RequestValidationError): The Pydantic validation error containing
+                                         field-level validation details
+
         Returns:
-            JSONResponse: Standardized error response with validation details
+            JSONResponse: Standardized error response with HTTP 422 status code and
+                         validation details in ErrorResponse format
+
+        Raises:
+            None: This handler always returns a proper JSONResponse without raising
+
+        Behavior:
+            - Extracts request ID from request state for correlation logging
+            - Processes all validation errors from the Pydantic exception
+            - Formats field names and error messages for user feedback
+            - Logs validation errors with full context for monitoring
+            - Returns first validation error as user message, logs all details
+            - Creates ErrorResponse with VALIDATION_ERROR error code
+            - Returns HTTP 422 Unprocessable Entity status code
+
+        Examples:
+            >>> # Request with missing required field triggers this handler
+            >>> response = await handler(request, RequestValidationError(errors=[
+            ...     {'loc': ('body', 'required_field'), 'msg': 'field required', 'type': 'value_error.missing'}
+            ... ]))
+            >>> assert response.status_code == 422
+            >>> assert "required_field: field required" in response.json()['error']
+
+        Example Response:
+            ```json
+            {
+                "success": false,
+                "error": "Invalid request data: required_field: field required",
+                "error_code": "VALIDATION_ERROR",
+                "timestamp": "2025-07-12T12:34:56.789012"
+            }
+            ```
         """
         # Get request ID for correlation (if available)
         request_id = getattr(request.state, 'request_id', request_id_context.get('unknown'))
@@ -197,17 +249,68 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
     async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """
         Global exception handler for unhandled application errors.
-        
+
         Catches all unhandled exceptions, logs them appropriately, and returns
-        a standardized error response to protect internal implementation details
-        while providing useful information for debugging and monitoring.
-        
+        standardized error responses to protect internal implementation details
+        while providing useful information for debugging and monitoring. This is
+        the ultimate fallback handler that ensures the application never returns
+        unstructured error responses to clients.
+
         Args:
             request (Request): The FastAPI request object that triggered the exception
             exc (Exception): The unhandled exception that was raised during processing
-        
+                           from middleware, application code, or dependencies
+
         Returns:
-            JSONResponse: A standardized error response with appropriate HTTP status
+            JSONResponse: Standardized error response with appropriate HTTP status code
+                         based on exception type and ErrorResponse format
+
+        Raises:
+            None: This handler always returns a proper JSONResponse without raising
+
+        Behavior:
+            - Extracts request ID from request state for correlation logging
+            - Logs full exception details with traceback for debugging
+            - Maps exception types to appropriate HTTP status codes
+            - Generates secure error messages that don't expose internal details
+            - Handles special cases like API versioning errors with custom responses
+            - Preserves error context when provided in ApplicationError
+            - Returns structured ErrorResponse with appropriate error codes
+            - Maintains security by never exposing stack traces to clients
+
+        Exception Mapping:
+            - ValidationError/BusinessLogicError -> 400 with VALIDATION_ERROR
+            - AuthenticationError -> 401 with AUTHENTICATION_ERROR
+            - AuthorizationError -> 403 with AUTHORIZATION_ERROR
+            - ConfigurationError -> 400 with CONFIGURATION_ERROR
+            - TransientAIError -> 503 with SERVICE_UNAVAILABLE
+            - PermanentAIError -> 502 with AI_SERVICE_ERROR
+            - InfrastructureError -> 502 with INFRASTRUCTURE_ERROR
+            - ApplicationError -> 400 with context-aware error details
+            - All other exceptions -> 500 with INTERNAL_ERROR
+
+        Examples:
+            >>> # Infrastructure service failure
+            >>> response = await handler(request, InfrastructureError("Database connection failed"))
+            >>> assert response.status_code == 502
+            >>> assert response.json()['error_code'] == "INFRASTRUCTURE_ERROR"
+
+            >>> # Application error with context
+            >>> app_error = ApplicationError("Invalid input", context={'field': 'email'})
+            >>> response = await handler(request, app_error)
+            >>> assert response.status_code == 400
+            >>> assert 'email' in response.json().get('details', {})
+
+        Example Response:
+            ```json
+            {
+                "success": false,
+                "error": "External service error",
+                "error_code": "INFRASTRUCTURE_ERROR",
+                "timestamp": "2025-07-12T12:34:56.789012",
+                "details": {"service": "database", "operation": "connection"}
+            }
+            ```
         """
         # Get request ID for correlation (if available)
         request_id = getattr(request.state, 'request_id', request_id_context.get('unknown'))

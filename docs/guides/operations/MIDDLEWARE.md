@@ -31,27 +31,45 @@ Due to FastAPI's LIFO execution order, CORS middleware runs first to handle pref
 
 ### API Versioning
 
-**Purpose**: Version detection, path rewriting, compatibility layers
+**Purpose**: Comprehensive API version management with multi-strategy detection and internal API bypass
 
 **Location**: `/backend/app/core/middleware/api_versioning.py`
 
-**Configuration Key**: `api_versioning_enabled`, `default_api_version`, `current_api_version`, `api_version_compatibility_enabled` (defaults to False)
+**Configuration Key**: `api_versioning_enabled`, `default_api_version`, `current_api_version`, `api_version_compatibility_enabled`, `api_versioning_skip_internal`
 
 **Operational Procedures:**
 ```bash
-# Test version detection methods
-curl -H "X-API-Version: 1.0" http://localhost:8000/health
-curl "http://localhost:8000/v1/health?version=1.0"
-curl -H "Accept: application/vnd.api+json;version=1.0" http://localhost:8000/health
+# Test version detection methods (path priority)
+curl http://localhost:8000/v1/health  # Path-based detection
+curl -H "X-API-Version: 1.0" http://localhost:8000/health  # Header-based
+curl "http://localhost:8000/health?version=1.0"  # Query parameter
+curl -H "Accept: application/vnd.api+json;version=1.0" http://localhost:8000/health  # Accept header
 
-# Check version compatibility status
-curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.api_versioning'
+# Test internal API bypass (should not be rewritten)
+curl -s -I http://localhost:8000/internal/resilience/health
+# Should remain /internal/resilience/health, not become /v1/internal/resilience/health
+
+# Check version compatibility status and headers
+curl -I -H "X-API-Version: 1.0" http://localhost:8000/health
+# Look for: X-API-Version, X-API-Supported-Versions, X-API-Current-Version, X-API-Version-Detection
 
 # Monitor version usage analytics
-curl -s http://localhost:8000/internal/api-versioning/analytics
+curl -s http://localhost:8000/internal/api-versioning/analytics | jq '.'
 
 # Get supported versions information
-curl -s http://localhost:8000/internal/api-versioning/versions
+curl -s http://localhost:8000/internal/api-versioning/versions | jq '.'
+
+# Test version compatibility and deprecation
+curl -H "X-API-Version: 0.9" http://localhost:8000/health
+# Should return error with X-API-Supported-Versions header if 0.9 not supported
+
+# Test health check bypass (health checks skip versioning)
+curl -s -I http://localhost:8000/health
+# Should not have version headers applied
+
+# Test documentation endpoint bypass
+curl -s -I http://localhost:8000/docs
+# Should not have version headers applied
 ```
 
 **API Versioning Configuration:**
@@ -67,28 +85,44 @@ export VERSION_ANALYTICS_ENABLED=true
 
 ### Compression
 
-**Purpose**: Algorithm selection, streaming compression, content-type handling
+**Purpose**: Intelligent multi-algorithm compression with content-aware decisions and streaming support
 
 **Location**: `/backend/app/core/middleware/compression.py`
 
-**Configuration Key**: `compression_enabled`, `compression_level`, `compression_algorithms`
+**Configuration Key**: `compression_enabled`, `compression_level`, `compression_algorithms`, `compression_min_size`
 
 **Operational Procedures:**
 ```bash
-# Test compression capability
-curl -H "Accept-Encoding: gzip, br" -v http://localhost:8000/v1/text/summarize \
+# Test compression capability with algorithm preference
+curl -H "Accept-Encoding: br, gzip, deflate" -v http://localhost:8000/v1/text/summarize \
   -H "Content-Type: application/json" \
   -d '{"text": "Large text content for compression testing..."}'
 
-# Monitor compression statistics
-curl -s http://localhost:8000/internal/compression/stats
+# Monitor compression statistics and efficiency
+curl -s http://localhost:8000/internal/compression/stats | jq '.'
 
-# Check compression performance
-curl -s http://localhost:8000/internal/middleware/stats | jq '.configuration.compression'
+# Check compression headers and performance metrics
+curl -I -H "Accept-Encoding: gzip, br" http://localhost:8000/health
+# Look for: Content-Encoding, X-Original-Size, X-Compression-Ratio
 
 # Test different compression algorithms
-curl -H "Accept-Encoding: br" http://localhost:8000/health
-curl -H "Accept-Encoding: gzip" http://localhost:8000/health
+curl -H "Accept-Encoding: br" -I http://localhost:8000/health     # Brotli preferred
+curl -H "Accept-Encoding: gzip" -I http://localhost:8000/health    # Gzip only
+curl -H "Accept-Encoding: deflate" -I http://localhost:8000/health # Deflate fallback
+
+# Test request decompression
+curl -H "Content-Encoding: gzip" \
+  -H "Accept-Encoding: gzip" \
+  --data-binary @<(echo '{"test": "compressed request"}' | gzip) \
+  http://localhost:8000/v1/test-endpoint
+
+# Test content-type awareness (images should not be compressed)
+curl -H "Accept-Encoding: gzip" -I http://localhost:8000/static/test-image.png
+# Should not have Content-Encoding header for images
+
+# Verify compression threshold (responses < min_size won't be compressed)
+curl -s http://localhost:8000/health | wc -c  # Check response size
+# Small responses below compression_min_size (default 1024) won't be compressed
 ```
 
 **Compression Configuration:**
@@ -176,29 +210,39 @@ export RATE_LIMITING_SKIP_HEALTH=true
 
 ### Rate Limiting
 
-**Purpose**: Redis-backed rate limiting with local cache fallback
+**Purpose**: Enterprise-grade distributed rate limiting with intelligent fallback and comprehensive endpoint classification
 
 **Location**: `/backend/app/core/middleware/rate_limiting.py`
 
-**Configuration Key**: `rate_limiting_enabled`, `redis_url`, `custom_rate_limits`
+**Configuration Key**: `rate_limiting_enabled`, `redis_url`, `custom_rate_limits`, `rate_limiting_skip_health`
 
 **Operational Procedures:**
 ```bash
 # Check rate limiting status and Redis connection
 curl -s http://localhost:8000/internal/middleware/stats | jq '.enabled_features[] | select(. == "rate_limiting")'
 
-# Test rate limit enforcement
-for i in {1..10}; do
-  curl -w "%{http_code}\n" -o /dev/null -s http://localhost:8000/health
-done
+# Test rate limit enforcement with client identification
+curl -H "X-API-Key: test-key-123" -w "%{http_code}\n" -o /dev/null -s http://localhost:8000/health
 
-# Monitor rate limit statistics
-curl -s http://localhost:8000/internal/monitoring/rate-limits
+# Test per-endpoint classification (auth endpoints have stricter limits)
+curl -X POST -H "Content-Type: application/json" -w "%{http_code}\n" \
+  -o /dev/null -s http://localhost:8000/v1/auth/login -d '{"username":"test"}'
 
-# Reset rate limits for specific client (emergency)
-curl -X POST "http://localhost:8000/internal/rate-limits/reset" \
-  -H "Content-Type: application/json" \
-  -d '{"client_id": "api-key-12345"}'
+# Monitor comprehensive rate limit statistics
+curl -s http://localhost:8000/internal/monitoring/rate-limits | jq '.'
+
+# Test rate limit headers and response format
+curl -I -H "X-API-Key: test-client" http://localhost:8000/v1/text/summarize
+# Look for: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Window, X-RateLimit-Rule
+
+# Test graceful fallback when Redis unavailable
+redis-cli shutdown  # Simulate Redis failure
+curl -H "X-API-Key: test-key" -w "%{http_code}\n" -o /dev/null -s http://localhost:8000/health
+# Should still work with local rate limiting
+
+# Verify client identification hierarchy
+curl -H "X-API-Key: priority-key" -H "Authorization: Bearer token123" http://localhost:8000/health
+# API key takes priority over user ID
 ```
 
 ### Request Logging
@@ -257,22 +301,38 @@ export REQUEST_SIZE_LIMITS='{
 
 ### Security
 
-**Purpose**: XSS prevention, header injection protection, security headers
+**Purpose**: Production-grade security hardening with comprehensive HTTP security headers and request validation
 
 **Location**: `/backend/app/core/middleware/security.py`
 
-**Configuration Key**: `security_headers_enabled`, `max_headers_count`
+**Configuration Key**: `security_headers_enabled`, `max_headers_count`, `max_request_size`, `csp_policy`
 
 **Operational Procedures:**
 ```bash
-# Verify security headers are applied
-curl -I http://localhost:8000/health | grep -E "(X-Content-Type-Options|X-Frame-Options|X-XSS-Protection)"
+# Verify comprehensive security headers are applied
+curl -I http://localhost:8000/health | grep -E "(X-Content-Type-Options|X-Frame-Options|X-XSS-Protection|Strict-Transport-Security|Content-Security-Policy|Referrer-Policy|Permissions-Policy)"
 
-# Test security header injection
+# Test CSP policies for different endpoints
+curl -I http://localhost:8000/v1/health | grep "Content-Security-Policy"  # Strict CSP for APIs
+curl -I http://localhost:8000/docs | grep "Content-Security-Policy"       # Relaxed CSP for docs
+
+# Test request validation with oversized headers
+curl -H "$(printf 'Header-%04d: value\n' {1..200})" http://localhost:8000/health
+# Should return 400 Bad Request for too many headers
+
+# Test request size validation
+curl -X POST -H "Content-Length: 20000000" -d "$(python -c 'print("a"*20000000)')" http://localhost:8000/api/test
+# Should return 413 Request Entity Too Large for oversized requests
+
+# Test security middleware health and configuration
 curl -s http://localhost:8000/internal/middleware/health | jq '.middleware.security'
 
-# Monitor security events
+# Monitor security events and violations
 curl -s http://localhost:8000/internal/monitoring/alerts | jq '.alerts[] | select(.category == "security")'
+
+# Test custom CSP policy override
+export CSP_POLICY="default-src 'self'; script-src 'self' 'unsafe-inline'"
+# Restart server and verify custom policy is applied
 ```
 
 ## Configuration Management

@@ -45,74 +45,94 @@ from app.core.config import Settings
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
-    HTTP request/response logging middleware with performance tracking.
+    HTTP request/response logging middleware with correlation tracking and performance monitoring.
     
-    Provides comprehensive logging of HTTP requests and responses with timing
-    information, request correlation IDs, and configurable detail levels.
-    The middleware supports both development debugging and production monitoring
-    with appropriate log filtering and security considerations.
+    Provides comprehensive logging infrastructure for FastAPI applications with unique request
+    correlation IDs, millisecond-precision timing, and security-conscious data filtering.
+    The middleware supports both development debugging and production monitoring with appropriate
+    log level management and sensitive data protection.
     
-    Logging Features:
-        * Request/response timing with millisecond precision
-        * Unique request ID generation for correlation tracking
-        * HTTP method, URL, status code, and response size logging
-        * User agent and client IP address tracking (when available)
-        * Configurable log levels based on response status codes
-        * Sensitive data filtering for security compliance
-        * Integration with structured logging for monitoring systems
+    Attributes:
+        settings (Settings): Application configuration object containing logging preferences
+        slow_request_threshold (int): Duration in milliseconds above which requests are logged as slow
+        sensitive_headers (set): Header names that are filtered from logs for security
     
-    Performance Tracking:
-        * Request start/end timing with high precision
-        * Response size calculation for bandwidth monitoring
-        * Slow request detection and warning logs
-        * Memory usage tracking (optional)
-        * Integration with performance monitoring systems
+    Public Methods:
+        dispatch(): Processes HTTP requests with comprehensive logging and timing
     
-    Security Features:
-        * Request ID correlation for secure debugging
-        * Sensitive header filtering (Authorization, API keys)
-        * Query parameter sanitization for logs
-        * Client IP anonymization options
-        * Log level control to prevent information leakage
+    State Management:
+        - Uses contextvars for thread-safe request correlation tracking
+        - Generates unique 8-character request IDs for each incoming request
+        - Stores timing information in request state for middleware chain access
+        - Maintains no persistent state between requests (stateless middleware)
     
-    Configuration:
-        The middleware behavior can be controlled through settings:
-        * request_logging_enabled: Enable/disable request logging
-        * log_level: Minimum log level for request logging
-        * slow_request_threshold: Threshold for slow request warnings
-        * sensitive_headers: List of headers to filter from logs
+    Usage:
+        # Basic middleware registration
+        from app.core.middleware.request_logging import RequestLoggingMiddleware
+        from app.core.config import settings
     
-    Example Logs:
-        ```
-        INFO: Request started: GET /v1/text_processing/process [req_id: abc123]
-        INFO: Request completed: GET /v1/text_processing/process 200 1.2KB 150ms [req_id: abc123]
-        WARN: Slow request: POST /v1/text_processing/batch_process 200 5.6KB 2500ms [req_id: def456]
-        ```
+        app.add_middleware(RequestLoggingMiddleware, settings=settings)
     
-    Note:
-        This middleware should be placed early in the middleware stack to capture
-        timing information for all subsequent middleware and request processing.
+        # Access request ID in downstream components
+        request_id = request.state.request_id
+        correlation_id = request_id_context.get()
     """
 
     def __init__(self, app: ASGIApp, settings: Settings):
         """
-        Initialize request logging middleware with configuration.
+        Initialize request logging middleware with application configuration.
         
         Args:
-            app (ASGIApp): The ASGI application to wrap
-            settings (Settings): Application settings for logging configuration
+            app (ASGIApp): The ASGI application to wrap with logging functionality
+            settings (Settings): Application settings containing logging configuration:
+                - slow_request_threshold (int): Threshold in milliseconds for slow request warnings
+                - request_logging_enabled (bool): Master switch for request logging
+                - log_level (str): Minimum log level for request logging
+        
+        Behavior:
+            - Extracts slow request threshold from settings (defaults to 1000ms)
+            - Configures sensitive header filtering set for security
+            - Prepares logging context for request correlation tracking
+            - Initializes middleware chain with the wrapped ASGI application
         """
         ...
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
-        Process HTTP request with logging and timing.
+        Process HTTP request with comprehensive logging, timing, and correlation tracking.
         
         Args:
-            request (Request): The incoming HTTP request
-            call_next (Callable): The next middleware/handler in the chain
+            request (Request): The incoming HTTP request object containing method, URL, headers
+            call_next (Callable[[Request], Any]): The next middleware or route handler in the ASGI chain
         
         Returns:
-            Response: The HTTP response from downstream handlers
+            Response: The HTTP response object returned from downstream handlers with additional
+                     logging metadata and timing information attached
+        
+        Raises:
+            Exception: Propagates any exceptions from downstream handlers after logging the failure
+        
+        Behavior:
+            - Generates unique 8-character request ID for correlation tracking
+            - Stores request ID in both contextvars and request state for downstream access
+            - Records request start time with millisecond precision
+            - Logs request initiation with method, path, and metadata
+            - Processes request through remaining middleware stack
+            - Calculates request duration and response size metrics
+            - Determines appropriate log level based on status code and duration
+            - Logs request completion with comprehensive timing and response details
+            - Logs request failures with exception information and timing
+            - Applies sensitive header filtering to prevent security information leakage
+        
+        Examples:
+            # Successful request logging
+            # INFO: Request started: GET /api/health [req_id: abc12345]
+            # INFO: Request completed: GET /api/health 200 156B 45.2ms [req_id: abc12345]
+        
+            # Slow request logging
+            # WARN: Request completed: POST /api/process 200 2.3KB 1250.5ms [req_id: def67890]
+        
+            # Error request logging
+            # ERROR: Request failed: POST /api/process ValidationError 234.1ms [req_id: ghi98765]
         """
         ...

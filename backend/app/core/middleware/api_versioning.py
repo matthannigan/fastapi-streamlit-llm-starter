@@ -74,15 +74,73 @@ logger = logging.getLogger(__name__)
 
 class APIVersioningMiddleware(BaseHTTPMiddleware):
     """
-    Comprehensive API versioning middleware with multiple strategies.
-    
-    Features:
-    - URL path versioning (/v1/, /v2/)
-    - Header-based versioning (API-Version, Accept headers)
-    - Query parameter versioning (?version=1.0)
-    - Version deprecation warnings
-    - Backward compatibility routing
-    - Minimum/maximum version enforcement
+    Production-grade API versioning middleware with multiple detection strategies and comprehensive compatibility handling.
+
+    Provides robust API version detection and routing with support for URL prefixes, headers,
+    query parameters, and Accept media types. Ensures backward compatibility through intelligent
+    version matching and handles deprecation scenarios with appropriate headers and warnings.
+
+    Attributes:
+        enabled (bool): Whether the middleware is active for processing requests
+        skip_internal_paths (bool): Whether to bypass versioning for internal API routes
+        default_version (str): Default version used when no version is detected
+        current_version (str): The latest/current API version
+        min_api_version (str): Minimum supported API version
+        max_api_version (str): Maximum supported API version
+        version_header (str): Header name used for version responses
+        supported_versions_list (List[str]): List of all supported API versions
+        supported_versions (Dict[str, Dict]): Detailed version information with status and metadata
+
+    Public Methods:
+        dispatch(): Main middleware entry point for request processing
+        _normalize_version(): Converts version strings to standard format
+        _detect_api_version(): Extracts version using multiple strategies
+        _is_version_supported(): Validates if a version is supported
+
+    State Management:
+        - Version detection uses configurable strategy hierarchy (path → header → query → default)
+        - Request state is populated with detected version information for downstream use
+        - Version compatibility is maintained through intelligent version matching
+        - Thread-safe through request-scoped state management
+
+    Usage:
+        # Basic setup with default settings
+        from app.core.middleware.api_versioning import APIVersioningMiddleware
+        from app.core.config import settings
+
+        app.add_middleware(APIVersioningMiddleware, settings=settings)
+
+        # Requests now support multiple versioning strategies:
+        # Path: GET /v1/users
+        # Header: GET /users with "X-API-Version: 1.0"
+        # Query: GET /users?version=1.0
+        # Accept: GET /users with "Accept: application/vnd.api+json;version=1.0"
+
+        # Access version information in endpoints
+        @app.get("/users")
+        async def get_users(request: Request):
+            api_version = getattr(request.state, 'api_version', '1.0')
+            detection_method = getattr(request.state, 'api_version_detection_method', 'default')
+            return {"version": api_version, "method": detection_method}
+
+    Version Detection Strategy:
+        The middleware applies strategies in order of precedence:
+        1. Path-based extraction from URL patterns like /v1/, /v2/, /v1.5/
+        2. Header-based extraction from X-API-Version, API-Version, or custom headers
+        3. Query parameter extraction from ?version=1.0 or ?api_version=1.0
+        4. Accept header media type versioning
+        5. Default version fallback
+
+    Internal API Bypass:
+        Internal routes mounted at /internal/* automatically bypass versioning
+        to prevent unintended path rewrites like /v1/internal/resilience/health.
+        This behavior is configurable via the api_versioning_skip_internal setting.
+
+    Note:
+        The middleware adds comprehensive version headers to responses including
+        X-API-Version, X-API-Supported-Versions, X-API-Current-Version, and
+        deprecation headers when applicable. Health check and documentation
+        endpoints also bypass versioning for accessibility.
     """
     
     def __init__(self, app: ASGIApp, settings: Settings):
@@ -136,7 +194,38 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         )
     
     def _normalize_version(self, version_str: str) -> Optional[str]:
-        """Normalize version string to a standard format."""
+        """
+        Normalize version string to standard major.minor format.
+
+        Converts various version string formats (v1, 1, 1.0, v1.5) to consistent
+        major.minor format (1.0, 1.5) for reliable comparison and routing.
+
+        Args:
+            version_str: Version string to normalize. Can include 'v' prefix,
+                        be in major-only format, or already in major.minor format.
+                        Examples: "v1", "1", "v1.5", "1.0", "2.3.4"
+
+        Returns:
+            Normalized version string in major.minor format (e.g., "1.0", "2.3")
+            or None if the input cannot be parsed as a valid version.
+
+        Behavior:
+            - Removes 'v' prefix if present (case-insensitive)
+            - Parses version using packaging.version for robust handling
+            - Converts major-only versions to major.minor format (e.g., "1" → "1.0")
+            - Preserves major.minor format for already normalized versions
+            - Returns None for malformed or unparsable version strings
+
+        Examples:
+            >>> _normalize_version("v1")
+            '1.0'
+            >>> _normalize_version("1.5")
+            '1.5'
+            >>> _normalize_version("v2.3.4")
+            '2.3'
+            >>> _normalize_version("invalid")
+            None
+        """
         if not version_str:
             return None
         
@@ -200,10 +289,41 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
     
     def _detect_api_version(self, request: Request) -> Tuple[str, str]:
         """
-        Detect API version from request using multiple strategies.
-        
+        Detect API version from request using multiple strategies in precedence order.
+
+        Applies the configured version detection strategies sequentially until a version
+        is found or defaults to the configured default version. Returns both the detected
+        version and the strategy used for detection.
+
+        Args:
+            request: The FastAPI Request object containing URL, headers, and query
+                    parameters to be analyzed for version information.
+
         Returns:
-            Tuple of (detected_version, detection_method)
+            Tuple of (detected_version, detection_method) where:
+            - detected_version: The API version string in normalized major.minor format
+            - detection_method: Name of the strategy that detected the version
+                              ('path', 'header', 'query', 'default')
+
+        Behavior:
+            - Applies version strategies in configured precedence order
+            - Returns first successfully detected version, even if unsupported
+            - Falls back to default version if no strategy yields a result
+            - Logs detection process for debugging and analytics
+            - Strategy names are derived from method names for traceability
+
+        Examples:
+            >>> # Path-based detection: /v1/users
+            >>> _detect_api_version(request_with_path)
+            ('1.0', 'path')
+
+            >>> # Header-based detection: X-API-Version: 2.0
+            >>> _detect_api_version(request_with_header)
+            ('2.0', 'header')
+
+            >>> # Default fallback
+            >>> _detect_api_version(request_without_version)
+            ('1.0', 'default')
         """
         for strategy in self.version_strategies:
             detected_version = strategy(request)
@@ -313,7 +433,62 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         return path == '/internal' or path.startswith('/internal/')
     
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
-        """Process request with API versioning."""
+        """
+        Process HTTP request with comprehensive API versioning and compatibility handling.
+
+        Main middleware entry point that orchestrates version detection, validation,
+        routing, and response header management. Handles unsupported versions with
+        appropriate error responses and maintains backward compatibility.
+
+        Args:
+            request: FastAPI Request object to be processed for version detection
+            call_next: ASGI callable to invoke the next middleware/endpoint in chain
+
+        Returns:
+            FastAPI Response object with version headers added. May return a
+            JSONResponse error if the requested version is not supported.
+
+        Raises:
+            None (errors are returned as structured JSON responses)
+
+        Behavior:
+            - Skips processing entirely if middleware is disabled
+            - Bypasses versioning for health check, docs, and internal API paths
+            - Detects API version using configured strategy hierarchy
+            - Returns structured error for unsupported versions with helpful headers
+            - Attempts intelligent compatibility matching for unsupported versions
+            - Populates request.state with version information for downstream use
+            - Rewrites request paths for proper routing to versioned endpoints
+            - Adds comprehensive version headers to all responses
+            - Logs version usage for analytics and debugging
+
+        Response Headers Added:
+            X-API-Version: The API version used for processing
+            X-API-Version-Detection: Strategy used for version detection
+            X-API-Supported-Versions: Comma-separated list of supported versions
+            X-API-Current-Version: The latest/current API version
+            Deprecation: Set to 'true' for deprecated versions
+            Sunset: Sunset date for deprecated versions
+            Link: Link to migration documentation for deprecated versions
+
+        Examples:
+            >>> # Supported version request
+            >>> response = await dispatch(request_with_v1, call_next)
+            >>> response.headers['X-API-Version']
+            '1.0'
+
+            >>> # Unsupported version request
+            >>> response = await dispatch(request_with_v5, call_next)
+            >>> response.status_code
+            400
+            >>> response.json()['error_code']
+            'API_VERSION_NOT_SUPPORTED'
+
+        Note:
+            This method ensures thread safety through request-scoped state and
+            maintains backward compatibility while providing clear migration paths
+            for deprecated versions.
+        """
         
         # Skip processing if middleware is disabled
         if not self.enabled:
@@ -511,7 +686,41 @@ class VersionCompatibilityMiddleware(BaseHTTPMiddleware):
 
 # Utility functions for version management
 def get_api_version(request: Request) -> str:
-    """Get the API version for the current request."""
+    """
+    Extract the API version used for processing the current request.
+
+    Utility function for endpoints and middleware to access the API version
+    that was detected and used by the APIVersioningMiddleware for processing
+    the current request.
+
+    Args:
+        request: FastAPI Request object that has been processed by
+                APIVersioningMiddleware
+
+    Returns:
+        API version string in major.minor format (e.g., "1.0", "2.3").
+        Returns "1.0" if no version was set by the middleware.
+
+    Behavior:
+            - Reads version from request.state.api_version set by middleware
+            - Returns default version if middleware didn't set version information
+            - Useful for endpoints that need to adapt behavior based on API version
+            - Provides consistent access pattern across the application
+
+        Examples:
+            >>> @app.get("/endpoint")
+            ... async def get_endpoint(request: Request):
+            ...     version = get_api_version(request)
+            ...     if version == "1.0":
+            ...         return {"data": "v1 format"}
+            ...     else:
+            ...         return {"data": "v2 format"}
+
+            >>> # Get version from request processed by middleware
+            >>> version = get_api_version(processed_request)
+            >>> version
+            '1.0'
+    """
     return getattr(request.state, 'api_version', '1.0')
 
 
@@ -608,7 +817,40 @@ def extract_version_from_accept(request: Request) -> Optional[str]:
 
 
 def validate_api_version(version_str: str, supported_versions: list) -> bool:
-    """Validate if the given version is supported."""
+    """
+    Validate if a version string is in the list of supported versions.
+
+    Utility function for validating API versions against a supported
+    versions list, commonly used for testing and validation logic.
+
+    Args:
+        version_str: Version string to validate (e.g., "1.0", "2.3")
+        supported_versions: List of supported version strings (e.g., ["1.0", "2.0"])
+
+    Returns:
+        True if the version is in the supported_versions list, False otherwise.
+        Returns False for empty or None version strings.
+
+    Behavior:
+            - Performs exact string matching against supported versions list
+            - Case-sensitive comparison (versions should be normalized before validation)
+            - Returns False for None, empty, or whitespace-only version strings
+            - Used by middleware for version support validation
+            - Useful for custom validation logic outside of middleware flow
+
+        Examples:
+            >>> validate_api_version("1.0", ["1.0", "2.0"])
+            True
+
+            >>> validate_api_version("3.0", ["1.0", "2.0"])
+            False
+
+            >>> validate_api_version("", ["1.0", "2.0"])
+            False
+
+            >>> validate_api_version(None, ["1.0", "2.0"])
+            False
+    """
     return version_str in supported_versions if version_str else False
 
 

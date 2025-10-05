@@ -68,45 +68,60 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
     """
     Configure global exception handling for unhandled application errors.
     
-    Provides a centralized error handling mechanism that catches all unhandled
-    exceptions across the application and returns consistent, secure error responses.
+    Sets up comprehensive exception handlers that catch all unhandled exceptions
+    across the FastAPI application and return consistent, secure error responses.
     The handler ensures clients receive predictable error responses while protecting
     internal implementation details and sensitive information.
     
-    Exception Handling Features:
-        * Comprehensive logging of all unhandled exceptions with full context
-        * Standardized error response format using shared.models.ErrorResponse
-        * HTTP status code mapping based on exception types
-        * Security-conscious error messages that don't expose internal details
-        * Request context preservation for debugging and monitoring
-        * Integration with the custom exception hierarchy
-    
     Args:
-        app (FastAPI): The FastAPI application instance to configure
-        settings (Settings): Application settings for error handling configuration
+        app (FastAPI): The FastAPI application instance to configure with exception handlers
+        settings (Settings): Application settings that influence error handling behavior
     
-    Exception Processing:
-        The handler processes exceptions in the following order:
-        1. Log the full exception with context for debugging
-        2. Determine appropriate HTTP status code based on exception type
-        3. Generate secure, user-friendly error message
-        4. Create standardized ErrorResponse model
-        5. Return JSONResponse with appropriate status code
+    Returns:
+        None: This function configures the app in-place and returns nothing
+    
+    Raises:
+        ConfigurationError: If the app instance is invalid or settings are malformed
+    
+    Behavior:
+        - Registers RequestValidationError handler for Pydantic validation errors (HTTP 422)
+        - Registers global Exception handler for all uncaught exceptions
+        - Logs full exception details server-side with request context for debugging
+        - Maps exception types to appropriate HTTP status codes
+        - Generates secure, user-friendly error messages that don't expose internals
+        - Preserves request correlation IDs for debugging and monitoring
+        - Returns standardized ErrorResponse format for all error types
+        - Handles special cases like API versioning errors with custom responses
+        - Ensures the application never returns unhandled exceptions to clients
     
     HTTP Status Code Mapping:
-        * ApplicationError -> 400 Bad Request (validation, business logic errors)
-        * InfrastructureError -> 502 Bad Gateway (external service failures)
-        * TransientAIError -> 503 Service Unavailable (temporary AI issues)
-        * PermanentAIError -> 502 Bad Gateway (permanent AI issues)
-        * All other exceptions -> 500 Internal Server Error
+        - ApplicationError -> 400 Bad Request (validation, business logic errors)
+        - InfrastructureError -> 502 Bad Gateway (external service failures)
+        - TransientAIError -> 503 Service Unavailable (temporary AI issues)
+        - PermanentAIError -> 502 Bad Gateway (permanent AI issues)
+        - RequestValidationError -> 422 Unprocessable Entity (Pydantic validation)
+        - All other exceptions -> 500 Internal Server Error
     
     Security Features:
-        * Generic error messages prevent information disclosure
-        * Full exception details logged server-side only
-        * No stack traces or internal paths exposed to clients
-        * Request correlation IDs for secure debugging
+        - Generic error messages prevent information disclosure attacks
+        - Full exception details logged server-side only
+        - No stack traces or internal paths exposed to clients
+        - Request correlation IDs enable secure debugging without exposing data
     
-    Example Response:
+    Examples:
+        >>> from fastapi import FastAPI
+        >>> from app.core.config import create_settings
+        >>> from app.core.middleware.global_exception_handler import setup_global_exception_handler
+        >>>
+        >>> # Basic setup
+        >>> app = FastAPI()
+        >>> settings = create_settings()
+        >>> setup_global_exception_handler(app, settings)
+        >>>
+        >>> # All unhandled exceptions now return standardized JSON responses
+        >>> # instead of HTML error pages or unstructured errors
+    
+    Example Response Format:
         ```json
         {
             "success": false,
@@ -116,9 +131,14 @@ def setup_global_exception_handler(app: FastAPI, settings: Settings) -> None:
         }
         ```
     
-    Note:
-        This handler is the last resort for exception handling and will catch
-        any exception not handled by more specific exception handlers. It ensures
-        the application never returns unhandled exceptions to clients.
+    Example Validation Error Response:
+        ```json
+        {
+            "success": false,
+            "error": "Invalid request data: field_name: field is required",
+            "error_code": "VALIDATION_ERROR",
+            "timestamp": "2025-07-12T12:34:56.789012"
+        }
+        ```
     """
     ...

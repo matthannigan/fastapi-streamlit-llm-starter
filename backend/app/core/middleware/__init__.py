@@ -12,71 +12,71 @@ The middleware system follows a layered architecture designed for maximum securi
 performance, and operational visibility:
 
 ### Security Layer
-- **Security Middleware**: Essential HTTP security headers and request validation
-- **CORS Middleware**: Cross-origin resource sharing with configurable policies
-- **Rate Limiting**: Redis-backed distributed rate limiting with graceful degradation
-- **Request Size Limiting**: DoS protection through request size validation
+- **Security Middleware**: Essential HTTP security headers and request validation with CSP, HSTS, and XSS protection
+- **CORS Middleware**: Cross-origin resource sharing with configurable policies and explicit origin allowlisting
+- **Rate Limiting**: Redis-backed distributed rate limiting with per-endpoint classification and graceful local fallback
+- **Request Size Limiting**: DoS protection through streaming request size validation with per-content-type limits
 
 ### Monitoring & Observability Layer
-- **Request Logging**: Comprehensive HTTP request/response logging with correlation IDs
-- **Performance Monitoring**: Resource tracking, timing analysis, and slow request detection
-- **Global Exception Handling**: Centralized error handling with structured responses
-- **Health Check Integration**: Middleware health validation and status reporting
+- **Request Logging**: Comprehensive HTTP request/response logging with correlation IDs and sensitive data filtering
+- **Performance Monitoring**: High-precision resource tracking, timing analysis, and configurable slow request detection
+- **Global Exception Handling**: Centralized error handling with structured responses and secure error sanitization
+- **Health Check Integration**: Middleware health validation and status reporting with operational metrics
 
 ### Performance Optimization Layer
-- **Compression Middleware**: Intelligent request/response compression with multiple algorithms
-- **API Versioning**: Version detection, routing, and backward compatibility
-- **Request Optimization**: Efficient request processing and resource management
+- **Compression Middleware**: Intelligent request/response compression with Brotli, gzip, and deflate algorithm support
+- **API Versioning**: Multi-strategy version detection (path, header, query, Accept) with backward compatibility
+- **Request Optimization**: Efficient request processing and resource management with streaming support
 
 ## Core Middleware Components
 
 ### Security Middleware (`security.py`)
-Comprehensive security hardening with HTTP security headers:
-- **Security Headers**: HSTS, CSP, X-Frame-Options, X-Content-Type-Options protection
-- **Input Validation**: Request header validation and sanitization
-- **DoS Protection**: Request size limits and header count restrictions
-- **XSS Protection**: Cross-site scripting prevention and content type validation
-- **API Security**: Production-ready security policies for API endpoints
+Production-grade security hardening with comprehensive HTTP security headers and request validation:
+- **Security Headers**: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy
+- **Request Validation**: Content-Length validation, header count limits, and request size enforcement
+- **DoS Protection**: Configurable maximum request sizes and header count restrictions with 413 responses
+- **XSS Protection**: Content-Type validation and XSS prevention headers with documentation-friendly CSP policies
+- **Endpoint-Aware CSP**: Strict CSP for API endpoints, relaxed policies for documentation endpoints
 
 ### Request Logging Middleware (`request_logging.py`)
-Structured logging system with correlation tracking:
-- **Correlation IDs**: Unique request identifiers for distributed tracing
-- **Performance Metrics**: Request timing, response size, and status code tracking
-- **Sensitive Data Filtering**: Automatic filtering of sensitive information
-- **Health Check Optimization**: Reduced logging noise for monitoring requests
-- **Structured Logging**: JSON-formatted logs for monitoring system integration
+Structured logging system with comprehensive correlation tracking and security-conscious filtering:
+- **Correlation IDs**: Unique 8-character request identifiers using contextvars for thread safety
+- **Performance Metrics**: Millisecond-precision timing, response size tracking, and status code analytics
+- **Sensitive Data Filtering**: Automatic filtering of authorization headers, API keys, and sensitive parameters
+- **Health Check Optimization**: Reduced logging verbosity for health endpoints and monitoring probes
+- **Structured Logging**: JSON-formatted logs with request metadata for monitoring system integration
 
 ### Performance Monitoring Middleware (`performance_monitoring.py`)
-Real-time performance tracking and alerting:
-- **Resource Monitoring**: Memory usage, CPU utilization, and request concurrency
-- **Slow Request Detection**: Configurable thresholds for performance alerting
-- **Response Time Analysis**: Detailed timing breakdown with percentile calculations
-- **Memory Leak Detection**: Memory usage pattern analysis and alerting
-- **Integration Ready**: Prometheus, StatsD, and custom monitoring system support
+High-precision performance tracking with configurable alerting and resource monitoring:
+- **Resource Monitoring**: RSS memory delta tracking, request timing with perf_counter() precision
+- **Slow Request Detection**: Configurable thresholds with structured warning logs and correlation IDs
+- **Response Headers**: X-Response-Time and X-Memory-Delta headers for client-side monitoring
+- **Graceful Degradation**: Continues operating when memory monitoring tools are unavailable
+- **Production Optimized**: <1ms overhead with configurable monitoring features for performance tuning
 
 ### Rate Limiting Middleware (`rate_limiting.py`)
-Distributed rate limiting with Redis backend:
-- **Per-Endpoint Limits**: Configurable rate limits per API endpoint
-- **Per-User Limits**: User-specific rate limiting with authentication integration
-- **Sliding Window**: Advanced rate limiting algorithms with burst support
-- **Redis Integration**: Distributed rate limiting across multiple application instances
-- **Graceful Degradation**: Local fallback when Redis is unavailable
+Enterprise-grade distributed rate limiting with intelligent fallback and comprehensive endpoint classification:
+- **Per-Endpoint Classification**: Automatic categorization (health, auth, critical, standard, monitoring) with configurable limits
+- **Multi-Strategy Rate Limiting**: Sliding window, fixed window, and token-bucket style behavior with Redis backend
+- **Client Identification**: Priority hierarchy using API keys, user IDs, and IP addresses with proxy support
+- **Graceful Fallback**: Local in-memory rate limiting with automatic cleanup when Redis is unavailable
+- **Comprehensive Headers**: X-RateLimit-* headers, Retry-After responses, and detailed rate limit analytics
 
 ### Compression Middleware (`compression.py`)
-Intelligent compression for improved performance:
-- **Multi-Algorithm Support**: Brotli, gzip, and deflate compression
-- **Content-Type Awareness**: Intelligent compression decisions based on content type
-- **Streaming Compression**: Efficient compression for large responses
-- **Compression Analytics**: Compression ratio tracking and optimization metrics
-- **Dynamic Configuration**: Runtime compression configuration and tuning
+Intelligent multi-algorithm compression with content-aware decisions and streaming support:
+- **Multi-Algorithm Support**: Brotli (br), gzip, and deflate with automatic client preference selection
+- **Content-Aware Decisions**: Intelligent compression based on content-type with size thresholds and exclusions
+- **Streaming Architecture**: ASGI-level streaming compression for large responses with memory efficiency
+- **Request Decompression**: Automatic handling of compressed request bodies with multiple algorithm support
+- **Performance Analytics**: X-Original-Size and X-Compression-Ratio headers for monitoring optimization
 
 ### API Versioning Middleware (`api_versioning.py`)
-Comprehensive API version management:
-- **Multiple Detection Methods**: URL, header, and query parameter version detection
-- **Backward Compatibility**: Automatic transformation between API versions
-- **Deprecation Management**: Version sunset dates and deprecation warnings
-- **Version Analytics**: Usage tracking and migration planning support
-- **Compatibility Layer**: Seamless migration support for client applications
+Comprehensive API version management with multi-strategy detection and internal API bypass:
+- **Multi-Strategy Detection**: Path prefix (/v1/, /v2/), headers (X-API-Version), query parameters, and Accept media types
+- **Internal API Bypass**: Safe-by-default exemption for /internal/* routes to prevent unintended rewrites
+- **Backward Compatibility**: Intelligent version matching, deprecation warnings, and sunset date management
+- **Response Headers**: Comprehensive version information headers (X-API-Version, X-API-Supported-Versions, X-API-Current-Version)
+- **Configuration Management**: Environment-based version configuration with validation and analytics support
 
 ## Middleware Execution Architecture
 
