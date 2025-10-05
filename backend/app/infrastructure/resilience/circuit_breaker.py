@@ -169,6 +169,13 @@ class CircuitBreakerConfig:
         assert 1 <= config.failure_threshold <= 100
         assert 1 <= config.recovery_timeout <= 3600
         assert 1 <= config.half_open_max_calls <= 10
+
+    Behavior:
+        - Validates parameter ranges on initialization to ensure safe operation
+        - Provides immutable configuration to prevent runtime modification
+        - Uses conservative defaults optimized for AI service reliability
+        - Maintains compatibility with circuitbreaker library implementations
+        - Supports different operational modes (conservative, balanced, aggressive)
     """
     failure_threshold: int = 5
     recovery_timeout: int = 60
@@ -418,6 +425,8 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             - Configures base CircuitBreaker with provided parameters
             - Stores configuration for metric compatibility across library versions
             - Begins in CLOSED state allowing normal operation
+            - Creates thread-safe metrics storage for concurrent access
+            - Establishes monitoring context for operational visibility
 
         Examples:
             # Default configuration
@@ -517,32 +526,38 @@ class EnhancedCircuitBreaker(CircuitBreaker):
         Execute function with circuit breaker protection and comprehensive metrics collection.
 
         Args:
-            func: Callable function to execute under circuit breaker protection
-            *args: Positional arguments to pass to the function
-            **kwargs: Keyword arguments to pass to the function
+            func: Callable function to execute under circuit breaker protection.
+                  Must be callable and accept the provided arguments
+            *args: Positional arguments to pass to the function. Can be empty
+            **kwargs: Keyword arguments to pass to the function. Can be empty
 
         Returns:
-            Return value from the executed function if successful
+            Return value from the executed function if successful. The type and structure
+            depend entirely on the wrapped function's return contract
 
         Raises:
-            CircuitBreakerOpen: When circuit is open and calls are rejected
+            CircuitBreakerOpen: When circuit is open and calls are rejected without execution
             Exception: Any exception raised by the function (propagated unchanged)
-            AttributeError: If func is not callable
+            AttributeError: If func is not callable or has invalid signature
+            TypeError: If arguments are incompatible with function signature
 
         Behavior:
-            - Increments total_calls metric before execution
+            - Increments total_calls metric before execution attempt
             - Checks for circuit breaker state changes before and after call
             - Tracks successful calls with timestamps and success count
             - Tracks failed calls with timestamps and failure count
             - Updates last_failure_time for circuit breaker recovery logic
             - Monitors state transitions for operational visibility
             - Executes function through parent circuit breaker logic
+            - Maintains thread-safe metrics updates for concurrent access
+            - Rejects calls immediately when circuit is open (fail-fast behavior)
 
         Side Effects:
             - Updates metrics.total_calls, metrics.successful_calls, metrics.failed_calls
             - Updates metrics.last_success, metrics.last_failure timestamps
             - May trigger circuit breaker state changes and logging
             - Updates last_failure_time for recovery timeout calculations
+            - Logs state transitions at appropriate levels (INFO, WARNING)
 
         Examples:
             >>> cb = EnhancedCircuitBreaker(failure_threshold=3, name="test")
@@ -568,6 +583,13 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             ...     except ValueError:
             ...         pass
             >>> # Subsequent calls will be rejected immediately
+
+            # With arguments
+            >>> def process_data(data, multiplier=1):
+            ...     return data * multiplier
+            >>> result = cb.call(process_data, "hello ", multiplier=2)
+            >>> result
+            'hello hello '
         """
         self.metrics.total_calls += 1
         

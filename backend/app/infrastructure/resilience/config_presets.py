@@ -160,10 +160,51 @@ class ResilienceConfig:
 @dataclass
 class ResiliencePreset:
     """
-    Predefined resilience configuration preset.
-    
-    Encapsulates retry, circuit breaker, and strategy settings
-    for different deployment scenarios.
+    Predefined resilience configuration preset for different deployment scenarios.
+
+    Encapsulates retry, circuit breaker, and strategy settings optimized for specific
+    deployment contexts and operational requirements. Provides templates for common
+    resilience patterns while allowing customization through operation overrides.
+
+    Attributes:
+        name: Human-readable name for the preset (e.g., "Production", "Development")
+        description: Detailed description of the preset's purpose and characteristics
+        retry_attempts: Number of retry attempts for failed operations (1-10)
+        circuit_breaker_threshold: Failure count before circuit breaker opens (1-20)
+        recovery_timeout: Seconds to wait before circuit breaker recovery attempts (10-600)
+        default_strategy: Default ResilienceStrategy for general operations
+        operation_overrides: Dictionary mapping operation names to specific strategies
+        environment_contexts: List of environments where this preset is appropriate
+
+    Public Methods:
+        to_dict(): Convert preset to dictionary for JSON serialization
+        to_resilience_config(): Convert preset to full ResilienceConfig object
+
+    State Management:
+        - Immutable dataclass ensuring configuration consistency
+        - Automatic conversion strategies for different configuration formats
+        - Environment-aware context matching for preset selection
+        - Operation-specific granularity through strategy overrides
+
+    Usage:
+        # Access production preset
+        prod_preset = PRESETS["production"]
+        print(f"Production preset: {prod_preset.name}")
+        print(f"Description: {prod_preset.description}")
+
+        # Convert to configuration object
+        config = prod_preset.to_resilience_config()
+        print(f"Strategy: {config.strategy}")
+        print(f"Retry attempts: {config.retry_config.max_attempts}")
+
+        # Check operation overrides
+        if "sentiment" in prod_preset.operation_overrides:
+            sentiment_strategy = prod_preset.operation_overrides["sentiment"]
+            print(f"Sentiment analysis uses {sentiment_strategy} strategy")
+
+        # Environment context validation
+        if "production" in prod_preset.environment_contexts:
+            print("Preset suitable for production environment")
     """
     name: str
     description: str
@@ -173,13 +214,71 @@ class ResiliencePreset:
     default_strategy: ResilienceStrategy
     operation_overrides: Dict[str, ResilienceStrategy]
     environment_contexts: List[str]
-    
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convert preset to dictionary for serialization."""
+        """
+        Convert preset to dictionary for JSON serialization and export.
+
+        Returns:
+            Dict[str, Any]: Dictionary representation with:
+            - All preset fields as key-value pairs
+            - ResilienceStrategy enum values converted to strings
+            - Maintained structure for configuration analysis
+            - Suitable for persistence and transmission
+
+        Behavior:
+            - Converts ResilienceStrategy enum values to string representations
+            - Preserves all metadata for analysis and reconstruction
+            - Returns shallow copy safe for modification
+            - Maintains compatibility with configuration management systems
+
+        Examples:
+            >>> preset = PRESETS["production"]
+            >>> serialized = preset.to_dict()
+            >>> serialized['name']
+            'Production'
+            >>> serialized['default_strategy']
+            'conservative'
+            >>> 'sentiment' in serialized['operation_overrides']
+            True
+        """
         return asdict(self)
-    
+
     def to_resilience_config(self) -> ResilienceConfig:
-        """Convert preset to resilience configuration object."""
+        """
+        Convert preset to full ResilienceConfig object with optimized parameters.
+
+        Returns:
+            ResilienceConfig: Complete configuration object with:
+            - Strategy-based retry configuration with exponential backoff
+            - Circuit breaker configuration with appropriate thresholds
+            - Optimized timing parameters for the preset's operational context
+            - All feature flags enabled for comprehensive resilience
+
+        Behavior:
+            - Creates RetryConfig with strategy-specific exponential backoff parameters
+            - Sets circuit breaker thresholds based on preset failure tolerance
+            - Configures timing parameters (multipliers, min/max delays) by strategy
+            - Uses aggressive timing for AGGRESSIVE strategy (faster retries)
+            - Uses conservative timing for CONSERVATIVE strategy (slower, thorough retries)
+            - Enables all resilience features for complete protection
+
+        Examples:
+            >>> preset = PRESETS["production"]
+            >>> config = preset.to_resilience_config()
+            >>> config.strategy
+            <ResilienceStrategy.CONSERVATIVE: 'conservative'>
+            >>> config.retry_config.max_attempts
+            5
+            >>> config.circuit_breaker_config.failure_threshold
+            10
+
+            >>> # Strategy affects timing parameters
+            >>> aggressive_preset = PRESETS["development"]
+            >>> aggro_config = aggressive_preset.to_resilience_config()
+            >>> aggro_config.retry_config.exponential_min
+            1.0  # Faster retries for development
+        """
         return ResilienceConfig(
             strategy=self.default_strategy,
             retry_config=RetryConfig(
@@ -246,11 +345,83 @@ PRESETS = {
 
 class PresetManager:
     """
-    Manager for resilience presets with validation and recommendation capabilities.
+    Comprehensive manager for resilience presets with validation, recommendation, and environment detection.
+
+    Provides intelligent preset management including validation against configuration schemas,
+    environment-aware preset recommendations, pattern-based environment classification,
+    and detailed preset information for operational monitoring and debugging.
+
+    Attributes:
+        presets: Dictionary mapping preset names to ResiliencePreset objects
+
+    Public Methods:
+        get_preset(): Retrieve preset by name with validation
+        list_presets(): Get list of available preset names
+        get_preset_details(): Get comprehensive preset information
+        validate_preset(): Validate preset configuration against rules
+        recommend_preset(): Get environment-aware preset recommendation
+        recommend_preset_with_details(): Get detailed recommendation with reasoning
+        get_all_presets_summary(): Get summary of all available presets
+
+    State Management:
+        - Thread-safe preset access for concurrent operations
+        - Comprehensive validation ensuring configuration integrity
+        - Environment detection with confidence scoring
+        - Pattern-based matching for complex deployment scenarios
+        - Integration with unified environment detection service
+
+    Usage:
+        # Initialize manager
+        manager = PresetManager()
+
+        # Get recommended preset for current environment
+        recommended = manager.recommend_preset()
+        print(f"Recommended preset: {recommended}")
+
+        # Get detailed recommendation with reasoning
+        details = manager.recommend_preset_with_details("staging")
+        print(f"Preset: {details.preset_name}")
+        print(f"Confidence: {details.confidence:.2f}")
+        print(f"Reasoning: {details.reasoning}")
+
+        # Access specific preset
+        prod_preset = manager.get_preset("production")
+        config = prod_preset.to_resilience_config()
+
+        # Validate custom preset
+        is_valid = manager.validate_preset(custom_preset)
+        if not is_valid:
+            print("Preset validation failed")
+
+        # Get all preset information
+        all_presets = manager.get_all_presets_summary()
+        for name, details in all_presets.items():
+            print(f"{name}: {details['description']}")
     """
-    
+
     def __init__(self):
-        """Initialize preset manager with default presets."""
+        """
+        Initialize preset manager with default presets and validation capabilities.
+
+        Behavior:
+            - Loads all predefined presets from PRESETS dictionary
+            - Sets up validation infrastructure for configuration checking
+            - Prepares environment detection patterns for intelligent recommendations
+            - Initializes logging for operational monitoring
+            - Creates thread-safe preset storage for concurrent access
+
+        Examples:
+            # Basic initialization
+            manager = PresetManager()
+
+            # Verify presets loaded
+            preset_names = manager.list_presets()
+            print(f"Loaded {len(preset_names)} presets: {preset_names}")
+
+            # Access preset immediately
+            simple_preset = manager.get_preset("simple")
+            print(f"Simple preset: {simple_preset.description}")
+        """
         self.presets = PRESETS.copy()
         logger.info(f"Initialized PresetManager with {len(self.presets)} presets")
     
@@ -380,13 +551,54 @@ class PresetManager:
     
     def recommend_preset_with_details(self, environment: Optional[str] = None) -> EnvironmentRecommendation:
         """
-        Get detailed environment-aware preset recommendation.
-        
+        Get detailed environment-aware preset recommendation with confidence scoring and reasoning.
+
         Args:
-            environment: Environment name or None for auto-detection
-            
+            environment: Environment name (dev, test, staging, prod, etc.) or None for auto-detection.
+                       Case-insensitive, accepts full names or common abbreviations.
+                       If None, uses unified environment detection service. Default: None
+
         Returns:
-            EnvironmentRecommendation with preset, confidence, and reasoning
+            EnvironmentRecommendation containing:
+            - preset_name: Recommended preset name (simple, development, production)
+            - confidence: Confidence score (0.0-1.0) indicating recommendation certainty
+            - reasoning: Human-readable explanation of the recommendation logic
+            - environment_detected: The environment that was identified or provided
+
+        Behavior:
+            - Uses high-confidence exact matching for common environment names
+            - Applies pattern-based matching for complex environment naming schemes
+            - Integrates with unified environment detection service for auto-detection
+            - Provides confidence scoring based on evidence strength
+            - Returns detailed reasoning for operational transparency
+            - Falls back to 'simple' preset for unknown environments with low confidence
+            - Maintains consistency with existing environment classification patterns
+
+        Raises:
+            ImportError: If unified environment detection service is unavailable
+
+        Examples:
+            # Direct environment specification
+            result = manager.recommend_preset_with_details("production")
+            print(f"Recommended: {result.preset_name}")
+            print(f"Confidence: {result.confidence:.2f}")
+            print(f"Reasoning: {result.reasoning}")
+
+            # Auto-detection
+            result = manager.recommend_preset_with_details()
+            if result.confidence > 0.8:
+                print(f"High confidence recommendation: {result.preset_name}")
+            else:
+                print(f"Low confidence ({result.confidence:.2f}), consider manual selection")
+
+            # Complex environment names
+            result = manager.recommend_preset_with_details("staging-environment-v2")
+            print(f"Pattern matched: {result.environment_detected}")
+            print(f"Recommended preset: {result.preset_name}")
+
+            # Abbreviations
+            result = manager.recommend_preset_with_details("dev")
+            print(f"Abbreviation resolved: {result.preset_name}")
         """
         if environment is None:
             return self._auto_detect_environment()

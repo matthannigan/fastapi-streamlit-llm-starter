@@ -74,73 +74,276 @@ class ValidationResult:
 
 class ResilienceConfigValidator:
     """
-    Validator for resilience configuration using JSON Schema.
+    Comprehensive validator for resilience configuration with security checks and JSON Schema validation.
+    
+    Provides robust validation of custom resilience configurations and preset definitions using
+    JSON Schema validation with fallback to basic validation when jsonschema is unavailable.
+    Implements security controls including rate limiting, size constraints, forbidden pattern
+    detection, and field whitelisting to ensure configuration safety and prevent abuse.
+    
+    Attributes:
+        config_validator: Draft7Validator instance for resilience configuration schema validation
+        preset_validator: Draft7Validator instance for preset schema validation
+        rate_limiter: ValidationRateLimiter instance for preventing validation abuse
+    
+    Public Methods:
+        validate_custom_config(): Validate custom resilience configuration objects
+        validate_preset(): Validate preset configuration objects with environment contexts
+        validate_json_string(): Validate JSON string configuration input
+        validate_template_based_config(): Validate configuration using templates with overrides
+        validate_with_security_checks(): Perform security-only validation without schema checks
+        get_configuration_templates(): Retrieve available configuration templates
+        suggest_template_for_config(): Recommend appropriate template based on configuration
+    
+    State Management:
+        - Thread-safe validation operations using internal rate limiter with RLock
+        - Graceful degradation when jsonschema package unavailable
+        - Persistent rate limiting state across validation requests
+        - Stateless validation design - no persistent configuration state
+    
+    Usage:
+        # Basic configuration validation
+        validator = ResilienceConfigValidator()
+        config = {"retry_attempts": 3, "circuit_breaker_threshold": 5}
+        result = validator.validate_custom_config(config)
+        if result.is_valid:
+            print("Configuration is valid")
+        else:
+            print(f"Errors: {result.errors}")
+            print(f"Suggestions: {result.suggestions}")
+    
+        # Template-based validation with overrides
+        result = validator.validate_template_based_config(
+            "robust_production",
+            overrides={"retry_attempts": 8}
+        )
+    
+        # Security validation with rate limiting
+        result = validator.validate_with_security_checks(
+            config_data,
+            client_identifier="user_123"
+        )
+    
+        # JSON string validation
+        json_config = '{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
+        result = validator.validate_json_string(json_config)
     """
 
     def __init__(self):
         """
-        Initialize the validator.
+        Initialize the resilience configuration validator with schema validators and rate limiting.
+        
+        Behavior:
+            - Attempts to initialize JSON Schema validators for both config and preset schemas
+            - Falls back to basic validation when jsonschema package unavailable
+            - Creates ValidationRateLimiter instance for abuse prevention
+            - Logs initialization status and validation capabilities
+            - Maintains thread-safe operation through internal rate limiter
+        
+        Raises:
+            No exceptions raised during initialization - all errors handled gracefully
+            with fallback behavior and appropriate logging
         """
         ...
 
     def get_configuration_templates(self) -> Dict[str, Dict[str, Any]]:
         """
-        Get available configuration templates.
+        Retrieve all available configuration templates for resilience configuration.
         
         Returns:
-            Dictionary of template configurations
+            Dictionary mapping template names to their complete configuration including:
+            - name: Human-readable template name
+            - description: Detailed description of template purpose and use cases
+            - config: Complete resilience configuration with all settings
+            Each template is optimized for specific scenarios (development, production, etc.)
+        
+        Behavior:
+            - Returns a deep copy of template configurations to prevent modification
+            - Templates include pre-configured settings for common use cases
+            - All templates are pre-validated against the resilience configuration schema
+            - Templates provide starting points for custom configuration development
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> templates = validator.get_configuration_templates()
+            >>> assert len(templates) > 0
+            >>> assert "robust_production" in templates
+            >>>
+            >>> template = templates["fast_development"]
+            >>> assert "config" in template
+            >>> assert "retry_attempts" in template["config"]
         """
         ...
 
     def get_template(self, template_name: str) -> Optional[Dict[str, Any]]:
         """
-        Get a specific configuration template.
+        Retrieve a specific configuration template by name.
         
         Args:
-            template_name: Name of the template to retrieve
-            
+            template_name: Name of the template to retrieve. Valid template names include:
+                          "fast_development", "robust_production", "low_latency",
+                          "high_throughput", "maximum_reliability"
+        
         Returns:
-            Template configuration or None if not found
+            Complete template configuration dictionary containing name, description,
+            and config fields, or None if template name not found
+        
+        Behavior:
+            - Returns template configuration without copying for performance
+            - Template configurations are read-only and should not be modified
+            - Provides access to pre-validated configuration templates
+            - Returns None for unknown template names
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> template = validator.get_template("robust_production")
+            >>> assert template is not None
+            >>> assert "config" in template
+            >>> assert template["config"]["retry_attempts"] == 6
+            >>>
+            >>> # Unknown template returns None
+            >>> unknown = validator.get_template("nonexistent")
+            >>> assert unknown is None
         """
         ...
 
     def check_rate_limit(self, identifier: str) -> ValidationResult:
         """
-        Check rate limit for validation request.
+        Validate request against rate limiting controls to prevent validation abuse.
         
         Args:
-            identifier: Client identifier (IP, user ID, etc.)
-            
+            identifier: Client identifier for rate limiting (IP address, user ID, API key, etc.)
+                        Must be a unique string per client to ensure accurate rate limiting
+        
         Returns:
-            ValidationResult indicating if request is allowed
+            ValidationResult with validation status:
+            - is_valid: True if request within rate limits, False if rate limited
+            - errors: List containing rate limit error messages if exceeded
+            - suggestions: List with suggestions for resolving rate limit issues
+        
+        Behavior:
+            - Checks per-minute and per-hour request limits
+            - Enforces minimum cooldown period between requests
+            - Tracks requests separately per client identifier
+            - Returns helpful error messages with remaining wait times
+            - Automatically cleans up old request records to prevent memory leaks
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> result = validator.check_rate_limit("client_123")
+            >>> assert result.is_valid
+            >>>
+            >>> # Multiple rapid requests may trigger rate limiting
+            >>> for i in range(100):  # This would exceed typical rate limits
+            ...     result = validator.check_rate_limit("rapid_client")
+            ...     if not result.is_valid:
+            ...         assert "Rate limit exceeded" in result.errors[0]
+            ...         break
         """
         ...
 
     def get_rate_limit_info(self, identifier: str) -> Dict[str, Any]:
         """
-        Get rate limit information for identifier.
+        Retrieve current rate limiting status and metrics for a specific client identifier.
+        
+        Args:
+            identifier: Client identifier (IP address, user ID, API key) for which
+                        to retrieve rate limit information
+        
+        Returns:
+            Dictionary containing current rate limit status:
+            - requests_last_minute: Number of requests in the last 60 seconds
+            - requests_last_hour: Total requests in the last hour
+            - max_per_minute: Maximum allowed requests per minute
+            - max_per_hour: Maximum allowed requests per hour
+            - cooldown_remaining: Seconds until next request allowed (if rate limited)
+        
+        Behavior:
+            - Returns real-time rate limiting metrics for the specified client
+            - Provides visibility into current usage against limits
+            - Includes cooldown period if client is currently rate limited
+            - Thread-safe access to rate limiting state
+            - Used for monitoring and client feedback on rate limiting status
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> info = validator.get_rate_limit_info("client_123")
+            >>> assert "requests_last_minute" in info
+            >>> assert "max_per_minute" in info
+            >>> assert info["requests_last_minute"] <= info["max_per_minute"]
         """
         ...
 
     def reset_rate_limiter(self):
         """
-        Reset rate limiter state. Used for testing.
+        Reset all rate limiting state for testing and maintenance scenarios.
+        
+        Behavior:
+            - Clears all client request history and rate limit state
+            - Resets cooldown timers and request counters
+            - Intended for testing environments and maintenance operations
+            - Thread-safe reset operation using internal locks
+            - Affects all client identifiers simultaneously
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> # Simulate some requests that would hit rate limits
+            >>> validator.check_rate_limit("test_client")
+            >>> # Reset for clean test state
+            >>> validator.reset_rate_limiter()
+            >>> # Now the client can make requests without rate limiting
         """
         ...
 
     def validate_with_security_checks(self, config_data: Any, client_identifier: Optional[str] = None) -> ValidationResult:
         """
-        Validate configuration with enhanced security checks only.
+        Perform security-focused validation of configuration data without schema validation.
         
-        This method focuses on security validation (size limits, forbidden patterns,
-        field whitelisting, etc.) and does not perform full schema validation.
+        Validates configuration against security controls including size limits, forbidden patterns,
+        field whitelisting, and content filtering. Does not perform JSON Schema validation for
+        field structure or data types, focusing exclusively on security constraints.
         
         Args:
-            config_data: Configuration data to validate
-            client_identifier: Optional client identifier for rate limiting
-            
+            config_data: Configuration data to validate (typically dict or JSON-serializable object)
+            client_identifier: Optional client identifier for rate limiting validation.
+                              If provided, method will check rate limits before validation
+        
         Returns:
-            ValidationResult with security validation only
+            ValidationResult containing security validation results:
+            - is_valid: True if configuration passes all security checks
+            - errors: Security violation messages (size limits, forbidden patterns, etc.)
+            - warnings: Non-critical security concerns or recommendations
+            - suggestions: Specific recommendations for resolving security issues
+        
+        Behavior:
+            - Enforces rate limiting if client identifier provided
+            - Validates configuration size against maximum byte limits
+            - Scans for forbidden patterns (scripts, injection attacks, etc.)
+            - Validates field names and values against security whitelist
+            - Checks Unicode content and character encoding issues
+            - Validates object structure depth and complexity
+            - Detects potential code injection and template vulnerabilities
+        
+        Raises:
+            No exceptions raised - all validation results captured in ValidationResult
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> config = {"retry_attempts": 3, "circuit_breaker_threshold": 5}
+            >>> result = validator.validate_with_security_checks(config)
+            >>> assert result.is_valid
+            >>>
+            >>> # With rate limiting
+            >>> result = validator.validate_with_security_checks(
+            ...     config, client_identifier="user_123"
+            ... )
+            >>> assert result.is_valid
+            >>>
+            >>> # Security violation detection
+            >>> dangerous_config = {"retry_attempts": "<script>alert('xss')</script>"}
+            >>> result = validator.validate_with_security_checks(dangerous_config)
+            >>> assert not result.is_valid
+            >>> assert "forbidden pattern" in str(result.errors).lower()
         """
         ...
 
@@ -171,13 +374,48 @@ class ResilienceConfigValidator:
 
     def validate_custom_config(self, config_data: Dict[str, Any]) -> ValidationResult:
         """
-        Validate custom resilience configuration.
+        Perform comprehensive validation of custom resilience configuration data.
+        
+        Validates configuration using JSON Schema validation when available, with fallback to
+        basic validation when jsonschema package is unavailable. Includes both schema validation
+        and logical constraint validation to ensure configuration quality and safety.
         
         Args:
-            config_data: Configuration data to validate
-            
+            config_data: Configuration dictionary to validate containing resilience settings
+                        such as retry_attempts, circuit_breaker_threshold, etc.
+        
         Returns:
-            ValidationResult with validation status and any errors
+            ValidationResult with comprehensive validation results:
+            - is_valid: True if configuration passes all validation checks
+            - errors: Schema validation errors, logical constraint violations, and security issues
+            - warnings: Non-critical issues and best practice recommendations
+            - suggestions: Specific guidance for resolving validation problems
+        
+        Behavior:
+            - Uses JSON Schema validation for structural validation when available
+            - Falls back to basic type and range validation when jsonschema unavailable
+            - Validates logical constraints (e.g., exponential_min < exponential_max)
+            - Checks for potentially problematic configurations
+            - Generates helpful suggestions based on validation errors
+            - Handles validation exceptions gracefully with appropriate error reporting
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> valid_config = {"retry_attempts": 3, "circuit_breaker_threshold": 5}
+            >>> result = validator.validate_custom_config(valid_config)
+            >>> assert result.is_valid
+            >>>
+            >>> # Invalid configuration
+            >>> invalid_config = {"retry_attempts": -1}
+            >>> result = validator.validate_custom_config(invalid_config)
+            >>> assert not result.is_valid
+            >>> assert any("minimum" in error for error in result.errors)
+            >>>
+            >>> # Configuration with warnings
+            >>> risky_config = {"retry_attempts": 10, "circuit_breaker_threshold": 1}
+            >>> result = validator.validate_custom_config(risky_config)
+            >>> # May be valid but include warnings about aggressive settings
+            >>> assert len(result.warnings) > 0
         """
         ...
 
@@ -195,12 +433,46 @@ class ResilienceConfigValidator:
 
     def validate_json_string(self, json_string: str) -> ValidationResult:
         """
-        Validate JSON string for custom configuration.
+        Validate JSON string containing custom resilience configuration.
+        
+        Parses JSON string and performs full validation of the resulting configuration
+        using the same validation logic as validate_custom_config(). Provides detailed
+        error reporting for both JSON parsing errors and configuration validation issues.
         
         Args:
-            json_string: JSON string to validate
-            
+            json_string: JSON string to parse and validate. Must contain valid JSON
+                         representing a resilience configuration dictionary
+        
         Returns:
-            ValidationResult with validation status and any errors
+            ValidationResult with parsing and validation results:
+            - is_valid: True if JSON parses successfully and configuration is valid
+            - errors: JSON parsing errors and/or configuration validation errors
+            - warnings: Configuration warnings and best practice recommendations
+            - suggestions: Guidance for fixing both JSON and configuration issues
+        
+        Behavior:
+            - Parses JSON string using json.loads() with strict parsing
+            - Validates parsed configuration using full validation pipeline
+            - Returns detailed JSON parsing errors with line/column information
+            - Propagates all configuration validation results to caller
+            - Handles JSON parsing exceptions gracefully with helpful error messages
+        
+        Examples:
+            >>> validator = ResilienceConfigValidator()
+            >>> valid_json = '{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
+            >>> result = validator.validate_json_string(valid_json)
+            >>> assert result.is_valid
+            >>>
+            >>> # Invalid JSON
+            >>> invalid_json = '{"retry_attempts": 3, "circuit_breaker_threshold": }'
+            >>> result = validator.validate_json_string(invalid_json)
+            >>> assert not result.is_valid
+            >>> assert "Invalid JSON" in result.errors[0]
+            >>>
+            >>> # Valid JSON but invalid configuration
+            >>> bad_config_json = '{"retry_attempts": -1}'
+            >>> result = validator.validate_json_string(bad_config_json)
+            >>> assert not result.is_valid
+            >>> assert "minimum" in result.errors[0]
         """
         ...
