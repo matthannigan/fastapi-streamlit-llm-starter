@@ -183,11 +183,12 @@ The application implements comprehensive error handling:
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional, Callable
 from fastapi import FastAPI, HTTPException, status, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.openapi.docs import get_swagger_ui_html
-from app.core.config import settings
+from app.core.config import settings, create_settings
 from app.core.middleware import setup_middleware, setup_enhanced_middleware
 from app.infrastructure.security import verify_api_key
 from app.core.environment import is_production_environment, get_environment_info, FeatureContext
@@ -492,6 +493,207 @@ def create_public_app() -> FastAPI:
         This function is called automatically during application startup and should not
         require manual invocation. The returned application is fully configured and
         ready for production deployment with comprehensive feature support.
+    """
+    ...
+
+
+def create_app(settings_obj: Optional['Settings'] = None, include_routers: bool = True, include_middleware: bool = True, lifespan: Optional[Callable] = None) -> FastAPI:
+    """
+    Factory function to create a fresh FastAPI application instance with comprehensive configuration.
+    
+    This function implements the app factory pattern that enables test isolation and multi-instance
+    scenarios while maintaining complete backward compatibility with existing deployment patterns.
+    It creates fresh FastAPI instances with all infrastructure properly configured from the
+    provided settings or creates new settings from current environment variables.
+    
+    Args:
+        settings_obj: Optional Settings instance for configuration. If None, creates fresh Settings
+                     from current environment variables using create_settings(). This enables
+                     test isolation scenarios with custom configuration overrides.
+        include_routers: Whether to register API routers (default: True). Useful for testing
+                        scenarios where router functionality needs to be isolated or disabled.
+        include_middleware: Whether to configure middleware stack (default: True). Enables
+                           testing scenarios without middleware interference.
+        lifespan: Optional custom lifespan context manager for application startup/shutdown.
+                  If None, uses the default lifespan for production deployment scenarios.
+    
+    Returns:
+        FastAPI: Fully configured FastAPI application instance containing:
+                - Complete dual-API architecture with public and internal endpoints
+                - Enhanced middleware stack with security, monitoring, and performance features
+                - Custom Swagger UI documentation with cross-API navigation
+                - Health monitoring infrastructure with comprehensive component validation
+                - Proper lifespan event management for service initialization and cleanup
+                - Production-ready security configurations and CORS policies
+    
+    Behavior:
+        **Fresh Instance Creation:**
+        - Creates completely new FastAPI instance independent of module-level singleton
+        - Uses provided settings_obj or creates fresh Settings from current environment
+        - Initializes all infrastructure services with new configuration context
+        - Provides complete isolation from other FastAPI instances
+    
+        **Configuration Management:**
+        - Applies all settings-based configuration (title, debug mode, API metadata)
+        - Configures middleware stack based on settings_obj or environment-derived settings
+        - Sets up router registration with proper versioning and tag organization
+        - Integrates health infrastructure and monitoring capabilities
+    
+        **Dual-API Architecture:**
+        - Creates main public API with comprehensive business logic endpoints
+        - Creates internal API for administrative and monitoring functionality
+        - Mounts internal API at /internal path with proper security isolation
+        - Maintains complete separation between public and internal concerns
+    
+        **Middleware Integration:**
+        - Applies enhanced middleware stack when include_middleware=True
+        - Configures CORS policies from settings for cross-origin request handling
+        - Sets up security headers, request logging, and performance monitoring
+        - Implements rate limiting and request size validation
+    
+        **Documentation Enhancement:**
+        - Configures custom Swagger UI with navigation between public/internal APIs
+        - Applies clean OpenAPI schema generation without default validation clutter
+        - Provides professional styling and responsive documentation interface
+        - Includes comprehensive endpoint metadata and operational guidance
+    
+        **Lifecycle Management:**
+        - Uses provided lifespan context manager or default production lifespan
+        - Handles service initialization during application startup
+        - Manages graceful shutdown and resource cleanup
+        - Integrates health infrastructure initialization
+    
+    Examples:
+        >>> # Basic factory usage with default settings
+        >>> app = create_app()
+        >>> assert app.title == "AI Text Processor API"
+        >>> assert "/internal" in [route.path for route in app.routes]
+    
+        >>> # Factory usage with custom settings for testing
+        >>> test_settings = Settings(debug=True, api_key="test-key")
+        >>> test_app = create_app(settings_obj=test_settings)
+        >>> # Test app uses provided settings instead of environment
+    
+        >>> # Factory usage for isolated testing
+        >>> def test_with_mock_services():
+        ...     # Create app without routers for focused testing
+        ...     minimal_app = create_app(include_routers=False)
+        ...     # Test middleware and configuration without endpoint complexity
+        ...     assert len(minimal_app.routes) < len(app.routes)
+    
+        >>> # Factory usage with custom lifespan
+        >>> @asynccontextmanager
+        ... async def test_lifespan(app: FastAPI):
+        ...     # Custom test initialization
+        ...     yield
+        ...     # Custom test cleanup
+        ...
+        >>> test_app = create_app(lifespan=test_lifespan)
+    
+        >>> # Environment override testing
+        >>> import os
+        >>> os.environ['DEBUG'] = 'true'
+        >>> debug_app = create_app()
+        >>> # Fresh app picks up environment changes immediately
+    
+        >>> # Multi-instance scenarios
+        >>> app1 = create_app()
+        >>> app2 = create_app()
+        >>> assert app1 is not app2  # Different instances
+        >>> # Each app has independent configuration and services
+    
+        >>> # Production deployment (unchanged)
+        >>> # Module-level app still works: from app.main import app
+        >>> # uvicorn app.main:app --host 0.0.0.0 --port 8000
+    
+        >>> # Testing with custom configuration
+        >>> test_settings = create_settings()
+        >>> test_settings.debug = True
+        >>> test_settings.log_level = "DEBUG"
+        >>> test_app = create_app(settings_obj=test_settings)
+        >>> # Test app uses provided settings for complete configuration control
+    
+    Production Usage:
+        Traditional deployment (no changes required)::
+    
+            from app.main import app  # Uses factory-created module-level app
+    
+        Custom deployment with specific settings::
+    
+            from app.main import create_app
+            from app.core.config import create_settings
+    
+            production_settings = create_settings()
+            production_settings.debug = False
+            custom_app = create_app(settings_obj=production_settings)
+    
+    Testing Usage:
+        Create isolated test fixtures with custom configuration::
+    
+            import pytest
+            from fastapi.testclient import TestClient
+            from app.main import create_app
+            from app.core.config import create_settings
+    
+            @pytest.fixture
+            def test_client():
+                """Create isolated test client with fresh app instance."""
+                test_settings = create_settings()
+                test_settings.debug = True
+                app = create_app(settings_obj=test_settings)
+                return TestClient(app)
+    
+        Test middleware configuration without endpoints::
+    
+            def test_middleware_only():
+                minimal_app = create_app(include_routers=False, include_middleware=True)
+                assert isinstance(minimal_app, FastAPI)
+    
+    Note:
+        This factory function enables test isolation and multi-instance deployment scenarios
+        while maintaining complete backward compatibility. For production deployment where
+        singleton behavior is preferred, the module-level `app` instance created via
+        `app = create_app()` continues to work without any changes to deployment scripts
+        or configuration files.
+    """
+    ...
+
+
+def create_public_app_with_settings(settings_obj: 'Settings', include_routers: bool = True, include_middleware: bool = True, lifespan: Optional[Callable] = None) -> FastAPI:
+    """
+    Factory function for creating the public FastAPI application with explicit settings.
+    
+    This is an internal helper function that creates the public-facing API application
+    using the provided settings instance. It enables the main create_app() factory
+    to maintain the dual-API architecture while providing proper configuration isolation.
+    
+    Args:
+        settings_obj: Settings instance to use for configuration
+        include_routers: Whether to register API routers
+        include_middleware: Whether to configure middleware stack
+        lifespan: Optional custom lifespan context manager
+    
+    Returns:
+        FastAPI: Configured public API application instance
+    """
+    ...
+
+
+def create_internal_app_with_settings(settings_obj: 'Settings', include_routers: bool = True, include_middleware: bool = True) -> FastAPI:
+    """
+    Factory function for creating the internal FastAPI application with explicit settings.
+    
+    This is an internal helper function that creates the internal administrative API application
+    using the provided settings instance. It enables the main create_app() factory
+    to maintain the dual-API architecture while providing proper configuration isolation.
+    
+    Args:
+        settings_obj: Settings instance to use for configuration
+        include_routers: Whether to register API routers
+        include_middleware: Whether to configure middleware stack (currently unused for internal app)
+    
+    Returns:
+        FastAPI: Configured internal API application instance
     """
     ...
 

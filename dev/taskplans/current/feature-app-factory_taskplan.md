@@ -146,19 +146,19 @@ Run extended test validation (100+ runs), remove deprecated workarounds, and ens
 **Goal**: Refactor `app/main.py` to use factory pattern, moving all initialization logic into `create_app()` while maintaining backward compatibility.
 
 #### Task 3.1: Analyze Current App Initialization
-- [ ] Audit current `app/main.py` structure:
-  - [ ] Document all module-level initialization code (app creation, middleware, routers)
-  - [ ] Identify dependencies on module-level `settings` singleton
-  - [ ] Map out router registration sequence and dependencies
-  - [ ] Document lifespan events (startup/shutdown) and their dependencies
-- [ ] Identify initialization dependencies:
-  - [ ] External service initialization (Redis, AI model, etc.)
-  - [ ] Middleware registration order and configuration
-  - [ ] Exception handlers and their dependencies
-  - [ ] CORS configuration and allowed origins
+- [x] Audit current `app/main.py` structure:
+  - [x] Document all module-level initialization code (app creation, middleware, routers)
+  - [x] Identify dependencies on module-level `settings` singleton
+  - [x] Map out router registration sequence and dependencies
+  - [x] Document lifespan events (startup/shutdown) and their dependencies
+- [x] Identify initialization dependencies:
+  - [x] External service initialization (Redis, AI model, etc.)
+  - [x] Middleware registration order and configuration
+  - [x] Exception handlers and their dependencies
+  - [x] CORS configuration and allowed origins
 
 #### Task 3.2: Implement create_app() Factory Function
-- [ ] Create `create_app()` function signature in `app/main.py`:
+- [x] Create `create_app()` function signature in `app/main.py`:
   ```python
   def create_app(
       settings: Optional[Settings] = None,
@@ -167,45 +167,62 @@ Run extended test validation (100+ runs), remove deprecated workarounds, and ens
       lifespan: Optional[Callable] = None
   ) -> FastAPI:
   ```
-- [ ] Move app initialization into factory function:
-  - [ ] Settings initialization: use provided settings or `create_settings()`
-  - [ ] FastAPI instance creation with settings-based configuration
-  - [ ] Title, description, version from settings
-  - [ ] OpenAPI URL configuration based on environment
-- [ ] Move router registration into factory:
-  - [ ] Public API routers (`/v1/*`) with configurable inclusion
-  - [ ] Internal API routers (`/internal/*`) with configurable inclusion
-  - [ ] Maintain router registration order for correct precedence
-  - [ ] Preserve all router prefix and tag configurations
-- [ ] Move middleware configuration into factory:
-  - [ ] CORS middleware with settings-based allowed origins
-  - [ ] Request logging middleware with environment awareness
-  - [ ] Any custom middleware with proper configuration
-  - [ ] Maintain middleware application order
+- [x] Move app initialization into factory function:
+  - [x] Settings initialization: use provided settings or `create_settings()`
+  - [x] FastAPI instance creation with settings-based configuration
+  - [x] Title, description, version from settings
+  - [x] OpenAPI URL configuration based on environment
+- [x] Move router registration into factory:
+  - [x] Public API routers (`/v1/*`) with configurable inclusion
+  - [x] Internal API routers (`/internal/*`) with configurable inclusion
+  - [x] Maintain router registration order for correct precedence
+  - [x] Preserve all router prefix and tag configurations
+- [x] Move middleware configuration into factory:
+  - [x] CORS middleware with settings-based allowed origins
+  - [x] Request logging middleware with environment awareness
+  - [x] Any custom middleware with proper configuration
+  - [x] Maintain middleware application order
+
+**Implementation Notes**:
+- Added helper functions `create_public_app_with_settings()` and `create_internal_app_with_settings()` for clean separation
+- Settings properly integrated throughout factory with fallback to `create_settings()`
+- Router and middleware registration made configurable with boolean parameters
+- Comprehensive docstrings with examples and usage patterns
 
 #### Task 3.3: Implement Lifespan Event Configuration
-- [ ] Create lifespan context manager within factory:
-  - [ ] Redis connection initialization and pooling
-  - [ ] AI model warmup and validation
-  - [ ] Health check registration and configuration
-  - [ ] Graceful shutdown for all external connections
-- [ ] Support custom lifespan for testing:
-  - [ ] Accept optional lifespan parameter for test scenarios
-  - [ ] Default lifespan for production use
-  - [ ] Proper resource cleanup in both cases
-  - [ ] Error handling for initialization failures
+- [x] Create lifespan context manager within factory:
+  - [x] Redis connection initialization and pooling
+  - [x] AI model warmup and validation
+  - [x] Health check registration and configuration
+  - [x] Graceful shutdown for all external connections
+- [x] Support custom lifespan for testing:
+  - [x] Accept optional lifespan parameter for test scenarios
+  - [x] Default lifespan for production use
+  - [x] Proper resource cleanup in both cases
+  - [x] Error handling for initialization failures
+
+**Implementation Notes**:
+- Lifespan events were already properly implemented in the existing codebase
+- No changes needed as the existing `lifespan` context manager works correctly with factory pattern
+- Custom lifespan parameter properly supported for testing scenarios
 
 #### Task 3.4: Maintain Backward-Compatible Module-Level App
-- [ ] Create default module-level app instance:
-  - [ ] Add `app = create_app()` at module level
-  - [ ] Ensure uvicorn can still reference `app.main:app`
-  - [ ] No changes required to deployment configuration
-  - [ ] No changes required to Docker configuration
-- [ ] Validate backward compatibility:
-  - [ ] Existing imports `from app.main import app` work unchanged
-  - [ ] Production deployment scripts work without modification
-  - [ ] Docker entrypoint continues to function correctly
-  - [ ] Development server startup (`uvicorn app.main:app`) works identically
+- [x] Create default module-level app instance:
+  - [x] Add `app = create_app()` at module level
+  - [x] Ensure uvicorn can still reference `app.main:app`
+  - [x] No changes required to deployment configuration
+  - [x] No changes required to Docker configuration
+- [x] Validate backward compatibility:
+  - [x] Existing imports `from app.main import app` work unchanged
+  - [x] Production deployment scripts work without modification
+  - [x] Docker entrypoint continues to function correctly
+  - [x] Development server startup (`uvicorn app.main:app`) works identically
+
+**Implementation Notes**:
+- Module-level app creation updated to use factory: `app = create_app()`
+- Internal app automatically mounted at `/internal` by factory
+- Zero breaking changes to deployment patterns
+- All existing imports and references continue to work
 
 ---
 

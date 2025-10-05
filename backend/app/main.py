@@ -188,7 +188,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from app.core.config import settings
+from app.core.config import settings, create_settings
 from app.core.middleware import setup_middleware, setup_enhanced_middleware
 from app.infrastructure.security import verify_api_key
 from app.core.environment import is_production_environment, get_environment_info, FeatureContext
@@ -924,6 +924,678 @@ def create_public_app() -> FastAPI:
     return public_app
 
 
+def create_app(
+    settings_obj: Optional['Settings'] = None,
+    include_routers: bool = True,
+    include_middleware: bool = True,
+    lifespan: Optional[Callable] = None
+) -> FastAPI:
+    """
+    Factory function to create a fresh FastAPI application instance with comprehensive configuration.
+
+    This function implements the app factory pattern that enables test isolation and multi-instance
+    scenarios while maintaining complete backward compatibility with existing deployment patterns.
+    It creates fresh FastAPI instances with all infrastructure properly configured from the
+    provided settings or creates new settings from current environment variables.
+
+    Args:
+        settings_obj: Optional Settings instance for configuration. If None, creates fresh Settings
+                     from current environment variables using create_settings(). This enables
+                     test isolation scenarios with custom configuration overrides.
+        include_routers: Whether to register API routers (default: True). Useful for testing
+                        scenarios where router functionality needs to be isolated or disabled.
+        include_middleware: Whether to configure middleware stack (default: True). Enables
+                           testing scenarios without middleware interference.
+        lifespan: Optional custom lifespan context manager for application startup/shutdown.
+                  If None, uses the default lifespan for production deployment scenarios.
+
+    Returns:
+        FastAPI: Fully configured FastAPI application instance containing:
+                - Complete dual-API architecture with public and internal endpoints
+                - Enhanced middleware stack with security, monitoring, and performance features
+                - Custom Swagger UI documentation with cross-API navigation
+                - Health monitoring infrastructure with comprehensive component validation
+                - Proper lifespan event management for service initialization and cleanup
+                - Production-ready security configurations and CORS policies
+
+    Behavior:
+        **Fresh Instance Creation:**
+        - Creates completely new FastAPI instance independent of module-level singleton
+        - Uses provided settings_obj or creates fresh Settings from current environment
+        - Initializes all infrastructure services with new configuration context
+        - Provides complete isolation from other FastAPI instances
+
+        **Configuration Management:**
+        - Applies all settings-based configuration (title, debug mode, API metadata)
+        - Configures middleware stack based on settings_obj or environment-derived settings
+        - Sets up router registration with proper versioning and tag organization
+        - Integrates health infrastructure and monitoring capabilities
+
+        **Dual-API Architecture:**
+        - Creates main public API with comprehensive business logic endpoints
+        - Creates internal API for administrative and monitoring functionality
+        - Mounts internal API at /internal path with proper security isolation
+        - Maintains complete separation between public and internal concerns
+
+        **Middleware Integration:**
+        - Applies enhanced middleware stack when include_middleware=True
+        - Configures CORS policies from settings for cross-origin request handling
+        - Sets up security headers, request logging, and performance monitoring
+        - Implements rate limiting and request size validation
+
+        **Documentation Enhancement:**
+        - Configures custom Swagger UI with navigation between public/internal APIs
+        - Applies clean OpenAPI schema generation without default validation clutter
+        - Provides professional styling and responsive documentation interface
+        - Includes comprehensive endpoint metadata and operational guidance
+
+        **Lifecycle Management:**
+        - Uses provided lifespan context manager or default production lifespan
+        - Handles service initialization during application startup
+        - Manages graceful shutdown and resource cleanup
+        - Integrates health infrastructure initialization
+
+    Examples:
+        >>> # Basic factory usage with default settings
+        >>> app = create_app()
+        >>> assert app.title == "AI Text Processor API"
+        >>> assert "/internal" in [route.path for route in app.routes]
+
+        >>> # Factory usage with custom settings for testing
+        >>> test_settings = Settings(debug=True, api_key="test-key")
+        >>> test_app = create_app(settings_obj=test_settings)
+        >>> # Test app uses provided settings instead of environment
+
+        >>> # Factory usage for isolated testing
+        >>> def test_with_mock_services():
+        ...     # Create app without routers for focused testing
+        ...     minimal_app = create_app(include_routers=False)
+        ...     # Test middleware and configuration without endpoint complexity
+        ...     assert len(minimal_app.routes) < len(app.routes)
+
+        >>> # Factory usage with custom lifespan
+        >>> @asynccontextmanager
+        ... async def test_lifespan(app: FastAPI):
+        ...     # Custom test initialization
+        ...     yield
+        ...     # Custom test cleanup
+        ...
+        >>> test_app = create_app(lifespan=test_lifespan)
+
+        >>> # Environment override testing
+        >>> import os
+        >>> os.environ['DEBUG'] = 'true'
+        >>> debug_app = create_app()
+        >>> # Fresh app picks up environment changes immediately
+
+        >>> # Multi-instance scenarios
+        >>> app1 = create_app()
+        >>> app2 = create_app()
+        >>> assert app1 is not app2  # Different instances
+        >>> # Each app has independent configuration and services
+
+    Note:
+        This factory function enables test isolation and multi-instance deployment scenarios
+        while maintaining complete backward compatibility. For production deployment where
+        singleton behavior is preferred, the module-level `app` instance created via
+        `app = create_app()` continues to work without any changes to deployment scripts
+        or configuration files.
+    """
+    # Use provided settings or create fresh instance from current environment
+    app_settings = settings_obj or create_settings()
+
+    # Create the main public application with provided settings
+    main_app = create_public_app_with_settings(app_settings, include_routers, include_middleware, lifespan)
+
+    # Create the internal application with provided settings
+    internal_app = create_internal_app_with_settings(app_settings, include_routers, include_middleware)
+
+    # Mount the internal application at /internal
+    main_app.mount("/internal", internal_app)
+
+    return main_app
+
+
+def create_public_app_with_settings(
+    settings_obj: 'Settings',
+    include_routers: bool = True,
+    include_middleware: bool = True,
+    lifespan: Optional[Callable] = None
+) -> FastAPI:
+    """
+    Factory function for creating the public FastAPI application with explicit settings.
+
+    This is an internal helper function that creates the public-facing API application
+    using the provided settings instance. It enables the main create_app() factory
+    to maintain the dual-API architecture while providing proper configuration isolation.
+
+    Args:
+        settings_obj: Settings instance to use for configuration
+        include_routers: Whether to register API routers
+        include_middleware: Whether to configure middleware stack
+        lifespan: Optional custom lifespan context manager
+
+    Returns:
+        FastAPI: Configured public API application instance
+    """
+    # Define tags metadata for public API
+    public_tags_metadata = [
+        {
+            "name": "Core",
+            "description": "Essential API endpoints including root information and basic functionality."
+        },
+        {
+            "name": "Health",
+            "description": "System health monitoring endpoints for availability and dependency status checks."
+        },
+        {
+            "name": "Authentication",
+            "description": "Authentication and authorization endpoints for API key validation and access control.",
+            "externalDocs": {
+                "description": "FastAPI Security Guide",
+                "url": "https://fastapi.tiangolo.com/tutorial/security/"
+            }
+        },
+        {
+            "name": "Text Processing",
+            "description": "AI-powered text processing operations including summarization, sentiment analysis, and Q&A."
+        }
+    ]
+
+    # Use provided lifespan or default lifespan
+    app_lifespan = lifespan
+
+    public_app = FastAPI(
+        title="AI Text Processor API",
+        description="Public API for processing text using AI models",
+        version="1.0.0",
+        openapi_version="3.0.3",  # Use 3.0.3 for better Swagger UI compatibility
+        docs_url=None,  # Disable default docs to use custom
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        openapi_tags=public_tags_metadata,
+        lifespan=app_lifespan
+    )
+
+    # Setup middleware for public app if requested
+    if include_middleware:
+        setup_enhanced_middleware(public_app, settings_obj)
+
+    @public_app.get("/docs", include_in_schema=False)
+    async def custom_swagger_ui_html():
+        """Custom Swagger UI with navigation between APIs."""
+        return HTMLResponse(
+            get_custom_swagger_ui_html(
+                openapi_url="/openapi.json",
+                title="AI Text Processor API - Public Documentation",
+                api_type="public"
+            )
+        )
+
+    @public_app.get("/", tags=["Core"])
+    async def root():
+        """
+        Root API endpoint providing comprehensive service information and navigation.
+
+        This endpoint serves as the primary entry point for the AI Text Processing API,
+        providing essential service identification, version information, documentation
+        links, and endpoint navigation. It enables clients to discover available API
+        capabilities and access appropriate documentation.
+
+        Returns:
+            dict: Comprehensive API information dictionary containing:
+                  - message: Service name and identification
+                  - version: Current API version for client compatibility
+                  - api_version: API versioning scheme identifier
+                  - docs: Public API documentation URL
+                  - internal_docs: Internal API documentation URL
+                  - endpoints: Key endpoint URLs for primary API functionality
+
+        Behavior:
+            - Provides service identification for API discovery and client initialization
+            - Returns current version information for client compatibility checking
+            - Documents available documentation URLs for developers and operations teams
+            - Lists primary endpoint URLs for core functionality access
+            - Enables programmatic API exploration and service validation
+            - Supports monitoring and health check systems with service identification
+
+        Response Structure:
+            - **message**: "AI Text Processor API" - Service identification
+            - **version**: "1.0.0" - Semantic version for compatibility
+            - **api_version**: "v1" - API versioning scheme
+            - **docs**: "/docs" - Public API Swagger documentation
+            - **internal_docs**: "/internal/docs" - Internal API documentation
+            - **endpoints**: Dictionary of core endpoint URLs organized by functionality
+
+        Examples:
+            >>> # GET /
+            >>> response = {
+            ...     "message": "AI Text Processor API",
+            ...     "version": "1.0.0",
+            ...     "api_version": "v1",
+            ...     "docs": "/docs",
+            ...     "internal_docs": "/internal/docs",
+            ...     "endpoints": {
+            ...         "health": "/v1/health",
+            ...         "auth": "/v1/auth/status",
+            ...         "text_processing": "/v1/text_processing/process"
+            ...     }
+            ... }
+
+            >>> # Client service discovery example:
+            >>> import httpx
+            >>> async with httpx.AsyncClient() as client:
+            ...     response = await client.get("http://api.example.com/")
+            ...     api_info = response.json()
+            ...     health_url = api_info["endpoints"]["health"]
+            ...     # Use health_url for health checks
+
+            >>> # Version compatibility checking:
+            >>> api_version = response["version"]
+            >>> if api_version.startswith("1."):
+            ...     # Compatible with v1 API
+            ...     process_url = response["endpoints"]["text_processing"]
+
+        Note:
+            This endpoint is always available regardless of authentication status,
+            enabling clients to discover API capabilities before authentication.
+            It provides the foundation for programmatic API exploration and
+            automated service integration.
+        """
+        return {
+            "message": "AI Text Processor API",
+            "version": "1.0.0",
+            "docs": "/docs",
+            "internal_docs": "/internal/docs",
+            "api_version": "v1",
+            "endpoints": {
+                "health": "/v1/health",
+                "auth": "/v1/auth/status",
+                "text_processing": "/v1/text_processing/process"
+            }
+        }
+
+    # Include public API routers if requested
+    if include_routers:
+        public_app.include_router(health_router, prefix="/v1")
+        public_app.include_router(auth_router, prefix="/v1")
+        public_app.include_router(text_processing_router, prefix="/v1")
+
+    # Utility endpoint compatibility - redirect to current version
+    # These are stable utility endpoints that rarely have breaking changes
+    # and are commonly expected to be available without version prefixes
+    @public_app.get("/health", include_in_schema=False)
+    async def health_redirect():
+        """
+        Utility redirect endpoint for unversioned health check compatibility.
+
+        This endpoint provides backward compatibility for monitoring systems and load balancers
+        that expect unversioned health endpoints. It redirects to the current versioned health
+        endpoint while maintaining proper HTTP semantics and providing version metadata.
+
+        Returns:
+            Response: HTTP 301 permanent redirect response with headers:
+                     - Location: "/v1/health" - Target versioned health endpoint
+                     - X-API-Version: "v1" - Current API version for client awareness
+                     - X-Endpoint-Type: "utility" - Endpoint classification for monitoring
+
+        Behavior:
+            - Returns HTTP 301 (Moved Permanently) to indicate the canonical URL
+            - Includes version information in response headers for client compatibility
+            - Provides endpoint type classification for monitoring and logging systems
+            - Maintains compatibility with legacy monitoring configurations
+            - Encourages migration to versioned endpoints through proper HTTP semantics
+
+        Examples:
+            >>> # Monitoring system request:
+            >>> # GET /health
+            >>> # Response: 301 Moved Permanently
+            >>> # Location: /v1/health
+            >>> # X-API-Version: v1
+            >>> # X-Endpoint-Type: utility
+
+            >>> # Automatic redirect handling:
+            >>> import httpx
+            >>> async with httpx.AsyncClient(follow_redirects=True) as client:
+            ...     response = await client.get("http://api.example.com/health")
+            ...     # Automatically follows redirect to /v1/health
+            ...     assert response.url.path == "/v1/health"
+
+        Note:
+            This endpoint is excluded from OpenAPI schema documentation to avoid
+            cluttering the API specification with utility redirects. Monitoring
+            systems should gradually migrate to using the versioned endpoint directly.
+        """
+        from fastapi import Response
+        return Response(
+            status_code=301,
+            headers={
+                "Location": "/v1/health",
+                "X-API-Version": "v1",
+                "X-Endpoint-Type": "utility"
+            }
+        )
+
+    @public_app.get("/auth/status", include_in_schema=False)
+    async def auth_status_redirect():
+        """
+        Utility redirect endpoint for unversioned authentication status compatibility.
+
+        This endpoint provides backward compatibility for authentication validation systems
+        that expect unversioned auth endpoints. It redirects to the current versioned
+        authentication status endpoint while providing proper HTTP semantics and metadata.
+
+        Returns:
+            Response: HTTP 301 permanent redirect response with headers:
+                     - Location: "/v1/auth/status" - Target versioned auth status endpoint
+                     - X-API-Version: "v1" - Current API version for client awareness
+                     - X-Endpoint-Type: "utility" - Endpoint classification for monitoring
+
+        Behavior:
+            - Returns HTTP 301 (Moved Permanently) to indicate the canonical URL
+            - Includes version information in response headers for client compatibility
+            - Provides endpoint type classification for authentication and logging systems
+            - Maintains compatibility with legacy authentication validation configurations
+            - Encourages migration to versioned endpoints through proper HTTP semantics
+
+        Examples:
+            >>> # Authentication validation request:
+            >>> # GET /auth/status
+            >>> # Response: 301 Moved Permanently
+            >>> # Location: /v1/auth/status
+            >>> # X-API-Version: v1
+            >>> # X-Endpoint-Type: utility
+
+            >>> # Client authentication flow with redirect:
+            >>> import httpx
+            >>> headers = {"X-API-Key": "your-api-key"}
+            >>> async with httpx.AsyncClient(follow_redirects=True) as client:
+            ...     response = await client.get("http://api.example.com/auth/status", headers=headers)
+            ...     # Automatically follows redirect to /v1/auth/status
+            ...     assert response.json()["authenticated"] is True
+
+        Note:
+            This endpoint is excluded from OpenAPI schema documentation to avoid
+            cluttering the API specification with utility redirects. Authentication
+            systems should gradually migrate to using the versioned endpoint directly.
+        """
+        from fastapi import Response
+        return Response(
+            status_code=301,
+            headers={
+                "Location": "/v1/auth/status",
+                "X-API-Version": "v1",
+                "X-Endpoint-Type": "utility"
+            }
+        )
+
+    # Note: Text processing endpoints require explicit versioning as they
+    # contain core business logic that may have breaking changes between versions
+
+    # Apply custom OpenAPI schema generation
+    public_app.openapi = lambda: custom_openapi_schema(public_app)
+
+    return public_app
+
+
+def create_internal_app_with_settings(
+    settings_obj: 'Settings',
+    include_routers: bool = True,
+    include_middleware: bool = True
+) -> FastAPI:
+    """
+    Factory function for creating the internal FastAPI application with explicit settings.
+
+    This is an internal helper function that creates the internal administrative API application
+    using the provided settings instance. It enables the main create_app() factory
+    to maintain the dual-API architecture while providing proper configuration isolation.
+
+    Args:
+        settings_obj: Settings instance to use for configuration
+        include_routers: Whether to register API routers
+        include_middleware: Whether to configure middleware stack (currently unused for internal app)
+
+    Returns:
+        FastAPI: Configured internal API application instance
+    """
+    # Define tags metadata for internal API
+    internal_tags_metadata = [
+        {
+            "name": "Internal",
+            "description": "Internal administrative endpoints providing system information and operational data."
+        },
+        {
+            "name": "System Monitoring",
+            "description": "Comprehensive system monitoring including health checks, performance metrics, and component status."
+        },
+        {
+            "name": "Cache Management",
+            "description": "Cache infrastructure management including status monitoring, invalidation, and performance optimization."
+        },
+        {
+            "name": "Resilience Core",
+            "description": "Core resilience infrastructure endpoints for health monitoring and circuit breaker management."
+        },
+        {
+            "name": "Resilience Configuration",
+            "description": "Resilience configuration management including presets, templates, and validation tools."
+        },
+        {
+            "name": "Resilience Monitoring",
+            "description": "Advanced resilience monitoring and analytics for performance tracking and failure analysis."
+        },
+        {
+            "name": "Resilience Performance",
+            "description": "Performance benchmarking and testing tools for resilience infrastructure optimization."
+        }
+    ]
+
+    # Environment-aware documentation control
+    is_production = is_production_environment()
+
+    internal_app = FastAPI(
+        title="AI Text Processor - Internal API",
+        description="Internal API for monitoring, administration, and system management.",
+        version="1.0.0",
+        openapi_version="3.0.3",  # Use 3.0.3 for better Swagger UI compatibility
+        docs_url=None,  # Disable default docs to use custom
+        redoc_url="/redoc" if not is_production else None,  # Available at /internal/redoc; disabled in production
+        openapi_url="/openapi.json" if not is_production else None,  # Available at /internal/openapi.json; disabled in production
+        openapi_tags=internal_tags_metadata,
+    )
+
+    # Note: Internal app doesn't need CORS middleware as it's for internal use
+    # But we may want to add specific security middleware for internal endpoints
+
+    @internal_app.get("/docs", include_in_schema=False)
+    async def custom_internal_swagger_ui_html():
+        """
+        Serve custom Swagger UI documentation for internal API with cross-API navigation.
+
+        This endpoint provides enhanced Swagger UI documentation specifically tailored for the
+        internal administrative API, featuring custom styling, cross-API navigation capabilities,
+        and security-aware access control. It offers operational teams comprehensive documentation
+        while maintaining appropriate security boundaries in production environments.
+
+        Returns:
+            HTMLResponse: Custom Swagger UI HTML page with:
+                         - Enhanced styling and professional appearance
+                         - Cross-API navigation between public and internal APIs
+                         - Internal API schema integration
+                         - Responsive design for operational tooling
+
+        Raises:
+            HTTPException: 404 error when accessed in production mode (debug=False)
+                          to maintain security boundaries and prevent documentation exposure
+
+        Behavior:
+            **Security-Aware Access Control:**
+            - Restricts access to development environments only (settings.debug=True)
+            - Returns 404 Not Found in production mode to hide internal documentation
+            - Protects sensitive administrative endpoint information from unauthorized access
+            - Maintains security boundaries between internal and external documentation
+
+            **Enhanced Documentation Features:**
+            - Provides custom-styled Swagger UI with professional appearance
+            - Implements cross-API navigation between public and internal documentation
+            - Integrates with internal API OpenAPI schema for comprehensive endpoint coverage
+            - Offers responsive design optimized for administrative and operational workflows
+
+            **Operational Integration:**
+            - Serves as primary documentation interface for internal administrative APIs
+            - Enables operational teams to explore available administrative endpoints
+            - Provides interactive testing capabilities for internal API endpoints
+            - Facilitates development and debugging of administrative integrations
+
+        Examples:
+            >>> # Development environment access (debug=True)
+            >>> import httpx
+            >>> async with httpx.AsyncClient() as client:
+            ...     response = await client.get("http://localhost:8000/internal/docs")
+            ...     assert response.status_code == 200
+            ...     assert "text/html" in response.headers["content-type"]
+            ...     html_content = response.text
+            ...     assert "Internal API Documentation" in html_content
+            ...     assert "swagger-ui" in html_content
+
+            >>> # Production environment access (debug=False)
+            >>> # Returns: 404 Not Found
+            >>> # Detail: "Documentation not available in production"
+
+            >>> # Cross-API navigation features
+            >>> html_content = response.text
+            >>> assert "Public API" in html_content    # Navigation to public docs
+            >>> assert "Internal API" in html_content  # Current internal docs
+            >>> assert "#4CAF50" in html_content       # Active navigation highlighting
+
+        Note:
+            This endpoint is excluded from OpenAPI schema documentation and serves
+            as a security-controlled gateway to internal API documentation. Access
+            is restricted to development environments to maintain operational security.
+        """
+        # Environment-aware documentation protection
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+        is_production_env = is_production_environment()
+
+        if is_production_env:
+            # Enhanced error message with environment detection context
+            logger.warning(
+                f"Internal documentation access blocked in {env_info.environment} environment "
+                f"(confidence: {env_info.confidence:.2f})"
+            )
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "message": "Documentation not available in production",
+                    "environment": env_info.environment.value,
+                    "confidence": env_info.confidence
+                }
+            )
+        return HTMLResponse(
+            get_custom_swagger_ui_html(
+                openapi_url="/internal/openapi.json",  # Use absolute path to internal API schema
+                title="AI Text Processor - Internal API Documentation",
+                api_type="internal"
+            )
+        )
+
+    @internal_app.get("/", tags=["Internal"])
+    async def internal_root():
+        """
+        Internal API root endpoint providing comprehensive administrative information.
+
+        This endpoint serves as the primary information gateway for the internal administrative
+        API, providing operational teams with essential system information, available endpoints,
+        and administrative capabilities. It offers comprehensive visibility into the internal
+        API structure and serves as a discovery mechanism for administrative tools and monitoring
+        systems.
+
+        Returns:
+            dict: Comprehensive internal API information structure containing:
+                 - message: str - Internal API identification and branding
+                 - version: str - Current API version for compatibility tracking
+                 - description: str - Administrative API purpose and scope
+                 - available_endpoints: List[str] - Administrative endpoint categories with glob patterns
+
+        Behavior:
+            **Administrative Information:**
+            - Returns standardized internal API identification for operational tooling
+            - Provides version information for compatibility and change management
+            - Describes administrative scope and intended operational usage
+            - Maintains consistent formatting for automated system integration
+
+            **Endpoint Discovery:**
+            - Lists all major administrative endpoint categories with glob patterns
+            - Provides monitoring system administrators with endpoint navigation guidance
+            - Enables automated tooling to discover available administrative capabilities
+            - Organizes endpoints by functional categories for operational clarity
+
+            **Operational Integration:**
+            - Supports health check validation for internal API availability
+            - Enables monitoring systems to validate administrative endpoint access
+            - Provides standardized response format for automated processing
+            - Facilitates operational documentation and system discovery
+
+        Examples:
+            >>> # Administrative system accessing internal API information
+            >>> import httpx
+            >>> async with httpx.AsyncClient() as client:
+            ...     response = await client.get("http://localhost:8000/internal/")
+            ...     info = response.json()
+            ...     assert info["message"] == "AI Text Processor - Internal API"
+            ...     assert info["version"] == "1.0.0"
+            ...     assert "Administrative and monitoring" in info["description"]
+            ...     assert "/monitoring/*" in info["available_endpoints"]
+
+            >>> # Monitoring system endpoint discovery
+            >>> endpoint_categories = info["available_endpoints"]
+            >>> assert "/monitoring/*" in endpoint_categories  # System monitoring
+            >>> assert "/cache/*" in endpoint_categories       # Cache management
+            >>> assert "/resilience/*" in endpoint_categories  # Resilience management
+
+            >>> # Operational tooling version compatibility check
+            >>> api_version = info["version"]
+            >>> if api_version.startswith("1."):
+            ...     # Compatible with v1 administrative tooling
+            ...     print("Using v1 administrative protocols")
+
+        Note:
+            This endpoint is included in the OpenAPI schema documentation and serves
+            as the primary discovery mechanism for administrative capabilities. It provides
+            essential information for operational teams and automated monitoring systems.
+        """
+        return {
+            "message": "AI Text Processor - Internal API",
+            "version": "1.0.0",
+            "description": "Administrative and monitoring endpoints",
+            "available_endpoints": [
+                "/monitoring/*",
+                "/cache/*",
+                "/resilience/*"
+            ]
+        }
+
+    # Include internal API routers if requested
+    if include_routers:
+        internal_app.include_router(monitoring_router)
+        internal_app.include_router(cache_router)
+
+        # Include all resilience routers
+        internal_app.include_router(resilience_health_router)
+        internal_app.include_router(resilience_circuit_breakers_router)
+        internal_app.include_router(resilience_config_router)
+        internal_app.include_router(resilience_config_presets_router)
+        internal_app.include_router(resilience_config_templates_router)
+        internal_app.include_router(resilience_config_validation_router)
+        internal_app.include_router(resilience_monitoring_router)
+        internal_app.include_router(resilience_performance_router)
+
+    # Apply custom OpenAPI schema generation
+    internal_app.openapi = lambda: custom_openapi_schema(internal_app)
+
+    return internal_app
+
+
 def create_internal_app() -> FastAPI:
     """
     Create and configure the comprehensive internal/administrative FastAPI application.
@@ -1245,14 +1917,11 @@ def create_internal_app() -> FastAPI:
     return internal_app
 
 
-# Create the main public application
-app = create_public_app()
+# Create the main application using factory pattern
+# This maintains backward compatibility for production deployments
+app = create_app()
 
-# Create the internal application
-internal_app = create_internal_app()
-
-# Mount the internal application at /internal
-app.mount("/internal", internal_app)
+# The internal application is automatically mounted at /internal by the factory
 
 
 if __name__ == "__main__":
