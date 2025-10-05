@@ -31,24 +31,24 @@ class TestMultiKeyEndpointIntegration:
     """
 
     def test_primary_api_key_grants_access_to_auth_status_endpoint(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test primary API_KEY provides access to protected auth status endpoint.
-        
+
         Integration Scope:
             Tests complete flow from HTTP request through primary key validation
             to successful endpoint response generation.
-            
+
         Business Impact:
             Ensures users with primary API key can access all protected
             functionality including system status monitoring.
-            
+
         Test Strategy:
             - Configure primary API key in environment
             - Make authenticated request to auth status endpoint
             - Verify successful authentication and proper response content
-            
+
         Success Criteria:
             - Returns 200 status code for successful authentication
             - Response includes authenticated user context
@@ -59,7 +59,7 @@ class TestMultiKeyEndpointIntegration:
         auth_headers = {"Authorization": "Bearer test-production-key"}
 
         # Act: Access protected endpoint with primary key
-        response = client.get("/v1/auth/status", headers=auth_headers)
+        response = production_client.get("/v1/auth/status", headers=auth_headers)
 
         # Assert: Verify primary key authentication success
         assert response.status_code == status.HTTP_200_OK
@@ -70,7 +70,7 @@ class TestMultiKeyEndpointIntegration:
         assert "Authentication successful" in response_data["message"]
 
     def test_additional_api_keys_provide_equivalent_access(
-        self, client, multiple_api_keys_environment
+        self, multiple_api_keys_client
     ):
         """
         Test ADDITIONAL_API_KEYS work identically to primary key.
@@ -96,7 +96,7 @@ class TestMultiKeyEndpointIntegration:
         """
         # Test secondary key access
         secondary_headers = {"Authorization": "Bearer secondary-key-67890"}
-        response = client.get("/v1/auth/status", headers=secondary_headers)
+        response = multiple_api_keys_client.get("/v1/auth/status", headers=secondary_headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -105,7 +105,7 @@ class TestMultiKeyEndpointIntegration:
 
         # Test tertiary key access
         tertiary_headers = {"Authorization": "Bearer tertiary-key-11111"}
-        response = client.get("/v1/auth/status", headers=tertiary_headers)
+        response = multiple_api_keys_client.get("/v1/auth/status", headers=tertiary_headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
@@ -113,7 +113,7 @@ class TestMultiKeyEndpointIntegration:
         assert response_data["api_key_prefix"] == "tertiary..."
 
     def test_whitespace_handling_in_additional_api_keys(
-        self, client, multiple_api_keys_environment
+        self, multiple_api_keys_client
     ):
         """
         Test API keys with whitespace are handled correctly.
@@ -141,14 +141,14 @@ class TestMultiKeyEndpointIntegration:
         # Test that exact key values work (whitespace should be trimmed during config loading)
 
         secondary_headers = {"Authorization": "Bearer secondary-key-67890"}
-        response = client.get("/v1/auth/status", headers=secondary_headers)
+        response = multiple_api_keys_client.get("/v1/auth/status", headers=secondary_headers)
 
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
         assert response_data["authenticated"] is True
 
     def test_invalid_api_key_format_rejected_with_structured_error(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test invalid API key format returns proper structured error response.
@@ -176,7 +176,7 @@ class TestMultiKeyEndpointIntegration:
         invalid_headers = {"Authorization": "Bearer malformed-key!@#$%"}
 
         # Act: Attempt authentication with invalid key format
-        response = client.get("/v1/auth/status", headers=invalid_headers)
+        response = production_client.get("/v1/auth/status", headers=invalid_headers)
 
         # Assert: Verify structured error response
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -190,7 +190,7 @@ class TestMultiKeyEndpointIntegration:
         assert context["environment"] == "production"
 
     def test_unknown_valid_format_key_rejected_with_debugging_context(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test unknown but valid-format key provides helpful debugging context.
@@ -218,7 +218,7 @@ class TestMultiKeyEndpointIntegration:
         unknown_headers = {"Authorization": "Bearer sk-unknown-valid-format-key"}
 
         # Act: Attempt authentication with unknown key
-        response = client.get("/v1/auth/status", headers=unknown_headers)
+        response = production_client.get("/v1/auth/status", headers=unknown_headers)
 
         # Assert: Verify helpful error response
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -231,7 +231,7 @@ class TestMultiKeyEndpointIntegration:
         assert context["credentials_provided"] is True
 
     def test_x_api_key_header_authentication_works_equivalently(
-        self, client, production_environment
+        self, production_client
     ):
         """
         Test X-API-Key header provides equivalent authentication to Bearer token.
@@ -259,7 +259,7 @@ class TestMultiKeyEndpointIntegration:
         api_key_headers = {"X-API-Key": "test-production-key"}
 
         # Act: Authenticate using X-API-Key header
-        response = client.get("/v1/auth/status", headers=api_key_headers)
+        response = production_client.get("/v1/auth/status", headers=api_key_headers)
 
         # Assert: Verify equivalent authentication
         assert response.status_code == status.HTTP_200_OK

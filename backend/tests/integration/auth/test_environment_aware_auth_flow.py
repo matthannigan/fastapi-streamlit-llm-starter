@@ -144,24 +144,24 @@ class TestEnvironmentAwareAuthenticationFlow:
         assert response_data["detail"]["context"]["environment"] == "production"
 
     def test_development_environment_allows_unauthenticated_access(
-        self, client, development_environment
+        self, development_client
     ):
         """
         Test development environment allows access without authentication.
-        
+
         Integration Scope:
             Tests development mode flow through environment detection,
             security policy determination, and development mode response.
-            
+
         Business Impact:
             Enables frictionless local development without requiring
             API key configuration while maintaining security awareness.
-            
+
         Test Strategy:
             - Configure development environment with no API keys
             - Make unauthenticated request to protected endpoint
             - Verify successful access with development mode indicators
-            
+
         Success Criteria:
             - Returns 200 status indicating successful access
             - Response indicates development mode operation
@@ -169,7 +169,7 @@ class TestEnvironmentAwareAuthenticationFlow:
             - Authentication context shows development mode status
         """
         # Act: Make unauthenticated request in development environment
-        response = client.get("/v1/auth/status")
+        response = development_client.get("/v1/auth/status")
 
         # Assert: Verify development mode access
         assert response.status_code == status.HTTP_200_OK
