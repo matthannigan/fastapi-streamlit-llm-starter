@@ -87,50 +87,130 @@ graph TB
 
 ### Environment Classifications
 
-The service provides five standard environment classifications:
+The service provides five standard environment classifications with string enum behavior:
 
 ```python
 from app.core.environment import Environment
 
 class Environment(str, Enum):
-    DEVELOPMENT = "development"    # Local development and testing
+    DEVELOPMENT = "development"    # Local development and testing environments
     TESTING = "testing"           # Automated testing and CI environments
-    STAGING = "staging"           # Pre-production integration testing
-    PRODUCTION = "production"     # Live production environments
+    STAGING = "staging"           # Pre-production integration testing environments
+    PRODUCTION = "production"     # Live production environments serving real users
     UNKNOWN = "unknown"           # Fallback when environment cannot be determined
+```
+
+**Usage Examples:**
+```python
+# String-like behavior for configuration
+env = Environment.PRODUCTION
+assert env.value == "production"
+assert str(env) == "production"
+
+# Comparison in configuration logic
+if env == Environment.PRODUCTION:
+    use_redis_cache = True
 ```
 
 ### Feature Contexts
 
-Feature contexts enable specialized detection for specific infrastructure needs:
+Feature contexts enable specialized detection for specific infrastructure needs with string enum behavior:
 
 ```python
 from app.core.environment import FeatureContext
 
 class FeatureContext(str, Enum):
-    AI_ENABLED = "ai_enabled"                    # AI-powered features
-    SECURITY_ENFORCEMENT = "security_enforcement" # Security-critical features
-    CACHE_OPTIMIZATION = "cache_optimization"    # Cache-intensive operations
-    RESILIENCE_STRATEGY = "resilience_strategy"  # Resilience pattern selection
-    DEFAULT = "default"                          # Standard detection
+    AI_ENABLED = "ai_enabled"                    # AI-powered features requiring model access
+    SECURITY_ENFORCEMENT = "security_enforcement" # Security-critical features with stricter requirements
+    CACHE_OPTIMIZATION = "cache_optimization"    # Cache-intensive operations with performance tuning
+    RESILIENCE_STRATEGY = "resilience_strategy"  # Resilience pattern selection and configuration
+    DEFAULT = "default"                          # Standard environment detection without feature context
+```
+
+**Feature Context Behavior:**
+- Each context applies specialized detection logic
+- May include environment variable checks and overrides
+- Provides feature-specific metadata in detection results
+- Used with both convenience functions and detector methods
+
+**Example Usage:**
+```python
+# Basic usage
+context = FeatureContext.AI_ENABLED
+assert context.value == "ai_enabled"
+
+# Used with environment detection for feature-aware results
+env_info = detector.detect_with_context(FeatureContext.SECURITY_ENFORCEMENT)
+# May return production environment even in dev if security is enforced
 ```
 
 ### Detection Results
 
-Environment detection returns comprehensive information with confidence scoring:
+Environment detection returns comprehensive information with confidence scoring via dataclass:
 
 ```python
 from app.core.environment import EnvironmentInfo
 
 @dataclass
 class EnvironmentInfo:
-    environment: Environment              # Final determined environment
-    confidence: float                    # Confidence score (0.0-1.0)
-    reasoning: str                       # Human-readable explanation
-    detected_by: str                     # Primary detection mechanism
-    feature_context: FeatureContext      # Feature context used
-    additional_signals: List[EnvironmentSignal]  # All detection evidence
-    metadata: Dict[str, Any]             # Feature-specific hints
+    environment: Environment              # Final determined environment classification
+    confidence: float                    # Overall confidence score (0.0-1.0) for the detection
+    reasoning: str                       # Human-readable explanation of the detection decision
+    detected_by: str                     # Primary detection mechanism that determined the environment
+    feature_context: FeatureContext      # Feature-specific context used in detection
+    additional_signals: List[EnvironmentSignal]  # All environment signals collected during detection
+    metadata: Dict[str, Any]             # Feature-specific metadata and configuration hints
+
+    def __str__(self) -> str:
+        """String representation for logging and debugging."""
+        ...
+```
+
+**EnvironmentInfo Usage:**
+```python
+# Basic environment checking
+env_info = detector.detect_environment()
+if env_info.environment == Environment.PRODUCTION and env_info.confidence > 0.8:
+    enable_production_features()
+
+# Feature-aware detection
+ai_env = detector.detect_with_context(FeatureContext.AI_ENABLED)
+if 'ai_prefix' in ai_env.metadata:
+    cache_key_prefix = ai_env.metadata['ai_prefix']
+
+# Debugging detection issues
+print(f"Environment: {env_info}")
+print(f"Reasoning: {env_info.reasoning}")
+for signal in env_info.additional_signals:
+    print(f"  - {signal.source}: {signal.reasoning}")
+```
+
+### Environment Signals
+
+Individual detection evidence with NamedTuple structure for performance:
+
+```python
+from app.core.environment import EnvironmentSignal
+
+class EnvironmentSignal(NamedTuple):
+    source: str                          # Detection mechanism (e.g., "env_var", "hostname_pattern")
+    value: str                           # Raw value that triggered detection (e.g., "production")
+    environment: Environment             # Environment classification this signal indicates
+    confidence: float                    # Confidence score from 0.0-1.0 for this detection
+    reasoning: str                       # Human-readable explanation of detection logic
+```
+
+**Signal Example:**
+```python
+signal = EnvironmentSignal(
+    source="ENVIRONMENT",
+    value="production",
+    environment=Environment.PRODUCTION,
+    confidence=0.95,
+    reasoning="Explicit environment from ENVIRONMENT=production"
+)
+assert signal.confidence > 0.9
+assert signal.environment == Environment.PRODUCTION
 ```
 
 ## Environment Detection Process
@@ -294,7 +374,11 @@ from app.core.environment import DetectionConfig, EnvironmentDetector
 # Custom configuration for specialized deployment
 config = DetectionConfig(
     env_var_precedence=['CUSTOM_ENV', 'ENVIRONMENT'],
-    production_patterns=[r'.*live.*', r'.*prod.*'],
+    development_patterns=[r'.*local.*', r'.*dev-.*', r'.*sandbox.*'],
+    staging_patterns=[r'.*staging.*', r'.*uat.*', r'.*integration.*'],
+    production_patterns=[r'.*live.*', r'.*prod.*', r'.*release.*', r'.*main.*'],
+    development_indicators=['DEBUG=true', 'DEBUG=1', '.env', '.git'],
+    production_indicators=['PRODUCTION=true', 'PROD=true', 'DEBUG=false'],
     feature_contexts={
         FeatureContext.SECURITY_ENFORCEMENT: {
             'environment_var': 'FORCE_SECURE_MODE',
@@ -581,7 +665,7 @@ config = DetectionConfig(
 ### Custom Detection Patterns
 
 ```python
-# Custom deployment patterns
+# Custom deployment patterns with comprehensive configuration
 config = DetectionConfig(
     env_var_precedence=['CUSTOM_ENV', 'DEPLOYMENT_STAGE', 'ENVIRONMENT'],
     development_patterns=[
@@ -599,8 +683,14 @@ config = DetectionConfig(
         r'.*live.*',
         r'.*release.*',
         r'.*main.*'
-    ]
+    ],
+    development_indicators=['TEST_MODE=true', 'DEVELOPMENT_MODE=true'],
+    production_indicators=['LIVE_MODE=true', 'RELEASE_MODE=true']
 )
+
+# Apply custom patterns
+detector = EnvironmentDetector(config)
+env_info = detector.detect_environment()
 ```
 
 ### Integration Testing Support

@@ -349,15 +349,25 @@ class AIServiceResilience:
     
     def get_or_create_circuit_breaker(self, name: str, config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
         """
-        Retrieve existing circuit breaker or create new one for operation with specified configuration.
-        
+        Retrieve existing circuit breaker or create new one with operation-specific configuration.
+
+        Implements circuit breaker pattern isolation by maintaining separate circuit breaker
+        instances per operation name. Provides thread-safe creation and retrieval with
+        automatic configuration application for new circuit breakers.
+
         Args:
-            name: Unique operation name used as circuit breaker identifier
-            config: CircuitBreakerConfig containing failure_threshold, recovery_timeout settings
-            
+            name: Unique operation name used as circuit breaker identifier.
+                  Must be consistent across all calls for the same operation to ensure
+                  proper circuit breaker state management and metrics aggregation
+            config: CircuitBreakerConfig containing failure_threshold (minimum 1),
+                    recovery_timeout in seconds (minimum 10), and other circuit breaker
+                    settings for operation-specific behavior customization
+
         Returns:
-            EnhancedCircuitBreaker instance configured for the operation, either existing or newly created
-            
+            EnhancedCircuitBreaker instance configured with TransientAIError as the expected
+            exception type. Returns existing instance if already created for the operation
+            name, otherwise creates new instance with provided configuration
+
         Behavior:
             - Returns existing circuit breaker if already created for the operation name
             - Creates new circuit breaker with TransientAIError as expected exception type
@@ -365,6 +375,17 @@ class AIServiceResilience:
             - Applies provided configuration settings to new circuit breakers
             - Maintains circuit breaker isolation per operation name
             - Thread-safe creation and retrieval for concurrent access
+
+        Examples:
+            >>> resilience = AIServiceResilience()
+            >>> config = CircuitBreakerConfig(failure_threshold=5, recovery_timeout=60)
+            >>> cb1 = resilience.get_or_create_circuit_breaker("ai_summarize", config)
+            >>> cb2 = resilience.get_or_create_circuit_breaker("ai_summarize", config)
+            >>> assert cb1 is cb2  # Same instance returned
+            >>>
+            >>> # Different operations get different circuit breakers
+            >>> cb3 = resilience.get_or_create_circuit_breaker("sentiment", config)
+            >>> assert cb1 is not cb3
         """
         if name not in self.circuit_breakers:
             self.circuit_breakers[name] = EnhancedCircuitBreaker(
@@ -780,17 +801,21 @@ class AIServiceResilience:
     
     def get_health_status(self) -> Dict[str, Any]:
         """
-        Retrieve comprehensive health information for detailed system monitoring.
-        
+        Retrieve comprehensive system health information for monitoring and alerting.
+
+        Provides detailed health status by analyzing circuit breaker states across all
+        operations. Essential for monitoring dashboards, alerting systems, and automated
+        health checks in production environments.
+
         Returns:
-            Dictionary containing:
-            - healthy: bool indicating overall system health
-            - open_circuit_breakers: List of operation names with open circuit breakers
-            - half_open_circuit_breakers: List of operations in recovery state
+            Dictionary containing comprehensive health information:
+            - healthy: bool indicating overall system health (True if no open circuit breakers)
+            - open_circuit_breakers: List of operation names with open circuit breakers (failed operations)
+            - half_open_circuit_breakers: List of operations in recovery state (testing recovery)
             - total_circuit_breakers: Count of all registered circuit breakers
-            - total_operations: Count of all operations with metrics
-            - timestamp: ISO format timestamp of health check
-            
+            - total_operations: Count of all operations with metrics tracking
+            - timestamp: ISO format timestamp of health check for temporal correlation
+
         Behavior:
             - Categorizes circuit breakers by state for detailed status reporting
             - Provides operation and circuit breaker counts for capacity planning
@@ -798,6 +823,25 @@ class AIServiceResilience:
             - Identifies specific operations experiencing issues via open circuit breakers
             - Tracks recovery progress through half-open circuit breaker identification
             - Thread-safe health status collection for monitoring systems
+            - Returns healthy=True even for systems with no registered circuit breakers
+
+        Examples:
+            >>> resilience = AIServiceResilience()
+            >>> # Get system health status
+            >>> health = resilience.get_health_status()
+            >>> assert "healthy" in health
+            >>> assert "open_circuit_breakers" in health
+            >>> assert "timestamp" in health
+            >>>
+            >>> # System is healthy when no circuit breakers are open
+            >>> assert health["healthy"] or len(health["open_circuit_breakers"]) == 0
+            >>>
+            >>> # Monitor specific operations experiencing issues
+            >>> if health["open_circuit_breakers"]:
+            ...     print(f"Failed operations: {health['open_circuit_breakers']}")
+            >>> # Track recovery progress
+            >>> if health["half_open_circuit_breakers"]:
+            ...     print(f"Recovering operations: {health['half_open_circuit_breakers']}")
         """
         open_circuit_breakers = [
             name for name, cb in self.circuit_breakers.items()
