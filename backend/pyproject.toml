@@ -34,7 +34,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.12"
 my_project_shared_lib = {path = "../shared", develop = true}
-fastapi = "^0.110.0"
+fastapi = "^0.116.0"
 uvicorn = {extras = ["standard"], version = "^0.35.0"}
 pydantic = "^2.10"
 pydantic-settings = "^2.0.0"
@@ -52,7 +52,7 @@ brotli = "^1.1.0,<2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
-pytest-asyncio = "^0.23.0"
+pytest-asyncio = "^1.0.0"
 pytest-cov = "^4.0"
 pytest-xdist = "^3.7.0"
 pytest-mock = "^3.10.0"
@@ -65,13 +65,15 @@ httpx = "^0.28.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.0.0"
-pytest-asyncio = "^0.23.0"
+pytest-asyncio = "^1.0.0"
 pytest-cov = "^4.0"
 pytest-xdist = "^3.7.0"
 pytest-mock = "^3.10.0"
 httpx = "^0.28.1"
 fakeredis = "^2.10.0"
 testcontainers = "^4.0.0"
+pytest-timeout = "^2.4.0"
+pytest-randomly = "^4.0.1"
 
 [tool.poetry.group.prod.dependencies]
 prometheus-client = "^0.16.0"
