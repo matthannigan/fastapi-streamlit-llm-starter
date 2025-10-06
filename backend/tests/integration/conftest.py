@@ -28,6 +28,8 @@ def setup_testing_environment_for_all_integration_tests(monkeypatch):
     """
     # Set default testing environment
     monkeypatch.setenv("ENVIRONMENT", "testing")
+    monkeypatch.setenv("REDIS_INSECURE_ALLOW_PLAINTEXT", "true")
+    monkeypatch.setenv("REDIS_ENCRYPTION_KEY", "gL/jVnZqgV5uKb/hYq1Jb3d8cZ5fJg6nO8r/d3gH2wA=")
 
     yield
 

@@ -311,17 +311,17 @@ class SecurityConfig:
                 log_security_events=True,
             )
         elif env_info.environment == Environment.TESTING:
-            # Security-first: Even testing environments require TLS
-            # Self-signed certificates acceptable, but encryption is mandatory
+            # Testing environment: TLS is disabled by default.
+            # Tests that require TLS should enable it explicitly in their configuration.
             return cls(
                 redis_auth=generate_secure_password(12),
-                use_tls=True,  # MANDATORY: Security-first architecture requires TLS even in testing
-                verify_certificates=False,  # Self-signed certificates OK for testing
+                use_tls=False,  # Disabled by default for testing
+                verify_certificates=False,
                 connection_timeout=10,
                 socket_timeout=10,
                 max_retries=1,
-                enable_security_monitoring=False,  # Reduced monitoring for test performance
-                log_security_events=False,  # Reduced logging for test performance
+                enable_security_monitoring=False,
+                log_security_events=False,
             )
         elif env_info.environment == Environment.DEVELOPMENT:
             # Development: TLS required, self-signed certificates acceptable

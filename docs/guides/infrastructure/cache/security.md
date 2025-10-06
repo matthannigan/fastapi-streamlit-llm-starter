@@ -9,7 +9,7 @@ This guide documents the **security-first Redis architecture** implemented in th
 **Security is not configurable - it's always enabled.**
 
 Our Redis implementation follows a **"pit of success"** design where:
-- All Redis connections **must** use TLS encryption
+- All Redis connections in **production** **must** use TLS encryption
 - All cached data **must** be encrypted at rest
 - Applications **fail immediately** if security requirements aren't met
 - Configuration automatically adapts to environment while maintaining security
@@ -127,6 +127,8 @@ decrypted_data = encryption.decrypt_cache_data(encrypted_data)
 | Production | 48 chars, 256-bit entropy | TLS 1.3 required | Strict (verified CAs) | Mandatory |
 | Staging | 32 chars, 192-bit entropy | TLS 1.2+ | Verified CAs | Mandatory |
 | Development | 24 chars, 128-bit entropy | TLS 1.2+ | Self-signed OK | Mandatory |
+| Testing     | 12 chars                  | Disabled         | Self-signed OK  | Mandatory  |
+| Testing | 12 chars | Disabled | Self-signed OK | Mandatory |
 
 ### Automatic Environment Detection
 
@@ -589,7 +591,7 @@ This security implementation introduces **breaking changes** that eliminate back
 
 #### Breaking Changes
 
-1. **TLS Required**: All connections must use `rediss://` protocol
+1. **TLS Required in Production**: All production connections must use the `rediss://` protocol. Development and testing environments are flexible.
 2. **Authentication Mandatory**: Password required for all environments
 3. **Encryption Always On**: Data encryption cannot be disabled
 4. **Fail-Fast Validation**: Application won't start without security

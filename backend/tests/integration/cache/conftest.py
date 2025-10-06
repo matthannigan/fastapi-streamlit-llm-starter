@@ -43,36 +43,7 @@ def pytest_collection_modifyitems(items):
 # =============================================================================
 
 
-@pytest.fixture(autouse=True)
-def setup_testing_environment(monkeypatch):
-    """
-    Automatically configure testing environment for all cache integration tests.
 
-    This autouse fixture ensures all tests run with ENVIRONMENT='testing' by default,
-    which configures SecurityConfig with testing-appropriate security settings:
-    - TLS enabled but self-signed certs accepted
-    - Reduced monitoring overhead
-    - Shorter timeouts for faster test execution
-
-    Individual tests can override this by setting different environment values
-    after this fixture runs.
-
-    Why This Is Needed:
-        Without ENVIRONMENT set, SecurityConfig.create_for_environment() defaults
-        to production-level security requiring TLS certificates at paths like
-        /etc/ssl/redis-client.crt (which don't exist in tests), causing
-        "🔒 SECURITY ERROR: Failed to initialize mandatory security features."
-
-    Related:
-        - App Factory Pattern (docs/guides/developer/APP_FACTORY_GUIDE.md)
-        - SecurityConfig.create_for_environment() in app/infrastructure/cache/security.py:233
-        - GenericRedisCache.__init__() uses this for security initialization
-
-    Tests That Override This Fixture:
-        - test_encryption_end_to_end_workflows.py::test_configuration_workflow_encryption_initialization_across_environments
-          (explicitly tests development, production, and testing environments)
-    """
-    monkeypatch.setenv("ENVIRONMENT", "testing")
 
 
 # =============================================================================
