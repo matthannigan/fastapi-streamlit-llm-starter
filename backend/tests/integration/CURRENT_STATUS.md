@@ -1,10 +1,8 @@
 # Integration Tests - Current Status
 
-## ✅ Flakiness Resolved: All Test Failures are Now Consistent
+## ✅ Flakiness RETURNS
 
-Integration tests are now **100% consistent**. The previous flakiness has been eliminated, though a significant number of tests still fail.
-
-**Current Test Results**: 23 failed, 14 errors (consistent across multiple runs)
+Integration tests are **not consistent**. Code changes from `dev/taskplans/current/redis-critical-security-gaps_taskplan.md` have introduced a security-first posture that is making testing difficult.
 
 ---
 
@@ -61,37 +59,39 @@ To prevent future issues and make the test suite more resilient, the default tes
 - Run 3: 23 failed, 14 errors
 - **Status**: **100% Consistent.** The flakiness is gone.
 
-### After Encryption Factory Integration Test Fixes (Current Session)
-- Run 1: 22 failed, 131 passed, 14 errors in 3.21s
-- Run 2: 13 failed, 140 passed, 14 errors in 10.11s
-- Run 3: 1 failed, 166 passed in 10.29s
-- **Status**: The flakiness has returned.
+### After Recent Regression Analysis (Current Session)
+- Run 1: 11 failed, 155 passed, 1 error in 3.54s
+- Run 2: 11 failed, 148 passed, 8 errors in 4.09s
+- Run 3: 14 failed, 145 passed, 8 errors in 3.13s
+- **Status**: **FLAKINESS RETURNED** - Tests now fail consistently but with different counts.
 
 ---
 
 ## Remaining Issues
 
-**Out-of-date Info:** This section needs to be updated now that the flakiness has returned.
+### Current Failure Pattern (11-14 failed, 1-8 errors)
 
-### Consistently Failing Tests (22 failed, 14 errors)
+The tests show **inconsistent failure counts** but **consistent failure types**, indicating the flakiness has returned. However, the core security initialization issue has been identified and is the primary cause of failures.
 
 Significant progress made! The root cause of many `SECURITY ERROR` failures has been resolved.
 
 **Primary Remaining Failures:**
-- **`auth` tests (2)**: Still failing with `assert 500 == 200`, indicating an application startup failure for those specific test configurations.
-- **`cache_encryption` test (1)**: Still failing with `TLS certificate file not found`. This test likely sets `ENVIRONMENT=production` and does not mock the certificate check.
-- **`encryption_end_to_end_workflows` tests (6)**: Still failing with various `SECURITY ERROR` issues in end-to-end workflow tests.
-- **`cache_security` tests (4)**: Security integration tests with complex configuration scenarios.
-- **Various encryption pipeline tests (9)**: Tests with advanced encryption scenarios and configurations.
+- **`encryption_factory_integration` tests (10-11)**: Consistently failing with `🔒 SECURITY ERROR: Failed to initialize mandatory security features`
+- **`encryption_end_to_end_workflows` tests (6-8)**: Tests crashing during setup with the same `SECURITY ERROR`
+- **`cache_security` tests (0-4)**: Sometimes appearing with security configuration issues
+- **`cache_encryption` test (1)**: TLS certificate failure: `TLS certificate file not found: /etc/ssl/redis-client.crt`
+- **`auth` test (0-1)**: Occasionally failing with `assert 500 == 200`
 
-**Likely Cause:**
-The remaining `SECURITY ERROR` failures are in more complex scenarios that:
-1. Create custom security configurations that override the global test setup
-2. Use environment-specific configurations (production, staging) that require specific security setups
-3. Test advanced encryption scenarios with custom parameter combinations
-4. End-to-end workflow tests that may have complex initialization sequences
+**Root Cause Analysis:**
+All failing tests share the **same root cause**: `ConfigurationError: 🔒 SECURITY ERROR: Failed to initialize mandatory security features`
 
-The fundamental issue has been resolved - basic encryption factory integration tests now work correctly. The remaining failures are in more specialized or complex test scenarios.
+**Key Pattern**: The variable failure counts (11, 11, 14) and error counts (1, 8, 8) suggest that **test execution order matters** - some tests are modifying global state that affects subsequent tests.
+
+**Two Main Failure Modes:**
+1. **SECURITY ERROR**: Tests fail during security feature initialization (most common)
+2. **TLS Certificate Error**: One specific test tries to use production TLS settings without mocking
+
+**The flakiness is caused by tests that modify global security/environment state** without proper cleanup, leaving inconsistent configurations for subsequent tests.
 
 ---
 
@@ -139,7 +139,121 @@ The fundamental issue has been resolved - basic encryption factory integration t
 
 ## Next Steps
 
-### Investigate Remaining Consistent Failures
-1.  **Analyze `SECURITY ERROR` failures**: Pick one of the consistently failing cache tests (e.g., from `test_encryption_factory_integration.py`) and trace its specific configuration setup to understand why the `GenericRedisCache` initialization is still failing.
-2.  **Address the `auth` test failures**: Debug the `development_client` and `production_client` setups to see why they lead to a 500 error.
-3.  **Fix the `TLS certificate` failure**: Examine `test_environment_configuration_integration_with_factory` to see how it sets up its environment and add the necessary mocks for it to run successfully.
+### Fix Test State Pollution and Security Initialization
+
+1. **Identify State-Polluting Tests**: Find which tests modify global environment/security state without proper cleanup. Focus on:
+   - Tests in `test_encryption_factory_integration.py`
+   - Tests in `test_encryption_end_to_end_workflows.py`
+   - Tests that change `ENVIRONMENT` variable or security settings
+
+2. **Fix Security Initialization Issue**: Debug the `🔒 SECURITY ERROR: Failed to initialize mandatory security features` by:
+   - Examining one failing test's complete setup sequence
+   - Understanding why security features fail to initialize even with default test environment
+   - Ensuring proper isolation of security configurations
+
+3. **Fix TLS Certificate Test**: Address the one test that specifically tries to use production TLS settings without proper mocking
+
+4. **Add Test State Validation**: Consider adding fixtures that validate environment state between tests to catch pollution early
+
+---
+
+### Inventory of State-Polluting Tests
+
+The following tests have been identified as modifying global environment/security state without proper cleanup, causing test pollution and flaky behavior:
+
+#### **HIGH PRIORITY: Direct Environment Variable Polluters**
+
+**`backend/tests/integration/environment/test_module_initialization.py`** - 🚨 **MAJOR POLLUTER**
+- **Lines**: 67, 109, 154, 194, 254, 301, 347, 442, 478
+- **Issue**: Uses `os.environ["ENVIRONMENT"] = "value"` directly instead of `monkeypatch.setenv()`
+- **Cleanup**: Uses `clean_environment` fixture, but direct modification bypasses pytest's cleanup
+- **Impact**: PERMANENT environment pollution across all subsequent tests
+- **Examples**:
+  ```python
+  os.environ["ENVIRONMENT"] = "production"  # Line 67 - NO CLEANUP
+  os.environ["ENVIRONMENT"] = "development"  # Line 109 - NO CLEANUP
+  ```
+
+**`backend/tests/integration/environment/conftest.py`** - 🚨 **FIXTURE POLLUTER**
+- **Lines**: 93, 115, 135, 154, 209, 316, 325
+- **Issue**: Environment fixtures use `os.environ[]` instead of `monkeypatch.setenv()`
+- **Cleanup**: Manual cleanup only works for `monkeypatch`, not direct `os.environ[]`
+- **Impact**: Fixture-based pollution that persists across test files
+- **Examples**:
+  ```python
+  os.environ["ENVIRONMENT"] = "development"  # Line 93 - FIXTURE POLLUTION
+  os.environ["ENVIRONMENT"] = "production"   # Line 115 - FIXTURE POLLUTION
+  ```
+
+#### **MEDIUM PRIORITY: Environment Override Tests**
+
+**`backend/tests/integration/cache/test_encryption_end_to_end_workflows.py`** - ⚠️ **ENVIRONMENT SWITCHER**
+- **Lines**: 552, 559, 568
+- **Issue**: Changes `ENVIRONMENT` multiple times within single test
+- **Cleanup**: Uses `monkeypatch.setenv()` (proper), but multiple switches may cause confusion
+- **Impact**: Environment switching during test execution
+- **Example**:
+  ```python
+  monkeypatch.setenv("ENVIRONMENT", "development")  # Line 552
+  monkeypatch.setenv("ENVIRONMENT", "production")   # Line 559
+  monkeypatch.setenv("ENVIRONMENT", "testing")      # Line 568
+  ```
+
+**`backend/tests/integration/cache/test_cache_integration.py`** - ⚠️ **MULTI-ENVIRONMENT TEST**
+- **Lines**: 149, 461
+- **Issue**: Multiple environment overrides in same test file
+- **Cleanup**: Uses `monkeypatch.setenv()` (proper)
+- **Impact**: Lower priority - uses proper cleanup
+
+**`backend/tests/integration/cache/conftest.py`** - ⚠️ **FIXTURE OVERRIDE**
+- **Line**: 671
+- **Issue**: Additional fixture setting environment
+- **Cleanup**: May conflict with main conftest.py autouse fixture
+- **Impact**: Fixture competition could cause inconsistent state
+
+#### **LOW PRIORITY: Documentation and Planning Files**
+
+**Various `.md` files** - 📝 **DOCUMENTATION ONLY**
+- **Files**: `TEST_PLAN.md`, `ENVIRONMENT_OVERRIDE.md`
+- **Issue**: Documentation shows examples using `monkeypatch.setenv()` (proper pattern)
+- **Cleanup**: Not actual tests, just documentation
+- **Impact**: No pollution - documentation shows correct patterns
+
+#### **CLEAN TESTS (Proper Cleanup Pattern)**
+
+**`backend/tests/integration/conftest.py`** - ✅ **PROPER IMPLEMENTATION**
+- **Line**: 30, 46
+- **Pattern**: Uses `monkeypatch.setenv()` with function scope fixtures
+- **Cleanup**: Automatic cleanup via pytest framework
+- **Status**: GOOD EXAMPLE to follow
+
+**`backend/tests/integration/cache/test_encryption_factory_integration.py`** - ✅ **MARKED NO_PARALLEL**
+- **Issue**: Environment manipulation, but properly marked `pytestmark = pytest.mark.no_parallel`
+- **Pattern**: Uses `monkeypatch.setenv()` (proper)
+- **Status**: GOOD - acknowledges state pollution with marker
+
+#### **Root Cause Analysis**
+
+1. **Direct `os.environ[]` Usage**: Tests using `os.environ["ENVIRONMENT"] = "value"` bypass pytest's cleanup mechanism
+2. **Fixture Competition**: Multiple fixtures trying to set the same environment variable
+3. **Missing `monkeypatch` Usage**: Some tests use direct modification instead of proper test isolation
+4. **Test Execution Order Dependency**: Tests that modify global state affect subsequent tests
+
+#### **Immediate Actions Required**
+
+1. **Fix `test_module_initialization.py`**: Replace all `os.environ["ENVIRONMENT"]` with `monkeypatch.setenv()`
+2. **Fix `environment/conftest.py`**: Replace all `os.environ["ENVIRONMENT"]` with `monkeypatch.setenv()`
+3. **Add Environment Validation**: Consider adding fixtures to validate environment state between tests
+4. **Review Test Order**: Consider running environment-modifying tests last or in isolation
+
+#### **Cleanup Priority Matrix**
+
+| Priority | File | Issue | Impact | Fix Complexity |
+|----------|------|-------|--------|----------------|
+| **CRITICAL** | `test_module_initialization.py` | Direct `os.environ[]` | **PERMANENT** pollution | Medium |
+| **HIGH** | `environment/conftest.py` | Fixture pollution | Test file pollution | Medium |
+| **MEDIUM** | `test_encryption_end_to_end_workflows.py` | Multiple switches | Temporary confusion | Low |
+| **LOW** | `test_cache_integration.py` | Multiple overrides | Minor | Low |
+| **DOCUMENTATION** | `.md` files | Examples only | None | N/A |
+
+The **primary source of test flakiness** is the direct modification of `os.environ[]` in `test_module_initialization.py`, which causes **permanent environment pollution** that affects all subsequent tests until the test runner is restarted.
