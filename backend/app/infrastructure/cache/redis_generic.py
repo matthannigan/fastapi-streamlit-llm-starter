@@ -175,6 +175,7 @@ class GenericRedisCache(CacheInterface):
         compression_threshold: int = 1000,
         compression_level: int = 6,
         performance_monitor: Optional[CachePerformanceMonitor] = None,
+        security_config: Optional["SecurityConfig"] = None,  # Accept security config from factory
         **kwargs,  # Accept additional parameters for backward compatibility
     ):
         # Validate parameters per public contract
@@ -229,9 +230,13 @@ class GenericRedisCache(CacheInterface):
             from app.infrastructure.cache.security import (
                 RedisCacheSecurityManager, SecurityConfig)
 
-            # Create environment-aware security configuration automatically
-            self.security_config = SecurityConfig.create_for_environment()
-            logger.info(f"✅ Security configuration created for environment")
+            # Use provided security config or create environment-aware configuration
+            if security_config is not None:
+                self.security_config = security_config
+                logger.info(f"✅ Security configuration provided by caller")
+            else:
+                self.security_config = SecurityConfig.create_for_environment()
+                logger.info(f"✅ Security configuration created for environment")
 
             # Initialize security manager with fail-fast validation
             self.security_manager = RedisCacheSecurityManager(

@@ -728,13 +728,24 @@ def thread_pool():
 @pytest.fixture
 def mock_global_detector():
     """
-    Provides mocked global environment detector instance.
+    Provides mocked environment detector instance for context-local hybrid approach.
 
     Use Cases:
         - Testing module-level convenience functions
-        - Testing global detector consistency
+        - Testing detector consistency in hybrid mode
+
+    Implementation:
+        Patches get_environment_info in both the API module and the main package
+        namespace to handle different import patterns in tests.
     """
     mock_detector = Mock(spec=EnvironmentDetector)
+
+    def mock_get_environment_info(feature_context=FeatureContext.DEFAULT):
+        """Mock implementation that returns configurable results."""
+        result = mock_detector.detect_with_context(feature_context)
+        return result
+
+    # Set default return value
     mock_detector.detect_with_context.return_value = EnvironmentInfo(
         environment=Environment.DEVELOPMENT,
         confidence=0.85,
@@ -745,7 +756,9 @@ def mock_global_detector():
         metadata={}
     )
 
-    with patch('app.core.environment.api.environment_detector', mock_detector):
+    # Patch in both locations to handle re-exports
+    with patch('app.core.environment.api.get_environment_info', side_effect=mock_get_environment_info), \
+         patch('app.core.environment.get_environment_info', side_effect=mock_get_environment_info):
         yield mock_detector
 
 

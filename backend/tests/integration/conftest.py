@@ -15,28 +15,21 @@ from app.main import create_app
 @pytest.fixture(autouse=True)
 def setup_testing_environment_for_all_integration_tests(monkeypatch):
     """
-    Set ENVIRONMENT='testing' and reset environment detector cache for ALL integration tests.
+    Set ENVIRONMENT='testing' for ALL integration tests.
 
     This prevents SecurityConfig from defaulting to production-level security
     which requires TLS certificates that don't exist in test environments.
 
-    Also clears the global environment_detector cache to prevent stale detection
-    from previous tests affecting current test.
+    Test isolation is automatic via context-local environment detection.
+    Each test context gets its own detector instance with no shared state.
 
     Applied to ALL integration tests (auth, cache, environment, health, startup).
     Individual tests can override by setting different ENVIRONMENT values.
     """
-    # Reset the global environment detector cache before each test
-    from app.core.environment.api import environment_detector
-    environment_detector.reset_cache()
-
     # Set default testing environment
     monkeypatch.setenv("ENVIRONMENT", "testing")
 
     yield
-
-    # Reset cache after test to ensure clean state
-    environment_detector.reset_cache()
 
 
 @pytest.fixture(scope="function")
