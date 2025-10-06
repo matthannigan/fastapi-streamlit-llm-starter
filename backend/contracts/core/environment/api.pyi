@@ -1,10 +1,18 @@
 """
 Module-level convenience functions.
 
-Contains the global detector instance and convenience functions for easy access
-to environment detection functionality without needing to create detector instances.
+Contains the detector instance (global or context-local depending on environment)
+and convenience functions for easy access to environment detection functionality
+without needing to create detector instances.
+
+Hybrid Architecture:
+    - Production: Uses global singleton for zero overhead
+    - Tests: Uses context-local storage for automatic test isolation
 """
 
+import sys
+import os
+import contextvars
 from .enums import Environment, FeatureContext
 from .models import EnvironmentInfo
 from .detector import EnvironmentDetector
@@ -37,11 +45,12 @@ def get_environment_info(feature_context: FeatureContext = FeatureContext.DEFAUL
         ValidationError: If feature_context is not a valid FeatureContext enum value
     
     Behavior:
-        - Uses global environment_detector instance for consistent results
+        - Production: Uses global environment_detector instance for zero overhead
+        - Tests: Uses context-local detector instance for automatic test isolation
         - Performs full environment detection with confidence scoring
         - Applies feature-specific context when specified
-        - Caches detection results for performance optimization
         - Thread-safe for concurrent access across services
+        - Test contexts automatically isolated - no manual cache management needed
     
     Examples:
         >>> # Basic environment detection

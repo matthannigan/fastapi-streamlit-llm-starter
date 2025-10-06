@@ -101,6 +101,28 @@ class EnvironmentDetector:
         """
         ...
 
+    def reset_cache(self) -> None:
+        """
+        Clear all cached signals for test isolation.
+        
+        This method is primarily used in testing to ensure fresh environment
+        detection between tests. It clears the internal signal cache to prevent
+        stale detections from affecting subsequent test runs.
+        
+        Behavior:
+            - Clears all cached environment signals
+            - Next detection will perform fresh signal collection
+            - Safe to call multiple times
+            - No effect on detection configuration
+        
+        Examples:
+            >>> detector = EnvironmentDetector()
+            >>> detector.detect_environment()  # Caches detection
+            >>> detector.reset_cache()  # Clear cache
+            >>> detector.detect_environment()  # Fresh detection
+        """
+        ...
+
     def detect_environment(self, feature_context: FeatureContext = FeatureContext.DEFAULT) -> EnvironmentInfo:
         """
         Detect environment with optional feature-specific context.
