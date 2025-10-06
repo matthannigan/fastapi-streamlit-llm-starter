@@ -91,7 +91,8 @@ class TestCacheFactoryEncryptionIntegration:
             verify_certificates=False,
         )
         # Dynamically add invalid encryption_key attribute for testing
-        config.encryption_key = "invalid-key-format"
+        # Use a base64-encoded key of wrong length (16 bytes instead of 32)
+        config.encryption_key = "dGVzdC1rZXktZm9yLXRlc3Rpbmc="  # 16 bytes base64 encoded
         return config
 
     @pytest.mark.asyncio
@@ -316,25 +317,25 @@ class TestCacheFactoryEncryptionIntegration:
         self, invalid_encryption_security_config, monkeypatch
     ):
         """
-        Test that factory handles invalid encryption keys gracefully with fallback behavior.
+        Test that factory fails fast with security errors when encryption key is invalid.
 
         Integration Scope:
-            CacheFactory → SecurityConfig with invalid key → EncryptedCacheLayer initialization → warning logging → fallback behavior
+            CacheFactory → SecurityConfig with invalid key → EncryptedCacheLayer initialization → GenericRedisCache SECURITY ERROR
 
         Business Impact:
-            Ensures factory handles invalid encryption keys gracefully by falling back
-            to unencrypted mode rather than failing completely, maintaining availability.
+            Ensures security-first architecture by rejecting invalid encryption keys
+            rather than falling back to insecure mode, preventing security misconfigurations.
 
         Test Strategy:
             - Create security config with invalid encryption key
-            - Mock Redis connection to avoid fallback to InMemoryCache
+            - Mock Redis connection to isolate encryption behavior
             - Attempt cache creation via factory
-            - Verify warning is logged and encryption is disabled
+            - Verify security failure with proper error context
 
         Success Criteria:
-            - Cache creation succeeds with encryption disabled
-            - Warning is logged about invalid encryption key
-            - Factory maintains availability even with invalid encryption
+            - Factory raises ConfigurationError with SECURITY ERROR
+            - Error message clearly indicates invalid encryption key
+            - Security validation prevents insecure cache creation
         """
         # Mock Redis connection to prevent fallback to InMemoryCache
         with patch("app.infrastructure.cache.redis_generic.aioredis.from_url") as mock_redis:
@@ -344,17 +345,21 @@ class TestCacheFactoryEncryptionIntegration:
 
             factory = CacheFactory()
 
-            # This should succeed but with encryption disabled due to invalid key
-            cache = await factory.for_web_app(
-                security_config=invalid_encryption_security_config,
-                fail_on_connection_error=False,
-            )
+            # This should fail with ConfigurationError due to invalid encryption key
+            with pytest.raises(ConfigurationError) as exc_info:
+                cache = await factory.for_web_app(
+                    security_config=invalid_encryption_security_config,
+                    fail_on_connection_error=False,
+                )
 
-            # Verify cache was created (it falls back gracefully)
-            assert cache is not None
+            # Verify the error is a security error related to encryption
+            error_message = str(exc_info.value)
+            assert "SECURITY ERROR" in error_message
+            assert "encryption" in error_message.lower() or "ENCRYPTION ERROR" in error_message
 
-            # The factory should have created a cache with encryption disabled
-            # The specific behavior depends on how the GenericRedisCache handles invalid keys
+            # Verify error context indicates encryption key validation failure
+            error_context = exc_info.value.context or {}
+            assert error_context.get("error_type") == "security_initialization_failure"
 
     @pytest.mark.asyncio
     async def test_factory_creates_unencrypted_cache_when_no_encryption_key(
@@ -585,25 +590,25 @@ class TestCacheFactoryEncryptionIntegration:
     @pytest.mark.asyncio
     async def test_factory_error_propagation_with_encryption_issues(self):
         """
-        Test that factory handles encryption-related errors gracefully without propagating them.
+        Test that factory fails fast with security errors when encryption configuration is invalid.
 
         Integration Scope:
-            CacheFactory → encryption initialization failure → warning logging → graceful degradation
+            CacheFactory → invalid encryption key → EncryptedCacheLayer failure → GenericRedisCache SECURITY ERROR
 
         Business Impact:
-            Ensures factory maintains service availability by handling encryption
-            configuration errors gracefully rather than propagating failures.
+            Ensures security-first architecture by failing fast when encryption configuration
+            is invalid, preventing insecure cache deployments in production.
 
         Test Strategy:
-            - Create security config with invalid encryption
-            - Mock Redis connection to test actual encryption behavior
+            - Create security config with invalid encryption key
+            - Mock Redis connection to isolate encryption behavior
             - Attempt cache creation via factory
-            - Verify graceful handling without error propagation
+            - Verify security failure with proper error propagation
 
         Success Criteria:
-            - Factory creates cache successfully despite encryption issues
-            - Encryption is disabled gracefully with warnings
-            - Service availability is maintained
+            - Factory raises ConfigurationError with SECURITY ERROR for all methods
+            - Error messages clearly indicate encryption key validation failure
+            - Security validation prevents insecure cache creation
         """
         invalid_config = SecurityConfig(
             redis_auth="test-password",
@@ -611,7 +616,8 @@ class TestCacheFactoryEncryptionIntegration:
             verify_certificates=False,
         )
         # Dynamically add invalid encryption_key attribute for testing
-        invalid_config.encryption_key = "definitely-invalid-key-format"
+        # Use a base64-encoded key of wrong length (24 bytes instead of 32)
+        invalid_config.encryption_key = "dGVzdC1rZXktdGVzdC1rZXktdGVzdA=="  # 24 bytes base64 encoded
 
         # Mock Redis connection to prevent fallback to InMemoryCache
         with patch("app.infrastructure.cache.redis_generic.aioredis.from_url") as mock_redis:
@@ -621,14 +627,29 @@ class TestCacheFactoryEncryptionIntegration:
 
             factory = CacheFactory()
 
-            # Test graceful handling across different factory methods
+            # Test security failure across factory methods that respect security_config parameter
+            # Note: AIResponseCache ignores security_config parameters (see redis_ai.py lines 294-322)
+            # It uses automatic security inheritance instead, so we only test methods that accept custom security configs
             factory_methods = [
                 ("web_app", lambda: factory.for_web_app(security_config=invalid_config)),
-                ("ai_app", lambda: factory.for_ai_app(security_config=invalid_config)),
+                # Skip ai_app - it ignores security_config and uses automatic security inheritance
                 ("testing", lambda: factory.for_testing(security_config=invalid_config)),
             ]
 
             for name, method in factory_methods:
-                # These should all succeed gracefully despite invalid encryption
-                cache = await method()
-                assert cache is not None, f"Factory method {name} should create cache despite invalid encryption"
+                # Factory methods should fail with ConfigurationError for invalid encryption
+                with pytest.raises(ConfigurationError) as exc_info:
+                    await method()
+
+                # Verify the error is a security error related to encryption
+                error_message = str(exc_info.value)
+                assert "SECURITY ERROR" in error_message, f"Factory method {name} should raise SECURITY ERROR"
+                assert "encryption" in error_message.lower() or "ENCRYPTION ERROR" in error_message, f"Factory method {name} error should mention encryption"
+
+                # Verify error context includes encryption key validation failure
+                error_context = exc_info.value.context or {}
+                assert error_context.get("error_type") == "security_initialization_failure", f"Factory method {name} should have security initialization error type"
+
+            # Verify AI app factory method succeeds despite invalid config (it ignores security_config)
+            ai_cache = await factory.for_ai_app(security_config=invalid_config)
+            assert ai_cache is not None, "AI app should succeed despite invalid security_config (parameter ignored)"
