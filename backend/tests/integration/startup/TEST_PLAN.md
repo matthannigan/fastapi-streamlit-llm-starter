@@ -1,5 +1,32 @@
 # Integration Test Plan: Redis Security Validation
 
+## ⚠️ CRITICAL: Environment Variable Testing Standard
+
+**MANDATORY for all test implementations in this plan:**
+
+All tests in this plan that manipulate environment variables **MUST use `monkeypatch.setenv()`** - never `os.environ[]` directly.
+
+```python
+# ✅ CORRECT - All examples in this plan follow this pattern
+def test_production_mode(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("REDIS_URL", "rediss://redis:6380")
+    # Automatic cleanup after test completes
+
+# ❌ NEVER DO THIS - Causes permanent test pollution
+def test_production_mode():
+    os.environ["ENVIRONMENT"] = "production"  # WRONG!
+```
+
+**Why this matters:**
+- Direct `os.environ[]` bypasses pytest cleanup → permanent test pollution
+- Causes flaky, order-dependent test failures
+- This was the root cause of integration test flakiness in our project
+
+**Reference**: See `backend/tests/integration/README.md` for comprehensive monkeypatch patterns and `backend/CLAUDE.md` for environment variable testing guidance.
+
+---
+
 ## Executive Summary
 
 This test plan identifies and prioritizes integration test scenarios for the Redis security validation component (`app.core.startup.redis_security`). The plan follows an **outside-in testing philosophy**, starting from application boundaries and testing component collaboration rather than internal implementation details.
@@ -562,19 +589,31 @@ RedisSecurityValidator
 
 ### Environment Setup
 
+**Note**: These fixtures demonstrate the **correct monkeypatch pattern** for environment variables. All test implementations must follow this pattern.
+
 ```python
 # conftest.py additions
 
 @pytest.fixture
 def production_environment(monkeypatch):
-    """Set production environment indicators."""
+    """
+    Set production environment indicators.
+
+    CRITICAL: Uses monkeypatch.setenv() for automatic cleanup.
+    Never use os.environ[] directly - causes test pollution.
+    """
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
     yield
 
 @pytest.fixture
 def development_environment(monkeypatch):
-    """Set development environment indicators."""
+    """
+    Set development environment indicators.
+
+    CRITICAL: Uses monkeypatch.setenv() and monkeypatch.delenv()
+    for automatic cleanup. Never use os.environ[] directly.
+    """
     monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
     yield
