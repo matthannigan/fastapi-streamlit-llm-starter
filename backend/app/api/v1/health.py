@@ -165,138 +165,97 @@ logger = logging.getLogger(__name__)
 )
 async def health_check(health_checker = Depends(get_health_checker)):
     """
-    Comprehensive system health validation endpoint with multi-component monitoring and graceful degradation.
-    
-    This endpoint provides enterprise-grade health monitoring capabilities for all critical application
-    components, implementing sophisticated health aggregation logic and graceful degradation patterns.
-    It serves as the primary health validation interface for load balancers, monitoring systems, and
-    operational dashboards while maintaining service availability even under partial system failures.
-    
+    System health validation endpoint with multi-component monitoring and graceful degradation.
+
+    Provides enterprise-grade health monitoring for critical application components with
+    sophisticated health aggregation logic. Serves as the primary health validation interface
+    for load balancers, monitoring systems, and operational dashboards while maintaining
+    service availability under partial system failures.
+
     Args:
-        health_checker: Infrastructure health checking service dependency providing comprehensive
-                       system component validation, monitoring capabilities, and health status
-                       aggregation across AI models, cache systems, and resilience infrastructure
-    
+        health_checker: Infrastructure health checking service providing system component
+                       validation, monitoring capabilities, and health status aggregation
+                       across AI models, cache systems, and resilience infrastructure
+
     Returns:
-        HealthResponse: Comprehensive health status response containing:
-                       - status: Overall system health ("healthy" or "degraded") based on component aggregation
-                       - ai_model_available: Boolean indicating AI model configuration and accessibility
-                       - resilience_healthy: Optional boolean for resilience infrastructure status (None if unavailable)
-                       - cache_healthy: Optional boolean for cache system operational status (None if unavailable)
-                       - timestamp: ISO-formatted timestamp of health check execution
-                       - version: Current API version identifier for monitoring compatibility
-    
+        HealthResponse: Health status response containing:
+        - status: Overall system health ("healthy" or "degraded") from component aggregation
+        - ai_model_available: Boolean indicating AI model configuration and accessibility
+        - resilience_healthy: Optional boolean for resilience infrastructure (None if unavailable)
+        - cache_healthy: Optional boolean for cache system status (None if unavailable)
+        - timestamp: ISO-formatted timestamp of health check execution
+        - version: API version identifier for monitoring compatibility
+
     Raises:
-        HTTPException: Never raised - endpoint implements comprehensive error handling with graceful
-                      degradation to ensure health check availability under all system conditions
-    
+        HTTPException: Never raised - implements comprehensive error handling with graceful
+                      degradation to ensure availability under all system conditions
+
     Behavior:
         **Component Health Validation:**
-        - Validates AI model configuration and API key accessibility for text processing operations
-        - Checks resilience infrastructure including circuit breakers and failure detection systems  
-        - Monitors cache system status with Redis connectivity and memory cache operational validation
-        - Aggregates individual component health into overall system status determination
-        
+        - Validates AI model configuration and API key accessibility
+        - Checks resilience infrastructure including circuit breakers and failure detection
+        - Monitors cache system status with Redis connectivity and memory cache validation
+        - Aggregates individual component health into overall system status
+
         **Health Status Determination:**
-        - Returns "healthy" when AI model is available and no critical components report explicit failures
-        - Returns "degraded" when AI model is unavailable or critical infrastructure components fail
-        - Treats optional component unavailability (None values) as non-critical for overall health
-        - Implements sophisticated health aggregation logic balancing availability with functionality
-        
-        **Graceful Degradation Patterns:**
-        - Continues operation even when health checker infrastructure experiences failures
-        - Provides fallback health validation using direct configuration checks when needed
+        - Returns "healthy" when AI model available and no critical components fail
+        - Returns "degraded" when AI model unavailable or critical infrastructure fails
+        - Treats optional component unavailability (None values) as non-critical
+        - Implements health aggregation logic balancing availability with functionality
+
+        **Graceful Degradation:**
+        - Continues operation when health checker infrastructure experiences failures
+        - Provides fallback validation using direct configuration checks when needed
         - Maintains endpoint availability under all system conditions including partial failures
-        - Ensures monitoring systems can always assess basic application health status
-        
+        - Ensures monitoring systems can always assess basic application health
+
         **Monitoring Integration:**
         - Provides structured response format optimized for automated monitoring systems
-        - Supports load balancer health check requirements with consistent response patterns  
+        - Supports load balancer health check requirements with consistent response patterns
         - Enables operational dashboard integration with comprehensive component visibility
         - Maintains backward compatibility with existing monitoring infrastructure
-        
+
         **Performance Optimization:**
         - Executes health checks asynchronously for optimal response times
         - Implements efficient component validation with minimal system impact
         - Provides fast health status determination suitable for high-frequency monitoring
-        - Minimizes resource utilization while maintaining comprehensive validation coverage
-    
+        - Minimizes resource utilization while maintaining comprehensive validation
+
     Examples:
-        >>> # Healthy system response with all components operational
+        >>> # Healthy system response
         >>> response = await client.get("/v1/health")
-        >>> assert response.status_code == 200
         >>> data = response.json()
         >>> assert data["status"] == "healthy"
         >>> assert data["ai_model_available"] is True
         >>> assert data["cache_healthy"] is True
         >>> assert data["resilience_healthy"] is True
-        >>> assert "timestamp" in data and "version" in data
-        
+
         >>> # Degraded system with AI model issues
-        >>> # Response when AI model is misconfigured
         >>> response = await client.get("/v1/health")
         >>> data = response.json()
         >>> assert data["status"] == "degraded"
         >>> assert data["ai_model_available"] is False
-        >>> assert data["cache_healthy"] is True  # Cache still operational
-        >>> assert data["resilience_healthy"] is True  # Resilience still operational
-        
-        >>> # Load balancer health check integration
-        >>> import aiohttp
-        >>> async def load_balancer_check():
+        >>> assert data["cache_healthy"] is True  # Still operational
+
+        >>> # Load balancer integration
+        >>> async def check_service_health():
         ...     async with aiohttp.ClientSession() as session:
-        ...         async with session.get("http://api:8000/v1/health") as response:
-        ...             if response.status == 200:
-        ...                 data = await response.json()
-        ...                 return data["status"] == "healthy"
-        ...             return False
-        
-        >>> # Monitoring system integration with alerting
-        >>> async def monitoring_health_check():
-        ...     try:
-        ...         response = await client.get("/v1/health")
-        ...         health_data = response.json()
-        ...         
-        ...         # Alert on degraded status
-        ...         if health_data["status"] == "degraded":
-        ...             await send_alert(f"System degraded: {health_data}")
-        ...         
-        ...         # Component-specific monitoring
-        ...         if not health_data["ai_model_available"]:
-        ...             await send_critical_alert("AI model unavailable")
-        ...         
-        ...         return health_data
-        ...     except Exception as e:
-        ...         await send_alert(f"Health check failed: {e}")
-        ...         return None
-        
-        >>> # Kubernetes liveness probe configuration
-        >>> # livenessProbe:
-        >>> #   httpGet:
-        >>> #     path: /v1/health
-        >>> #     port: 8000
-        >>> #   initialDelaySeconds: 30
-        >>> #   periodSeconds: 10
-        >>> #   successThreshold: 1
-        >>> #   failureThreshold: 3
-        
-        >>> # Operational dashboard integration
-        >>> async def dashboard_health_status():
-        ...     health = await client.get("/v1/health").json()
-        ...     return {
-        ...         "overall": health["status"],
-        ...         "ai_service": "✅" if health["ai_model_available"] else "❌",
-        ...         "cache": "✅" if health["cache_healthy"] else "❌" if health["cache_healthy"] is not None else "⚠️",
-        ...         "resilience": "✅" if health["resilience_healthy"] else "❌" if health["resilience_healthy"] is not None else "⚠️",
-        ...         "last_check": health["timestamp"]
-        ...     }
-    
+        ...         async with session.get("http://api:8000/v1/health") as resp:
+        ...             data = await resp.json()
+        ...             return data["status"] == "healthy"
+
+        >>> # Monitoring with alerting
+        >>> health = await client.get("/v1/health").json()
+        >>> if health["status"] == "degraded":
+        ...     await send_alert(f"System degraded: {health['status']}")
+        >>> if not health["ai_model_available"]:
+        ...     await send_critical_alert("AI model unavailable")
+
     Note:
-        This endpoint is designed for high-frequency monitoring and does not require authentication
-        to ensure monitoring systems can always assess application health. The endpoint implements
-        comprehensive error handling and graceful degradation to maintain availability even under
-        system stress or partial infrastructure failures. Component health checks create temporary
-        connections that are automatically cleaned up to prevent resource leaks.
+        Endpoint designed for high-frequency monitoring without authentication requirements.
+        Implements comprehensive error handling and graceful degradation to maintain availability
+        under system stress or partial infrastructure failures. Health checks create temporary
+        connections automatically cleaned up to prevent resource leaks.
     """
     try:
         # Use infrastructure health checker
