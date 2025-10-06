@@ -20,6 +20,10 @@ from app.infrastructure.cache.factory import CacheFactory
 from app.infrastructure.cache.security import SecurityConfig
 from app.infrastructure.cache.encryption import EncryptedCacheLayer
 
+# Mark all tests in this module to run serially (not in parallel)
+# These tests manipulate environment state and fail intermittently in parallel
+pytestmark = pytest.mark.no_parallel
+
 
 class TestCacheFactoryEncryptionIntegration:
     """

@@ -6,6 +6,8 @@ validating that encryption works correctly across all application layers from AP
 to cache storage and retrieval. These tests verify end-to-end behavior with encryption
 enabled, ensuring security, performance, and reliability in realistic scenarios.
 
+pytestmark = pytest.mark.no_parallel  # Run serially to avoid environment pollution
+
 Integration Focus:
     - Complete AI cache workflows with encrypted key generation, storage, retrieval
     - API endpoint cache operations with encrypted data patterns

@@ -20,6 +20,62 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 # =============================================================================
+# Pytest Hooks - Force Serial Execution for ALL Cache Integration Tests
+# =============================================================================
+
+
+def pytest_collection_modifyitems(items):
+    """
+    Force ALL cache integration tests to run serially in the same pytest-xdist worker.
+
+    Cache integration tests share environment state and global instances (environment_detector)
+    that cause race conditions in parallel execution. Running them serially ensures reliability.
+
+    This hook applies to ALL tests collected from this directory.
+    """
+    for item in items:
+        # Force all cache integration tests to run in same worker (sequentially)
+        item.add_marker(pytest.mark.xdist_group(name="cache_integration_serial"))
+
+
+# =============================================================================
+# Environment Setup (autouse fixtures)
+# =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def setup_testing_environment(monkeypatch):
+    """
+    Automatically configure testing environment for all cache integration tests.
+
+    This autouse fixture ensures all tests run with ENVIRONMENT='testing' by default,
+    which configures SecurityConfig with testing-appropriate security settings:
+    - TLS enabled but self-signed certs accepted
+    - Reduced monitoring overhead
+    - Shorter timeouts for faster test execution
+
+    Individual tests can override this by setting different environment values
+    after this fixture runs.
+
+    Why This Is Needed:
+        Without ENVIRONMENT set, SecurityConfig.create_for_environment() defaults
+        to production-level security requiring TLS certificates at paths like
+        /etc/ssl/redis-client.crt (which don't exist in tests), causing
+        "🔒 SECURITY ERROR: Failed to initialize mandatory security features."
+
+    Related:
+        - App Factory Pattern (docs/guides/developer/APP_FACTORY_GUIDE.md)
+        - SecurityConfig.create_for_environment() in app/infrastructure/cache/security.py:233
+        - GenericRedisCache.__init__() uses this for security initialization
+
+    Tests That Override This Fixture:
+        - test_encryption_end_to_end_workflows.py::test_configuration_workflow_encryption_initialization_across_environments
+          (explicitly tests development, production, and testing environments)
+    """
+    monkeypatch.setenv("ENVIRONMENT", "testing")
+
+
+# =============================================================================
 # Settings Fixtures (imported from main conftest.py)
 # =============================================================================
 

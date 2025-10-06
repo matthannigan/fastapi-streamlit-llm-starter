@@ -7,7 +7,7 @@ work together to provide complete functionality.
 
 Coverage Focus:
     - Factory + Cache + Monitor integration
-    - Settings + Factory integration  
+    - Settings + Factory integration
     - Cache + Key Generator + Performance Monitor integration
     - End-to-end cache workflows with real components
 
@@ -23,6 +23,10 @@ import pytest
 
 from app.core.exceptions import InfrastructureError
 from app.infrastructure.cache.factory import CacheFactory
+
+# Mark all tests in this module to run serially (not in parallel)
+# These tests manipulate environment state and fail intermittently in parallel
+pytestmark = pytest.mark.no_parallel
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 

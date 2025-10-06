@@ -17,6 +17,10 @@ from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.redis_ai import AIResponseCache
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 
+# Mark all tests in this module to run serially (not in parallel)
+# These tests manipulate environment state and fail intermittently in parallel
+pytestmark = pytest.mark.no_parallel
+
 
 class TestCachePresetBehavior:
     """

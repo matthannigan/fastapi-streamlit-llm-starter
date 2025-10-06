@@ -28,6 +28,9 @@ import pytest
 from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.encryption import EncryptedCacheLayer, create_encryption_layer_from_env
 
+# Mark all tests in this module to run serially (not in parallel)
+pytestmark = pytest.mark.no_parallel
+
 
 class TestEncryptionPipelineEndToEndIntegration:
     """

@@ -12,20 +12,49 @@ os.environ['RATE_LIMITING_ENABLED'] = 'false'
 from app.main import create_app
 
 
-@pytest.fixture(scope="module")
-def production_environment_integration():
-    """Set up production environment with API keys for integration tests."""
-    # Set production environment with test API keys
-    os.environ['ENVIRONMENT'] = 'production'
-    os.environ['API_KEY'] = 'test-api-key-12345'
-    os.environ['ADDITIONAL_API_KEYS'] = 'test-key-2,test-key-3'
+@pytest.fixture(autouse=True)
+def setup_testing_environment_for_all_integration_tests(monkeypatch):
+    """
+    Set ENVIRONMENT='testing' and reset environment detector cache for ALL integration tests.
+
+    This prevents SecurityConfig from defaulting to production-level security
+    which requires TLS certificates that don't exist in test environments.
+
+    Also clears the global environment_detector cache to prevent stale detection
+    from previous tests affecting current test.
+
+    Applied to ALL integration tests (auth, cache, environment, health, startup).
+    Individual tests can override by setting different ENVIRONMENT values.
+    """
+    # Reset the global environment detector cache before each test
+    from app.core.environment.api import environment_detector
+    environment_detector.reset_cache()
+
+    # Set default testing environment
+    monkeypatch.setenv("ENVIRONMENT", "testing")
 
     yield
 
-    # Cleanup after tests
-    os.environ.pop('ENVIRONMENT', None)
-    os.environ.pop('API_KEY', None)
-    os.environ.pop('ADDITIONAL_API_KEYS', None)
+    # Reset cache after test to ensure clean state
+    environment_detector.reset_cache()
+
+
+@pytest.fixture(scope="function")
+def production_environment_integration(monkeypatch):
+    """
+    Set up production environment with API keys for integration tests.
+
+    Uses monkeypatch for proper cleanup after each test (function scope).
+    This prevents environment pollution that was causing flaky tests.
+    """
+    # Set production environment with test API keys using monkeypatch
+    monkeypatch.setenv('ENVIRONMENT', 'production')
+    monkeypatch.setenv('API_KEY', 'test-api-key-12345')
+    monkeypatch.setenv('ADDITIONAL_API_KEYS', 'test-key-2,test-key-3')
+
+    yield
+
+    # monkeypatch automatically cleans up after test
 
 
 @pytest.fixture(scope="function")

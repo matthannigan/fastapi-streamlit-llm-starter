@@ -17,6 +17,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+# Mark all tests in this module to run serially (not in parallel)
+pytestmark = pytest.mark.no_parallel
+
 # Import the actual dependency functions to test their behavior
 # We use the contracts to understand expected behavior, but test the real functions
 from app.infrastructure.cache.dependencies import (CacheDependencyManager,

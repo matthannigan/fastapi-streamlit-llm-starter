@@ -23,6 +23,9 @@ the cache's management API as a critical part of the cache's public contract.
 
 import pytest
 
+# Mark all tests in this module to run serially (not in parallel)
+pytestmark = pytest.mark.no_parallel
+
 from app.infrastructure.cache.factory import CacheFactory
 
 
