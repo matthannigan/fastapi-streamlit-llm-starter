@@ -67,6 +67,35 @@ Our testing strategy prioritizes tests that give us confidence that the system w
 3. **Mock Only at System Boundaries** - Minimize mocking to reduce test brittleness.
 4. **Fast Feedback Loops** - Tests should run quickly to enable continuous development.
 
+## ⚠️ CRITICAL: Environment Variable Testing Pattern
+
+**MANDATORY: Always use `monkeypatch.setenv()` for environment variables. Never use `os.environ[]` directly.**
+
+This critical pattern prevents test pollution and flaky tests:
+
+```python
+# ❌ NEVER - Causes permanent test pollution
+import os
+def test_feature():
+    os.environ["VAR"] = "value"  # Persists across ALL tests!
+
+# ✅ ALWAYS - Automatic cleanup
+def test_feature(monkeypatch):
+    monkeypatch.setenv("VAR", "value")
+    # Automatically cleaned up after test
+```
+
+**Why this matters:**
+- Direct `os.environ[]` bypasses pytest's cleanup mechanisms
+- Changes persist indefinitely, affecting all subsequent tests
+- Causes flaky, order-dependent test failures
+- This was the root cause of integration test flakiness
+
+**Comprehensive guidance:**
+- **Backend integration tests**: `backend/tests/integration/README.md`
+- **Backend agent guide**: `backend/CLAUDE.md` - Environment Variable Testing Patterns section
+- **Integration test guide**: See CRITICAL section at top of this guide
+
 #### Defining the Public Contract
 
 To rigorously enforce our behavior-driven approach, we formally define a component's "public contract" using stub files (`.pyi`).
