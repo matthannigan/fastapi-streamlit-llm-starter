@@ -82,8 +82,9 @@ pagination = PaginationInfo(
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from pydantic import BaseModel, Field, field_serializer
+from pydantic.types import SerializationInfo
 
 
 class ErrorResponse(BaseModel):
@@ -113,7 +114,7 @@ class ErrorResponse(BaseModel):
         - Automatic timestamp generation with UTC timezone
         - Consistent JSON serialization with proper field ordering
         - Integration with logging systems for error tracking
-        
+    
     Behavior:
         - Automatically sets success to False for all error instances
         - Generates timestamp at creation time for accurate error timing
@@ -121,24 +122,24 @@ class ErrorResponse(BaseModel):
         - Validates error message is non-empty for meaningful error reporting
         - Sanitizes details dictionary to prevent sensitive data exposure
         - Integrates with FastAPI's automatic OpenAPI documentation
-        
+    
     Examples:
         >>> # Basic error response without additional context
         >>> basic_error = ErrorResponse(error="Invalid request format")
         >>> assert basic_error.success is False
         >>> assert basic_error.error == "Invalid request format"
-        
+    
         >>> # Error with machine-readable code for programmatic handling
         >>> validation_error = ErrorResponse(
         ...     error="Question is required for Q&A operation",
         ...     error_code="VALIDATION_ERROR"
         ... )
         >>> assert validation_error.error_code == "VALIDATION_ERROR"
-        
+    
         >>> # Comprehensive error with debugging context
         >>> detailed_error = ErrorResponse(
         ...     error="AI service temporarily unavailable",
-        ...     error_code="SERVICE_UNAVAILABLE", 
+        ...     error_code="SERVICE_UNAVAILABLE",
         ...     details={
         ...         "service": "gemini_api",
         ...         "retry_after": 30,
@@ -146,7 +147,7 @@ class ErrorResponse(BaseModel):
         ...     }
         ... )
         >>> assert "service" in detailed_error.details
-        
+    
         >>> # Error response serialization
         >>> error_json = detailed_error.model_dump_json()
         >>> assert "timestamp" in error_json
@@ -154,7 +155,7 @@ class ErrorResponse(BaseModel):
     """
 
     @field_serializer('timestamp')
-    def serialize_timestamp(self, dt: datetime, _info) -> str:
+    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
         """
         Serialize datetime to ISO format string for JSON compatibility.
         """
@@ -192,7 +193,7 @@ class SuccessResponse(BaseModel):
     """
 
     @field_serializer('timestamp')
-    def serialize_timestamp(self, dt: datetime, _info) -> str:
+    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
         """
         Serialize datetime to ISO format string for JSON compatibility.
         """

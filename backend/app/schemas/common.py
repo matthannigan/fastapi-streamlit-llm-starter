@@ -81,19 +81,20 @@ pagination = PaginationInfo(
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from pydantic import BaseModel, Field, field_serializer
+from pydantic.types import SerializationInfo
 
 
 class ErrorResponse(BaseModel):
     """
     Standardized error response model providing consistent error reporting across all API endpoints.
-    
+
     This model serves as the foundation for all error responses in the API, ensuring predictable
     error information delivery regardless of the specific endpoint, error type, or failure context.
     It integrates seamlessly with the global exception handler and provides structured error
     information for both human users and automated systems.
-    
+
     Attributes:
         success: Always False for error responses, enabling clients to easily distinguish
                 error responses from success responses in a consistent manner
@@ -105,14 +106,14 @@ class ErrorResponse(BaseModel):
                 sanitized to exclude sensitive information while providing useful context
         timestamp: ISO 8601 formatted timestamp indicating when the error occurred,
                   facilitating debugging, log correlation, and performance analysis
-    
+
     State Management:
         - Immutable once created (Pydantic model behavior)
         - Thread-safe for concurrent access across request handlers
         - Automatic timestamp generation with UTC timezone
         - Consistent JSON serialization with proper field ordering
         - Integration with logging systems for error tracking
-        
+
     Behavior:
         - Automatically sets success to False for all error instances
         - Generates timestamp at creation time for accurate error timing
@@ -120,24 +121,24 @@ class ErrorResponse(BaseModel):
         - Validates error message is non-empty for meaningful error reporting
         - Sanitizes details dictionary to prevent sensitive data exposure
         - Integrates with FastAPI's automatic OpenAPI documentation
-        
+
     Examples:
         >>> # Basic error response without additional context
         >>> basic_error = ErrorResponse(error="Invalid request format")
         >>> assert basic_error.success is False
         >>> assert basic_error.error == "Invalid request format"
-        
+
         >>> # Error with machine-readable code for programmatic handling
         >>> validation_error = ErrorResponse(
         ...     error="Question is required for Q&A operation",
         ...     error_code="VALIDATION_ERROR"
         ... )
         >>> assert validation_error.error_code == "VALIDATION_ERROR"
-        
+
         >>> # Comprehensive error with debugging context
         >>> detailed_error = ErrorResponse(
         ...     error="AI service temporarily unavailable",
-        ...     error_code="SERVICE_UNAVAILABLE", 
+        ...     error_code="SERVICE_UNAVAILABLE",
         ...     details={
         ...         "service": "gemini_api",
         ...         "retry_after": 30,
@@ -145,26 +146,26 @@ class ErrorResponse(BaseModel):
         ...     }
         ... )
         >>> assert "service" in detailed_error.details
-        
+
         >>> # Error response serialization
         >>> error_json = detailed_error.model_dump_json()
         >>> assert "timestamp" in error_json
         >>> assert "success" in error_json
     """
     success: bool = Field(
-        default=False, 
+        default=False,
         description="Always false for error responses"
     )
     error: str = Field(
-        ..., 
+        ...,
         description="Human-readable error message",
         min_length=1
     )
-    error_code: Optional[str] = Field(
+    error_code: str | None = Field(
         default=None,
         description="Machine-readable error code for programmatic handling"
     )
-    details: Optional[Dict[str, Any]] = Field(
+    details: Dict[str, Any] | None = Field(
         default=None,
         description="Additional error context (no sensitive data)"
     )
@@ -173,8 +174,8 @@ class ErrorResponse(BaseModel):
         description="When the error occurred"
     )
 
-    @field_serializer('timestamp')
-    def serialize_timestamp(self, dt: datetime, _info) -> str:
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
 
@@ -197,16 +198,16 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     """
     Standardized success response wrapper for simple operations.
-    
+
     For operations that don't return complex data, this provides a consistent
     success response format. More complex operations should define their own
     response models that inherit from this or include these fields.
-    
+
     Attributes:
         success (bool): Always True for success responses.
         message (str, optional): Human-readable success message.
         timestamp (datetime): When the operation completed successfully.
-    
+
     Example:
         ```json
         {
@@ -218,9 +219,9 @@ class SuccessResponse(BaseModel):
     """
     success: bool = Field(
         default=True,
-        description="Always true for success responses"  
+        description="Always true for success responses"
     )
-    message: Optional[str] = Field(
+    message: str | None = Field(
         default=None,
         description="Optional success message"
     )
@@ -229,8 +230,8 @@ class SuccessResponse(BaseModel):
         description="When the operation completed"
     )
 
-    @field_serializer('timestamp') 
-    def serialize_timestamp(self, dt: datetime, _info) -> str:
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
 
@@ -238,10 +239,10 @@ class SuccessResponse(BaseModel):
 class PaginationInfo(BaseModel):
     """
     Pagination metadata for list endpoints.
-    
+
     Provides standardized pagination information for endpoints that return
     lists of items. Helps clients implement proper pagination controls.
-    
+
     Attributes:
         page (int): Current page number (1-based).
         page_size (int): Number of items per page.
@@ -268,4 +269,4 @@ class PaginationInfo(BaseModel):
                 "has_next": True,
                 "has_previous": False
             }
-        } 
+        }

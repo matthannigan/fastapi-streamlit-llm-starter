@@ -27,7 +27,7 @@ validation in mind:
 - **TextProcessingRequest**: Single operation request with optional parameters and validation
 - **BatchTextProcessingRequest**: Multi-operation batch processing with concurrency limits
 
-#### Response Models  
+#### Response Models
 - **TextProcessingResponse**: Operation results with metadata and performance tracking
 - **BatchTextProcessingResponse**: Batch results with aggregated status and individual tracking
 - **BatchTextProcessingItem**: Individual batch item status within batch responses
@@ -162,7 +162,7 @@ questions_request = TextProcessingRequest(
     "result": "Generated summary text...",
     "metadata": {
         "processing_time_ms": 1250,
-        "model_used": "gemini-2.0-flash-exp", 
+        "model_used": "gemini-2.0-flash-exp",
         "cache_hit": False,
         "confidence_score": 0.95
     },
