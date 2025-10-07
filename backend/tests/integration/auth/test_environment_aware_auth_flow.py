@@ -13,17 +13,16 @@ Critical Paths:
     - Environment detection failure defaults to production security
 """
 
-import pytest
 from fastapi import status
 
 
 class TestEnvironmentAwareAuthenticationFlow:
     """
     Integration tests for environment-aware authentication flow.
-    
+
     Seam Under Test:
         HTTP Request → FastAPI Dependencies → Environment Detection → Security Policy → HTTP Response
-        
+
     Critical Paths:
         - Production environment requires valid API keys with proper HTTP errors
         - Development environment allows access while preserving authentication flow
@@ -35,20 +34,20 @@ class TestEnvironmentAwareAuthenticationFlow:
     ):
         """
         Test production environment successfully authenticates valid API keys.
-        
+
         Integration Scope:
             Tests complete flow from HTTP request through environment detection,
             security policy enforcement, and successful authentication response.
-            
+
         Business Impact:
             Ensures users with valid API keys can access protected resources
             in production environments.
-            
+
         Test Strategy:
             - Set production environment with configured API key
             - Make authenticated request to auth status endpoint
             - Verify successful authentication and response content
-            
+
         Success Criteria:
             - Returns 200 status code indicating successful authentication
             - Response includes authenticated context and key information
@@ -70,20 +69,20 @@ class TestEnvironmentAwareAuthenticationFlow:
     ):
         """
         Test production environment returns proper 401 for invalid API keys.
-        
+
         Integration Scope:
             Tests authentication failure flow including custom exception creation,
             HTTP exception conversion, and structured error response generation.
-            
+
         Business Impact:
             Ensures unauthorized users receive clear, actionable error messages
             while protecting system security.
-            
+
         Test Strategy:
             - Configure production environment with valid API key
             - Attempt access with invalid API key
             - Verify proper 401 response with authentication challenge
-            
+
         Success Criteria:
             - Returns 401 Unauthorized status code
             - Includes WWW-Authenticate header for proper HTTP auth flow
@@ -112,20 +111,20 @@ class TestEnvironmentAwareAuthenticationFlow:
     ):
         """
         Test production environment requires credentials with proper authentication challenge.
-        
+
         Integration Scope:
             Tests missing credentials handling through dependency injection,
             authentication validation, and HTTP exception conversion.
-            
+
         Business Impact:
             Ensures production environments properly challenge unauthenticated
             requests with standard HTTP authentication flows.
-            
+
         Test Strategy:
             - Configure production environment with API keys
             - Make request without authentication headers
             - Verify proper 401 challenge response
-            
+
         Success Criteria:
             - Returns 401 Unauthorized for missing credentials
             - Includes proper WWW-Authenticate challenge header

@@ -25,7 +25,7 @@ from typing import Any, Dict
 
 import pytest
 
-from app.core.exceptions import ConfigurationError, InfrastructureError
+from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.encryption import EncryptedCacheLayer, create_encryption_layer_from_env
 
 # Mark all tests in this module to run serially (not in parallel)
@@ -624,7 +624,7 @@ class TestEncryptionConfigurationIntegration:
         assert retrieved == test_value, "Factory-created cache should support encrypted operations"
 
         # Verify encryption is actually active (data should be encrypted in underlying storage)
-        if hasattr(memory_cache, '_l1_cache') and memory_cache._l1_cache:
+        if hasattr(memory_cache, "_l1_cache") and memory_cache._l1_cache:
             # Check if L1 cache data is encrypted
             l1_data = memory_cache._l1_cache._cache.get(test_key)
             if l1_data:
@@ -733,14 +733,14 @@ class TestEncryptionErrorHandlingIntegration:
         original_modules = sys.modules.copy()
 
         # Remove cryptography modules to simulate missing dependency
-        modules_to_remove = [m for m in sys.modules.keys() if 'cryptography' in m]
+        modules_to_remove = [m for m in sys.modules.keys() if "cryptography" in m]
         for module in modules_to_remove:
             if module in sys.modules:
                 del sys.modules[module]
 
         # Also patch the CRYPTOGRAPHY_AVAILABLE flag
-        original_import = EncryptedCacheLayer.__init__.__globals__.get('CRYPTOGRAPHY_AVAILABLE')
-        EncryptedCacheLayer.__init__.__globals__['CRYPTOGRAPHY_AVAILABLE'] = False
+        original_import = EncryptedCacheLayer.__init__.__globals__.get("CRYPTOGRAPHY_AVAILABLE")
+        EncryptedCacheLayer.__init__.__globals__["CRYPTOGRAPHY_AVAILABLE"] = False
 
         try:
             # Act & Assert
@@ -760,7 +760,7 @@ class TestEncryptionErrorHandlingIntegration:
 
         finally:
             # Restore original state
-            EncryptedCacheLayer.__init__.__globals__['CRYPTOGRAPHY_AVAILABLE'] = original_import
+            EncryptedCacheLayer.__init__.__globals__["CRYPTOGRAPHY_AVAILABLE"] = original_import
             sys.modules.clear()
             sys.modules.update(original_modules)
 
@@ -847,7 +847,7 @@ class TestEncryptionErrorHandlingIntegration:
             ("wrong_key_data", b"some-encrypted-with-different-key"),
             ("corrupted_data", b"\x00\x01\x02corrupted"),
             ("empty_data", b""),
-            ("unicode_bytes", "not-bytes".encode("utf-8")),
+            ("unicode_bytes", b"not-bytes"),
         ]
 
         for case_name, invalid_data in invalid_cases:

@@ -329,7 +329,7 @@ class TestCryptographyDependencyIntegration:
             # Verify all errors have consistent content for missing cryptography
             for name, error in errors:
                 # All errors should mention cryptography
-                assert "cryptography" in str(error).lower(), f"Scenario {name} error doesn't mention cryptography: {str(error)}"
+                assert "cryptography" in str(error).lower(), f"Scenario {name} error doesn't mention cryptography: {error!s}"
 
                 # Check error context based on how the error was created
                 if name in ["direct_init", "with_key"]:

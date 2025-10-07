@@ -6,7 +6,6 @@ configuration for testing authentication system integration.
 """
 
 import pytest
-import os
 from fastapi.testclient import TestClient
 from app.main import create_app
 
@@ -204,7 +203,7 @@ def multiple_api_keys_client(multiple_api_keys_environment):
 def auth_headers_valid():
     """
     Generate valid authentication headers for testing.
-    
+
     Returns:
         Dict with Authorization header using Bearer token format
     """
@@ -215,7 +214,7 @@ def auth_headers_valid():
 def auth_headers_invalid():
     """
     Generate invalid authentication headers for testing.
-    
+
     Returns:
         Dict with Authorization header using invalid API key
     """
@@ -226,7 +225,7 @@ def auth_headers_invalid():
 def auth_headers_secondary():
     """
     Generate authentication headers using secondary API key.
-    
+
     Returns:
         Dict with Authorization header using secondary key from ADDITIONAL_API_KEYS
     """

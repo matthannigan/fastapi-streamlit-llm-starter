@@ -25,7 +25,6 @@ Reference:
     - Philosophy: docs/guides/testing/INTEGRATION_TESTS.md
 """
 
-import pytest
 
 # Test markers for execution control
 CRYPTOGRAPHY_AVAILABLE = True

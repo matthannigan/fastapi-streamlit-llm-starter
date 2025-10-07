@@ -7,37 +7,29 @@ import behavior, global state management, and consistency across services during
 HIGHEST PRIORITY - Affects entire application startup and service availability
 """
 
-import pytest
 import os
 import sys
 import importlib
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from unittest.mock import patch
 
 from app.core.environment import (
-    Environment,
-    FeatureContext, 
-    EnvironmentDetector,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment
+    Environment
 )
 
 
 class TestModuleInitializationIntegration:
     """
     Integration tests for module initialization and service integration.
-    
+
     Seam Under Test:
         Module Import System → Global Detector Instance → Service Startup → Cross-Service Access
-        
+
     Critical Paths:
         - Application startup → Module initialization → Service consistency
         - Module reloading → State management → Service adaptation
         - Concurrent access → Global state → Thread safety
-        
+
     Business Impact:
         Ensures reliable application startup and consistent environment detection
         across all services without initialization races or inconsistencies
@@ -65,25 +57,25 @@ class TestModuleInitializationIntegration:
             - No import-time side effects or errors
         """
         monkeypatch.setenv("ENVIRONMENT", "production")
-        
+
         # Import the module fresh multiple times
         for i in range(5):
             # Force reimport by clearing from sys.modules
-            if 'app.core.environment' in sys.modules:
-                del sys.modules['app.core.environment']
-                
+            if "app.core.environment" in sys.modules:
+                del sys.modules["app.core.environment"]
+
             # Import should succeed
             from app.core import environment
-            
+
             # Should get consistent environment detection
             env_info = environment.get_environment_info()
             assert env_info.environment == Environment.PRODUCTION
             assert env_info.confidence > 0.6
-            
+
             # Module should be properly initialized
-            assert hasattr(environment, 'get_environment_info')
-            assert hasattr(environment, 'EnvironmentDetector')
-            assert hasattr(environment, 'Environment')
+            assert hasattr(environment, "get_environment_info")
+            assert hasattr(environment, "EnvironmentDetector")
+            assert hasattr(environment, "Environment")
 
     def test_global_detector_instance_consistency(self, clean_environment, monkeypatch):
         """
@@ -107,12 +99,12 @@ class TestModuleInitializationIntegration:
             - Detection reasoning is consistent
         """
         monkeypatch.setenv("ENVIRONMENT", "development")
-        
+
         # Import fresh
-        if 'app.core.environment' in sys.modules:
-            del sys.modules['app.core.environment']
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
         from app.core import environment
-        
+
         # Get environment info multiple times
         results = []
         for i in range(10):
@@ -123,7 +115,7 @@ class TestModuleInitializationIntegration:
                 env_info.detected_by,
                 len(env_info.additional_signals)
             ))
-        
+
         # All results should be identical
         first_result = results[0]
         for result in results[1:]:
@@ -154,21 +146,21 @@ class TestModuleInitializationIntegration:
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("API_KEY", "startup-api-key")
         monkeypatch.setenv("HOSTNAME", "prod-server-01")
-        
+
         # Import module fresh to simulate startup
-        if 'app.core.environment' in sys.modules:
-            del sys.modules['app.core.environment']
-        
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
+
         from app.core import environment
-        
+
         # Should detect production environment from startup variables
         env_info = environment.get_environment_info()
         assert env_info.environment == Environment.PRODUCTION
         assert env_info.confidence >= 0.8
-        
+
         # Should include signals from startup environment
         signal_sources = [signal.source for signal in env_info.additional_signals]
-        assert any(source == 'ENVIRONMENT' for source in signal_sources), f"Expected ENVIRONMENT signal source, got: {signal_sources}"
+        assert any(source == "ENVIRONMENT" for source in signal_sources), f"Expected ENVIRONMENT signal source, got: {signal_sources}"
 
     def test_service_import_order_independence(self, clean_environment, monkeypatch):
         """
@@ -192,21 +184,21 @@ class TestModuleInitializationIntegration:
             - No import-order dependencies exist
         """
         monkeypatch.setenv("ENVIRONMENT", "staging")
-        
+
         # Test multiple import orders
         import_orders = [
-            ['app.core.environment', 'app.core.config'],
-            ['app.core.config', 'app.core.environment'],
+            ["app.core.environment", "app.core.config"],
+            ["app.core.config", "app.core.environment"],
         ]
-        
+
         results = []
-        
+
         for order in import_orders:
             # Clean slate
             for module in order:
                 if module in sys.modules:
                     del sys.modules[module]
-            
+
             # Import in specific order
             imported_modules = []
             for module_name in order:
@@ -215,7 +207,7 @@ class TestModuleInitializationIntegration:
                 except ImportError:
                     # Some modules might not exist, that's ok
                     pass
-            
+
             # Get environment info after this import order
             from app.core import environment
             env_info = environment.get_environment_info()
@@ -224,7 +216,7 @@ class TestModuleInitializationIntegration:
                 env_info.confidence,
                 env_info.detected_by
             ))
-        
+
         # All import orders should give same result
         first_result = results[0]
         for i, result in enumerate(results[1:], 1):
@@ -252,27 +244,27 @@ class TestModuleInitializationIntegration:
             - All modules initialize successfully
         """
         monkeypatch.setenv("ENVIRONMENT", "development")
-        
+
         # Clean modules to simulate fresh startup
         modules_to_clean = [
-            'app.core.environment',
-            'app.core.config', 
-            'app.main',
+            "app.core.environment",
+            "app.core.config",
+            "app.main",
         ]
-        
+
         for module in modules_to_clean:
             if module in sys.modules:
                 del sys.modules[module]
-        
+
         # Import in order that could cause circular dependency
         try:
             from app.core import environment
             from app.core import config
             from app import main
-        except ImportError as e:
+        except ImportError:
             # Some imports might fail, but should not hang
             pass
-        
+
         # Environment detection should still work
         env_info = environment.get_environment_info()
         assert env_info.environment == Environment.DEVELOPMENT
@@ -299,27 +291,27 @@ class TestModuleInitializationIntegration:
             - Performance is consistent across environment types
         """
         monkeypatch.setenv("ENVIRONMENT", "production")
-        
+
         # Clean module state
-        if 'app.core.environment' in sys.modules:
-            del sys.modules['app.core.environment']
-            
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
+
         # Measure import time
         performance_monitor.start()
         from app.core import environment
         performance_monitor.stop()
-        
+
         import_time = performance_monitor.elapsed_ms
         assert import_time < 100, f"Module import took {import_time}ms, exceeding 100ms SLA"
-        
+
         # Measure first detection time
         performance_monitor.start()
         env_info = environment.get_environment_info()
         performance_monitor.stop()
-        
+
         detection_time = performance_monitor.elapsed_ms
         assert detection_time < 100, f"First detection took {detection_time}ms, exceeding 100ms SLA"
-        
+
         # Verify detection worked correctly
         assert env_info.environment == Environment.PRODUCTION
 
@@ -346,12 +338,12 @@ class TestModuleInitializationIntegration:
         """
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("API_KEY", "concurrent-test-key")
-        
+
         # Import module fresh
-        if 'app.core.environment' in sys.modules:
-            del sys.modules['app.core.environment']
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
         from app.core import environment
-        
+
         # Function to run in each thread
         def get_environment_from_thread():
             env_info = environment.get_environment_info()
@@ -361,13 +353,13 @@ class TestModuleInitializationIntegration:
                 env_info.detected_by,
                 len(env_info.additional_signals)
             )
-        
+
         # Run concurrent access
         num_threads = 10
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
             futures = [executor.submit(get_environment_from_thread) for _ in range(num_threads)]
             results = [future.result() for future in as_completed(futures)]
-        
+
         # All results should be identical
         first_result = results[0]
         for i, result in enumerate(results[1:], 1):
@@ -404,16 +396,16 @@ class TestModuleInitializationIntegration:
         # Change environment
         clean_environment.setenv("ENVIRONMENT", "production")
         clean_environment.setenv("API_KEY", "runtime-change-key")
-        
+
         # Should detect new environment
         updated_env = environment.get_environment_info()
         assert updated_env.environment == Environment.PRODUCTION
         # Confidence may be equal depending on signal precedence
         assert updated_env.confidence >= initial_env.confidence
-        
+
         # Should have updated environment detection from ENVIRONMENT variable
         signal_sources = [signal.source for signal in updated_env.additional_signals]
-        assert any(source == 'ENVIRONMENT' for source in signal_sources), f"Expected ENVIRONMENT signal source, got: {signal_sources}"
+        assert any(source == "ENVIRONMENT" for source in signal_sources), f"Expected ENVIRONMENT signal source, got: {signal_sources}"
 
     def test_module_state_isolation_across_tests(self, clean_environment, monkeypatch):
         """
@@ -440,14 +432,14 @@ class TestModuleInitializationIntegration:
         # isolation is working correctly
 
         monkeypatch.setenv("ENVIRONMENT", "testing")
-        
-        if 'app.core.environment' in sys.modules:
-            del sys.modules['app.core.environment']
+
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
         from app.core import environment
-        
+
         env_info = environment.get_environment_info()
         assert env_info.environment == Environment.TESTING
-        
+
         # Verify we're starting from clean state (no unexpected environment variables)
         # The clean_environment fixture should have cleared everything
         unwanted_vars = ["PROD", "DEBUG", "API_KEY", "ENABLE_AI_CACHE"]
@@ -476,32 +468,32 @@ class TestModuleInitializationIntegration:
             - Detection performance remains consistent
         """
         monkeypatch.setenv("ENVIRONMENT", "production")
-        
-        if 'app.core.environment' in sys.modules:
-            del sys.modules['app.core.environment']
+
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
         from app.core import environment
-        
+
         # Perform many operations
         initial_detection_time = None
         final_detection_time = None
-        
+
         for i in range(100):
             start_time = time.perf_counter()
             env_info = environment.get_environment_info()
             end_time = time.perf_counter()
-            
+
             if i == 0:
                 initial_detection_time = end_time - start_time
             if i == 99:
                 final_detection_time = end_time - start_time
-                
+
             # Each operation should succeed
             assert env_info.environment == Environment.PRODUCTION
-            
+
             # Performance should remain reasonable
             detection_time = (end_time - start_time) * 1000  # Convert to ms
             assert detection_time < 50, f"Detection #{i} took {detection_time}ms, too slow"
-        
+
         # Performance shouldn't degrade significantly over time
         if initial_detection_time and final_detection_time:
             performance_degradation = final_detection_time / initial_detection_time

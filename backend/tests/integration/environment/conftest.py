@@ -7,21 +7,12 @@ integration with infrastructure components like security, cache, and resilience 
 """
 
 import pytest
-import os
-import importlib
-import sys
-from typing import Dict, List, Optional
-from unittest.mock import patch, Mock
-from pathlib import Path
 
 from app.core.environment import (
     Environment,
     FeatureContext,
     EnvironmentDetector,
-    DetectionConfig,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment
+    DetectionConfig
 )
 
 
@@ -62,9 +53,9 @@ def clean_environment(monkeypatch):
         monkeypatch.delenv(var, raising=False)
 
     # Disable rate limiting for testing
-    monkeypatch.setenv('RATE_LIMITING_ENABLED', 'false')
+    monkeypatch.setenv("RATE_LIMITING_ENABLED", "false")
 
-    yield monkeypatch
+    return monkeypatch
 
 
 # Note: The reload_environment_module fixture and its dependent fixtures have been removed
@@ -92,7 +83,7 @@ def development_environment(clean_environment, monkeypatch):
     """
     monkeypatch.setenv("ENVIRONMENT", "development")
 
-    yield Environment.DEVELOPMENT
+    return Environment.DEVELOPMENT
 
 
 @pytest.fixture(scope="function")
@@ -116,7 +107,7 @@ def production_environment(clean_environment, monkeypatch):
     monkeypatch.setenv("API_KEY", "test-api-key-12345")
     monkeypatch.setenv("ADDITIONAL_API_KEYS", "test-key-2,test-key-3")
 
-    yield Environment.PRODUCTION
+    return Environment.PRODUCTION
 
 
 @pytest.fixture(scope="function")
@@ -135,7 +126,7 @@ def staging_environment(clean_environment, monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "staging")
     monkeypatch.setenv("API_KEY", "test-staging-api-key")
 
-    yield Environment.STAGING
+    return Environment.STAGING
 
 
 @pytest.fixture(scope="function")
@@ -154,7 +145,7 @@ def testing_environment(clean_environment, monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "testing")
     monkeypatch.setenv("CI", "true")
 
-    yield Environment.TESTING
+    return Environment.TESTING
 
 
 @pytest.fixture(scope="function")
@@ -172,7 +163,6 @@ def ai_enabled_environment(clean_environment, monkeypatch):
     """
     monkeypatch.setenv("ENABLE_AI_CACHE", "true")
 
-    yield
 
 
 @pytest.fixture(scope="function")
@@ -190,7 +180,6 @@ def security_enforcement_environment(clean_environment, monkeypatch):
     """
     monkeypatch.setenv("ENFORCE_AUTH", "true")
 
-    yield
 
 
 @pytest.fixture(scope="function")
@@ -210,7 +199,6 @@ def conflicting_signals_environment(clean_environment, monkeypatch):
     monkeypatch.setenv("NODE_ENV", "development")
     monkeypatch.setenv("DEBUG", "true")  # Usually indicates development
 
-    yield
 
 
 @pytest.fixture(scope="function")
@@ -227,71 +215,71 @@ def unknown_environment(clean_environment):
         - Testing low confidence detection
     """
     # Explicitly ensure no environment indicators are present
-    yield
+    return
 
 
 @pytest.fixture(scope="function")
 def custom_detection_config():
     """
     Custom detection configuration for testing specialized scenarios.
-    
+
     Business Impact:
         Enables testing of deployment flexibility and custom patterns
-        
+
     Use Cases:
         - Testing custom environment detection patterns
         - Verifying custom environment variable precedence
         - Testing specialized deployment configurations
     """
     config = DetectionConfig(
-        env_var_precedence=['CUSTOM_ENV', 'ENVIRONMENT'],
-        production_patterns=[r'.*live.*', r'.*prod.*', r'.*production.*'],
-        development_patterns=[r'.*dev.*', r'.*develop.*'],
-        staging_patterns=[r'.*stage.*', r'.*staging.*'],
-        development_indicators=['.env', '.git', 'node_modules'],
-        production_indicators=['/opt/app', '/var/app'],
+        env_var_precedence=["CUSTOM_ENV", "ENVIRONMENT"],
+        production_patterns=[r".*live.*", r".*prod.*", r".*production.*"],
+        development_patterns=[r".*dev.*", r".*develop.*"],
+        staging_patterns=[r".*stage.*", r".*staging.*"],
+        development_indicators=[".env", ".git", "node_modules"],
+        production_indicators=["/opt/app", "/var/app"],
         feature_contexts={
             FeatureContext.AI_ENABLED: {
-                'environment_var': 'ENABLE_AI_FEATURES',
-                'true_values': ['true', '1', 'enabled'],
-                'metadata': {'ai_prefix': 'ai-'}
+                "environment_var": "ENABLE_AI_FEATURES",
+                "true_values": ["true", "1", "enabled"],
+                "metadata": {"ai_prefix": "ai-"}
             },
             FeatureContext.SECURITY_ENFORCEMENT: {
-                'environment_var': 'FORCE_SECURE_MODE', 
-                'true_values': ['true', '1', 'yes'],
-                'production_override': True
+                "environment_var": "FORCE_SECURE_MODE",
+                "true_values": ["true", "1", "yes"],
+                "production_override": True
             }
         }
     )
-    
-    yield config
+
+    return config
 
 
-@pytest.fixture(scope="function")  
+@pytest.fixture(scope="function")
 def environment_detector_with_config(custom_detection_config):
     """
     Environment detector with custom configuration.
-    
+
     Business Impact:
         Enables testing of custom detection logic and specialized scenarios
-        
+
     Use Cases:
         - Testing custom pattern matching
         - Verifying custom environment variable precedence
         - Testing feature-specific overrides
     """
     detector = EnvironmentDetector(custom_detection_config)
-    yield detector
+    return detector
 
 
 @pytest.fixture(scope="function")
 def mock_system_indicators(tmp_path, monkeypatch):
     """
     Mock system indicators for testing file-based detection.
-    
+
     Business Impact:
         Enables testing of system-level environment detection
-        
+
     Use Cases:
         - Testing file-based environment detection
         - Verifying development environment indicators
@@ -301,11 +289,11 @@ def mock_system_indicators(tmp_path, monkeypatch):
     (tmp_path / ".env").touch()
     (tmp_path / ".git").mkdir()
     (tmp_path / "node_modules").mkdir()
-    
+
     # Mock the current working directory to point to our temp path
     monkeypatch.chdir(tmp_path)
-    
-    yield tmp_path
+
+    return tmp_path
 
 
 # Convenience fixtures for common testing scenarios
@@ -316,7 +304,6 @@ def prod_with_ai_features(clean_environment, monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("ENABLE_AI_CACHE", "true")
     monkeypatch.setenv("API_KEY", "test-api-key-12345")
-    yield
 
 
 @pytest.fixture(scope="function")
@@ -324,7 +311,6 @@ def dev_with_security_enforcement(clean_environment, monkeypatch):
     """Development environment with security enforcement enabled."""
     monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.setenv("ENFORCE_AUTH", "true")
-    yield
 
 
 # Test client fixture for API testing
@@ -358,10 +344,10 @@ def test_client():
 def test_database():
     """
     Test database for integration testing.
-    
+
     Business Impact:
         Provides database access for testing environment-driven database configurations
-        
+
     Use Cases:
         - Testing database connection behavior
         - Verifying environment-specific database settings
@@ -369,39 +355,39 @@ def test_database():
     """
     # This would normally set up a test database
     # For now, return a mock or None since we don't have DB setup
-    yield None
+    return
 
 
 @pytest.fixture(scope="function")
 def performance_monitor():
     """
     Performance monitoring for testing environment detection speed.
-    
+
     Business Impact:
         Ensures environment detection meets performance SLAs
-        
+
     Use Cases:
         - Testing detection speed under load
         - Verifying caching performance
         - Testing concurrent detection performance
     """
     import time
-    
+
     class PerformanceMonitor:
         def __init__(self):
             self.start_time = None
             self.end_time = None
-            
+
         def start(self):
             self.start_time = time.perf_counter()
-            
+
         def stop(self):
             self.end_time = time.perf_counter()
-            
+
         @property
         def elapsed_ms(self):
             if self.start_time and self.end_time:
                 return (self.end_time - self.start_time) * 1000
             return None
-            
-    yield PerformanceMonitor()
+
+    return PerformanceMonitor()

@@ -87,7 +87,7 @@ class TestComprehensiveSecurityValidation:
         ca_file.write_text("-----BEGIN CERTIFICATE-----\ntest_ca\n-----END CERTIFICATE-----")
 
         # Generate valid encryption key
-        encryption_key = Fernet.generate_key().decode('utf-8')
+        encryption_key = Fernet.generate_key().decode("utf-8")
 
         # Configure secure Redis URL with TLS
         redis_url = "rediss://redis:6380"
@@ -105,24 +105,24 @@ class TestComprehensiveSecurityValidation:
 
         # Assert: Verify comprehensive validation success
         assert result is not None, "Validation result should not be None"
-        assert hasattr(result, 'is_valid'), "Result must have is_valid attribute"
+        assert hasattr(result, "is_valid"), "Result must have is_valid attribute"
         assert result.is_valid is True, "Validation should pass with all components configured"
 
         # Verify component statuses indicate success
-        assert hasattr(result, 'tls_status'), "Result must have tls_status attribute"
+        assert hasattr(result, "tls_status"), "Result must have tls_status attribute"
         assert "✅" in result.tls_status or "Valid" in result.tls_status, \
             "TLS status should indicate success"
 
-        assert hasattr(result, 'encryption_status'), "Result must have encryption_status attribute"
+        assert hasattr(result, "encryption_status"), "Result must have encryption_status attribute"
         assert "✅" in result.encryption_status or "Valid" in result.encryption_status, \
             "Encryption status should indicate success"
 
-        assert hasattr(result, 'auth_status'), "Result must have auth_status attribute"
+        assert hasattr(result, "auth_status"), "Result must have auth_status attribute"
         # Auth may not be present in URL, so check for valid states
         assert result.auth_status is not None, "Auth status should be populated"
 
         # Verify no errors were collected
-        assert hasattr(result, 'errors'), "Result must have errors attribute"
+        assert hasattr(result, "errors"), "Result must have errors attribute"
         assert isinstance(result.errors, list), "Errors must be a list"
         assert len(result.errors) == 0, f"No errors expected for valid configuration, got: {result.errors}"
 
@@ -174,16 +174,16 @@ class TestComprehensiveSecurityValidation:
         assert result.is_valid is False, "Validation should fail with invalid configuration"
 
         # Verify errors are aggregated
-        assert hasattr(result, 'errors'), "Result must have errors attribute"
+        assert hasattr(result, "errors"), "Result must have errors attribute"
         assert isinstance(result.errors, list), "Errors must be a list"
         assert len(result.errors) > 0, "Errors should be present for invalid configuration"
 
         # Verify component statuses show failures
-        assert hasattr(result, 'tls_status'), "Result must have tls_status attribute"
+        assert hasattr(result, "tls_status"), "Result must have tls_status attribute"
         assert "❌" in result.tls_status or result.tls_status != "✅ Valid", \
             "TLS status should indicate failure for insecure URL"
 
-        assert hasattr(result, 'encryption_status'), "Result must have encryption_status attribute"
+        assert hasattr(result, "encryption_status"), "Result must have encryption_status attribute"
         assert "❌" in result.encryption_status or result.encryption_status != "✅ Valid", \
             "Encryption status should indicate failure for invalid key"
 
@@ -386,12 +386,12 @@ class TestComprehensiveValidationErrorHandling:
 
         # Assert: Verify validation handles partial configuration
         assert result is not None, "Result should be returned"
-        assert hasattr(result, 'is_valid'), "Result must have is_valid attribute"
+        assert hasattr(result, "is_valid"), "Result must have is_valid attribute"
 
         # Verify all component statuses are populated even with partial config
-        assert hasattr(result, 'tls_status'), "TLS status should be populated"
-        assert hasattr(result, 'encryption_status'), "Encryption status should be populated"
-        assert hasattr(result, 'auth_status'), "Auth status should be populated"
+        assert hasattr(result, "tls_status"), "TLS status should be populated"
+        assert hasattr(result, "encryption_status"), "Encryption status should be populated"
+        assert hasattr(result, "auth_status"), "Auth status should be populated"
 
         # Verify each status is a non-empty string
         assert isinstance(result.tls_status, str) and len(result.tls_status) > 0

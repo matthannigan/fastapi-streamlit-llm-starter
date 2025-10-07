@@ -1,19 +1,19 @@
 """
 Cache Management API Integration Test Demonstration.
 
-This test suite demonstrates the "Shared Contract Tests" pattern and end-to-end 
-testing approach for the Cache Management API. It showcases the key concepts 
+This test suite demonstrates the "Shared Contract Tests" pattern and end-to-end
+testing approach for the Cache Management API. It showcases the key concepts
 for testing complete HTTP-to-cache workflows.
 
 Key Testing Patterns Demonstrated:
     1. End-to-end API testing combining HTTP and direct cache access
-    2. Cache invalidation workflow validation  
+    2. Cache invalidation workflow validation
     3. Metrics accuracy verification after known operations
     4. Complete infrastructure stack testing
 
 Integration Testing Philosophy:
     - Test entire stack from HTTP request to cache backend
-    - Validate API contracts and response structures  
+    - Validate API contracts and response structures
     - Verify actual cache state changes through API operations
     - Ensure monitoring metrics reflect real cache operations
 
@@ -143,7 +143,7 @@ class TestCacheManagementAPIIntegration:
             await cache.set(key, value)
 
         # Verify setup
-        for key in test_data.keys():
+        for key in test_data:
             assert await cache.get(key) is not None, f"Setup failed: {key}"
 
         # STEP 2: This is where HTTP API call would happen

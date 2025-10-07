@@ -13,17 +13,16 @@ Critical Paths:
     - Response format varies appropriately based on environment context
 """
 
-import pytest
 from fastapi import status
 
 
 class TestAuthStatusIntegration:
     """
     Integration tests for authentication status API endpoint.
-    
+
     Seam Under Test:
         HTTP Request → /v1/auth/status Endpoint → Authentication Dependencies → Response Generation
-        
+
     Critical Paths:
         - Status endpoint serves as comprehensive authentication system demonstration
         - Response format and content varies appropriately by environment and auth state
@@ -35,21 +34,21 @@ class TestAuthStatusIntegration:
     ):
         """
         Test /v1/auth/status demonstrates complete authentication integration.
-        
+
         Integration Scope:
             Tests entire authentication stack through single endpoint including
             dependency injection, authentication validation, environment detection,
             and structured response generation.
-            
+
         Business Impact:
             Provides comprehensive authentication validation endpoint for
             monitoring, debugging, and API client verification.
-            
+
         Test Strategy:
             - Configure production environment with valid API key
             - Call status endpoint with valid authentication
             - Verify complete response includes all integration components
-            
+
         Success Criteria:
             - Returns 200 with complete authentication status information
             - Response includes truncated API key prefix for verification
@@ -77,20 +76,20 @@ class TestAuthStatusIntegration:
     ):
         """
         Test /v1/auth/status error handling demonstrates HTTP exception integration.
-        
+
         Integration Scope:
             Tests authentication failure handling through custom exception
             generation, HTTP conversion, and structured error response formatting.
-            
+
         Business Impact:
             Ensures API clients receive consistent, actionable error responses
             with sufficient context for debugging authentication issues.
-            
+
         Test Strategy:
             - Attempt status check with invalid authentication
             - Verify proper 401 response with structured error format
             - Ensure error context preservation and HTTP compliance
-            
+
         Success Criteria:
             - Returns 401 Unauthorized with proper HTTP headers
             - Error response includes structured detail and context
@@ -127,20 +126,20 @@ class TestAuthStatusIntegration:
     ):
         """
         Test /v1/auth/status returns proper authentication challenge for missing credentials.
-        
+
         Integration Scope:
             Tests missing credentials handling through dependency injection,
             security policy enforcement, and HTTP challenge response generation.
-            
+
         Business Impact:
             Ensures unauthenticated requests receive proper HTTP authentication
             challenge with clear guidance for required authentication.
-            
+
         Test Strategy:
             - Make status request without authentication headers
             - Verify proper 401 challenge response with WWW-Authenticate header
             - Ensure error message clearly indicates authentication requirement
-            
+
         Success Criteria:
             - Returns 401 with WWW-Authenticate challenge header
             - Error message clearly indicates authentication requirement
@@ -167,20 +166,20 @@ class TestAuthStatusIntegration:
     ):
         """
         Test status endpoint responses vary correctly between environments.
-        
+
         Integration Scope:
             Tests environment detection integration with response formatting,
             ensuring status responses appropriately reflect deployment context.
-            
+
         Business Impact:
             Provides environment-aware status reporting for monitoring
             and debugging across different deployment environments.
-            
+
         Test Strategy:
             - Request status in development environment without keys
             - Verify development-specific response format and warnings
             - Ensure environment context properly integrated
-            
+
         Success Criteria:
             - Development environment returns appropriate status information
             - Response includes development mode indicators and warnings
@@ -203,20 +202,20 @@ class TestAuthStatusIntegration:
     ):
         """
         Test status response format consistent regardless of authentication method.
-        
+
         Integration Scope:
             Tests response formatting consistency across different authentication
             header types (Bearer vs X-API-Key) and validation methods.
-            
+
         Business Impact:
             Ensures consistent API client experience regardless of
             authentication method preference or requirements.
-            
+
         Test Strategy:
             - Test status endpoint with Bearer token authentication
-            - Test same endpoint with X-API-Key header authentication  
+            - Test same endpoint with X-API-Key header authentication
             - Verify response format consistency between methods
-            
+
         Success Criteria:
             - Response structure identical between authentication methods
             - Key prefix and authentication status consistent
@@ -248,20 +247,20 @@ class TestAuthStatusIntegration:
     ):
         """
         Test status endpoint securely truncates API key prefixes in responses.
-        
+
         Integration Scope:
             Tests secure response formatting that includes enough key information
             for verification while preventing key exposure or reconstruction.
-            
+
         Business Impact:
             Balances debugging utility with security by providing key
             identification without exposing sensitive authentication credentials.
-            
+
         Test Strategy:
             - Test status endpoint with various API keys of different lengths
             - Verify consistent truncation length and security
             - Ensure truncated prefixes provide useful identification
-            
+
         Success Criteria:
             - Key prefixes consistently truncated to safe length (8 chars)
             - Truncation prevents key reconstruction or exposure

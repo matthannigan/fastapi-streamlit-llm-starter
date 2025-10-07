@@ -14,8 +14,6 @@ import secrets
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -455,7 +453,7 @@ def test_redis_certs(tmp_path_factory):
         # Validate certificate chain (CA → server cert)
         verify_result = subprocess.run(
             ["openssl", "verify", "-CAfile", str(ca_cert), str(redis_cert)],
-            capture_output=True,
+            check=False, capture_output=True,
             text=True,
         )
 
@@ -582,14 +580,14 @@ def secure_redis_container(test_redis_certs):
                         password,
                         "ping",
                     ],
-                    capture_output=True,
+                    check=False, capture_output=True,
                     text=True,
                     timeout=5,
                 )
 
                 if health_check.returncode == 0 and "PONG" in health_check.stdout:
                     break
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
                 # Log but continue trying
                 pass
 
@@ -681,7 +679,6 @@ async def secure_redis_cache(secure_redis_container, monkeypatch):
 
     # Manually configure security manager to use our test certificates
     # The auto-generated SecurityConfig doesn't know about our custom certs
-    from app.infrastructure.cache.security import SecurityConfig
 
     cache.security_manager.config = SecurityConfig(
         redis_auth=secure_redis_container["password"],

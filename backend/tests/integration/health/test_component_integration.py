@@ -14,9 +14,6 @@ through HTTP requests without mocking internal components.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch
-import os
 import time
 
 
@@ -113,8 +110,8 @@ class TestCacheComponentIntegration:
         try:
             from app.core.config import settings
             # Reset cache configuration by invalidating any cached values
-            if hasattr(settings, '_cache_config'):
-                delattr(settings, '_cache_config')
+            if hasattr(settings, "_cache_config"):
+                delattr(settings, "_cache_config")
         except Exception:
             pass  # Configuration reload is optional for testing
 
@@ -429,8 +426,8 @@ class TestComponentInteractionIntegration:
         # The timestamp is ISO format, so we can parse it to check recency
         import datetime
         try:
-            parsed_time = datetime.datetime.fromisoformat(response_timestamp.replace('Z', '+00:00'))
-            time_diff = datetime.datetime.now(datetime.timezone.utc) - parsed_time
+            parsed_time = datetime.datetime.fromisoformat(response_timestamp.replace("Z", "+00:00"))
+            time_diff = datetime.datetime.now(datetime.UTC) - parsed_time
             assert abs(time_diff.total_seconds()) < 5, "Health check timestamp should be recent"
         except (ValueError, TypeError):
             # If timestamp parsing fails, just ensure it exists

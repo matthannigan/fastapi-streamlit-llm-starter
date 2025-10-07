@@ -18,7 +18,6 @@ Integration Philosophy: docs/guides/testing/INTEGRATION_TESTS.md
 
 import pytest
 import time
-from fastapi.testclient import TestClient
 
 
 class TestCriticalPathHealthIntegration:

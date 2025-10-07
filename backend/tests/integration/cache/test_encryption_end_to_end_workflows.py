@@ -31,14 +31,9 @@ Critical Integration Points:
 import pytest
 import json
 import time
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any, List
 
-from app.core.exceptions import ConfigurationError, ValidationError
+from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.encryption import EncryptedCacheLayer, create_encryption_layer_from_env
-from app.infrastructure.cache.redis_generic import GenericRedisCache
-from app.infrastructure.cache.security import SecurityConfig
-from app.infrastructure.cache.factory import CacheFactory
 
 
 class TestEncryptedCacheEndToEndWorkflows:
@@ -128,7 +123,7 @@ class TestEncryptedCacheEndToEndWorkflows:
         assert b"Test summary" not in raw_redis_data  # Cannot read without decryption
 
         # Clear L1 cache to force retrieval from Redis
-        if hasattr(secure_redis_cache, '_l1_cache'):
+        if hasattr(secure_redis_cache, "_l1_cache"):
             secure_redis_cache._l1_cache.clear()
 
         # Retrieve and verify data integrity

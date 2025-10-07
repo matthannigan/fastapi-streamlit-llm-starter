@@ -16,7 +16,6 @@ Integration Seam:
     validate_redis_auth() → URL parsing → Password strength check → Environment detection → Result generation
 """
 
-import pytest
 
 
 class TestRedisAuthenticationValidation:

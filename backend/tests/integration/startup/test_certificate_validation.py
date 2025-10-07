@@ -19,8 +19,6 @@ Critical Integration Path:
 import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any
-from unittest.mock import patch
 
 from app.core.startup.redis_security import RedisSecurityValidator
 
