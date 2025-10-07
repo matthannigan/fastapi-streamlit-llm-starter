@@ -1,0 +1,43 @@
+# Dockerfile for testing without cryptography library
+# Used to verify graceful degradation when cryptography is unavailable
+FROM python:3.13-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN pip install --no-cache-dir poetry==1.8.5
+
+# Copy project files
+COPY backend/pyproject.toml backend/poetry.lock* ./backend/
+COPY shared/ ./shared/
+
+# Configure Poetry to not create virtual environments (we're in a container)
+RUN poetry config virtualenvs.create false
+
+# Install dependencies WITHOUT cryptography
+# We do this by temporarily modifying pyproject.toml
+WORKDIR /app/backend
+RUN sed -i '/^cryptography = /d' pyproject.toml && \
+    poetry lock --no-update && \
+    poetry install --only main,test --no-interaction --no-ansi
+
+# Copy application code
+COPY backend/app ./app
+COPY backend/tests ./tests
+
+# Set Python path to include backend directory
+ENV PYTHONPATH=/app/backend:/app/shared
+
+# Default command: run integration tests for cryptography unavailability
+CMD ["pytest", \
+     "tests/integration/startup/test_cache_encryption_cryptography_unavailable.py", \
+     "tests/integration/startup/test_redis_security_cryptography_unavailable.py", \
+     "-v", \
+     "--tb=short", \
+     "--no-cov"]

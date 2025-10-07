@@ -23,6 +23,7 @@
         test-local test-backend test-backend-api test-backend-core test-backend-infrastructure \
         test-backend-integration test-backend-performance test-backend-services test-backend-schemas \
         test-backend-slow test-backend-all test-backend-manual test-frontend test-integration \
+        test-no-cryptography test-cryptography-unavailable \
         test-coverage test-coverage-all test-retry test-circuit \
         lint-backend lint-frontend format \
         clean clean-venv clean-all \
@@ -185,6 +186,7 @@ help:
 	@echo "  test-backend-manual  Run manual tests (requires running server)"
 	@echo "  test-frontend        Run frontend tests via Docker"
 	@echo "  test-integration     Run end-to-end integration tests"
+	@echo "  test-no-cryptography Run integration tests without cryptography (Docker)"
 	@echo "  test-coverage        Run tests with coverage reporting"
 	@echo "  test-coverage-all    Run coverage including slow tests"
 	@echo "  test-retry           Run retry mechanism tests"
@@ -609,6 +611,16 @@ test-integration:
 	@echo "💡 Start services first: make dev"
 	@echo ""
 	@$(PYTHON_CMD) scripts/test_integration.py
+
+# Run integration tests without cryptography library (Docker-based)
+test-no-cryptography:
+	@echo "🔒 Running integration tests without cryptography library..."
+	@echo "⚠️  These tests verify graceful degradation when cryptography is unavailable"
+	@echo ""
+	@bash backend/tests/integration/docker/run-no-cryptography-tests.sh
+
+# Alias for test-no-cryptography
+test-cryptography-unavailable: test-no-cryptography
 
 ##################################################################################################
 # Coverage and Specialized Testing
