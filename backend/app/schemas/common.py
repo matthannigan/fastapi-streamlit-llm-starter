@@ -82,8 +82,7 @@ pagination = PaginationInfo(
 
 from datetime import datetime
 from typing import Dict, Any
-from pydantic import ConfigDict, BaseModel, Field, field_serializer
-from pydantic.types import SerializationInfo
+from pydantic import ConfigDict, BaseModel, Field, field_serializer, FieldSerializationInfo
 
 
 class ErrorResponse(BaseModel):
@@ -175,7 +174,7 @@ class ErrorResponse(BaseModel):
     )
 
     @field_serializer("timestamp")
-    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
+    def serialize_timestamp(self, dt: datetime, _info: FieldSerializationInfo) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
     model_config = ConfigDict(json_schema_extra={
@@ -228,7 +227,7 @@ class SuccessResponse(BaseModel):
     )
 
     @field_serializer("timestamp")
-    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
+    def serialize_timestamp(self, dt: datetime, _info: FieldSerializationInfo) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
 

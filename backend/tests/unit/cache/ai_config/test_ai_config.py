@@ -1387,7 +1387,7 @@ operation_ttls:
         # Mock file reading and YAML parsing
         with patch(
             "builtins.open", mock_open(read_data=yaml_content)
-        ) as mock_file, patch("yaml.safe_load") as mock_yaml_load:
+        ) as mock_file, patch("app.infrastructure.cache.ai_config.yaml.safe_load") as mock_yaml_load:
             # Configure YAML mock to return parsed data
             mock_yaml_load.return_value = {
                 "redis_url": "redis://yaml-test:6379/3",
