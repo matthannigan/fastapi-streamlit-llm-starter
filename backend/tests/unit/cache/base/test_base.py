@@ -19,7 +19,6 @@ External Dependencies:
 import inspect
 from abc import ABC
 from typing import Any, Optional
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -173,7 +172,7 @@ class TestCacheInterfaceContract:
 
         # Test incomplete implementation missing get() method
         class MissingGetMethod(CacheInterface):
-            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+            async def set(self, key: str, value: Any, ttl: int | None = None):
                 pass
 
             async def delete(self, key: str):
@@ -206,7 +205,7 @@ class TestCacheInterfaceContract:
             async def get(self, key: str):
                 return None
 
-            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+            async def set(self, key: str, value: Any, ttl: int | None = None):
                 pass
 
             async def exists(self, key: str) -> bool:
@@ -221,7 +220,7 @@ class TestCacheInterfaceContract:
             async def get(self, key: str):
                 return None
 
-            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+            async def set(self, key: str, value: Any, ttl: int | None = None):
                 pass
 
             async def delete(self, key: str):
@@ -282,7 +281,7 @@ class TestCacheInterfaceContract:
             async def get(self, key: str):
                 return f"value_for_{key}"
 
-            async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+            async def set(self, key: str, value: Any, ttl: int | None = None):
                 pass
 
             async def delete(self, key: str):
@@ -1120,10 +1119,10 @@ class TestCacheInterfacePolymorphism:
             cache_interface: CacheInterface = cache_impl
 
             # Verify method signatures are accessible and consistent
-            get_method = getattr(cache_interface, "get")
-            set_method = getattr(cache_interface, "set")
-            delete_method = getattr(cache_interface, "delete")
-            exists_method = getattr(cache_interface, "exists")
+            get_method = cache_interface.get
+            set_method = cache_interface.set
+            delete_method = cache_interface.delete
+            exists_method = cache_interface.exists
 
             # All methods should be callable and async
             assert callable(get_method) and inspect.iscoroutinefunction(get_method)

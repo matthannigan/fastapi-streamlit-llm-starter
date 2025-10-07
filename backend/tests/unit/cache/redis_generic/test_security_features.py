@@ -37,14 +37,11 @@ Fixtures and Mocks:
         - sample_cache_value: Standard cache value for testing
 """
 
-import ssl
-from typing import Any, Dict, List
 from unittest.mock import patch
 
 import pytest
 
 from app.infrastructure.cache.redis_generic import GenericRedisCache
-from app.infrastructure.cache.security import SecurityConfig
 
 
 class TestSecurityStatusManagement:

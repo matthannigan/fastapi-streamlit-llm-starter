@@ -58,7 +58,6 @@ full compatibility with existing code patterns.
 
 import pytest
 import os
-import json
 from unittest.mock import patch
 
 from app.core.config import Settings, create_settings, get_settings_factory, settings
@@ -116,10 +115,10 @@ class TestSettingsFactoryCreation:
         factory_settings = create_settings()
 
         # Test that all configuration methods work
-        assert hasattr(factory_settings, 'get_cache_config')
-        assert hasattr(factory_settings, 'get_resilience_config')
-        assert hasattr(factory_settings, 'get_valid_api_keys')
-        assert hasattr(factory_settings, 'get_operation_strategy')
+        assert hasattr(factory_settings, "get_cache_config")
+        assert hasattr(factory_settings, "get_resilience_config")
+        assert hasattr(factory_settings, "get_valid_api_keys")
+        assert hasattr(factory_settings, "get_operation_strategy")
 
         # Test that methods return valid configurations
         cache_config = factory_settings.get_cache_config()
@@ -187,10 +186,10 @@ class TestBackwardCompatibility:
         from app.core.config import settings
 
         # Test that it has expected attributes
-        assert hasattr(settings, 'debug')
-        assert hasattr(settings, 'cache_preset')
-        assert hasattr(settings, 'get_cache_config')
-        assert hasattr(settings, 'get_resilience_config')
+        assert hasattr(settings, "debug")
+        assert hasattr(settings, "cache_preset")
+        assert hasattr(settings, "get_cache_config")
+        assert hasattr(settings, "get_resilience_config")
 
         # Test that methods work
         cache_config = settings.get_cache_config()
@@ -412,7 +411,6 @@ class TestFactoryIntegration:
 
     def test_factory_with_cache_service_integration(self):
         """Test factory integration with cache service."""
-        from app.dependencies import get_cache_service
 
         # Create settings with factory
         factory_settings = create_settings()
@@ -420,7 +418,7 @@ class TestFactoryIntegration:
         # Should be able to create cache service with factory settings
         # Note: This test doesn't actually initialize cache service to avoid Redis dependency
         assert factory_settings is not None
-        assert hasattr(factory_settings, 'get_cache_config')
+        assert hasattr(factory_settings, "get_cache_config")
 
     def test_factory_isolation_in_test_scenario(self):
         """Test factory isolation in realistic test scenario."""

@@ -17,14 +17,10 @@ External Dependencies:
     - app.core.exceptions: Exception handling for configuration and validation errors
 """
 
-import asyncio
-import time
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, patch
+from typing import Any
 
 import pytest
 
-from app.core.exceptions import ValidationError
 from app.infrastructure.cache.memory import InMemoryCache
 
 

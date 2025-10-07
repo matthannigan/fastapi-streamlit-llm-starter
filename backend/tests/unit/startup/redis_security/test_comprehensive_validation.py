@@ -87,14 +87,14 @@ class TestValidateSecurityConfiguration:
 
         # Then: SecurityValidationResult is returned with all components valid
         assert result is not None
-        assert hasattr(result, 'is_valid')
-        assert hasattr(result, 'tls_status')
-        assert hasattr(result, 'encryption_status')
-        assert hasattr(result, 'auth_status')
-        assert hasattr(result, 'connectivity_status')
-        assert hasattr(result, 'errors')
-        assert hasattr(result, 'warnings')
-        assert hasattr(result, 'recommendations')
+        assert hasattr(result, "is_valid")
+        assert hasattr(result, "tls_status")
+        assert hasattr(result, "encryption_status")
+        assert hasattr(result, "auth_status")
+        assert hasattr(result, "connectivity_status")
+        assert hasattr(result, "errors")
+        assert hasattr(result, "warnings")
+        assert hasattr(result, "recommendations")
 
         # And: result.is_valid is True for complete secure setup
         assert result.is_valid is True
@@ -144,7 +144,7 @@ class TestValidateSecurityConfiguration:
 
         # Mock certificate parsing to return expiring certificate
         from unittest.mock import patch
-        with patch('cryptography.x509.load_pem_x509_certificate') as mock_load_cert:
+        with patch("cryptography.x509.load_pem_x509_certificate") as mock_load_cert:
             mock_load_cert.return_value = mock_expiring_certificate
 
             # When: validate_security_configuration() is called
@@ -156,7 +156,7 @@ class TestValidateSecurityConfiguration:
             )
 
             # Then: result.warnings contains warnings from components
-            assert hasattr(result, 'warnings')
+            assert hasattr(result, "warnings")
             assert isinstance(result.warnings, list)
 
             # And: Warnings are collected from component validations
@@ -204,7 +204,7 @@ class TestValidateSecurityConfiguration:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # When: validate_security_configuration() is called with failing components
             result = redis_security_validator.validate_security_configuration(
@@ -217,11 +217,11 @@ class TestValidateSecurityConfiguration:
             )
 
             # Then: result.is_valid is False due to errors
-            assert hasattr(result, 'is_valid')
+            assert hasattr(result, "is_valid")
             assert result.is_valid is False
 
             # And: result.errors contains errors from components
-            assert hasattr(result, 'errors')
+            assert hasattr(result, "errors")
             assert isinstance(result.errors, list)
             assert len(result.errors) > 0
 
@@ -263,7 +263,7 @@ class TestValidateSecurityConfiguration:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # When: validate_security_configuration() is called
             result = redis_security_validator.validate_security_configuration(
@@ -273,7 +273,7 @@ class TestValidateSecurityConfiguration:
             )
 
             # Then: result.recommendations list is populated
-            assert hasattr(result, 'recommendations')
+            assert hasattr(result, "recommendations")
             assert isinstance(result.recommendations, list)
 
             # And: Recommendations are provided for security improvements
@@ -324,12 +324,12 @@ class TestValidateSecurityConfiguration:
         )
 
         # Then: TLS status indicates certificate issues
-        assert hasattr(result, 'tls_status')
+        assert hasattr(result, "tls_status")
         assert isinstance(result.tls_status, str)
         assert len(result.tls_status) > 0
 
         # And: result shows configuration issues
-        assert hasattr(result, 'errors')
+        assert hasattr(result, "errors")
         assert isinstance(result.errors, list)
 
     def test_validate_security_configuration_in_production_without_tls(self, redis_security_validator, insecure_redis_url, fake_production_environment, monkeypatch):
@@ -364,7 +364,7 @@ class TestValidateSecurityConfiguration:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # When: validate_security_configuration() is called
             result = redis_security_validator.validate_security_configuration(
@@ -374,12 +374,12 @@ class TestValidateSecurityConfiguration:
             )
 
             # Then: TLS status indicates production security issue
-            assert hasattr(result, 'tls_status')
+            assert hasattr(result, "tls_status")
             assert isinstance(result.tls_status, str)
             assert len(result.tls_status) > 0
 
             # And: recommendations are provided for production security
-            assert hasattr(result, 'recommendations')
+            assert hasattr(result, "recommendations")
             assert isinstance(result.recommendations, list)
 
     def test_validate_security_configuration_in_development_without_tls(self, redis_security_validator, local_redis_url, fake_development_environment, monkeypatch):
@@ -414,7 +414,7 @@ class TestValidateSecurityConfiguration:
 
         # Mock environment detection to return development
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_development_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_development_environment)
 
             # When: validate_security_configuration() is called
             result = redis_security_validator.validate_security_configuration(
@@ -424,7 +424,7 @@ class TestValidateSecurityConfiguration:
             )
 
             # Then: TLS status reflects development flexibility
-            assert hasattr(result, 'tls_status')
+            assert hasattr(result, "tls_status")
             assert isinstance(result.tls_status, str)
             assert len(result.tls_status) > 0
 
@@ -462,7 +462,7 @@ class TestValidateSecurityConfiguration:
 
         # Mock certificate parsing to return detailed certificate
         from unittest.mock import patch
-        with patch('cryptography.x509.load_pem_x509_certificate') as mock_load_cert:
+        with patch("cryptography.x509.load_pem_x509_certificate") as mock_load_cert:
             mock_load_cert.return_value = mock_x509_certificate
 
             # When: validate_security_configuration() is called
@@ -474,7 +474,7 @@ class TestValidateSecurityConfiguration:
             )
 
             # Then: certificate_info is populated when certificates are valid
-            assert hasattr(result, 'certificate_info')
+            assert hasattr(result, "certificate_info")
             # certificate_info may be None if implementation differs
             # We verify the attribute exists and is the expected type
 
@@ -514,7 +514,7 @@ class TestValidateSecurityConfiguration:
         )
 
         # Then: connectivity_status shows skipped
-        assert hasattr(result, 'connectivity_status')
+        assert hasattr(result, "connectivity_status")
         assert isinstance(result.connectivity_status, str)
         assert "⏭️" in result.connectivity_status or "Skipped" in result.connectivity_status
 
@@ -554,7 +554,7 @@ class TestValidateSecurityConfiguration:
         )
 
         # Then: connectivity_status reflects connectivity test behavior
-        assert hasattr(result, 'connectivity_status')
+        assert hasattr(result, "connectivity_status")
         assert isinstance(result.connectivity_status, str)
         assert len(result.connectivity_status) > 0
 
@@ -618,7 +618,7 @@ class TestSecurityValidationResultSummary:
         assert "Redis Security Validation Report" in summary
 
         # And: Header is visually distinct (appears at beginning)
-        lines = summary.split('\n')
+        lines = summary.split("\n")
         assert len(lines) >= 3  # At least header, title, footer
 
     def test_security_validation_result_summary_shows_overall_status(self, sample_valid_security_result):
@@ -990,7 +990,7 @@ class TestSecurityValidationResultSummary:
         summary = result.summary()
 
         # Then: Summary ends with separator line
-        lines = summary.strip().split('\n')
+        lines = summary.strip().split("\n")
         assert len(lines) > 0
         assert "━━━" in lines[-1] or "━━━" in summary
 
@@ -1094,7 +1094,7 @@ class TestValidateStartupSecurity:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # When: validate_startup_security() is called with None override (should read from env)
             try:
@@ -1140,10 +1140,10 @@ class TestValidateStartupSecurity:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # Mock logger to capture warning messages
-            m.setattr(redis_security_validator, 'logger', mock_logger)
+            m.setattr(redis_security_validator, "logger", mock_logger)
 
             # When: validate_startup_security() is called with explicit override
             try:
@@ -1190,7 +1190,7 @@ class TestValidateStartupSecurity:
         redis_url = secure_redis_url_tls
 
         # Mock logger to capture log messages
-        with patch.object(redis_security_validator, 'logger', mock_logger):
+        with patch.object(redis_security_validator, "logger", mock_logger):
             # When: validate_startup_security() is called
             try:
                 redis_security_validator.validate_startup_security(redis_url)
@@ -1233,7 +1233,7 @@ class TestValidateStartupSecurity:
         redis_url = secure_redis_url_tls
 
         # Mock logger to capture log messages
-        with patch.object(redis_security_validator, 'logger', mock_logger):
+        with patch.object(redis_security_validator, "logger", mock_logger):
             # When: validate_startup_security() is called
             try:
                 redis_security_validator.validate_startup_security(redis_url)
@@ -1276,7 +1276,7 @@ class TestValidateStartupSecurity:
         redis_url = secure_redis_url_tls
 
         # Mock logger to capture log messages
-        with patch.object(redis_security_validator, 'logger', mock_logger):
+        with patch.object(redis_security_validator, "logger", mock_logger):
             # When: validate_startup_security() is called
             try:
                 redis_security_validator.validate_startup_security(redis_url)
@@ -1322,7 +1322,7 @@ class TestValidateStartupSecurity:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # When: validate_startup_security() is called without override
             # Then: ConfigurationError should be raised
@@ -1421,7 +1421,7 @@ class TestValidateRedisSecurityConvenienceFunction:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # When: validate_redis_security() function is called
             from app.core.startup.redis_security import validate_redis_security
@@ -1465,10 +1465,10 @@ class TestValidateRedisSecurityConvenienceFunction:
 
         # Mock environment detection to return production
         with monkeypatch.context() as m:
-            m.setattr('app.core.startup.redis_security.get_environment_info', lambda context: fake_production_environment)
+            m.setattr("app.core.startup.redis_security.get_environment_info", lambda context: fake_production_environment)
 
             # Mock logger to capture any warning messages
-            m.setattr('app.core.startup.redis_security.logger', mock_logger)
+            m.setattr("app.core.startup.redis_security.logger", mock_logger)
 
             # When: validate_redis_security() function is called with override
             from app.core.startup.redis_security import validate_redis_security

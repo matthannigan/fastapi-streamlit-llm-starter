@@ -6,20 +6,14 @@ detection, and summary reporting. Covers signal collection, confidence scoring,
 fallback behavior, and debugging capabilities.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any, List
+from unittest.mock import patch
 
 from app.core.environment import (
     Environment,
     FeatureContext,
-    EnvironmentSignal,
     EnvironmentInfo,
     DetectionConfig,
     EnvironmentDetector,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment,
 )
 
 
@@ -62,7 +56,7 @@ class TestEnvironmentDetectorInitialization:
         # Then: Detector initializes with default DetectionConfig and empty signal cache
         assert detector.config is not None
         assert isinstance(detector.config, DetectionConfig)
-        assert hasattr(detector, '_signal_cache')
+        assert hasattr(detector, "_signal_cache")
         assert isinstance(detector._signal_cache, dict)
         assert len(detector._signal_cache) == 0
 
@@ -119,7 +113,7 @@ class TestEnvironmentDetectorInitialization:
         detector = EnvironmentDetector()
 
         # Then: Signal cache is initialized as empty dictionary
-        assert hasattr(detector, '_signal_cache')
+        assert hasattr(detector, "_signal_cache")
         assert isinstance(detector._signal_cache, dict)
         assert len(detector._signal_cache) == 0
 
@@ -256,14 +250,14 @@ class TestEnvironmentDetectorBasicDetection:
         # Given: EnvironmentDetector with various environment conditions
         # Test various environment conditions from fixture
         test_scenarios = [
-            mock_environment_conditions['production_explicit'],
-            mock_environment_conditions['development_explicit'],
-            mock_environment_conditions['node_env_prod'],
-            mock_environment_conditions['mixed_signals']
+            mock_environment_conditions["production_explicit"],
+            mock_environment_conditions["development_explicit"],
+            mock_environment_conditions["node_env_prod"],
+            mock_environment_conditions["mixed_signals"]
         ]
 
         for env_vars in test_scenarios:
-            with patch.dict('os.environ', env_vars, clear=True):
+            with patch.dict("os.environ", env_vars, clear=True):
                 # When: Calling detect_environment() under different scenarios
                 result = environment_detector.detect_environment()
 
@@ -321,7 +315,7 @@ class TestEnvironmentDetectorBasicDetection:
             - mock_environment_signal: Known environment condition for predictable detection
         """
         # Given: EnvironmentDetector with identifiable environment signals
-        with patch.dict('os.environ', {'ENVIRONMENT': 'production'}, clear=True):
+        with patch.dict("os.environ", {"ENVIRONMENT": "production"}, clear=True):
             # When: Calling detect_environment()
             result = environment_detector.detect_environment()
 
@@ -352,7 +346,7 @@ class TestEnvironmentDetectorBasicDetection:
             - mock_primary_signal: Known environment signal with identifiable source
         """
         # Given: EnvironmentDetector with known environment signal
-        with patch.dict('os.environ', {'ENVIRONMENT': 'development'}, clear=True):
+        with patch.dict("os.environ", {"ENVIRONMENT": "development"}, clear=True):
             # When: Calling detect_environment()
             result = environment_detector.detect_environment()
 
@@ -398,7 +392,7 @@ class TestEnvironmentDetectorSummaryReporting:
             - mock_environment_signals: Environment with multiple detection signals
         """
         # Given: EnvironmentDetector with detectable environment signals
-        with patch.dict('os.environ', {'ENVIRONMENT': 'production'}, clear=True):
+        with patch.dict("os.environ", {"ENVIRONMENT": "production"}, clear=True):
             # When: Calling get_environment_summary()
             summary = environment_detector.get_environment_summary()
 
@@ -406,17 +400,17 @@ class TestEnvironmentDetectorSummaryReporting:
             assert isinstance(summary, dict)
 
             # Verify all required fields are present
-            required_fields = ['detected_environment', 'confidence', 'reasoning', 'detected_by', 'all_signals', 'metadata']
+            required_fields = ["detected_environment", "confidence", "reasoning", "detected_by", "all_signals", "metadata"]
             for field in required_fields:
                 assert field in summary, f"Missing required field: {field}"
 
             # Verify field types
-            assert isinstance(summary['detected_environment'], str)
-            assert isinstance(summary['confidence'], float)
-            assert isinstance(summary['reasoning'], str)
-            assert isinstance(summary['detected_by'], str)
-            assert isinstance(summary['all_signals'], list)
-            assert isinstance(summary['metadata'], dict)
+            assert isinstance(summary["detected_environment"], str)
+            assert isinstance(summary["confidence"], float)
+            assert isinstance(summary["reasoning"], str)
+            assert isinstance(summary["detected_by"], str)
+            assert isinstance(summary["all_signals"], list)
+            assert isinstance(summary["metadata"], dict)
 
     def test_get_environment_summary_formats_signals_for_analysis(self, environment_detector):
         """
@@ -438,28 +432,28 @@ class TestEnvironmentDetectorSummaryReporting:
             - mock_multiple_signals: Environment with various types of detection signals
         """
         # Given: EnvironmentDetector with multiple environment signals
-        with patch.dict('os.environ', {'ENVIRONMENT': 'production', 'NODE_ENV': 'production'}, clear=True):
+        with patch.dict("os.environ", {"ENVIRONMENT": "production", "NODE_ENV": "production"}, clear=True):
             # When: Calling get_environment_summary()
             summary = environment_detector.get_environment_summary()
 
             # Then: all_signals list contains formatted signal information for analysis
-            signals = summary['all_signals']
+            signals = summary["all_signals"]
             assert isinstance(signals, list)
 
             if signals:  # If signals were detected
                 for signal in signals:
                     assert isinstance(signal, dict)
                     # Verify signal has required format fields
-                    required_signal_fields = ['source', 'value', 'environment', 'confidence', 'reasoning']
+                    required_signal_fields = ["source", "value", "environment", "confidence", "reasoning"]
                     for field in required_signal_fields:
                         assert field in signal, f"Signal missing field: {field}"
 
                     # Verify field types
-                    assert isinstance(signal['source'], str)
-                    assert isinstance(signal['value'], str)
-                    assert isinstance(signal['environment'], str)
-                    assert isinstance(signal['confidence'], float)
-                    assert isinstance(signal['reasoning'], str)
+                    assert isinstance(signal["source"], str)
+                    assert isinstance(signal["value"], str)
+                    assert isinstance(signal["environment"], str)
+                    assert isinstance(signal["confidence"], float)
+                    assert isinstance(signal["reasoning"], str)
 
     def test_get_environment_summary_includes_confidence_details(self, environment_detector):
         """
@@ -482,24 +476,24 @@ class TestEnvironmentDetectorSummaryReporting:
         """
         # Given: EnvironmentDetector with varying confidence signals
         test_scenarios = [
-            {'ENVIRONMENT': 'production'},  # High confidence
-            {'NODE_ENV': 'development'},    # Medium confidence
+            {"ENVIRONMENT": "production"},  # High confidence
+            {"NODE_ENV": "development"},    # Medium confidence
             {}                              # Low confidence (fallback)
         ]
 
         for env_vars in test_scenarios:
-            with patch.dict('os.environ', env_vars, clear=True):
+            with patch.dict("os.environ", env_vars, clear=True):
                 # When: Calling get_environment_summary()
                 summary = environment_detector.get_environment_summary()
 
                 # Then: Returns confidence score and reasoning explaining confidence assessment
-                assert 'confidence' in summary
-                assert isinstance(summary['confidence'], float)
-                assert 0.0 <= summary['confidence'] <= 1.0
+                assert "confidence" in summary
+                assert isinstance(summary["confidence"], float)
+                assert 0.0 <= summary["confidence"] <= 1.0
 
-                assert 'reasoning' in summary
-                assert isinstance(summary['reasoning'], str)
-                assert len(summary['reasoning']) > 0
+                assert "reasoning" in summary
+                assert isinstance(summary["reasoning"], str)
+                assert len(summary["reasoning"]) > 0
 
     def test_get_environment_summary_preserves_signal_confidence_scores(self, environment_detector):
         """
@@ -521,22 +515,22 @@ class TestEnvironmentDetectorSummaryReporting:
             - mock_known_confidence_signals: Environment signals with predetermined confidence scores
         """
         # Given: EnvironmentDetector with signals having known confidence scores
-        with patch.dict('os.environ', {'ENVIRONMENT': 'production'}, clear=True):
+        with patch.dict("os.environ", {"ENVIRONMENT": "production"}, clear=True):
             # When: Calling get_environment_summary()
             summary = environment_detector.get_environment_summary()
 
             # Then: all_signals preserve original confidence values for each signal
-            signals = summary['all_signals']
+            signals = summary["all_signals"]
             if signals:  # If signals were detected
                 for signal in signals:
-                    assert 'confidence' in signal
-                    assert isinstance(signal['confidence'], float)
-                    assert 0.0 <= signal['confidence'] <= 1.0
+                    assert "confidence" in signal
+                    assert isinstance(signal["confidence"], float)
+                    assert 0.0 <= signal["confidence"] <= 1.0
 
                     # Confidence should be preserved from original signal
                     # High confidence for ENVIRONMENT variable should be around 0.95
-                    if signal['source'] == 'ENVIRONMENT':
-                        assert signal['confidence'] >= 0.90
+                    if signal["source"] == "ENVIRONMENT":
+                        assert signal["confidence"] >= 0.90
 
     def test_get_environment_summary_uses_default_context(self, environment_detector):
         """
@@ -564,14 +558,14 @@ class TestEnvironmentDetectorSummaryReporting:
 
         # Then: Uses FeatureContext.DEFAULT for environment detection
         # We can verify this by checking that no feature-specific metadata is present
-        metadata = summary.get('metadata', {})
+        metadata = summary.get("metadata", {})
 
         # Default context should not have feature-specific keys
-        feature_specific_keys = ['ai_prefix', 'enable_ai_cache_enabled', 'enforce_auth_enabled']
+        feature_specific_keys = ["ai_prefix", "enable_ai_cache_enabled", "enforce_auth_enabled"]
         for key in feature_specific_keys:
             assert key not in metadata, f"Found feature-specific key '{key}' in default context summary"
 
         # Verify this is behaving like default context by comparing with explicit call
         default_env_info = environment_detector.detect_environment(FeatureContext.DEFAULT)
-        assert summary['detected_environment'] == default_env_info.environment.value
-        assert summary['confidence'] == default_env_info.confidence
+        assert summary["detected_environment"] == default_env_info.environment.value
+        assert summary["confidence"] == default_env_info.confidence

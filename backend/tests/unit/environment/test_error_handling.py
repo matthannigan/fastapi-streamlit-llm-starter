@@ -7,20 +7,14 @@ when individual mechanisms fail.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any, List
+from unittest.mock import patch
 import os
 
 from app.core.environment import (
     Environment,
     FeatureContext,
-    EnvironmentSignal,
     EnvironmentInfo,
-    DetectionConfig,
     EnvironmentDetector,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment,
 )
 from app.core.exceptions import ValidationError
 
@@ -168,7 +162,7 @@ class TestEnvironmentDetectorErrorHandling:
 
         # Test with various problematic hostnames
         for hostname in mock_problematic_hostname:
-            with patch.dict(os.environ, {'HOSTNAME': hostname}):
+            with patch.dict(os.environ, {"HOSTNAME": hostname}):
                 # When: Running detection with problematic hostname
                 result = detector.detect_environment()
 
@@ -179,7 +173,7 @@ class TestEnvironmentDetectorErrorHandling:
                 assert result.reasoning is not None
 
         # Verify that detection still works with feature contexts
-        with patch.dict(os.environ, {'HOSTNAME': mock_problematic_hostname[0]}):
+        with patch.dict(os.environ, {"HOSTNAME": mock_problematic_hostname[0]}):
             ai_result = detector.detect_with_context(FeatureContext.AI_ENABLED)
             assert isinstance(ai_result, EnvironmentInfo)
 
@@ -214,10 +208,10 @@ class TestEnvironmentDetectorErrorHandling:
             assert result.reasoning is not None
             assert len(result.reasoning) > 0
             # Low confidence scenarios should have explanatory reasoning
-            assert any(word in result.reasoning.lower() for word in ['fallback', 'default', 'no signals', 'development'])
+            assert any(word in result.reasoning.lower() for word in ["fallback", "default", "no signals", "development"])
 
         # Test with conflicting signals - should explain conflict resolution
-        with patch.dict(os.environ, {'ENVIRONMENT': 'production', 'NODE_ENV': 'development'}):
+        with patch.dict(os.environ, {"ENVIRONMENT": "production", "NODE_ENV": "development"}):
             result = environment_detector.detect_environment()
             assert isinstance(result, EnvironmentInfo)
             assert result.reasoning is not None
@@ -226,10 +220,10 @@ class TestEnvironmentDetectorErrorHandling:
 
         # Test summary method for comprehensive error information
         summary = environment_detector.get_environment_summary()
-        assert 'detected_environment' in summary
-        assert 'confidence' in summary
-        assert 'reasoning' in summary
-        assert summary['reasoning'] is not None
+        assert "detected_environment" in summary
+        assert "confidence" in summary
+        assert "reasoning" in summary
+        assert summary["reasoning"] is not None
 
     @pytest.mark.no_parallel
     def test_detection_maintains_partial_functionality_during_errors(self, environment_detector, mock_partial_failure_conditions):
@@ -273,8 +267,8 @@ class TestEnvironmentDetectorErrorHandling:
 
         # Summary should still work
         summary = environment_detector.get_environment_summary()
-        assert 'detected_environment' in summary
-        assert summary['detected_environment'] == 'production'
-        assert 'all_signals' in summary
+        assert "detected_environment" in summary
+        assert summary["detected_environment"] == "production"
+        assert "all_signals" in summary
         # Should have at least one signal (from environment variable)
-        assert len(summary['all_signals']) >= 1
+        assert len(summary["all_signals"]) >= 1

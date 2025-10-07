@@ -16,8 +16,7 @@ Dependencies covered:
 """
 
 import pytest
-from typing import Dict, Any, List, Optional
-from unittest.mock import AsyncMock
+from typing import Dict, Any, List
 
 
 class FakeCacheService:
@@ -157,8 +156,8 @@ class FakeResilienceOrchestrator:
     def __init__(
         self,
         healthy: bool = True,
-        open_breakers: Optional[List[str]] = None,
-        half_open_breakers: Optional[List[str]] = None,
+        open_breakers: List[str] | None = None,
+        half_open_breakers: List[str] | None = None,
         total_breakers: int = 3,
         should_fail: bool = False
     ):

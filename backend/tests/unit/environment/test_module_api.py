@@ -7,16 +7,11 @@ and feature context support.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any, List
 
 from app.core.environment import (
     Environment,
     FeatureContext,
-    EnvironmentSignal,
     EnvironmentInfo,
-    DetectionConfig,
-    EnvironmentDetector,
     get_environment_info,
     is_production_environment,
     is_development_environment,

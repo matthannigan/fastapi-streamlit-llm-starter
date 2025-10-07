@@ -16,10 +16,7 @@ External Dependencies:
 """
 
 import time
-from datetime import datetime
-from typing import Any, Dict, Optional
 
-import pytest
 
 from app.infrastructure.cache.monitoring import (CompressionMetric,
                                                  InvalidationMetric,
@@ -2931,9 +2928,9 @@ class TestInvalidationMetric:
         assert "*" in pattern_groups
 
         # Test pattern hierarchy analysis
-        user_patterns = [p for p in pattern_groups.keys() if p.startswith("user:")]
-        cache_patterns = [p for p in pattern_groups.keys() if p.startswith("cache:")]
-        global_patterns = [p for p in pattern_groups.keys() if p == "*"]
+        user_patterns = [p for p in pattern_groups if p.startswith("user:")]
+        cache_patterns = [p for p in pattern_groups if p.startswith("cache:")]
+        global_patterns = [p for p in pattern_groups if p == "*"]
 
         assert len(user_patterns) == 2  # user:*:profile, user:*:session
         assert len(cache_patterns) == 2  # cache:l1:*, cache:l2:*
@@ -3040,7 +3037,7 @@ class TestInvalidationMetric:
 
         # Pattern complexity analysis
         pattern_complexity = {}
-        for pattern in pattern_groups.keys():
+        for pattern in pattern_groups:
             # Simple complexity measure: count of wildcards and segments (but don't double count)
             wildcard_count = pattern.count("*")
             if pattern == "*":

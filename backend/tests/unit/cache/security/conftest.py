@@ -10,7 +10,6 @@ shared cache conftest.py file. The Redis connections are created dynamically
 and returned by the methods, so they don't need mocking at the fixture level.
 """
 
-import pytest
 
 # Note: No additional fixtures needed for security module as its dependencies
 # (ConfigurationError, CachePerformanceMonitor) are already available in the shared

@@ -7,4 +7,3 @@ Note: This module exists for consistency with the testing structure,
 but currently contains no fixtures
 """
 
-import pytest

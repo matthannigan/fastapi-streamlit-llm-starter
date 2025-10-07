@@ -15,8 +15,7 @@ Fixture Categories:
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any, List, Optional
+from unittest.mock import Mock, patch
 import os
 from pathlib import Path
 
@@ -50,22 +49,22 @@ def custom_detection_config():
         - Feature context overrides for testing scenarios
     """
     return DetectionConfig(
-        env_var_precedence=['CUSTOM_ENV', 'ENVIRONMENT', 'APP_ENV'],
-        development_patterns=[r'.*dev.*', r'.*local.*', r'.*test.*', r'.*custom-dev.*'],
-        staging_patterns=[r'.*stage.*', r'.*uat.*', r'.*custom-stage.*'],
-        production_patterns=[r'.*prod.*', r'.*live.*', r'.*custom-prod.*'],
-        development_indicators=['DEBUG=true', 'CUSTOM_DEV=true', '.env'],
-        production_indicators=['DEBUG=false', 'CUSTOM_PROD=true', 'PRODUCTION=true'],
+        env_var_precedence=["CUSTOM_ENV", "ENVIRONMENT", "APP_ENV"],
+        development_patterns=[r".*dev.*", r".*local.*", r".*test.*", r".*custom-dev.*"],
+        staging_patterns=[r".*stage.*", r".*uat.*", r".*custom-stage.*"],
+        production_patterns=[r".*prod.*", r".*live.*", r".*custom-prod.*"],
+        development_indicators=["DEBUG=true", "CUSTOM_DEV=true", ".env"],
+        production_indicators=["DEBUG=false", "CUSTOM_PROD=true", "PRODUCTION=true"],
         feature_contexts={
             FeatureContext.AI_ENABLED: {
-                'environment_var': 'ENABLE_AI_CACHE',
-                'true_values': ['true', '1', 'yes'],
-                'preset_modifier': 'ai-'
+                "environment_var": "ENABLE_AI_CACHE",
+                "true_values": ["true", "1", "yes"],
+                "preset_modifier": "ai-"
             },
             FeatureContext.SECURITY_ENFORCEMENT: {
-                'environment_var': 'ENFORCE_AUTH',
-                'true_values': ['true', '1', 'yes'],
-                'production_override': True
+                "environment_var": "ENFORCE_AUTH",
+                "true_values": ["true", "1", "yes"],
+                "production_override": True
             }
         }
     )
@@ -81,7 +80,7 @@ def custom_precedence_config():
         - Testing organization-specific variable priorities
     """
     return DetectionConfig(
-        env_var_precedence=['ORG_ENV', 'CUSTOM_ENVIRONMENT', 'ENVIRONMENT', 'NODE_ENV']
+        env_var_precedence=["ORG_ENV", "CUSTOM_ENVIRONMENT", "ENVIRONMENT", "NODE_ENV"]
     )
 
 
@@ -95,9 +94,9 @@ def custom_patterns_config():
         - Testing organization-specific naming conventions
     """
     return DetectionConfig(
-        development_patterns=[r'.*custom-dev.*', r'.*org-dev.*'],
-        staging_patterns=[r'.*custom-stage.*', r'.*org-uat.*'],
-        production_patterns=[r'.*custom-prod.*', r'.*org-live.*']
+        development_patterns=[r".*custom-dev.*", r".*org-dev.*"],
+        staging_patterns=[r".*custom-stage.*", r".*org-uat.*"],
+        production_patterns=[r".*custom-prod.*", r".*org-live.*"]
     )
 
 
@@ -113,13 +112,13 @@ def custom_feature_config():
     return DetectionConfig(
         feature_contexts={
             FeatureContext.AI_ENABLED: {
-                'environment_var': 'ENABLE_AI_FEATURES',
-                'true_values': ['true', '1', 'enabled'],
-                'preset_modifier': 'custom-ai-'
+                "environment_var": "ENABLE_AI_FEATURES",
+                "true_values": ["true", "1", "enabled"],
+                "preset_modifier": "custom-ai-"
             },
             FeatureContext.CACHE_OPTIMIZATION: {
-                'environment_var': 'OPTIMIZE_CACHE',
-                'true_values': ['true', '1', 'enabled']
+                "environment_var": "OPTIMIZE_CACHE",
+                "true_values": ["true", "1", "enabled"]
             }
         }
     )
@@ -135,8 +134,8 @@ def custom_indicators_config():
         - Testing organization-specific deployment markers
     """
     return DetectionConfig(
-        development_indicators=['CUSTOM_DEBUG=true', '.custom-env', 'DEV_MODE=on'],
-        production_indicators=['CUSTOM_DEBUG=false', 'PROD_MODE=on', 'LIVE=true']
+        development_indicators=["CUSTOM_DEBUG=true", ".custom-env", "DEV_MODE=on"],
+        production_indicators=["CUSTOM_DEBUG=false", "PROD_MODE=on", "LIVE=true"]
     )
 
 
@@ -150,8 +149,8 @@ def invalid_patterns_config():
         - Testing error handling for malformed patterns
     """
     return DetectionConfig(
-        development_patterns=[r'[invalid-regex', r'.*valid.*'],
-        production_patterns=[r')*invalid', r'.*valid.*']
+        development_patterns=[r"[invalid-regex", r".*valid.*"],
+        production_patterns=[r")*invalid", r".*valid.*"]
     )
 
 
@@ -191,8 +190,8 @@ def clean_environment():
         - No hostname patterns available
     """
     with patch.dict(os.environ, {}, clear=True), \
-         patch('app.core.environment.patterns.Path.exists', return_value=False), \
-         patch.dict(os.environ, {'HOSTNAME': ''}, clear=False):
+         patch("app.core.environment.patterns.Path.exists", return_value=False), \
+         patch.dict(os.environ, {"HOSTNAME": ""}, clear=False):
         yield
 
 
@@ -209,16 +208,16 @@ def mock_environment_conditions():
         Dictionary with different environment scenarios
     """
     return {
-        'production_explicit': {'ENVIRONMENT': 'production'},
-        'development_explicit': {'ENVIRONMENT': 'development'},
-        'node_env_prod': {'NODE_ENV': 'production'},
-        'flask_env_dev': {'FLASK_ENV': 'development'},
-        'mixed_signals': {'ENVIRONMENT': 'production', 'NODE_ENV': 'development'},
-        'common_values': {
-            'dev': {'ENVIRONMENT': 'dev'},
-            'prod': {'ENVIRONMENT': 'prod'},
-            'test': {'ENVIRONMENT': 'test'},
-            'staging': {'ENVIRONMENT': 'staging'}
+        "production_explicit": {"ENVIRONMENT": "production"},
+        "development_explicit": {"ENVIRONMENT": "development"},
+        "node_env_prod": {"NODE_ENV": "production"},
+        "flask_env_dev": {"FLASK_ENV": "development"},
+        "mixed_signals": {"ENVIRONMENT": "production", "NODE_ENV": "development"},
+        "common_values": {
+            "dev": {"ENVIRONMENT": "dev"},
+            "prod": {"ENVIRONMENT": "prod"},
+            "test": {"ENVIRONMENT": "test"},
+            "staging": {"ENVIRONMENT": "staging"}
         }
     }
 
@@ -233,10 +232,10 @@ def mock_multiple_env_vars():
         - Testing conflict resolution logic
     """
     return {
-        'ENVIRONMENT': 'production',
-        'NODE_ENV': 'development',
-        'FLASK_ENV': 'testing',
-        'APP_ENV': 'staging'
+        "ENVIRONMENT": "production",
+        "NODE_ENV": "development",
+        "FLASK_ENV": "testing",
+        "APP_ENV": "staging"
     }
 
 
@@ -250,12 +249,12 @@ def mock_common_env_values():
         - Testing compatibility with standard naming
     """
     return [
-        ({'ENVIRONMENT': 'dev'}, Environment.DEVELOPMENT),
-        ({'ENVIRONMENT': 'prod'}, Environment.PRODUCTION),
-        ({'ENVIRONMENT': 'test'}, Environment.TESTING),
-        ({'ENVIRONMENT': 'staging'}, Environment.STAGING),
-        ({'NODE_ENV': 'development'}, Environment.DEVELOPMENT),
-        ({'NODE_ENV': 'production'}, Environment.PRODUCTION)
+        ({"ENVIRONMENT": "dev"}, Environment.DEVELOPMENT),
+        ({"ENVIRONMENT": "prod"}, Environment.PRODUCTION),
+        ({"ENVIRONMENT": "test"}, Environment.TESTING),
+        ({"ENVIRONMENT": "staging"}, Environment.STAGING),
+        ({"NODE_ENV": "development"}, Environment.DEVELOPMENT),
+        ({"NODE_ENV": "production"}, Environment.PRODUCTION)
     ]
 
 
@@ -269,9 +268,9 @@ def mock_custom_env_vars():
         - Testing organization-specific variables
     """
     return {
-        'ORG_ENV': 'production',
-        'CUSTOM_ENVIRONMENT': 'development',
-        'ENVIRONMENT': 'testing'
+        "ORG_ENV": "production",
+        "CUSTOM_ENVIRONMENT": "development",
+        "ENVIRONMENT": "testing"
     }
 
 
@@ -289,9 +288,9 @@ def mock_ai_environment_vars():
         - Testing AI-specific metadata generation
     """
     return {
-        'ENVIRONMENT': 'development',
-        'ENABLE_AI_CACHE': 'true',
-        'AI_MODEL': 'gpt-4'
+        "ENVIRONMENT": "development",
+        "ENABLE_AI_CACHE": "true",
+        "AI_MODEL": "gpt-4"
     }
 
 
@@ -305,9 +304,9 @@ def mock_security_enforcement_vars():
         - Testing security-driven environment classification
     """
     return {
-        'ENVIRONMENT': 'development',
-        'ENFORCE_AUTH': 'true',
-        'SECURITY_LEVEL': 'high'
+        "ENVIRONMENT": "development",
+        "ENFORCE_AUTH": "true",
+        "SECURITY_LEVEL": "high"
     }
 
 
@@ -321,9 +320,9 @@ def mock_cache_environment_vars():
         - Testing cache-specific configuration hints
     """
     return {
-        'ENVIRONMENT': 'production',
-        'CACHE_STRATEGY': 'redis',
-        'CACHE_TTL': '3600'
+        "ENVIRONMENT": "production",
+        "CACHE_STRATEGY": "redis",
+        "CACHE_TTL": "3600"
     }
 
 
@@ -337,9 +336,9 @@ def mock_resilience_environment_vars():
         - Testing resilience-specific metadata generation
     """
     return {
-        'ENVIRONMENT': 'production',
-        'RESILIENCE_PRESET': 'production',
-        'CIRCUIT_BREAKER_ENABLED': 'true'
+        "ENVIRONMENT": "production",
+        "RESILIENCE_PRESET": "production",
+        "CIRCUIT_BREAKER_ENABLED": "true"
     }
 
 
@@ -353,11 +352,11 @@ def mock_feature_environment_vars():
         - Testing feature-specific metadata collection
     """
     return {
-        'ENVIRONMENT': 'production',
-        'ENABLE_AI_CACHE': 'true',
-        'ENFORCE_AUTH': 'true',
-        'CACHE_STRATEGY': 'redis',
-        'RESILIENCE_PRESET': 'production'
+        "ENVIRONMENT": "production",
+        "ENABLE_AI_CACHE": "true",
+        "ENFORCE_AUTH": "true",
+        "CACHE_STRATEGY": "redis",
+        "RESILIENCE_PRESET": "production"
     }
 
 
@@ -371,9 +370,9 @@ def mock_custom_feature_vars():
         - Testing organization-specific feature variables
     """
     return {
-        'ENVIRONMENT': 'development',
-        'ENABLE_AI_FEATURES': 'enabled',
-        'OPTIMIZE_CACHE': 'true'
+        "ENVIRONMENT": "development",
+        "ENABLE_AI_FEATURES": "enabled",
+        "OPTIMIZE_CACHE": "true"
     }
 
 
@@ -391,10 +390,10 @@ def mock_debug_flags():
         - Testing debug flag influence on environment classification
     """
     return [
-        ({'DEBUG': 'true'}, Environment.DEVELOPMENT),
-        ({'DEBUG': 'false'}, Environment.PRODUCTION),
-        ({'DEBUG': '1'}, Environment.DEVELOPMENT),
-        ({'DEBUG': '0'}, Environment.PRODUCTION)
+        ({"DEBUG": "true"}, Environment.DEVELOPMENT),
+        ({"DEBUG": "false"}, Environment.PRODUCTION),
+        ({"DEBUG": "1"}, Environment.DEVELOPMENT),
+        ({"DEBUG": "0"}, Environment.PRODUCTION)
     ]
 
 
@@ -410,12 +409,12 @@ def mock_file_system():
     def mock_exists(path):
         path_str = str(path)
         # Development indicators
-        if path_str in ['.env', '.git', 'docker-compose.dev.yml']:
+        if path_str in [".env", ".git", "docker-compose.dev.yml"]:
             return True
         # Production indicators would return False
         return False
 
-    with patch('app.core.environment.patterns.Path.exists', side_effect=mock_exists):
+    with patch("app.core.environment.patterns.Path.exists", side_effect=mock_exists):
         yield
 
 
@@ -429,15 +428,15 @@ def mock_custom_indicators():
         - Testing organization-specific deployment markers
     """
     env_vars = {
-        'CUSTOM_DEBUG': 'true',
-        'DEV_MODE': 'on'
+        "CUSTOM_DEBUG": "true",
+        "DEV_MODE": "on"
     }
 
     def mock_exists(path):
-        return str(path) in ['.custom-env']
+        return str(path) in [".custom-env"]
 
     with patch.dict(os.environ, env_vars), \
-         patch('app.core.environment.patterns.Path.exists', side_effect=mock_exists):
+         patch("app.core.environment.patterns.Path.exists", side_effect=mock_exists):
         yield
 
 
@@ -455,11 +454,11 @@ def mock_hostname_patterns():
         - Testing containerized deployment detection
     """
     return [
-        ('api-prod-01.example.com', Environment.PRODUCTION),
-        ('staging-service.company.com', Environment.STAGING),
-        ('dev-api.local', Environment.DEVELOPMENT),
-        ('custom-prod-service', Environment.PRODUCTION),
-        ('test-runner-123', Environment.TESTING)
+        ("api-prod-01.example.com", Environment.PRODUCTION),
+        ("staging-service.company.com", Environment.STAGING),
+        ("dev-api.local", Environment.DEVELOPMENT),
+        ("custom-prod-service", Environment.PRODUCTION),
+        ("test-runner-123", Environment.TESTING)
     ]
 
 
@@ -473,9 +472,9 @@ def mock_custom_hostname():
         - Testing organization-specific naming conventions
     """
     hostnames = [
-        'custom-dev-api.org.com',
-        'org-uat-service.internal',
-        'custom-prod-web.company.com'
+        "custom-dev-api.org.com",
+        "org-uat-service.internal",
+        "custom-prod-web.company.com"
     ]
     return hostnames
 
@@ -490,10 +489,10 @@ def mock_problematic_hostname():
         - Testing edge cases in pattern matching
     """
     return [
-        'hostname-with-[brackets]',
-        'service.with.lots.of.dots...',
-        'hostname_with_special_chars!@#',
-        ''  # Empty hostname
+        "hostname-with-[brackets]",
+        "service.with.lots.of.dots...",
+        "hostname_with_special_chars!@#",
+        ""  # Empty hostname
     ]
 
 
@@ -511,11 +510,11 @@ def mock_environment_signal():
         - Testing signal processing logic
     """
     return EnvironmentSignal(
-        source='ENVIRONMENT',
-        value='production',
+        source="ENVIRONMENT",
+        value="production",
         environment=Environment.PRODUCTION,
         confidence=0.95,
-        reasoning='Explicit environment from ENVIRONMENT=production'
+        reasoning="Explicit environment from ENVIRONMENT=production"
     )
 
 
@@ -529,11 +528,11 @@ def mock_primary_signal():
         - Testing primary signal identification
     """
     return EnvironmentSignal(
-        source='ENVIRONMENT',
-        value='development',
+        source="ENVIRONMENT",
+        value="development",
         environment=Environment.DEVELOPMENT,
         confidence=0.95,
-        reasoning='Primary signal from ENVIRONMENT variable'
+        reasoning="Primary signal from ENVIRONMENT variable"
     )
 
 
@@ -547,9 +546,9 @@ def mock_environment_signals():
         - Testing multiple signal processing
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Explicit env var'),
-        EnvironmentSignal('hostname_pattern', 'prod-api', Environment.PRODUCTION, 0.70, 'Hostname pattern'),
-        EnvironmentSignal('system_indicator', 'DEBUG=false', Environment.PRODUCTION, 0.75, 'Debug flag')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Explicit env var"),
+        EnvironmentSignal("hostname_pattern", "prod-api", Environment.PRODUCTION, 0.70, "Hostname pattern"),
+        EnvironmentSignal("system_indicator", "DEBUG=false", Environment.PRODUCTION, 0.75, "Debug flag")
     ]
 
 
@@ -563,10 +562,10 @@ def mock_multiple_signals():
         - Testing comprehensive signal collection
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Environment variable'),
-        EnvironmentSignal('NODE_ENV', 'production', Environment.PRODUCTION, 0.85, 'Node environment'),
-        EnvironmentSignal('hostname_pattern', 'prod-service', Environment.PRODUCTION, 0.70, 'Hostname match'),
-        EnvironmentSignal('system_indicator', '.git', Environment.DEVELOPMENT, 0.60, 'Git repository detected')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Environment variable"),
+        EnvironmentSignal("NODE_ENV", "production", Environment.PRODUCTION, 0.85, "Node environment"),
+        EnvironmentSignal("hostname_pattern", "prod-service", Environment.PRODUCTION, 0.70, "Hostname match"),
+        EnvironmentSignal("system_indicator", ".git", Environment.DEVELOPMENT, 0.60, "Git repository detected")
     ]
 
 
@@ -580,9 +579,9 @@ def mock_mixed_signal_sources():
         - Testing source reliability assessment
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'High confidence env var'),
-        EnvironmentSignal('hostname_pattern', 'prod-api', Environment.PRODUCTION, 0.65, 'Medium confidence pattern'),
-        EnvironmentSignal('system_indicator', 'DEBUG=false', Environment.PRODUCTION, 0.70, 'Medium confidence indicator')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "High confidence env var"),
+        EnvironmentSignal("hostname_pattern", "prod-api", Environment.PRODUCTION, 0.65, "Medium confidence pattern"),
+        EnvironmentSignal("system_indicator", "DEBUG=false", Environment.PRODUCTION, 0.70, "Medium confidence indicator")
     ]
 
 
@@ -596,9 +595,9 @@ def mock_conflicting_signals():
         - Testing confidence reduction logic
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Explicit production'),
-        EnvironmentSignal('NODE_ENV', 'development', Environment.DEVELOPMENT, 0.85, 'Node development'),
-        EnvironmentSignal('hostname_pattern', 'dev-service', Environment.DEVELOPMENT, 0.75, 'Development hostname')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Explicit production"),
+        EnvironmentSignal("NODE_ENV", "development", Environment.DEVELOPMENT, 0.85, "Node development"),
+        EnvironmentSignal("hostname_pattern", "dev-service", Environment.DEVELOPMENT, 0.75, "Development hostname")
     ]
 
 
@@ -612,9 +611,9 @@ def mock_agreeing_signals():
         - Testing signal agreement assessment
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Environment variable'),
-        EnvironmentSignal('hostname_pattern', 'prod-api', Environment.PRODUCTION, 0.70, 'Production hostname'),
-        EnvironmentSignal('system_indicator', 'DEBUG=false', Environment.PRODUCTION, 0.75, 'Production indicator')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Environment variable"),
+        EnvironmentSignal("hostname_pattern", "prod-api", Environment.PRODUCTION, 0.70, "Production hostname"),
+        EnvironmentSignal("system_indicator", "DEBUG=false", Environment.PRODUCTION, 0.75, "Production indicator")
     ]
 
 
@@ -628,15 +627,15 @@ def mock_mixed_environment_signals():
         - Testing comprehensive signal collection
     """
     base_signals = [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Base environment'),
-        EnvironmentSignal('hostname_pattern', 'prod-api', Environment.PRODUCTION, 0.70, 'Base hostname')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Base environment"),
+        EnvironmentSignal("hostname_pattern", "prod-api", Environment.PRODUCTION, 0.70, "Base hostname")
     ]
 
     feature_signals = [
-        EnvironmentSignal('security_override', 'ENFORCE_AUTH=true', Environment.PRODUCTION, 0.90, 'Security enforcement')
+        EnvironmentSignal("security_override", "ENFORCE_AUTH=true", Environment.PRODUCTION, 0.90, "Security enforcement")
     ]
 
-    return {'base': base_signals, 'feature': feature_signals}
+    return {"base": base_signals, "feature": feature_signals}
 
 
 # =============================================================================
@@ -655,22 +654,22 @@ def mock_confidence_scenarios():
     return [
         # High confidence scenarios
         {
-            'env_vars': {'ENVIRONMENT': 'production'},
-            'expected_confidence': 0.95,
-            'expected_environment': Environment.PRODUCTION
+            "env_vars": {"ENVIRONMENT": "production"},
+            "expected_confidence": 0.95,
+            "expected_environment": Environment.PRODUCTION
         },
         # Medium confidence scenarios
         {
-            'env_vars': {'NODE_ENV': 'production'},
-            'hostname': 'prod-api',
-            'expected_confidence': 0.75,
-            'expected_environment': Environment.PRODUCTION
+            "env_vars": {"NODE_ENV": "production"},
+            "hostname": "prod-api",
+            "expected_confidence": 0.75,
+            "expected_environment": Environment.PRODUCTION
         },
         # Low confidence scenarios
         {
-            'hostname': 'ambiguous-service',
-            'expected_confidence': 0.45,
-            'expected_environment': Environment.DEVELOPMENT  # fallback
+            "hostname": "ambiguous-service",
+            "expected_confidence": 0.45,
+            "expected_environment": Environment.DEVELOPMENT  # fallback
         }
     ]
 
@@ -685,10 +684,10 @@ def mock_known_confidence_signals():
         - Testing signal confidence analysis
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Highest confidence'),
-        EnvironmentSignal('NODE_ENV', 'production', Environment.PRODUCTION, 0.85, 'High confidence'),
-        EnvironmentSignal('hostname_pattern', 'prod-api', Environment.PRODUCTION, 0.70, 'Medium confidence'),
-        EnvironmentSignal('system_indicator', '.git', Environment.DEVELOPMENT, 0.60, 'Lower confidence')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Highest confidence"),
+        EnvironmentSignal("NODE_ENV", "production", Environment.PRODUCTION, 0.85, "High confidence"),
+        EnvironmentSignal("hostname_pattern", "prod-api", Environment.PRODUCTION, 0.70, "Medium confidence"),
+        EnvironmentSignal("system_indicator", ".git", Environment.DEVELOPMENT, 0.60, "Lower confidence")
     ]
 
 
@@ -702,8 +701,8 @@ def mock_cacheable_signals():
         - Testing repeated detection optimization
     """
     return [
-        EnvironmentSignal('ENVIRONMENT', 'production', Environment.PRODUCTION, 0.95, 'Cacheable env var'),
-        EnvironmentSignal('hostname_pattern', 'stable-prod-api', Environment.PRODUCTION, 0.70, 'Cacheable hostname')
+        EnvironmentSignal("ENVIRONMENT", "production", Environment.PRODUCTION, 0.95, "Cacheable env var"),
+        EnvironmentSignal("hostname_pattern", "stable-prod-api", Environment.PRODUCTION, 0.70, "Cacheable hostname")
     ]
 
 
@@ -749,16 +748,16 @@ def mock_global_detector():
     mock_detector.detect_with_context.return_value = EnvironmentInfo(
         environment=Environment.DEVELOPMENT,
         confidence=0.85,
-        reasoning='Mocked detection result',
-        detected_by='mock_source',
+        reasoning="Mocked detection result",
+        detected_by="mock_source",
         feature_context=FeatureContext.DEFAULT,
         additional_signals=[],
         metadata={}
     )
 
     # Patch in both locations to handle re-exports
-    with patch('app.core.environment.api.get_environment_info', side_effect=mock_get_environment_info), \
-         patch('app.core.environment.get_environment_info', side_effect=mock_get_environment_info):
+    with patch("app.core.environment.api.get_environment_info", side_effect=mock_get_environment_info), \
+         patch("app.core.environment.get_environment_info", side_effect=mock_get_environment_info):
         yield mock_detector
 
 
@@ -775,23 +774,23 @@ def mock_feature_detection_results():
         FeatureContext.DEFAULT: EnvironmentInfo(
             environment=Environment.DEVELOPMENT,
             confidence=0.80,
-            reasoning='Default detection',
-            detected_by='env_var',
+            reasoning="Default detection",
+            detected_by="env_var",
             feature_context=FeatureContext.DEFAULT
         ),
         FeatureContext.AI_ENABLED: EnvironmentInfo(
             environment=Environment.DEVELOPMENT,
             confidence=0.85,
-            reasoning='AI-aware detection',
-            detected_by='env_var',
+            reasoning="AI-aware detection",
+            detected_by="env_var",
             feature_context=FeatureContext.AI_ENABLED,
-            metadata={'ai_prefix': 'ai-'}
+            metadata={"ai_prefix": "ai-"}
         ),
         FeatureContext.SECURITY_ENFORCEMENT: EnvironmentInfo(
             environment=Environment.PRODUCTION,  # Override to production
             confidence=0.90,
-            reasoning='Security enforcement override',
-            detected_by='security_override',
+            reasoning="Security enforcement override",
+            detected_by="security_override",
             feature_context=FeatureContext.SECURITY_ENFORCEMENT
         )
     }
@@ -817,12 +816,12 @@ def mock_file_system_errors():
     def mock_exists_with_error(self):
         path_str = str(self)
         # Only raise errors for specific test paths, not pytest internals
-        if 'restricted' in path_str or path_str in ['.env', '.git', 'docker-compose.dev.yml']:
+        if "restricted" in path_str or path_str in [".env", ".git", "docker-compose.dev.yml"]:
             raise PermissionError("Access denied")
         # Use the original method for all other paths
         return original_exists(self)
 
-    with patch.object(Path, 'exists', mock_exists_with_error):
+    with patch.object(Path, "exists", mock_exists_with_error):
         yield
 
 
@@ -836,11 +835,11 @@ def mock_env_access_errors():
         - Testing detection resilience
     """
     def mock_getenv_with_error(key, default=None):
-        if key == 'RESTRICTED_VAR':
+        if key == "RESTRICTED_VAR":
             raise PermissionError("Environment access denied")
         return default
 
-    with patch('os.getenv', side_effect=mock_getenv_with_error):
+    with patch("os.getenv", side_effect=mock_getenv_with_error):
         yield
 
 
@@ -854,9 +853,9 @@ def mock_error_conditions():
         - Testing error condition handling
     """
     return {
-        'file_permission_error': {'restricted_file': '.restricted-env'},
-        'env_access_error': {'restricted_var': 'RESTRICTED_VAR'},
-        'regex_error': {'problematic_hostname': 'hostname-with-[invalid-regex]'}
+        "file_permission_error": {"restricted_file": ".restricted-env"},
+        "env_access_error": {"restricted_var": "RESTRICTED_VAR"},
+        "regex_error": {"problematic_hostname": "hostname-with-[invalid-regex]"}
     }
 
 
@@ -870,7 +869,7 @@ def mock_partial_failure_conditions():
         - Testing detection resilience
     """
     # Environment where file system fails but environment variables work
-    env_vars = {'ENVIRONMENT': 'production'}
+    env_vars = {"ENVIRONMENT": "production"}
 
     # Store original function to avoid recursion
     original_exists = Path.exists
@@ -878,13 +877,13 @@ def mock_partial_failure_conditions():
     def mock_exists_failing(self):
         path_str = str(self)
         # Fail only for environment detection paths, not pytest internals
-        if any(indicator in path_str for indicator in ['.env', '.git', 'docker-compose', 'requirements']):
+        if any(indicator in path_str for indicator in [".env", ".git", "docker-compose", "requirements"]):
             raise OSError("File system unavailable")
         # Use the original method for all other paths (pytest internals)
         return original_exists(self)
 
     with patch.dict(os.environ, env_vars), \
-         patch.object(Path, 'exists', mock_exists_failing):
+         patch.object(Path, "exists", mock_exists_failing):
         yield
 
 
@@ -902,5 +901,5 @@ def mock_logger():
         - Validating log message content and levels
     """
     mock_logger = Mock()
-    with patch('app.core.environment.detector.logger', mock_logger):
+    with patch("app.core.environment.detector.logger", mock_logger):
         yield mock_logger

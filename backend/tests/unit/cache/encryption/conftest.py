@@ -19,11 +19,8 @@ Design Philosophy:
 """
 
 import pytest
-from typing import Any, Dict, Optional
-from unittest.mock import Mock, MagicMock
 
 # Real imports from the same application (not mocked)
-from app.core.exceptions import ConfigurationError
 
 
 # =============================================================================
@@ -125,7 +122,6 @@ class FakeInvalidToken(Exception):
     the real cryptography library.
     """
 
-    pass
 
 
 # =============================================================================

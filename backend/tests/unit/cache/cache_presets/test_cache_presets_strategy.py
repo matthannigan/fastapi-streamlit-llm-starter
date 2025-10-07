@@ -17,9 +17,7 @@ External Dependencies:
 """
 
 from enum import Enum
-from unittest.mock import MagicMock
 
-import pytest
 
 from app.infrastructure.cache.cache_presets import CacheStrategy
 
@@ -271,7 +269,7 @@ class TestCacheStrategyEnumBehavior:
         assert (
             CacheStrategy.BALANCED == "balanced"
         ), "Strategy should equal its string value"
-        assert "fast" == CacheStrategy.FAST, "String should equal strategy value"
+        assert CacheStrategy.FAST == "fast", "String should equal strategy value"
 
     def test_cache_strategy_supports_iteration_and_membership_testing(self):
         """
@@ -419,7 +417,7 @@ class TestCacheStrategyEnumBehavior:
             fast_formatted == "Using CacheStrategy.FAST strategy"
         ), "F-string shows enum name"
 
-        balanced_formatted = "Strategy: {}".format(CacheStrategy.BALANCED)
+        balanced_formatted = f"Strategy: {CacheStrategy.BALANCED}"
         assert (
             balanced_formatted == "Strategy: CacheStrategy.BALANCED"
         ), ".format() shows enum name"
@@ -464,7 +462,7 @@ class TestCacheStrategyEnumBehavior:
         # Test string comparison
         assert CacheStrategy.FAST == "fast", "Strategy should equal its string value"
         assert (
-            "balanced" == CacheStrategy.BALANCED
+            CacheStrategy.BALANCED == "balanced"
         ), "String should equal strategy value"
 
 
@@ -616,14 +614,13 @@ class TestCacheStrategyConfigurationIntegration:
 
             if env_lower in ["development", "dev", "local", "test"]:
                 return CacheStrategy.FAST
-            elif env_lower in ["staging", "stage"]:
+            if env_lower in ["staging", "stage"]:
                 return CacheStrategy.BALANCED
-            elif env_lower in ["production", "prod"]:
+            if env_lower in ["production", "prod"]:
                 return CacheStrategy.ROBUST
-            elif env_lower in ["ai-production", "ai-prod", "ai-development"]:
+            if env_lower in ["ai-production", "ai-prod", "ai-development"]:
                 return CacheStrategy.AI_OPTIMIZED
-            else:
-                return CacheStrategy.BALANCED  # Safe default
+            return CacheStrategy.BALANCED  # Safe default
 
         # Test development environment strategy selection
         dev_strategy = select_strategy_for_environment("development")
@@ -671,14 +668,13 @@ class TestCacheStrategyConfigurationIntegration:
             """Example configuration optimization based on strategy."""
             if strategy == CacheStrategy.FAST:
                 return 300  # 5 minutes for fast feedback
-            elif strategy == CacheStrategy.BALANCED:
+            if strategy == CacheStrategy.BALANCED:
                 return 3600  # 1 hour for balanced performance
-            elif strategy == CacheStrategy.ROBUST:
+            if strategy == CacheStrategy.ROBUST:
                 return 7200  # 2 hours for stability
-            elif strategy == CacheStrategy.AI_OPTIMIZED:
+            if strategy == CacheStrategy.AI_OPTIMIZED:
                 return 1800  # 30 minutes for AI workloads
-            else:
-                return 3600  # Default
+            return 3600  # Default
 
         # Verify strategy-based configuration optimization
         assert (

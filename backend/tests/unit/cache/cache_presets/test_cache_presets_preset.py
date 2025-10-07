@@ -16,12 +16,9 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-from dataclasses import asdict
-from unittest.mock import MagicMock
 
-import pytest
 
-from app.infrastructure.cache.cache_presets import (CacheConfig, CachePreset,
+from app.infrastructure.cache.cache_presets import (CachePreset,
                                                     CacheStrategy)
 
 
@@ -782,7 +779,6 @@ class TestCachePresetConversion:
 
     def test_cache_preset_to_dict_enables_serialization_and_storage(self):
         """Test to_dict() enables serialization and storage."""
-        import json
 
         from app.infrastructure.cache.cache_presets import CACHE_PRESETS
 

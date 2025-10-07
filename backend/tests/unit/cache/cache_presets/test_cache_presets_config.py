@@ -17,8 +17,7 @@ External Dependencies:
 """
 
 import json
-from dataclasses import asdict, dataclass
-from unittest.mock import MagicMock
+from dataclasses import asdict
 
 import pytest
 
@@ -1271,7 +1270,6 @@ class TestCacheConfigConversion:
             - test_cache_config_json_round_trip_preserves_configuration()
             - test_cache_config_yaml_round_trip_preserves_configuration()
         """
-        import json
 
         # Create comprehensive configuration for serialization testing
         config = CacheConfig(
@@ -1367,18 +1365,17 @@ class TestCacheConfigConversion:
             """Recursively check if object contains only JSON-compatible types."""
             if obj is None or isinstance(obj, (bool, int, float, str)):
                 return True
-            elif isinstance(obj, dict):
+            if isinstance(obj, dict):
                 return all(
                     isinstance(k, str) and check_json_compatibility(v, f"{path}.{k}")
                     for k, v in obj.items()
                 )
-            elif isinstance(obj, list):
+            if isinstance(obj, list):
                 return all(
                     check_json_compatibility(item, f"{path}[{i}]")
                     for i, item in enumerate(obj)
                 )
-            else:
-                return False
+            return False
 
         assert check_json_compatibility(
             json_test_dict

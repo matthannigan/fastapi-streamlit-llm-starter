@@ -16,10 +16,9 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List
+from typing import Dict
 
 import pytest
 
@@ -753,7 +752,7 @@ class TestMetricRecording:
         assert len(monitor.key_generation_times) == len(test_cases)
 
         for i, (metric, expected) in enumerate(
-            zip(monitor.key_generation_times, test_cases)
+            zip(monitor.key_generation_times, test_cases, strict=False)
         ):
             # Verify accurate duration recording
             assert metric.duration == expected["duration"]
@@ -884,13 +883,13 @@ class TestMetricRecording:
                 # Verify metric was recorded
                 assert len(monitor.key_generation_times) == i + 1
             except Exception as e:
-                pytest.fail(f"Edge case failed: {case['description']} - {str(e)}")
+                pytest.fail(f"Edge case failed: {case['description']} - {e!s}")
 
         # Then: Metrics are recorded appropriately with proper edge case handling
         assert len(monitor.key_generation_times) == len(edge_cases)
 
         # Verify edge case data is preserved correctly
-        for metric, case in zip(monitor.key_generation_times, edge_cases):
+        for metric, case in zip(monitor.key_generation_times, edge_cases, strict=False):
             assert (
                 metric.duration == case["duration"]
             )  # Preserve exact values, even if unusual
@@ -1128,7 +1127,7 @@ class TestMetricRecording:
         assert len(monitor.cache_operation_times) == len(test_operations)
 
         # Verify each recorded metric
-        for metric, expected in zip(monitor.cache_operation_times, test_operations):
+        for metric, expected in zip(monitor.cache_operation_times, test_operations, strict=False):
             assert metric.duration == expected["duration"]
             assert metric.text_length == expected["text_length"]
             assert metric.operation_type == expected["operation"]
@@ -1612,7 +1611,7 @@ class TestMetricRecording:
         assert len(monitor.compression_ratios) == len(compression_test_cases)
 
         # Verify each recorded metric
-        for metric, expected in zip(monitor.compression_ratios, compression_test_cases):
+        for metric, expected in zip(monitor.compression_ratios, compression_test_cases, strict=False):
             assert metric.original_size == expected["original_size"]
             assert metric.compressed_size == expected["compressed_size"]
             assert metric.compression_time == expected["compression_time"]
@@ -1771,7 +1770,7 @@ class TestMetricRecording:
         # Then: Compression ratios are mathematically correct
         assert len(monitor.compression_ratios) == len(ratio_test_cases)
 
-        for metric, expected in zip(monitor.compression_ratios, ratio_test_cases):
+        for metric, expected in zip(monitor.compression_ratios, ratio_test_cases, strict=False):
             # Verify exact mathematical accuracy
             assert abs(metric.compression_ratio - expected["expected_ratio"]) < 0.0001
 
@@ -1938,7 +1937,7 @@ class TestMetricRecording:
         assert len(monitor.compression_ratios) == len(timing_test_cases)
 
         # Verify timing accuracy for each metric
-        for metric, expected in zip(monitor.compression_ratios, timing_test_cases):
+        for metric, expected in zip(monitor.compression_ratios, timing_test_cases, strict=False):
             # Exact timing should be preserved
             assert metric.compression_time == expected["compression_time"]
 
@@ -2014,7 +2013,7 @@ class TestMetricRecording:
 
         # Verify precision is maintained
         recent_metrics = monitor.compression_ratios[-len(precise_times) :]
-        for metric, expected_time in zip(recent_metrics, precise_times):
+        for metric, expected_time in zip(recent_metrics, precise_times, strict=False):
             assert metric.compression_time == expected_time
 
         # Test timing with high-frequency recording for performance impact
@@ -2139,7 +2138,7 @@ class TestMetricRecording:
 
         # Verify each recorded metric contains comprehensive data
         for metric, expected in zip(
-            monitor.memory_usage_measurements, memory_test_cases
+            monitor.memory_usage_measurements, memory_test_cases, strict=False
         ):
             # Verify memory cache calculations
             assert metric.memory_cache_entry_count == len(expected["memory_cache"])
@@ -2752,7 +2751,7 @@ class TestMetricRecording:
 
         # Verify each recorded event contains comprehensive data
         for event, expected in zip(
-            monitor.invalidation_events, invalidation_test_cases
+            monitor.invalidation_events, invalidation_test_cases, strict=False
         ):
             # Verify all core data is captured accurately
             assert event.pattern == expected["pattern"]
@@ -3525,7 +3524,7 @@ class TestMetricRecording:
 
         # Verify each operation is recorded correctly
         for i, (recorded, expected) in enumerate(
-            zip(monitor.cache_operation_times, integration_test_cases)
+            zip(monitor.cache_operation_times, integration_test_cases, strict=False)
         ):
             # Name should be preserved
             assert recorded.operation_type == expected["name"]
@@ -3570,7 +3569,7 @@ class TestMetricRecording:
         # Should handle edge cases without raising exceptions
         try:
             asyncio.run(test_error_handling())
-        except Exception as e:
+        except Exception:
             # If it does raise an exception, it should be handled gracefully
             # The method has a try-except block, so it should log and continue
             pass

@@ -17,8 +17,7 @@ External Dependencies:
 """
 
 import os
-from typing import Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -454,7 +453,7 @@ class TestCachePresetManagerInitialization:
             assert isinstance(
                 preset_name, str
             ), f"Preset name '{preset_name}' should be a string"
-            assert len(preset_name) > 0, f"Preset name should not be empty"
+            assert len(preset_name) > 0, "Preset name should not be empty"
             assert (
                 preset_name.strip() == preset_name
             ), f"Preset name '{preset_name}' should not have leading/trailing whitespace"
@@ -763,14 +762,13 @@ class TestCachePresetManagerRecommendation:
         # Clear development indicators and set production indicators
         with patch.dict(
             os.environ, {"PRODUCTION": "true", "DEBUG": "false"}, clear=False
-        ):
-            with patch(
-                "os.path.exists", return_value=False
-            ):  # Remove development file indicators
-                auto_recommendation = manager.recommend_preset_with_details(None)
-                assert (
-                    auto_recommendation.preset_name == "production"
-                ), "Auto-detection should find production when dev indicators are cleared"
+        ), patch(
+            "os.path.exists", return_value=False
+        ):  # Remove development file indicators
+            auto_recommendation = manager.recommend_preset_with_details(None)
+            assert (
+                auto_recommendation.preset_name == "production"
+            ), "Auto-detection should find production when dev indicators are cleared"
 
         # Verify production preset characteristics for reliability
         prod_preset = manager.get_preset("production")
@@ -1188,24 +1186,23 @@ class TestCachePresetManagerRecommendation:
         # Test empty/minimal environment detection
         # Note: The test environment itself may have development indicators like .git
         # so we need to mock those away for a truly clean test
-        with patch.dict(os.environ, {}, clear=True):
-            with patch(
-                "os.path.exists", return_value=False
-            ):  # Remove all file-based indicators
-                recommendation = manager.recommend_preset_with_details(None)
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "os.path.exists", return_value=False
+        ):  # Remove all file-based indicators
+            recommendation = manager.recommend_preset_with_details(None)
 
-                # Should fall back to safe default when no indicators are present
-                assert recommendation.preset_name in [
-                    "simple",
-                    "ai-development",
-                ], "No environment signals should use safe fallback"
-                assert (
-                    recommendation.confidence <= 0.60
-                ), "No clear signals should have low confidence"
-                assert (
-                    "default" in recommendation.reasoning.lower()
-                    or "no clear" in recommendation.reasoning.lower()
-                ), "Should explain lack of clear signals"
+            # Should fall back to safe default when no indicators are present
+            assert recommendation.preset_name in [
+                "simple",
+                "ai-development",
+            ], "No environment signals should use safe fallback"
+            assert (
+                recommendation.confidence <= 0.60
+            ), "No clear signals should have low confidence"
+            assert (
+                "default" in recommendation.reasoning.lower()
+                or "no clear" in recommendation.reasoning.lower()
+            ), "Should explain lack of clear signals"
 
         # Test complex/compound environment names that don't clearly map
         complex_environments = [

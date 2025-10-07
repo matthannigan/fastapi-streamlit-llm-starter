@@ -6,21 +6,12 @@ AI, security, cache, and resilience contexts. Covers feature-specific overrides,
 metadata generation, and signal preservation.
 """
 
-import pytest
 import os
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any, List
+from unittest.mock import patch
 
 from app.core.environment import (
     Environment,
     FeatureContext,
-    EnvironmentSignal,
-    EnvironmentInfo,
-    DetectionConfig,
-    EnvironmentDetector,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment,
 )
 
 
@@ -105,12 +96,12 @@ class TestEnvironmentDetectorFeatureContexts:
             assert ai_result.confidence > 0.0
 
             # Verify AI-specific metadata is added
-            assert 'feature_context' in ai_result.metadata
-            assert ai_result.metadata['feature_context'] == 'ai_enabled'
-            assert 'enable_ai_cache_enabled' in ai_result.metadata
-            assert ai_result.metadata['enable_ai_cache_enabled'] is True
-            assert 'ai_prefix' in ai_result.metadata
-            assert ai_result.metadata['ai_prefix'] == 'ai-'
+            assert "feature_context" in ai_result.metadata
+            assert ai_result.metadata["feature_context"] == "ai_enabled"
+            assert "enable_ai_cache_enabled" in ai_result.metadata
+            assert ai_result.metadata["enable_ai_cache_enabled"] is True
+            assert "ai_prefix" in ai_result.metadata
+            assert ai_result.metadata["ai_prefix"] == "ai-"
 
     def test_detect_with_context_security_enforcement_override(self, environment_detector, mock_security_enforcement_vars):
         """
@@ -145,18 +136,18 @@ class TestEnvironmentDetectorFeatureContexts:
             assert security_result.confidence > 0.0
 
             # Verify security-specific metadata is added
-            assert 'feature_context' in security_result.metadata
-            assert security_result.metadata['feature_context'] == 'security_enforcement'
-            assert 'enforce_auth_enabled' in security_result.metadata
-            assert security_result.metadata['enforce_auth_enabled'] is True
+            assert "feature_context" in security_result.metadata
+            assert security_result.metadata["feature_context"] == "security_enforcement"
+            assert "enforce_auth_enabled" in security_result.metadata
+            assert security_result.metadata["enforce_auth_enabled"] is True
 
             # Verify additional security override signal was created
             security_signals = [s for s in security_result.additional_signals
-                              if s.source == 'security_override']
+                              if s.source == "security_override"]
             assert len(security_signals) == 1
             assert security_signals[0].environment == Environment.PRODUCTION
             assert security_signals[0].confidence == 0.98
-            assert 'Security enforcement enabled' in security_signals[0].reasoning
+            assert "Security enforcement enabled" in security_signals[0].reasoning
 
     def test_detect_with_context_cache_optimization_context(self, environment_detector, mock_cache_environment_vars):
         """
@@ -190,8 +181,8 @@ class TestEnvironmentDetectorFeatureContexts:
             assert cache_result.confidence > 0.0
 
             # Verify cache-specific metadata is added
-            assert 'feature_context' in cache_result.metadata
-            assert cache_result.metadata['feature_context'] == 'cache_optimization'
+            assert "feature_context" in cache_result.metadata
+            assert cache_result.metadata["feature_context"] == "cache_optimization"
 
             # Cache optimization context doesn't have special environment variables configured by default
             # but still provides feature context identification
@@ -228,8 +219,8 @@ class TestEnvironmentDetectorFeatureContexts:
             assert resilience_result.confidence > 0.0
 
             # Verify resilience-specific metadata is added
-            assert 'feature_context' in resilience_result.metadata
-            assert resilience_result.metadata['feature_context'] == 'resilience_strategy'
+            assert "feature_context" in resilience_result.metadata
+            assert resilience_result.metadata["feature_context"] == "resilience_strategy"
 
             # Resilience strategy context doesn't have special environment variables configured by default
             # but still provides feature context identification
@@ -274,24 +265,24 @@ class TestEnvironmentDetectorFeatureContexts:
             # Then: Returns EnvironmentInfo with metadata containing feature-specific hints
 
             # AI metadata
-            assert ai_result.metadata['feature_context'] == 'ai_enabled'
-            assert 'enable_ai_cache_enabled' in ai_result.metadata
-            assert 'ai_prefix' in ai_result.metadata
-            assert ai_result.metadata['ai_prefix'] == 'ai-'
+            assert ai_result.metadata["feature_context"] == "ai_enabled"
+            assert "enable_ai_cache_enabled" in ai_result.metadata
+            assert "ai_prefix" in ai_result.metadata
+            assert ai_result.metadata["ai_prefix"] == "ai-"
 
             # Security metadata
-            assert security_result.metadata['feature_context'] == 'security_enforcement'
-            assert 'enforce_auth_enabled' in security_result.metadata
+            assert security_result.metadata["feature_context"] == "security_enforcement"
+            assert "enforce_auth_enabled" in security_result.metadata
 
             # Cache metadata
-            assert cache_result.metadata['feature_context'] == 'cache_optimization'
+            assert cache_result.metadata["feature_context"] == "cache_optimization"
 
             # Resilience metadata
-            assert resilience_result.metadata['feature_context'] == 'resilience_strategy'
+            assert resilience_result.metadata["feature_context"] == "resilience_strategy"
 
             # Verify each context has distinct metadata
             contexts = [ai_result, security_result, cache_result, resilience_result]
-            feature_contexts = [result.metadata['feature_context'] for result in contexts]
+            feature_contexts = [result.metadata["feature_context"] for result in contexts]
             assert len(set(feature_contexts)) == 4  # All unique
 
     def test_detect_with_context_preserves_base_signals(self, environment_detector, mock_security_enforcement_vars):
@@ -332,14 +323,14 @@ class TestEnvironmentDetectorFeatureContexts:
 
             # Security context should have additional security override signal
             security_overrides = [s for s in security_result.additional_signals
-                                if s.source == 'security_override']
+                                if s.source == "security_override"]
             assert len(security_overrides) == 1
 
             # Base signals are preserved - check for common signal types
             base_env_signals = [s for s in default_result.additional_signals
-                              if s.source == 'ENVIRONMENT']
+                              if s.source == "ENVIRONMENT"]
             security_env_signals = [s for s in security_result.additional_signals
-                                  if s.source == 'ENVIRONMENT']
+                                  if s.source == "ENVIRONMENT"]
 
             # Environment signals should be preserved in both contexts
             if base_env_signals:

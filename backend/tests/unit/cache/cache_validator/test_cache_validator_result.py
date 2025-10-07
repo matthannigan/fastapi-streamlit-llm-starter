@@ -16,14 +16,9 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock
 
-import pytest
 
-from app.infrastructure.cache.cache_validator import (ValidationMessage,
-                                                      ValidationResult,
+from app.infrastructure.cache.cache_validator import (ValidationResult,
                                                       ValidationSeverity)
 
 

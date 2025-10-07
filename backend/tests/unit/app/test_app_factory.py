@@ -15,19 +15,16 @@ Test Philosophy:
 - Focus on external observable behavior of created apps
 """
 
-import pytest
-from typing import Optional
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import os
 import sys
 
 # Add backend directory to path for imports
-sys.path.insert(0, '/Users/matth/Github/MGH/fastapi-streamlit-llm-starter/backend')
+sys.path.insert(0, "/Users/matth/Github/MGH/fastapi-streamlit-llm-starter/backend")
 
-from app.main import create_app, create_public_app_with_settings, create_internal_app_with_settings
-from app.core.config import create_settings, Settings
-from app.core.environment import is_production_environment
+from app.main import create_app
+from app.core.config import create_settings
 
 
 class TestAppFactory:
@@ -103,8 +100,8 @@ class TestAppFactory:
         assert isinstance(app_default, FastAPI)
 
         # App without routers should have fewer routes
-        no_router_routes = len([route for route in app_no_routers.routes if hasattr(route, 'path')])
-        default_routes = len([route for route in app_default.routes if hasattr(route, 'path')])
+        no_router_routes = len([route for route in app_no_routers.routes if hasattr(route, "path")])
+        default_routes = len([route for route in app_default.routes if hasattr(route, "path")])
 
         # The app without routers should have significantly fewer routes
         # (mainly the internal app mount and root endpoints)
@@ -181,7 +178,7 @@ class TestAppFactory:
         assert isinstance(app, FastAPI)
 
         # Check for internal app mount
-        internal_routes = [route for route in app.routes if hasattr(route, 'path') and route.path == "/internal"]
+        internal_routes = [route for route in app.routes if hasattr(route, "path") and route.path == "/internal"]
         assert len(internal_routes) > 0, "App should have internal API mounted at /internal"
 
         # Verify main app has expected properties
@@ -198,17 +195,17 @@ class TestAppFactory:
         changes in one test from affecting apps created in other tests.
         """
         # Store original environment
-        original_debug = os.environ.get('DEBUG')
+        original_debug = os.environ.get("DEBUG")
 
         try:
             # Set initial environment
-            os.environ['DEBUG'] = 'false'
+            os.environ["DEBUG"] = "false"
 
             # Create first app
             app1 = create_app()
 
             # Change environment
-            os.environ['DEBUG'] = 'true'
+            os.environ["DEBUG"] = "true"
 
             # Create second app after environment change
             app2 = create_app()
@@ -223,9 +220,9 @@ class TestAppFactory:
         finally:
             # Restore original environment
             if original_debug is not None:
-                os.environ['DEBUG'] = original_debug
+                os.environ["DEBUG"] = original_debug
             else:
-                os.environ.pop('DEBUG', None)
+                os.environ.pop("DEBUG", None)
 
 
 class TestAppFactorySettingsIntegration:
@@ -368,7 +365,7 @@ class TestDeploymentCompatibility:
         app = create_app()
 
         # Extract route paths
-        routes = [route.path for route in app.routes if hasattr(route, 'path')]
+        routes = [route.path for route in app.routes if hasattr(route, "path")]
 
         # Should have main routes
         assert "/" in routes, "Should have root endpoint"
@@ -475,7 +472,7 @@ class TestRouterMiddlewareConfiguration:
 
         # Count API routes (excluding utility endpoints)
         def count_api_routes(app):
-            return len([route for route in app.routes if hasattr(route, 'path') and not route.path.startswith('/internal')])
+            return len([route for route in app.routes if hasattr(route, "path") and not route.path.startswith("/internal")])
 
         with_routers_count = count_api_routes(app_with_routers)
         without_routers_count = count_api_routes(app_without_routers)
@@ -637,14 +634,14 @@ class TestFactoryErrorHandling:
 
         try:
             # Test with different environment settings
-            os.environ['DEBUG'] = 'true'
-            os.environ['LOG_LEVEL'] = 'DEBUG'
+            os.environ["DEBUG"] = "true"
+            os.environ["LOG_LEVEL"] = "DEBUG"
 
             app1 = create_app()
 
             # Change environment
-            os.environ['DEBUG'] = 'false'
-            os.environ['LOG_LEVEL'] = 'INFO'
+            os.environ["DEBUG"] = "false"
+            os.environ["LOG_LEVEL"] = "INFO"
 
             app2 = create_app()
 

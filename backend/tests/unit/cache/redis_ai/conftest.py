@@ -13,13 +13,9 @@ Fixture Categories:
 """
 
 import hashlib
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
 
 # Note: sample_text, sample_short_text, sample_long_text, sample_ai_response,
 # and sample_options fixtures are now provided by the parent conftest.py

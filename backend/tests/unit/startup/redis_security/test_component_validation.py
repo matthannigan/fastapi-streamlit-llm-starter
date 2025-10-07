@@ -14,8 +14,6 @@ Test Coverage:
     - Error and warning message generation
 """
 
-import pytest
-from app.core.exceptions import ConfigurationError
 
 
 class TestValidateTlsCertificates:

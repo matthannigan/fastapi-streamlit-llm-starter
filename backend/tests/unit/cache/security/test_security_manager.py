@@ -18,12 +18,10 @@ External Dependencies:
 
 import asyncio
 import ssl
-from typing import Any, Dict, List
 from unittest.mock import patch
 
 import pytest
 
-from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.security import (RedisCacheSecurityManager,
                                                SecurityConfig,
                                                SecurityValidationResult)
@@ -441,7 +439,7 @@ class TestRedisCacheSecurityManagerConnection:
         manager = RedisCacheSecurityManager(config)
 
         # Mock timeout error from Redis connection
-        timeout_error = asyncio.TimeoutError("Connection timed out")
+        timeout_error = TimeoutError("Connection timed out")
         mock_aioredis.from_url.side_effect = timeout_error
 
         # When: create_secure_connection() attempts connection to unresponsive server

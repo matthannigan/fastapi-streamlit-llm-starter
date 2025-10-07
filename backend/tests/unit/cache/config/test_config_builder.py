@@ -16,11 +16,8 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-import json
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import patch
 
 import pytest
 

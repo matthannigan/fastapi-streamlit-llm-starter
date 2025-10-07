@@ -13,8 +13,7 @@ Test Coverage:
 """
 
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock, AsyncMock
-import time
+from unittest.mock import patch, PropertyMock, AsyncMock
 from app.infrastructure.monitoring.health import (
     check_ai_model_health,
     check_cache_health,
@@ -42,7 +41,7 @@ class TestCheckAIModelHealth:
         Health checks must detect configuration issues without API overhead.
     """
 
-    @patch('app.infrastructure.monitoring.health.settings')
+    @patch("app.infrastructure.monitoring.health.settings")
     async def test_check_ai_model_health_returns_healthy_with_valid_api_key(self, mock_settings):
         """
         Test that check_ai_model_health returns HEALTHY when API key is configured.
@@ -68,7 +67,7 @@ class TestCheckAIModelHealth:
         Fixtures Used:
             - test_settings: Settings with gemini_api_key configured
         """
-        mock_settings.gemini_api_key = 'test-key'
+        mock_settings.gemini_api_key = "test-key"
         status = await check_ai_model_health()
         assert isinstance(status, ComponentStatus)
         assert status.name == "ai_model"
@@ -78,7 +77,7 @@ class TestCheckAIModelHealth:
         assert status.metadata["has_api_key"] is True
         assert status.response_time_ms > 0
 
-    @patch('app.infrastructure.monitoring.health.settings')
+    @patch("app.infrastructure.monitoring.health.settings")
     async def test_check_ai_model_health_returns_degraded_with_missing_api_key(self, mock_settings):
         """
         Test that check_ai_model_health returns DEGRADED when API key is missing.
@@ -114,7 +113,7 @@ class TestCheckAIModelHealth:
         assert status.metadata["has_api_key"] is False
         assert status.response_time_ms >= 0
 
-    @patch('app.infrastructure.monitoring.health.settings')
+    @patch("app.infrastructure.monitoring.health.settings")
     async def test_check_ai_model_health_returns_unhealthy_on_check_failure(self, mock_settings):
         """
         Test that check_ai_model_health returns UNHEALTHY when check itself fails.
@@ -147,7 +146,7 @@ class TestCheckAIModelHealth:
         assert "Test error" in status.message
         assert status.response_time_ms >= 0
 
-    @patch('app.infrastructure.monitoring.health.settings')
+    @patch("app.infrastructure.monitoring.health.settings")
     async def test_check_ai_model_health_tracks_response_time(self, mock_settings):
         """
         Test that check_ai_model_health measures and reports execution time.
@@ -168,11 +167,11 @@ class TestCheckAIModelHealth:
         Fixtures Used:
             - test_settings: Settings with valid configuration
         """
-        mock_settings.gemini_api_key = 'test-key'
+        mock_settings.gemini_api_key = "test-key"
         status = await check_ai_model_health()
         assert status.response_time_ms > 0
 
-    @patch('app.infrastructure.monitoring.health.settings')
+    @patch("app.infrastructure.monitoring.health.settings")
     async def test_check_ai_model_health_includes_provider_metadata(self, mock_settings):
         """
         Test that check_ai_model_health includes provider information in metadata.
@@ -194,13 +193,13 @@ class TestCheckAIModelHealth:
         Fixtures Used:
             - test_settings: Settings with gemini configuration
         """
-        mock_settings.gemini_api_key = 'test-key'
+        mock_settings.gemini_api_key = "test-key"
         status = await check_ai_model_health()
         assert isinstance(status.metadata, dict)
         assert status.metadata["provider"] == "gemini"
         assert status.metadata["has_api_key"] is True
 
-    @patch('app.infrastructure.monitoring.health.settings')
+    @patch("app.infrastructure.monitoring.health.settings")
     async def test_check_ai_model_health_does_not_make_actual_api_calls(self, mock_settings):
         """
         Test that check_ai_model_health validates configuration without API calls.
@@ -222,7 +221,7 @@ class TestCheckAIModelHealth:
         Fixtures Used:
             - test_settings: Settings with API key
         """
-        mock_settings.gemini_api_key = 'test-key'
+        mock_settings.gemini_api_key = "test-key"
         status = await check_ai_model_health()
         assert status.response_time_ms < 100
 
@@ -354,7 +353,7 @@ class TestCheckCacheHealth:
         Fixtures Used:
             - Fake cache service that raises exception
         """
-        monkeypatch.setattr(fake_cache_service, 'get_cache_stats', AsyncMock(side_effect=Exception("Stats error")))
+        monkeypatch.setattr(fake_cache_service, "get_cache_stats", AsyncMock(side_effect=Exception("Stats error")))
         status = await check_cache_health(fake_cache_service)
         assert status.name == "cache"
         assert status.status == HealthStatus.UNHEALTHY
@@ -362,7 +361,7 @@ class TestCheckCacheHealth:
         assert "Stats error" in status.message
         assert status.response_time_ms >= 0
 
-    @patch('app.dependencies.get_cache_service')
+    @patch("app.dependencies.get_cache_service")
     async def test_check_cache_health_uses_dependency_injection_when_provided(self, mock_get_cache_service, fake_cache_service):
         """
         Test that check_cache_health uses injected cache service for optimal performance.
@@ -388,7 +387,7 @@ class TestCheckCacheHealth:
         await check_cache_health(fake_cache_service)
         mock_get_cache_service.assert_not_called()
 
-    @patch('app.dependencies.get_cache_service', new_callable=AsyncMock)
+    @patch("app.dependencies.get_cache_service", new_callable=AsyncMock)
     async def test_check_cache_health_creates_cache_service_when_none_provided(self, mock_get_cache_service, fake_cache_service):
         """
         Test that check_cache_health creates cache service when none provided.
@@ -415,7 +414,7 @@ class TestCheckCacheHealth:
         await check_cache_health(None)
         mock_get_cache_service.assert_called_once()
 
-    @patch('app.dependencies.get_cache_service', new_callable=AsyncMock)
+    @patch("app.dependencies.get_cache_service", new_callable=AsyncMock)
     async def test_check_cache_health_handles_cache_connection_failure_gracefully(self, mock_get_cache_service, fake_cache_service_connection_fails):
         """
         Test that check_cache_health handles connection failures during service creation.
@@ -482,7 +481,7 @@ class TestCheckResilienceHealth:
         protection against cascade failures. Critical for operational monitoring.
     """
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_returns_healthy_with_all_circuits_closed(self, mock_ai_resilience, fake_resilience_orchestrator):
         """
         Test that check_resilience_health returns HEALTHY when all circuits closed.
@@ -519,7 +518,7 @@ class TestCheckResilienceHealth:
         assert len(status.metadata["half_open_circuit_breakers"]) == 0
         assert status.response_time_ms >= 0
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_returns_degraded_with_open_circuit_breakers(self, mock_ai_resilience, fake_resilience_orchestrator_with_open_breakers):
         """
         Test that check_resilience_health returns DEGRADED when circuits are open.
@@ -553,7 +552,7 @@ class TestCheckResilienceHealth:
         assert "ai_service" in status.metadata["open_circuit_breakers"]
         assert status.response_time_ms >= 0
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_returns_unhealthy_when_orchestrator_fails(self, mock_ai_resilience, fake_resilience_orchestrator_failed):
         """
         Test that check_resilience_health returns UNHEALTHY when orchestrator fails.
@@ -585,7 +584,7 @@ class TestCheckResilienceHealth:
         assert "Simulated resilience system failure" in status.message
         assert status.response_time_ms >= 0
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_includes_circuit_breaker_metadata(self, mock_ai_resilience, fake_resilience_orchestrator_with_open_breakers):
         """
         Test that check_resilience_health includes detailed circuit breaker metadata.
@@ -616,7 +615,7 @@ class TestCheckResilienceHealth:
         assert "db_service" in status.metadata["half_open_circuit_breakers"]
         assert status.metadata["total_circuit_breakers"] == 3
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_detects_half_open_circuit_breakers(self, mock_ai_resilience, fake_resilience_orchestrator_recovering):
         """
         Test that check_resilience_health monitors half-open circuit breaker states.
@@ -643,7 +642,7 @@ class TestCheckResilienceHealth:
         assert "ai_service" in status.metadata["half_open_circuit_breakers"]
         assert status.status == HealthStatus.HEALTHY
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_tracks_response_time(self, mock_ai_resilience, fake_resilience_orchestrator):
         """
         Test that check_resilience_health measures and reports execution time.
@@ -668,7 +667,7 @@ class TestCheckResilienceHealth:
         status = await check_resilience_health()
         assert status.response_time_ms >= 0
 
-    @patch('app.infrastructure.resilience.orchestrator.ai_resilience')
+    @patch("app.infrastructure.resilience.orchestrator.ai_resilience")
     async def test_check_resilience_health_differentiates_service_vs_infrastructure_failures(self, mock_ai_resilience, fake_resilience_orchestrator_with_open_breakers):
         """
         Test that check_resilience_health distinguishes service from infrastructure issues.

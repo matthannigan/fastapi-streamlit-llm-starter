@@ -17,15 +17,9 @@ External Dependencies:
 """
 
 import asyncio
-import hashlib
 import time
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
 from app.infrastructure.cache.redis_ai import AIResponseCache
 
 
@@ -198,7 +192,7 @@ class TestAIResponseCacheConnection:
 
             # And: No exceptions are raised that would break the application
             operations_work = True
-        except Exception as e:
+        except Exception:
             # If build_key fails, that's also acceptable behavior during connection failure
             # The important thing is that it doesn't crash the application
             operations_work = True  # Still consider it working if it fails gracefully

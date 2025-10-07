@@ -19,9 +19,7 @@ Design Philosophy:
     - Stateful mocks maintain internal state for realistic behavior
 """
 
-import hashlib
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -190,7 +188,7 @@ def sample_null_value():
     ensuring proper distinction between "key not found" and
     "key exists but value is None".
     """
-    return None
+    return
 
 
 @pytest.fixture

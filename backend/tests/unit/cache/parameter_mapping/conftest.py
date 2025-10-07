@@ -9,7 +9,6 @@ but currently contains no fixtures as the parameter_mapping module's dependencie
 cache conftest.py file. The ValidationResult is defined within the module itself.
 """
 
-import pytest
 
 # Note: No additional fixtures needed for parameter_mapping module as its dependencies
 # (ValidationError, ConfigurationError) are already available in the shared

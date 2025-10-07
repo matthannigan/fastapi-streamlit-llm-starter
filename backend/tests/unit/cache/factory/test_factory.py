@@ -17,12 +17,11 @@ External Dependencies:
     - Standard library components (typing): For type annotations and dependency injection
 """
 
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
+from app.core.exceptions import (InfrastructureError,
                                  ValidationError)
 from app.infrastructure.cache.factory import CacheFactory
 
