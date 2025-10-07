@@ -513,15 +513,15 @@ test-backend:
 # Run backend unit tests
 test-backend-unit:
 	@echo "🧪 Running backend unit tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ -n auto -q --tb=short
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ --tb=short
 
 test-backend-integration:
 	@echo "🧪 Running backend integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/cache/ -n 0 -q --tb=no --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ --tb=no --retries 3 --retry-delay 1
 
 test-backend-e2e:
 	@echo "🧪 Running backend E2E tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/ -m "e2e" -q --tb=no --retries 3 --retry-delay 1
 
 
 # Run cache infrastructure tests
