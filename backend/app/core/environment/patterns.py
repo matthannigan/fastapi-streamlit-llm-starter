@@ -29,7 +29,7 @@ def collect_detection_signals(config: DetectionConfig) -> List[EnvironmentSignal
 
     Args:
         config: Detection configuration with patterns and precedence settings
-        
+
     Returns:
         List of EnvironmentSignal objects, each containing:
         - source: Detection mechanism (env_var, system_indicator, hostname_pattern)
@@ -57,16 +57,16 @@ def collect_detection_signals(config: DetectionConfig) -> List[EnvironmentSignal
         >>> high_confidence = [s for s in signals if s.confidence > 0.8]
     """
     signals = []
-    
+
     # 1. Explicit environment variables (highest priority)
     signals.extend(detect_from_env_vars(config))
-    
+
     # 2. System indicators
     signals.extend(detect_from_system_indicators(config))
-    
+
     # 3. Pattern matching on hostname/URLs
     signals.extend(detect_from_patterns(config))
-    
+
     return signals
 
 
@@ -80,7 +80,7 @@ def detect_from_env_vars(config: DetectionConfig) -> List[EnvironmentSignal]:
 
     Args:
         config: Detection configuration with env_var_precedence settings
-        
+
     Returns:
         List of EnvironmentSignal objects from environment variable detection.
         Signals are ordered by precedence with highest confidence for
@@ -106,36 +106,36 @@ def detect_from_env_vars(config: DetectionConfig) -> List[EnvironmentSignal]:
         >>> assert any(s.confidence < 0.95 for s in signals if s.source == 'NODE_ENV')
     """
     signals = []
-    
+
     for env_var in config.env_var_precedence:
         value = os.getenv(env_var)
         if not value:
             continue
-            
+
         env_lower = value.lower().strip()
-        
+
         # Direct environment mapping
         env_mapping = {
-            'development': Environment.DEVELOPMENT,
-            'dev': Environment.DEVELOPMENT, 
-            'testing': Environment.TESTING,
-            'test': Environment.TESTING,
-            'staging': Environment.STAGING,
-            'stage': Environment.STAGING,
-            'production': Environment.PRODUCTION,
-            'prod': Environment.PRODUCTION,
-            'live': Environment.PRODUCTION
+            "development": Environment.DEVELOPMENT,
+            "dev": Environment.DEVELOPMENT,
+            "testing": Environment.TESTING,
+            "test": Environment.TESTING,
+            "staging": Environment.STAGING,
+            "stage": Environment.STAGING,
+            "production": Environment.PRODUCTION,
+            "prod": Environment.PRODUCTION,
+            "live": Environment.PRODUCTION
         }
-        
+
         if env_lower in env_mapping:
             signals.append(EnvironmentSignal(
                 source=env_var,
                 value=value,
                 environment=env_mapping[env_lower],
-                confidence=0.95 if env_var == 'ENVIRONMENT' else 0.85,
+                confidence=0.95 if env_var == "ENVIRONMENT" else 0.85,
                 reasoning=f"Explicit environment from {env_var}={value}"
             ))
-            
+
     return signals
 
 
@@ -149,7 +149,7 @@ def detect_from_system_indicators(config: DetectionConfig) -> List[EnvironmentSi
 
     Args:
         config: Detection configuration with indicator settings
-        
+
     Returns:
         List of EnvironmentSignal objects from system indicator detection.
         Each signal represents one system indicator with appropriate
@@ -177,7 +177,7 @@ def detect_from_system_indicators(config: DetectionConfig) -> List[EnvironmentSi
         ...     assert debug_signals[0].environment == Environment.PRODUCTION
     """
     signals = []
-    
+
     # Development indicators
     for indicator in config.development_indicators:
         if check_indicator(indicator):
@@ -188,18 +188,18 @@ def detect_from_system_indicators(config: DetectionConfig) -> List[EnvironmentSi
                 confidence=0.70,
                 reasoning=f"Development indicator detected: {indicator}"
             ))
-    
+
     # Production indicators
     for indicator in config.production_indicators:
         if check_indicator(indicator):
             signals.append(EnvironmentSignal(
-                source="system_indicator", 
+                source="system_indicator",
                 value=indicator,
                 environment=Environment.PRODUCTION,
                 confidence=0.75,
                 reasoning=f"Production indicator detected: {indicator}"
             ))
-            
+
     return signals
 
 
@@ -241,14 +241,13 @@ def check_indicator(indicator: str) -> bool:
         >>> assert check_indicator("nonexistent.file") == False
     """
     try:
-        if '=' in indicator:
+        if "=" in indicator:
             # Environment variable check
-            var, expected = indicator.split('=', 1)
-            return os.getenv(var, '').lower() == expected.lower()
-        else:
-            # File existence check
-            return Path(indicator).exists()
-    except (OSError, PermissionError, IOError) as e:
+            var, expected = indicator.split("=", 1)
+            return os.getenv(var, "").lower() == expected.lower()
+        # File existence check
+        return Path(indicator).exists()
+    except (OSError, PermissionError) as e:
         # File system access errors should not break detection
         logger.warning(
             f"Unable to check system indicator '{indicator}': {e}",
@@ -267,7 +266,7 @@ def detect_from_patterns(config: DetectionConfig) -> List[EnvironmentSignal]:
 
     Args:
         config: Detection configuration with pattern settings
-        
+
     Returns:
         List of EnvironmentSignal objects from pattern matching.
         Signals include the matched hostname/URL and the pattern that
@@ -295,16 +294,16 @@ def detect_from_patterns(config: DetectionConfig) -> List[EnvironmentSignal]:
         >>> dev_signals = [s for s in signals if s.environment == Environment.DEVELOPMENT]
     """
     signals = []
-    
+
     # Check hostname patterns
-    hostname = os.getenv('HOSTNAME', '').lower()
+    hostname = os.getenv("HOSTNAME", "").lower()
     if hostname:
         env_patterns = [
             (config.development_patterns, Environment.DEVELOPMENT, 0.60),
             (config.staging_patterns, Environment.STAGING, 0.65),
             (config.production_patterns, Environment.PRODUCTION, 0.70)
         ]
-        
+
         for patterns, environment, confidence in env_patterns:
             for pattern in patterns:
                 try:
@@ -329,5 +328,5 @@ def detect_from_patterns(config: DetectionConfig) -> List[EnvironmentSignal]:
                         }
                     )
                     continue
-    
+
     return signals

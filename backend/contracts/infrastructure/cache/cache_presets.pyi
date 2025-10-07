@@ -49,7 +49,7 @@ import os
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple
 
 CACHE_PRESETS = {'disabled': CachePreset(name='Disabled', description='Cache completely disabled, no Redis connection, memory-only fallback', strategy=CacheStrategy.FAST, default_ttl=300, max_connections=1, connection_timeout=1, memory_cache_size=10, compression_threshold=10000, compression_level=1, enable_ai_cache=False, enable_monitoring=False, log_level='WARNING', environment_contexts=['testing', 'minimal'], ai_optimizations={}), 'minimal': CachePreset(name='Minimal', description='Ultra-lightweight caching for resource-constrained environments', strategy=CacheStrategy.FAST, default_ttl=900, max_connections=2, connection_timeout=3, memory_cache_size=25, compression_threshold=5000, compression_level=1, enable_ai_cache=False, enable_monitoring=False, log_level='ERROR', environment_contexts=['minimal', 'embedded', 'iot', 'container', 'serverless'], ai_optimizations={}), 'simple': CachePreset(name='Simple', description='Basic cache configuration suitable for most use cases', strategy=CacheStrategy.BALANCED, default_ttl=3600, max_connections=5, connection_timeout=5, memory_cache_size=100, compression_threshold=1000, compression_level=6, enable_ai_cache=False, enable_monitoring=True, log_level='INFO', environment_contexts=['development', 'testing', 'staging', 'production'], ai_optimizations={}), 'development': CachePreset(name='Development', description='Fast-feedback configuration optimized for development speed', strategy=CacheStrategy.FAST, default_ttl=600, max_connections=3, connection_timeout=2, memory_cache_size=50, compression_threshold=2000, compression_level=3, enable_ai_cache=False, enable_monitoring=True, log_level='DEBUG', environment_contexts=['development', 'local'], ai_optimizations={}), 'production': CachePreset(name='Production', description='High-performance configuration for production workloads', strategy=CacheStrategy.ROBUST, default_ttl=7200, max_connections=20, connection_timeout=10, memory_cache_size=500, compression_threshold=500, compression_level=9, enable_ai_cache=False, enable_monitoring=True, log_level='INFO', environment_contexts=['production', 'staging'], ai_optimizations={}), 'ai-development': CachePreset(name='AI Development', description='AI-optimized configuration for development with text processing features', strategy=CacheStrategy.AI_OPTIMIZED, default_ttl=1800, max_connections=5, connection_timeout=5, memory_cache_size=100, compression_threshold=1000, compression_level=6, enable_ai_cache=True, enable_monitoring=True, log_level='DEBUG', environment_contexts=['development', 'ai-development'], ai_optimizations={'text_hash_threshold': 500, 'hash_algorithm': 'sha256', 'text_size_tiers': {'small': 500, 'medium': 2000, 'large': 10000}, 'operation_ttls': {'summarize': 1800, 'sentiment': 900, 'key_points': 1200, 'questions': 1500, 'qa': 900}, 'enable_smart_promotion': True, 'max_text_length': 50000}), 'ai-production': CachePreset(name='AI Production', description='AI-optimized configuration for production with advanced text processing', strategy=CacheStrategy.AI_OPTIMIZED, default_ttl=14400, max_connections=25, connection_timeout=15, memory_cache_size=1000, compression_threshold=300, compression_level=9, enable_ai_cache=True, enable_monitoring=True, log_level='INFO', environment_contexts=['production', 'ai-production'], ai_optimizations={'text_hash_threshold': 1000, 'hash_algorithm': 'sha256', 'text_size_tiers': {'small': 1000, 'medium': 5000, 'large': 25000}, 'operation_ttls': {'summarize': 14400, 'sentiment': 7200, 'key_points': 10800, 'questions': 9600, 'qa': 7200}, 'enable_smart_promotion': True, 'max_text_length': 200000})}
 
@@ -283,7 +283,7 @@ class CachePresetManager:
         """
         ...
 
-    def recommend_preset(self, environment: Optional[str] = None) -> str:
+    def recommend_preset(self, environment: str | None = None) -> str:
         """
         Recommend appropriate preset for given environment.
         
@@ -296,7 +296,7 @@ class CachePresetManager:
         """
         ...
 
-    def recommend_preset_with_details(self, environment: Optional[str] = None) -> EnvironmentRecommendation:
+    def recommend_preset_with_details(self, environment: str | None = None) -> EnvironmentRecommendation:
         """
         Get detailed environment-aware preset recommendation.
         

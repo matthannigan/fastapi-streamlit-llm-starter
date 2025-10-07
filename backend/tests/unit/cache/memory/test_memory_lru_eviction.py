@@ -17,9 +17,7 @@ External Dependencies:
     - app.core.exceptions: Exception handling for configuration and validation errors
 """
 
-import asyncio
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

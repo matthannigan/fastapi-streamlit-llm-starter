@@ -38,11 +38,11 @@ setup_global_exception_handler(app, settings)
 
 ## Important Architecture Note
 
-This module implements centralized exception handling using FastAPI's 
+This module implements centralized exception handling using FastAPI's
 @app.exception_handler() decorator system, NOT Starlette middleware.
 
 While located in the middleware directory and functioning like middleware,
-this uses FastAPI's exception handler system rather than Starlette's 
+this uses FastAPI's exception handler system rather than Starlette's
 BaseHTTPMiddleware. This means:
 
 - It catches exceptions AFTER middleware processing
@@ -50,7 +50,7 @@ BaseHTTPMiddleware. This means:
 - It's configured via @app.exception_handler() decorators
 - It runs when middleware or application code raises unhandled exceptions
 
-This is architecturally correct for error handling but differs from 
+This is architecturally correct for error handling but differs from
 traditional middleware implementation patterns.
 """
 
@@ -60,7 +60,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from app.core.config import Settings
-from app.core.exceptions import ApplicationError, ValidationError, AuthenticationError, AuthorizationError, ConfigurationError, BusinessLogicError, InfrastructureError, AIServiceException, TransientAIError, PermanentAIError, get_http_status_for_exception
+from app.core.exceptions import ApplicationError, ValidationError, AuthenticationError, AuthorizationError, ConfigurationError, BusinessLogicError, InfrastructureError, TransientAIError, PermanentAIError, get_http_status_for_exception
 from app.schemas.common import ErrorResponse
 
 

@@ -9,7 +9,7 @@ import json
 import logging
 import time
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from collections import defaultdict, deque
 
 CONFIGURATION_TEMPLATES = {'fast_development': {'name': 'Fast Development', 'description': 'Optimized for development speed with minimal retries', 'config': {'retry_attempts': 1, 'circuit_breaker_threshold': 2, 'recovery_timeout': 15, 'default_strategy': 'aggressive', 'operation_overrides': {'sentiment': 'aggressive'}}}, 'robust_production': {'name': 'Robust Production', 'description': 'High reliability configuration for production workloads', 'config': {'retry_attempts': 6, 'circuit_breaker_threshold': 12, 'recovery_timeout': 180, 'default_strategy': 'conservative', 'operation_overrides': {'qa': 'critical', 'summarize': 'conservative'}}}, 'low_latency': {'name': 'Low Latency', 'description': 'Minimal latency configuration with fast failures', 'config': {'retry_attempts': 1, 'circuit_breaker_threshold': 2, 'recovery_timeout': 10, 'default_strategy': 'aggressive', 'max_delay_seconds': 5, 'exponential_multiplier': 0.5, 'exponential_min': 0.5, 'exponential_max': 5.0}}, 'high_throughput': {'name': 'High Throughput', 'description': 'Optimized for high throughput with moderate reliability', 'config': {'retry_attempts': 3, 'circuit_breaker_threshold': 8, 'recovery_timeout': 45, 'default_strategy': 'balanced', 'operation_overrides': {'sentiment': 'aggressive', 'key_points': 'balanced'}}}, 'maximum_reliability': {'name': 'Maximum Reliability', 'description': 'Maximum reliability configuration for critical operations', 'config': {'retry_attempts': 8, 'circuit_breaker_threshold': 15, 'recovery_timeout': 300, 'default_strategy': 'critical', 'operation_overrides': {'qa': 'critical', 'summarize': 'critical', 'sentiment': 'conservative', 'key_points': 'conservative', 'questions': 'conservative'}, 'exponential_multiplier': 2.0, 'exponential_min': 3.0, 'exponential_max': 60.0, 'jitter_enabled': True, 'jitter_max': 5.0}}}
@@ -26,7 +26,7 @@ class ValidationRateLimiter:
     Rate limiter for validation requests to prevent abuse.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         ...
 
     def check_rate_limit(self, identifier: str) -> tuple[bool, str]:
@@ -35,7 +35,7 @@ class ValidationRateLimiter:
         
         Args:
             identifier: Client identifier (IP address, user ID, etc.)
-            
+        
         Returns:
             Tuple of (allowed, error_message)
         """
@@ -47,7 +47,7 @@ class ValidationRateLimiter:
         """
         ...
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Reset all rate limiting state. Used for testing.
         """
@@ -59,7 +59,7 @@ class ValidationResult:
     Result of configuration validation with errors, warnings, and suggestions.
     """
 
-    def __init__(self, is_valid: bool, errors: Optional[List[str]] = None, warnings: Optional[List[str]] = None, suggestions: Optional[List[str]] = None):
+    def __init__(self, is_valid: bool, errors: List[str] | None = None, warnings: List[str] | None = None, suggestions: List[str] | None = None):
         ...
 
     def __bool__(self) -> bool:
@@ -129,7 +129,7 @@ class ResilienceConfigValidator:
         result = validator.validate_json_string(json_config)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the resilience configuration validator with schema validators and rate limiting.
         
@@ -175,7 +175,7 @@ class ResilienceConfigValidator:
         """
         ...
 
-    def get_template(self, template_name: str) -> Optional[Dict[str, Any]]:
+    def get_template(self, template_name: str) -> Dict[str, Any] | None:
         """
         Retrieve a specific configuration template by name.
         
@@ -274,7 +274,7 @@ class ResilienceConfigValidator:
         """
         ...
 
-    def reset_rate_limiter(self):
+    def reset_rate_limiter(self) -> None:
         """
         Reset all rate limiting state for testing and maintenance scenarios.
         
@@ -295,7 +295,7 @@ class ResilienceConfigValidator:
         """
         ...
 
-    def validate_with_security_checks(self, config_data: Any, client_identifier: Optional[str] = None) -> ValidationResult:
+    def validate_with_security_checks(self, config_data: Any, client_identifier: str | None = None) -> ValidationResult:
         """
         Perform security-focused validation of configuration data without schema validation.
         
@@ -347,26 +347,26 @@ class ResilienceConfigValidator:
         """
         ...
 
-    def validate_template_based_config(self, template_name: str, overrides: Optional[Dict[str, Any]] = None) -> ValidationResult:
+    def validate_template_based_config(self, template_name: str, overrides: Dict[str, Any] | None = None) -> ValidationResult:
         """
         Validate configuration based on a template with optional overrides.
         
         Args:
             template_name: Name of the template to use as base
             overrides: Optional overrides to apply to the template
-            
+        
         Returns:
             ValidationResult for the merged configuration
         """
         ...
 
-    def suggest_template_for_config(self, config_data: Dict[str, Any]) -> Optional[str]:
+    def suggest_template_for_config(self, config_data: Dict[str, Any]) -> str | None:
         """
         Suggest the most appropriate template for a given configuration.
         
         Args:
             config_data: Configuration to analyze
-            
+        
         Returns:
             Name of the most appropriate template or None
         """
@@ -425,7 +425,7 @@ class ResilienceConfigValidator:
         
         Args:
             preset_data: Preset data to validate
-            
+        
         Returns:
             ValidationResult with validation status and any errors
         """

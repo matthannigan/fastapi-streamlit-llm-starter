@@ -118,13 +118,12 @@ def setup_cors_middleware(app: FastAPI, settings: Settings) -> None:
         and limited to only the domains that require cross-origin access.
     """
     logger.info(f"Setting up CORS middleware with origins: {settings.allowed_origins}")
-    
-    # Note: Type ignore comments are needed due to FastAPI/Starlette type inference
-    # limitations with CORSMiddleware. The code functions correctly at runtime.
+
+    # Note: Type ignore comments were removed as they are no longer needed
     app.add_middleware(
-        CORSMiddleware,  # type: ignore[arg-type]
-        allow_origins=settings.allowed_origins,  # type: ignore[call-arg]
-        allow_credentials=True,  # type: ignore[call-arg]
-        allow_methods=["*"],  # type: ignore[call-arg]
-        allow_headers=["*"],  # type: ignore[call-arg]
+        CORSMiddleware,
+        allow_origins=settings.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )

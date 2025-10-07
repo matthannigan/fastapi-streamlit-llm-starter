@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Resilience Configuration Validation API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides sophisticated REST API endpoints for validating custom
@@ -78,7 +78,7 @@ Example:
                 "timeout_seconds": 30
             }
         }
-        
+
     Enhanced security validation with metadata:
         POST /internal/resilience/config/validate-secure
         {
@@ -87,7 +87,7 @@ Example:
                 "circuit_breaker_threshold": 5
             }
         }
-        
+
     Field whitelist validation:
         POST /internal/resilience/config/validate/field-whitelist
         {
@@ -105,21 +105,12 @@ Note:
     and detailed security metadata for compliance and audit purposes.
 """
 
-import json
 import logging
-import os
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, cast
 from datetime import datetime
-from pydantic import BaseModel, Field
-from app.core.config import Settings, settings
-from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
-from app.infrastructure.resilience.orchestrator import ai_resilience
-from app.services.text_processor import TextProcessorService
-from app.api.v1.deps import get_text_processor
-from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
-from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
+from app.infrastructure.security.auth import verify_api_key
+from app.infrastructure.resilience.config_validator import config_validator
 from app.api.internal.resilience.models import ValidationRequest, ValidationResponse, CustomConfigRequest
 
 router = APIRouter(prefix='/resilience/config', tags=['Resilience Configuration'])
@@ -138,17 +129,17 @@ async def validate_custom_config(request: CustomConfigRequest, api_key: str = De
         request: Custom configuration validation request containing the configuration
                 to validate
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         ValidationResponse: Validation results containing:
             - is_valid: Boolean indicating if configuration is valid
             - errors: List of validation errors that must be fixed
             - warnings: List of warnings about potential issues
             - suggestions: List of suggestions for improvement
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if validation process fails
-        
+    
     Example:
         >>> request = CustomConfigRequest(
         ...     configuration={
@@ -181,7 +172,7 @@ async def validate_custom_config_with_security(request: CustomConfigRequest, cli
                 to validate with security checks
         client_ip: Client IP address for rate limiting and security tracking
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         ValidationResponse: Enhanced validation results containing:
             - is_valid: Boolean indicating if configuration is valid
@@ -193,10 +184,10 @@ async def validate_custom_config_with_security(request: CustomConfigRequest, cli
                 - max_size_bytes: Maximum allowed size
                 - field_count: Number of configuration fields
                 - validation_timestamp: Security validation timestamp
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if security validation fails
-        
+    
     Example:
         >>> request = CustomConfigRequest(
         ...     configuration={"retry_attempts": 3, "circuit_breaker_threshold": 5}
@@ -229,17 +220,17 @@ async def validate_json_config(json_config: str = Query(..., description='JSON s
     Args:
         json_config: JSON string containing the resilience configuration to validate
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         ValidationResponse: Validation results containing:
             - is_valid: Boolean indicating if the JSON configuration is valid
             - errors: List of validation errors including JSON parsing errors
             - warnings: List of warnings about potential configuration issues
             - suggestions: List of suggestions for configuration improvement
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if validation process fails
-        
+    
     Example:
         >>> json_config = '{"retry_attempts": 3, "circuit_breaker_threshold": 5}'
         >>> response = await validate_json_config(json_config)
@@ -249,7 +240,7 @@ async def validate_json_config(json_config: str = Query(..., description='JSON s
         ...     warnings=["Consider adding timeout configuration"],
         ...     suggestions=["Add strategy specification for completeness"]
         ... )
-        
+    
         >>> invalid_json = '{"retry_attempts": "invalid"}'
         >>> response = await validate_json_config(invalid_json)
         >>> ValidationResponse(
@@ -263,7 +254,7 @@ async def validate_json_config(json_config: str = Query(..., description='JSON s
 
 
 @router.post('/validate/field-whitelist')
-async def validate_against_field_whitelist(request: ValidationRequest, api_key: str = Depends(verify_api_key)):
+async def validate_against_field_whitelist(request: ValidationRequest, api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Validate configuration against security field whitelist with detailed analysis.
     
@@ -275,7 +266,7 @@ async def validate_against_field_whitelist(request: ValidationRequest, api_key: 
         request: Validation request containing the configuration to validate
                 against the field whitelist
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Detailed field whitelist validation results containing:
             - is_valid: Boolean indicating if all fields pass whitelist validation
@@ -288,11 +279,11 @@ async def validate_against_field_whitelist(request: ValidationRequest, api_key: 
                 - current_type: Current field type
             - allowed_fields: List of all whitelisted field names
             - validation_timestamp: Validation timestamp
-            
+    
     Raises:
         HTTPException: 400 Bad Request if configuration is not a JSON object
         HTTPException: 500 Internal Server Error if field validation fails
-        
+    
     Example:
         >>> request = ValidationRequest(
         ...     configuration={
@@ -315,7 +306,7 @@ async def validate_against_field_whitelist(request: ValidationRequest, api_key: 
 
 
 @router.get('/validate/security-config')
-async def get_security_configuration(api_key: str = Depends(verify_api_key)):
+async def get_security_configuration(api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Get current security validation configuration and operational limits.
     
@@ -325,7 +316,7 @@ async def get_security_configuration(api_key: str = Depends(verify_api_key)):
     
     Args:
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Security configuration information containing:
             - security_limits: Configuration size and complexity limits including:
@@ -339,10 +330,10 @@ async def get_security_configuration(api_key: str = Depends(verify_api_key)):
             - allowed_fields: List of whitelisted field names
             - forbidden_pattern_count: Number of forbidden patterns detected
             - validation_features: List of enabled security features
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if security configuration retrieval fails
-        
+    
     Example:
         >>> response = await get_security_configuration()
         >>> {
@@ -359,7 +350,7 @@ async def get_security_configuration(api_key: str = Depends(verify_api_key)):
 
 
 @router.get('/validate/rate-limit-status')
-async def get_validation_rate_limit_status(client_ip: str = 'unknown', api_key: str = Depends(verify_api_key)):
+async def get_validation_rate_limit_status(client_ip: str = 'unknown', api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Get current rate limiting status and quotas for validation requests.
     
@@ -370,7 +361,7 @@ async def get_validation_rate_limit_status(client_ip: str = 'unknown', api_key: 
     Args:
         client_ip: Client IP address for rate limit tracking (default: "unknown")
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Rate limit status information containing:
             - client_identifier: Client IP address used for tracking
@@ -380,10 +371,10 @@ async def get_validation_rate_limit_status(client_ip: str = 'unknown', api_key: 
                 - max_validations_per_hour: Maximum validations per hour
                 - cooldown_seconds: Cooldown period between requests
             - check_timestamp: Current timestamp of the status check
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if rate limit status retrieval fails
-        
+    
     Example:
         >>> response = await get_validation_rate_limit_status("192.168.1.1")
         >>> {

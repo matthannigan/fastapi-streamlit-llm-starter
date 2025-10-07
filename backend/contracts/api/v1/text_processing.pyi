@@ -1,8 +1,8 @@
 """
 Domain Service: Comprehensive AI Text Processing REST API with Enterprise-Grade Infrastructure Integration
 
-📚 **EXAMPLE IMPLEMENTATION** - Replace in your project  
-💡 **Demonstrates infrastructure usage patterns**  
+📚 **EXAMPLE IMPLEMENTATION** - Replace in your project
+💡 **Demonstrates infrastructure usage patterns**
 🔄 **Expected to be modified/replaced**
 
 This module provides a comprehensive REST API implementation for AI-powered text processing operations,
@@ -46,7 +46,7 @@ functionality that leverages infrastructure services for:
 
 ### Processing Operations
 - **summarize**: Text summarization with configurable length
-- **sentiment**: Sentiment analysis with confidence scores  
+- **sentiment**: Sentiment analysis with confidence scores
 - **key_points**: Key point extraction with configurable count
 - **questions**: Question generation from text content
 - **qa**: Question answering (requires question parameter)
@@ -82,7 +82,7 @@ Authorization: Bearer your-api-key
 
 {
     "text": "Your text to process here",
-    "operation": "summarize", 
+    "operation": "summarize",
     "options": {"max_length": 150}
 }
 ```
@@ -166,9 +166,7 @@ text processing requirements and use cases.
 import logging
 import uuid
 import time
-from typing import Dict, Any, Optional
-from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends
 from app.schemas import ErrorResponse, TextProcessingRequest, TextProcessingResponse, BatchTextProcessingRequest, BatchTextProcessingResponse
 from app.core.config import settings
 from app.core.exceptions import ValidationError, BusinessLogicError, InfrastructureError
@@ -180,7 +178,7 @@ router = APIRouter(prefix='/text_processing', tags=['Text Processing'])
 
 
 @router.get('/operations', responses={401: {'model': ErrorResponse, 'description': 'Authentication Error'}})
-async def get_operations(api_key: str = Depends(optional_verify_api_key)):
+async def get_operations(api_key: str = Depends(optional_verify_api_key)) -> dict[str, object]:
     """
     AI operations discovery endpoint with comprehensive configuration metadata and optional authentication.
     
@@ -210,19 +208,19 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
         - Includes comprehensive metadata for dynamic client integration and UI generation
         - Enables automatic API documentation generation and client SDK development
         - Supports versioning and backward compatibility for evolving operation sets
-        
+    
         **Authentication Integration:**
         - Supports optional authentication for enhanced access and usage tracking
         - Maintains public accessibility for API discovery and development scenarios
         - Enables authentication-based operation filtering and access control future enhancement
         - Provides consistent authentication patterns across all API endpoints
-        
+    
         **Client Integration Support:**
         - Enables dynamic UI generation based on available operations and options
         - Supports automated validation of operation requests in client applications
         - Facilitates API testing tools and development environment integration
         - Provides machine-readable operation metadata for automated processing
-        
+    
         **Operation Metadata Management:**
         - Maintains centralized definition of all available AI processing operations
         - Provides consistent operation information across all API endpoints
@@ -236,13 +234,13 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
         >>> summarize_op = next(op for op in operations if op["id"] == "summarize")
         >>> assert summarize_op["options"] == ["max_length"]
         >>> assert "requires_question" not in summarize_op
-        
+    
         >>> # Authenticated access for enhanced metadata
         >>> headers = {"Authorization": "Bearer api-key-12345"}
         >>> response = await client.get("/v1/text_processing/operations", headers=headers)
         >>> assert response.status_code == 200
         >>> operations_data = response.json()
-        
+    
         >>> # Dynamic UI generation based on operations
         >>> def generate_operation_forms(operations):
         ...     forms = []
@@ -254,7 +252,7 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
         ...             form["fields"].append({"name": option, "required": False})
         ...         forms.append(form)
         ...     return forms
-        
+    
         >>> # Client SDK operation validation
         >>> available_operations = {op["id"]: op for op in operations["operations"]}
         >>> def validate_request(operation_id, options):
@@ -264,12 +262,12 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
         ...     if op_def.get("requires_question") and "question" not in options:
         ...         raise ValueError(f"Operation {operation_id} requires question parameter")
         ...     return True
-        
+    
         >>> # API testing and development integration
         >>> def test_all_operations():
         ...     ops_response = await client.get("/v1/text_processing/operations")
         ...     operations = ops_response.json()["operations"]
-        ...     
+        ...
         ...     for operation in operations:
         ...         test_request = {
         ...             "text": "Sample text for testing",
@@ -277,10 +275,10 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
         ...         }
         ...         if operation.get("requires_question"):
         ...             test_request["question"] = "What is this about?"
-        ...         
+        ...
         ...         response = await client.post("/v1/text_processing/process", json=test_request)
         ...         print(f"Operation {operation['id']}: {response.status_code}")
-        
+    
         >>> # Complete operations discovery response structure
         >>> expected_operations = ["summarize", "sentiment", "key_points", "questions", "qa"]
         >>> actual_operations = [op["id"] for op in operations["operations"]]
@@ -297,7 +295,7 @@ async def get_operations(api_key: str = Depends(optional_verify_api_key)):
 
 
 @router.post('/process', response_model=TextProcessingResponse, responses={400: {'model': ErrorResponse, 'description': 'Validation Error'}, 422: {'model': ErrorResponse, 'description': 'Validation Error'}, 500: {'model': ErrorResponse, 'description': 'Internal Server Error'}, 502: {'model': ErrorResponse, 'description': 'AI Service Error'}, 503: {'model': ErrorResponse, 'description': 'Service Unavailable'}})
-async def process_text(request: TextProcessingRequest, api_key: str = Depends(verify_api_key), text_processor: TextProcessorService = Depends(get_text_processor)):
+async def process_text(request: TextProcessingRequest, api_key: str = Depends(verify_api_key), text_processor: TextProcessorService = Depends(get_text_processor)) -> TextProcessingResponse:
     """
     Primary AI text processing endpoint with comprehensive operation support and resilience integration.
     
@@ -331,7 +329,7 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
                            problems that prevent successful request processing
         HTTPException: HTTP-specific errors with appropriate status codes:
                       - 400: Bad Request for validation failures
-                      - 422: Unprocessable Entity for data validation errors  
+                      - 422: Unprocessable Entity for data validation errors
                       - 500: Internal Server Error for unexpected system failures
                       - 502: Bad Gateway for AI service communication issues
                       - 503: Service Unavailable for temporary system unavailability
@@ -342,25 +340,25 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
         - Validates operation-specific requirements (question parameter for Q&A operations)
         - Applies comprehensive input validation and sanitization for security and reliability
         - Logs request initiation with operation type and authentication details for monitoring
-        
+    
         **AI Service Integration:**
         - Integrates with TextProcessorService for AI model access and processing capabilities
         - Applies caching strategies for performance optimization and cost reduction
         - Implements resilience patterns including circuit breakers and retry mechanisms
         - Provides graceful degradation when AI services experience temporary issues
-        
+    
         **Response Processing and Metadata:**
         - Generates comprehensive processing results with operation confirmation
         - Includes processing metadata for performance monitoring and optimization
         - Applies response validation and sanitization for security and quality assurance
         - Provides detailed logging for operational visibility and troubleshooting
-        
+    
         **Error Handling and Recovery:**
         - Implements comprehensive exception handling with structured error responses
         - Provides meaningful error messages for client application integration
         - Maintains detailed error logging for operational monitoring and debugging
         - Ensures graceful error handling without exposing sensitive system information
-        
+    
         **Security and Authentication:**
         - Requires valid API key authentication for all processing requests
         - Implements secure request processing with input sanitization and validation
@@ -375,24 +373,24 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
         ...     "options": {"max_length": 150}
         ... }
         >>> headers = {"Authorization": "Bearer api-key-12345"}
-        >>> response = await client.post("/v1/text_processing/process", 
+        >>> response = await client.post("/v1/text_processing/process",
         ...                             json=request_data, headers=headers)
         >>> assert response.status_code == 200
         >>> result = response.json()
         >>> assert result["operation"] == "summarize"
         >>> assert "result" in result and len(result["result"]) > 0
-        
+    
         >>> # Sentiment analysis with metadata
         >>> request_data = {
         ...     "text": "I absolutely love this new feature! It's amazing.",
         ...     "operation": "sentiment"
         ... }
-        >>> response = await client.post("/v1/text_processing/process", 
+        >>> response = await client.post("/v1/text_processing/process",
         ...                             json=request_data, headers=headers)
         >>> sentiment_result = response.json()
         >>> assert sentiment_result["operation"] == "sentiment"
         >>> assert "metadata" in sentiment_result
-        
+    
         >>> # Question-answering operation with required question parameter
         >>> qa_request = {
         ...     "text": "Python is a programming language created by Guido van Rossum.",
@@ -403,7 +401,7 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
         ...                             json=qa_request, headers=headers)
         >>> qa_result = response.json()
         >>> assert "Guido" in qa_result["result"]
-        
+    
         >>> # Error handling for missing required parameters
         >>> invalid_request = {
         ...     "text": "Some text here",
@@ -414,7 +412,7 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
         >>> assert response.status_code == 400
         >>> error = response.json()
         >>> assert "Question is required" in error["detail"]
-        
+    
         >>> # Key points extraction with custom options
         >>> key_points_request = {
         ...     "text": "Complex document with multiple important points...",
@@ -425,13 +423,13 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
         ...                             json=key_points_request, headers=headers)
         >>> key_points = response.json()
         >>> assert key_points["operation"] == "key_points"
-        
+    
         >>> # Comprehensive error handling and retry patterns
         >>> async def robust_text_processing(text, operation, max_retries=3):
         ...     for attempt in range(max_retries):
         ...         try:
-        ...             response = await client.post("/v1/text_processing/process", 
-        ...                                        json={"text": text, "operation": operation}, 
+        ...             response = await client.post("/v1/text_processing/process",
+        ...                                        json={"text": text, "operation": operation},
         ...                                        headers=headers)
         ...             if response.status_code == 200:
         ...                 return response.json()
@@ -457,7 +455,7 @@ async def process_text(request: TextProcessingRequest, api_key: str = Depends(ve
 
 
 @router.post('/batch_process', response_model=BatchTextProcessingResponse, responses={400: {'model': ErrorResponse, 'description': 'Validation Error'}, 422: {'model': ErrorResponse, 'description': 'Validation Error'}, 500: {'model': ErrorResponse, 'description': 'Internal Server Error'}, 502: {'model': ErrorResponse, 'description': 'AI Service Error'}, 503: {'model': ErrorResponse, 'description': 'Service Unavailable'}})
-async def batch_process_text(request: BatchTextProcessingRequest, api_key: str = Depends(verify_api_key), text_processor: TextProcessorService = Depends(get_text_processor)):
+async def batch_process_text(request: BatchTextProcessingRequest, api_key: str = Depends(verify_api_key), text_processor: TextProcessorService = Depends(get_text_processor)) -> BatchTextProcessingResponse:
     """
     Process multiple text requests in a single batch operation.
     
@@ -508,7 +506,7 @@ async def batch_process_text(request: BatchTextProcessingRequest, api_key: str =
             "batch_id": "my-batch-2024"
         }
         ```
-        
+    
         Response:
         ```json
         {
@@ -533,7 +531,7 @@ async def batch_process_text(request: BatchTextProcessingRequest, api_key: str =
 
 
 @router.get('/batch_status/{batch_id}', response_model=dict, responses={401: {'model': ErrorResponse, 'description': 'Authentication Error'}, 422: {'model': ErrorResponse, 'description': 'Validation Error'}})
-async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)):
+async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)) -> dict[str, object]:
     """
     Get the status of a batch processing job.
     
@@ -561,7 +559,7 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
         ```
         GET /v1/text_processing/batch_status/my-batch-2024
         ```
-        
+    
         Response:
         ```json
         {
@@ -575,7 +573,7 @@ async def get_batch_status(batch_id: str, api_key: str = Depends(verify_api_key)
 
 
 @router.get('/health', responses={401: {'model': ErrorResponse, 'description': 'Authentication Error'}, 500: {'model': ErrorResponse, 'description': 'Infrastructure Error'}})
-async def get_service_health(api_key: str = Depends(optional_verify_api_key), text_processor: TextProcessorService = Depends(get_text_processor)):
+async def get_service_health(api_key: str = Depends(optional_verify_api_key), text_processor: TextProcessorService = Depends(get_text_processor)) -> dict[str, object]:
     """
     Get comprehensive health status for the text processing service.
     
@@ -609,7 +607,7 @@ async def get_service_health(api_key: str = Depends(optional_verify_api_key), te
         ```json
         {
             "overall_healthy": true,
-            "service_type": "domain", 
+            "service_type": "domain",
             "infrastructure": {
                 "resilience": {
                     "healthy": true,

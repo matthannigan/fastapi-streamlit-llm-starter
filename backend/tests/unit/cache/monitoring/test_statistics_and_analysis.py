@@ -17,8 +17,6 @@ External Dependencies:
 """
 
 import time
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -396,7 +394,6 @@ class TestPerformanceStatistics:
         )
 
         # Record additional measurements for trend analysis
-        import time
 
         time.sleep(0.01)  # Ensure different timestamps
 
@@ -608,7 +605,6 @@ class TestPerformanceStatistics:
         ), "Key generation stats should be available after cleanup"
 
         # Test that cleanup maintains recent data quality
-        import time
 
         time.sleep(0.01)  # Ensure some time passes
         current_time = time.time()
@@ -881,7 +877,6 @@ class TestMemoryUsageAnalysis:
             - test_get_memory_usage_stats_calculates_current_usage_accurately()
             - test_get_memory_usage_stats_evaluates_thresholds_correctly()
         """
-        import time
 
         from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
@@ -1434,7 +1429,6 @@ class TestMemoryUsageAnalysis:
             - test_get_memory_usage_stats_evaluates_thresholds_correctly()
             - test_get_memory_warnings_generates_appropriate_alerts()
         """
-        import time
 
         from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 
@@ -2596,7 +2590,6 @@ class TestMemoryUsageAnalysis:
 
         # Test Case 9: Performance - no warnings scenario should be fast
         # This verifies that the no-warnings case doesn't have unnecessary overhead
-        import time
 
         monitor_performance = CachePerformanceMonitor()
 
@@ -2819,7 +2812,6 @@ class TestInvalidationAnalysis:
         # Test accurate rate calculations with known event patterns
         monitor = CachePerformanceMonitor(retention_hours=2)
 
-        import time
 
         current_time = time.time()
 
@@ -3691,7 +3683,7 @@ class TestInvalidationAnalysis:
             recommendations
         ), "Recommendation count should be consistent"
 
-        for i, (rec1, rec2) in enumerate(zip(recommendations, recommendations_second)):
+        for i, (rec1, rec2) in enumerate(zip(recommendations, recommendations_second, strict=False)):
             assert (
                 rec1["severity"] == rec2["severity"]
             ), f"Recommendation {i} severity should be consistent across calls"
@@ -4612,7 +4604,6 @@ class TestSlowOperationDetection:
         # Given: CachePerformanceMonitor with slow operations including rich context data
         monitor = CachePerformanceMonitor()
 
-        import time
 
         start_time = time.time()
 
@@ -5073,7 +5064,6 @@ class TestSlowOperationDetection:
             - test_get_recent_slow_operations_identifies_performance_bottlenecks()
         """
         # Test recency filtering by simulating operations with different timestamps
-        import time
 
         monitor = CachePerformanceMonitor(
             retention_hours=1  # 1 hour retention for testing
@@ -6249,7 +6239,7 @@ class TestDataManagement:
         # Compression ratios
         assert len(exported_data["compression_ratios"]) == len(
             compression_data
-        ), f"Should export all compression measurements"
+        ), "Should export all compression measurements"
 
         for i, exported_metric in enumerate(exported_data["compression_ratios"]):
             original = compression_data[i]
@@ -6273,7 +6263,7 @@ class TestDataManagement:
         # Memory usage measurements
         assert len(exported_data["memory_usage_measurements"]) == len(
             memory_data
-        ), f"Should export all memory measurements"
+        ), "Should export all memory measurements"
 
         for exported_metric in exported_data["memory_usage_measurements"]:
             assert (
@@ -6297,7 +6287,7 @@ class TestDataManagement:
         # Invalidation events
         assert len(exported_data["invalidation_events"]) == len(
             invalidation_data
-        ), f"Should export all invalidation events"
+        ), "Should export all invalidation events"
 
         for i, exported_metric in enumerate(exported_data["invalidation_events"]):
             original = invalidation_data[i]
@@ -6353,14 +6343,14 @@ class TestDataManagement:
         ), f"Should have correct miss count from get operations: expected {expected_misses}, got {exported_data['cache_misses']}"
         assert exported_data["total_invalidations"] == len(
             invalidation_data
-        ), f"Should have correct invalidation count"
+        ), "Should have correct invalidation count"
 
         expected_total_keys_invalidated = sum(
             data["keys_invalidated"] for data in invalidation_data
         )
         assert (
             exported_data["total_keys_invalidated"] == expected_total_keys_invalidated
-        ), f"Should have correct total keys invalidated"
+        ), "Should have correct total keys invalidated"
 
         # Verify export timestamp for temporal analysis
         assert "export_timestamp" in exported_data, "Should include export timestamp"
@@ -6766,7 +6756,6 @@ class TestDataManagement:
             memory_critical_threshold_bytes=80 * 1024 * 1024,
         )
 
-        import time
 
         start_time = time.time()
 
@@ -7059,7 +7048,6 @@ class TestDataManagement:
         monitor = CachePerformanceMonitor()
 
         # Add diverse performance data to test external tool compatibility
-        import time
 
         base_timestamp = time.time()
 

@@ -136,7 +136,7 @@ import logging
 import time
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
 # Optional Redis import for graceful degradation
@@ -237,14 +237,12 @@ class AIResponseCache(GenericRedisCache):
         hash_algorithm=hashlib.sha256,
         compression_threshold: int = 1000,
         compression_level: int = 6,
-        text_size_tiers: Optional[Dict[str, int]] = None,
-        memory_cache_size: Optional[
-            int
-        ] = None,  # Legacy parameter for backward compatibility
+        text_size_tiers: Dict[str, int] | None = None,
+        memory_cache_size: int | None = None,  # Legacy parameter for backward compatibility
         l1_cache_size: int = 100,  # Modern parameter naming
         enable_l1_cache: bool = True,  # Explicit L1 cache control
-        performance_monitor: Optional[CachePerformanceMonitor] = None,
-        operation_ttls: Optional[Dict[str, int]] = None,
+        performance_monitor: CachePerformanceMonitor | None = None,
+        operation_ttls: Dict[str, int] | None = None,
         **kwargs,  # Accept additional parameters for backward compatibility
     ):
         """
@@ -391,23 +389,22 @@ class AIResponseCache(GenericRedisCache):
 
             if isinstance(e, (ConfigurationError, ValidationError)):
                 raise
-            else:
-                raise ConfigurationError(
-                    error_msg,
-                    context={
-                        "initialization_params": list(ai_params.keys())
-                        if "ai_params" in locals()
-                        else [],
-                        "error_type": type(e).__name__,
-                    },
-                )
+            raise ConfigurationError(
+                error_msg,
+                context={
+                    "initialization_params": list(ai_params.keys())
+                    if "ai_params" in locals()
+                    else [],
+                    "error_type": type(e).__name__,
+                },
+            )
 
     def _setup_ai_configuration(
         self,
         text_hash_threshold: int = 1000,
         hash_algorithm=hashlib.sha256,
-        text_size_tiers: Optional[Dict[str, int]] = None,
-        operation_ttls: Optional[Dict[str, int]] = None,
+        text_size_tiers: Dict[str, int] | None = None,
+        operation_ttls: Dict[str, int] | None = None,
         performance_monitor=None,
         default_ttl: int = 3600,
         **kwargs,
@@ -811,11 +808,11 @@ class AIResponseCache(GenericRedisCache):
             # Check for size indicators in key format
             if "small" in key.lower():
                 return "small"
-            elif "medium" in key.lower():
+            if "medium" in key.lower():
                 return "medium"
-            elif "large" in key.lower():
+            if "large" in key.lower():
                 return "large"
-            elif "xlarge" in key.lower():
+            if "xlarge" in key.lower():
                 return "xlarge"
 
             logger.debug(f"Could not determine tier from key format: {key[:100]}...")
@@ -893,7 +890,7 @@ class AIResponseCache(GenericRedisCache):
         text_tier: str,
         duration: float,
         success: bool,
-        additional_data: Optional[Dict[str, Any]] = None,
+        additional_data: Dict[str, Any] | None = None,
     ) -> None:
         """
         Record comprehensive AI-specific cache operation metrics.
@@ -946,17 +943,16 @@ class AIResponseCache(GenericRedisCache):
                     if "cache_stores_by_operation" not in self.ai_metrics:
                         self.ai_metrics["cache_stores_by_operation"] = defaultdict(int)
                     self.ai_metrics["cache_stores_by_operation"][operation] += 1
-            else:
-                if cache_operation == "get":
-                    # Cache miss
-                    self.ai_metrics["cache_misses_by_operation"][operation] += 1
-                elif cache_operation == "set":
-                    # Failed cache store
-                    if "cache_store_failures_by_operation" not in self.ai_metrics:
-                        self.ai_metrics[
-                            "cache_store_failures_by_operation"
-                        ] = defaultdict(int)
-                    self.ai_metrics["cache_store_failures_by_operation"][operation] += 1
+            elif cache_operation == "get":
+                # Cache miss
+                self.ai_metrics["cache_misses_by_operation"][operation] += 1
+            elif cache_operation == "set":
+                # Failed cache store
+                if "cache_store_failures_by_operation" not in self.ai_metrics:
+                    self.ai_metrics[
+                        "cache_store_failures_by_operation"
+                    ] = defaultdict(int)
+                self.ai_metrics["cache_store_failures_by_operation"][operation] += 1
 
             # Update text tier distribution
             self.ai_metrics["text_tier_distribution"][text_tier] += 1
@@ -1222,7 +1218,7 @@ class AIResponseCache(GenericRedisCache):
                 self.redis is not None
             )  # Type checker hint: redis is available after successful connect()
             # Support both sync and async Redis client methods in tests
-            _keys_call = self.redis.keys(f"ai_cache:*{pattern}*".encode("utf-8"))
+            _keys_call = self.redis.keys(f"ai_cache:*{pattern}*".encode())
             keys = await _keys_call if inspect.isawaitable(_keys_call) else _keys_call
             keys_count = len(keys) if keys else 0
 
@@ -1525,7 +1521,7 @@ class AIResponseCache(GenericRedisCache):
                             l1_keys = self.l1_cache.get_keys()  # type: ignore[union-attr,attr-defined]
                         except Exception:
                             l1_keys = []
-                        for key in list(l1_keys):
+                        for key in l1_keys:
                             if isinstance(key, str) and key.startswith("ai_cache:"):
                                 try:
                                     await self.l1_cache.delete(key)  # type: ignore[attr-defined]
@@ -1641,7 +1637,7 @@ class AIResponseCache(GenericRedisCache):
                         f"Promoting stable medium operation to memory: operation={operation}"
                     )
                     return True
-                elif text_tier == "large":
+                if text_tier == "large":
                     # Only promote large texts for highly stable operations
                     highly_stable = {"sentiment"}  # Most stable operation
                     if operation in highly_stable:
@@ -1754,7 +1750,7 @@ class AIResponseCache(GenericRedisCache):
         # Override TLS status based on actual Redis URL (not just config)
         # rediss:// = TLS enabled, redis:// = no TLS
         if security_status and "configuration" in security_status:
-            actual_tls = self.redis_url.startswith('rediss://') if hasattr(self, 'redis_url') else False
+            actual_tls = self.redis_url.startswith("rediss://") if hasattr(self, "redis_url") else False
             security_status["configuration"]["tls_enabled"] = actual_tls
 
         return {
@@ -3010,7 +3006,7 @@ class AIResponseCache(GenericRedisCache):
         logger.warning(
             "memory_cache setter is deprecated - use L1 cache methods instead"
         )
-        pass  # No-op for backward compatibility
+        # No-op for backward compatibility
 
     @memory_cache.deleter
     def memory_cache(self) -> None:

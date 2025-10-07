@@ -7,7 +7,7 @@ behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - CacheDependencyManager registry cleanup and lifecycle management
-    - cleanup_cache_registry() function behavior and resource management  
+    - cleanup_cache_registry() function behavior and resource management
     - get_cache_health_status() health monitoring and ping() method support
     - validate_cache_configuration() validation dependency behavior
 
@@ -16,15 +16,8 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-import asyncio
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-from fastapi import HTTPException
 
-from app.core.exceptions import ConfigurationError, ValidationError
-from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.dependencies import (
     CacheDependencyManager, cleanup_cache_registry, get_cache_health_status,
     validate_cache_configuration)

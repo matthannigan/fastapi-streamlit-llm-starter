@@ -7,7 +7,7 @@ behavior-driven testing principles described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - get_web_cache_service() web-optimized cache dependency
-    - get_ai_cache_service() AI-optimized cache dependency  
+    - get_ai_cache_service() AI-optimized cache dependency
     - get_test_cache() and get_test_redis_cache() testing dependencies
     - get_fallback_cache_service() and conditional cache dependencies
 
@@ -16,19 +16,13 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-import asyncio
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
-from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.dependencies import (
     get_ai_cache_service, get_cache_service_conditional,
     get_fallback_cache_service, get_test_cache, get_test_redis_cache,
     get_web_cache_service)
-from app.infrastructure.cache.memory import InMemoryCache
 
 
 class TestWebCacheServiceDependency:

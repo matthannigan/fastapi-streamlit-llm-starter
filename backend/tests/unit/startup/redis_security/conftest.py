@@ -21,13 +21,11 @@ Design Philosophy:
 
 import pytest
 from pathlib import Path
-from typing import Any, Dict, Optional
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock
 from datetime import datetime, timedelta
 
 # Real imports from the same application (not mocked)
-from app.core.exceptions import ConfigurationError
-from app.core.environment import Environment, FeatureContext
+from app.core.environment import Environment
 
 
 # =============================================================================

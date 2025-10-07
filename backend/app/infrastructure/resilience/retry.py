@@ -41,7 +41,7 @@ Basic configuration:
 
 With Tenacity decorator:
     from tenacity import retry, stop_after_attempt, wait_exponential
-    
+
     @retry(
         retry=should_retry_on_exception,
         stop=stop_after_attempt(config.max_attempts),
@@ -108,7 +108,7 @@ docstrings with usage examples and behavior specifications.
 """
 
 from dataclasses import dataclass
-import httpx
+from typing import Any
 
 
 @dataclass
@@ -193,11 +193,6 @@ class RetryConfig:
 
 # Import all AI service exceptions from centralized location
 from app.core.exceptions import (
-    AIServiceException,
-    TransientAIError,
-    PermanentAIError,
-    RateLimitError,
-    ServiceUnavailableError,
     classify_ai_exception,
 )
 
@@ -255,7 +250,7 @@ def classify_exception(exc: Exception) -> bool:
     return classify_ai_exception(exc)
 
 
-def should_retry_on_exception(retry_state) -> bool:
+def should_retry_on_exception(retry_state: Any) -> bool:
     """
     Tenacity-compatible retry predicate that determines if an exception should trigger a retry attempt.
 
@@ -316,7 +311,7 @@ def should_retry_on_exception(retry_state) -> bool:
         ...     with attempt:
         ...         result = risky_operation()
     """
-    if hasattr(retry_state, 'outcome') and retry_state.outcome.failed:
+    if hasattr(retry_state, "outcome") and retry_state.outcome.failed:
         exception = retry_state.outcome.exception()
         return classify_exception(exception)
     return False

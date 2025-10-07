@@ -17,14 +17,12 @@ External Dependencies:
 """
 
 import os
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
-from app.core.exceptions import ConfigurationError, ValidationError
+from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.ai_config import AIResponseCacheConfig
-from app.infrastructure.cache.parameter_mapping import ValidationResult
 
 
 class TestAIResponseCacheConfigValidation:

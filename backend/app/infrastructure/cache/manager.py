@@ -34,7 +34,7 @@ cache_type = manager.cache_type  # "redis_secure" or "memory"
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.core.exceptions import ConfigurationError
 
@@ -53,7 +53,7 @@ class CacheManager:
     and all cached data is encrypted at rest.
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: str | None = None):
         """
         Initialize cache manager with automatic backend selection.
 
@@ -166,7 +166,7 @@ class CacheManager:
 
         return await self.cache.get(key)
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Set value in cache with transparent backend selection.
 
@@ -259,8 +259,7 @@ class CacheManager:
         # Use get method as fallback if exists method not available
         if hasattr(self.cache, "exists"):
             return await self.cache.exists(key)
-        else:
-            return (await self.cache.get(key)) is not None
+        return (await self.cache.get(key)) is not None
 
     async def connect(self) -> bool:
         """
@@ -285,9 +284,8 @@ class CacheManager:
 
         if hasattr(self.cache, "connect"):
             return await self.cache.connect()
-        else:
-            # Memory cache doesn't need explicit connection
-            return True
+        # Memory cache doesn't need explicit connection
+        return True
 
     async def disconnect(self) -> None:
         """
@@ -409,7 +407,7 @@ class CacheManager:
             health["healthy"] = len(health["errors"]) == 0
 
         except Exception as e:
-            health["errors"].append(f"Health check failed: {str(e)}")
+            health["errors"].append(f"Health check failed: {e!s}")
 
         return health
 

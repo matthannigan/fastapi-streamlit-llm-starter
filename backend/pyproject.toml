@@ -137,6 +137,9 @@ filterwarnings = [
 # Backend-specific linting configuration
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
+extend-safe-fixes = [ "W" ]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -187,9 +190,19 @@ ignore = [
     "S108",    # probable insecure usage of temp file/directory
     "COM812",  # missing trailing comma (handled by formatter)
     "ISC001",  # implicitly concatenated string literals (handled by formatter)
+
+    "PGH003",  # Use specific rule codes when ignoring type issues
+    "UP006",   # Use `dict` instead of `Dict` for type annotation
+    "G004",    # Logging statement uses f-string
+    "PLC0415", # `import` should be at the top-level of a file
+    "FBT",     # Boolean-typed positional argument in function definition
+    "ARG001",  # Unused function argument
+    "SIM102",  # Use a single `if` statement instead of nested `if` statements
+    "UP035",   # `typing.Dict` is deprecated, use `dict` instead
+    "I001",    # Import block is un-sorted or un-formatted
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/**/*.py" = [
     "S101",    # asserts allowed in tests
@@ -207,16 +220,16 @@ ignore = [
     "S101",    # asserts acceptable in examples
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["app", "shared"]
 split-on-trailing-comma = true
 force-single-line = false
 
-[tool.ruff.flake8-pytest-style]
+[tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
 
 [tool.mypy]

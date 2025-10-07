@@ -12,11 +12,10 @@ Fixture Categories:
     - Environment variable fixtures for testing environment loading
 """
 
-from pathlib import Path
 
 import pytest
 
-from app.infrastructure.cache.config import AICacheConfig, ValidationResult
+from app.infrastructure.cache.config import ValidationResult
 
 # =============================================================================
 # Configuration Parameter Fixtures

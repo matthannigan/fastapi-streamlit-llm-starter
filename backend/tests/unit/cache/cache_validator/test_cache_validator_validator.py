@@ -16,10 +16,7 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 from app.infrastructure.cache.cache_validator import (CacheValidator,
                                                       ValidationResult)
@@ -1221,7 +1218,7 @@ class TestCacheValidatorCustomOverrideValidation:
             "log_level",
         }
 
-        for key in valid_overrides.keys():
+        for key in valid_overrides:
             assert key in recognized_keys, f"Override key '{key}' should be recognized"
 
     def test_cache_validator_validate_custom_overrides_identifies_invalid_parameters(

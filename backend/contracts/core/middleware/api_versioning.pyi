@@ -58,7 +58,7 @@ app.add_middleware(APIVersioningMiddleware, settings=settings)
 
 import logging
 import re
-from typing import Dict, Optional, Tuple, Callable, Any
+from typing import Dict, Tuple, Callable, Any
 from packaging import version
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -283,28 +283,28 @@ def is_version_deprecated(request: Request) -> bool:
     ...
 
 
-def get_version_sunset_date(request: Request) -> Optional[str]:
+def get_version_sunset_date(request: Request) -> str | None:
     """
     Get the sunset date for the current API version.
     """
     ...
 
 
-def extract_version_from_url(path: str) -> Optional[str]:
+def extract_version_from_url(path: str) -> str | None:
     """
     Extract version from URL path (e.g., /v1/users -> 1.0).
     """
     ...
 
 
-def extract_version_from_header(request: Request, header_name: str) -> Optional[str]:
+def extract_version_from_header(request: Request, header_name: str) -> str | None:
     """
     Extract version from request header.
     """
     ...
 
 
-def extract_version_from_accept(request: Request) -> Optional[str]:
+def extract_version_from_accept(request: Request) -> str | None:
     """
     Extract version from Accept header (e.g., application/vnd.api+json;version=2.0).
     """

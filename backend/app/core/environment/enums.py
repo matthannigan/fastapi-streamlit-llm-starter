@@ -11,17 +11,17 @@ from enum import Enum
 class Environment(str, Enum):
     """
     Standard environment classifications for application deployment contexts.
-    
+
     Provides consistent environment naming across all backend infrastructure
     services including cache, resilience, security, and monitoring systems.
-    
+
     Values:
         DEVELOPMENT: Local development and testing environments
         TESTING: Automated testing and CI environments
         STAGING: Pre-production environments for integration testing
         PRODUCTION: Live production environments serving real users
         UNKNOWN: Fallback when environment cannot be determined
-    
+
     Examples:
         >>> env = Environment.PRODUCTION
         >>> assert env.value == "production"
@@ -41,18 +41,18 @@ class Environment(str, Enum):
 class FeatureContext(str, Enum):
     """
     Feature-specific context for specialized environment detection.
-    
+
     Enables feature-aware environment detection that considers specific
     infrastructure requirements like AI processing, security enforcement,
     or cache optimization when determining appropriate environment settings.
-    
+
     Values:
         AI_ENABLED: Context for AI-powered features requiring model access
         SECURITY_ENFORCEMENT: Context for security-critical features
         CACHE_OPTIMIZATION: Context for cache-intensive operations
         RESILIENCE_STRATEGY: Context for resilience pattern selection
         DEFAULT: Standard environment detection without feature context
-    
+
     Examples:
         >>> # Basic usage
         >>> context = FeatureContext.AI_ENABLED

@@ -143,7 +143,7 @@ class GenericRedisCache(CacheInterface):
     ```
     """
 
-    def __init__(self, redis_url: str = 'rediss://redis:6380', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None, **kwargs):
+    def __init__(self, redis_url: str = 'rediss://redis:6380', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: CachePerformanceMonitor | None = None, security_config: Optional['SecurityConfig'] = None, **kwargs):
         ...
 
     def register_callback(self, event: str, callback: Callable):
@@ -238,7 +238,7 @@ class GenericRedisCache(CacheInterface):
         """
         ...
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+    async def set(self, key: str, value: Any, ttl: int | None = None):
         """
         Set a value in the cache with optional TTL.
         
@@ -411,7 +411,7 @@ class GenericRedisCache(CacheInterface):
         ...
 
     @classmethod
-    def create_secure(cls, redis_url: Optional[str] = None) -> 'GenericRedisCache':
+    def create_secure(cls, redis_url: str | None = None) -> 'GenericRedisCache':
         """
         Factory method for secure cache creation.
         

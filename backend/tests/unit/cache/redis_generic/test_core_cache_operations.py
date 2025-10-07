@@ -43,12 +43,8 @@ Fixtures and Mocks:
 """
 
 import asyncio
-import time
-from typing import Any, Dict
 
-import pytest
 
-from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 

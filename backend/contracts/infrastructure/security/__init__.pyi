@@ -47,7 +47,7 @@ Robust authentication system with flexible configuration:
 ## Performance Characteristics
 
 - **Authentication**: < 1ms per authentication check
-- **Key Validation**: O(1) lookup time for all supported keys  
+- **Key Validation**: O(1) lookup time for all supported keys
 - **Memory Efficient**: Minimal memory overhead for key storage
 - **High Throughput**: Supports thousands of authentications per second
 - **Non-blocking**: Async-first design for optimal performance
@@ -217,4 +217,4 @@ The security system follows industry standards:
 
 from .auth import verify_api_key, verify_api_key_http, optional_verify_api_key, get_auth_status
 
-__all__ = ['verify_api_key', 'verify_api_key_http', 'optional_verify_api_key', 'get_auth_status']
+__all__ = ['get_auth_status', 'optional_verify_api_key', 'verify_api_key', 'verify_api_key_http']

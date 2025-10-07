@@ -184,14 +184,14 @@ health_status = HealthResponse(
 ```python
 class ErrorResponse(BaseModel):
     """Standardized error response model for all API endpoints."""
-    
+
     error: str = Field(
-        ..., 
+        ...,
         description="Human-readable error message",
         min_length=1,
         example="Invalid input data: text field is required"
     )
-    
+
     error_code: Optional[str] = Field(
         default=None,
         description="Machine-readable error code for programmatic handling",
@@ -225,7 +225,7 @@ def test_error_response_validation():
     error = ErrorResponse(error="Test error", error_code="TEST_ERROR")
     assert error.success is False
     assert error.error == "Test error"
-    
+
     # Invalid error response (empty error message)
     with pytest.raises(ValidationError):
         ErrorResponse(error="")

@@ -49,7 +49,7 @@ import string
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from app.core.environment import Environment, FeatureContext, get_environment_info
 from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
@@ -109,7 +109,7 @@ class SecurityConfig:
         )
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Validate security configuration after initialization.
         """
@@ -130,7 +130,7 @@ class SecurityConfig:
         ...
 
     @classmethod
-    def create_for_environment(cls, encryption_key: Optional[str] = None) -> 'SecurityConfig':
+    def create_for_environment(cls, encryption_key: str | None = None) -> 'SecurityConfig':
         """
         Create security configuration appropriate for detected environment.
         
@@ -202,7 +202,7 @@ class SecurityValidationResult:
         detailed_checks: Detailed results of individual security checks
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Calculate security score and overall status.
         
@@ -248,7 +248,7 @@ class RedisCacheSecurityManager:
         report = manager.generate_security_report(validation)
     """
 
-    def __init__(self, config: SecurityConfig, performance_monitor: Optional[CachePerformanceMonitor] = None):
+    def __init__(self, config: SecurityConfig, performance_monitor: CachePerformanceMonitor | None = None):
         """
         Initialize Redis security manager.
         
@@ -372,7 +372,7 @@ class RedisCacheSecurityManager:
         """
         ...
 
-    def generate_security_report(self, validation_result: Optional[SecurityValidationResult] = None) -> str:
+    def generate_security_report(self, validation_result: SecurityValidationResult | None = None) -> str:
         """
         Generate detailed security assessment report.
         

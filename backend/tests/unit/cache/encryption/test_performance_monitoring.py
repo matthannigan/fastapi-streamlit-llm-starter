@@ -16,7 +16,6 @@ Test Coverage:
 """
 
 import pytest
-from app.core.exceptions import ConfigurationError
 
 
 class TestIsEnabledProperty:
@@ -211,7 +210,7 @@ class TestIsEnabledProperty:
         # Test in boolean expressions
         assert bool(enabled_encryption.is_enabled) is True
         assert bool(disabled_encryption.is_enabled) is False
-        assert not disabled_encryption.is_enabled is True
+        assert disabled_encryption.is_enabled is not True
         assert enabled_encryption.is_enabled or False is True
         assert (disabled_encryption.is_enabled and True) is False
 

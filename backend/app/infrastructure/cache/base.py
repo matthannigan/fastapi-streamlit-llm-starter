@@ -31,7 +31,7 @@ await cache.delete("user:123")
 ```
 """
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 
 class CacheInterface(ABC):
@@ -70,7 +70,7 @@ class CacheInterface(ABC):
     """
 
     @abstractmethod
-    async def get(self, key: str):
+    async def get(self, key: str) -> Any | None:
         """
         Retrieve cached value by key with implementation-specific type handling.
 
@@ -89,10 +89,9 @@ class CacheInterface(ABC):
             - Handles concurrent access according to implementation design
             - Thread/async-safe operation for production environments
         """
-        pass
 
     @abstractmethod
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Store value in cache with optional time-to-live expiration.
 
@@ -112,10 +111,9 @@ class CacheInterface(ABC):
             - Handles storage failures gracefully without raising exceptions
             - Thread/async-safe operation for concurrent access
         """
-        pass
 
     @abstractmethod
-    async def delete(self, key: str):
+    async def delete(self, key: str) -> None:
         """
         Remove cached entry immediately from storage.
 
@@ -130,7 +128,6 @@ class CacheInterface(ABC):
             - Thread/async-safe operation for concurrent access
             - Success regardless of key existence for idempotent behavior
         """
-        pass
 
     @abstractmethod
     async def exists(self, key: str) -> bool:
@@ -148,4 +145,3 @@ class CacheInterface(ABC):
             - Respects TTL expiration rules per implementation
             - Thread/async-safe operation for concurrent access
         """
-        pass

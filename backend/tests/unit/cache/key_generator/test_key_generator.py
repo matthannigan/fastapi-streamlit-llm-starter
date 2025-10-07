@@ -18,10 +18,7 @@ External Dependencies:
 """
 
 import hashlib
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
 
@@ -2256,7 +2253,7 @@ class TestKeyGenerationEdgeCases:
                     thread_keys.append(key)
                 concurrent_results.extend(thread_keys)
             except Exception as e:
-                errors.append(f"Thread {thread_id}: {str(e)}")
+                errors.append(f"Thread {thread_id}: {e!s}")
 
         # Start multiple threads
         num_threads = 10

@@ -47,7 +47,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 from app.core.exceptions import ConfigurationError, ValidationError
 
 
@@ -187,7 +187,7 @@ class CacheConfigBuilder:
         """
         ...
 
-    def with_redis(self, redis_url: str, password: Optional[str] = None, use_tls: bool = False) -> 'CacheConfigBuilder':
+    def with_redis(self, redis_url: str, password: str | None = None, use_tls: bool = False) -> 'CacheConfigBuilder':
         """
         Configure Redis connection settings.
         
@@ -201,7 +201,7 @@ class CacheConfigBuilder:
         """
         ...
 
-    def with_security(self, tls_cert_path: Optional[str] = None, tls_key_path: Optional[str] = None) -> 'CacheConfigBuilder':
+    def with_security(self, tls_cert_path: str | None = None, tls_key_path: str | None = None) -> 'CacheConfigBuilder':
         """
         Configure TLS security settings.
         
@@ -442,7 +442,7 @@ class EnvironmentPresets:
         ...
 
     @staticmethod
-    def recommend_preset(environment: Optional[str] = None) -> str:
+    def recommend_preset(environment: str | None = None) -> str:
         """
         Recommend appropriate preset for given environment.
         

@@ -16,14 +16,8 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.
 """
 
-import hashlib
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
 from app.infrastructure.cache.redis_ai import AIResponseCache
 
 
@@ -171,7 +165,6 @@ class TestAIResponseCacheInheritance:
         cache = AIResponseCache(**valid_ai_params)
 
         # Verify the connect method is inherited from parent (not overridden in AI cache)
-        from app.infrastructure.cache.redis_generic import GenericRedisCache
 
         assert hasattr(cache, "connect"), "AIResponseCache should have connect method"
 
@@ -442,12 +435,11 @@ class TestAIResponseCacheInheritance:
             assert (
                 reported_size == expected_size
             ), "Property should return configured memory_cache_size"
-        else:
-            # Should fall back to default or parent's l1_cache max_size
-            if cache.l1_cache:
-                assert (
-                    reported_size == cache.l1_cache.max_size
-                ), "Should return l1_cache max_size when memory_cache_size not set"
+        # Should fall back to default or parent's l1_cache max_size
+        elif cache.l1_cache:
+            assert (
+                reported_size == cache.l1_cache.max_size
+            ), "Should return l1_cache max_size when memory_cache_size not set"
 
         # And: Verify consistency with parent class L1 cache configuration
         # The actual l1_cache.max_size should match the reported size

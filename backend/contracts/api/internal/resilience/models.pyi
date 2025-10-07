@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Resilience API Data Models
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module defines comprehensive Pydantic models for all resilience API
@@ -57,7 +57,7 @@ validation, and monitoring capabilities.
 
 - `PresetDetails`: Detailed preset information with full configuration
   - `name` (str): Preset identifier
-  - `description` (str): Human-readable preset description  
+  - `description` (str): Human-readable preset description
   - `configuration` (Dict[str, Any]): Complete preset configuration object
   - `environment_contexts` (List[str]): Applicable environment contexts
 
@@ -97,7 +97,7 @@ validation, and monitoring capabilities.
 - `ValidationResponse`: Configuration validation results with detailed feedback
   - `is_valid` (bool): Whether configuration passed validation
   - `errors` (List[str]): Validation error messages (default: empty list)
-  - `warnings` (List[str]): Validation warning messages (default: empty list)  
+  - `warnings` (List[str]): Validation warning messages (default: empty list)
   - `suggestions` (List[str]): Optimization suggestions (default: empty list)
   - `security_info` (Optional[Dict[str, Any]]): Security validation metadata (default: None)
 
@@ -129,7 +129,7 @@ validation, and monitoring capabilities.
 ### Request/Response Pairing
 Models are designed with clear request/response pairing for API endpoints:
 - Template operations: `TemplateValidationRequest` → `ValidationResponse`
-- Custom config: `CustomConfigRequest` → `ValidationResponse`  
+- Custom config: `CustomConfigRequest` → `ValidationResponse`
 - Benchmarking: `BenchmarkRunRequest` → performance metrics data
 - Recommendations: environment context → `RecommendationResponse` variants
 
@@ -207,7 +207,7 @@ request = BenchmarkRunRequest(
 
 ### Functional Groupings
 1. **Configuration Models**: Template and custom configuration handling
-2. **Validation Models**: Request/response pairs for validation workflows  
+2. **Validation Models**: Request/response pairs for validation workflows
 3. **Preset Models**: Resilience preset management and recommendations
 4. **Metrics Models**: Performance and monitoring data structures
 5. **Recommendation Models**: Environment detection and preset suggestions
@@ -223,7 +223,7 @@ throughout the resilience infrastructure. Ensure backward compatibility and
 comprehensive testing for any modifications.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from pydantic import BaseModel, Field
 
 
@@ -250,13 +250,13 @@ class TemplateValidationRequest(BaseModel):
         - Applies base template configuration as validation foundation
         - Merges override parameters with template defaults for comprehensive validation
         - Maintains template structure integrity while enabling customization flexibility
-        
+    
         **Override Processing:**
         - Applies overrides on top of base template configuration using deep merge semantics
         - Validates override parameters against template schema and constraints
         - Preserves template defaults for parameters not specified in overrides
         - Enables partial customization without requiring complete configuration specification
-        
+    
         **Validation Integration:**
         - Provides structured input for template-based validation endpoints
         - Enables testing of template configurations with environment-specific modifications
@@ -271,7 +271,7 @@ class TemplateValidationRequest(BaseModel):
         ... )
         >>> assert request.template_name == "production"
         >>> assert request.overrides == {}
-        
+    
         >>> # Template validation with custom overrides
         >>> custom_request = TemplateValidationRequest(
         ...     template_name="development",
@@ -281,7 +281,7 @@ class TemplateValidationRequest(BaseModel):
         ...     }
         ... )
         >>> assert custom_request.overrides["retry_attempts"] == 5
-        
+    
         >>> # API request integration
         >>> import httpx
         >>> validation_data = {
@@ -359,13 +359,13 @@ class ResilienceMetricsResponse(BaseModel):
         - Provides circuit breaker state and performance information for failure detection
         - Includes system-wide summary statistics for high-level health assessment
         - Maintains temporal metric data for trend analysis and performance monitoring
-        
+    
         **Monitoring Integration:**
         - Structures metrics data for integration with monitoring and alerting systems
         - Provides hierarchical metric organization from system-level to operation-specific details
         - Enables performance trend analysis and capacity planning through historical data
         - Supports dashboard visualization and operational monitoring workflow integration
-        
+    
         **Operational Visibility:**
         - Exposes resilience pattern effectiveness and system health indicators
         - Provides detailed failure analysis data and recovery pattern information
@@ -397,27 +397,27 @@ class ResilienceMetricsResponse(BaseModel):
         ...         "system_uptime": "99.8%"
         ...     }
         ... )
-        
+    
         >>> # Operational monitoring integration
         >>> def analyze_resilience_health(metrics: ResilienceMetricsResponse):
         ...     health_indicators = []
-        ...     
+        ...
         ...     # Check operation performance
         ...     for op_name, op_metrics in metrics.operations.items():
         ...         if op_metrics.get("success_rate", 0) < 95.0:
         ...             health_indicators.append(f"low_success_rate_{op_name}")
-        ...     
+        ...
         ...     # Check circuit breaker status
         ...     for cb_name, cb_metrics in metrics.circuit_breakers.items():
         ...         if cb_metrics.get("state") == "open":
         ...             health_indicators.append(f"circuit_breaker_open_{cb_name}")
-        ...     
+        ...
         ...     return {
         ...         "healthy": len(health_indicators) == 0,
         ...         "issues": health_indicators,
         ...         "overall_status": metrics.summary.get("overall_health")
         ...     }
-        
+    
         >>> # Dashboard data preparation
         >>> def prepare_dashboard_metrics(metrics: ResilienceMetricsResponse):
         ...     return {
@@ -425,7 +425,7 @@ class ResilienceMetricsResponse(BaseModel):
         ...         "operation_count": len(metrics.operations),
         ...         "active_circuit_breakers": len(metrics.circuit_breakers),
         ...         "avg_success_rate": sum(
-        ...             op.get("success_rate", 0) 
+        ...             op.get("success_rate", 0)
         ...             for op in metrics.operations.values()
         ...         ) / max(len(metrics.operations), 1)
         ...     }

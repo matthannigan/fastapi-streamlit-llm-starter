@@ -104,7 +104,7 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    aioredis = None
+    aioredis = None  # type: ignore
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only imports
     from redis.asyncio import Redis as RedisClient
@@ -174,7 +174,7 @@ class GenericRedisCache(CacheInterface):
         l1_cache_size: int = 100,
         compression_threshold: int = 1000,
         compression_level: int = 6,
-        performance_monitor: Optional[CachePerformanceMonitor] = None,
+        performance_monitor: CachePerformanceMonitor | None = None,
         security_config: Optional["SecurityConfig"] = None,  # Accept security config from factory
         **kwargs,  # Accept additional parameters for backward compatibility
     ):
@@ -233,10 +233,10 @@ class GenericRedisCache(CacheInterface):
             # Use provided security config or create environment-aware configuration
             if security_config is not None:
                 self.security_config = security_config
-                logger.info(f"✅ Security configuration provided by caller")
+                logger.info("✅ Security configuration provided by caller")
             else:
                 self.security_config = SecurityConfig.create_for_environment()
-                logger.info(f"✅ Security configuration created for environment")
+                logger.info("✅ Security configuration created for environment")
 
             # Initialize security manager with fail-fast validation
             self.security_manager = RedisCacheSecurityManager(
@@ -285,7 +285,7 @@ class GenericRedisCache(CacheInterface):
             raise ConfigurationError(
                 "🔒 SECURITY ERROR: Failed to initialize mandatory security features.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "This may indicate:\n"
                 "- Invalid environment configuration\n"
@@ -307,9 +307,9 @@ class GenericRedisCache(CacheInterface):
         self.fail_on_connection_error = (
             False  # Always use graceful fallback in secure implementation
         )
-        self.redis: Optional["RedisClient"] = None
+        self.redis: RedisClient | None = None
 
-        self.l1_cache: Optional[InMemoryCache] = None
+        self.l1_cache: InMemoryCache | None = None
         if self.enable_l1_cache and l1_cache_size > 0:
             self.l1_cache = InMemoryCache(
                 default_ttl=default_ttl,
@@ -321,7 +321,7 @@ class GenericRedisCache(CacheInterface):
         self._callbacks: Dict[str, List[Callable]] = defaultdict(list)
         # Connection attempt throttling to avoid repeated slow attempts when Redis is unavailable
         self._last_connect_ts: float = 0.0
-        self._last_connect_result: Optional[bool] = None
+        self._last_connect_result: bool | None = None
         self._connect_retry_interval: float = 0.5  # seconds
 
         logger.info(
@@ -438,7 +438,7 @@ class GenericRedisCache(CacheInterface):
                     raise ConfigurationError(
                         "🔒 DECRYPTION ERROR: Unable to decrypt or deserialize cache data.\n"
                         "\n"
-                        f"Error: {str(e)}\n"
+                        f"Error: {e!s}\n"
                         "\n"
                         "This may indicate:\n"
                         "- Data corruption\n"
@@ -502,23 +502,22 @@ class GenericRedisCache(CacheInterface):
                         f"Secure Redis connection established at {self.redis_url}"
                     )
                     return True
-                else:
-                    # Fall back to basic connection
-                    assert aioredis is not None  # Type checker hint
-                    self.redis = await aioredis.from_url(
-                        self.redis_url,
-                        decode_responses=False,  # Handle binary data
-                        socket_connect_timeout=0.2,
-                        socket_timeout=0.2,
-                    )
-                    assert self.redis is not None
-                    await self.redis.ping()
-                    logger.info(
-                        f"Basic Redis connection established at {self.redis_url}"
-                    )
-                    self._last_connect_result = True
-                    self._last_connect_ts = time.time()
-                    return True
+                # Fall back to basic connection
+                assert aioredis is not None  # Type checker hint
+                self.redis = await aioredis.from_url(
+                    self.redis_url,
+                    decode_responses=False,  # Handle binary data
+                    socket_connect_timeout=0.2,
+                    socket_timeout=0.2,
+                )
+                assert self.redis is not None
+                await self.redis.ping()
+                logger.info(
+                    f"Basic Redis connection established at {self.redis_url}"
+                )
+                self._last_connect_result = True
+                self._last_connect_ts = time.time()
+                return True
             except Exception as e:
                 error_msg = f"Redis connection failed: {e}"
                 logger.warning(f"{error_msg} - using memory-only mode")
@@ -631,20 +630,19 @@ class GenericRedisCache(CacheInterface):
                 self._fire_callback("get_success", key, value)
                 logger.debug(f"Redis cache hit for key: {key}")
                 return value
-            else:
-                if self.performance_monitor is not None:
-                    self.performance_monitor.record_cache_operation_time(
-                        operation="get",
-                        duration=duration,
-                        cache_hit=False,
-                        additional_data={
-                            "cache_tier": "redis",
-                            "reason": "key_not_found",
-                        },
-                    )
-                self._fire_callback("get_miss", key)
-                logger.debug(f"Cache miss for key: {key}")
-                return None
+            if self.performance_monitor is not None:
+                self.performance_monitor.record_cache_operation_time(
+                    operation="get",
+                    duration=duration,
+                    cache_hit=False,
+                    additional_data={
+                        "cache_tier": "redis",
+                        "reason": "key_not_found",
+                    },
+                )
+            self._fire_callback("get_miss", key)
+            logger.debug(f"Cache miss for key: {key}")
+            return None
 
         except Exception as e:
             duration = time.time() - start_time
@@ -663,7 +661,7 @@ class GenericRedisCache(CacheInterface):
             self._fire_callback("get_miss", key)
             return None
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None):
+    async def set(self, key: str, value: Any, ttl: int | None = None):
         """Set a value in the cache with optional TTL.
 
         ### Overview
@@ -1044,14 +1042,13 @@ class GenericRedisCache(CacheInterface):
         if isinstance(serialized_data, dict):
             # For dictionary data, use the encryption layer directly
             return self.encryption.encrypt_cache_data(serialized_data)
-        else:
-            # For already serialized data, wrap it in a dictionary and encrypt
-            data_wrapper = {
-                "_serialized_data": serialized_data.decode("utf-8")
-                if isinstance(serialized_data, bytes)
-                else serialized_data
-            }
-            return self.encryption.encrypt_cache_data(data_wrapper)
+        # For already serialized data, wrap it in a dictionary and encrypt
+        data_wrapper = {
+            "_serialized_data": serialized_data.decode("utf-8")
+            if isinstance(serialized_data, bytes)
+            else serialized_data
+        }
+        return self.encryption.encrypt_cache_data(data_wrapper)
 
     def _deserialize_value(self, data: bytes) -> Any:
         """
@@ -1084,16 +1081,15 @@ class GenericRedisCache(CacheInterface):
                 if isinstance(wrapped_data, str):
                     wrapped_data = wrapped_data.encode("utf-8")
                 return self._deserialize_data_only(wrapped_data)
-            else:
-                # Direct dictionary data
-                return decrypted_data
+            # Direct dictionary data
+            return decrypted_data
 
         except Exception as e:
             logger.error(f"Failed to decrypt cache data: {e}")
             raise ConfigurationError(
                 "🔒 DECRYPTION ERROR: Failed to decrypt cache data.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "This may indicate:\n"
                 "- Wrong encryption key\n"
@@ -1154,20 +1150,19 @@ class GenericRedisCache(CacheInterface):
 
         if prefix == b"rawj:":
             return json.loads(content.decode("utf-8"))
-        elif prefix == b"zlib:":
+        if prefix == b"zlib:":
             decompressed = zlib.decompress(content)
             return pickle.loads(decompressed)
-        elif prefix == b"pick:":
+        if prefix == b"pick:":
             return pickle.loads(content)
-        else:
-            # Legacy format fallback
-            try:
-                return pickle.loads(data)
-            except Exception:
-                return json.loads(data.decode("utf-8"))
+        # Legacy format fallback
+        try:
+            return pickle.loads(data)
+        except Exception:
+            return json.loads(data.decode("utf-8"))
 
     @classmethod
-    def create_secure(cls, redis_url: Optional[str] = None) -> "GenericRedisCache":
+    def create_secure(cls, redis_url: str | None = None) -> "GenericRedisCache":
         """
         Factory method for secure cache creation.
 

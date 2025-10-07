@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def apply_feature_context(
-    signals: List[EnvironmentSignal], 
+    signals: List[EnvironmentSignal],
     context: FeatureContext,
     config: DetectionConfig
 ) -> Dict[str, Any]:
@@ -64,31 +64,31 @@ def apply_feature_context(
     """
     if context == FeatureContext.DEFAULT:
         return {
-            'signals': signals,
-            'additional_signals': [],
-            'metadata': {}
+            "signals": signals,
+            "additional_signals": [],
+            "metadata": {}
         }
-    
+
     context_config = config.feature_contexts.get(context, {})
     additional_signals = []
-    metadata: Dict[str, Any] = {'feature_context': context.value}
-    
+    metadata: Dict[str, Any] = {"feature_context": context.value}
+
     # Check feature-specific environment variables
-    if 'environment_var' in context_config:
-        env_var = context_config['environment_var']
-        value = os.getenv(env_var, '').lower()
-        true_values = context_config.get('true_values', ['true'])
-        
+    if "environment_var" in context_config:
+        env_var = context_config["environment_var"]
+        value = os.getenv(env_var, "").lower()
+        true_values = context_config.get("true_values", ["true"])
+
         if value in true_values:
-            metadata[f'{env_var.lower()}_enabled'] = True
-            
+            metadata[f"{env_var.lower()}_enabled"] = True
+
             # For AI context, modify environment recommendations
             if context == FeatureContext.AI_ENABLED:
-                metadata['ai_prefix'] = context_config.get('preset_modifier', '')
-                
+                metadata["ai_prefix"] = context_config.get("preset_modifier", "")
+
             # For security context, may override to production
             elif context == FeatureContext.SECURITY_ENFORCEMENT:
-                if context_config.get('production_override'):
+                if context_config.get("production_override"):
                     additional_signals.append(EnvironmentSignal(
                         source="security_override",
                         value=f"{env_var}={value}",
@@ -96,11 +96,11 @@ def apply_feature_context(
                         confidence=0.98,
                         reasoning=f"Security enforcement enabled via {env_var}"
                     ))
-    
+
     return {
-        'signals': signals,
-        'additional_signals': additional_signals,
-        'metadata': metadata
+        "signals": signals,
+        "additional_signals": additional_signals,
+        "metadata": metadata
     }
 
 
@@ -150,40 +150,40 @@ def determine_environment(signals: List[EnvironmentSignal]) -> Dict[str, Any]:
     """
     if not signals:
         return {
-            'environment': Environment.DEVELOPMENT,
-            'confidence': 0.50,
-            'reasoning': "No environment signals detected, defaulting to development",
-            'detected_by': "fallback"
+            "environment": Environment.DEVELOPMENT,
+            "confidence": 0.50,
+            "reasoning": "No environment signals detected, defaulting to development",
+            "detected_by": "fallback"
         }
-    
+
     # Sort signals by confidence (highest first)
     sorted_signals = sorted(signals, key=lambda s: s.confidence, reverse=True)
     best_signal = sorted_signals[0]
-    
+
     # Check for conflicting signals
     same_env_signals = [s for s in sorted_signals if s.environment == best_signal.environment]
     conflicting_signals = [s for s in sorted_signals if s.environment != best_signal.environment]
-    
+
     # Calculate combined confidence
     if len(same_env_signals) > 1:
         # Multiple signals pointing to same environment increase confidence
         combined_confidence = min(0.98, best_signal.confidence + 0.05 * (len(same_env_signals) - 1))
     else:
         combined_confidence = best_signal.confidence
-    
+
     # Adjust confidence if there are high-confidence conflicting signals
     if conflicting_signals and max(s.confidence for s in conflicting_signals) > 0.70:
         combined_confidence *= 0.85  # Reduce confidence due to conflicts
-    
+
     reasoning = best_signal.reasoning
     if len(same_env_signals) > 1:
         reasoning += f" (confirmed by {len(same_env_signals)-1} additional signals)"
     if conflicting_signals:
         reasoning += f" (note: {len(conflicting_signals)} conflicting signals detected)"
-    
+
     return {
-        'environment': best_signal.environment,
-        'confidence': combined_confidence,
-        'reasoning': reasoning,
-        'detected_by': best_signal.source
+        "environment": best_signal.environment,
+        "confidence": combined_confidence,
+        "reasoning": reasoning,
+        "detected_by": best_signal.source
     }

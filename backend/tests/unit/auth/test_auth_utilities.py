@@ -12,7 +12,6 @@ Test Coverage:
     - supports_feature feature capability checking
 """
 
-import pytest
 from unittest.mock import patch
 from app.infrastructure.security.auth import (
     verify_api_key_string,
@@ -63,10 +62,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings_with_primary_key: Settings with valid API key configured.
         """
         # Given: APIKeyAuth is configured with known valid API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with a configured key
                 result = verify_api_key_string("test-primary-key-123")
 
@@ -93,10 +92,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings_with_primary_key: Settings with valid API key for comparison.
         """
         # Given: APIKeyAuth is configured with known valid API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with an invalid key
                 result = verify_api_key_string("invalid-key-999")
 
@@ -123,10 +122,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings_with_primary_key: Settings for validation context.
         """
         # Given: APIKeyAuth with any configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with empty string
                 result = verify_api_key_string("")
 
@@ -153,10 +152,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings_with_primary_key: Settings for validation context.
         """
         # Given: APIKeyAuth with any configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with None
                 result = verify_api_key_string(None)  # type: ignore
 
@@ -183,10 +182,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings: Empty settings for development mode.
         """
         # Given: No API keys are configured (development mode)
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with any string
                 result = verify_api_key_string("any-string-here")
 
@@ -214,10 +213,10 @@ class TestVerifyApiKeyStringUtility:
         """
         # Given: APIKeyAuth configured with specific case API key
         fake_settings.api_key = "TestKey-123-aBc"
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with case variations
                 exact_match = verify_api_key_string("TestKey-123-aBc")
                 uppercase_variant = verify_api_key_string("TESTKEY-123-ABC")
@@ -250,10 +249,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings_with_multiple_keys: Settings with primary and additional keys.
         """
         # Given: APIKeyAuth configured with multiple API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_multiple_keys):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_multiple_keys):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: verify_api_key_string is called with any configured key
                 primary_key_result = verify_api_key_string("test-primary-key-123")
                 additional_key1_result = verify_api_key_string("test-key-456")
@@ -286,10 +285,10 @@ class TestVerifyApiKeyStringUtility:
             - fake_settings_with_primary_key: Settings for validation testing.
         """
         # Given: APIKeyAuth with logging configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global api_key_auth instance
             from app.infrastructure.security.auth import APIKeyAuth
-            with patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # Clear any logs from setup
                 caplog.clear()
 
@@ -348,11 +347,11 @@ class TestGetAuthStatusUtility:
             - fake_settings_with_primary_key: Settings for status reporting.
         """
         # Given: Authentication system with any valid configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: get_auth_status is called
                 status = get_auth_status()
 
@@ -391,11 +390,11 @@ class TestGetAuthStatusUtility:
             - fake_settings_with_multiple_keys: Settings with known key count.
         """
         # Given: APIKeyAuth configured with known number of API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_multiple_keys):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_multiple_keys):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: get_auth_status is called
                 status = get_auth_status()
 
@@ -423,11 +422,11 @@ class TestGetAuthStatusUtility:
             - fake_settings: Empty settings for development mode.
         """
         # Given: Authentication system in development mode (no keys)
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: get_auth_status is called
                 status = get_auth_status()
 
@@ -454,11 +453,11 @@ class TestGetAuthStatusUtility:
             - fake_settings_with_primary_key: Settings with API keys for production mode.
         """
         # Given: Authentication system with API keys configured
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: get_auth_status is called
                 status = get_auth_status()
 
@@ -491,11 +490,11 @@ class TestGetAuthStatusUtility:
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
         monkeypatch.setenv("ENABLE_REQUEST_LOGGING", "true")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: get_auth_status is called
                 status = get_auth_status()
 
@@ -532,11 +531,11 @@ class TestGetAuthStatusUtility:
             - fake_settings_with_primary_key: Settings with actual key values.
         """
         # Given: Authentication system with configured API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: get_auth_status is called
                 status = get_auth_status()
 
@@ -603,11 +602,11 @@ class TestIsDevelopmentModeUtility:
             - fake_settings: Empty settings for development mode.
         """
         # Given: No API keys are configured in the authentication system
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: is_development_mode is called
                 result = is_development_mode()
 
@@ -634,11 +633,11 @@ class TestIsDevelopmentModeUtility:
             - fake_settings_with_primary_key: Settings with API keys configured.
         """
         # Given: API keys are configured in the authentication system
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: is_development_mode is called
                 result = is_development_mode()
 
@@ -666,31 +665,31 @@ class TestIsDevelopmentModeUtility:
             - fake_settings_with_primary_key: For production mode testing.
         """
         # Test with development mode (no keys)
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: Both is_development_mode and get_auth_status are called
                 dev_mode_result = is_development_mode()
                 auth_status = get_auth_status()
 
         # Then: is_development_mode return value matches get_auth_status['development_mode']
-        assert dev_mode_result == auth_status['development_mode']
+        assert dev_mode_result == auth_status["development_mode"]
         assert dev_mode_result is True
 
         # Test with production mode (keys configured)
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: Both is_development_mode and get_auth_status are called
                 dev_mode_result = is_development_mode()
                 auth_status = get_auth_status()
 
         # Then: is_development_mode return value matches get_auth_status['development_mode']
-        assert dev_mode_result == auth_status['development_mode']
+        assert dev_mode_result == auth_status["development_mode"]
         assert dev_mode_result is False
 
 
@@ -738,13 +737,13 @@ class TestSupportsFeatureUtility:
         # Given: AuthConfig in simple mode
         monkeypatch.setenv("AUTH_MODE", "simple")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'user_context'
-                result = supports_feature('user_context')
+                result = supports_feature("user_context")
 
         # Then: The function returns False
         assert result is False
@@ -772,13 +771,13 @@ class TestSupportsFeatureUtility:
         # Given: AuthConfig in advanced mode
         monkeypatch.setenv("AUTH_MODE", "advanced")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'user_context'
-                result = supports_feature('user_context')
+                result = supports_feature("user_context")
 
         # Then: The function returns True
         assert result is True
@@ -806,13 +805,13 @@ class TestSupportsFeatureUtility:
         # Test simple mode (permissions not supported)
         monkeypatch.setenv("AUTH_MODE", "simple")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'permissions'
-                simple_result = supports_feature('permissions')
+                simple_result = supports_feature("permissions")
 
         # Then: Result matches the mode's permission support capability
         assert simple_result is False
@@ -820,13 +819,13 @@ class TestSupportsFeatureUtility:
         # Test advanced mode (permissions supported)
         monkeypatch.setenv("AUTH_MODE", "advanced")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'permissions'
-                advanced_result = supports_feature('permissions')
+                advanced_result = supports_feature("permissions")
 
         # Then: Result matches the mode's permission support capability
         assert advanced_result is True
@@ -854,13 +853,13 @@ class TestSupportsFeatureUtility:
         # Test simple mode (rate limiting not supported)
         monkeypatch.setenv("AUTH_MODE", "simple")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'rate_limiting'
-                simple_result = supports_feature('rate_limiting')
+                simple_result = supports_feature("rate_limiting")
 
         # Then: Result matches the mode's rate limiting support capability
         assert simple_result is False
@@ -868,13 +867,13 @@ class TestSupportsFeatureUtility:
         # Test advanced mode (rate limiting supported)
         monkeypatch.setenv("AUTH_MODE", "advanced")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'rate_limiting'
-                advanced_result = supports_feature('rate_limiting')
+                advanced_result = supports_feature("rate_limiting")
 
         # Then: Result matches the mode's rate limiting support capability
         assert advanced_result is True
@@ -902,13 +901,13 @@ class TestSupportsFeatureUtility:
         # Test with user tracking disabled
         monkeypatch.setenv("ENABLE_USER_TRACKING", "false")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'user_tracking'
-                disabled_result = supports_feature('user_tracking')
+                disabled_result = supports_feature("user_tracking")
 
         # Then: Result matches the environment variable value
         assert disabled_result is False
@@ -916,13 +915,13 @@ class TestSupportsFeatureUtility:
         # Test with user tracking enabled
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'user_tracking'
-                enabled_result = supports_feature('user_tracking')
+                enabled_result = supports_feature("user_tracking")
 
         # Then: Result matches the environment variable value
         assert enabled_result is True
@@ -950,13 +949,13 @@ class TestSupportsFeatureUtility:
         # Test with request logging disabled
         monkeypatch.setenv("ENABLE_REQUEST_LOGGING", "false")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'request_logging'
-                disabled_result = supports_feature('request_logging')
+                disabled_result = supports_feature("request_logging")
 
         # Then: Result matches the environment variable value
         assert disabled_result is False
@@ -964,13 +963,13 @@ class TestSupportsFeatureUtility:
         # Test with request logging enabled
         monkeypatch.setenv("ENABLE_REQUEST_LOGGING", "true")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with 'request_logging'
-                enabled_result = supports_feature('request_logging')
+                enabled_result = supports_feature("request_logging")
 
         # Then: Result matches the environment variable value
         assert enabled_result is True
@@ -995,15 +994,15 @@ class TestSupportsFeatureUtility:
             - fake_settings: For configuration context.
         """
         # Given: Authentication system with any configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called with unknown feature name
-                unknown_feature_result = supports_feature('unknown_feature')
-                future_feature_result = supports_feature('ai_analysis')
-                empty_string_result = supports_feature('')
+                unknown_feature_result = supports_feature("unknown_feature")
+                future_feature_result = supports_feature("ai_analysis")
+                empty_string_result = supports_feature("")
 
         # Then: The function returns False safely
         assert unknown_feature_result is False
@@ -1035,17 +1034,17 @@ class TestSupportsFeatureUtility:
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
         monkeypatch.setenv("ENABLE_REQUEST_LOGGING", "false")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()) as patched_auth_config, \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()) as patched_auth_config, \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
                 # When: supports_feature is called for mapped features
-                user_context_via_function = supports_feature('user_context')
-                permissions_via_function = supports_feature('permissions')
-                rate_limiting_via_function = supports_feature('rate_limiting')
-                user_tracking_via_function = supports_feature('user_tracking')
-                request_logging_via_function = supports_feature('request_logging')
+                user_context_via_function = supports_feature("user_context")
+                permissions_via_function = supports_feature("permissions")
+                rate_limiting_via_function = supports_feature("rate_limiting")
+                user_tracking_via_function = supports_feature("user_tracking")
+                request_logging_via_function = supports_feature("request_logging")
 
                 # Get direct properties from AuthConfig
                 user_context_via_property = patched_auth_config.supports_user_context
@@ -1107,9 +1106,9 @@ class TestAuthUtilitiesEdgeCases:
         # the functions will raise AttributeError. This test verifies that we can detect
         # when the system is corrupted and would need proper error handling.
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
-            with patch('app.infrastructure.security.auth.api_key_auth', None), \
-                 patch('app.infrastructure.security.auth.auth_config', None):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
+            with patch("app.infrastructure.security.auth.api_key_auth", None), \
+                 patch("app.infrastructure.security.auth.auth_config", None):
                 # When: Utility functions are called
                 # The current implementation will fail when the global instances are None
                 # This is expected behavior - testing that we can detect corruption
@@ -1133,7 +1132,7 @@ class TestAuthUtilitiesEdgeCases:
                     corruption_detected = True
 
                 try:
-                    supports_feature('user_context')
+                    supports_feature("user_context")
                 except (AttributeError, TypeError):
                     corruption_detected = True
 
@@ -1164,11 +1163,11 @@ class TestAuthUtilitiesEdgeCases:
         import time
 
         # Given: Multiple threads calling utility functions simultaneously
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
 
                 results = []
                 errors = []
@@ -1180,14 +1179,14 @@ class TestAuthUtilitiesEdgeCases:
                             key_result = verify_api_key_string("test-primary-key-123")
                             dev_mode = is_development_mode()
                             status = get_auth_status()
-                            feature_support = supports_feature('user_context')
+                            feature_support = supports_feature("user_context")
 
                             results.append({
-                                'thread_id': thread_id,
-                                'key_valid': key_result,
-                                'dev_mode': dev_mode,
-                                'api_keys_count': status['api_keys_configured'],
-                                'feature_support': feature_support
+                                "thread_id": thread_id,
+                                "key_valid": key_result,
+                                "dev_mode": dev_mode,
+                                "api_keys_count": status["api_keys_configured"],
+                                "feature_support": feature_support
                             })
                             time.sleep(0.001)  # Small delay to increase chance of race conditions
                     except Exception as e:
@@ -1210,10 +1209,10 @@ class TestAuthUtilitiesEdgeCases:
 
         # Verify consistent results across all threads
         for result in results:
-            assert result['key_valid'] is True
-            assert result['dev_mode'] is False
-            assert result['api_keys_count'] == 1
-            assert result['feature_support'] is False  # Simple mode default
+            assert result["key_valid"] is True
+            assert result["dev_mode"] is False
+            assert result["api_keys_count"] == 1
+            assert result["feature_support"] is False  # Simple mode default
 
     def test_utilities_performance_characteristics(self, fake_settings_with_primary_key, mock_environment_detection):
         """
@@ -1237,11 +1236,11 @@ class TestAuthUtilitiesEdgeCases:
         import time
 
         # Given: High-frequency calls to utility functions
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
 
                 # When: Performance measurements are taken
                 iterations = 1000
@@ -1267,7 +1266,7 @@ class TestAuthUtilitiesEdgeCases:
                 # Test supports_feature performance
                 start_time = time.time()
                 for _ in range(iterations):
-                    supports_feature('user_context')
+                    supports_feature("user_context")
                 feature_support_time = time.time() - start_time
 
         # Then: Functions execute within acceptable time bounds
@@ -1316,29 +1315,29 @@ class TestAuthUtilitiesEdgeCases:
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
         monkeypatch.setenv("ENABLE_REQUEST_LOGGING", "false")
 
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             # Re-initialize the global instances
             from app.infrastructure.security.auth import AuthConfig, APIKeyAuth
-            with patch('app.infrastructure.security.auth.auth_config', AuthConfig()), \
-                 patch('app.infrastructure.security.auth.api_key_auth', APIKeyAuth()):
+            with patch("app.infrastructure.security.auth.auth_config", AuthConfig()), \
+                 patch("app.infrastructure.security.auth.api_key_auth", APIKeyAuth()):
 
                 # When: Multiple utility functions are called
                 auth_status = get_auth_status()
                 dev_mode_direct = is_development_mode()
-                dev_mode_from_status = auth_status['development_mode']
+                dev_mode_from_status = auth_status["development_mode"]
 
-                user_context_via_function = supports_feature('user_context')
-                user_context_from_config = auth_status['auth_config']['features']['user_context']
+                user_context_via_function = supports_feature("user_context")
+                user_context_from_config = auth_status["auth_config"]["features"]["user_context"]
 
-                user_tracking_via_function = supports_feature('user_tracking')
-                user_tracking_from_config = auth_status['auth_config']['features']['user_tracking']
+                user_tracking_via_function = supports_feature("user_tracking")
+                user_tracking_from_config = auth_status["auth_config"]["features"]["user_tracking"]
 
-                request_logging_via_function = supports_feature('request_logging')
-                request_logging_from_config = auth_status['auth_config']['features']['request_logging']
+                request_logging_via_function = supports_feature("request_logging")
+                request_logging_from_config = auth_status["auth_config"]["features"]["request_logging"]
 
                 # Test key validation consistency
                 key_valid_via_function = verify_api_key_string("test-primary-key-123")
-                keys_configured = auth_status['api_keys_configured']
+                keys_configured = auth_status["api_keys_configured"]
 
         # Then: All functions report consistent view of system state
 
@@ -1361,6 +1360,6 @@ class TestAuthUtilitiesEdgeCases:
         assert request_logging_via_function is False  # Explicitly disabled
 
         # Overall state consistency
-        assert auth_status['auth_config']['mode'] == "advanced"
-        assert auth_status['api_keys_configured'] == 1
-        assert auth_status['development_mode'] is False
+        assert auth_status["auth_config"]["mode"] == "advanced"
+        assert auth_status["api_keys_configured"] == 1
+        assert auth_status["development_mode"] is False

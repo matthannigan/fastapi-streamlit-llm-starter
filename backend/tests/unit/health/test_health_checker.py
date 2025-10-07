@@ -22,9 +22,6 @@ from app.infrastructure.monitoring.health import (
     HealthChecker,
     HealthStatus,
     ComponentStatus,
-    SystemHealthStatus,
-    HealthCheckError,
-    HealthCheckTimeoutError,
 )
 
 
@@ -176,7 +173,7 @@ class TestHealthCheckerInitialization:
         checker.register_check("failing", check_func)
 
         mock_sleep = AsyncMock()
-        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+        monkeypatch.setattr(asyncio, "sleep", mock_sleep)
 
         await checker.check_component("failing")
 
@@ -278,7 +275,7 @@ class TestHealthCheckerInitialization:
         checker.register_check("failing", check_func)
 
         mock_sleep = AsyncMock()
-        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+        monkeypatch.setattr(asyncio, "sleep", mock_sleep)
 
         await checker.check_component("failing")
 
@@ -679,7 +676,7 @@ class TestHealthCheckerComponentExecution:
         checker.register_check("failing", check_func)
 
         mock_sleep = AsyncMock()
-        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+        monkeypatch.setattr(asyncio, "sleep", mock_sleep)
 
         await checker.check_component("failing")
 
@@ -782,7 +779,7 @@ class TestHealthCheckerComponentExecution:
         checker.register_check("c", check_func)
 
         mock_sleep = AsyncMock()
-        monkeypatch.setattr(asyncio, 'sleep', mock_sleep)
+        monkeypatch.setattr(asyncio, "sleep", mock_sleep)
 
         result = await checker.check_component("c")
 
@@ -1160,7 +1157,7 @@ class TestHealthCheckerSystemAggregation:
             None - tests with mixed failure scenarios
         """
         checker = HealthChecker(default_timeout_ms=50, retry_count=1)
-        
+
         # This one will succeed on retry
         c1_mock = AsyncMock(side_effect=[Exception, ComponentStatus(name="c1", status=HealthStatus.HEALTHY)])
         checker.register_check("c1", c1_mock)
@@ -1171,7 +1168,7 @@ class TestHealthCheckerSystemAggregation:
         checker.register_check("c2", slow_check)
 
         result = await checker.check_all_components()
-        
+
         c1_status = next(c for c in result.components if c.name == "c1")
         c2_status = next(c for c in result.components if c.name == "c2")
 

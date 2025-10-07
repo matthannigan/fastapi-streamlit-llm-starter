@@ -217,7 +217,7 @@ The module provides extensive customization capabilities:
 import os
 import sys
 import logging
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Dict, Any, TYPE_CHECKING
 from fastapi import Depends, status, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
@@ -280,7 +280,7 @@ class AuthConfig:
                 return not self.simple_mode
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         ...
 
     @property
@@ -376,7 +376,7 @@ class APIKeyAuth:
         })
     """
 
-    def __init__(self, auth_config: Optional[AuthConfig] = None):
+    def __init__(self, auth_config: AuthConfig | None = None):
         ...
 
     def verify_api_key(self, api_key: str) -> bool:
@@ -397,7 +397,7 @@ class APIKeyAuth:
         """
         ...
 
-    def reload_keys(self):
+    def reload_keys(self) -> None:
         """
         Reload API keys from environment variables with metadata consistency.
         
@@ -423,7 +423,7 @@ class APIKeyAuth:
         ...
 
 
-def get_api_key_from_request(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> tuple[Optional[str], str]:
+def get_api_key_from_request(request: Request, bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> tuple[str | None, str]:
     """
     Extract API key from either Authorization Bearer or X-API-Key header.
     
@@ -443,7 +443,7 @@ def get_api_key_from_request(request: Request, bearer_credentials: Optional[HTTP
     ...
 
 
-async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str:
+async def verify_api_key(request: Request, bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str:
     """
     Environment-aware FastAPI dependency for API key authentication with production security.
     
@@ -510,7 +510,7 @@ async def verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuth
     ...
 
 
-async def verify_api_key_with_metadata(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> Dict[str, Any]:
+async def verify_api_key_with_metadata(request: Request, bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security), settings: 'Settings' = Depends(get_settings)) -> Dict[str, Any]:
     """
     Enhanced dependency that returns API key with metadata (extension point).
     
@@ -529,7 +529,7 @@ async def verify_api_key_with_metadata(request: Request, bearer_credentials: Opt
     ...
 
 
-async def optional_verify_api_key(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> Optional[str]:
+async def optional_verify_api_key(request: Request, bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str | None:
     """
     Optional dependency to verify API key authentication.
     Returns None if no credentials provided, otherwise verifies the key.
@@ -660,14 +660,14 @@ def supports_feature(feature: str) -> bool:
     
     Args:
         feature: Feature name ('user_context', 'permissions', 'rate_limiting', etc.)
-        
+    
     Returns:
         True if feature is supported
     """
     ...
 
 
-async def verify_api_key_http(request: Request, bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str:
+async def verify_api_key_http(request: Request, bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security), settings: 'Settings' = Depends(get_settings)) -> str:
     """
     FastAPI-compatible authentication dependency with HTTP exception handling.
     

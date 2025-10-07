@@ -41,7 +41,7 @@ Global Functions:
 Core Features:
 =============
 
-1. **Retry Patterns**: 
+1. **Retry Patterns**:
    - Exponential backoff with jitter
    - Fixed delay strategies
    - Configurable stop conditions (max attempts, max delay)
@@ -166,7 +166,7 @@ class AIService:
         # Initialize resilience with application settings
         global ai_resilience
         ai_resilience = AIServiceResilience(settings)
-    
+
     @ai_resilience.with_operation_resilience("text_processing")
     async def process_text(self, text: str) -> dict:
         # Implementation with automatic resilience patterns applied
@@ -179,16 +179,14 @@ the inherent unreliability of external AI services and network operations.
 """
 
 import asyncio
-import json
 import logging
-import os
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict
 from functools import wraps
-from tenacity import retry, stop_after_attempt, stop_after_delay, wait_exponential, wait_fixed, wait_random, retry_if_exception_type, retry_if_not_exception_type, before_sleep_log, after_log, RetryError, TryAgain
-from app.core.exceptions import AIServiceException, TransientAIError, PermanentAIError, RateLimitError, ServiceUnavailableError
+from tenacity import retry, stop_after_attempt, stop_after_delay, wait_exponential, wait_fixed, wait_random, wait_combine, before_sleep_log, RetryError
+from app.core.exceptions import AIServiceException, TransientAIError, PermanentAIError, ServiceUnavailableError
 from app.infrastructure.resilience.circuit_breaker import EnhancedCircuitBreaker, CircuitBreakerConfig, ResilienceMetrics
-from app.infrastructure.resilience.retry import RetryConfig, should_retry_on_exception, classify_exception
+from app.infrastructure.resilience.retry import should_retry_on_exception, classify_exception
 from app.infrastructure.resilience.config_presets import ResilienceStrategy, ResilienceConfig, DEFAULT_PRESETS
 
 
@@ -205,7 +203,7 @@ class AIServiceResilience:
         circuit_breakers: Dict[str, EnhancedCircuitBreaker] mapping operation names to circuit breakers
         configurations: Dict[Any, ResilienceConfig] mapping strategies/operations to resilience configurations
         operation_metrics: Dict[str, ResilienceMetrics] tracking metrics per operation
-        
+    
     Public Methods:
         with_resilience(): Primary decorator for applying resilience patterns to functions
         with_operation_resilience(): Convenience decorator using operation-specific configuration
@@ -214,21 +212,21 @@ class AIServiceResilience:
         reset_metrics(): Reset metrics for operations or entire system
         is_healthy(): Check overall system health based on circuit breaker states
         get_health_status(): Get detailed health information including open/half-open circuit breakers
-        
+    
     State Management:
         - Thread-safe circuit breaker state management across concurrent operations
         - Atomic configuration updates without service interruption
         - Isolated metrics tracking per operation preventing cross-operation interference
         - Global instance management for decorator support at import time
-        
+    
     Usage:
         # Basic usage with default configuration
         resilience = AIServiceResilience(settings)
-        
+    
         @resilience.with_operation_resilience("ai_summarize")
         async def summarize_text(text: str) -> str:
             return await ai_service.summarize(text)
-        
+    
         # Advanced usage with custom strategy and fallback
         @resilience.with_resilience(
             operation_name="critical_ai_operation",
@@ -237,23 +235,23 @@ class AIServiceResilience:
         )
         async def critical_ai_operation(input_data: str) -> str:
             return await external_ai_service.process(input_data)
-            
+    
         # Monitoring and health checks
         metrics = resilience.get_all_metrics()
         health_status = resilience.get_health_status()
-        
+    
         # Register new operations with specific strategies
         resilience.register_operation("text_analysis", ResilienceStrategy.BALANCED)
     """
 
-    def __init__(self, settings = None):
+    def __init__(self, settings: Any | None = None) -> None:
         """
         Initialize resilience orchestrator with application settings and default configurations.
         
         Args:
             settings: Optional application settings object containing resilience configurations.
                      If None, uses default preset configurations without environment overrides.
-                     
+        
         Behavior:
             - Loads default resilience strategy configurations from presets
             - Applies settings overrides to all strategy configurations if provided
@@ -312,10 +310,10 @@ class AIServiceResilience:
         
         Args:
             operation_name: Name of the operation to get metrics for
-            
+        
         Returns:
             ResilienceMetrics object containing call counts, success/failure rates, and timing data
-            
+        
         Behavior:
             - Returns existing metrics object if already created for operation
             - Creates new ResilienceMetrics instance for first-time operations
@@ -331,11 +329,11 @@ class AIServiceResilience:
         
         Args:
             operation_name: Name of the operation to get configuration for
-            
+        
         Returns:
             ResilienceConfig containing retry settings, circuit breaker config, and strategy information
             for the operation, with fallback to balanced strategy if no specific config found
-            
+        
         Behavior:
             - Checks for operation-specific configuration first (highest priority)
             - Queries settings for operation-specific strategy if available
@@ -346,17 +344,17 @@ class AIServiceResilience:
         """
         ...
 
-    def custom_before_sleep(self, operation_name: str):
+    def custom_before_sleep(self, operation_name: str) -> Callable:
         """
         Create tenacity callback function for logging and metrics during retry sleep periods.
         
         Args:
             operation_name: Name of operation for logging and metrics context
-            
+        
         Returns:
             Callback function compatible with tenacity's before_sleep parameter that logs
             retry attempts and updates operation metrics
-            
+        
         Behavior:
             - Returns callable that increments retry attempt metrics
             - Logs warning messages with retry attempt number and sleep duration
@@ -366,7 +364,7 @@ class AIServiceResilience:
         """
         ...
 
-    def with_resilience(self, operation_name: str, strategy: Union[ResilienceStrategy, str, None] = None, custom_config: Optional[ResilienceConfig] = None, fallback: Optional[Callable] = None):
+    def with_resilience(self, operation_name: str, strategy: ResilienceStrategy | str | None = None, custom_config: ResilienceConfig | None = None, fallback: Callable | None = None) -> Callable:
         """
         Primary decorator applying comprehensive resilience patterns with configurable strategies and fallback handling.
         
@@ -383,7 +381,7 @@ class AIServiceResilience:
                           Takes precedence over strategy and operation-specific settings.
             fallback: Optional callable providing alternative behavior when all resilience patterns fail.
                      Invoked with same arguments as original function for graceful degradation.
-                     
+        
         Returns:
             Decorator function that wraps target function with comprehensive resilience patterns:
             - Automatic retry with configurable exponential backoff and jitter
@@ -391,13 +389,13 @@ class AIServiceResilience:
             - Exception classification and appropriate handling strategies
             - Comprehensive metrics collection for operational monitoring
             - Fallback execution for graceful degradation scenarios
-            
+        
         Raises:
             No exceptions raised during decoration. Wrapped function may raise:
             - TransientAIError: For retryable failures after exhausting retry attempts
             - PermanentAIError: For non-retryable failures when no fallback provided
             - ServiceUnavailableError: When circuit breaker is open and no fallback available
-            
+        
         Behavior:
             - Resolves configuration using precedence: custom_config > strategy > operation config > balanced default
             - Creates or retrieves circuit breaker instance isolated per operation name
@@ -410,19 +408,19 @@ class AIServiceResilience:
             - Logs retry attempts and failures with operation context for debugging
             - Maintains thread safety for concurrent operation execution
             - Preserves original function signature, return type, and async/sync behavior
-            
+        
         Examples:
             >>> # Basic usage with operation-specific configuration
             >>> resilience = AIServiceResilience(settings)
             >>> @resilience.with_resilience("ai_text_analysis")
             ... async def analyze_text(text: str) -> dict:
             ...     return await ai_service.analyze(text)
-            
+        
             >>> # With specific strategy override
             >>> @resilience.with_resilience("critical_operation", strategy=ResilienceStrategy.CRITICAL)
             ... async def critical_function(data: str) -> str:
             ...     return await critical_service.process(data)
-            
+        
             >>> # With custom configuration and fallback
             >>> custom_config = ResilienceConfig(
             ...     strategy=ResilienceStrategy.BALANCED,
@@ -436,7 +434,7 @@ class AIServiceResilience:
             ... )
             ... async def process_data(data: dict) -> dict:
             ...     return await processing_service.process(data)
-            
+        
             >>> # Error handling patterns
             >>> try:
             ...     result = await analyze_text("sample text")
@@ -447,7 +445,7 @@ class AIServiceResilience:
             ...     print(f"Permanent failure: {e}")
             ... except ServiceUnavailableError:
             ...     print("Circuit breaker open, service degraded")
-            
+        
             >>> # Using with synchronous functions
             >>> @resilience.with_resilience("sync_operation")
             ... def sync_function(input_data: str) -> str:
@@ -465,7 +463,7 @@ class AIServiceResilience:
             - operations: Dict mapping operation names to their ResilienceMetrics data
             - circuit_breakers: Dict with circuit breaker states, thresholds, and metrics
             - summary: System-level statistics including counts and health status
-            
+        
         Behavior:
             - Aggregates metrics from all registered operations and circuit breakers
             - Includes current circuit breaker states (open, closed, half-open)
@@ -476,13 +474,13 @@ class AIServiceResilience:
         """
         ...
 
-    def reset_metrics(self, operation_name: Optional[str] = None):
+    def reset_metrics(self, operation_name: str | None = None) -> None:
         """
         Reset metrics counters for debugging, testing, or operational maintenance.
         
         Args:
             operation_name: Optional specific operation name to reset. If None, resets all metrics.
-            
+        
         Behavior:
             - Resets specific operation metrics to new ResilienceMetrics instance when operation_name provided
             - Clears all operation metrics and circuit breaker metrics when operation_name is None
@@ -499,7 +497,7 @@ class AIServiceResilience:
         
         Returns:
             True if all circuit breakers are closed (healthy), False if any are open (unhealthy)
-            
+        
         Behavior:
             - Evaluates health as True only when no circuit breakers are in open state
             - Considers half-open circuit breakers as healthy (recovery in progress)
@@ -555,17 +553,17 @@ class AIServiceResilience:
         """
         ...
 
-    def with_operation_resilience(self, operation_name: str, fallback: Optional[Callable] = None):
+    def with_operation_resilience(self, operation_name: str, fallback: Callable | None = None) -> Callable:
         """
         Convenience decorator applying operation-specific resilience configuration.
         
         Args:
             operation_name: Name of operation for configuration lookup and metrics tracking
             fallback: Optional fallback function called when all resilience patterns fail
-            
+        
         Returns:
             Decorator function that applies resilience patterns using operation-specific config
-            
+        
         Behavior:
             - Delegates to with_resilience() using operation-specific configuration resolution
             - Simplifies decorator usage when no custom strategy override needed
@@ -574,7 +572,7 @@ class AIServiceResilience:
         """
         ...
 
-    def register_operation(self, operation_name: str, strategy: ResilienceStrategy = ResilienceStrategy.BALANCED):
+    def register_operation(self, operation_name: str, strategy: ResilienceStrategy = ResilienceStrategy.BALANCED) -> None:
         """
         Register new operation with specific resilience strategy for configuration management.
         
@@ -582,7 +580,7 @@ class AIServiceResilience:
             operation_name: Unique name for the operation to register
             strategy: ResilienceStrategy enum value defining the resilience approach
                      (AGGRESSIVE, BALANCED, CONSERVATIVE, CRITICAL). Defaults to BALANCED.
-                     
+        
         Behavior:
             - Delegates to settings.register_operation() when settings object available
             - Stores operation configuration directly for standalone/testing scenarios
@@ -594,7 +592,7 @@ class AIServiceResilience:
         ...
 
 
-def with_operation_resilience(operation_name: str, fallback: Optional[Callable] = None):
+def with_operation_resilience(operation_name: str, fallback: Callable | None = None) -> Callable:
     """
     Global decorator applying operation-specific resilience patterns with automatic configuration lookup.
     
@@ -607,17 +605,17 @@ def with_operation_resilience(operation_name: str, fallback: Optional[Callable] 
                        Should match operations registered via register_operation() or settings.
         fallback: Optional callable for graceful degradation when all resilience patterns fail.
                  Called with same arguments as original function. Can be sync or async.
-                 
+    
     Returns:
         Decorator function that wraps target function with resilience patterns including:
         - Retry mechanisms with exponential backoff based on operation configuration
         - Circuit breaker protection preventing cascade failures
         - Comprehensive metrics tracking for monitoring and alerting
         - Fallback execution for graceful degradation
-        
+    
     Raises:
         RuntimeError: If global AIServiceResilience instance not properly initialized
-        
+    
     Behavior:
         - Resolves operation-specific configuration from registered operations or settings
         - Applies circuit breaker pattern when enabled in configuration
@@ -627,18 +625,18 @@ def with_operation_resilience(operation_name: str, fallback: Optional[Callable] 
         - Logs resilience actions for debugging and operational visibility
         - Maintains thread safety for concurrent operation execution
         - Preserves original function signature and return type
-        
+    
     Examples:
         >>> # Basic usage with operation-specific configuration
         >>> @with_operation_resilience("ai_summarize")
         ... async def summarize_text(text: str) -> str:
         ...     return await ai_service.summarize(text)
-        
+    
         >>> # With fallback for graceful degradation
         >>> @with_operation_resilience("ai_analyze", fallback=lambda x: {"error": "Service unavailable"})
         ... async def analyze_text(text: str) -> dict:
         ...     return await ai_service.analyze(text)
-        
+    
         >>> # Error handling - function raises original exception when no fallback
         >>> result = await summarize_text("input text")
         >>> # If all retries fail and no fallback provided, raises AIServiceException
@@ -646,7 +644,7 @@ def with_operation_resilience(operation_name: str, fallback: Optional[Callable] 
     ...
 
 
-def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable] = None):
+def with_aggressive_resilience(operation_name: str, fallback: Callable | None = None) -> Callable:
     """
     Global decorator applying aggressive resilience strategy optimized for fast recovery and high availability.
     
@@ -659,17 +657,17 @@ def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable]
                        Used to isolate metrics and circuit breaker state per operation.
         fallback: Optional callable providing alternative behavior when resilience patterns fail.
                  Should handle same inputs as original function and provide meaningful degraded response.
-                 
+    
     Returns:
         Decorator function applying aggressive resilience configuration with:
         - Higher retry attempt counts for persistent recovery attempts
         - Shorter delays between retries for rapid recovery
         - Lower circuit breaker failure thresholds for quick failure detection
         - Comprehensive metrics collection for performance monitoring
-        
+    
     Raises:
         RuntimeError: If global AIServiceResilience instance not properly initialized
-        
+    
     Behavior:
         - Applies aggressive resilience strategy regardless of operation configuration
         - Uses higher retry counts with shorter exponential backoff delays
@@ -678,13 +676,13 @@ def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable]
         - Suitable for user-facing operations requiring low latency
         - Tracks metrics under provided operation name for monitoring
         - Invokes fallback for both transient and permanent failure scenarios
-        
+    
     Examples:
         >>> # For user-facing operations requiring fast response
         >>> @with_aggressive_resilience("user_chat_response")
         ... async def generate_chat_response(message: str) -> str:
         ...     return await ai_service.generate_response(message)
-        
+    
         >>> # With fallback for graceful user experience
         >>> @with_aggressive_resilience(
         ...     "real_time_translation",
@@ -696,7 +694,7 @@ def with_aggressive_resilience(operation_name: str, fallback: Optional[Callable]
     ...
 
 
-def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] = None):
+def with_balanced_resilience(operation_name: str, fallback: Callable | None = None) -> Callable:
     """
     Global decorator applying balanced resilience strategy suitable for most production workloads.
     
@@ -709,17 +707,17 @@ def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] =
                        Provides operational context for monitoring and debugging.
         fallback: Optional callable providing alternative behavior when all resilience mechanisms fail.
                  Should match original function signature and provide reasonable default response.
-                 
+    
     Returns:
         Decorator function applying balanced resilience configuration with:
         - Moderate retry attempts balancing persistence and resource usage
         - Reasonable delay intervals for sustainable retry behavior
         - Balanced circuit breaker thresholds for appropriate failure detection
         - Runtime resilience application for dynamic configuration support
-        
+    
     Raises:
         RuntimeError: If global AIServiceResilience instance not properly initialized
-        
+    
     Behavior:
         - Applies balanced resilience strategy at runtime rather than decoration time
         - Uses moderate retry counts with reasonable exponential backoff
@@ -728,13 +726,13 @@ def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] =
         - Balances fault tolerance with resource conservation
         - Provides predictable performance characteristics
         - Supports both sync and async operation patterns
-        
+    
     Examples:
         >>> # Standard API operation with balanced resilience
         >>> @with_balanced_resilience("document_analysis")
         ... async def analyze_document(document: str) -> dict:
         ...     return await ai_service.analyze_document(document)
-        
+    
         >>> # Background processing with fallback
         >>> @with_balanced_resilience(
         ...     "batch_processing",
@@ -746,7 +744,7 @@ def with_balanced_resilience(operation_name: str, fallback: Optional[Callable] =
     ...
 
 
-def with_conservative_resilience(operation_name: str, fallback: Optional[Callable] = None):
+def with_conservative_resilience(operation_name: str, fallback: Callable | None = None) -> Callable:
     """
     Global decorator applying conservative resilience strategy optimized for resource conservation and stability.
     
@@ -759,17 +757,17 @@ def with_conservative_resilience(operation_name: str, fallback: Optional[Callabl
                        Enables isolated monitoring and circuit breaker state per operation.
         fallback: Optional callable providing alternative functionality when resilience patterns exhausted.
                  Should provide acceptable degraded behavior without requiring full service functionality.
-                 
+    
     Returns:
         Decorator function applying conservative resilience configuration with:
         - Fewer retry attempts to reduce system load during failures
         - Longer delays between retries to allow system recovery
         - Higher circuit breaker thresholds for stability over availability
         - Resource-conscious resilience behavior suitable for background operations
-        
+    
     Raises:
         RuntimeError: If global AIServiceResilience instance not properly initialized
-        
+    
     Behavior:
         - Prioritizes system stability over aggressive failure recovery
         - Uses minimal retry attempts with extended exponential backoff
@@ -778,13 +776,13 @@ def with_conservative_resilience(operation_name: str, fallback: Optional[Callabl
         - Suitable for batch processing and non-time-critical operations
         - Provides sustainable resilience for resource-constrained environments
         - Maintains comprehensive metrics for monitoring despite conservative approach
-        
+    
     Examples:
         >>> # Resource-intensive background processing
         >>> @with_conservative_resilience("large_model_inference")
         ... async def run_expensive_model(input_data: str) -> str:
         ...     return await expensive_ai_service.process(input_data)
-        
+    
         >>> # Non-critical data enrichment with fallback
         >>> @with_conservative_resilience(
         ...     "data_enrichment",
@@ -797,7 +795,7 @@ def with_conservative_resilience(operation_name: str, fallback: Optional[Callabl
     ...
 
 
-def with_critical_resilience(operation_name: str, fallback: Optional[Callable] = None):
+def with_critical_resilience(operation_name: str, fallback: Callable | None = None) -> Callable:
     """
     Global decorator applying maximum resilience strategy for mission-critical operations requiring highest availability.
     
@@ -811,17 +809,17 @@ def with_critical_resilience(operation_name: str, fallback: Optional[Callable] =
         fallback: Optional callable providing emergency alternative behavior for absolute failure scenarios.
                  Critical for maintaining system functionality when primary operation cannot complete.
                  Should provide essential functionality even if degraded.
-                 
+    
     Returns:
         Decorator function applying maximum resilience configuration with:
         - Maximum retry attempts for persistent failure recovery
         - Extended timeouts and recovery periods for comprehensive failure handling
         - Highest circuit breaker thresholds to maintain availability
         - Priority metrics tracking for critical operation monitoring
-        
+    
     Raises:
         RuntimeError: If global AIServiceResilience instance not properly initialized
-        
+    
     Behavior:
         - Prioritizes operation success over resource efficiency
         - Uses maximum retry attempts with extensive exponential backoff
@@ -831,13 +829,13 @@ def with_critical_resilience(operation_name: str, fallback: Optional[Callable] =
         - May consume significant resources during failure scenarios
         - Essential for operations where failure has severe business impact
         - Maintains detailed metrics for critical operation monitoring
-        
+    
     Examples:
         >>> # Financial transaction processing requiring maximum reliability
         >>> @with_critical_resilience("payment_processing")
         ... async def process_payment(payment_data: dict) -> dict:
         ...     return await payment_service.process_transaction(payment_data)
-        
+    
         >>> # Critical system integration with emergency fallback
         >>> @with_critical_resilience(
         ...     "security_validation",
@@ -845,7 +843,7 @@ def with_critical_resilience(operation_name: str, fallback: Optional[Callable] =
         ... )
         ... async def validate_security_token(token: str) -> dict:
         ...     return await security_service.validate_token(token)
-        
+    
         >>> # Mission-critical AI operation with comprehensive error handling
         >>> try:
         ...     result = await process_payment(payment_info)

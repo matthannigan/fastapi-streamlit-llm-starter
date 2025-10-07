@@ -29,18 +29,18 @@ This schema is used by health check endpoints to provide standardized status
 information for load balancers, monitoring systems, and operational dashboards.
 """
 
-from typing import Optional
 from pydantic import BaseModel, Field, field_serializer
+from pydantic.types import SerializationInfo
 from datetime import datetime
 
 class HealthResponse(BaseModel):
     """
     System health check response model for monitoring and operational visibility.
-    
+
     Provides detailed health information about the application and critical dependencies,
     enabling load balancers, monitoring systems, and operational dashboards to make
     informed decisions about service availability and deployment readiness.
-    
+
     Attributes:
         status: Overall system health status - "healthy" (all operational), "degraded"
                (partial functionality), or "unhealthy" (critical failures)
@@ -121,11 +121,11 @@ class HealthResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now, description="Health check timestamp")
     version: str = Field(default="1.0.0", description="Application version")
     ai_model_available: bool = Field(default=True, description="AI model accessibility status")
-    resilience_healthy: Optional[bool] = Field(default=None, description="Resilience patterns health")
-    cache_healthy: Optional[bool] = Field(default=None, description="Cache system health")
+    resilience_healthy: bool | None = Field(default=None, description="Resilience patterns health")
+    cache_healthy: bool | None = Field(default=None, description="Cache system health")
 
-    @field_serializer('timestamp')
-    def serialize_timestamp(self, dt: datetime, _info):
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
         """
         Serialize datetime to ISO 8601 format string for JSON compatibility.
 

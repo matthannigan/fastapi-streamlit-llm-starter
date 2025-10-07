@@ -15,10 +15,9 @@ Test Focus:
 
 import pytest
 from unittest.mock import patch, AsyncMock
-from app.core.exceptions import ConfigurationError, ValidationError
+from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.factory import CacheFactory
 from app.infrastructure.cache.security import SecurityConfig
-from app.infrastructure.cache.encryption import EncryptedCacheLayer
 
 # Mark all tests in this module to run serially (not in parallel)
 # These tests manipulate environment state and fail intermittently in parallel
@@ -136,7 +135,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache is not None
 
             # If the cache has encryption, test it works
-            if hasattr(cache, '_encryption_layer'):
+            if hasattr(cache, "_encryption_layer"):
                 assert cache._encryption_layer.is_enabled
 
                 # Test encryption works
@@ -186,7 +185,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache is not None
 
             # Test encryption integration if available
-            if hasattr(cache, '_encryption_layer'):
+            if hasattr(cache, "_encryption_layer"):
                 assert cache._encryption_layer.is_enabled
 
                 # Test AI-specific data encryption
@@ -242,7 +241,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache is not None
 
             # Test encryption in testing context
-            if hasattr(cache, '_encryption_layer'):
+            if hasattr(cache, "_encryption_layer"):
                 assert cache._encryption_layer.is_enabled
 
                 # Test typical testing data
@@ -309,7 +308,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache is not None
 
             # Test encryption from config
-            if hasattr(cache, '_encryption_layer'):
+            if hasattr(cache, "_encryption_layer"):
                 assert cache._encryption_layer.is_enabled
 
     @pytest.mark.asyncio
@@ -402,7 +401,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache is not None
 
             # Verify encryption is disabled if encryption layer exists
-            if hasattr(cache, '_encryption_layer'):
+            if hasattr(cache, "_encryption_layer"):
                 # If encryption layer exists, it should be disabled
                 assert not cache._encryption_layer.is_enabled
 
@@ -451,7 +450,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache2 is not None
 
             # Test encryption isolation if both have encryption
-            if hasattr(cache1, '_encryption_layer') and hasattr(cache2, '_encryption_layer'):
+            if hasattr(cache1, "_encryption_layer") and hasattr(cache2, "_encryption_layer"):
                 assert cache1._encryption_layer.is_enabled
                 assert cache2._encryption_layer.is_enabled
 
@@ -571,7 +570,7 @@ class TestCacheFactoryEncryptionIntegration:
             assert cache is not None
 
             # Test encryption integration with AI features
-            if hasattr(cache, '_encryption_layer'):
+            if hasattr(cache, "_encryption_layer"):
                 assert cache._encryption_layer.is_enabled
 
                 # Test AI-specific data encryption

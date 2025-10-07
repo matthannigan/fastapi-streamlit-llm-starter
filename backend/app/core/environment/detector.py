@@ -6,7 +6,7 @@ using signals from various sources and applies confidence scoring.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from .enums import FeatureContext
 from .models import DetectionConfig, EnvironmentInfo, EnvironmentSignal
@@ -75,8 +75,8 @@ class EnvironmentDetector:
         for signal in summary['all_signals']:
             print(f"  - {signal['source']}: {signal['reasoning']}")
     """
-    
-    def __init__(self, config: Optional[DetectionConfig] = None):
+
+    def __init__(self, config: DetectionConfig | None = None):
         """
         Initialize environment detector with configuration and caching.
 
@@ -128,7 +128,7 @@ class EnvironmentDetector:
         """
         self._signal_cache.clear()
         logger.debug("Environment detector cache cleared")
-    
+
     def detect_environment(self, feature_context: FeatureContext = FeatureContext.DEFAULT) -> EnvironmentInfo:
         """
         Detect environment with optional feature-specific context.
@@ -181,7 +181,7 @@ class EnvironmentDetector:
             ...     logger.warning(f"Low confidence: {env_info.reasoning}")
         """
         return self.detect_with_context(feature_context)
-    
+
     def detect_with_context(self, feature_context: FeatureContext) -> EnvironmentInfo:
         """
         Detect environment with specific feature context and specialized logic.
@@ -233,26 +233,26 @@ class EnvironmentDetector:
         """
         # Collect all detection signals
         signals = collect_detection_signals(self.config)
-        
+
         # Apply feature-specific context
         context_info = apply_feature_context(signals, feature_context, self.config)
-        
+
         # Combine all signals (base detection signals + feature-specific additional signals)
-        all_signals = signals + context_info['additional_signals']
-        
+        all_signals = signals + context_info["additional_signals"]
+
         # Determine final environment with confidence using ALL signals including overrides
         final_environment = determine_environment(all_signals)
 
         return EnvironmentInfo(
-            environment=final_environment['environment'],
-            confidence=final_environment['confidence'],
-            reasoning=final_environment['reasoning'],
-            detected_by=final_environment['detected_by'],
+            environment=final_environment["environment"],
+            confidence=final_environment["confidence"],
+            reasoning=final_environment["reasoning"],
+            detected_by=final_environment["detected_by"],
             feature_context=feature_context,
             additional_signals=all_signals,
-            metadata=context_info['metadata']
+            metadata=context_info["metadata"]
         )
-    
+
     def get_environment_summary(self) -> Dict[str, Any]:
         """
         Get comprehensive environment detection summary with all signals and metadata.
@@ -297,21 +297,21 @@ class EnvironmentDetector:
             ...         logger.info(f"Signal: {signal['source']} -> {signal['environment']} ({signal['confidence']})")
         """
         env_info = self.detect_environment()
-        
+
         return {
-            'detected_environment': env_info.environment.value,
-            'confidence': env_info.confidence,
-            'reasoning': env_info.reasoning,
-            'detected_by': env_info.detected_by,
-            'all_signals': [
+            "detected_environment": env_info.environment.value,
+            "confidence": env_info.confidence,
+            "reasoning": env_info.reasoning,
+            "detected_by": env_info.detected_by,
+            "all_signals": [
                 {
-                    'source': signal.source,
-                    'value': signal.value,
-                    'environment': signal.environment.value,
-                    'confidence': signal.confidence,
-                    'reasoning': signal.reasoning
+                    "source": signal.source,
+                    "value": signal.value,
+                    "environment": signal.environment.value,
+                    "confidence": signal.confidence,
+                    "reasoning": signal.reasoning
                 }
                 for signal in env_info.additional_signals
             ],
-            'metadata': env_info.metadata
+            "metadata": env_info.metadata
         }

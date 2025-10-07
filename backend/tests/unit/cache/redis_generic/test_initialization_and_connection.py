@@ -38,12 +38,10 @@ Fixtures and Mocks:
 """
 
 import time
-from typing import Any, Dict
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.exceptions import InfrastructureError
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 
@@ -705,12 +703,11 @@ class TestConnectionFailureScenarios:
         cache = GenericRedisCache(**config)
 
         # Mock Redis connection to raise timeout exception
-        import asyncio
 
         with patch(
             "app.infrastructure.cache.redis_generic.aioredis.from_url"
         ) as mock_from_url:
-            mock_from_url.side_effect = asyncio.TimeoutError("Connection timeout")
+            mock_from_url.side_effect = TimeoutError("Connection timeout")
 
             # When: Connection is attempted with timeouts
             connected = await cache.connect()
@@ -737,7 +734,7 @@ class TestConnectionFailureScenarios:
         ) as mock_from_url:
             # Mock a client that times out on ping but connects successfully
             mock_client = AsyncMock()
-            mock_client.ping.side_effect = asyncio.TimeoutError("Ping timeout")
+            mock_client.ping.side_effect = TimeoutError("Ping timeout")
             mock_from_url.return_value = mock_client
 
             # Should handle ping timeout gracefully

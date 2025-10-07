@@ -40,11 +40,9 @@ and advanced customization capabilities.
 """
 
 from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Optional, Any, NamedTuple
+from typing import Dict, List, Any, NamedTuple
 from enum import Enum
-import json
 import logging
-import os
 import re
 from app.infrastructure.resilience.retry import RetryConfig
 from app.infrastructure.resilience.circuit_breaker import CircuitBreakerConfig
@@ -79,18 +77,18 @@ class ResilienceStrategy(str, Enum):
                      for resource-intensive operations and batch processing
         CRITICAL: Maximum retries (5 attempts), highest thresholds (15 failures)
                  for mission-critical operations requiring highest reliability
-                 
+    
     Behavior:
         - String enum supporting serialization and direct comparison
         - Each strategy maps to specific retry and circuit breaker configurations
         - Strategies balance latency, reliability, and resource consumption
         - Enables consistent resilience patterns across different services
-        
+    
     Examples:
         >>> strategy = ResilienceStrategy.BALANCED
         >>> config = DEFAULT_PRESETS[strategy]
         >>> print(f"Max attempts: {config.retry_config.max_attempts}")
-        
+    
         >>> # Strategy selection based on operation criticality
         >>> if operation_type == "user_facing":
         ...     strategy = ResilienceStrategy.AGGRESSIVE
@@ -118,31 +116,31 @@ class ResilienceConfig:
         circuit_breaker_config: CircuitBreakerConfig with failure thresholds and recovery
         enable_circuit_breaker: bool to enable/disable circuit breaker functionality
         enable_retry: bool to enable/disable retry mechanisms
-        
+    
     State Management:
         - Immutable configuration after creation for consistent behavior
         - Strategy-based defaults with override capabilities
         - Comprehensive validation ensuring configuration integrity
         - Thread-safe access for concurrent resilience operations
-        
+    
     Usage:
         # Strategy-based configuration
         config = ResilienceConfig(strategy=ResilienceStrategy.CRITICAL)
-        
+    
         # Custom configuration with overrides
         config = ResilienceConfig(
             strategy=ResilienceStrategy.BALANCED,
             retry_config=RetryConfig(max_attempts=5),
             circuit_breaker_config=CircuitBreakerConfig(failure_threshold=3)
         )
-        
+    
         # Feature-specific configuration
         config = ResilienceConfig(
             strategy=ResilienceStrategy.CONSERVATIVE,
             enable_circuit_breaker=False,  # Retry-only mode
             enable_retry=True
         )
-        
+    
         # Integration with orchestrator
         orchestrator = AIServiceResilience()
         @orchestrator.with_resilience("ai_operation", custom_config=config)
@@ -326,7 +324,7 @@ class PresetManager:
             print(f"{name}: {details['description']}")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize preset manager with default presets and validation capabilities.
         
@@ -357,10 +355,10 @@ class PresetManager:
         
         Args:
             name: Preset name (simple, development, production)
-            
+        
         Returns:
             ResiliencePreset object
-            
+        
         Raises:
             ValueError: If preset name is not found
         """
@@ -381,7 +379,7 @@ class PresetManager:
         
         Args:
             name: Preset name to get details for
-            
+        
         Returns:
             Dictionary containing preset configuration details, description, and context
         """
@@ -393,26 +391,26 @@ class PresetManager:
         
         Args:
             preset: Preset to validate
-            
+        
         Returns:
             True if valid, False otherwise
         """
         ...
 
-    def recommend_preset(self, environment: Optional[str] = None) -> str:
+    def recommend_preset(self, environment: str | None = None) -> str:
         """
         Recommend appropriate preset for given environment.
         
         Args:
             environment: Environment name (dev, test, staging, prod, etc.)
             If None, will auto-detect from environment variables
-            
+        
         Returns:
             Recommended preset name
         """
         ...
 
-    def recommend_preset_with_details(self, environment: Optional[str] = None) -> EnvironmentRecommendation:
+    def recommend_preset_with_details(self, environment: str | None = None) -> EnvironmentRecommendation:
         """
         Get detailed environment-aware preset recommendation with confidence scoring and reasoning.
         

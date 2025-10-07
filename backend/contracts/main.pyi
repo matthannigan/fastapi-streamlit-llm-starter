@@ -3,7 +3,7 @@ Main FastAPI Application Module - AI Text Processing Service with Production-Rea
 
 This module serves as the primary entry point for the comprehensive AI Text Processing API,
 implementing a sophisticated dual-API architecture with advanced text processing capabilities,
-enterprise-grade resilience patterns, intelligent multi-tier caching, and comprehensive 
+enterprise-grade resilience patterns, intelligent multi-tier caching, and comprehensive
 monitoring infrastructure designed for production deployment at scale.
 
 ## Module Architecture
@@ -17,7 +17,7 @@ This module implements a sophisticated multi-layered application architecture:
 - **Custom Documentation**: Enhanced Swagger UI with cross-API navigation and security-aware features
 - **OpenAPI Customization**: Clean schema generation with security-optimized documentation
 
-### Integration Architecture  
+### Integration Architecture
 - **Infrastructure Services**: Seamless integration with cache, resilience, AI, security, and monitoring infrastructure
 - **Middleware Stack**: Production-ready middleware pipeline with security, monitoring, and performance optimization
 - **Configuration Management**: Environment-aware configuration with preset-based resilience strategies
@@ -38,7 +38,7 @@ different documentation and authentication strategies for different user types.
 
 ### AI Text Processing
 - **Powered by Google Gemini API** for advanced text analysis
-- **Supported Operations**: summarization, sentiment analysis, key point extraction, 
+- **Supported Operations**: summarization, sentiment analysis, key point extraction,
   question generation, and question answering
 - **Batch Processing**: Efficient handling of multiple text processing requests
 - **Input Sanitization**: Protection against prompt injection and malicious inputs
@@ -125,7 +125,7 @@ The application uses an async context manager for proper lifecycle management:
 
 ### Development Mode
 - Public API Docs: `http://localhost:8000/docs`
-- Internal API Docs: `http://localhost:8000/internal/docs` 
+- Internal API Docs: `http://localhost:8000/internal/docs`
 - ReDoc: `http://localhost:8000/redoc` and `http://localhost:8000/internal/redoc`
 
 ### Production Mode
@@ -168,7 +168,7 @@ docker run -p 8000:8000 -e GEMINI_API_KEY=your_key your-image:tag
 
 The application implements comprehensive error handling:
 - **Global Exception Handlers**: Centralized error processing
-- **Structured Error Responses**: Consistent error format across all endpoints  
+- **Structured Error Responses**: Consistent error format across all endpoints
 - **Security-aware Errors**: No sensitive information exposure in production
 - **Logging Integration**: All errors logged with appropriate detail levels
 
@@ -182,22 +182,20 @@ The application implements comprehensive error handling:
 """
 
 import logging
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import Optional, Callable
-from fastapi import FastAPI, HTTPException, status, Depends, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.openapi.docs import get_swagger_ui_html
-from app.core.config import settings, create_settings
-from app.core.middleware import setup_middleware, setup_enhanced_middleware
-from app.infrastructure.security import verify_api_key
-from app.core.environment import is_production_environment, get_environment_info, FeatureContext
-from app.api.v1.health import health_router
-from app.api.v1.auth import auth_router
-from app.api.v1.text_processing import router as text_processing_router
+from typing import Any, Dict, List, Optional
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, Response
 from app.api.internal.cache import router as cache_router
 from app.api.internal.monitoring import monitoring_router
-from app.api.internal.resilience import resilience_config_presets_router, resilience_config_templates_router, resilience_config_validation_router, resilience_circuit_breakers_router, resilience_health_router, resilience_config_router, resilience_monitoring_router, resilience_performance_router
+from app.api.internal.resilience import resilience_circuit_breakers_router, resilience_config_presets_router, resilience_config_router, resilience_config_templates_router, resilience_config_validation_router, resilience_health_router, resilience_monitoring_router, resilience_performance_router
+from app.api.v1.auth import auth_router
+from app.api.v1.health import health_router
+from app.api.v1.text_processing import router as text_processing_router
+from app.core.config import Settings, create_settings, settings
+from app.core.environment import FeatureContext, get_environment_info, is_production_environment
+from app.core.middleware import setup_enhanced_middleware
 
 
 def get_custom_swagger_ui_html(openapi_url: str, title: str, api_type: str = 'public') -> str:
@@ -225,7 +223,7 @@ def get_custom_swagger_ui_html(openapi_url: str, title: str, api_type: str = 'pu
         - Swagger UI 5.10.5 integration with modern interface components
         - Responsive design that adapts to different screen sizes
         - Security-aware navigation that respects production mode restrictions
-        
+    
     Behavior:
         - Generates navigation buttons with visual indicators for current API type
         - Applies custom CSS styling to hide default topbar and improve aesthetics
@@ -233,7 +231,7 @@ def get_custom_swagger_ui_html(openapi_url: str, title: str, api_type: str = 'pu
         - Uses CDN-hosted Swagger UI resources for reliability and performance
         - Implements responsive design principles for mobile and desktop viewing
         - Provides consistent branding and user experience across both API types
-        
+    
     Examples:
         >>> # Generate public API documentation
         >>> html = get_custom_swagger_ui_html(
@@ -243,27 +241,27 @@ def get_custom_swagger_ui_html(openapi_url: str, title: str, api_type: str = 'pu
         ... )
         >>> assert "/docs" in html  # Contains navigation to public docs
         >>> assert "/internal/docs" in html  # Contains navigation to internal docs
-        
+    
         >>> # Generate internal API documentation
         >>> internal_html = get_custom_swagger_ui_html(
-        ...     openapi_url="/internal/openapi.json", 
+        ...     openapi_url="/internal/openapi.json",
         ...     title="AI Text Processor - Internal API Documentation",
         ...     api_type="internal"
         ... )
         >>> assert "🔧 Internal API" in internal_html  # Contains internal API indicator
-        
+    
         >>> # Navigation button styling changes based on current API type
         >>> public_html = get_custom_swagger_ui_html("/openapi.json", "Public API", "public")
         >>> assert "#4CAF50" in public_html  # Green highlighting for active public API
-        
-        >>> internal_html = get_custom_swagger_ui_html("/internal/openapi.json", "Internal API", "internal") 
+    
+        >>> internal_html = get_custom_swagger_ui_html("/internal/openapi.json", "Internal API", "internal")
         >>> assert "#4CAF50" in internal_html  # Green highlighting for active internal API
     """
     ...
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Comprehensive application lifespan manager with startup initialization and graceful shutdown.
     
@@ -292,19 +290,19 @@ async def lifespan(app: FastAPI):
         - Initializes health infrastructure for monitoring and dependency tracking
         - Handles initialization errors gracefully with appropriate warning logs
         - Ensures all critical services are ready before accepting requests
-        
+    
         **Runtime Phase:**
         - Application serves requests with full infrastructure support
         - All middleware, authentication, caching, and resilience patterns are active
         - Health checks, monitoring, and performance tracking operate continuously
         - Logging and audit systems capture operational events and security information
-        
+    
         **Shutdown Phase:**
         - Logs shutdown initiation for operational tracking and audit purposes
         - Allows FastAPI's built-in cleanup mechanisms to handle resource deallocation
         - Ensures graceful termination without data loss or connection interruption
         - Provides clean exit for container orchestration and deployment systems
-        
+    
     Raises:
         Exception: Startup initialization errors are caught and logged as warnings,
                   allowing the application to continue startup even if optional
@@ -313,19 +311,19 @@ async def lifespan(app: FastAPI):
     Examples:
         >>> # Automatic startup logging output:
         >>> # INFO - Starting FastAPI application
-        >>> # INFO - Debug mode: True  
+        >>> # INFO - Debug mode: True
         >>> # INFO - AI Model: gemini-2.0-flash-exp
         >>> # INFO - Public API docs available at: /docs
         >>> # INFO - Internal API docs available at: /internal/docs
-        
+    
         >>> # Health infrastructure initialization:
         >>> # INFO - Health infrastructure initialized successfully
         >>> # or
         >>> # WARNING - Health infrastructure initialization skipped: Connection failed
-        
+    
         >>> # Shutdown logging output:
         >>> # INFO - Shutting down FastAPI application
-        
+    
         >>> # The lifespan manager integrates automatically with FastAPI:
         >>> app = FastAPI(lifespan=lifespan)
         >>> # Lifecycle management is now handled automatically
@@ -339,7 +337,7 @@ async def lifespan(app: FastAPI):
     ...
 
 
-def custom_openapi_schema(app: FastAPI):
+def custom_openapi_schema(app: FastAPI) -> Dict[str, Any]:
     """
     Generate optimized OpenAPI schema with clean components and enhanced security.
     
@@ -360,7 +358,7 @@ def custom_openapi_schema(app: FastAPI):
               - All route definitions with proper request/response documentation
               - Security schemes and authentication requirements
               - API metadata including title, version, and description
-              
+    
     Behavior:
         - Checks for existing cached schema to avoid regeneration overhead
         - Generates standard OpenAPI schema using FastAPI's built-in utilities
@@ -369,36 +367,36 @@ def custom_openapi_schema(app: FastAPI):
         - Logs schema cleaning operations in debug mode for troubleshooting
         - Caches the cleaned schema for subsequent requests to improve performance
         - Maintains full OpenAPI 3.0.3 compliance for tooling compatibility
-        
+    
     Schema Cleaning Process:
         **Removed Schemas:**
         - HTTPValidationError: FastAPI's default HTTP validation error format
-        - ValidationError: Generic Pydantic validation error structure  
+        - ValidationError: Generic Pydantic validation error structure
         - ValidationErrorElement: Individual validation error details
         - ErrorDetails: Additional FastAPI-generated error detail schemas
         - Any schema containing "validation" or "http" (case-insensitive)
-        
+    
         **Preserved Schemas:**
         - ErrorResponse: Application-specific structured error response model
         - All business domain models and request/response schemas
         - Authentication and authorization related schemas
         - Custom data models specific to the application functionality
-        
+    
     Examples:
         >>> # Automatic usage via FastAPI application setup:
         >>> app = FastAPI(title="My API")
         >>> app.openapi = lambda: custom_openapi_schema(app)
         >>> # Schema is automatically cleaned when accessed
-        
+    
         >>> # Schema caching behavior:
         >>> schema1 = custom_openapi_schema(app)  # Generates and caches schema
         >>> schema2 = custom_openapi_schema(app)  # Returns cached schema
         >>> assert schema1 is schema2  # Same object reference
-        
+    
         >>> # Debug mode logging:
         >>> # DEBUG - Removed 4 default validation schemas from OpenAPI spec
         >>> # (Only shown when settings.debug is True)
-        
+    
         >>> # Schema structure after cleaning:
         >>> schema = custom_openapi_schema(app)
         >>> assert "HTTPValidationError" not in schema["components"]["schemas"]
@@ -440,51 +438,51 @@ def create_public_app() -> FastAPI:
         - Configures custom documentation URLs with security-aware access control
         - Sets up professional API tags with detailed descriptions and external documentation
         - Integrates application lifecycle management with startup and shutdown procedures
-        
+    
         **Middleware Integration:**
         - Applies enhanced middleware stack including security, monitoring, and performance
         - Configures CORS policies for cross-origin request handling
         - Implements request logging, compression, and rate limiting capabilities
         - Sets up global exception handling with structured error responses
-        
+    
         **Endpoint Registration:**
         - Includes all public API routers with proper versioning (v1 prefix)
         - Registers health monitoring endpoints for system availability checks
         - Integrates authentication endpoints for API key validation
         - Adds comprehensive text processing endpoints with batch operation support
-        
+    
         **Documentation Enhancement:**
         - Implements custom Swagger UI with navigation between public and internal APIs
         - Applies clean OpenAPI schema generation without default validation errors
         - Provides professional styling and responsive design for documentation
         - Includes comprehensive endpoint metadata and example responses
-        
+    
         **Utility Features:**
         - Creates compatibility redirects for unversioned health and auth endpoints
         - Implements proper HTTP redirects with version and endpoint type headers
         - Maintains backward compatibility while encouraging versioned endpoint usage
         - Provides clear separation between core business logic and utility endpoints
-        
+    
     Examples:
         >>> # Create public application with full configuration
         >>> public_app = create_public_app()
         >>> assert public_app.title == "AI Text Processor API"
         >>> assert public_app.version == "1.0.0"
-        
+    
         >>> # Application includes all public endpoints
         >>> routes = [route.path for route in public_app.routes]
         >>> assert "/" in routes  # Root endpoint
         >>> assert "/v1/health" in routes  # Health monitoring
         >>> assert "/v1/text_processing/process" in routes  # Text processing
-        
+    
         >>> # Custom documentation is configured
         >>> assert public_app.docs_url is None  # Default docs disabled
         >>> assert public_app.redoc_url == "/redoc"  # ReDoc available
         >>> assert public_app.openapi_url == "/openapi.json"  # Schema available
-        
+    
         >>> # Lifecycle management is configured
         >>> assert public_app.router.lifespan_context is not None
-        
+    
         >>> # Utility redirects are available for compatibility
         >>> # GET /health -> 301 redirect to /v1/health
         >>> # GET /auth/status -> 301 redirect to /v1/auth/status
@@ -497,7 +495,7 @@ def create_public_app() -> FastAPI:
     ...
 
 
-def create_app(settings_obj: Optional['Settings'] = None, include_routers: bool = True, include_middleware: bool = True, lifespan: Optional[Callable] = None) -> FastAPI:
+def create_app(settings_obj: Optional['Settings'] = None, include_routers: bool = True, include_middleware: bool = True, lifespan: Callable | None = None) -> FastAPI:
     """
     Factory function to create a fresh FastAPI application instance with comprehensive configuration.
     
@@ -659,7 +657,7 @@ def create_app(settings_obj: Optional['Settings'] = None, include_routers: bool 
     ...
 
 
-def create_public_app_with_settings(settings_obj: 'Settings', include_routers: bool = True, include_middleware: bool = True, lifespan: Optional[Callable] = None) -> FastAPI:
+def create_public_app_with_settings(settings_obj: 'Settings', include_routers: bool = True, include_middleware: bool = True, lifespan: Callable | None = None) -> FastAPI:
     """
     Factory function for creating the public FastAPI application with explicit settings.
     
@@ -711,7 +709,7 @@ def create_internal_app() -> FastAPI:
         FastAPI: Fully configured internal API application instance containing:
                 - Comprehensive system monitoring endpoints with real-time metrics
                 - Cache infrastructure management with performance optimization tools
-                - Advanced resilience configuration and monitoring capabilities  
+                - Advanced resilience configuration and monitoring capabilities
                 - Security-aware documentation access with production mode restrictions
                 - Professional API organization with detailed endpoint categorization
                 - Custom OpenAPI schema generation with cleaned component definitions
@@ -723,37 +721,37 @@ def create_internal_app() -> FastAPI:
         - Configures security-aware documentation with production mode restrictions
         - Sets up professional API tags with detailed operational descriptions
         - Implements OpenAPI 3.0.3 specification for modern tooling compatibility
-        
+    
         **Security and Access Control:**
         - Disables documentation endpoints in production mode for security hardening
         - Restricts OpenAPI schema access based on environment configuration
         - Implements proper security boundaries between internal and external access
         - Provides controlled access to sensitive operational information
-        
+    
         **Endpoint Organization:**
         - Organizes endpoints into logical categories (monitoring, cache, resilience)
         - Provides comprehensive resilience management across multiple specialized routers
         - Implements extensive monitoring capabilities with real-time system visibility
         - Offers cache management tools for performance optimization and troubleshooting
-        
+    
         **Documentation Enhancement:**
         - Implements custom Swagger UI with cross-API navigation capabilities
         - Applies clean OpenAPI schema generation without default validation clutter
         - Provides professional styling and responsive design for operational tools
         - Includes comprehensive endpoint metadata and operational guidance
-        
+    
         **Router Integration:**
         - Integrates system monitoring router with health checks and performance metrics
         - Includes cache management router with status monitoring and optimization tools
         - Registers comprehensive resilience management across 8 specialized router categories
         - Provides unified operational interface across all infrastructure components
-        
+    
     Examples:
         >>> # Create internal application with full configuration
         >>> internal_app = create_internal_app()
         >>> assert internal_app.title == "AI Text Processor - Internal API"
         >>> assert "Internal" in internal_app.title
-        
+    
         >>> # Security-aware documentation configuration
         >>> if settings.debug:
         ...     assert internal_app.docs_url is None  # Custom docs endpoint
@@ -762,14 +760,14 @@ def create_internal_app() -> FastAPI:
         ... else:
         ...     assert internal_app.redoc_url is None  # Disabled in production
         ...     assert internal_app.openapi_url is None  # Disabled in production
-        
+    
         >>> # Comprehensive router integration
         >>> routes = [route.path for route in internal_app.routes]
         >>> assert "/" in routes  # Internal root endpoint
         >>> assert any("/monitoring" in path for path in routes)  # System monitoring
         >>> assert any("/cache" in path for path in routes)  # Cache management
         >>> assert any("/resilience" in path for path in routes)  # Resilience management
-        
+    
         >>> # API tag organization for operational clarity
         >>> tag_names = [tag["name"] for tag in internal_app.openapi_tags]
         >>> assert "System Monitoring" in tag_names

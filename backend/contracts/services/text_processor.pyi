@@ -115,8 +115,7 @@ The service provides comprehensive metrics and health checks:
 import time
 import asyncio
 import uuid
-import re
-from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
+from typing import Dict, Any, List, Union, TYPE_CHECKING
 import logging
 from pydantic_ai import Agent
 from app.schemas import TextProcessingOperation, TextProcessingRequest, TextProcessingResponse, SentimentResult, BatchTextProcessingRequest, BatchTextProcessingResponse, BatchTextProcessingItem, BatchTextProcessingStatus
@@ -146,21 +145,21 @@ class TextProcessorService:
         response_validator: Output validator for security and quality assurance of AI responses
         ai_resilience: Resilience orchestrator providing circuit breakers, retry logic, and fallback responses
         concurrency_semaphore: Semaphore for controlling concurrent batch operations and resource management
-        
+    
     Public Methods:
         process_text(): Process single text processing requests with full resilience and caching
         process_batch(): Process multiple requests concurrently with automatic batch management
         _configure_resilience_strategies(): Configure operation-specific resilience strategies
         _get_fallback_response(): Provide fallback responses when AI services are unavailable
         _get_fallback_sentiment(): Generate neutral sentiment when sentiment analysis fails
-        
+    
     State Management:
         - Thread-safe for concurrent request processing across multiple workers
         - Maintains internal state for resilience patterns and circuit breaker status
         - Automatic resource management with proper cleanup and connection handling
         - Immutable configuration after initialization for consistent behavior
         - Integration with monitoring systems for operational visibility
-        
+    
     Behavior:
         - Performs input sanitization on all user-provided text before processing
         - Checks cache for existing responses before making AI API calls
@@ -170,19 +169,19 @@ class TextProcessorService:
         - Provides fallback responses when AI services are unavailable
         - Logs comprehensive processing metrics and security events
         - Supports batch processing with configurable concurrency limits
-        
+    
     Examples:
         >>> # Basic service initialization
         >>> from app.services import TextProcessorService
         >>> from app.core.config import settings
         >>> from app.infrastructure.cache import get_ai_cache_service
-        >>> 
+        >>>
         >>> cache_service = get_ai_cache_service()
         >>> processor = TextProcessorService(settings, cache_service)
-        
+    
         >>> # Single operation processing
         >>> from shared.models import TextProcessingRequest, TextProcessingOperation
-        >>> 
+        >>>
         >>> request = TextProcessingRequest(
         ...     text="Sample text for analysis",
         ...     operation=TextProcessingOperation.SUMMARIZE,
@@ -190,7 +189,7 @@ class TextProcessorService:
         ... )
         >>> response = await processor.process_text(request)
         >>> print(f"Summary: {response.result}")
-        
+    
         >>> # Question-answering with required question parameter
         >>> qa_request = TextProcessingRequest(
         ...     text="Document content to analyze",
@@ -199,10 +198,10 @@ class TextProcessorService:
         ... )
         >>> qa_response = await processor.process_text(qa_request)
         >>> print(f"Answer: {qa_response.result}")
-        
+    
         >>> # Batch processing with automatic concurrency control
         >>> from shared.models import BatchTextProcessingRequest
-        >>> 
+        >>>
         >>> batch_request = BatchTextProcessingRequest(
         ...     requests=[
         ...         TextProcessingRequest(text="Text 1", operation="summarize"),
@@ -234,16 +233,16 @@ class TextProcessorService:
             - Creates concurrency semaphore for batch processing resource management
             - Registers operation-specific resilience strategies from configuration
             - Prepares logging infrastructure for comprehensive request tracking
-            
+        
         Raises:
             ConfigurationError: If required settings are missing or invalid
             InfrastructureError: If cache service initialization fails
             ValueError: If AI model configuration is invalid
-            
+        
         Examples:
             >>> # Basic initialization with default settings
             >>> processor = TextProcessorService(settings, cache_service)
-            
+        
             >>> # Initialization with custom resilience configuration
             >>> custom_settings = Settings(
             ...     gemini_api_key="your-api-key",

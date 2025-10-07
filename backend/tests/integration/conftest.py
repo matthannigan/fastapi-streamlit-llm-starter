@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
 
 # Disable rate limiting during integration tests
-os.environ['RATE_LIMITING_ENABLED'] = 'false'
+os.environ["RATE_LIMITING_ENABLED"] = "false"
 
 from app.main import create_app
 
@@ -31,7 +31,6 @@ def setup_testing_environment_for_all_integration_tests(monkeypatch):
     monkeypatch.setenv("REDIS_INSECURE_ALLOW_PLAINTEXT", "true")
     monkeypatch.setenv("REDIS_ENCRYPTION_KEY", "gL/jVnZqgV5uKb/hYq1Jb3d8cZ5fJg6nO8r/d3gH2wA=")
 
-    yield
 
 
 @pytest.fixture(scope="function")
@@ -43,11 +42,10 @@ def production_environment_integration(monkeypatch):
     This prevents environment pollution that was causing flaky tests.
     """
     # Set production environment with test API keys using monkeypatch
-    monkeypatch.setenv('ENVIRONMENT', 'production')
-    monkeypatch.setenv('API_KEY', 'test-api-key-12345')
-    monkeypatch.setenv('ADDITIONAL_API_KEYS', 'test-key-2,test-key-3')
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-api-key-12345")
+    monkeypatch.setenv("ADDITIONAL_API_KEYS", "test-key-2,test-key-3")
 
-    yield
 
     # monkeypatch automatically cleans up after test
 
@@ -184,14 +182,14 @@ def validate_environment_state():
                 })
 
         if polluted:
-            print(f"\n⚠️  ENVIRONMENT POLLUTION DETECTED:")
+            print("\n⚠️  ENVIRONMENT POLLUTION DETECTED:")
             for item in polluted:
                 print(f"   {item['variable']}: '{item['initial']}' → '{item['current']}'")
-            print(f"   This may cause test flakiness!")
+            print("   This may cause test flakiness!")
 
         return len(polluted) == 0
 
-    yield {
+    return {
         "get_initial_state": lambda: initial_state.copy(),
         "get_current_state": get_current_state,
         "validate_no_pollution": validate_no_pollution,
@@ -224,7 +222,7 @@ def environment_state_monitor(validate_environment_state):
     is_clean = validate_environment_state["validate_no_pollution"]()
     if not is_clean:
         # Add warning without failing the test
-        print(f"\n🔍 Environment state monitoring detected changes - check test isolation")
+        print("\n🔍 Environment state monitoring detected changes - check test isolation")
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -256,7 +254,7 @@ def environment_state_guard():
             changes.append(f"{var}: '{before_state[var]}' → '{after_state[var]}'")
 
     if changes:
-        print(f"\n🔍 Environment state changes detected:")
+        print("\n🔍 Environment state changes detected:")
         for change in changes:
             print(f"   {change}")
-        print(f"   Note: This may be expected if test intentionally modifies environment")
+        print("   Note: This may be expected if test intentionally modifies environment")

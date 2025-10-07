@@ -142,9 +142,9 @@ class CacheKeyGenerator:
     def __init__(
         self,
         text_hash_threshold: int = 1000,
-        hash_algorithm=hashlib.sha256,
+        hash_algorithm: Any = hashlib.sha256,
         performance_monitor: Optional["CachePerformanceMonitor"] = None,
-    ):
+    ) -> None:
         """Initialize CacheKeyGenerator with configurable parameters.
 
         Args:
@@ -187,8 +187,8 @@ class CacheKeyGenerator:
         hasher.update(text.encode("utf-8"))
 
         # Add text metadata for uniqueness and debugging
-        hasher.update(f"len:{len(text)}".encode("utf-8"))
-        hasher.update(f"words:{len(text.split())}".encode("utf-8"))
+        hasher.update(f"len:{len(text)}".encode())
+        hasher.update(f"words:{len(text.split())}".encode())
 
         # Return shorter hash for efficiency (16 chars should be sufficient for uniqueness)
         return f"hash:{hasher.hexdigest()[:16]}"

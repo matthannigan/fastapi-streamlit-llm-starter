@@ -49,7 +49,7 @@ import os
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -159,11 +159,11 @@ class CacheConfig:
     strategy: CacheStrategy = CacheStrategy.BALANCED
 
     # Redis configuration
-    redis_url: Optional[str] = None
-    redis_password: Optional[str] = None
+    redis_url: str | None = None
+    redis_password: str | None = None
     use_tls: bool = False
-    tls_cert_path: Optional[str] = None
-    tls_key_path: Optional[str] = None
+    tls_cert_path: str | None = None
+    tls_key_path: str | None = None
     max_connections: int = 10
     connection_timeout: int = 5
 
@@ -224,11 +224,11 @@ class CacheConfig:
                     connection_timeout=config_dict["connection_timeout"],
                     max_retries=3,  # Default retry attempts
                 )
-            except ImportError as e:
+            except ImportError:
                 # SecurityConfig not available, fall back to individual parameters
                 # This maintains compatibility during development/testing
                 security_config = None
-            except Exception as e:
+            except Exception:
                 # SecurityConfig creation failed, fall back to individual parameters
                 security_config = None
 
@@ -734,7 +734,7 @@ class CachePresetManager:
 
         return True
 
-    def recommend_preset(self, environment: Optional[str] = None) -> str:
+    def recommend_preset(self, environment: str | None = None) -> str:
         """
         Recommend appropriate preset for given environment.
 
@@ -749,7 +749,7 @@ class CachePresetManager:
         return recommendation.preset_name
 
     def recommend_preset_with_details(
-        self, environment: Optional[str] = None
+        self, environment: str | None = None
     ) -> EnvironmentRecommendation:
         """
         Get detailed environment-aware preset recommendation.
@@ -876,26 +876,25 @@ class CachePresetManager:
                 preset_name = "simple"
                 reasoning = "No clear environment indicators found, using simple preset as safe default"
                 environment_detected = "unknown (auto-detected)"
-        else:
-            # Apply AI-specific preset selection for normal cases
-            if enable_ai:
-                ai_preset = f"ai-{base_preset}"
-                if ai_preset in self.presets:
-                    preset_name = ai_preset
-                    reasoning = f"{env_info.reasoning} with AI cache features enabled"
-                    environment_detected = (
-                        f"{env_info.environment} (auto-detected, AI-enabled)"
-                    )
-                else:
-                    preset_name = base_preset
-                    reasoning = f"{env_info.reasoning} (AI preset not available, using base preset)"
-                    environment_detected = (
-                        f"{env_info.environment} (auto-detected, fallback)"
-                    )
+        # Apply AI-specific preset selection for normal cases
+        elif enable_ai:
+            ai_preset = f"ai-{base_preset}"
+            if ai_preset in self.presets:
+                preset_name = ai_preset
+                reasoning = f"{env_info.reasoning} with AI cache features enabled"
+                environment_detected = (
+                    f"{env_info.environment} (auto-detected, AI-enabled)"
+                )
             else:
                 preset_name = base_preset
-                reasoning = env_info.reasoning
-                environment_detected = f"{env_info.environment} (auto-detected)"
+                reasoning = f"{env_info.reasoning} (AI preset not available, using base preset)"
+                environment_detected = (
+                    f"{env_info.environment} (auto-detected, fallback)"
+                )
+        else:
+            preset_name = base_preset
+            reasoning = env_info.reasoning
+            environment_detected = f"{env_info.environment} (auto-detected)"
 
         # Special handling for AI environment detection via ENVIRONMENT variable
         # Preserve original AI detection behavior for backward compatibility
@@ -915,17 +914,16 @@ class CachePresetManager:
                     reasoning=reasoning,
                     environment_detected=environment_detected,
                 )
-            else:
-                preset_name = "ai-development"
-                reasoning = f"Explicit AI development environment from ENVIRONMENT={os.getenv('ENVIRONMENT')}"
-                environment_detected = f"{os.getenv('ENVIRONMENT')} (auto-detected)"
-                # Match original confidence for explicit AI environments
-                return EnvironmentRecommendation(
-                    preset_name=preset_name,
-                    confidence=0.90,  # Match original high confidence for explicit AI environments
-                    reasoning=reasoning,
-                    environment_detected=environment_detected,
-                )
+            preset_name = "ai-development"
+            reasoning = f"Explicit AI development environment from ENVIRONMENT={os.getenv('ENVIRONMENT')}"
+            environment_detected = f"{os.getenv('ENVIRONMENT')} (auto-detected)"
+            # Match original confidence for explicit AI environments
+            return EnvironmentRecommendation(
+                preset_name=preset_name,
+                confidence=0.90,  # Match original high confidence for explicit AI environments
+                reasoning=reasoning,
+                environment_detected=environment_detected,
+            )
 
         return EnvironmentRecommendation(
             preset_name=preset_name,

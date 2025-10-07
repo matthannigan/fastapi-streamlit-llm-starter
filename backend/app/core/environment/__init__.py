@@ -175,14 +175,14 @@ from .api import (
 )
 
 __all__ = [
-    'Environment',
-    'FeatureContext',
-    'EnvironmentSignal',
-    'EnvironmentInfo',
-    'DetectionConfig',
-    'EnvironmentDetector',
-    'environment_detector',
-    'get_environment_info',
-    'is_production_environment',
-    'is_development_environment',
+    "DetectionConfig",
+    "Environment",
+    "EnvironmentDetector",
+    "EnvironmentInfo",
+    "EnvironmentSignal",
+    "FeatureContext",
+    "environment_detector",
+    "get_environment_info",
+    "is_development_environment",
+    "is_production_environment",
 ]

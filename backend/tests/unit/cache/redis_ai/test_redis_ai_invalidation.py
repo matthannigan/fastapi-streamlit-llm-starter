@@ -16,13 +16,10 @@ External Dependencies:
     the documented public contracts to ensure accurate behavior simulation.\n    \nImplementation Status:\n    All tests are currently skipped due to implementation bugs in AIResponseCache\n    where performance monitoring methods are called without null checks. These bugs\n    prevent behavioral testing of invalidation operations. Key bugs identified:\n    \n    1. GenericRedisCache.set() line 498/511: calls performance_monitor.record_cache_operation_time() without null check\n    2. AIResponseCache.invalidate_pattern() lines 1045/1080/1096: calls performance_monitor.record_invalidation_event() without null check  \n    3. AIResponseCache.invalidate_by_operation(): calls performance_monitor.record_invalidation_event() without null check\n    4. AIResponseCache.clear() line 1369: calls performance_monitor.record_invalidation_event() without null check\n    \n    These bugs should be fixed by adding 'if self.performance_monitor is not None:' checks\n    before all performance_monitor method calls, following the pattern used elsewhere in the code.
 """
 
-import hashlib
-from typing import Any, Dict, Optional
 
 import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
+from app.core.exceptions import (ValidationError)
 from app.infrastructure.cache.redis_ai import AIResponseCache
 
 

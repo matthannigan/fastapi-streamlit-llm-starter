@@ -54,30 +54,29 @@ Note:
 
 from typing import Dict, Any
 import html
-from typing import Optional
 
 
 def escape_user_input(user_input: str) -> str:
     """
     Escape user input for safe embedding in LLM prompt templates using HTML entity encoding.
-    
+
     Provides defense against prompt injection attacks by converting special characters to their
     HTML entity equivalents, preventing them from being interpreted as template control characters
     or prompt manipulation instructions by the LLM.
-    
+
     Args:
         user_input: Raw user input string requiring escaping for prompt safety. Must be string type,
                    non-string inputs raise TypeError for explicit error handling.
-                   
+
     Returns:
         HTML-escaped string safe for embedding in prompt templates with:
         - Special characters (<, >, &, ', ") converted to HTML entities
         - Original text meaning preserved while preventing injection
         - Structure suitable for safe template substitution
-        
+
     Raises:
         TypeError: When user_input is not a string type, ensuring type safety
-        
+
     Behavior:
         - Applies standard HTML entity encoding to all special characters
         - Preserves original text content and readability for LLM processing
@@ -85,20 +84,20 @@ def escape_user_input(user_input: str) -> str:
         - Returns empty string unchanged (no escaping needed)
         - Thread-safe operation for concurrent prompt building
         - Validates input type explicitly for security and debugging
-        
+
     Examples:
         >>> # Basic HTML character escaping
         >>> escape_user_input("Hello <script>alert('xss')</script>")
         "Hello &lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"
-        
+
         >>> # Ampersand and quote escaping
         >>> escape_user_input("Tom & Jerry's \"great\" adventure")
         "Tom &amp; Jerry&#x27;s &quot;great&quot; adventure"
-        
+
         >>> # Empty input handling
         >>> escape_user_input("")
         ""
-        
+
         >>> # Error handling for invalid input
         >>> escape_user_input(None)
         Traceback (most recent call last):
@@ -107,14 +106,14 @@ def escape_user_input(user_input: str) -> str:
     """
     if not isinstance(user_input, str):
         raise TypeError(f"user_input must be a string, got {type(user_input)}")
-    
-    return html.escape(user_input) 
+
+    return html.escape(user_input)
 
 
 # Template dictionary with structured prompt templates
 PROMPT_TEMPLATES: Dict[str, str] = {
     "summarize": """<system_instruction>
-You are a helpful AI assistant that specializes in creating concise, accurate summaries. 
+You are a helpful AI assistant that specializes in creating concise, accurate summaries.
 Please analyze the following user-provided text and create a clear summary that captures the key points.
 </system_instruction>
 
@@ -208,17 +207,17 @@ Please analyze the text above and provide:
 }
 
 
-def create_safe_prompt(template_name: str, user_input: str, **kwargs) -> str:
+def create_safe_prompt(template_name: str, user_input: str, **kwargs: Any) -> str:
     """
     Create secure LLM prompt by combining template with HTML-escaped user input and validation.
-    
+
     Provides the primary interface for safe prompt construction, automatically handling input
     escaping, template validation, and parameter substitution. Prevents prompt injection attacks
     while enabling flexible prompt customization through template parameters.
-    
+
     Args:
         template_name: Name of prompt template from PROMPT_TEMPLATES. Must be one of:
-                      'summarize', 'sentiment', 'key_points', 'questions', 
+                      'summarize', 'sentiment', 'key_points', 'questions',
                       'question_answer', 'analyze'. Case-sensitive string identifier.
         user_input: Raw user content to embed in prompt. Automatically escaped for safety.
                    Can contain any text content including potential injection attempts.
@@ -226,20 +225,20 @@ def create_safe_prompt(template_name: str, user_input: str, **kwargs) -> str:
                  - additional_instructions (str): Optional task-specific guidance
                  - user_question (str): Required for 'question_answer' template
                  - Other template-specific placeholders as needed
-                 
+
     Returns:
         Complete formatted prompt string with:
         - Selected template structure with system and task instructions
         - User input safely escaped and embedded between delimiters
         - Additional parameters properly substituted
         - Trimmed whitespace for clean formatting
-        
+
     Raises:
         ValueError: When template_name not found in available templates, includes
                    list of valid template names for debugging
         KeyError: When required template placeholder missing from kwargs, includes
                  available placeholders for the specific template
-        
+
     Behavior:
         - Validates template name against available templates before processing
         - Automatically escapes all user input using HTML entity encoding
@@ -248,18 +247,18 @@ def create_safe_prompt(template_name: str, user_input: str, **kwargs) -> str:
         - Performs template formatting with comprehensive error handling
         - Returns trimmed prompt ready for LLM processing
         - Thread-safe operation for concurrent prompt generation
-        
+
     Examples:
         >>> # Basic summarization prompt
         >>> prompt = create_safe_prompt(
-        ...     "summarize", 
+        ...     "summarize",
         ...     "This is <script>alert('xss')</script> content"
         ... )
         >>> "&lt;script&gt;" in prompt
         True
         >>> "---USER TEXT START---" in prompt
         True
-        
+
         >>> # Question answering with custom instructions
         >>> qa_prompt = create_safe_prompt(
         ...     "question_answer",
@@ -269,13 +268,13 @@ def create_safe_prompt(template_name: str, user_input: str, **kwargs) -> str:
         ... )
         >>> "supervised learning" in qa_prompt
         True
-        
+
         >>> # Error handling for invalid template
         >>> create_safe_prompt("invalid_template", "text")
         Traceback (most recent call last):
             ...
         ValueError: Unknown template name 'invalid_template'...
-        
+
         >>> # Sentiment analysis with structured output
         >>> sentiment_prompt = create_safe_prompt(
         ...     "sentiment",
@@ -291,28 +290,28 @@ def create_safe_prompt(template_name: str, user_input: str, **kwargs) -> str:
             f"Unknown template name '{template_name}'. "
             f"Available templates: {available_templates}"
         )
-    
+
     # Get the template
     template = PROMPT_TEMPLATES[template_name]
-    
+
     # Escape user input for safety
     escaped_input = escape_user_input(user_input)
-    
+
     # Prepare formatting arguments
     format_args = {
         "escaped_user_input": escaped_input,
         **kwargs
     }
-    
+
     # Set default values for optional placeholders
     if "additional_instructions" not in format_args:
         format_args["additional_instructions"] = ""
-    
+
     # Handle special case for question_answer template
     if template_name == "question_answer" and "user_question" in kwargs:
         # Escape the user question as well for safety
         format_args["user_question"] = escape_user_input(kwargs["user_question"])
-    
+
     try:
         # Format the template with escaped input and additional arguments
         formatted_prompt = template.format(**format_args)
@@ -327,84 +326,84 @@ def create_safe_prompt(template_name: str, user_input: str, **kwargs) -> str:
 def _get_template_placeholders(template: str) -> list:
     """
     Extract placeholder names from template string for error reporting and validation.
-    
+
     Utility function that parses template strings to identify all placeholder names,
     supporting error messages and template validation. Uses regex pattern matching
     to find standard Python string format placeholders.
-    
+
     Args:
         template: Template string containing {placeholder} format specifiers to analyze
-        
+
     Returns:
         List of unique placeholder names found in template:
         - Extracted from {name} format patterns
         - Deduplicated for unique placeholder identification
         - Ordered by first occurrence in template
-        
+
     Behavior:
         - Uses regex pattern matching to find {word} placeholder patterns
         - Extracts only the placeholder name without braces
         - Returns unique placeholder names (duplicates removed)
         - Empty list for templates without placeholders
         - Thread-safe operation for concurrent template analysis
-        
+
     Examples:
         >>> template = "Hello {name}, your {item} is {status}."
         >>> placeholders = _get_template_placeholders(template)
         >>> set(placeholders) == {'name', 'item', 'status'}
         True
-        
+
         >>> # Template with duplicate placeholders
         >>> template = "User {name} has {count} items. Hello {name}!"
         >>> placeholders = _get_template_placeholders(template)
         >>> sorted(placeholders) == ['count', 'name']
         True
-        
+
         >>> # Template with no placeholders
         >>> _get_template_placeholders("Static text only")
         []
     """
     import re
-    placeholders = re.findall(r'\{(\w+)\}', template)
+    placeholders = re.findall(r"\{(\w+)\}", template)
     return list(set(placeholders))
 
 
 def get_available_templates() -> list:
     """
     Retrieve list of available prompt template names for template selection and validation.
-    
+
     Provides programmatic access to all registered prompt templates, enabling dynamic
     template discovery, validation, and user interface generation for template selection.
-    
+
     Returns:
         List of template name strings available in PROMPT_TEMPLATES:
         - All currently registered template identifiers
         - Suitable for validation and user selection interfaces
         - Consistent with create_safe_prompt() template_name parameter
-        
+
     Behavior:
         - Returns current state of PROMPT_TEMPLATES dictionary keys
         - List order matches dictionary key iteration order
         - No filtering or sorting applied to preserve registration order
         - Thread-safe access to template registry
         - Suitable for runtime template discovery and validation
-        
+
     Examples:
         >>> templates = get_available_templates()
         >>> 'summarize' in templates
         True
-        >>> 'sentiment' in templates  
+        >>> 'sentiment' in templates
         True
         >>> len(templates) >= 6  # At least 6 built-in templates
         True
-        
+
         >>> # Template validation usage
         >>> user_template = "analyze"
         >>> if user_template in get_available_templates():
         ...     prompt = create_safe_prompt(user_template, "content")
-        
-        >>> # UI generation usage  
+
+        >>> # UI generation usage
         >>> for template in get_available_templates():
         ...     print(f"Available template: {template}")
     """
-    return list(PROMPT_TEMPLATES.keys()) 
+    return list(PROMPT_TEMPLATES.keys())

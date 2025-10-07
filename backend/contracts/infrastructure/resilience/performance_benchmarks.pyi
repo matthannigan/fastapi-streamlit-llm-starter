@@ -10,11 +10,10 @@ import json
 import os
 import statistics
 import tracemalloc
-from typing import Dict, List, Optional, NamedTuple, Any, Callable
-from dataclasses import dataclass, asdict
+from typing import Dict, List, NamedTuple, Any, Callable
+from dataclasses import dataclass
 from enum import Enum
 import logging
-from contextlib import contextmanager
 
 
 class BenchmarkResult(NamedTuple):
@@ -121,7 +120,7 @@ class ConfigurationPerformanceBenchmark:
         >>> assert preset_result.avg_duration_ms < 100  # Should meet target
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the performance benchmark suite with empty result storage.
         
@@ -139,7 +138,7 @@ class ConfigurationPerformanceBenchmark:
         """
         ...
 
-    def measure_performance(self, operation_name: str, operation_func: Callable, iterations: int = 1):
+    def measure_performance(self, operation_name: str, operation_func: Callable, iterations: int = 1) -> BenchmarkResult:
         """
         Measure operation performance with comprehensive timing and memory tracking.
         
@@ -215,7 +214,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for preset loading
         """
@@ -227,7 +226,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for settings initialization
         """
@@ -239,7 +238,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for config loading
         """
@@ -251,7 +250,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for service initialization
         """
@@ -263,7 +262,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for custom config loading
         """
@@ -275,7 +274,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for legacy config loading
         """
@@ -287,7 +286,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             iterations: Number of iterations to run
-            
+        
         Returns:
             BenchmarkResult for validation performance
         """
@@ -357,7 +356,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             historical_results: List of previous benchmark suite results
-            
+        
         Returns:
             Performance trend analysis
         """
@@ -369,7 +368,7 @@ class ConfigurationPerformanceBenchmark:
         
         Args:
             suite: BenchmarkSuite to generate report for
-            
+        
         Returns:
             Formatted performance report
         """

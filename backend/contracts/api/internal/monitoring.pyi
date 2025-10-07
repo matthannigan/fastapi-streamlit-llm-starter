@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Monitoring System Health API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides comprehensive FastAPI endpoints for monitoring the health and
@@ -23,7 +23,7 @@ The health endpoint performs checks on three critical monitoring components:
    - Monitors operation tracking and recent data availability
    - Validates performance metrics collection integrity
 
-2. **Cache Service Monitoring**: Verifies cache service health and connectivity  
+2. **Cache Service Monitoring**: Verifies cache service health and connectivity
    - Validates Redis connectivity via `cache_service.get_cache_stats()`
    - Monitors memory usage tracking capabilities
    - Checks cache service operational status
@@ -164,6 +164,7 @@ testing for any modifications.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Any
 from app.infrastructure.security.auth import optional_verify_api_key
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
@@ -174,7 +175,7 @@ monitoring_router = APIRouter(prefix='/monitoring', tags=['System Monitoring'])
 
 
 @monitoring_router.get('/health')
-async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key), cache_service: AIResponseCache = Depends(get_cache_service)):
+async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key), cache_service: AIResponseCache = Depends(get_cache_service)) -> Dict[str, Any]:
     """
     Comprehensive monitoring infrastructure health assessment endpoint with multi-component validation.
     
@@ -212,25 +213,25 @@ async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key),
         - Validates monitoring system capabilities and operational readiness
         - Provides comprehensive component-level status assessment with isolation
         - Enables monitoring system observability and operational diagnostics
-        
+    
         **Component Health Validation:**
         - Assesses cache performance monitor functionality and data collection capabilities
         - Validates cache service monitoring interfaces and connectivity status
         - Evaluates resilience monitoring systems including circuit breaker and retry metrics
         - Performs isolated component checks with individual error handling and recovery
-        
+    
         **Graceful Degradation Patterns:**
         - Continues operation when individual monitoring components experience failures
         - Provides detailed component-level error information for troubleshooting
         - Maintains overall monitoring health assessment even with partial component failures
         - Implements cascading health status determination based on component availability
-        
+    
         **Operational Integration:**
         - Supports integration with external monitoring systems and alerting platforms
         - Provides structured response format optimized for automated monitoring tools
         - Enables monitoring system health dashboards and operational visibility
         - Maintains backward compatibility with existing monitoring infrastructure
-        
+    
         **Security and Access Control:**
         - Implements optional authentication for flexible access control requirements
         - Maintains security for production environments while supporting development scenarios
@@ -245,14 +246,14 @@ async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key),
         >>> health = response.json()
         >>> assert health["status"] in ["healthy", "degraded", "unhealthy"]
         >>> assert "components" in health and "timestamp" in health
-        
+    
         >>> # Component-level health validation
         >>> components = health["components"]
         >>> cache_monitor = components.get("cache_performance_monitor", {})
         >>> if cache_monitor["status"] == "healthy":
         ...     assert "total_operations_tracked" in cache_monitor
         ...     assert "has_recent_data" in cache_monitor
-        
+    
         >>> # Monitoring endpoint discovery
         >>> available_endpoints = health["available_endpoints"]
         >>> expected_endpoints = [
@@ -261,12 +262,12 @@ async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key),
         ...     "GET /internal/resilience/health"
         ... ]
         >>> assert all(endpoint in available_endpoints for endpoint in expected_endpoints)
-        
+    
         >>> # Operational dashboard integration
         >>> async def monitoring_system_status():
         ...     health_response = await client.get("/internal/monitoring/health")
         ...     health_data = health_response.json()
-        ...     
+        ...
         ...     status_indicators = {}
         ...     for component, details in health_data["components"].items():
         ...         if details["status"] == "healthy":
@@ -275,19 +276,19 @@ async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key),
         ...             status_indicators[component] = "⚠️"
         ...         else:
         ...             status_indicators[component] = "❌"
-        ...     
+        ...
         ...     return {
         ...         "overall": health_data["status"],
         ...         "components": status_indicators,
         ...         "last_check": health_data["timestamp"]
         ...     }
-        
+    
         >>> # Automated monitoring system integration
         >>> async def monitor_infrastructure_health():
         ...     try:
         ...         response = await client.get("/internal/monitoring/health")
         ...         health_data = response.json()
-        ...         
+        ...
         ...         if health_data["status"] == "unhealthy":
         ...             await send_critical_alert("Monitoring infrastructure unhealthy")
         ...         elif health_data["status"] == "degraded":
@@ -296,29 +297,29 @@ async def get_monitoring_health(api_key: str = Depends(optional_verify_api_key),
         ...                 if details["status"] != "healthy"
         ...             ]
         ...             await send_warning_alert(f"Degraded components: {degraded_components}")
-        ...         
+        ...
         ...         return health_data
         ...     except Exception as e:
         ...         await send_alert(f"Monitoring health check failed: {e}")
         ...         return None
-        
+    
         >>> # Development and testing integration
         >>> def validate_monitoring_infrastructure():
         ...     health = client.get("/internal/monitoring/health").json()
-        ...     
+        ...
         ...     # Validate required components are present
         ...     required_components = [
         ...         "cache_performance_monitor",
-        ...         "cache_service_monitoring", 
+        ...         "cache_service_monitoring",
         ...         "resilience_monitoring"
         ...     ]
         ...     for component in required_components:
         ...         assert component in health["components"]
-        ...     
+        ...
         ...     # Validate endpoint availability
         ...     assert len(health["available_endpoints"]) >= 3
         ...     return True
-        
+    
         >>> # Graceful degradation verification
         >>> # When cache performance monitor fails but other components work
         >>> health = response.json()

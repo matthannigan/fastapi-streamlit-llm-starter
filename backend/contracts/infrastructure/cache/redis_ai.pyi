@@ -136,7 +136,7 @@ import logging
 import time
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from unittest.mock import MagicMock
 from app.core.exceptions import ConfigurationError, InfrastructureError, ValidationError
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
@@ -215,7 +215,7 @@ class AIResponseCache(GenericRedisCache):
         and will generate deprecation warnings. Security is always enabled.
     """
 
-    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Optional[Dict[str, int]] = None, memory_cache_size: Optional[int] = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: Optional[CachePerformanceMonitor] = None, operation_ttls: Optional[Dict[str, int]] = None, **kwargs):
+    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, compression_threshold: int = 1000, compression_level: int = 6, text_size_tiers: Dict[str, int] | None = None, memory_cache_size: int | None = None, l1_cache_size: int = 100, enable_l1_cache: bool = True, performance_monitor: CachePerformanceMonitor | None = None, operation_ttls: Dict[str, int] | None = None, **kwargs):
         """
         Initialize AIResponseCache with automatic security inheritance.
         

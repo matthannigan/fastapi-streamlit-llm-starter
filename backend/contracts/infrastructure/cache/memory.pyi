@@ -193,7 +193,7 @@ Version Compatibility:
 import logging
 import sys
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.key_generator import CacheKeyGenerator
@@ -286,7 +286,7 @@ class InMemoryCache(CacheInterface):
         """
         ...
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Set a value in cache with optional TTL (implements CacheInterface).
         
@@ -360,7 +360,7 @@ class InMemoryCache(CacheInterface):
         """
         ...
 
-    async def get_ttl(self, key: str) -> Optional[int]:
+    async def get_ttl(self, key: str) -> int | None:
         """
         Get the remaining time-to-live for a key.
         

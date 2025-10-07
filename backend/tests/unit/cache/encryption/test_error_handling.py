@@ -859,7 +859,6 @@ class TestDecryptCacheDataErrorHandling:
         """
         # This test requires integration testing approach with real components
         # instead of unit testing with mocks to properly verify the behavior
-        pass
 
 
 class TestErrorMessageQuality:

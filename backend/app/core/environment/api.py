@@ -18,19 +18,23 @@ from .enums import Environment, FeatureContext
 from .models import EnvironmentInfo
 from .detector import EnvironmentDetector
 
+# Testing: Use context-local storage for automatic test isolation
+# Each test context gets its own detector instance that doesn't pollute other tests
+_detector_context: contextvars.ContextVar[EnvironmentDetector | None] | None = None
+environment_detector: EnvironmentDetector | None = None
+
 # Detect pytest at import time (same pattern as config.py)
 _IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
 
 if _IS_PYTEST:
-    # Testing: Use context-local storage for automatic test isolation
-    # Each test context gets its own detector instance that doesn't pollute other tests
-    _detector_context = contextvars.ContextVar('environment_detector', default=None)
-    environment_detector = None  # No global instance in tests
+    # Initialize context-local storage for tests
+    _detector_context = contextvars.ContextVar("environment_detector", default=None)
+    # No global detector instance in tests
 else:
     # Production: Use global singleton for zero overhead
     # Single shared instance across all requests for optimal performance
     environment_detector = EnvironmentDetector()
-    _detector_context = None
+    # No context storage needed in production
 
 
 def get_environment_info(feature_context: FeatureContext = FeatureContext.DEFAULT) -> EnvironmentInfo:
@@ -88,15 +92,16 @@ def get_environment_info(feature_context: FeatureContext = FeatureContext.DEFAUL
     if _IS_PYTEST:
         # Test mode: Get or create context-local detector instance
         # Each test context gets its own detector that doesn't pollute other tests
-        detector = _detector_context.get()
+        # _detector_context is guaranteed to be not None in test mode
+        detector = _detector_context.get()  # type: ignore[union-attr]
         if detector is None:
             # Lazy initialization per context
             detector = EnvironmentDetector()
-            _detector_context.set(detector)
+            _detector_context.set(detector)  # type: ignore[union-attr]
         return detector.detect_with_context(feature_context)
-    else:
-        # Production mode: Use global singleton for optimal performance
-        return environment_detector.detect_with_context(feature_context)
+    # Production mode: Use global singleton for optimal performance
+    # environment_detector is guaranteed to be EnvironmentDetector in production mode
+    return environment_detector.detect_with_context(feature_context)  # type: ignore[union-attr]
 
 
 def is_production_environment(feature_context: FeatureContext = FeatureContext.DEFAULT) -> bool:

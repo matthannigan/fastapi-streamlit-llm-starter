@@ -5,14 +5,13 @@ validating the critical application integration points for FastAPI startup, shut
 and health monitoring reliability.
 
 Focus on testing observable behaviors through public dependency interfaces rather than
-internal implementation details. Tests validate the contracts defined in 
+internal implementation details. Tests validate the contracts defined in
 backend/contracts/infrastructure/cache/dependencies.pyi for production confidence.
 
 Since these are contract-based tests, we test the expected behaviors as specified
 in the public interface contracts without importing implementation details.
 """
 
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

@@ -216,7 +216,7 @@ The module provides extensive customization capabilities:
 import os
 import sys
 import logging
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Dict, Any, TYPE_CHECKING
 from fastapi import Depends, status, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
@@ -237,8 +237,8 @@ security = HTTPBearer(auto_error=False)
 
 def get_api_key_from_request(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
-) -> tuple[Optional[str], str]:
+    bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security)
+) -> tuple[str | None, str]:
     """
     Extract API key from either Authorization Bearer or X-API-Key header.
 
@@ -320,28 +320,28 @@ class AuthConfig:
             def supports_custom_feature(self) -> bool:
                 return not self.simple_mode
     """
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         # Can be overridden via environment variable
         self.simple_mode: bool = os.getenv("AUTH_MODE", "simple").lower() == "simple"
         self.enable_user_tracking: bool = os.getenv("ENABLE_USER_TRACKING", "false").lower() == "true"
         self.enable_request_logging: bool = os.getenv("ENABLE_REQUEST_LOGGING", "false").lower() == "true"
-    
+
     @property
     def supports_user_context(self) -> bool:
         """Check if advanced user context is supported."""
         return not self.simple_mode
-    
+
     @property
     def supports_permissions(self) -> bool:
         """Check if permission-based access control is supported."""
         return not self.simple_mode
-    
+
     @property
     def supports_rate_limiting(self) -> bool:
         """Check if rate limiting is supported."""
         return not self.simple_mode
-    
+
     def get_auth_info(self) -> Dict[str, Any]:
         """Get current authentication configuration info."""
         return {
@@ -419,8 +419,8 @@ class APIKeyAuth:
             "method": "POST"
         })
     """
-    
-    def __init__(self, auth_config: Optional[AuthConfig] = None):
+
+    def __init__(self, auth_config: AuthConfig | None = None):
         self.config = auth_config or AuthConfig()
 
         # Extension point: metadata can be added for advanced auth
@@ -430,11 +430,11 @@ class APIKeyAuth:
 
         # Environment-aware authentication with production validation
         self._validate_production_security()
-    
+
     def _load_api_keys(self) -> set:
         """Load API keys from environment variables."""
         api_keys = set()
-        
+
         # Primary API key - trim whitespace for consistency
         primary_key = settings.api_key
         if primary_key:
@@ -448,13 +448,13 @@ class APIKeyAuth:
                         "created_at": "system",
                         "permissions": ["read", "write"]  # Default permissions
                     }
-        
+
         # Additional API keys (comma-separated)
         additional_keys = settings.additional_api_keys
         if additional_keys:
             keys = [key.strip() for key in additional_keys.split(",") if key.strip()]
             api_keys.update(keys)
-            
+
             # Extension point: add metadata for additional keys
             if self.config.enable_user_tracking:
                 for key in keys:
@@ -463,14 +463,14 @@ class APIKeyAuth:
                         "created_at": "system",
                         "permissions": ["read", "write"]
                     }
-        
+
         if not api_keys:
             _IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
             if not _IS_PYTEST:
                 logger.warning("No API keys configured. API endpoints will be unprotected!")
         else:
             logger.info(f"Loaded {len(api_keys)} API key(s) in {self.config.get_auth_info()['mode']} mode")
-        
+
         return api_keys
 
     def _validate_production_security(self) -> None:
@@ -485,7 +485,7 @@ class APIKeyAuth:
         """
         try:
             # Detect environment with security enforcement context
-            env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+            env_info: Any = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
         except Exception as e:
             # Fallback to conservative behavior on environment detection failure
             logger.warning(f"Environment detection failed ({e}), assuming production environment for security")
@@ -535,34 +535,34 @@ class APIKeyAuth:
     def verify_api_key(self, api_key: str) -> bool:
         """Verify if the provided API key is valid."""
         return api_key in self.api_keys
-    
+
     def get_key_metadata(self, api_key: str) -> Dict[str, Any]:
         """Get metadata for an API key (extension point for advanced auth)."""
         if not self.config.enable_user_tracking:
             return {}
         return self._key_metadata.get(api_key, {})
-    
+
     def add_request_metadata(self, api_key: str, request_info: Dict[str, Any]) -> Dict[str, Any]:
         """Add request metadata (extension point for advanced features)."""
         metadata = {"api_key_type": "simple"}
-        
+
         if self.config.enable_user_tracking:
             key_meta = self.get_key_metadata(api_key)
             metadata.update({
                 "key_type": key_meta.get("type", "unknown"),
                 "permissions": key_meta.get("permissions", [])
             })
-        
+
         if self.config.enable_request_logging:
             metadata.update({
                 "timestamp": request_info.get("timestamp", "unknown"),
                 "endpoint": request_info.get("endpoint", "unknown"),
                 "method": request_info.get("method", "unknown")
             })
-        
+
         return metadata
-    
-    def reload_keys(self):
+
+    def reload_keys(self) -> None:
         """
         Reload API keys from environment variables with metadata consistency.
 
@@ -600,8 +600,8 @@ api_key_auth = APIKeyAuth(auth_config)
 
 async def verify_api_key(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    settings: 'Settings' = Depends(get_settings)
+    bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    settings: "Settings" = Depends(get_settings)
 ) -> str:
     """
     Environment-aware FastAPI dependency for API key authentication with production security.
@@ -676,7 +676,7 @@ async def verify_api_key(
     if not valid_api_keys:
         try:
             # Detect environment with security enforcement context
-            env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+            env_info: Any = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
         except Exception as e:
             # Fallback to conservative behavior on environment detection failure
             logger.warning(f"Environment detection failed ({e}), assuming production environment for security")
@@ -761,8 +761,8 @@ async def verify_api_key(
 
 async def verify_api_key_with_metadata(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    settings: 'Settings' = Depends(get_settings)
+    bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    settings: "Settings" = Depends(get_settings)
 ) -> Dict[str, Any]:
     """
     Enhanced dependency that returns API key with metadata (extension point).
@@ -796,9 +796,9 @@ async def verify_api_key_with_metadata(
 
 async def optional_verify_api_key(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    settings: 'Settings' = Depends(get_settings)
-) -> Optional[str]:
+    bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    settings: "Settings" = Depends(get_settings)
+) -> str | None:
     """
     Optional dependency to verify API key authentication.
     Returns None if no credentials provided, otherwise verifies the key.
@@ -932,19 +932,19 @@ def is_development_mode() -> bool:
 def supports_feature(feature: str) -> bool:
     """
     Check if a specific authentication feature is supported.
-    
+
     Args:
         feature: Feature name ('user_context', 'permissions', 'rate_limiting', etc.)
-        
+
     Returns:
         True if feature is supported
     """
     feature_map = {
-        'user_context': auth_config.supports_user_context,
-        'permissions': auth_config.supports_permissions,
-        'rate_limiting': auth_config.supports_rate_limiting,
-        'user_tracking': auth_config.enable_user_tracking,
-        'request_logging': auth_config.enable_request_logging
+        "user_context": auth_config.supports_user_context,
+        "permissions": auth_config.supports_permissions,
+        "rate_limiting": auth_config.supports_rate_limiting,
+        "user_tracking": auth_config.enable_user_tracking,
+        "request_logging": auth_config.enable_request_logging
     }
     return feature_map.get(feature, False)
 
@@ -954,8 +954,8 @@ def supports_feature(feature: str) -> bool:
 
 async def verify_api_key_http(
     request: Request,
-    bearer_credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    settings: 'Settings' = Depends(get_settings)
+    bearer_credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    settings: "Settings" = Depends(get_settings)
 ) -> str:
     """
     FastAPI-compatible authentication dependency with HTTP exception handling.

@@ -156,7 +156,7 @@ class CacheParameterMapper:
         validation = mapper.validate_parameter_compatibility(ai_params)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the parameter mapper with comprehensive parameter definitions.
         """

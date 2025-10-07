@@ -16,8 +16,6 @@ Test Coverage:
     - Disabled encryption behavior
 """
 
-import pytest
-from app.core.exceptions import ConfigurationError
 
 
 class TestEncryptCacheData:
@@ -294,7 +292,7 @@ class TestEncryptCacheData:
         assert len(result) > 0
 
         # And: Returned bytes can be decoded as JSON
-        decoded_data = json.loads(result.decode('utf-8'))
+        decoded_data = json.loads(result.decode("utf-8"))
         assert decoded_data == sample_cache_data
 
     def test_encrypt_cache_data_updates_performance_statistics(self, encryption_with_fresh_stats, sample_cache_data):
@@ -363,7 +361,7 @@ class TestEncryptCacheData:
             - mock_logger: Captures performance warnings
         """
         # Given: Logger is mocked for performance monitoring
-        monkeypatch.setattr('app.infrastructure.cache.encryption.logger', mock_logger)
+        monkeypatch.setattr("app.infrastructure.cache.encryption.logger", mock_logger)
 
         # When: encrypt_cache_data() is called with large data
         result = encryption_with_valid_key.encrypt_cache_data(sample_large_data)
@@ -737,7 +735,7 @@ class TestDecryptCacheData:
             - mock_logger: Captures performance warnings
         """
         # Given: Logger is mocked for performance monitoring
-        monkeypatch.setattr('app.infrastructure.cache.encryption.logger', mock_logger)
+        monkeypatch.setattr("app.infrastructure.cache.encryption.logger", mock_logger)
 
         # First encrypt the large data
         encrypted_data = encryption_with_valid_key.encrypt_cache_data(sample_large_data)

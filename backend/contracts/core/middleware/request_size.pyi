@@ -33,7 +33,7 @@ app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
 """
 
 import logging
-from typing import Callable, Any
+from typing import Callable, Any, Dict, cast
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi import Request, Response, status
@@ -197,7 +197,7 @@ class ASGIRequestSizeLimitMiddleware:
         """
         ...
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """
         Process ASGI request with protocol-level size validation and DoS protection.
         

@@ -7,7 +7,7 @@ described in docs/guides/testing/TESTING.md.
 
 Coverage Focus:
     - Error handling and graceful degradation patterns
-    - Parameter validation with detailed error context  
+    - Parameter validation with detailed error context
     - Infrastructure failure resilience
     - Performance monitoring integration during errors
 
@@ -28,14 +28,10 @@ External Dependencies:
     the behavior-driven testing approach of testing actual observable outcomes.
 """
 
-import hashlib
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
+from app.core.exceptions import (ValidationError)
 from app.infrastructure.cache.redis_ai import AIResponseCache
 
 
@@ -190,7 +186,6 @@ class TestAIResponseCacheErrorHandling:
             - test_get_cache_stats_includes_error_information()
             - test_get_performance_summary_includes_error_rates()
         """
-        from app.core.exceptions import ValidationError
         from app.infrastructure.cache.redis_ai import AIResponseCache
 
         # Given: AI cache with performance monitoring enabled

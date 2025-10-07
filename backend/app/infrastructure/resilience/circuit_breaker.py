@@ -115,11 +115,10 @@ Integration Points:
 
 import logging
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Type
 from dataclasses import dataclass
 
-from circuitbreaker import CircuitBreaker
-from app.core.exceptions import AIServiceException
+from circuitbreaker import CircuitBreaker  # type: ignore[import-untyped]
 
 logger = logging.getLogger(__name__)
 
@@ -240,8 +239,8 @@ class ResilienceMetrics:
     circuit_breaker_opens: int = 0
     circuit_breaker_half_opens: int = 0
     circuit_breaker_closes: int = 0
-    last_failure: Optional[datetime] = None
-    last_success: Optional[datetime] = None
+    last_failure: datetime | None = None
+    last_success: datetime | None = None
 
     @property
     def success_rate(self) -> float:
@@ -401,7 +400,7 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             enable_degraded_mode()
     """
 
-    def __init__(self, failure_threshold=5, recovery_timeout=60, expected_exception=None, name=None):
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60, expected_exception: Type[BaseException] | None = None, name: str | None = None) -> None:
         """
         Initialize enhanced circuit breaker with metrics collection and monitoring.
 
@@ -453,10 +452,10 @@ class EnhancedCircuitBreaker(CircuitBreaker):
         # Store the parameters as instance attributes for compatibility
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
-        self.last_failure_time = None
+        self.last_failure_time: datetime | None = None
         self.metrics = ResilienceMetrics()
-        self._last_known_state = None
-        
+        self._last_known_state: str | None = None
+
         # Initialize the base CircuitBreaker
         super().__init__(
             failure_threshold=failure_threshold,
@@ -465,7 +464,7 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             name=name
         )
 
-    def _check_state_change(self):
+    def _check_state_change(self) -> None:
         """
         Monitor and log circuit breaker state transitions with metrics collection.
 
@@ -496,32 +495,32 @@ class EnhancedCircuitBreaker(CircuitBreaker):
         """
         try:
             # Get current state - this varies by library version
-            current_state = getattr(self, 'current_state', None)
+            current_state = getattr(self, "current_state", None)
             if current_state is None:
                 # Fallback: try to determine state from failure count
-                fail_counter = getattr(self, 'fail_counter', 0)
+                fail_counter = getattr(self, "fail_counter", 0)
                 if fail_counter >= self.failure_threshold:
-                    current_state = 'open'
+                    current_state = "open"
                 else:
-                    current_state = 'closed'
-            
+                    current_state = "closed"
+
             if current_state != self._last_known_state:
-                if current_state == 'open':
+                if current_state == "open":
                     self.metrics.circuit_breaker_opens += 1
                     logger.warning(f"Circuit breaker '{self.name or 'unnamed'}' opened")
-                elif current_state == 'half-open':
+                elif current_state == "half-open":
                     self.metrics.circuit_breaker_half_opens += 1
                     logger.info(f"Circuit breaker '{self.name or 'unnamed'}' half-opened")
-                elif current_state == 'closed':
+                elif current_state == "closed":
                     self.metrics.circuit_breaker_closes += 1
                     logger.info(f"Circuit breaker '{self.name or 'unnamed'}' closed")
-                
+
                 self._last_known_state = current_state
         except Exception:
             # If state checking fails, just continue silently
             pass
 
-    def call(self, func, *args, **kwargs):
+    def call(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
         """
         Execute function with circuit breaker protection and comprehensive metrics collection.
 
@@ -592,7 +591,7 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             'hello hello '
         """
         self.metrics.total_calls += 1
-        
+
         # Check for state changes before the call
         self._check_state_change()
 
@@ -600,15 +599,15 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             result = super().call(func, *args, **kwargs)
             self.metrics.successful_calls += 1
             self.metrics.last_success = datetime.now()
-            
+
             # Check for state changes after successful call
             self._check_state_change()
             return result
-        except Exception as e:
+        except Exception:
             self.metrics.failed_calls += 1
             self.metrics.last_failure = datetime.now()
             self.last_failure_time = datetime.now()
-            
+
             # Check for state changes after failed call
             self._check_state_change()
             raise

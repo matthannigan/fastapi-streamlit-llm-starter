@@ -14,7 +14,7 @@ make test-backend-infra-cache-e2e
 - Fast execution, no external dependencies
 - Ideal for development workflow and CI/CD
 
-### Comprehensive Production Testing (Redis-enhanced)  
+### Comprehensive Production Testing (Redis-enhanced)
 ```bash
 make test-backend-infra-cache-e2e-redis
 ```
@@ -40,7 +40,7 @@ make test-backend-infra-cache-e2e-redis
 - `cache_preset_app()`, `client_with_preset()`: Preset-specific app/client factories
 - `cleanup_test_cache()`: Automatic test isolation and cleanup
 
-### Redis Fixtures (`conftest_redis.py`)  
+### Redis Fixtures (`conftest_redis.py`)
 - `redis_container()`: Session-scoped Testcontainers Redis instance
 - `enhanced_cache_preset_app()`, `enhanced_client_with_preset()`: Redis-enabled factories
 
@@ -83,7 +83,7 @@ Follows the project's behavior-driven testing philosophy:
 
 ### Common Issues
 - **Docker not available**: Redis-enhanced tests require Docker daemon
-- **Port conflicts**: Testcontainers handles port allocation automatically  
+- **Port conflicts**: Testcontainers handles port allocation automatically
 - **Test isolation**: Use proper `@pytest.mark.xdist_group` markers
 - **Performance**: Redis tests are slower due to container overhead
 

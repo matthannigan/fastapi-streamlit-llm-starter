@@ -72,7 +72,7 @@ from shared.models import TextProcessingRequest
 async def secure_text_processing(request: TextProcessingRequest):
     # Process with built-in security features
     response = await text_processor.process_text(request)
-    
+
     # Additional response validation
     validated_response = response_validator.validate(
         response=response.result,
@@ -80,7 +80,7 @@ async def secure_text_processing(request: TextProcessingRequest):
         request_text=request.text,
         system_instruction="AI processing prompt"
     )
-    
+
     return validated_response
 ```
 
@@ -92,14 +92,14 @@ from shared.models import BatchTextProcessingRequest
 # Batch processing with performance tracking
 async def monitored_batch_processing(batch_request: BatchTextProcessingRequest):
     start_time = time.time()
-    
+
     # Process batch with automatic concurrency control
     batch_response = await text_processor.process_batch(batch_request)
-    
+
     # Performance logging
     processing_time = time.time() - start_time
     logger.info(f"Batch processing completed: {batch_response.total_items} items in {processing_time:.2f}s")
-    
+
     return batch_response
 ```
 
@@ -219,14 +219,14 @@ async def test_text_processing():
     # Mock dependencies for isolated testing
     mock_cache = MockCacheService()
     mock_settings = MockSettings()
-    
+
     processor = TextProcessorService(mock_settings, mock_cache)
-    
+
     request = TextProcessingRequest(
         text="Test input",
         operation="summarize"
     )
-    
+
     response = await processor.process_text(request)
     assert response.operation == "summarize"
     assert len(response.result) > 0
@@ -236,7 +236,7 @@ async def test_text_processing():
 ```python
 def test_response_validation():
     validator = ResponseValidator()
-    
+
     # Test valid response
     valid_response = validator.validate(
         response="This is a valid summary",
@@ -245,7 +245,7 @@ def test_response_validation():
         system_instruction="Summarize this text"
     )
     assert valid_response == "This is a valid summary"
-    
+
     # Test invalid response (should raise ValueError)
     with pytest.raises(ValueError):
         validator.validate(
@@ -281,6 +281,6 @@ from .text_processor import TextProcessorService
 from .response_validator import ResponseValidator
 
 __all__ = [
-    "TextProcessorService",
-    "ResponseValidator"
+    "ResponseValidator",
+    "TextProcessorService"
 ]

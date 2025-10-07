@@ -16,7 +16,7 @@ infrastructure and domain services:
 - **Exception Hierarchy**: Comprehensive error classification and handling
 - **Middleware Stack**: Request/response processing pipeline
 
-### Integration Layer  
+### Integration Layer
 - **Infrastructure Integration**: Seamless integration with cache, resilience, AI, security
 - **Domain Service Support**: Foundation for business logic implementation
 - **Cross-Cutting Concerns**: Logging, monitoring, performance tracking
@@ -36,7 +36,7 @@ Comprehensive configuration system with environment variable support:
 ### Exception Hierarchy (`exceptions.py`)
 Sophisticated exception classification system for error handling:
 - **ApplicationError Hierarchy**: Business logic, validation, and authentication errors
-- **InfrastructureError Hierarchy**: External system, network, and service errors  
+- **InfrastructureError Hierarchy**: External system, network, and service errors
 - **AI Service Exceptions**: Comprehensive AI service error classification with retry logic
 - **Classification Utilities**: Intelligent exception classification for resilience patterns
 - **HTTP Status Mapping**: Consistent HTTP status code mapping for API responses
@@ -85,7 +85,7 @@ class TextProcessor:
     def __init__(self):
         self.ai_model = settings.ai_model
         self.temperature = settings.ai_temperature
-    
+
     async def process(self, text: str):
         if not text.strip():
             raise ValidationError("Text cannot be empty")

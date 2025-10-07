@@ -1,7 +1,7 @@
 """Infrastructure Service: Resilience Performance Benchmarking API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides comprehensive REST API endpoints for performance
@@ -67,7 +67,7 @@ Authentication:
 Example:
     Run comprehensive benchmark suite:
         GET /internal/resilience/performance/benchmark?iterations=100
-        
+
     Run custom benchmarks for specific operations:
         POST /internal/resilience/performance/benchmark
         {
@@ -75,7 +75,7 @@ Example:
             "operations": ["preset_loading", "validation_performance"],
             "include_slow": false
         }
-        
+
     Get performance thresholds:
         GET /internal/resilience/performance/thresholds
 
@@ -85,23 +85,13 @@ Note:
     data helps identify performance trends and regression issues over time.
 """
 
-import json
 import logging
-import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Any
 
-from app.core.config import Settings, settings
 from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
-from app.infrastructure.resilience.orchestrator import ai_resilience
-from app.services.text_processor import TextProcessorService
-from app.api.v1.deps import get_text_processor
-from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
 from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
 
 from app.api.internal.resilience.models import BenchmarkRunRequest
 
@@ -115,18 +105,18 @@ async def run_performance_benchmark(
     iterations: int = 50,
     include_slow: bool = False,
     api_key: str = Depends(verify_api_key)
-):
+) -> Dict[str, Any]:
     """Run comprehensive performance benchmark suite for resilience configuration operations.
 
     This endpoint executes a complete performance benchmark suite covering all
     key resilience operations, providing detailed performance metrics, success
     rates, and health assessments for monitoring and optimization purposes.
-    
+
     Args:
         iterations: Number of iterations for each benchmark operation (default: 50)
         include_slow: Include slow/intensive benchmarks that take longer (default: False)
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Comprehensive benchmark results containing:
             - benchmark_suite: Complete suite results with detailed metrics
@@ -136,10 +126,10 @@ async def run_performance_benchmark(
                 - total_duration_ms: Total execution time for all benchmarks
                 - failed_benchmarks: List of failed benchmark operations
                 - performance_target_met: Boolean indicating 80% pass rate threshold
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if benchmark execution fails
-        
+
     Example:
         >>> response = await run_performance_benchmark(iterations=100)
         >>> {
@@ -156,10 +146,10 @@ async def run_performance_benchmark(
     try:
         # Reset previous results
         performance_benchmark.results = []
-        
+
         # Run comprehensive benchmark
         suite = performance_benchmark.run_comprehensive_benchmark()
-        
+
         return {
             "benchmark_suite": suite.to_dict(),
             "summary": {
@@ -173,7 +163,7 @@ async def run_performance_benchmark(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to run performance benchmark: {str(e)}"
+            detail=f"Failed to run performance benchmark: {e!s}"
         )
 
 
@@ -181,20 +171,20 @@ async def run_performance_benchmark(
 async def run_custom_performance_benchmark(
     request: BenchmarkRunRequest,
     api_key: str = Depends(verify_api_key)
-):
+) -> Dict[str, Any]:
     """Run custom performance benchmarks with specific operations and parameters.
 
     This endpoint allows selective execution of performance benchmarks with
     custom parameters, providing flexibility for targeted performance analysis
     and optimization of specific resilience operations.
-    
+
     Args:
         request: Custom benchmark configuration containing:
                 - iterations: Number of iterations per benchmark
                 - operations: Optional list of specific operations to benchmark
                 - include_slow: Whether to include intensive benchmarks
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Custom benchmark results containing:
             - results: List of individual benchmark results with:
@@ -208,11 +198,11 @@ async def run_custom_performance_benchmark(
                 - iterations: Number of iterations executed
                 - metadata: Additional benchmark metadata
             - summary: Overall benchmark summary with performance analysis
-                
+
     Raises:
         HTTPException: 400 Bad Request if unknown operation specified
         HTTPException: 500 Internal Server Error if benchmark execution fails
-        
+
     Example:
         >>> request = BenchmarkRunRequest(
         ...     iterations=25,
@@ -233,7 +223,7 @@ async def run_custom_performance_benchmark(
     try:
         # Reset previous results
         performance_benchmark.results = []
-        
+
         benchmark_methods = {
             "preset_loading": performance_benchmark.benchmark_preset_loading,
             "settings_initialization": performance_benchmark.benchmark_settings_initialization,
@@ -243,7 +233,7 @@ async def run_custom_performance_benchmark(
             "legacy_config_loading": performance_benchmark.benchmark_legacy_config_loading,
             "validation_performance": performance_benchmark.benchmark_validation_performance
         }
-        
+
         # Run specific benchmarks if requested
         if request.operations:
             results = []
@@ -260,12 +250,12 @@ async def run_custom_performance_benchmark(
             # Run all benchmarks
             suite = performance_benchmark.run_comprehensive_benchmark()
             results = suite.results
-        
+
         # Calculate overall performance metrics
         total_duration = sum(result.duration_ms for result in results)
         avg_duration = sum(result.avg_duration_ms for result in results) / len(results) if results else 0
         success_rate = sum(result.success_rate for result in results) / len(results) if results else 0
-        
+
         return {
             "results": [
                 {
@@ -294,21 +284,21 @@ async def run_custom_performance_benchmark(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to run custom benchmark: {str(e)}"
+            detail=f"Failed to run custom benchmark: {e!s}"
         )
 
 
 @router.get("/thresholds")
-async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_key)):
+async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_key)) -> Dict[str, Any]:
     """Get performance thresholds and targets for resilience configuration operations.
 
     This endpoint provides comprehensive information about performance thresholds,
     targets, and measurement standards used for benchmarking and monitoring
     resilience configuration operations.
-    
+
     Args:
         api_key: Optional API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Performance threshold information containing:
             - thresholds: Performance thresholds in milliseconds for:
@@ -323,14 +313,14 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
                 - default_iterations: Default iteration count for benchmarks
                 - memory_tracking: Memory measurement description
                 - timing_precision: Timing measurement precision details
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if threshold retrieval fails
-        
+
     Note:
         This endpoint supports optional authentication for monitoring system
         compatibility and can be accessed without authentication.
-        
+
     Example:
         >>> response = await get_performance_thresholds()
         >>> {
@@ -347,7 +337,7 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
     """
     try:
         from app.infrastructure.resilience.performance_benchmarks import PerformanceThreshold
-        
+
         return {
             "thresholds": {
                 "config_loading_ms": PerformanceThreshold.CONFIG_LOADING.value,
@@ -372,7 +362,7 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get performance thresholds: {str(e)}"
+            detail=f"Failed to get performance thresholds: {e!s}"
         )
 
 
@@ -380,17 +370,17 @@ async def get_performance_thresholds(api_key: str = Depends(optional_verify_api_
 async def get_performance_report(
     format: str = "json",
     api_key: str = Depends(verify_api_key)
-):
+) -> Dict[str, Any]:
     """Generate comprehensive performance analysis report with recommendations.
 
     This endpoint provides detailed performance reports in multiple formats,
     including benchmark analysis, performance assessments, and actionable
     recommendations for optimizing resilience configuration operations.
-    
+
     Args:
         format: Report output format specification ("json" or "text")
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Performance report containing:
             - format: Requested report format
@@ -402,10 +392,10 @@ async def get_performance_report(
                 - avg_preset_loading_ms: Average preset loading time
                 - target_met: Boolean indicating performance targets met
                 - recommendations: List of optimization recommendations
-                
+
     Raises:
         HTTPException: 500 Internal Server Error if report generation fails
-        
+
     Example:
         >>> response = await get_performance_report("json")
         >>> {
@@ -440,7 +430,7 @@ async def get_performance_report(
                 timestamp=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
                 environment_info=performance_benchmark._collect_environment_info()
             )
-        
+
         if format.lower() == "text":
             # Return text report
             report_text = performance_benchmark.generate_performance_report(suite)
@@ -449,35 +439,34 @@ async def get_performance_report(
                 "report": report_text,
                 "timestamp": suite.timestamp
             }
-        else:
-            # Return JSON report
-            return {
-                "format": "json",
-                "suite": suite.to_dict(),
-                "analysis": {
-                    "performance_summary": {
-                        "avg_config_loading_ms": next(
-                            (r.avg_duration_ms for r in suite.results if r.operation == "resilience_config_loading"),
-                            None
-                        ),
-                        "avg_preset_loading_ms": next(
-                            (r.avg_duration_ms for r in suite.results if r.operation == "preset_loading"),
-                            None
-                        ),
-                        "target_met": suite.pass_rate >= 0.8
-                    },
-                    "recommendations": [
-                        "Configuration loading meets <100ms target" if suite.pass_rate >= 0.8 
-                        else "Consider optimizing configuration loading performance",
-                        "Memory usage is efficient" if all(r.memory_peak_mb < 50 for r in suite.results) 
-                        else "Review memory usage in configuration operations"
-                    ]
-                }
+        # Return JSON report
+        return {
+            "format": "json",
+            "suite": suite.to_dict(),
+            "analysis": {
+                "performance_summary": {
+                    "avg_config_loading_ms": next(
+                        (r.avg_duration_ms for r in suite.results if r.operation == "resilience_config_loading"),
+                        None
+                    ),
+                    "avg_preset_loading_ms": next(
+                        (r.avg_duration_ms for r in suite.results if r.operation == "preset_loading"),
+                        None
+                    ),
+                    "target_met": suite.pass_rate >= 0.8
+                },
+                "recommendations": [
+                    "Configuration loading meets <100ms target" if suite.pass_rate >= 0.8
+                    else "Consider optimizing configuration loading performance",
+                    "Memory usage is efficient" if all(r.memory_peak_mb < 50 for r in suite.results)
+                    else "Review memory usage in configuration operations"
+                ]
             }
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate performance report: {str(e)}"
+            detail=f"Failed to generate performance report: {e!s}"
         )
 
 
@@ -485,17 +474,17 @@ async def get_performance_report(
 async def get_performance_history(
     limit: int = 10,
     api_key: str = Depends(verify_api_key)
-):
+) -> Dict[str, Any]:
     """Get historical performance benchmark data and trend analysis.
 
     This endpoint provides access to historical performance benchmark results
     and trend analysis for tracking performance changes over time, identifying
     regressions, and monitoring performance improvements.
-    
+
     Args:
         limit: Maximum number of historical records to return (default: 10)
         api_key: API key for authentication (injected via dependency)
-        
+
     Returns:
         Dict[str, Any]: Historical performance data containing:
             - message: Current implementation status message
@@ -506,15 +495,15 @@ async def get_performance_history(
                 - Regression detection algorithms
                 - Performance baseline comparison tools
             - current_results: Current benchmark results for reference
-            
+
     Raises:
         HTTPException: 500 Internal Server Error if history retrieval fails
-        
+
     Note:
         This endpoint is currently under development. Future implementation
         will provide comprehensive historical tracking and trend analysis
         for performance benchmarks with regression detection capabilities.
-        
+
     Example:
         >>> response = await get_performance_history(limit=5)
         >>> {
@@ -530,7 +519,7 @@ async def get_performance_history(
     try:
         # Note: In a real implementation, this would query a database
         # For now, return placeholder data showing the expected format
-        
+
         return {
             "message": "Performance history tracking not yet implemented",
             "note": "This endpoint will provide historical performance data and trend analysis",
@@ -552,6 +541,6 @@ async def get_performance_history(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get performance history: {str(e)}"
+            detail=f"Failed to get performance history: {e!s}"
         )
 

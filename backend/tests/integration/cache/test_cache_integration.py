@@ -16,12 +16,9 @@ External Dependencies:
     No internal mocking - only system boundary mocking where necessary.
 """
 
-import asyncio
-from typing import Any, Dict
 
 import pytest
 
-from app.core.exceptions import InfrastructureError
 from app.infrastructure.cache.factory import CacheFactory
 
 # Mark all tests in this module to run serially (not in parallel)

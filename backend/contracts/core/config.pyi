@@ -162,13 +162,13 @@ try:
         session_id="user_123",
         user_context="production_deployment"
     )
-    
+
     # Validate custom resilience configuration if needed
     custom_json = '{"retry_attempts": 5, "circuit_breaker_threshold": 10}'
     validation_result = config_validator.validate_json_string(custom_json)
     if not validation_result.is_valid:
         logger.error(f"Configuration errors: {validation_result.errors}")
-        
+
 except ConfigurationError as e:
     # Handle configuration validation failures
     logger.error(f"Configuration error: {e}")
@@ -259,7 +259,7 @@ import os
 import sys
 import json
 import logging
-from typing import List, Optional, Union
+from typing import List, TYPE_CHECKING, Any, Dict
 from pathlib import Path
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -295,13 +295,13 @@ class Settings(BaseSettings):
         resilience_custom_config: Custom JSON configuration for advanced resilience settings (optional)
         health_check_timeout_ms: Default timeout for health checks in milliseconds (default: 2000)
         health_check_enabled_components: List of components to include in health checks (default: ["ai_model", "cache", "resilience"])
-        
+    
     Public Methods:
         get_cache_config(): Get complete cache configuration from preset with overrides applied
         get_resilience_config(): Get complete resilience configuration from preset with overrides applied
         get_operation_strategy(): Get resilience strategy for specific operation types
         get_valid_api_keys(): Get list of all valid API keys (primary + additional)
-        
+    
     State Management:
         - Immutable configuration once loaded (Pydantic BaseSettings behavior)
         - Thread-safe read access to all configuration values
@@ -309,7 +309,7 @@ class Settings(BaseSettings):
         - Graceful fallback for invalid environment values with warning logs
         - Test environment isolation prevents ambient variable interference
         - Configuration loading is performed once at startup for optimal performance
-        
+    
     Behavior:
         - Validates all environment variables against type constraints at startup
         - Applies preset-based configuration with override precedence: Custom JSON > Environment Variables > Preset Defaults
@@ -320,38 +320,38 @@ class Settings(BaseSettings):
         - Caches configuration resolution results to avoid repeated computation
         - Provides session and user context tracking for monitoring and analytics
         - Maintains configuration consistency across all application components
-        
+    
     Usage:
         # Basic preset-based configuration
         from app.core.config import settings
-        
+    
         # Direct field access for simple values
         api_key = settings.gemini_api_key
         model = settings.ai_model
         temperature = settings.ai_temperature
         debug_mode = settings.debug
-        
+    
         # Preset-based complex configuration
         cache_config = settings.get_cache_config()
         redis_url = cache_config.redis_url
         ttl_settings = cache_config.default_ttl
-        
+    
         resilience_config = settings.get_resilience_config()
         retry_attempts = resilience_config.retry_config.max_attempts
         circuit_threshold = resilience_config.circuit_breaker_config.failure_threshold
-        
+    
         # Environment-specific setup patterns
         import os
-        
+    
         # Development environment
         os.environ['CACHE_PRESET'] = 'development'
         os.environ['RESILIENCE_PRESET'] = 'development'
-        
+    
         # Production environment with overrides
         os.environ['CACHE_PRESET'] = 'production'
         os.environ['CACHE_REDIS_URL'] = 'redis://prod-cluster:6379'
         os.environ['RESILIENCE_PRESET'] = 'production'
-        
+    
         # Advanced customization with JSON
         custom_cache = {
             "default_ttl": 7200,
@@ -359,17 +359,17 @@ class Settings(BaseSettings):
             "enable_ai_cache": True
         }
         os.environ['CACHE_CUSTOM_CONFIG'] = json.dumps(custom_cache)
-        
+    
         # Session-aware configuration loading
         cache_config = settings.get_cache_config(
             session_id="user_123",
             user_context="api_endpoint_processing"
         )
-        
+    
         # Authentication helpers
         all_valid_keys = settings.get_valid_api_keys()
         operation_strategy = settings.get_operation_strategy("summarize")
-        
+    
         # Health check configuration access
         health_timeouts = {
             "ai_model": settings.health_check_ai_model_timeout_ms,
@@ -378,7 +378,7 @@ class Settings(BaseSettings):
         }
         enabled_components = settings.health_check_enabled_components
         retry_count = settings.health_check_retry_count
-        
+    
         # Error handling patterns
         try:
             cache_config = settings.get_cache_config()
@@ -388,7 +388,7 @@ class Settings(BaseSettings):
     """
 
     @classmethod
-    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
+    def settings_customise_sources(cls, settings_cls: type, init_settings: object, env_settings: object, dotenv_settings: object, file_secret_settings: object) -> tuple:
         """
         Customize settings sources to ignore OS env vars during pytest.
         
@@ -403,7 +403,7 @@ class Settings(BaseSettings):
         
         The complexity handles:
         - Different pydantic-settings version signatures
-        - Selective environment variable filtering during tests 
+        - Selective environment variable filtering during tests
         - Graceful fallbacks for various callable return types
         - Preservation of legacy environment variable mappings needed by tests
         """
@@ -443,7 +443,7 @@ class Settings(BaseSettings):
 
     @field_validator('health_check_timeout_ms', 'health_check_ai_model_timeout_ms', 'health_check_cache_timeout_ms', 'health_check_resilience_timeout_ms', 'health_check_retry_count')
     @classmethod
-    def validate_health_check_numbers(cls, v: int | float, info) -> int:
+    def validate_health_check_numbers(cls, v: int | float, info: object) -> int:
         """
         Ensure health check numeric settings are valid, and warn about suboptimal values.
         """
@@ -457,7 +457,7 @@ class Settings(BaseSettings):
         """
         ...
 
-    def get_cache_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
+    def get_cache_config(self, session_id: str | None = None, user_context: str | None = None) -> 'CacheConfig':
         """
         Get complete cache configuration from preset with custom overrides applied.
         
@@ -477,10 +477,10 @@ class Settings(BaseSettings):
             - compression_threshold: Size threshold for enabling compression in bytes
             - text_size_tiers: Dictionary defining size tiers for caching strategies
             - All other cache-specific configuration parameters from the preset
-            
+        
         Raises:
             ConfigurationError: When preset loading fails and fallback preset also fails
-            
+        
         Behavior:
             - Resolves cache_preset field to load base configuration from preset system
             - Maps 'testing' preset alias to 'development' preset for convenience
@@ -492,26 +492,26 @@ class Settings(BaseSettings):
             - Raises ConfigurationError only if both primary and fallback preset loading fails
             - Preserves session and user context for monitoring and analytics
             - Returns identical configuration for identical input parameters (deterministic)
-            
+        
         Examples:
             >>> # Basic preset-based configuration
             >>> config = settings.get_cache_config()
             >>> assert config.redis_url == "redis://localhost:6379"  # development preset default
             >>> assert config.enable_ai_cache is True
-            
+        
             >>> # Configuration with session tracking
             >>> config = settings.get_cache_config(
             ...     session_id="user_123",
             ...     user_context="api_endpoint_processing"
             ... )
             >>> assert isinstance(config.default_ttl, int)
-            
+        
             >>> # Environment override behavior
             >>> import os
             >>> os.environ['CACHE_REDIS_URL'] = 'redis://custom:6379'
             >>> config = settings.get_cache_config()
             >>> assert config.redis_url == "redis://custom:6379"
-            
+        
             >>> # Error handling for invalid preset
             >>> settings.cache_preset = "invalid_preset"
             >>> try:
@@ -521,7 +521,7 @@ class Settings(BaseSettings):
         """
         ...
 
-    def get_resilience_config(self, session_id: Optional[str] = None, user_context: Optional[str] = None):
+    def get_resilience_config(self, session_id: str | None = None, user_context: str | None = None) -> 'ResilienceConfig':
         """
         Get complete resilience configuration from preset with custom overrides.
         
@@ -586,7 +586,7 @@ class Settings(BaseSettings):
             operation_name: Name of the AI operation to get strategy for.
                           Supported operations include:
                           - "summarize" or "summarize_text": Text summarization operations
-                          - "sentiment" or "analyze_sentiment": Sentiment analysis operations  
+                          - "sentiment" or "analyze_sentiment": Sentiment analysis operations
                           - "key_points" or "extract_key_points": Key point extraction operations
                           - "questions" or "generate_questions": Question generation operations
                           - "qa" or "answer_question": Question answering operations
@@ -597,7 +597,7 @@ class Settings(BaseSettings):
             - "balanced": Moderate retry attempts and timeouts, good for most operations
             - "aggressive": Low retry attempts, short timeouts, fail-fast behavior
             Returns "balanced" for unknown operation names (default fallback)
-            
+        
         Behavior:
             - Maps operation names to corresponding resilience strategy configuration fields
             - Supports both short names ("summarize") and full names ("summarize_text") for compatibility
@@ -605,21 +605,21 @@ class Settings(BaseSettings):
             - Returns "balanced" strategy for any unrecognized operation names
             - Operation name matching is case-sensitive
             - Does not modify internal state or trigger any side effects
-            
+        
         Examples:
             >>> # Get strategy for different operation types
             >>> strategy = settings.get_operation_strategy("summarize")
             >>> assert strategy in ["conservative", "balanced", "aggressive"]
-            
+        
             >>> # Both short and full names work
             >>> short_strategy = settings.get_operation_strategy("sentiment")
-            >>> full_strategy = settings.get_operation_strategy("analyze_sentiment") 
+            >>> full_strategy = settings.get_operation_strategy("analyze_sentiment")
             >>> assert short_strategy == full_strategy
-            
+        
             >>> # Unknown operations return default
             >>> unknown_strategy = settings.get_operation_strategy("unknown_operation")
             >>> assert unknown_strategy == "balanced"
-            
+        
             >>> # Case sensitivity
             >>> strategy = settings.get_operation_strategy("SUMMARIZE")  # Won't match
             >>> assert strategy == "balanced"  # Falls back to default
@@ -636,7 +636,7 @@ class Settings(BaseSettings):
         Returns:
             List of valid API key strings. Empty list if no keys are configured.
             Primary API key is included first if present, followed by additional keys.
-            
+        
         Behavior:
             - Includes primary api_key field value if not empty
             - Parses additional_api_keys field (comma-separated string) and includes individual keys
@@ -644,25 +644,25 @@ class Settings(BaseSettings):
             - Filters out empty strings from additional keys list
             - Maintains order: primary key first, then additional keys in original order
             - Returns empty list if no valid keys are configured
-            
+        
         Examples:
             >>> # With primary key only
             >>> settings.api_key = "primary-key-123"
             >>> settings.additional_api_keys = ""
             >>> keys = settings.get_valid_api_keys()
             >>> assert keys == ["primary-key-123"]
-            
+        
             >>> # With primary and additional keys
             >>> settings.api_key = "primary-key"
             >>> settings.additional_api_keys = "key1,key2,key3"
             >>> keys = settings.get_valid_api_keys()
             >>> assert keys == ["primary-key", "key1", "key2", "key3"]
-            
+        
             >>> # With whitespace handling
             >>> settings.additional_api_keys = " key1 , key2 , key3 "
             >>> keys = settings.get_valid_api_keys()
             >>> assert "key1" in keys and "key2" in keys
-            
+        
             >>> # No keys configured
             >>> settings.api_key = ""
             >>> settings.additional_api_keys = ""
@@ -683,27 +683,27 @@ class Settings(BaseSettings):
         Returns:
             Boolean indicating if running in development mode.
             True when debug=True or cache_preset/resilience_preset contain 'development'
-            
+        
         Behavior:
             - Returns True if debug field is True (primary development indicator)
             - Returns True if cache_preset contains 'development' (cache-based detection)
             - Returns True if resilience_preset contains 'development' (resilience-based detection)
             - Returns False only when all development indicators are absent
             - Case-sensitive string matching for preset names
-            
+        
         Examples:
             >>> # Debug mode enabled
             >>> settings.debug = True
             >>> assert settings.is_development is True
-            
+        
             >>> # Development presets
             >>> settings.debug = False
             >>> settings.cache_preset = "development"
             >>> assert settings.is_development is True
-            
+        
             >>> settings.resilience_preset = "ai-development"
             >>> assert settings.is_development is True
-            
+        
             >>> # Production configuration
             >>> settings.debug = False
             >>> settings.cache_preset = "production"
@@ -718,7 +718,7 @@ class Settings(BaseSettings):
         """
         ...
 
-    def register_operation(self, operation_name: str, strategy: str):
+    def register_operation(self, operation_name: str, strategy: str) -> None:
         """
         Register an operation with a strategy (no-op for backward compatibility with tests).
         """
@@ -737,7 +737,7 @@ class Settings(BaseSettings):
         """
         ...
 
-    def get_preset_operations(self, preset_name: Optional[str] = None) -> List[str]:
+    def get_preset_operations(self, preset_name: str | None = None) -> List[str]:
         """
         Get operations for a specific preset (for test compatibility).
         """

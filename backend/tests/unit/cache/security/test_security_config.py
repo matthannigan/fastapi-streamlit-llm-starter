@@ -17,9 +17,7 @@ External Dependencies:
 """
 
 import ssl
-from pathlib import Path
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -806,9 +804,8 @@ class TestSecurityConfigEnvironmentCreation:
                     "REDIS_CONNECTION_TIMEOUT": "invalid_number",
                 },
                 clear=True,
-            ):
-                with pytest.raises(ValueError):
-                    create_security_config_from_env()
+            ), pytest.raises(ValueError):
+                create_security_config_from_env()
 
         # Note: Certificate path and ACL validation now happens during SecurityManager
         # initialization, not in create_security_config_from_env(). The function

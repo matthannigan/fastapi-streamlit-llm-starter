@@ -69,7 +69,7 @@ class TestAPIKeyAuthInitialization:
         # And: Environment is detected as development (mock_environment_detection default)
 
         # When: APIKeyAuth is instantiated
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
 
         # Then: Instance is created successfully with empty api_keys set
@@ -105,7 +105,7 @@ class TestAPIKeyAuthInitialization:
         # fake_settings_with_primary_key fixture provides this
 
         # When: APIKeyAuth is instantiated
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # Then: api_keys set contains the primary key
@@ -141,7 +141,7 @@ class TestAPIKeyAuthInitialization:
         # fake_settings_with_multiple_keys fixture provides this
 
         # When: APIKeyAuth is instantiated
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_multiple_keys):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_multiple_keys):
             auth = APIKeyAuth()
 
         # Then: api_keys set contains all configured keys
@@ -183,8 +183,8 @@ class TestAPIKeyAuthInitialization:
 
         # When: APIKeyAuth instantiation is attempted
         # Then: ConfigurationError is raised with production security context
-        with patch('app.infrastructure.security.auth.settings', fake_settings), \
-             patch('app.infrastructure.security.auth.get_environment_info', mock_production_environment):
+        with patch("app.infrastructure.security.auth.settings", fake_settings), \
+             patch("app.infrastructure.security.auth.get_environment_info", mock_production_environment):
             with pytest.raises(ConfigurationError) as exc_info:
                 APIKeyAuth()
 
@@ -223,8 +223,8 @@ class TestAPIKeyAuthInitialization:
 
         # When: APIKeyAuth instantiation is attempted
         # Then: ConfigurationError is raised with staging security context
-        with patch('app.infrastructure.security.auth.settings', fake_settings), \
-             patch('app.infrastructure.security.auth.get_environment_info', mock_staging_environment):
+        with patch("app.infrastructure.security.auth.settings", fake_settings), \
+             patch("app.infrastructure.security.auth.get_environment_info", mock_staging_environment):
             with pytest.raises(ConfigurationError) as exc_info:
                 APIKeyAuth()
 
@@ -262,7 +262,7 @@ class TestAPIKeyAuthInitialization:
         # fake_settings_with_primary_key fixture provides this
 
         # When: APIKeyAuth is instantiated
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # Then: Key metadata is created with type and permission information
@@ -318,7 +318,7 @@ class TestAPIKeyAuthVerification:
             - fake_settings_with_primary_key: Settings with known API key.
         """
         # Given: APIKeyAuth is initialized with configured API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: verify_api_key is called with a valid configured key
@@ -347,7 +347,7 @@ class TestAPIKeyAuthVerification:
             - fake_settings_with_primary_key: Settings with known API key.
         """
         # Given: APIKeyAuth is initialized with configured API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: verify_api_key is called with an invalid or unknown key
@@ -376,7 +376,7 @@ class TestAPIKeyAuthVerification:
             - fake_settings_with_primary_key: Settings with API key for context.
         """
         # Given: APIKeyAuth is initialized with any configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: verify_api_key is called with an empty string
@@ -406,7 +406,7 @@ class TestAPIKeyAuthVerification:
         """
         # Given: APIKeyAuth contains a specific API key with known case
         fake_settings.api_key = "CaseSensitiveKey123"
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
 
         # When: verify_api_key is called with case variations of the key
@@ -436,7 +436,7 @@ class TestAPIKeyAuthVerification:
             - fake_settings_with_multiple_keys: Settings with primary and additional keys.
         """
         # Given: APIKeyAuth is configured with multiple API keys
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_multiple_keys):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_multiple_keys):
             auth = APIKeyAuth()
 
         # When: verify_api_key is called with any of the configured keys
@@ -488,7 +488,7 @@ class TestAPIKeyAuthMetadataManagement:
             - fake_settings_with_primary_key: Settings with API key configured.
         """
         # Given: APIKeyAuth with user tracking disabled (default)
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: get_key_metadata is called with any API key
@@ -519,7 +519,7 @@ class TestAPIKeyAuthMetadataManagement:
         """
         # Given: APIKeyAuth with user tracking enabled and configured keys
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: get_key_metadata is called with a valid API key
@@ -554,7 +554,7 @@ class TestAPIKeyAuthMetadataManagement:
         """
         # Given: APIKeyAuth with user tracking enabled
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: get_key_metadata is called with an unknown API key
@@ -583,7 +583,7 @@ class TestAPIKeyAuthMetadataManagement:
             - fake_settings_with_primary_key: Settings with API key configured.
         """
         # Given: APIKeyAuth with any configuration
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: add_request_metadata is called with API key and request info
@@ -620,7 +620,7 @@ class TestAPIKeyAuthMetadataManagement:
         """
         # Given: APIKeyAuth with user tracking enabled and configured metadata
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: add_request_metadata is called with valid API key and request info
@@ -661,7 +661,7 @@ class TestAPIKeyAuthMetadataManagement:
         """
         # Given: APIKeyAuth with request logging enabled
         monkeypatch.setenv("ENABLE_REQUEST_LOGGING", "true")
-        with patch('app.infrastructure.security.auth.settings', fake_settings_with_primary_key):
+        with patch("app.infrastructure.security.auth.settings", fake_settings_with_primary_key):
             auth = APIKeyAuth()
 
         # When: add_request_metadata is called with request information
@@ -724,7 +724,7 @@ class TestAPIKeyAuthKeyReloading:
         """
         # Given: APIKeyAuth is initialized with original API keys
         fake_settings.api_key = "original-key-123"
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
             # Verify initial state
             assert len(auth.api_keys) == 1
@@ -766,7 +766,7 @@ class TestAPIKeyAuthKeyReloading:
         # Given: APIKeyAuth with user tracking enabled and original keys
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
         fake_settings.api_key = "original-key-123"
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
             # Verify initial state
             assert len(auth.api_keys) == 1
@@ -809,7 +809,7 @@ class TestAPIKeyAuthKeyReloading:
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
         fake_settings.api_key = "primary-key-123"
         fake_settings.additional_api_keys = "additional-key-456,additional-key-789"
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
             # Verify initial state
             assert len(auth.api_keys) == 3
@@ -855,7 +855,7 @@ class TestAPIKeyAuthKeyReloading:
         monkeypatch.setenv("ENABLE_USER_TRACKING", "true")
         fake_settings.api_key = "primary-key-123"
         fake_settings.additional_api_keys = "additional-key-456"
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
             # Verify initial state
             assert len(auth.api_keys) == 2
@@ -925,7 +925,7 @@ class TestAPIKeyAuthEdgeCases:
         fake_settings.additional_api_keys = ",,valid-key-1,  ,valid-key-2,   ,,  valid-key-3  ,"
 
         # When: APIKeyAuth is instantiated
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
 
         # Then: Valid keys are extracted and invalid entries are skipped
@@ -968,8 +968,8 @@ class TestAPIKeyAuthEdgeCases:
         # mock_production_environment fixture configures production environment
 
         # When: APIKeyAuth instantiation fails with ConfigurationError
-        with patch('app.infrastructure.security.auth.settings', fake_settings), \
-             patch('app.infrastructure.security.auth.get_environment_info', mock_production_environment):
+        with patch("app.infrastructure.security.auth.settings", fake_settings), \
+             patch("app.infrastructure.security.auth.get_environment_info", mock_production_environment):
             with pytest.raises(ConfigurationError) as exc_info:
                 APIKeyAuth()
 
@@ -1027,8 +1027,8 @@ class TestAPIKeyAuthEdgeCases:
 
         # When: APIKeyAuth is instantiated
         # Then: System assumes production environment for security
-        with patch('app.infrastructure.security.auth.settings', fake_settings), \
-             patch('app.infrastructure.security.auth.get_environment_info', failing_environment_detection):
+        with patch("app.infrastructure.security.auth.settings", fake_settings), \
+             patch("app.infrastructure.security.auth.get_environment_info", failing_environment_detection):
             # Should create auth successfully with fallback to production mode
             auth = APIKeyAuth()
 
@@ -1042,8 +1042,8 @@ class TestAPIKeyAuthEdgeCases:
 
         # Test that system fails safe when no keys provided during environment detection failure
         fake_settings.api_key = None
-        with patch('app.infrastructure.security.auth.settings', fake_settings), \
-             patch('app.infrastructure.security.auth.get_environment_info', failing_environment_detection):
+        with patch("app.infrastructure.security.auth.settings", fake_settings), \
+             patch("app.infrastructure.security.auth.get_environment_info", failing_environment_detection):
             # Should raise ConfigurationError due to fallback to production with no keys
             with pytest.raises(ConfigurationError) as exc_info:
                 APIKeyAuth()
@@ -1077,7 +1077,7 @@ class TestAPIKeyAuthEdgeCases:
         fake_settings.additional_api_keys = "  additional-key-1  ,   additional-key-2   ,additional-key-3"
 
         # When: APIKeyAuth is instantiated
-        with patch('app.infrastructure.security.auth.settings', fake_settings):
+        with patch("app.infrastructure.security.auth.settings", fake_settings):
             auth = APIKeyAuth()
 
         # Then: Keys are properly trimmed and stored without whitespace

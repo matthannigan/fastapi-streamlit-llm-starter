@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Resilience Health Monitoring API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides comprehensive FastAPI endpoints for monitoring and managing
@@ -56,10 +56,10 @@ Authentication:
 Example:
     To check overall resilience service health:
         GET /internal/resilience/health
-        
+
     To get comprehensive metrics for monitoring:
         GET /internal/resilience/dashboard
-        
+
     To reset metrics for a specific operation:
         POST /internal/resilience/metrics/reset?operation_name=summarize
 
@@ -74,7 +74,7 @@ import json
 import logging
 import os
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional
+from typing import Dict, Any
 from datetime import datetime
 from app.core.config import Settings, settings
 from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
@@ -94,7 +94,7 @@ def get_settings() -> Settings:
 
 
 @main_router.get('/health')
-async def get_resilience_health():
+async def get_resilience_health() -> Dict[str, Any]:
     """
     Comprehensive resilience infrastructure health assessment endpoint with circuit breaker monitoring.
     
@@ -121,19 +121,19 @@ async def get_resilience_health():
         - Validates circuit breaker states and failure detection mechanism effectiveness
         - Assesses resilience pattern performance and system degradation indicators
         - Provides real-time operational health status for monitoring and alerting systems
-        
+    
         **Circuit Breaker Monitoring:**
         - Reports current states of all registered circuit breakers (open, closed, half-open)
         - Provides circuit breaker effectiveness metrics and failure threshold monitoring
         - Includes circuit breaker activation history and recovery pattern analysis
         - Enables circuit breaker performance optimization and threshold adjustment
-        
+    
         **System Health Determination:**
         - Aggregates individual component health into overall system status assessment
         - Applies sophisticated health determination logic based on circuit breaker states
         - Provides degradation detection with detailed failure pattern analysis
         - Maintains health status consistency for reliable monitoring integration
-        
+    
         **Operational Integration:**
         - Structures health data for integration with monitoring and alerting platforms
         - Provides detailed diagnostic information for troubleshooting and analysis
@@ -146,7 +146,7 @@ async def get_resilience_health():
         >>> assert response.status_code == 200
         >>> health = response.json()
         >>> assert "healthy" in health and "status" in health
-        >>> 
+        >>>
         >>> # Circuit breaker health validation
         >>> if health["healthy"]:
         ...     print("Resilience system operational")
@@ -154,28 +154,28 @@ async def get_resilience_health():
         ...     for breaker_name, breaker_status in circuit_breakers.items():
         ...         if breaker_status.get("state") == "open":
         ...             print(f"Circuit breaker {breaker_name} is open - degraded service")
-        
+    
         >>> # Operational monitoring integration
         >>> async def monitor_resilience_health():
         ...     health_response = await client.get("/internal/resilience/health")
         ...     resilience_health = health_response.json()
-        ...     
+        ...
         ...     alerts = []
         ...     if not resilience_health["healthy"]:
         ...         alerts.append("resilience_system_degraded")
-        ...     
+        ...
         ...     # Check individual circuit breakers
         ...     cb_details = resilience_health["details"].get("circuit_breakers", {})
         ...     for cb_name, cb_info in cb_details.items():
         ...         if cb_info.get("state") == "open":
         ...             alerts.append(f"circuit_breaker_open_{cb_name}")
-        ...     
+        ...
         ...     return {
         ...         "healthy": resilience_health["healthy"],
         ...         "alerts": alerts,
         ...         "status": resilience_health["status"]
         ...     }
-        
+    
         >>> # Dashboard integration for operational visibility
         >>> def prepare_resilience_dashboard(health_data):
         ...     cb_states = health_data["details"].get("circuit_breakers", {})
@@ -186,19 +186,19 @@ async def get_resilience_health():
         ...             "status": "🟢" if state == "closed" else "🔴" if state == "open" else "🟡",
         ...             "state": state
         ...         }
-        ...     
+        ...
         ...     return {
         ...         "overall_health": health_data["status"],
         ...         "circuit_breakers": cb_summary,
         ...         "system_operational": health_data["healthy"]
         ...     }
-        
+    
         >>> # Automated alerting integration
         >>> async def check_resilience_alerts():
         ...     try:
         ...         health = await client.get("/internal/resilience/health").json()
         ...         if health["status"] == "degraded":
-        ...             await send_alert("Resilience system degraded", 
+        ...             await send_alert("Resilience system degraded",
         ...                            details=health["details"])
         ...         return health["healthy"]
         ...     except Exception as e:
@@ -227,17 +227,17 @@ async def get_current_config(app_settings: Settings = Depends(get_settings), api
     Args:
         app_settings: Application settings dependency for configuration access
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         CurrentConfigResponse: Complete configuration response containing:
             - Current resilience configuration parameters
             - Preset name and operation strategies
             - Custom configuration overrides
             - Available strategies mapping
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if configuration retrieval fails
-        
+    
     Example:
         >>> response = await get_current_config()
         >>> CurrentConfigResponse(
@@ -259,17 +259,17 @@ async def get_resilience_metrics(api_key: str = Depends(verify_api_key)) -> Resi
     
     Args:
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         ResilienceMetricsResponse: Comprehensive metrics response containing:
             - Success/failure rates for all operations
             - Retry attempt statistics and patterns
             - Circuit breaker activation data
             - Performance metrics and response times
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if metrics retrieval fails
-        
+    
     Example:
         >>> response = await get_resilience_metrics()
         >>> ResilienceMetricsResponse(
@@ -282,7 +282,7 @@ async def get_resilience_metrics(api_key: str = Depends(verify_api_key)) -> Resi
 
 
 @main_router.get('/metrics/{operation_name}')
-async def get_operation_metrics(operation_name: str, api_key: str = Depends(verify_api_key)):
+async def get_operation_metrics(operation_name: str, api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Get detailed metrics for a specific resilience operation.
     
@@ -293,7 +293,7 @@ async def get_operation_metrics(operation_name: str, api_key: str = Depends(veri
         operation_name: Name of the specific operation to retrieve metrics for
                        (e.g., 'summarize_text', 'analyze_sentiment')
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Operation-specific metrics containing:
             - operation: Operation name
@@ -303,10 +303,10 @@ async def get_operation_metrics(operation_name: str, api_key: str = Depends(veri
                 - Circuit breaker state and activations
                 - Response time percentiles
                 - Error patterns and trends
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if metrics retrieval fails
-        
+    
     Example:
         >>> response = await get_operation_metrics("summarize")
         >>> {
@@ -322,7 +322,7 @@ async def get_operation_metrics(operation_name: str, api_key: str = Depends(veri
 
 
 @main_router.post('/metrics/reset')
-async def reset_resilience_metrics(operation_name: Optional[str] = Query(None, description='Operation name to reset (if None, resets all)'), api_key: str = Depends(verify_api_key)):
+async def reset_resilience_metrics(operation_name: str | None = Query(None, description='Operation name to reset (if None, resets all)'), api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Reset resilience metrics for a specific operation or all operations.
     
@@ -333,19 +333,19 @@ async def reset_resilience_metrics(operation_name: Optional[str] = Query(None, d
         operation_name: Optional name of specific operation to reset.
                        If None, resets metrics for all operations
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, str]: Reset confirmation containing:
             - message: Human-readable confirmation message indicating
                       which operations were reset
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if reset operation fails
-        
+    
     Example:
         >>> response = await reset_resilience_metrics("summarize")
         >>> {"message": "Reset metrics for operation: summarize"}
-        >>> 
+        >>>
         >>> response = await reset_resilience_metrics()
         >>> {"message": "Reset all resilience metrics"}
     """
@@ -353,7 +353,7 @@ async def reset_resilience_metrics(operation_name: Optional[str] = Query(None, d
 
 
 @main_router.get('/dashboard')
-async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_key)):
+async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_key)) -> Dict[str, Any]:
     """
     Get comprehensive resilience dashboard data for monitoring systems.
     
@@ -363,7 +363,7 @@ async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_ke
     
     Args:
         api_key: Optional API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Dashboard data containing:
             - timestamp: Current timestamp in ISO format
@@ -379,14 +379,14 @@ async def get_resilience_dashboard(api_key: str = Depends(optional_verify_api_ke
             - operations: List of available operation names
             - alerts: List of current alerts and warnings
             - summary: Additional summary metrics
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if dashboard data retrieval fails
-        
+    
     Note:
         This endpoint supports optional authentication for flexibility in
         monitoring system integration scenarios.
-        
+    
     Example:
         >>> response = await get_resilience_dashboard()
         >>> {

@@ -14,8 +14,6 @@ import pytest
 from app.infrastructure.cache.cache_presets import cache_preset_manager
 from app.infrastructure.cache.factory import CacheFactory
 from app.infrastructure.cache.memory import InMemoryCache
-from app.infrastructure.cache.redis_ai import AIResponseCache
-from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 # Mark all tests in this module to run serially (not in parallel)
 # These tests manipulate environment state and fail intermittently in parallel

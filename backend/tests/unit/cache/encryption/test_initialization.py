@@ -103,7 +103,7 @@ class TestEncryptedCacheLayerInitialization:
         # Need to patch the logging module's getLogger function
         def mock_get_logger(name=None):
             return mock_logger
-        monkeypatch.setattr('logging.getLogger', mock_get_logger)
+        monkeypatch.setattr("logging.getLogger", mock_get_logger)
 
         # When: EncryptedCacheLayer is initialized
         encryption_layer = EncryptedCacheLayer(encryption_key=encryption_key)
@@ -381,7 +381,7 @@ class TestEncryptedCacheLayerInitialization:
         # Mock the logger to capture messages
         def mock_get_logger(name=None):
             return mock_logger
-        monkeypatch.setattr('logging.getLogger', mock_get_logger)
+        monkeypatch.setattr("logging.getLogger", mock_get_logger)
 
         # When: EncryptedCacheLayer is initialized successfully
         encryption_layer = EncryptedCacheLayer(encryption_key=encryption_key)
@@ -424,7 +424,7 @@ class TestEncryptedCacheLayerInitialization:
         # Mock the logger to capture warning messages
         def mock_get_logger(name=None):
             return mock_logger
-        monkeypatch.setattr('logging.getLogger', mock_get_logger)
+        monkeypatch.setattr("logging.getLogger", mock_get_logger)
 
         # When: EncryptedCacheLayer is initialized
         encryption_layer = EncryptedCacheLayer(encryption_key=encryption_key)
@@ -700,7 +700,7 @@ class TestEncryptedCacheLayerClassMethods:
         # Mock the logger to capture warning messages
         def mock_get_logger(name=None):
             return mock_logger
-        monkeypatch.setattr('logging.getLogger', mock_get_logger)
+        monkeypatch.setattr("logging.getLogger", mock_get_logger)
 
         # When: create_encryption_layer_from_env() is called
         encryption_layer = create_encryption_layer_from_env()

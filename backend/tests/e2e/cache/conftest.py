@@ -7,7 +7,6 @@ but may import basic fixtures from the main cache conftest.py when needed.
 """
 
 import os
-from unittest.mock import patch
 
 import pytest
 import pytest_asyncio

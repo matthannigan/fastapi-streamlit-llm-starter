@@ -227,7 +227,7 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass, field
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict
 from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
 from app.infrastructure.cache.parameter_mapping import ValidationResult

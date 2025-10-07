@@ -707,8 +707,8 @@ format:
 	@cd backend && $(PYTHON_CMD) -m black app/ tests/
 	@cd backend && $(PYTHON_CMD) -m isort app/ tests/
 	@echo "📝 Formatting frontend via Docker..."
-	@docker-compose run frontend black app/ tests/
-	@docker-compose run frontend isort app/ tests/
+	@cd frontend && $(PYTHON_CMD) -m black app/ tests/
+	@cd frontend && $(PYTHON_CMD) -m isort app/ tests/
 	@echo "✅ Code formatting complete!"
 
 ##################################################################################################

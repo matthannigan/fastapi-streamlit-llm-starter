@@ -322,7 +322,7 @@ from app.core.middleware import get_request_id, get_request_duration
 async def my_endpoint(request: Request):
     request_id = get_request_id(request)
     duration = get_request_duration(request)
-    
+
     logger.info(f"Processing request {request_id}, duration: {duration}ms")
     return {"request_id": request_id}
 ```
@@ -466,14 +466,14 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
         - Sets up centralized exception handling with structured error responses
         - Integrates with application logging and monitoring systems
         - Provides graceful degradation when optional components fail
-        
+
     Middleware Stack Order (LIFO Execution):
         Due to FastAPI's Last-In-First-Out middleware execution, the setup order
         is reverse of the actual execution order:
-        
+
         Setup Order → Execution Order:
         1. Security Middleware → Runs 4th (request validation)
-        2. Request Logging → Runs 3rd (correlation ID generation)  
+        2. Request Logging → Runs 3rd (correlation ID generation)
         3. Performance Monitoring → Runs 2nd (timing context)
         4. Global Exception Handler → Catches all exceptions
         5. CORS Middleware → Runs 1st (preflight handling)
@@ -491,7 +491,7 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
         >>> from fastapi import FastAPI
         >>> from app.core.middleware import setup_middleware
         >>> from app.core.config import settings
-        >>> 
+        >>>
         >>> app = FastAPI()
         >>> setup_middleware(app, settings)
         >>> # Production-ready middleware stack is now active
@@ -546,19 +546,19 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
     logger.info("Setting up middleware stack")
 
     # 1. Security Middleware (first to run on requests)
-    security_enabled = getattr(settings, 'security_headers_enabled', True)
+    security_enabled = getattr(settings, "security_headers_enabled", True)
     if security_enabled:
         app.add_middleware(SecurityMiddleware, settings=settings)
         logger.info("Security middleware enabled")
 
     # 2. Request Logging Middleware
-    request_logging_enabled = getattr(settings, 'request_logging_enabled', True)
+    request_logging_enabled = getattr(settings, "request_logging_enabled", True)
     if request_logging_enabled:
         app.add_middleware(RequestLoggingMiddleware, settings=settings)
         logger.info("Request logging middleware enabled")
 
     # 3. Performance Monitoring Middleware
-    performance_monitoring_enabled = getattr(settings, 'performance_monitoring_enabled', True)
+    performance_monitoring_enabled = getattr(settings, "performance_monitoring_enabled", True)
     if performance_monitoring_enabled:
         app.add_middleware(PerformanceMonitoringMiddleware, settings=settings)
         logger.info("Performance monitoring middleware enabled")
@@ -580,7 +580,7 @@ def setup_enhanced_middleware(app: FastAPI, settings: Settings) -> None:
 
     Enhanced Middleware Execution Order (LIFO - Last-In, First-Out):
     The middleware added last executes first. Here's the actual execution order:
-    
+
     1. **CORS Middleware**: Handle preflight requests (added last, runs first)
     2. **Performance Monitoring**: Track performance metrics
     3. **Request Logging Middleware**: Log requests with correlation IDs
@@ -603,49 +603,49 @@ def setup_enhanced_middleware(app: FastAPI, settings: Settings) -> None:
     logger.info("Setting up enhanced middleware stack")
 
     # 1. Rate Limiting Middleware (protect against abuse first)
-    rate_limiting_enabled = getattr(settings, 'rate_limiting_enabled', True)
+    rate_limiting_enabled = getattr(settings, "rate_limiting_enabled", True)
     if rate_limiting_enabled:
         app.add_middleware(RateLimitMiddleware, settings=settings)
         logger.info("Rate limiting middleware enabled")
 
     # 2. Request Size Limiting Middleware (prevent large request attacks)
-    request_size_limiting_enabled = getattr(settings, 'request_size_limiting_enabled', True)
+    request_size_limiting_enabled = getattr(settings, "request_size_limiting_enabled", True)
     if request_size_limiting_enabled:
         app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
         logger.info("Request size limiting middleware enabled")
 
     # 3. Security Middleware (security headers and validation)
-    security_enabled = getattr(settings, 'security_headers_enabled', True)
+    security_enabled = getattr(settings, "security_headers_enabled", True)
     if security_enabled:
         app.add_middleware(SecurityMiddleware, settings=settings)
         logger.info("Security middleware enabled")
 
     # 4. API Versioning Middleware (handle version detection)
-    versioning_enabled = getattr(settings, 'api_versioning_enabled', True)
+    versioning_enabled = getattr(settings, "api_versioning_enabled", True)
     if versioning_enabled:
         app.add_middleware(APIVersioningMiddleware, settings=settings)
         logger.info("API versioning middleware enabled")
 
     # 5. Version Compatibility Middleware (transform between versions)
-    compatibility_enabled = getattr(settings, 'api_version_compatibility_enabled', False)
+    compatibility_enabled = getattr(settings, "api_version_compatibility_enabled", False)
     if compatibility_enabled:
         app.add_middleware(VersionCompatibilityMiddleware, settings=settings)
         logger.info("Version compatibility middleware enabled")
 
     # 6. Compression Middleware (handle compression early for efficiency)
-    compression_enabled = getattr(settings, 'compression_enabled', True)
+    compression_enabled = getattr(settings, "compression_enabled", True)
     if compression_enabled:
         app.add_middleware(CompressionMiddleware, settings=settings)
         logger.info("Compression middleware enabled")
 
     # 7. Request Logging Middleware (log with all context available)
-    request_logging_enabled = getattr(settings, 'request_logging_enabled', True)
+    request_logging_enabled = getattr(settings, "request_logging_enabled", True)
     if request_logging_enabled:
         app.add_middleware(RequestLoggingMiddleware, settings=settings)
         logger.info("Request logging middleware enabled")
 
     # 8. Performance Monitoring Middleware (track performance)
-    performance_monitoring_enabled = getattr(settings, 'performance_monitoring_enabled', True)
+    performance_monitoring_enabled = getattr(settings, "performance_monitoring_enabled", True)
     if performance_monitoring_enabled:
         app.add_middleware(PerformanceMonitoringMiddleware, settings=settings)
         logger.info("Performance monitoring middleware enabled")
@@ -673,23 +673,23 @@ class EnhancedMiddlewareSettings:
     # === Rate Limiting Settings ===
     rate_limiting_enabled: bool = True
     rate_limiting_skip_health: bool = True
-    redis_url: Optional[str] = None
+    redis_url: str | None = None
     custom_rate_limits: Dict[str, Dict[str, int]] = {}
     custom_endpoint_rules: Dict[str, str] = {}
 
     # === Request Size Limiting Settings ===
     request_size_limiting_enabled: bool = True
     request_size_limits: Dict[str, int] = {
-        'default': 10 * 1024 * 1024,  # 10MB
-        'application/json': 5 * 1024 * 1024,  # 5MB
-        'multipart/form-data': 50 * 1024 * 1024,  # 50MB
+        "default": 10 * 1024 * 1024,  # 10MB
+        "application/json": 5 * 1024 * 1024,  # 5MB
+        "multipart/form-data": 50 * 1024 * 1024,  # 50MB
     }
 
     # === Compression Settings ===
     compression_enabled: bool = True
     compression_min_size: int = 1024  # 1KB
     compression_level: int = 6  # 1-9
-    compression_algorithms: List[str] = ['br', 'gzip', 'deflate']
+    compression_algorithms: List[str] = ["br", "gzip", "deflate"]
     streaming_compression_enabled: bool = True
 
     # === API Versioning Settings ===
@@ -746,10 +746,10 @@ def get_request_id(request: Request) -> str:
             return {"request_id": request_id}
         ```
     """
-    return getattr(request.state, 'request_id', request_id_context.get('unknown'))
+    return getattr(request.state, "request_id", request_id_context.get("unknown"))
 
 
-def get_request_duration(_request: Request) -> Optional[float]:
+def get_request_duration(_request: Request) -> float | None:
     """
     Get the current request duration in milliseconds.
 
@@ -804,7 +804,7 @@ def add_response_headers(response: Response, headers: Dict[str, str]) -> None:
         ```
     """
     for name, value in headers.items():
-        if name.lower() not in {'content-length', 'content-type'}:
+        if name.lower() not in {"content-length", "content-type"}:
             response.headers[name] = value
 
 
@@ -832,11 +832,11 @@ def is_health_check_request(request: Request) -> bool:
             return await call_next(request)
         ```
     """
-    health_paths = {'/health', '/healthz', '/ping', '/status', '/readiness', '/liveness'}
+    health_paths = {"/health", "/healthz", "/ping", "/status", "/readiness", "/liveness"}
     return (
         request.url.path in health_paths or
-        request.url.path.startswith('/health') or
-        request.headers.get('user-agent', '').lower().startswith(('kube-probe', 'health'))
+        request.url.path.startswith("/health") or
+        request.headers.get("user-agent", "").lower().startswith(("kube-probe", "health"))
     )
 
 
@@ -869,10 +869,10 @@ def configure_middleware_logging(settings: Settings) -> None:
     """
     # Configure middleware-specific loggers
     middleware_loggers = [
-        'app.core.middleware',
-        'app.core.middleware.security',
-        'app.core.middleware.performance',
-        'app.core.middleware.logging'
+        "app.core.middleware",
+        "app.core.middleware.security",
+        "app.core.middleware.performance",
+        "app.core.middleware.logging"
     ]
 
     for logger_name in middleware_loggers:
@@ -883,7 +883,7 @@ def configure_middleware_logging(settings: Settings) -> None:
         if not middleware_logger.handlers:
             handler = logging.StreamHandler()
             formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
             handler.setFormatter(formatter)
             middleware_logger.addHandler(handler)
@@ -898,37 +898,40 @@ def get_middleware_stats(app: FastAPI) -> Dict[str, Any]:
         Dict containing middleware configuration and runtime stats
     """
     middleware_info = {
-        'total_middleware': len(app.user_middleware),
-        'middleware_stack': [],
-        'enabled_features': [],
-        'configuration': {}
+        "total_middleware": len(app.user_middleware),
+        "middleware_stack": [],
+        "enabled_features": [],
+        "configuration": {}
     }
 
     # Analyze middleware stack
     for middleware in app.user_middleware:
         # Safely get middleware class name
         try:
-            middleware_class = getattr(middleware.cls, '__name__', str(middleware.cls))
+            middleware_class = getattr(middleware.cls, "__name__", str(middleware.cls))
         except AttributeError:
             middleware_class = str(type(middleware.cls).__name__)
-        
-        middleware_info['middleware_stack'].append(middleware_class)
+
+        # Type annotation for middleware_stack
+        middleware_list: List[str] = middleware_info["middleware_stack"]  # type: ignore
+        middleware_list.append(middleware_class)
 
         # Check for known middleware types
-        if 'RateLimit' in middleware_class:
-            middleware_info['enabled_features'].append('rate_limiting')
-        elif 'Security' in middleware_class:
-            middleware_info['enabled_features'].append('security_headers')
-        elif 'Compression' in middleware_class:
-            middleware_info['enabled_features'].append('compression')
-        elif 'Versioning' in middleware_class:
-            middleware_info['enabled_features'].append('api_versioning')
-        elif 'Performance' in middleware_class:
-            middleware_info['enabled_features'].append('performance_monitoring')
-        elif 'Logging' in middleware_class:
-            middleware_info['enabled_features'].append('request_logging')
-        elif 'CORS' in middleware_class:
-            middleware_info['enabled_features'].append('cors')
+        enabled_features_list: List[str] = middleware_info["enabled_features"]  # type: ignore
+        if "RateLimit" in middleware_class:
+            enabled_features_list.append("rate_limiting")
+        elif "Security" in middleware_class:
+            enabled_features_list.append("security_headers")
+        elif "Compression" in middleware_class:
+            enabled_features_list.append("compression")
+        elif "Versioning" in middleware_class:
+            enabled_features_list.append("api_versioning")
+        elif "Performance" in middleware_class:
+            enabled_features_list.append("performance_monitoring")
+        elif "Logging" in middleware_class:
+            enabled_features_list.append("request_logging")
+        elif "CORS" in middleware_class:
+            enabled_features_list.append("cors")
 
     return middleware_info
 
@@ -946,31 +949,31 @@ def validate_middleware_configuration(settings: Settings) -> List[str]:
     issues = []
 
     # Validate rate limiting settings
-    if getattr(settings, 'rate_limiting_enabled', False):
-        redis_url = getattr(settings, 'redis_url', None)
+    if getattr(settings, "rate_limiting_enabled", False):
+        redis_url = getattr(settings, "redis_url", None)
         if not redis_url:
             issues.append("Rate limiting enabled but no Redis URL configured - using local cache")
 
     # Validate compression settings
-    if getattr(settings, 'compression_enabled', False):
-        compression_level = getattr(settings, 'compression_level', 6)
+    if getattr(settings, "compression_enabled", False):
+        compression_level = getattr(settings, "compression_level", 6)
         if not 1 <= compression_level <= 9:
             issues.append(f"Invalid compression level {compression_level}, should be 1-9")
 
     # Validate API versioning
-    if getattr(settings, 'api_versioning_enabled', False):
-        default_version = getattr(settings, 'default_api_version', '1.0')
-        current_version = getattr(settings, 'current_api_version', '1.0')
+    if getattr(settings, "api_versioning_enabled", False):
+        default_version = getattr(settings, "default_api_version", "1.0")
+        current_version = getattr(settings, "current_api_version", "1.0")
         if not default_version or not current_version:
             issues.append("API versioning enabled but versions not properly configured")
 
     # Validate size limits
-    max_request_size = getattr(settings, 'max_request_size', 0)
+    max_request_size = getattr(settings, "max_request_size", 0)
     if max_request_size <= 0:
         issues.append("Invalid max_request_size, should be > 0")
 
     # Validate performance monitoring
-    slow_threshold = getattr(settings, 'slow_request_threshold', 1000)
+    slow_threshold = getattr(settings, "slow_request_threshold", 1000)
     if slow_threshold <= 0:
         issues.append("Invalid slow_request_threshold, should be > 0")
 
@@ -987,42 +990,43 @@ def create_middleware_health_check() -> Callable:
     async def middleware_health_check(request: Request) -> Dict[str, Any]:
         """Check the health of all middleware components."""
         health_status = {
-            'status': 'healthy',
-            'middleware': {},
-            'timestamp': time.time()
+            "status": "healthy",
+            "middleware": {},
+            "timestamp": time.time()
         }
 
         try:
             # Check if request ID is being generated (logging middleware)
             request_id = get_request_id(request)
-            health_status['middleware']['request_logging'] = {
-                'status': 'healthy' if request_id != 'unknown' else 'warning',
-                'request_id': request_id
+            middleware_dict: Dict[str, Any] = health_status["middleware"]  # type: ignore
+            middleware_dict["request_logging"] = {
+                "status": "healthy" if request_id != "unknown" else "warning",
+                "request_id": request_id
             }
 
             # Check performance monitoring
             duration = get_request_duration(request)
-            health_status['middleware']['performance_monitoring'] = {
-                'status': 'healthy' if duration is not None else 'warning',
-                'request_duration_ms': duration
+            middleware_dict["performance_monitoring"] = {
+                "status": "healthy" if duration is not None else "warning",
+                "request_duration_ms": duration
             }
 
             # Check API versioning
-            api_version = getattr(request.state, 'api_version', None)
-            health_status['middleware']['api_versioning'] = {
-                'status': 'healthy' if api_version else 'not_configured',
-                'detected_version': api_version
+            api_version = getattr(request.state, "api_version", None)
+            middleware_dict["api_versioning"] = {
+                "status": "healthy" if api_version else "not_configured",
+                "detected_version": api_version
             }
 
             # Check security headers (will be added to response)
-            health_status['middleware']['security'] = {
-                'status': 'healthy',  # Will be verified in response headers
-                'note': 'Security headers will be validated in response'
+            middleware_dict["security"] = {
+                "status": "healthy",  # Will be verified in response headers
+                "note": "Security headers will be validated in response"
             }
 
         except Exception as e:
-            health_status['status'] = 'degraded'
-            health_status['error'] = str(e)
+            health_status["status"] = "degraded"
+            health_status["error"] = str(e)
 
         return health_status
 
@@ -1042,17 +1046,17 @@ def optimize_middleware_stack(app: FastAPI, settings: Settings) -> None:
         settings: Application settings
     """
     # Disable verbose logging in production
-    if getattr(settings, 'environment', 'development') == 'production':
+    if getattr(settings, "environment", "development") == "production":
         # Reduce logging verbosity for performance-critical middleware
-        middleware_logger = logging.getLogger('app.core.middleware')
+        middleware_logger = logging.getLogger("app.core.middleware")
         middleware_logger.setLevel(logging.WARNING)
 
         # Disable memory monitoring if not needed
-        if not getattr(settings, 'detailed_monitoring_enabled', False):
+        if not getattr(settings, "detailed_monitoring_enabled", False):
             settings.memory_monitoring_enabled = False
 
         # Optimize compression settings for production
-        if getattr(settings, 'compression_enabled', True):
+        if getattr(settings, "compression_enabled", True):
             # Use faster compression in production
             settings.compression_level = min(settings.compression_level, 4)
 
@@ -1071,12 +1075,13 @@ def setup_middleware_monitoring(app: FastAPI, settings: Settings) -> None:
         app: FastAPI application instance
         settings: Application settings
     """
-    if not getattr(settings, 'middleware_monitoring_enabled', False):
+    if not getattr(settings, "middleware_monitoring_enabled", False):
         return
 
     # Set up periodic middleware health checks
     @app.on_event("startup")
-    async def setup_monitoring():
+    async def setup_monitoring() -> None:
+        """Set up middleware monitoring during application startup."""
         logger.info("Setting up middleware monitoring")
 
         # Could integrate with monitoring systems like:
@@ -1086,7 +1091,8 @@ def setup_middleware_monitoring(app: FastAPI, settings: Settings) -> None:
         # - Custom analytics
 
         # Example: Set up periodic health checks
-        async def periodic_health_check():
+        async def periodic_health_check() -> None:
+            """Run periodic middleware health checks."""
             while True:
                 try:
                     # Check middleware health
@@ -1137,12 +1143,12 @@ def setup_production_middleware(app: FastAPI, settings: Settings) -> None:
     health_check_func = create_middleware_health_check()
 
     @app.get("/internal/middleware/health")
-    async def middleware_health(request: Request):
+    async def middleware_health(request: Request) -> Dict[str, Any]:
         """Middleware health check endpoint."""
         return await health_check_func(request)
 
     @app.get("/internal/middleware/stats")
-    async def middleware_stats():
+    async def middleware_stats() -> Dict[str, Any]:
         """Middleware statistics endpoint."""
         return get_middleware_stats(app)
 
@@ -1206,51 +1212,51 @@ def migrate_from_main_py_middleware(app: FastAPI, settings: Settings) -> None:
 
 __all__ = [
     # Main setup function
-    'setup_middleware',
+    "setup_middleware",
 
     # Enhanced setup functions
-    'setup_enhanced_middleware',
-    'setup_production_middleware',
+    "setup_enhanced_middleware",
+    "setup_production_middleware",
 
     # Individual middleware components
-    'setup_cors_middleware',
-    'setup_global_exception_handler',
-    'RequestLoggingMiddleware',
-    'SecurityMiddleware',
-    'PerformanceMonitoringMiddleware',
-    'RateLimitMiddleware',
-    'RequestSizeLimitMiddleware',
-    'CompressionMiddleware',
-    'APIVersioningMiddleware',
-    'VersionCompatibilityMiddleware',
+    "setup_cors_middleware",
+    "setup_global_exception_handler",
+    "RequestLoggingMiddleware",
+    "SecurityMiddleware",
+    "PerformanceMonitoringMiddleware",
+    "RateLimitMiddleware",
+    "RequestSizeLimitMiddleware",
+    "CompressionMiddleware",
+    "APIVersioningMiddleware",
+    "VersionCompatibilityMiddleware",
 
     # Settings classes
-    'EnhancedMiddlewareSettings',
-    'RateLimitSettings',
-    'CompressionSettings',
-    'APIVersioningSettings',
+    "EnhancedMiddlewareSettings",
+    "RateLimitSettings",
+    "CompressionSettings",
+    "APIVersioningSettings",
 
     # Utility functions
-    'get_request_id',
-    'get_request_duration',
-    'add_response_headers',
-    'is_health_check_request',
-    'configure_middleware_logging',
-    'get_middleware_stats',
-    'validate_middleware_configuration',
-    'create_middleware_health_check',
-    'optimize_middleware_stack',
-    'setup_middleware_monitoring',
+    "get_request_id",
+    "get_request_duration",
+    "add_response_headers",
+    "is_health_check_request",
+    "configure_middleware_logging",
+    "get_middleware_stats",
+    "validate_middleware_configuration",
+    "create_middleware_health_check",
+    "optimize_middleware_stack",
+    "setup_middleware_monitoring",
 
     # Version utility functions
-    'get_api_version',
-    'is_version_deprecated',
-    'get_version_sunset_date',
+    "get_api_version",
+    "is_version_deprecated",
+    "get_version_sunset_date",
 
     # Compression utilities
-    'get_compression_stats',
-    'configure_compression_settings',
+    "get_compression_stats",
+    "configure_compression_settings",
 
     # Migration helpers
-    'migrate_from_main_py_middleware'
+    "migrate_from_main_py_middleware"
 ]

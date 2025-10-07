@@ -49,18 +49,18 @@ def mock_auth_config(fake_settings, api_keys_set, mock_env_detection=None, auth_
     def mock_get_settings():
         return fake_settings
 
-    with patch('app.infrastructure.security.auth.settings', fake_settings):
-        with patch('app.dependencies.get_settings', mock_get_settings):
-            with patch('app.infrastructure.security.auth.api_key_auth.api_keys', api_keys_set):
+    with patch("app.infrastructure.security.auth.settings", fake_settings):
+        with patch("app.dependencies.get_settings", mock_get_settings):
+            with patch("app.infrastructure.security.auth.api_key_auth.api_keys", api_keys_set):
                 if auth_config_patch:
-                    with patch('app.infrastructure.security.auth.auth_config', auth_config_patch):
+                    with patch("app.infrastructure.security.auth.auth_config", auth_config_patch):
                         if mock_env_detection:
-                            with patch('app.infrastructure.security.auth.get_environment_info', mock_env_detection):
+                            with patch("app.infrastructure.security.auth.get_environment_info", mock_env_detection):
                                 yield fake_settings
                         else:
                             yield fake_settings
                 elif mock_env_detection:
-                    with patch('app.infrastructure.security.auth.get_environment_info', mock_env_detection):
+                    with patch("app.infrastructure.security.auth.get_environment_info", mock_env_detection):
                         yield fake_settings
                 else:
                     yield fake_settings
@@ -323,7 +323,7 @@ class TestVerifyApiKeyDependency:
         # When: verify_api_key is called with valid credentials
         # Then: Authentication logic continues with fallback context
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
-            with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
+            with patch("app.infrastructure.security.auth.get_environment_info", side_effect=failing_env_detection):
                 # Should still succeed with valid credentials despite env detection failure
                 result = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
                 assert result == "test-primary-key-123"
@@ -336,7 +336,7 @@ class TestVerifyApiKeyDependency:
         invalid_credentials.credentials = "invalid-key"
 
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
-            with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
+            with patch("app.infrastructure.security.auth.get_environment_info", side_effect=failing_env_detection):
                 with pytest.raises(AuthenticationError) as exc_info:
                     await verify_api_key(invalid_request, invalid_credentials, settings)
 
@@ -401,7 +401,7 @@ class TestVerifyApiKeyWithMetadataDependency:
         mock_auth_config_obj.enable_request_logging = False
 
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
-            with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
+            with patch("app.infrastructure.security.auth.api_key_auth.config", mock_auth_config_obj):
                 result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: Dictionary containing 'api_key' and metadata fields is returned
@@ -453,8 +453,8 @@ class TestVerifyApiKeyWithMetadataDependency:
                     "permissions": ["read", "write"]
                 }
             }
-            with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
-                with patch('app.infrastructure.security.auth.api_key_auth._key_metadata', key_metadata):
+            with patch("app.infrastructure.security.auth.api_key_auth.config", mock_auth_config_obj):
+                with patch("app.infrastructure.security.auth.api_key_auth._key_metadata", key_metadata):
                     # When: verify_api_key_with_metadata is called with valid credentials
                     result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
@@ -498,7 +498,7 @@ class TestVerifyApiKeyWithMetadataDependency:
 
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
             # Also need to mock the api_key_auth config to enable request logging
-            with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
+            with patch("app.infrastructure.security.auth.api_key_auth.config", mock_auth_config_obj):
                 # When: verify_api_key_with_metadata is called with valid credentials
                 result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
@@ -573,7 +573,7 @@ class TestVerifyApiKeyWithMetadataDependency:
         mock_auth_config_obj.enable_request_logging = False
 
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
-            with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
+            with patch("app.infrastructure.security.auth.api_key_auth.config", mock_auth_config_obj):
                 result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: Returned metadata is minimal when advanced features are disabled
@@ -1003,7 +1003,7 @@ class TestAuthenticationDependencyEdgeCases:
         # Test with empty string credentials
         empty_creds = Mock(spec=HTTPAuthorizationCredentials)
         empty_creds.credentials = ""
-        
+
         empty_request = Mock(spec=Request)
         empty_request.headers = Mock()
         empty_request.headers.get = Mock(return_value=None)
@@ -1049,13 +1049,13 @@ class TestAuthenticationDependencyEdgeCases:
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             # Test basic verify_api_key
             result1 = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
-            
+
             # Test HTTP wrapper variant
             result2 = await verify_api_key_http(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
-            
+
             # Test optional variant
             result3 = await optional_verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
-            
+
             # Test metadata variant
             result4 = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
@@ -1092,13 +1092,13 @@ class TestAuthenticationDependencyEdgeCases:
         invalid_request = Mock(spec=Request)
         invalid_request.headers = Mock()
         invalid_request.headers.get = Mock(return_value="wrong-key")
-        
+
         invalid_creds = Mock(spec=HTTPAuthorizationCredentials)
         invalid_creds.credentials = "wrong-key"
 
         # Even with environment detection failure, invalid keys should be rejected
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
-            with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
+            with patch("app.infrastructure.security.auth.get_environment_info", side_effect=failing_env_detection):
                 with pytest.raises(AuthenticationError):
                     await verify_api_key(invalid_request, invalid_creds, settings)
 
@@ -1108,7 +1108,7 @@ class TestAuthenticationDependencyEdgeCases:
         no_creds_request.headers.get = Mock(return_value=None)
 
         with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
-            with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
+            with patch("app.infrastructure.security.auth.get_environment_info", side_effect=failing_env_detection):
                 with pytest.raises(AuthenticationError):
                     await verify_api_key(no_creds_request, None, settings)
 
@@ -1138,14 +1138,14 @@ class TestAuthenticationDependencyEdgeCases:
         valid_request = Mock(spec=Request)
         valid_request.headers = Mock()
         valid_request.headers.get = Mock(return_value="test-primary-key-123")
-        
+
         valid_creds = Mock(spec=HTTPAuthorizationCredentials)
         valid_creds.credentials = "test-primary-key-123"
 
         invalid_request = Mock(spec=Request)
         invalid_request.headers = Mock()
         invalid_request.headers.get = Mock(return_value="invalid-key")
-        
+
         invalid_creds = Mock(spec=HTTPAuthorizationCredentials)
         invalid_creds.credentials = "invalid-key"
 

@@ -138,7 +138,7 @@ class CacheDependencyManager:
         ...
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """
     Get cached application settings instance.
@@ -161,7 +161,7 @@ def get_settings() -> Settings:
     ...
 
 
-async def get_cache_config(settings: Settings = Depends(get_settings)):
+async def get_cache_config(settings: Settings = Depends(get_settings)) -> Dict[str, Any]:
     """
     Build cache configuration from application settings using preset system.
     
@@ -196,7 +196,7 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
     ...
 
 
-async def get_cache_service(config = Depends(get_cache_config)) -> CacheInterface:
+async def get_cache_service(config: Dict[str, Any] = Depends(get_cache_config)) -> CacheInterface:
     """
     Get main cache service with explicit factory usage and registry management.
     

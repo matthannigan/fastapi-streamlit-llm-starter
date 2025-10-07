@@ -26,7 +26,7 @@ def collect_detection_signals(config: DetectionConfig) -> List[EnvironmentSignal
     
     Args:
         config: Detection configuration with patterns and precedence settings
-        
+    
     Returns:
         List of EnvironmentSignal objects, each containing:
         - source: Detection mechanism (env_var, system_indicator, hostname_pattern)
@@ -66,7 +66,7 @@ def detect_from_env_vars(config: DetectionConfig) -> List[EnvironmentSignal]:
     
     Args:
         config: Detection configuration with env_var_precedence settings
-        
+    
     Returns:
         List of EnvironmentSignal objects from environment variable detection.
         Signals are ordered by precedence with highest confidence for
@@ -104,7 +104,7 @@ def detect_from_system_indicators(config: DetectionConfig) -> List[EnvironmentSi
     
     Args:
         config: Detection configuration with indicator settings
-        
+    
     Returns:
         List of EnvironmentSignal objects from system indicator detection.
         Each signal represents one system indicator with appropriate
@@ -184,7 +184,7 @@ def detect_from_patterns(config: DetectionConfig) -> List[EnvironmentSignal]:
     
     Args:
         config: Detection configuration with pattern settings
-        
+    
     Returns:
         List of EnvironmentSignal objects from pattern matching.
         Signals include the matched hostname/URL and the pattern that

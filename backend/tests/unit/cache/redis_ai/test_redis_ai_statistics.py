@@ -7,10 +7,10 @@ and observable statistics collection and reporting functionality.
 
 Implementation Status:
     - 8 tests PASS: All statistics and performance monitoring tests implemented and passing
-    
+
 Implementation Notes:
-    All tests have been re-implemented using behavior-driven testing principles based strictly 
-    on the public contract from backend/contracts/infrastructure/cache/redis_ai.pyi. 
+    All tests have been re-implemented using behavior-driven testing principles based strictly
+    on the public contract from backend/contracts/infrastructure/cache/redis_ai.pyi.
     Key improvements:
     - Removed internal implementation mocking (e.g., cache.performance_monitor._calculate_hit_rate)
     - Test only documented behavior from public contract
@@ -28,14 +28,8 @@ External Dependencies:
     behavior-driven testing principles for accurate behavior simulation.
 """
 
-import hashlib
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
 from app.infrastructure.cache.redis_ai import AIResponseCache
 
 
@@ -403,7 +397,6 @@ class TestAIResponseCacheStatistics:
             - test_get_text_tier_statistics_analyzes_text_size_patterns()
             - test_get_operation_performance_provides_detailed_operation_metrics()
         """
-        from collections import defaultdict
 
         # Given: AI cache with mock performance data
         cache = AIResponseCache(**valid_ai_params)

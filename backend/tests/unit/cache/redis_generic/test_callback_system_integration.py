@@ -38,10 +38,7 @@ Fixtures and Mocks:
         - sample_ttl: Standard TTL value for testing
 """
 
-import asyncio
-from typing import Any, Callable, Dict
 
-import pytest
 
 from app.infrastructure.cache.redis_generic import GenericRedisCache
 

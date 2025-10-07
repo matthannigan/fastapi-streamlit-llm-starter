@@ -132,7 +132,7 @@ class CacheKeyGenerator:
         >>> print(f"Total keys: {stats.get('total_keys_generated', 0)}")
     """
 
-    def __init__(self, text_hash_threshold: int = 1000, hash_algorithm = hashlib.sha256, performance_monitor: Optional['CachePerformanceMonitor'] = None):
+    def __init__(self, text_hash_threshold: int = 1000, hash_algorithm: Any = hashlib.sha256, performance_monitor: Optional['CachePerformanceMonitor'] = None) -> None:
         """
         Initialize CacheKeyGenerator with configurable parameters.
         

@@ -49,7 +49,7 @@ import string
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.core.environment import (Environment, FeatureContext,
                                   get_environment_info)
@@ -57,8 +57,8 @@ from app.core.exceptions import ConfigurationError
 
 # Optional Redis import for graceful degradation
 try:
-    import redis.asyncio as aioredis  # type: ignore
-    from redis.asyncio import Redis, RedisError  # type: ignore
+    import redis.asyncio as aioredis
+    from redis.asyncio import Redis, RedisError
 
     AIOREDIS_AVAILABLE = True
 except ImportError:
@@ -126,18 +126,18 @@ class SecurityConfig:
     """
 
     # Authentication settings
-    redis_auth: Optional[str] = None
-    acl_username: Optional[str] = None
-    acl_password: Optional[str] = None
+    redis_auth: str | None = None
+    acl_username: str | None = None
+    acl_password: str | None = None
 
     # TLS/SSL settings
     use_tls: bool = False
-    tls_cert_path: Optional[str] = None
-    tls_key_path: Optional[str] = None
-    tls_ca_path: Optional[str] = None
+    tls_cert_path: str | None = None
+    tls_key_path: str | None = None
+    tls_ca_path: str | None = None
     verify_certificates: bool = True
     min_tls_version: int = ssl.TLSVersion.TLSv1_2.value
-    cipher_suites: Optional[List[str]] = None
+    cipher_suites: List[str] | None = None
 
     # Connection settings
     connection_timeout: int = 30
@@ -149,7 +149,7 @@ class SecurityConfig:
     enable_security_monitoring: bool = True
     log_security_events: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate security configuration after initialization."""
         self._validate_configuration()
 
@@ -237,14 +237,13 @@ class SecurityConfig:
         """Get a descriptive security level."""
         if self.use_tls and self.has_authentication and self.verify_certificates:
             return "HIGH"
-        elif self.use_tls or self.has_authentication:
+        if self.use_tls or self.has_authentication:
             return "MEDIUM"
-        else:
-            return "LOW"
+        return "LOW"
 
     @classmethod
     def create_for_environment(
-        cls, encryption_key: Optional[str] = None
+        cls, encryption_key: str | None = None
     ) -> "SecurityConfig":
         """
         Create security configuration appropriate for detected environment.
@@ -295,7 +294,7 @@ class SecurityConfig:
                 enable_security_monitoring=True,
                 log_security_events=True,
             )
-        elif env_info.environment == Environment.STAGING:
+        if env_info.environment == Environment.STAGING:
             return cls(
                 redis_auth=generate_secure_password(24),
                 use_tls=True,
@@ -310,7 +309,7 @@ class SecurityConfig:
                 enable_security_monitoring=True,
                 log_security_events=True,
             )
-        elif env_info.environment == Environment.TESTING:
+        if env_info.environment == Environment.TESTING:
             # Testing environment: TLS is disabled by default.
             # Tests that require TLS should enable it explicitly in their configuration.
             return cls(
@@ -323,7 +322,7 @@ class SecurityConfig:
                 enable_security_monitoring=False,
                 log_security_events=False,
             )
-        elif env_info.environment == Environment.DEVELOPMENT:
+        if env_info.environment == Environment.DEVELOPMENT:
             # Development: TLS required, self-signed certificates acceptable
             return cls(
                 redis_auth=generate_secure_password(16),
@@ -339,27 +338,26 @@ class SecurityConfig:
                 enable_security_monitoring=True,
                 log_security_events=True,
             )
-        else:
-            # Unknown environments: Fail-secure with production-level security
-            # Security-first principle: When in doubt, use maximum security
-            logger.warning(
-                f"Unknown environment detected: {env_info.environment}. "
-                f"Applying production-level security as fail-safe default."
-            )
-            return cls(
-                redis_auth=generate_secure_password(32),
-                use_tls=True,
-                tls_cert_path="/etc/ssl/redis-client.crt",
-                tls_key_path="/etc/ssl/redis-client.key",
-                tls_ca_path="/etc/ssl/ca.crt",
-                verify_certificates=True,  # MANDATORY for unknown environments
-                min_tls_version=ssl.TLSVersion.TLSv1_3.value,
-                connection_timeout=30,
-                socket_timeout=30,
-                max_retries=3,
-                enable_security_monitoring=True,
-                log_security_events=True,
-            )
+        # Unknown environments: Fail-secure with production-level security
+        # Security-first principle: When in doubt, use maximum security
+        logger.warning(
+            f"Unknown environment detected: {env_info.environment}. "
+            f"Applying production-level security as fail-safe default."
+        )
+        return cls(
+            redis_auth=generate_secure_password(32),
+            use_tls=True,
+            tls_cert_path="/etc/ssl/redis-client.crt",
+            tls_key_path="/etc/ssl/redis-client.key",
+            tls_ca_path="/etc/ssl/ca.crt",
+            verify_certificates=True,  # MANDATORY for unknown environments
+            min_tls_version=ssl.TLSVersion.TLSv1_3.value,
+            connection_timeout=30,
+            socket_timeout=30,
+            max_retries=3,
+            enable_security_monitoring=True,
+            log_security_events=True,
+        )
 
     def validate_mandatory_security_requirements(self) -> None:
         """
@@ -487,12 +485,12 @@ class SecurityValidationResult:
 
     # Additional security metrics
     connection_encrypted: bool = False
-    auth_method: Optional[str] = None
-    tls_version: Optional[str] = None
-    cipher_suite: Optional[str] = None
-    certificate_expiry_days: Optional[int] = None
+    auth_method: str | None = None
+    tls_version: str | None = None
+    cipher_suite: str | None = None
+    certificate_expiry_days: int | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Calculate security score and overall status.
 
         Respect an explicitly provided `security_score` if it's non-zero; otherwise
@@ -747,7 +745,7 @@ class RedisCacheSecurityManager:
     def __init__(
         self,
         config: SecurityConfig,
-        performance_monitor: Optional[CachePerformanceMonitor] = None,
+        performance_monitor: CachePerformanceMonitor | None = None,
     ):
         """Initialize Redis security manager.
 
@@ -763,8 +761,8 @@ class RedisCacheSecurityManager:
         self._security_events: List[Dict[str, Any]] = []
 
         # Connection state
-        self._ssl_context: Optional[ssl.SSLContext] = None
-        self._last_validation: Optional[SecurityValidationResult] = None
+        self._ssl_context: ssl.SSLContext | None = None
+        self._last_validation: SecurityValidationResult | None = None
 
         self._initialize_ssl_context()
 
@@ -955,7 +953,7 @@ class RedisCacheSecurityManager:
                 )
 
                 # Support both sync and async factories for easier testing/mocking
-                redis_client = aioredis.from_url(**connection_kwargs)  # type: ignore[attr-defined]
+                redis_client = aioredis.from_url(**connection_kwargs)
                 if asyncio.iscoroutine(redis_client):  # when mocked as AsyncMock
                     redis_client = await redis_client
 
@@ -1545,7 +1543,7 @@ class RedisCacheSecurityManager:
         return results
 
     def generate_security_report(
-        self, validation_result: Optional[SecurityValidationResult] = None
+        self, validation_result: SecurityValidationResult | None = None
     ) -> str:
         """Generate detailed security assessment report.
 
@@ -1691,9 +1689,9 @@ class RedisCacheSecurityManager:
 
 # Export public API
 __all__ = [
+    "RedisCacheSecurityManager",
     "SecurityConfig",
     "SecurityValidationResult",
-    "RedisCacheSecurityManager",
     "create_security_config_from_env",
     "generate_secure_password",
 ]

@@ -7,8 +7,6 @@ string representations, and immutability behavior.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any, List
 
 from app.core.environment import (
     Environment,
@@ -16,10 +14,6 @@ from app.core.environment import (
     EnvironmentSignal,
     EnvironmentInfo,
     DetectionConfig,
-    EnvironmentDetector,
-    get_environment_info,
-    is_production_environment,
-    is_development_environment,
 )
 
 
@@ -93,11 +87,11 @@ class TestEnvironmentEnum:
         # When: Checking for required environment classifications
         # Then: DEVELOPMENT, TESTING, STAGING, PRODUCTION, and UNKNOWN are present
         expected_environments = {
-            'DEVELOPMENT',
-            'TESTING',
-            'STAGING',
-            'PRODUCTION',
-            'UNKNOWN'
+            "DEVELOPMENT",
+            "TESTING",
+            "STAGING",
+            "PRODUCTION",
+            "UNKNOWN"
         }
 
         actual_environments = {env.name for env in Environment}
@@ -223,22 +217,22 @@ class TestFeatureContextEnum:
         # When: Checking for required feature contexts
         # Then: AI_ENABLED, SECURITY_ENFORCEMENT, CACHE_OPTIMIZATION, RESILIENCE_STRATEGY, and DEFAULT are present
         expected_contexts = {
-            'AI_ENABLED',
-            'SECURITY_ENFORCEMENT',
-            'CACHE_OPTIMIZATION',
-            'RESILIENCE_STRATEGY',
-            'DEFAULT'
+            "AI_ENABLED",
+            "SECURITY_ENFORCEMENT",
+            "CACHE_OPTIMIZATION",
+            "RESILIENCE_STRATEGY",
+            "DEFAULT"
         }
 
         actual_contexts = {context.name for context in FeatureContext}
         assert actual_contexts == expected_contexts
 
         # Verify each context is accessible
-        assert hasattr(FeatureContext, 'AI_ENABLED')
-        assert hasattr(FeatureContext, 'SECURITY_ENFORCEMENT')
-        assert hasattr(FeatureContext, 'CACHE_OPTIMIZATION')
-        assert hasattr(FeatureContext, 'RESILIENCE_STRATEGY')
-        assert hasattr(FeatureContext, 'DEFAULT')
+        assert hasattr(FeatureContext, "AI_ENABLED")
+        assert hasattr(FeatureContext, "SECURITY_ENFORCEMENT")
+        assert hasattr(FeatureContext, "CACHE_OPTIMIZATION")
+        assert hasattr(FeatureContext, "RESILIENCE_STRATEGY")
+        assert hasattr(FeatureContext, "DEFAULT")
 
     def test_feature_context_default_is_baseline_context(self):
         """
@@ -482,13 +476,13 @@ class TestEnvironmentInfoStructure:
         assert env_info.detected_by == detected_by
 
         # Verify all fields are accessible
-        assert hasattr(env_info, 'environment')
-        assert hasattr(env_info, 'confidence')
-        assert hasattr(env_info, 'reasoning')
-        assert hasattr(env_info, 'detected_by')
-        assert hasattr(env_info, 'feature_context')
-        assert hasattr(env_info, 'additional_signals')
-        assert hasattr(env_info, 'metadata')
+        assert hasattr(env_info, "environment")
+        assert hasattr(env_info, "confidence")
+        assert hasattr(env_info, "reasoning")
+        assert hasattr(env_info, "detected_by")
+        assert hasattr(env_info, "feature_context")
+        assert hasattr(env_info, "additional_signals")
+        assert hasattr(env_info, "metadata")
 
     def test_environment_info_optional_fields_default_correctly(self):
         """
@@ -537,8 +531,8 @@ class TestEnvironmentInfoStructure:
         ))
         assert len(env_info.additional_signals) == 1
 
-        env_info.metadata['test'] = 'value'
-        assert env_info.metadata['test'] == 'value'
+        env_info.metadata["test"] = "value"
+        assert env_info.metadata["test"] == "value"
 
     def test_environment_info_string_representation(self):
         """
@@ -659,7 +653,7 @@ class TestDetectionConfigStructure:
         # Then: All configuration lists are populated with default patterns and precedence
         assert isinstance(config.env_var_precedence, list)
         assert len(config.env_var_precedence) > 0
-        assert 'ENVIRONMENT' in config.env_var_precedence
+        assert "ENVIRONMENT" in config.env_var_precedence
 
         assert isinstance(config.development_patterns, list)
         assert len(config.development_patterns) > 0
@@ -704,18 +698,18 @@ class TestDetectionConfigStructure:
         precedence = config.env_var_precedence
 
         # Then: List contains ENVIRONMENT first, followed by framework-specific variables
-        assert precedence[0] == 'ENVIRONMENT'
-        assert 'NODE_ENV' in precedence
-        assert 'FLASK_ENV' in precedence
-        assert 'APP_ENV' in precedence
-        assert 'ENV' in precedence
+        assert precedence[0] == "ENVIRONMENT"
+        assert "NODE_ENV" in precedence
+        assert "FLASK_ENV" in precedence
+        assert "APP_ENV" in precedence
+        assert "ENV" in precedence
 
         # Verify ENVIRONMENT has highest priority (first in list)
-        environment_index = precedence.index('ENVIRONMENT')
+        environment_index = precedence.index("ENVIRONMENT")
         assert environment_index == 0
 
         # Verify expected framework variables are present
-        expected_vars = ['ENVIRONMENT', 'NODE_ENV', 'FLASK_ENV', 'APP_ENV', 'ENV']
+        expected_vars = ["ENVIRONMENT", "NODE_ENV", "FLASK_ENV", "APP_ENV", "ENV"]
         for var in expected_vars:
             assert var in precedence
 
@@ -748,19 +742,19 @@ class TestDetectionConfigStructure:
         # Then: Each list contains relevant regex patterns for environment identification
         # Development patterns
         assert len(dev_patterns) > 0
-        assert any('dev' in pattern for pattern in dev_patterns)
-        assert any('local' in pattern for pattern in dev_patterns)
-        assert any('test' in pattern for pattern in dev_patterns)
+        assert any("dev" in pattern for pattern in dev_patterns)
+        assert any("local" in pattern for pattern in dev_patterns)
+        assert any("test" in pattern for pattern in dev_patterns)
 
         # Staging patterns
         assert len(staging_patterns) > 0
-        assert any('stag' in pattern for pattern in staging_patterns)
-        assert any('uat' in pattern for pattern in staging_patterns)
+        assert any("stag" in pattern for pattern in staging_patterns)
+        assert any("uat" in pattern for pattern in staging_patterns)
 
         # Production patterns
         assert len(prod_patterns) > 0
-        assert any('prod' in pattern for pattern in prod_patterns)
-        assert any('live' in pattern for pattern in prod_patterns)
+        assert any("prod" in pattern for pattern in prod_patterns)
+        assert any("live" in pattern for pattern in prod_patterns)
 
         # Verify patterns are valid regex (basic check)
         import re
@@ -788,10 +782,10 @@ class TestDetectionConfigStructure:
             - None (testing data structure customization only)
         """
         # Given: Custom configuration values for patterns and precedence
-        custom_precedence = ['CUSTOM_ENV', 'ORG_ENV', 'ENVIRONMENT']
-        custom_dev_patterns = [r'.*custom-dev.*', r'.*org-local.*']
-        custom_prod_patterns = [r'.*custom-prod.*', r'.*org-live.*']
-        custom_indicators = ['CUSTOM_DEBUG=true', '.custom-env']
+        custom_precedence = ["CUSTOM_ENV", "ORG_ENV", "ENVIRONMENT"]
+        custom_dev_patterns = [r".*custom-dev.*", r".*org-local.*"]
+        custom_prod_patterns = [r".*custom-prod.*", r".*org-live.*"]
+        custom_indicators = ["CUSTOM_DEBUG=true", ".custom-env"]
 
         # When: Creating DetectionConfig with custom values
         config = DetectionConfig(
@@ -847,23 +841,23 @@ class TestDetectionConfigStructure:
         # Verify AI context configuration
         ai_config = feature_contexts[FeatureContext.AI_ENABLED]
         assert isinstance(ai_config, dict)
-        assert 'environment_var' in ai_config
-        assert ai_config['environment_var'] == 'ENABLE_AI_CACHE'
-        assert 'true_values' in ai_config
-        assert 'preset_modifier' in ai_config
-        assert ai_config['preset_modifier'] == 'ai-'
+        assert "environment_var" in ai_config
+        assert ai_config["environment_var"] == "ENABLE_AI_CACHE"
+        assert "true_values" in ai_config
+        assert "preset_modifier" in ai_config
+        assert ai_config["preset_modifier"] == "ai-"
 
         # Verify security context configuration
         security_config = feature_contexts[FeatureContext.SECURITY_ENFORCEMENT]
         assert isinstance(security_config, dict)
-        assert 'environment_var' in security_config
-        assert security_config['environment_var'] == 'ENFORCE_AUTH'
-        assert 'production_override' in security_config
-        assert security_config['production_override'] is True
+        assert "environment_var" in security_config
+        assert security_config["environment_var"] == "ENFORCE_AUTH"
+        assert "production_override" in security_config
+        assert security_config["production_override"] is True
 
         # Test that custom feature contexts can be added
         config.feature_contexts[FeatureContext.CACHE_OPTIMIZATION] = {
-            'environment_var': 'ENABLE_CACHE',
-            'custom_setting': True
+            "environment_var": "ENABLE_CACHE",
+            "custom_setting": True
         }
         assert FeatureContext.CACHE_OPTIMIZATION in config.feature_contexts

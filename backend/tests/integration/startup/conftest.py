@@ -36,7 +36,6 @@ def production_environment(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
     monkeypatch.setenv("PRODUCTION", "true")
-    yield
 
 
 @pytest.fixture
@@ -63,7 +62,6 @@ def development_environment(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
     monkeypatch.delenv("PRODUCTION", raising=False)
-    yield
 
 
 @pytest.fixture
@@ -88,7 +86,6 @@ def testing_environment(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "testing")
     monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
     monkeypatch.delenv("PRODUCTION", raising=False)
-    yield
 
 
 @pytest.fixture

@@ -11,7 +11,6 @@ Test Coverage:
     - Property-based feature checking
 """
 
-import pytest
 from app.infrastructure.security.auth import AuthConfig
 
 

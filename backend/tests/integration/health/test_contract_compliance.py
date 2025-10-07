@@ -17,7 +17,6 @@ from app.infrastructure.monitoring.health import (
     check_cache_health,
     check_resilience_health,
     HealthStatus,
-    ComponentStatus,
 )
 
 

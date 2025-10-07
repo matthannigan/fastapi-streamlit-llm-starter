@@ -37,7 +37,7 @@ if encryption.is_enabled:
 import json
 import logging
 import time
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict
 from app.core.exceptions import ConfigurationError
 
 
@@ -53,7 +53,7 @@ class EncryptedCacheLayer:
     monitoring to ensure encryption overhead stays within acceptable limits.
     """
 
-    def __init__(self, encryption_key: Optional[str] = None, performance_monitoring: bool = True):
+    def __init__(self, encryption_key: str | None = None, performance_monitoring: bool = True):
         """
         Initialize the encrypted cache layer.
         

@@ -11,9 +11,7 @@ Fixture Categories:
     - Cryptography availability fixtures (mock_cryptography_unavailable)
 """
 import pytest
-from unittest.mock import patch, Mock, MagicMock
-import hashlib
-from typing import Dict, Any, Optional
+from unittest.mock import Mock, MagicMock
 
 
 @pytest.fixture
@@ -33,11 +31,11 @@ def mock_infrastructure_config():
 def test_settings():
     """
     Real Settings instance with test configuration for testing actual configuration behavior.
-    
+
     Provides a Settings instance loaded from test configuration, enabling tests
     to verify actual configuration loading, validation, and environment detection
     instead of using hardcoded mock values.
-    
+
     This fixture represents behavior-driven testing where we test the actual
     Settings class functionality rather than mocking its behavior.
     """
@@ -45,11 +43,11 @@ def test_settings():
     import json
     import os
     from app.core.config import Settings
-    
+
     # Create test configuration with realistic values
     test_config = {
         "gemini_api_key": "test-gemini-api-key-12345",
-        "ai_model": "gemini-2.0-flash-exp", 
+        "ai_model": "gemini-2.0-flash-exp",
         "ai_temperature": 0.7,
         "host": "0.0.0.0",
         "port": 8000,
@@ -61,12 +59,12 @@ def test_settings():
         "resilience_preset": "simple",
         "health_check_timeout_ms": 2000
     }
-    
+
     # Create temporary config file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(test_config, f, indent=2)
         config_file = f.name
-    
+
     try:
         # Create Settings instance with test config
         # Override environment variables to ensure test isolation
@@ -76,25 +74,25 @@ def test_settings():
             "CACHE_PRESET": "development",
             "RESILIENCE_PRESET": "simple"
         }
-        
+
         # Temporarily set test environment variables
         original_env = {}
         for key, value in test_env.items():
             original_env[key] = os.environ.get(key)
             os.environ[key] = value
-        
+
         # Create real Settings instance
         settings = Settings()
-        
+
         # Restore original environment
         for key, original_value in original_env.items():
             if original_value is None:
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = original_value
-        
+
         return settings
-        
+
     finally:
         # Clean up temporary config file
         os.unlink(config_file)
@@ -104,25 +102,25 @@ def test_settings():
 def development_settings():
     """
     Real Settings instance configured for development environment testing.
-    
+
     Provides Settings with development preset for testing development-specific behavior.
     """
     import os
-    
+
     # Set development environment variables
     test_env = {
         "GEMINI_API_KEY": "test-dev-api-key",
-        "API_KEY": "test-dev-api-key", 
+        "API_KEY": "test-dev-api-key",
         "CACHE_PRESET": "development",
         "RESILIENCE_PRESET": "development",
         "DEBUG": "true"
     }
-    
+
     original_env = {}
     for key, value in test_env.items():
         original_env[key] = os.environ.get(key)
         os.environ[key] = value
-        
+
     try:
         from app.core.config import Settings
         settings = Settings()
@@ -283,7 +281,7 @@ def empty_encryption_key():
             encryption = EncryptedCacheLayer(encryption_key=empty_encryption_key)
             assert encryption.is_enabled is False
     """
-    return None
+    return
 
 
 # =============================================================================
@@ -395,31 +393,31 @@ def mock_cryptography_unavailable(monkeypatch):
     import sys
 
     # Store original cryptography modules if they exist
-    original_cryptography = sys.modules.get('cryptography')
-    original_fernet = sys.modules.get('cryptography.fernet')
+    original_cryptography = sys.modules.get("cryptography")
+    original_fernet = sys.modules.get("cryptography.fernet")
 
     # Remove cryptography modules from sys.modules to simulate unavailability
-    if 'cryptography' in sys.modules:
-        del sys.modules['cryptography']
-    if 'cryptography.fernet' in sys.modules:
-        del sys.modules['cryptography.fernet']
+    if "cryptography" in sys.modules:
+        del sys.modules["cryptography"]
+    if "cryptography.fernet" in sys.modules:
+        del sys.modules["cryptography.fernet"]
 
     # Patch the encryption module's Fernet import to raise ImportError
     def mock_fernet_import():
         raise ImportError("No module named 'cryptography'")
 
     # This will cause imports of cryptography to fail
-    monkeypatch.setitem(sys.modules, 'cryptography.fernet', None)
+    monkeypatch.setitem(sys.modules, "cryptography.fernet", None)
 
     yield
 
     # Restore original state after test
     if original_cryptography is not None:
-        sys.modules['cryptography'] = original_cryptography
-    elif 'cryptography' in sys.modules:
-        del sys.modules['cryptography']
+        sys.modules["cryptography"] = original_cryptography
+    elif "cryptography" in sys.modules:
+        del sys.modules["cryptography"]
 
     if original_fernet is not None:
-        sys.modules['cryptography.fernet'] = original_fernet
-    elif 'cryptography.fernet' in sys.modules:
-        del sys.modules['cryptography.fernet']
+        sys.modules["cryptography.fernet"] = original_fernet
+    elif "cryptography.fernet" in sys.modules:
+        del sys.modules["cryptography.fernet"]

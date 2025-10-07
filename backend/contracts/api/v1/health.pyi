@@ -1,8 +1,8 @@
 """
 Domain Service: Application Health Check API
 
-📚 **EXAMPLE IMPLEMENTATION** - Replace in your project  
-💡 **Demonstrates infrastructure usage patterns**  
+📚 **EXAMPLE IMPLEMENTATION** - Replace in your project
+💡 **Demonstrates infrastructure usage patterns**
 🔄 **Expected to be modified/replaced**
 
 This module provides a comprehensive health check endpoint for the application,
@@ -55,7 +55,7 @@ The health check evaluates three main components:
 ### Degraded Status Example
 ```json
 {
-    "status": "degraded", 
+    "status": "degraded",
     "ai_model_available": false,
     "resilience_healthy": null,
     "cache_healthy": true
@@ -103,13 +103,14 @@ import logging
 from app.schemas.health import HealthResponse
 from app.core.config import settings
 from app.dependencies import get_health_checker
+from app.infrastructure.monitoring import HealthChecker
 from app.infrastructure.monitoring.health import SystemHealthStatus
 
 health_router = APIRouter(prefix='/health', tags=['Health'])
 
 
 @health_router.get('', response_model=HealthResponse, summary='System Health Check', responses={200: {'description': "Successful health check. Returns 'healthy' or 'degraded' based on component status.", 'content': {'application/json': {'examples': {'healthy': {'summary': 'All components healthy', 'value': {'status': 'healthy', 'timestamp': '2025-06-28T00:06:39.130848', 'version': '1.0.0', 'ai_model_available': True, 'resilience_healthy': True, 'cache_healthy': True}}, 'degraded': {'summary': 'One or more components degraded', 'value': {'status': 'degraded', 'timestamp': '2025-06-28T00:06:39.130848', 'version': '1.0.0', 'ai_model_available': False, 'resilience_healthy': None, 'cache_healthy': True}}, 'unhealthy': {'summary': 'Example of unhealthy components (mapped to degraded in public schema)', 'value': {'status': 'degraded', 'timestamp': '2025-06-28T00:06:39.130848', 'version': '1.0.0', 'ai_model_available': False, 'resilience_healthy': False, 'cache_healthy': False}}}}}}})
-async def health_check(health_checker = Depends(get_health_checker)):
+async def health_check(health_checker: HealthChecker = Depends(get_health_checker)) -> HealthResponse:
     """
     System health validation endpoint with multi-component monitoring and graceful degradation.
     

@@ -221,8 +221,7 @@ class TestRedisEnhancedPresetBehavior:
                     ):
                         print("Performance monitor unavailable, skipping metrics test")
                         return
-                    else:
-                        raise AssertionError(f"Unexpected 500 error: {error_data}")
+                    raise AssertionError(f"Unexpected 500 error: {error_data}")
 
                 assert initial_metrics.status_code == 200
                 initial_data = initial_metrics.json()
@@ -272,8 +271,7 @@ class TestRedisEnhancedPresetBehavior:
                 if "Performance monitor not available" in str(e):
                     print("Performance monitor unavailable, skipping metrics test")
                     return
-                else:
-                    raise
+                raise
 
     @pytest.mark.asyncio
     async def test_redis_security_features_with_testcontainers(

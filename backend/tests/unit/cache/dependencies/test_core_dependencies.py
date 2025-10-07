@@ -17,13 +17,9 @@ External Dependencies:
     - Redis client library (fakeredis): Redis connection simulation for cache service creation
 """
 
-import asyncio
-from typing import Any, Dict, Optional
 
-import pytest
 
 from app.core.config import Settings
-from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.config import CacheConfig
 from app.infrastructure.cache.dependencies import (get_cache_config,

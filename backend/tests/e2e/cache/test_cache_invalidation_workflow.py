@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from httpx import AsyncClient, Response
 
 # API key aligned with backend authentication system
 ADMIN_API_KEY = os.getenv("API_KEY", "test-api-key-12345")
@@ -448,7 +447,7 @@ class TestCacheInvalidationWorkflow:
         # - At minimum, we should see that the invalidation had some effect
 
         # Log results for debugging
-        print(f"Cache behavioral test results:")
+        print("Cache behavioral test results:")
         print(f"  Populated entries: {len(populated_entries)}")
         print(f"  User entries processed after invalidation: {user_entries_affected}")
         print(

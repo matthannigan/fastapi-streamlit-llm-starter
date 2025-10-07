@@ -17,14 +17,10 @@ External Dependencies:
     - Standard library components (hashlib): For hashing operations in cache key generation
 """
 
-import hashlib
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import (ConfigurationError, InfrastructureError,
-                                 ValidationError)
+from app.core.exceptions import (ConfigurationError, ValidationError)
 from app.infrastructure.cache.redis_ai import AIResponseCache
 
 
