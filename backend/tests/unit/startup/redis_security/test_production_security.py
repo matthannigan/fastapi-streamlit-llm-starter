@@ -203,36 +203,6 @@ class TestValidateProductionSecurityWithProductionEnvironment:
         pass
 
     @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_error_includes_environment_info(self):
-        """
-        Test that production security error includes environment detection details.
-
-        Verifies:
-            ConfigurationError includes environment information section with
-            detected environment and confidence level for debugging.
-
-        Business Impact:
-            Helps operators verify environment detection is working correctly,
-            enabling troubleshooting of environment-specific issues.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_with_insecure_override_logs_warning(self):
-        """
-        Test that insecure override in production logs prominent security warning.
-
-        Verifies:
-            validate_production_security() with insecure_override=True logs
-            warning instead of raising error per Args and Examples documentation.
-
-        Business Impact:
-            Allows production deployments in secure internal networks while
-            ensuring security implications are clearly communicated.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
     def test_validate_production_security_override_warning_lists_requirements(self):
         """
         Test that insecure override warning lists infrastructure security requirements.
@@ -244,21 +214,6 @@ class TestValidateProductionSecurityWithProductionEnvironment:
         Business Impact:
             Ensures operators understand minimum security requirements when
             using insecure override, maintaining security awareness.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_logs_success_with_environment_details(self):
-        """
-        Test that successful validation logs confirmation with environment details.
-
-        Verifies:
-            validate_production_security() logs success message with environment
-            and connection details when validation passes.
-
-        Business Impact:
-            Provides operational confirmation of security validation for
-            monitoring and audit purposes.
         """
         pass
 
@@ -420,51 +375,6 @@ class TestValidateProductionSecurityWithDevelopmentEnvironment:
         - Validate TLS setup tip provision
         - Confirm no errors raised for insecure URLs
     """
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_skips_validation_in_development(self):
-        """
-        Test that production security validation is skipped in development environment.
-
-        Verifies:
-            validate_production_security() returns without validation when
-            development environment is detected per environment-aware logic.
-
-        Business Impact:
-            Enables local development with simple Redis setup without
-            requiring TLS configuration, improving developer experience.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_logs_development_info_message(self):
-        """
-        Test that development environment logs helpful informational message.
-
-        Verifies:
-            Development environment detection logs message with TLS setup
-            tip per development mode messaging.
-
-        Business Impact:
-            Educates developers about TLS options without forcing them,
-            encouraging security best practices in development.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_allows_insecure_url_in_development(self):
-        """
-        Test that insecure URLs are allowed without error in development.
-
-        Verifies:
-            Any Redis URL format is accepted in development environment
-            without security errors per flexibility policy.
-
-        Business Impact:
-            Removes security barriers for local development, allowing
-            rapid iteration without infrastructure setup.
-        """
-        pass
 
 
 class TestValidateProductionSecurityWithStagingEnvironment:
