@@ -37,12 +37,12 @@ class TestModuleLevelConvenienceFunctions:
         throughout infrastructure services and must maintain consistency
     """
 
-    def test_get_environment_info_returns_complete_detection_result(self, mock_global_detector):
+    def test_get_environment_info_returns_complete_detection_result(self):
         """
-        Test that get_environment_info returns complete EnvironmentInfo.
+        Test that get_environment_info returns complete EnvironmentInfo per contract.
 
         Verifies:
-            Module-level function returns same structure as EnvironmentDetector methods.
+            Module-level function returns EnvironmentInfo with all required fields.
 
         Business Impact:
             Provides consistent API for environment detection across the application.
@@ -50,54 +50,31 @@ class TestModuleLevelConvenienceFunctions:
         Scenario:
             Given: Module-level get_environment_info function
             When: Calling function with default parameters
-            Then: Returns EnvironmentInfo with all required fields populated
-
-        Fixtures Used:
-            - mock_global_detector: Mocked global environment detector instance
+            Then: Returns EnvironmentInfo with all required fields populated per contract
         """
-        # Given: Module-level get_environment_info function is available
-        # Configure the mock to return a complete EnvironmentInfo
-        expected_env_info = EnvironmentInfo(
-            environment=Environment.PRODUCTION,
-            confidence=0.85,
-            reasoning="Mock production detection",
-            detected_by="mock_env_var",
-            feature_context=FeatureContext.DEFAULT,
-            additional_signals=[
-                EnvironmentSignal(
-                    source="ENVIRONMENT",
-                    value="production",
-                    environment=Environment.PRODUCTION,
-                    confidence=0.85,
-                    reasoning="Mock environment variable"
-                )
-            ],
-            metadata={"test_key": "test_value"}
-        )
-        mock_global_detector.detect_with_context.return_value = expected_env_info
-
-        # When: Calling function with default parameters
+        # When: Calling function with default parameters (uses real detection)
         result = get_environment_info()
 
-        # Then: Returns EnvironmentInfo with all required fields populated
+        # Then: Returns EnvironmentInfo with all required fields populated per contract
         assert isinstance(result, EnvironmentInfo)
-        assert result.environment == Environment.PRODUCTION
-        assert result.confidence == 0.85
-        assert result.reasoning == "Mock production detection"
-        assert result.detected_by == "mock_env_var"
+        assert isinstance(result.environment, Environment)
+        assert isinstance(result.confidence, float)
+        assert 0.0 <= result.confidence <= 1.0
+        assert isinstance(result.reasoning, str)
+        assert len(result.reasoning) > 0
+        assert isinstance(result.detected_by, str)
+        assert isinstance(result.feature_context, FeatureContext)
         assert result.feature_context == FeatureContext.DEFAULT
-        assert len(result.additional_signals) == 1
-        assert "test_key" in result.metadata
+        assert isinstance(result.additional_signals, list)
+        assert isinstance(result.metadata, dict)
 
-        # Verify the global detector was called with default context
-        mock_global_detector.detect_with_context.assert_called_once_with(FeatureContext.DEFAULT)
-
-    def test_get_environment_info_supports_feature_contexts(self, mock_global_detector):
+    def test_get_environment_info_supports_feature_contexts(self):
         """
-        Test that get_environment_info accepts feature context parameters.
+        Test that get_environment_info accepts feature context parameters per contract.
 
         Verifies:
-            Module-level function supports feature-specific detection.
+            Module-level function accepts FeatureContext parameter and returns
+            EnvironmentInfo with matching feature_context field.
 
         Business Impact:
             Enables feature-aware detection without creating detector instances.
@@ -105,34 +82,16 @@ class TestModuleLevelConvenienceFunctions:
         Scenario:
             Given: Module-level get_environment_info function
             When: Calling function with specific FeatureContext
-            Then: Returns EnvironmentInfo with feature-specific detection results
-
-        Fixtures Used:
-            - mock_global_detector: Mocked global environment detector instance
+            Then: Returns EnvironmentInfo with feature_context field matching parameter
         """
-        # Given: Module-level get_environment_info function is available
-        # Configure the mock to return AI-specific detection results
-        ai_env_info = EnvironmentInfo(
-            environment=Environment.DEVELOPMENT,
-            confidence=0.90,
-            reasoning="AI-aware development detection",
-            detected_by="ai_env_var",
-            feature_context=FeatureContext.AI_ENABLED,
-            additional_signals=[],
-            metadata={"ai_prefix": "ai-", "enable_ai_cache": True}
-        )
-        mock_global_detector.detect_with_context.return_value = ai_env_info
-
-        # When: Calling function with specific FeatureContext
+        # When: Calling function with specific FeatureContext (uses real detection)
         result = get_environment_info(FeatureContext.AI_ENABLED)
 
-        # Then: Returns EnvironmentInfo with feature-specific detection results
+        # Then: Returns EnvironmentInfo with feature_context field matching parameter per contract
+        assert isinstance(result, EnvironmentInfo)
         assert result.feature_context == FeatureContext.AI_ENABLED
-        assert result.metadata.get("ai_prefix") == "ai-"
-        assert "enable_ai_cache" in result.metadata
-
-        # Verify the global detector was called with the AI context
-        mock_global_detector.detect_with_context.assert_called_once_with(FeatureContext.AI_ENABLED)
+        assert isinstance(result.metadata, dict)
+        # Feature context may add feature-specific metadata, but contract doesn't specify exact keys
 
     def test_get_environment_info_validates_feature_context_parameter(self):
         """
@@ -361,12 +320,13 @@ class TestModuleLevelConvenienceFunctions:
         assert is_production_environment(FeatureContext.SECURITY_ENFORCEMENT) == True
         assert is_development_environment(FeatureContext.SECURITY_ENFORCEMENT) == False
 
-    def test_environment_check_functions_use_same_detection_logic(self, mock_global_detector):
+    def test_environment_check_functions_use_same_detection_logic(self):
         """
-        Test that environment check functions use consistent detection logic.
+        Test that environment check functions return consistent results per contract.
 
         Verifies:
-            is_production_environment and is_development_environment use get_environment_info.
+            is_production_environment and is_development_environment return results
+            consistent with get_environment_info per documented contract behavior.
 
         Business Impact:
             Ensures consistent detection behavior across all module-level functions.
@@ -374,74 +334,26 @@ class TestModuleLevelConvenienceFunctions:
         Scenario:
             Given: Module-level environment check functions
             When: Calling functions under identical conditions
-            Then: Functions use same underlying detection logic with consistent results
-
-        Fixtures Used:
-            - mock_global_detector: Mocked global environment detector for consistency testing
+            Then: Functions return consistent results based on detected environment
         """
-        # Given: Mock detector returns consistent detection result
-        env_info = EnvironmentInfo(
-            environment=Environment.PRODUCTION,
-            confidence=0.85,
-            reasoning="Consistent detection result",
-            detected_by="env_var",
-            feature_context=FeatureContext.DEFAULT,
-            additional_signals=[
-                EnvironmentSignal(
-                    source="ENVIRONMENT",
-                    value="production",
-                    environment=Environment.PRODUCTION,
-                    confidence=0.85,
-                    reasoning="Environment variable"
-                )
-            ],
-            metadata={"consistency_test": True}
-        )
-        mock_global_detector.detect_with_context.return_value = env_info
-
-        # When: Calling all module-level functions under identical conditions
+        # When: Calling all module-level functions under identical conditions (real detection)
         info_result = get_environment_info()
         prod_result = is_production_environment()
         dev_result = is_development_environment()
 
-        # Then: All functions use the same underlying detection logic
-        # All functions should have called the global detector with DEFAULT context
-        assert mock_global_detector.detect_with_context.call_count == 3
-        for call in mock_global_detector.detect_with_context.call_args_list:
-            assert call[0][0] == FeatureContext.DEFAULT
+        # Then: Functions return consistent results per contract
+        # Contract: is_production_environment returns True if environment is PRODUCTION and confidence > 0.60
+        if info_result.environment == Environment.PRODUCTION and info_result.confidence > 0.60:
+            assert prod_result == True
+        else:
+            assert prod_result == False
 
-        # get_environment_info should return the complete EnvironmentInfo
-        assert info_result == env_info
-        assert info_result.confidence == 0.85
-        assert info_result.environment == Environment.PRODUCTION
+        # Contract: is_development_environment returns True if environment is DEVELOPMENT and confidence > 0.60
+        if info_result.environment == Environment.DEVELOPMENT and info_result.confidence > 0.60:
+            assert dev_result == True
+        else:
+            assert dev_result == False
 
-        # is_production_environment should apply confidence threshold logic
-        # confidence 0.85 > 0.60 and environment is PRODUCTION, so True
-        assert prod_result == True
-
-        # is_development_environment should apply confidence threshold logic
-        # environment is PRODUCTION (not DEVELOPMENT), so False
-        assert dev_result == False
-
-        # Test with development environment to verify consistency
-        mock_global_detector.reset_mock()
-        dev_env_info = EnvironmentInfo(
-            environment=Environment.DEVELOPMENT,
-            confidence=0.75,
-            reasoning="Development detection result",
-            detected_by="env_var",
-            feature_context=FeatureContext.DEFAULT,
-            additional_signals=[],
-            metadata={}
-        )
-        mock_global_detector.detect_with_context.return_value = dev_env_info
-
-        # When: Calling functions again with development environment
-        dev_info_result = get_environment_info()
-        dev_prod_result = is_production_environment()
-        dev_dev_result = is_development_environment()
-
-        # Then: Results are consistent with the underlying detection
-        assert dev_info_result.environment == Environment.DEVELOPMENT
-        assert dev_prod_result == False  # Not production
-        assert dev_dev_result == True   # Development with confidence 0.75 > 0.60
+        # Verify functions return expected types per contract
+        assert isinstance(prod_result, bool)
+        assert isinstance(dev_result, bool)

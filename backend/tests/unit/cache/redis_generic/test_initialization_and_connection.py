@@ -251,8 +251,8 @@ class TestGenericRedisCacheInitialization:
         # And: The cache should be ready for secure operations
         # ACL username may or may not be set depending on environment
         assert (
-            cache.security_config.verify_certificates == False
-        )  # Development environment allows self-signed
+            cache.security_config.verify_certificates == True
+        )  # Secure configuration enables certificate verification
 
     def test_invalid_configuration_handling(self):
         """
