@@ -451,9 +451,9 @@ class TestMetricsPerformanceMonitoring:
             avg_time = sum(times) / len(times)
 
             if avg_time <= threshold:
-                assert True, f"{operation} performance acceptable: {avg_time".3f"}s <= {threshold}s"
+                assert True, f"{operation} performance acceptable: {avg_time:.3f}s <= {threshold}s"
             else:
-                assert False, f"{operation} performance violation: {avg_time".3f"}s > {threshold}s"
+                assert False, f"{operation} performance violation: {avg_time:.3f}s > {threshold}s"
 
         # Test specific threshold validation
         assert sum(measurements["fast_operation"]) / len(measurements["fast_operation"]) <= 0.1

@@ -91,7 +91,7 @@ class TestHealthMonitoringPerformanceMetrics:
             await asyncio.sleep(0.1)   # 100ms delay
             end_time = time.time()
             measured_time = (end_time - start_time) * 1000
-            return ComponentStatus("measured", HealthStatus.HEALTHY, f"Measured {measured_time".1f"}ms")
+            return ComponentStatus("measured", HealthStatus.HEALTHY, f"Measured {measured_time:.1f}ms")
 
         health_checker.register_check("fast", fast_check)
         health_checker.register_check("medium", medium_check)
@@ -277,7 +277,7 @@ class TestHealthMonitoringPerformanceMetrics:
             return ComponentStatus(
                 "metrics",
                 HealthStatus.HEALTHY,
-                f"Metrics check completed in {check_duration".2f"}ms"
+                f"Metrics check completed in {check_duration:.2f}ms"
             )
 
         health_checker.register_check("metrics", metrics_check)
@@ -517,7 +517,7 @@ class TestHealthMonitoringPerformanceMetrics:
             return ComponentStatus(
                 "performance_monitored",
                 HealthStatus.HEALTHY,
-                f"Performance monitored: {check_duration".2f"}ms execution time"
+                f"Performance monitored: {check_duration:.2f}ms execution time"
             )
 
         health_checker.register_check("performance_monitored", performance_monitored_check)
