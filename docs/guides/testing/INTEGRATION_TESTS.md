@@ -25,6 +25,32 @@ pytest tests/integration --cov=app --cov-report=term-missing
 pytest tests/integration/test_cache_integration.py -v
 ```
 
+## ⚠️ CRITICAL: Environment Variable Testing Pattern
+
+**Always use `monkeypatch.setenv()` for environment variables. Never use `os.environ[]` directly.**
+
+This is a **mandatory** coding standard to prevent test pollution and flaky tests:
+
+```python
+# ❌ NEVER DO THIS - Causes permanent test pollution
+import os
+def test_production():
+    os.environ["ENVIRONMENT"] = "production"  # Persists forever!
+
+# ✅ ALWAYS DO THIS - Automatic cleanup
+def test_production(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    # Automatically cleaned up after test
+```
+
+**Why this matters:**
+- Direct `os.environ[]` modification bypasses pytest cleanup
+- Changes persist across all subsequent tests
+- Causes flaky, order-dependent test failures
+- This was the root cause of integration test flakiness in our project
+
+**See:** `backend/tests/integration/README.md` for comprehensive environment variable testing patterns.
+
 ## Our Guiding Philosophy (TL;DR)
 
 Our testing strategy prioritizes confidence and maintainability over raw code coverage. We write behavior-focused tests that verify the public contracts of our components, making our test suite resilient to refactoring.

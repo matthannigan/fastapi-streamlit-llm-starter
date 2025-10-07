@@ -43,28 +43,28 @@ class TestModuleInitializationIntegration:
         across all services without initialization races or inconsistencies
     """
 
-    def test_module_can_be_imported_multiple_times(self, clean_environment):
+    def test_module_can_be_imported_multiple_times(self, clean_environment, monkeypatch):
         """
         Test that environment module can be imported multiple times safely.
-        
+
         Integration Scope:
             Module import system → Environment detection initialization → Consistent state
-            
+
         Business Impact:
             Prevents import errors and ensures consistent behavior when multiple
             services import the environment module
-            
+
         Test Strategy:
             - Import module multiple times
             - Verify consistent behavior across imports
             - Test with different environment configurations
-            
+
         Success Criteria:
             - Module imports successfully every time
             - Environment detection returns consistent results
             - No import-time side effects or errors
         """
-        os.environ["ENVIRONMENT"] = "production"
+        monkeypatch.setenv("ENVIRONMENT", "production")
         
         # Import the module fresh multiple times
         for i in range(5):
@@ -85,28 +85,28 @@ class TestModuleInitializationIntegration:
             assert hasattr(environment, 'EnvironmentDetector')
             assert hasattr(environment, 'Environment')
 
-    def test_global_detector_instance_consistency(self, clean_environment):
+    def test_global_detector_instance_consistency(self, clean_environment, monkeypatch):
         """
         Test that global detector instance provides consistent results across calls.
-        
+
         Integration Scope:
             Global detector instance → Multiple service access → Consistent detection
-            
+
         Business Impact:
             Ensures all services see the same environment detection results
             without divergence due to instance differences
-            
+
         Test Strategy:
             - Call environment detection multiple times
             - Verify results are consistent
             - Test across different contexts
-            
+
         Success Criteria:
             - All calls return identical environment detection
             - Confidence scores remain stable
             - Detection reasoning is consistent
         """
-        os.environ["ENVIRONMENT"] = "development"
+        monkeypatch.setenv("ENVIRONMENT", "development")
         
         # Import fresh
         if 'app.core.environment' in sys.modules:
@@ -129,31 +129,31 @@ class TestModuleInitializationIntegration:
         for result in results[1:]:
             assert result == first_result, f"Inconsistent results: {first_result} != {result}"
 
-    def test_environment_variables_captured_at_startup(self, clean_environment):
+    def test_environment_variables_captured_at_startup(self, clean_environment, monkeypatch):
         """
         Test that environment variables present at startup are correctly captured.
-        
+
         Integration Scope:
             Startup environment variables → Module initialization → Detection state
-            
+
         Business Impact:
             Ensures environment configuration is captured correctly during
             application startup process
-            
+
         Test Strategy:
             - Set environment variables before import
             - Import module to simulate startup
             - Verify variables are captured correctly
-            
+
         Success Criteria:
             - Environment variables are detected correctly
             - Detection confidence reflects startup state
             - Startup environment is preserved through module lifecycle
         """
         # Set environment before module import
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "startup-api-key"
-        os.environ["HOSTNAME"] = "prod-server-01"
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("API_KEY", "startup-api-key")
+        monkeypatch.setenv("HOSTNAME", "prod-server-01")
         
         # Import module fresh to simulate startup
         if 'app.core.environment' in sys.modules:
@@ -170,28 +170,28 @@ class TestModuleInitializationIntegration:
         signal_sources = [signal.source for signal in env_info.additional_signals]
         assert any(source == 'ENVIRONMENT' for source in signal_sources), f"Expected ENVIRONMENT signal source, got: {signal_sources}"
 
-    def test_service_import_order_independence(self, clean_environment):
+    def test_service_import_order_independence(self, clean_environment, monkeypatch):
         """
         Test that service import order doesn't affect environment detection consistency.
-        
+
         Integration Scope:
             Variable import order → Environment module access → Consistent detection
-            
+
         Business Impact:
             Prevents issues where services get different environment detection
             results based on import order
-            
+
         Test Strategy:
             - Import services in different orders
             - Verify environment detection consistency
             - Test with multiple environment configurations
-            
+
         Success Criteria:
             - Import order doesn't affect detection results
             - All services see identical environment information
             - No import-order dependencies exist
         """
-        os.environ["ENVIRONMENT"] = "staging"
+        monkeypatch.setenv("ENVIRONMENT", "staging")
         
         # Test multiple import orders
         import_orders = [
@@ -230,28 +230,28 @@ class TestModuleInitializationIntegration:
         for i, result in enumerate(results[1:], 1):
             assert result == first_result, f"Import order {i} gave different result"
 
-    def test_circular_dependency_handling(self, clean_environment):
+    def test_circular_dependency_handling(self, clean_environment, monkeypatch):
         """
         Test that circular dependencies are handled gracefully during initialization.
-        
+
         Integration Scope:
             Module dependencies → Import resolution → Graceful handling
-            
+
         Business Impact:
             Prevents application startup failures due to circular imports
             in environment detection initialization
-            
+
         Test Strategy:
             - Attempt imports that could create circular dependencies
             - Verify imports succeed without hanging or errors
             - Test environment detection still works
-            
+
         Success Criteria:
             - No import deadlocks or infinite recursion
             - Environment detection functions correctly
             - All modules initialize successfully
         """
-        os.environ["ENVIRONMENT"] = "development"
+        monkeypatch.setenv("ENVIRONMENT", "development")
         
         # Clean modules to simulate fresh startup
         modules_to_clean = [
@@ -278,27 +278,27 @@ class TestModuleInitializationIntegration:
         assert env_info.environment == Environment.DEVELOPMENT
         assert env_info.confidence > 0.0
 
-    def test_module_initialization_performance_sla(self, clean_environment, performance_monitor):
+    def test_module_initialization_performance_sla(self, clean_environment, performance_monitor, monkeypatch):
         """
         Test that module initialization completes within performance SLA.
-        
+
         Integration Scope:
             Module import → Initialization logic → Performance measurement
-            
+
         Business Impact:
             Ensures application startup time meets performance requirements
-            
+
         Test Strategy:
             - Measure module import and initialization time
             - Verify time is under SLA threshold (100ms)
             - Test with different environment configurations
-            
+
         Success Criteria:
             - Module initialization completes in <100ms
-            - First environment detection completes in <100ms  
+            - First environment detection completes in <100ms
             - Performance is consistent across environment types
         """
-        os.environ["ENVIRONMENT"] = "production"
+        monkeypatch.setenv("ENVIRONMENT", "production")
         
         # Clean module state
         if 'app.core.environment' in sys.modules:
@@ -323,29 +323,29 @@ class TestModuleInitializationIntegration:
         # Verify detection worked correctly
         assert env_info.environment == Environment.PRODUCTION
 
-    def test_concurrent_module_access_thread_safety(self, clean_environment):
+    def test_concurrent_module_access_thread_safety(self, clean_environment, monkeypatch):
         """
         Test that concurrent access to environment module is thread-safe.
-        
+
         Integration Scope:
             Concurrent threads → Module access → Thread-safe operations
-            
+
         Business Impact:
             Ensures environment detection works correctly in multi-threaded
             applications without race conditions
-            
+
         Test Strategy:
             - Access environment detection from multiple threads
             - Verify all threads get consistent results
             - Test for race conditions and data corruption
-            
+
         Success Criteria:
             - All threads get identical environment detection
             - No race conditions or deadlocks occur
             - Module state remains consistent across threads
         """
-        os.environ["ENVIRONMENT"] = "production"
-        os.environ["API_KEY"] = "concurrent-test-key"
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("API_KEY", "concurrent-test-key")
         
         # Import module fresh
         if 'app.core.environment' in sys.modules:
@@ -415,21 +415,21 @@ class TestModuleInitializationIntegration:
         signal_sources = [signal.source for signal in updated_env.additional_signals]
         assert any(source == 'ENVIRONMENT' for source in signal_sources), f"Expected ENVIRONMENT signal source, got: {signal_sources}"
 
-    def test_module_state_isolation_across_tests(self, clean_environment):
+    def test_module_state_isolation_across_tests(self, clean_environment, monkeypatch):
         """
         Test that module state is properly isolated between test runs.
-        
+
         Integration Scope:
             Test isolation → Module state → Clean environment
-            
+
         Business Impact:
             Ensures tests don't interfere with each other through shared module state
-            
+
         Test Strategy:
             - Modify module state
             - Use clean_environment fixture
             - Verify state is reset
-            
+
         Success Criteria:
             - Module state resets between tests
             - No test pollution occurs
@@ -438,8 +438,8 @@ class TestModuleInitializationIntegration:
         # This test itself demonstrates isolation
         # If we get here without any assertion failures from previous tests,
         # isolation is working correctly
-        
-        os.environ["ENVIRONMENT"] = "testing"
+
+        monkeypatch.setenv("ENVIRONMENT", "testing")
         
         if 'app.core.environment' in sys.modules:
             del sys.modules['app.core.environment']
@@ -454,28 +454,28 @@ class TestModuleInitializationIntegration:
         for var in unwanted_vars:
             assert var not in os.environ, f"Test isolation failed: {var} still in environment"
 
-    def test_module_memory_usage_remains_stable(self, clean_environment):
+    def test_module_memory_usage_remains_stable(self, clean_environment, monkeypatch):
         """
         Test that repeated module operations don't cause memory leaks.
-        
+
         Integration Scope:
             Repeated operations → Memory management → Stable resource usage
-            
+
         Business Impact:
             Ensures long-running applications don't suffer memory leaks
             from environment detection operations
-            
+
         Test Strategy:
             - Perform many environment detection operations
             - Monitor memory usage patterns
             - Verify no significant memory growth
-            
+
         Success Criteria:
             - Memory usage remains stable over time
             - No obvious memory leaks from repeated operations
             - Detection performance remains consistent
         """
-        os.environ["ENVIRONMENT"] = "production"
+        monkeypatch.setenv("ENVIRONMENT", "production")
         
         if 'app.core.environment' in sys.modules:
             del sys.modules['app.core.environment']

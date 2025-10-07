@@ -106,17 +106,19 @@ Dependencies:
 """
 
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from app.core.exceptions import ConfigurationError, ValidationError, InfrastructureError
+from app.core.exceptions import (ConfigurationError, InfrastructureError,
+                                 ValidationError)
 from app.infrastructure.cache.base import CacheInterface
-from app.infrastructure.cache.redis_generic import GenericRedisCache
-from app.infrastructure.cache.redis_ai import AIResponseCache
 from app.infrastructure.cache.memory import InMemoryCache
+from app.infrastructure.cache.redis_ai import AIResponseCache
+from app.infrastructure.cache.redis_generic import GenericRedisCache
 
 # Optional performance monitoring
 try:
     from app.infrastructure.cache.monitoring import CachePerformanceMonitor
+
     MONITORING_AVAILABLE = True
 except ImportError:
     MONITORING_AVAILABLE = False
@@ -169,7 +171,7 @@ class CacheFactory:
         redis_url: Optional[str] = None,
         default_ttl: Optional[int] = None,
         fail_on_connection_error: bool = False,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Validate common factory method inputs with comprehensive error checking.
@@ -208,7 +210,9 @@ class CacheFactory:
                 errors.append("redis_url must be a string")
             elif not redis_url.strip():
                 errors.append("redis_url cannot be empty")
-            elif not (redis_url.startswith("redis://") or redis_url.startswith("rediss://")):
+            elif not (
+                redis_url.startswith("redis://") or redis_url.startswith("rediss://")
+            ):
                 errors.append("redis_url must start with 'redis://' or 'rediss://'")
             else:
                 # Basic URL validation
@@ -225,9 +229,13 @@ class CacheFactory:
             if not isinstance(default_ttl, int):
                 errors.append("default_ttl must be an integer")
             elif default_ttl < 0:
-                errors.append("default_ttl must be non-negative (0 means no expiration)")
+                errors.append(
+                    "default_ttl must be non-negative (0 means no expiration)"
+                )
             elif default_ttl > 86400 * 365:  # 1 year in seconds
-                errors.append("default_ttl must not exceed 365 days (31,536,000 seconds)")
+                errors.append(
+                    "default_ttl must not exceed 365 days (31,536,000 seconds)"
+                )
 
         # Validate fail_on_connection_error
         if not isinstance(fail_on_connection_error, bool):
@@ -239,9 +247,13 @@ class CacheFactory:
                 errors.append("enable_l1_cache must be a boolean")
             elif key == "l1_cache_size" and (not isinstance(value, int) or value <= 0):
                 errors.append("l1_cache_size must be a positive integer")
-            elif key == "compression_threshold" and (not isinstance(value, int) or value < 0):
+            elif key == "compression_threshold" and (
+                not isinstance(value, int) or value < 0
+            ):
                 errors.append("compression_threshold must be a non-negative integer")
-            elif key == "compression_level" and (not isinstance(value, int) or not 1 <= value <= 9):
+            elif key == "compression_level" and (
+                not isinstance(value, int) or not 1 <= value <= 9
+            ):
                 errors.append("compression_level must be an integer between 1 and 9")
 
         if errors:
@@ -250,14 +262,16 @@ class CacheFactory:
                 "redis_url": redis_url,
                 "default_ttl": default_ttl,
                 "fail_on_connection_error": fail_on_connection_error,
-                "additional_params": list(kwargs.keys())
+                "additional_params": list(kwargs.keys()),
             }
             raise ValidationError(
                 f"Factory input validation failed: {'; '.join(errors)}",
-                context=error_context
+                context=error_context,
             )
 
-        logger.debug(f"Factory input validation passed for {len(kwargs) + 3} parameters")
+        logger.debug(
+            f"Factory input validation passed for {len(kwargs) + 3} parameters"
+        )
 
     async def for_web_app(
         self,
@@ -267,9 +281,9 @@ class CacheFactory:
         l1_cache_size: int = 200,
         compression_threshold: int = 2000,
         compression_level: int = 6,
-        security_config: Optional['SecurityConfig'] = None,
+        security_config: Optional["SecurityConfig"] = None,
         fail_on_connection_error: bool = False,
-        **kwargs
+        **kwargs,
     ) -> CacheInterface:
         """
         Create a cache optimized for web applications with balanced performance.
@@ -348,10 +362,12 @@ class CacheFactory:
             enable_l1_cache=enable_l1_cache,
             l1_cache_size=l1_cache_size,
             compression_threshold=compression_threshold,
-            compression_level=compression_level
+            compression_level=compression_level,
         )
 
-        logger.info(f"Creating web application cache with redis_url={redis_url}, ttl={default_ttl}s")
+        logger.info(
+            f"Creating web application cache with redis_url={redis_url}, ttl={default_ttl}s"
+        )
 
         try:
             # Create GenericRedisCache with web-optimized defaults
@@ -364,7 +380,7 @@ class CacheFactory:
                 compression_level=compression_level,
                 performance_monitor=self._performance_monitor,
                 security_config=security_config,
-                **kwargs
+                **kwargs,
             )
 
             # Test Redis connection
@@ -377,22 +393,27 @@ class CacheFactory:
                         context={
                             "redis_url": redis_url,
                             "cache_type": "web_app",
-                            "fail_on_connection_error": True
-                        }
+                            "fail_on_connection_error": True,
+                        },
                     )
                 else:
                     # Fall back to InMemoryCache
-                    logger.warning("Redis connection failed, falling back to InMemoryCache")
+                    logger.warning(
+                        "Redis connection failed, falling back to InMemoryCache"
+                    )
                     return InMemoryCache(
-                        default_ttl=default_ttl,
-                        max_size=l1_cache_size
+                        default_ttl=default_ttl, max_size=l1_cache_size
                     )
 
-            logger.info(f"Web application cache created successfully (Redis connected: {connected})")
+            logger.info(
+                f"Web application cache created successfully (Redis connected: {connected})"
+            )
             return cache
 
         except Exception as e:
-            if isinstance(e, (ValidationError, ConfigurationError, InfrastructureError)):
+            if isinstance(
+                e, (ValidationError, ConfigurationError, InfrastructureError)
+            ):
                 raise
 
             logger.error(f"Failed to create web application cache: {e}")
@@ -402,16 +423,13 @@ class CacheFactory:
                     context={
                         "redis_url": redis_url,
                         "cache_type": "web_app",
-                        "original_error": str(e)
-                    }
+                        "original_error": str(e),
+                    },
                 )
 
             # Fall back to InMemoryCache on any error
             logger.info("Falling back to InMemoryCache due to cache creation error")
-            return InMemoryCache(
-                default_ttl=default_ttl,
-                max_size=l1_cache_size
-            )
+            return InMemoryCache(default_ttl=default_ttl, max_size=l1_cache_size)
 
     async def for_ai_app(
         self,
@@ -424,9 +442,9 @@ class CacheFactory:
         text_hash_threshold: int = 500,
         memory_cache_size: Optional[int] = None,
         operation_ttls: Optional[Dict[str, int]] = None,
-        security_config: Optional['SecurityConfig'] = None,
+        security_config: Optional["SecurityConfig"] = None,
         fail_on_connection_error: bool = False,
-        **kwargs
+        **kwargs,
     ) -> CacheInterface:
         """
         Create a cache optimized for AI applications with enhanced storage and compression.
@@ -519,15 +537,19 @@ class CacheFactory:
             enable_l1_cache=enable_l1_cache,
             l1_cache_size=l1_cache_size,
             compression_threshold=compression_threshold,
-            compression_level=compression_level
+            compression_level=compression_level,
         )
 
         # Additional AI-specific validation
         ai_errors = []
-        if text_hash_threshold is not None and (not isinstance(text_hash_threshold, int) or text_hash_threshold < 0):
+        if text_hash_threshold is not None and (
+            not isinstance(text_hash_threshold, int) or text_hash_threshold < 0
+        ):
             ai_errors.append("text_hash_threshold must be a non-negative integer")
 
-        if memory_cache_size is not None and (not isinstance(memory_cache_size, int) or memory_cache_size <= 0):
+        if memory_cache_size is not None and (
+            not isinstance(memory_cache_size, int) or memory_cache_size <= 0
+        ):
             ai_errors.append("memory_cache_size must be a positive integer")
 
         if operation_ttls is not None:
@@ -536,9 +558,13 @@ class CacheFactory:
             else:
                 for op, ttl in operation_ttls.items():
                     if not isinstance(op, str) or not op.strip():
-                        ai_errors.append("operation_ttls keys must be non-empty strings")
+                        ai_errors.append(
+                            "operation_ttls keys must be non-empty strings"
+                        )
                     if not isinstance(ttl, int) or ttl < 0:
-                        ai_errors.append(f"operation_ttls['{op}'] must be a non-negative integer")
+                        ai_errors.append(
+                            f"operation_ttls['{op}'] must be a non-negative integer"
+                        )
 
         if ai_errors:
             raise ValidationError(
@@ -547,15 +573,19 @@ class CacheFactory:
                     "validation_errors": ai_errors,
                     "text_hash_threshold": text_hash_threshold,
                     "memory_cache_size": memory_cache_size,
-                    "operation_ttls": operation_ttls
-                }
+                    "operation_ttls": operation_ttls,
+                },
             )
 
-        logger.info(f"Creating AI application cache with redis_url={redis_url}, ttl={default_ttl}s")
+        logger.info(
+            f"Creating AI application cache with redis_url={redis_url}, ttl={default_ttl}s"
+        )
 
         try:
             # Use memory_cache_size if provided, otherwise use l1_cache_size
-            effective_cache_size = memory_cache_size if memory_cache_size is not None else l1_cache_size
+            effective_cache_size = (
+                memory_cache_size if memory_cache_size is not None else l1_cache_size
+            )
 
             # Create AIResponseCache with AI-optimized defaults
             cache = AIResponseCache(
@@ -568,7 +598,7 @@ class CacheFactory:
                 operation_ttls=operation_ttls or {},
                 performance_monitor=self._performance_monitor,
                 security_config=security_config,
-                **kwargs
+                **kwargs,
             )
 
             # Test Redis connection
@@ -581,22 +611,27 @@ class CacheFactory:
                         context={
                             "redis_url": redis_url,
                             "cache_type": "ai_app",
-                            "fail_on_connection_error": True
-                        }
+                            "fail_on_connection_error": True,
+                        },
                     )
                 else:
                     # Fall back to InMemoryCache
-                    logger.warning("Redis connection failed, falling back to InMemoryCache")
+                    logger.warning(
+                        "Redis connection failed, falling back to InMemoryCache"
+                    )
                     return InMemoryCache(
-                        default_ttl=default_ttl,
-                        max_size=effective_cache_size
+                        default_ttl=default_ttl, max_size=effective_cache_size
                     )
 
-            logger.info(f"AI application cache created successfully (Redis connected: {connected})")
+            logger.info(
+                f"AI application cache created successfully (Redis connected: {connected})"
+            )
             return cache
 
         except Exception as e:
-            if isinstance(e, (ValidationError, ConfigurationError, InfrastructureError)):
+            if isinstance(
+                e, (ValidationError, ConfigurationError, InfrastructureError)
+            ):
                 raise
 
             logger.error(f"Failed to create AI application cache: {e}")
@@ -606,17 +641,16 @@ class CacheFactory:
                     context={
                         "redis_url": redis_url,
                         "cache_type": "ai_app",
-                        "original_error": str(e)
-                    }
+                        "original_error": str(e),
+                    },
                 )
 
             # Fall back to InMemoryCache on any error
             logger.info("Falling back to InMemoryCache due to cache creation error")
-            effective_cache_size = memory_cache_size if memory_cache_size is not None else l1_cache_size
-            return InMemoryCache(
-                default_ttl=default_ttl,
-                max_size=effective_cache_size
+            effective_cache_size = (
+                memory_cache_size if memory_cache_size is not None else l1_cache_size
             )
+            return InMemoryCache(default_ttl=default_ttl, max_size=effective_cache_size)
 
     async def for_testing(
         self,
@@ -626,10 +660,10 @@ class CacheFactory:
         l1_cache_size: int = 50,
         compression_threshold: int = 1000,
         compression_level: int = 1,  # Fast compression for tests
-        security_config: Optional['SecurityConfig'] = None,
+        security_config: Optional["SecurityConfig"] = None,
         fail_on_connection_error: bool = False,
         use_memory_cache: bool = False,
-        **kwargs
+        **kwargs,
     ) -> CacheInterface:
         """
         Create a cache optimized for testing environments with short TTLs and fast operations.
@@ -706,25 +740,24 @@ class CacheFactory:
             enable_l1_cache=enable_l1_cache,
             l1_cache_size=l1_cache_size,
             compression_threshold=compression_threshold,
-            compression_level=compression_level
+            compression_level=compression_level,
         )
 
         # Validate use_memory_cache
         if not isinstance(use_memory_cache, bool):
             raise ValidationError(
                 "use_memory_cache must be a boolean",
-                context={"use_memory_cache": use_memory_cache}
+                context={"use_memory_cache": use_memory_cache},
             )
 
-        logger.info(f"Creating testing cache with redis_url={redis_url}, ttl={default_ttl}s, memory_only={use_memory_cache}")
+        logger.info(
+            f"Creating testing cache with redis_url={redis_url}, ttl={default_ttl}s, memory_only={use_memory_cache}"
+        )
 
         # Return InMemoryCache if explicitly requested
         if use_memory_cache:
             logger.info("Creating InMemoryCache for testing (memory_only=True)")
-            return InMemoryCache(
-                default_ttl=default_ttl,
-                max_size=l1_cache_size
-            )
+            return InMemoryCache(default_ttl=default_ttl, max_size=l1_cache_size)
 
         try:
             # Create GenericRedisCache with testing-optimized defaults
@@ -737,7 +770,7 @@ class CacheFactory:
                 compression_level=compression_level,
                 performance_monitor=self._performance_monitor,
                 security_config=security_config,
-                **kwargs
+                **kwargs,
             )
 
             # Test Redis connection
@@ -750,22 +783,27 @@ class CacheFactory:
                         context={
                             "redis_url": redis_url,
                             "cache_type": "testing",
-                            "fail_on_connection_error": True
-                        }
+                            "fail_on_connection_error": True,
+                        },
                     )
                 else:
                     # Fall back to InMemoryCache
-                    logger.warning("Redis connection failed, falling back to InMemoryCache for testing")
+                    logger.warning(
+                        "Redis connection failed, falling back to InMemoryCache for testing"
+                    )
                     return InMemoryCache(
-                        default_ttl=default_ttl,
-                        max_size=l1_cache_size
+                        default_ttl=default_ttl, max_size=l1_cache_size
                     )
 
-            logger.info(f"Testing cache created successfully (Redis connected: {connected})")
+            logger.info(
+                f"Testing cache created successfully (Redis connected: {connected})"
+            )
             return cache
 
         except Exception as e:
-            if isinstance(e, (ValidationError, ConfigurationError, InfrastructureError)):
+            if isinstance(
+                e, (ValidationError, ConfigurationError, InfrastructureError)
+            ):
                 raise
 
             logger.error(f"Failed to create testing cache: {e}")
@@ -775,21 +813,16 @@ class CacheFactory:
                     context={
                         "redis_url": redis_url,
                         "cache_type": "testing",
-                        "original_error": str(e)
-                    }
+                        "original_error": str(e),
+                    },
                 )
 
             # Fall back to InMemoryCache on any error
             logger.info("Falling back to InMemoryCache due to cache creation error")
-            return InMemoryCache(
-                default_ttl=default_ttl,
-                max_size=l1_cache_size
-            )
+            return InMemoryCache(default_ttl=default_ttl, max_size=l1_cache_size)
 
     async def create_cache_from_config(
-        self,
-        config: Dict[str, Any],
-        fail_on_connection_error: bool = False
+        self, config: Dict[str, Any], fail_on_connection_error: bool = False
     ) -> CacheInterface:
         """
         Create a cache instance from a configuration dictionary with flexible parameter support.
@@ -887,26 +920,34 @@ class CacheFactory:
         if not isinstance(config, dict):
             raise ValidationError(
                 "config must be a dictionary",
-                context={"config_type": type(config).__name__}
+                context={"config_type": type(config).__name__},
             )
 
         if not config:
             raise ValidationError(
-                "config dictionary cannot be empty",
-                context={"config": config}
+                "config dictionary cannot be empty", context={"config": config}
             )
 
         # Validate required parameters
         if "redis_url" not in config:
             raise ValidationError(
                 "redis_url is required in config",
-                context={"config_keys": list(config.keys())}
+                context={"config_keys": list(config.keys())},
             )
 
         logger.info(f"Creating cache from configuration with {len(config)} parameters")
 
-        # Extract and validate common parameters
+        # Early detection of disabled preset - skip directly to memory cache
+        preset_name = config.get('preset_name', '').lower()
         redis_url = config["redis_url"]
+        if preset_name == 'disabled' or not redis_url:
+            logger.info("Cache disabled or no Redis URL - using InMemoryCache")
+            return InMemoryCache(
+                default_ttl=config.get('default_ttl', 300),
+                max_size=config.get('l1_cache_size', 100)
+            )
+
+        # Extract and validate common parameters
         default_ttl = config.get("default_ttl", 3600)
         enable_l1_cache = config.get("enable_l1_cache", True)
         l1_cache_size = config.get("l1_cache_size", 100)
@@ -915,25 +956,38 @@ class CacheFactory:
 
         # Detect AI-specific parameters to determine cache type
         ai_specific_params = {
-            "text_hash_threshold", "operation_ttls", "memory_cache_size"
+            "text_hash_threshold",
+            "operation_ttls",
+            "memory_cache_size",
         }
         has_ai_params = any(param in config for param in ai_specific_params)
 
         try:
             if has_ai_params:
                 # Create AIResponseCache
-                logger.info("Configuration contains AI parameters, creating AIResponseCache")
+                logger.info(
+                    "Configuration contains AI parameters, creating AIResponseCache"
+                )
 
                 text_hash_threshold = config.get("text_hash_threshold", 500)
                 operation_ttls = config.get("operation_ttls", {})
                 memory_cache_size = config.get("memory_cache_size")
 
                 # Filter out AI-specific params from kwargs
-                kwargs = {k: v for k, v in config.items()
-                          if k not in ai_specific_params and k not in {
-                              "redis_url", "default_ttl", "enable_l1_cache",
-                              "l1_cache_size", "compression_threshold", "compression_level"
-                          }}
+                kwargs = {
+                    k: v
+                    for k, v in config.items()
+                    if k not in ai_specific_params
+                    and k
+                    not in {
+                        "redis_url",
+                        "default_ttl",
+                        "enable_l1_cache",
+                        "l1_cache_size",
+                        "compression_threshold",
+                        "compression_level",
+                    }
+                }
 
                 return await self.for_ai_app(
                     redis_url=redis_url,
@@ -946,18 +1000,28 @@ class CacheFactory:
                     memory_cache_size=memory_cache_size,
                     operation_ttls=operation_ttls,
                     fail_on_connection_error=fail_on_connection_error,
-                    **kwargs
+                    **kwargs,
                 )
             else:
                 # Create GenericRedisCache
-                logger.info("Configuration contains generic parameters, creating GenericRedisCache")
+                logger.info(
+                    "Configuration contains generic parameters, creating GenericRedisCache"
+                )
 
                 # Filter out known params from kwargs
-                kwargs = {k: v for k, v in config.items()
-                          if k not in {
-                              "redis_url", "default_ttl", "enable_l1_cache",
-                              "l1_cache_size", "compression_threshold", "compression_level"
-                          }}
+                kwargs = {
+                    k: v
+                    for k, v in config.items()
+                    if k
+                    not in {
+                        "redis_url",
+                        "default_ttl",
+                        "enable_l1_cache",
+                        "l1_cache_size",
+                        "compression_threshold",
+                        "compression_level",
+                    }
+                }
 
                 return await self.for_web_app(
                     redis_url=redis_url,
@@ -967,11 +1031,13 @@ class CacheFactory:
                     compression_threshold=compression_threshold,
                     compression_level=compression_level,
                     fail_on_connection_error=fail_on_connection_error,
-                    **kwargs
+                    **kwargs,
                 )
 
         except Exception as e:
-            if isinstance(e, (ValidationError, ConfigurationError, InfrastructureError)):
+            if isinstance(
+                e, (ValidationError, ConfigurationError, InfrastructureError)
+            ):
                 raise
 
             logger.error(f"Failed to create cache from configuration: {e}")
@@ -981,6 +1047,6 @@ class CacheFactory:
                     "config": config,
                     "has_ai_params": has_ai_params,
                     "fail_on_connection_error": fail_on_connection_error,
-                    "original_error": str(e)
-                }
+                    "original_error": str(e),
+                },
             )

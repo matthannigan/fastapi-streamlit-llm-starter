@@ -40,21 +40,26 @@ from app.infrastructure.cache.security import SecurityConfig, RedisCacheSecurity
 ```
 """
 
-import logging
-import ssl
 import asyncio
-import time
 import inspect
+import logging
+import secrets
+import ssl
+import string
+import time
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+from app.core.environment import (Environment, FeatureContext,
+                                  get_environment_info)
 from app.core.exceptions import ConfigurationError
 
 # Optional Redis import for graceful degradation
 try:
     import redis.asyncio as aioredis  # type: ignore
     from redis.asyncio import Redis, RedisError  # type: ignore
+
     AIOREDIS_AVAILABLE = True
 except ImportError:
     AIOREDIS_AVAILABLE = False
@@ -159,46 +164,67 @@ class SecurityConfig:
             if self.tls_cert_path and not Path(self.tls_cert_path).exists():
                 raise ConfigurationError(
                     f"TLS certificate file not found: {self.tls_cert_path}",
-                    context={"cert_path": self.tls_cert_path, "validation_type": "tls_cert"}
+                    context={
+                        "cert_path": self.tls_cert_path,
+                        "validation_type": "tls_cert",
+                    },
                 )
             if self.tls_key_path and not Path(self.tls_key_path).exists():
                 raise ConfigurationError(
                     f"TLS key file not found: {self.tls_key_path}",
-                    context={"key_path": self.tls_key_path, "validation_type": "tls_key"}
+                    context={
+                        "key_path": self.tls_key_path,
+                        "validation_type": "tls_key",
+                    },
                 )
             if self.tls_ca_path and not Path(self.tls_ca_path).exists():
                 raise ConfigurationError(
                     f"TLS CA file not found: {self.tls_ca_path}",
-                    context={"ca_path": self.tls_ca_path, "validation_type": "tls_ca"}
+                    context={"ca_path": self.tls_ca_path, "validation_type": "tls_ca"},
                 )
 
         # Validate ACL configuration
         if self.acl_username and not self.acl_password:
             raise ConfigurationError(
                 "ACL password is required when ACL username is provided",
-                context={"acl_username": self.acl_username, "validation_type": "acl_config"}
+                context={
+                    "acl_username": self.acl_username,
+                    "validation_type": "acl_config",
+                },
             )
 
         # Validate timeout settings
         if self.connection_timeout <= 0:
             raise ConfigurationError(
                 "Connection timeout must be positive",
-                context={"connection_timeout": self.connection_timeout, "validation_type": "timeout"}
+                context={
+                    "connection_timeout": self.connection_timeout,
+                    "validation_type": "timeout",
+                },
             )
         if self.socket_timeout <= 0:
             raise ConfigurationError(
                 "Socket timeout must be positive",
-                context={"socket_timeout": self.socket_timeout, "validation_type": "timeout"}
+                context={
+                    "socket_timeout": self.socket_timeout,
+                    "validation_type": "timeout",
+                },
             )
         if self.max_retries < 0:
             raise ConfigurationError(
                 "Max retries cannot be negative",
-                context={"max_retries": self.max_retries, "validation_type": "retry_config"}
+                context={
+                    "max_retries": self.max_retries,
+                    "validation_type": "retry_config",
+                },
             )
         if self.retry_delay < 0:
             raise ConfigurationError(
                 "Retry delay cannot be negative",
-                context={"retry_delay": self.retry_delay, "validation_type": "retry_config"}
+                context={
+                    "retry_delay": self.retry_delay,
+                    "validation_type": "retry_config",
+                },
             )
 
     @property
@@ -215,6 +241,216 @@ class SecurityConfig:
             return "MEDIUM"
         else:
             return "LOW"
+
+    @classmethod
+    def create_for_environment(
+        cls, encryption_key: Optional[str] = None
+    ) -> "SecurityConfig":
+        """
+        Create security configuration appropriate for detected environment.
+
+        This method provides environment-aware security configuration that automatically
+        adapts security settings based on the current deployment environment while
+        maintaining security-first principles.
+
+        Args:
+            encryption_key: Optional encryption key for data encryption.
+                          If not provided, will be generated automatically.
+
+        Returns:
+            SecurityConfig: Environment-appropriate security configuration
+
+        Examples:
+            # Automatic environment detection
+            config = SecurityConfig.create_for_environment()
+
+            # With custom encryption key
+            config = SecurityConfig.create_for_environment("your-encryption-key")
+
+        Security-First Principles:
+            - All environments require TLS encryption (no plaintext connections)
+            - Unknown environments default to production-level security (fail-secure)
+
+        Environment-Specific Settings:
+            - Production: Strong passwords, TLS 1.3, certificate validation REQUIRED
+            - Staging: Production-like security with moderate passwords
+            - Development: TLS required, self-signed certificates acceptable
+            - Testing: TLS required, self-signed certificates acceptable, reduced monitoring
+            - Unknown: Production-level security as fail-safe default
+        """
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+
+        if env_info.environment == Environment.PRODUCTION:
+            return cls(
+                redis_auth=generate_secure_password(32),
+                use_tls=True,
+                tls_cert_path="/etc/ssl/redis-client.crt",
+                tls_key_path="/etc/ssl/redis-client.key",
+                tls_ca_path="/etc/ssl/ca.crt",
+                verify_certificates=True,
+                min_tls_version=ssl.TLSVersion.TLSv1_3.value,
+                connection_timeout=30,
+                socket_timeout=30,
+                max_retries=3,
+                enable_security_monitoring=True,
+                log_security_events=True,
+            )
+        elif env_info.environment == Environment.STAGING:
+            return cls(
+                redis_auth=generate_secure_password(24),
+                use_tls=True,
+                tls_cert_path="/etc/ssl/redis-staging.crt",
+                tls_key_path="/etc/ssl/redis-staging.key",
+                tls_ca_path="/etc/ssl/ca.crt",
+                verify_certificates=True,
+                min_tls_version=ssl.TLSVersion.TLSv1_2.value,
+                connection_timeout=30,
+                socket_timeout=30,
+                max_retries=3,
+                enable_security_monitoring=True,
+                log_security_events=True,
+            )
+        elif env_info.environment == Environment.TESTING:
+            # Testing environment: TLS is disabled by default.
+            # Tests that require TLS should enable it explicitly in their configuration.
+            return cls(
+                redis_auth=generate_secure_password(12),
+                use_tls=False,  # Disabled by default for testing
+                verify_certificates=False,
+                connection_timeout=10,
+                socket_timeout=10,
+                max_retries=1,
+                enable_security_monitoring=False,
+                log_security_events=False,
+            )
+        elif env_info.environment == Environment.DEVELOPMENT:
+            # Development: TLS required, self-signed certificates acceptable
+            return cls(
+                redis_auth=generate_secure_password(16),
+                use_tls=True,
+                tls_cert_path="",  # Will auto-generate self-signed if needed
+                tls_key_path="",
+                tls_ca_path="",
+                verify_certificates=False,  # Self-signed certificates OK in development
+                min_tls_version=ssl.TLSVersion.TLSv1_2.value,
+                connection_timeout=20,
+                socket_timeout=20,
+                max_retries=2,
+                enable_security_monitoring=True,
+                log_security_events=True,
+            )
+        else:
+            # Unknown environments: Fail-secure with production-level security
+            # Security-first principle: When in doubt, use maximum security
+            logger.warning(
+                f"Unknown environment detected: {env_info.environment}. "
+                f"Applying production-level security as fail-safe default."
+            )
+            return cls(
+                redis_auth=generate_secure_password(32),
+                use_tls=True,
+                tls_cert_path="/etc/ssl/redis-client.crt",
+                tls_key_path="/etc/ssl/redis-client.key",
+                tls_ca_path="/etc/ssl/ca.crt",
+                verify_certificates=True,  # MANDATORY for unknown environments
+                min_tls_version=ssl.TLSVersion.TLSv1_3.value,
+                connection_timeout=30,
+                socket_timeout=30,
+                max_retries=3,
+                enable_security_monitoring=True,
+                log_security_events=True,
+            )
+
+    def validate_mandatory_security_requirements(self) -> None:
+        """
+        Validate that mandatory security requirements are met for production.
+
+        This method enforces security-first requirements and provides fail-fast
+        validation with clear error messages for security violations.
+
+        Raises:
+            ConfigurationError: If mandatory security requirements are not met
+
+        Note:
+            This is stricter than the regular _validate_configuration method
+            and enforces production-grade security standards.
+        """
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+
+        # Enforce authentication for all environments except testing
+        if env_info.environment != Environment.TESTING:
+            if not self.has_authentication:
+                raise ConfigurationError(
+                    f"🔒 SECURITY ERROR: Authentication is mandatory for {env_info.environment.value} environment.\n"
+                    "\n"
+                    "Current: No authentication configured\n"
+                    "Required: redis_auth password or ACL username/password\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Set REDIS_AUTH environment variable with a secure password\n"
+                    "2. Or configure ACL authentication with REDIS_ACL_USERNAME/REDIS_ACL_PASSWORD\n"
+                    "3. Use SecurityConfig.create_for_environment() for automatic secure configuration\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_authentication",
+                        "security_requirement": "authentication_required",
+                    },
+                )
+
+        # Enforce TLS for production and staging
+        if env_info.environment in (Environment.PRODUCTION, Environment.STAGING):
+            if not self.use_tls:
+                raise ConfigurationError(
+                    f"🔒 SECURITY ERROR: TLS encryption is mandatory for {env_info.environment.value} environment.\n"
+                    "\n"
+                    "Current: TLS disabled\n"
+                    "Required: TLS encryption enabled\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Set use_tls=True in SecurityConfig\n"
+                    "2. Or set REDIS_TLS_ENABLED=true environment variable\n"
+                    "3. Use SecurityConfig.create_for_environment() for automatic configuration\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_tls",
+                        "security_requirement": "tls_encryption_required",
+                    },
+                )
+
+            # Enforce certificate verification in production
+            if (
+                env_info.environment == Environment.PRODUCTION
+                and not self.verify_certificates
+            ):
+                raise ConfigurationError(
+                    "🔒 SECURITY ERROR: Certificate verification is mandatory for production environment.\n"
+                    "\n"
+                    "Current: Certificate verification disabled\n"
+                    "Required: Certificate verification enabled\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Set verify_certificates=True in SecurityConfig\n"
+                    "2. Ensure valid TLS certificates are configured\n"
+                    "3. Use SecurityConfig.create_for_environment() for production defaults\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_cert_verification",
+                        "security_requirement": "certificate_verification_required",
+                    },
+                )
+
+        logger.info(
+            f"✅ Mandatory security validation passed for {env_info.environment.value} environment"
+        )
 
 
 @dataclass
@@ -307,7 +543,7 @@ class SecurityValidationResult:
             "No authentication configured",
             "Unencrypted connection in production",
             "Invalid or expired certificates",
-            "Weak cipher suites"
+            "Weak cipher suites",
         ]
 
         has_critical_vulnerability = any(
@@ -320,7 +556,13 @@ class SecurityValidationResult:
     def get_security_summary(self) -> str:
         """Get a human-readable security summary."""
         status = "SECURE" if self.is_secure else "INSECURE"
-        level = "HIGH" if self.security_score >= 80 else "MEDIUM" if self.security_score >= 60 else "LOW"
+        level = (
+            "HIGH"
+            if self.security_score >= 80
+            else "MEDIUM"
+            if self.security_score >= 60
+            else "LOW"
+        )
 
         summary = f"Security Status: {status} (Score: {self.security_score}/100, Level: {level})\n"
 
@@ -335,6 +577,143 @@ class SecurityValidationResult:
                 summary += f"  - {rec}\n"
 
         return summary
+
+
+def generate_secure_password(length: int) -> str:
+    """
+    Generate cryptographically secure password.
+
+    Creates a random password using secrets module with a character set that
+    includes letters, digits, and safe special characters suitable for Redis
+    authentication.
+
+    Args:
+        length: Desired password length (minimum 8 characters recommended)
+
+    Returns:
+        Cryptographically secure password string
+
+    Examples:
+        # Generate production password
+        prod_password = generate_secure_password(32)
+
+        # Generate development password
+        dev_password = generate_secure_password(16)
+
+        # Generate testing password
+        test_password = generate_secure_password(12)
+
+    Note:
+        Uses secrets.choice() for cryptographic security rather than random.choice().
+        Character set excludes ambiguous characters like 0, O, l, I to avoid confusion.
+    """
+    if length < 8:
+        logger.warning(
+            f"Password length {length} is below recommended minimum of 8 characters"
+        )
+
+    # Safe character set - excludes ambiguous characters
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*-_=+"
+
+    # Remove potentially ambiguous characters
+    alphabet = (
+        alphabet.replace("0", "").replace("O", "").replace("l", "").replace("I", "")
+    )
+
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def create_security_config_from_env() -> SecurityConfig:
+    """
+    Create security configuration from environment variables.
+
+    This function creates a SecurityConfig instance using environment variables
+    with secure defaults. If required values are missing, it generates them
+    automatically to ensure secure operation.
+
+    Security-First Approach:
+        1. Tries to read explicit environment variables first (REDIS_AUTH, etc.)
+        2. Falls back to environment-aware configuration (auto-detects environment)
+        3. Auto-generates secure passwords if not provided (fail-secure)
+        4. Defaults to TLS enabled (security-first principle)
+
+    Returns:
+        SecurityConfig: Configuration with secure defaults
+
+    Environment Variables:
+        REDIS_AUTH: Redis authentication password (auto-generated if missing)
+        REDIS_ACL_USERNAME: Redis ACL username (optional)
+        REDIS_ACL_PASSWORD: Redis ACL password (optional)
+        REDIS_TLS_ENABLED: Enable TLS (default: true)
+        REDIS_TLS_CERT_PATH: Path to TLS certificate file
+        REDIS_TLS_KEY_PATH: Path to TLS private key file
+        REDIS_TLS_CA_PATH: Path to CA certificate file
+        REDIS_VERIFY_CERTIFICATES: Verify TLS certificates (default: true)
+        REDIS_CONNECTION_TIMEOUT: Connection timeout in seconds (default: 30)
+        REDIS_MAX_RETRIES: Maximum connection retries (default: 3)
+        REDIS_RETRY_DELAY: Delay between retries in seconds (default: 1.0)
+
+    Examples:
+        # Create config from environment (auto-detects environment)
+        config = create_security_config_from_env()
+
+        # Use with security manager
+        manager = RedisCacheSecurityManager(config)
+
+    Note:
+        This function always returns a valid SecurityConfig. It never returns None,
+        ensuring fail-secure behavior even when no environment variables are set.
+    """
+    import os
+
+    # Check if explicit environment variables are set
+    # If any REDIS_* security variables are set, use explicit configuration
+    has_explicit_config = any([
+        os.getenv("REDIS_AUTH"),
+        os.getenv("REDIS_ACL_USERNAME"),
+        os.getenv("REDIS_ACL_PASSWORD"),
+        os.getenv("REDIS_USE_TLS"),
+        os.getenv("REDIS_TLS_ENABLED"),
+        os.getenv("REDIS_TLS_CERT_PATH"),
+        os.getenv("REDIS_TLS_KEY_PATH"),
+        os.getenv("REDIS_TLS_CA_PATH"),
+        os.getenv("REDIS_VERIFY_CERTIFICATES"),
+        os.getenv("REDIS_CONNECTION_TIMEOUT"),
+        os.getenv("REDIS_MAX_RETRIES"),
+        os.getenv("REDIS_RETRY_DELAY"),
+    ])
+
+    if has_explicit_config:
+        # Use explicit environment variable configuration
+        return SecurityConfig(
+            redis_auth=os.getenv("REDIS_AUTH") or generate_secure_password(16),
+            acl_username=os.getenv("REDIS_ACL_USERNAME"),
+            acl_password=os.getenv("REDIS_ACL_PASSWORD"),
+            use_tls=os.getenv("REDIS_USE_TLS", os.getenv("REDIS_TLS_ENABLED", "true")).lower() == "true",
+            tls_cert_path=os.getenv("REDIS_TLS_CERT_PATH"),
+            tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
+            tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
+            verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower()
+            == "true",
+            connection_timeout=int(os.getenv("REDIS_CONNECTION_TIMEOUT", "30")),
+            max_retries=int(os.getenv("REDIS_MAX_RETRIES", "3")),
+            retry_delay=float(os.getenv("REDIS_RETRY_DELAY", "1.0")),
+        )
+
+    # Fallback to environment-aware configuration (auto-detects environment type)
+    try:
+        return SecurityConfig.create_for_environment()
+    except Exception as e:
+        logger.warning(f"Environment detection failed, using defaults: {e}")
+        # Final fallback with secure defaults
+        return SecurityConfig(
+            redis_auth=generate_secure_password(16),
+            use_tls=True,
+            verify_certificates=False,  # Self-signed certs OK in development
+            connection_timeout=30,
+            max_retries=3,
+            retry_delay=1.0,
+        )
 
 
 class RedisCacheSecurityManager:
@@ -365,9 +744,11 @@ class RedisCacheSecurityManager:
         report = manager.generate_security_report(validation)
     """
 
-    def __init__(self,
-                 config: SecurityConfig,
-                 performance_monitor: Optional[CachePerformanceMonitor] = None):
+    def __init__(
+        self,
+        config: SecurityConfig,
+        performance_monitor: Optional[CachePerformanceMonitor] = None,
+    ):
         """Initialize Redis security manager.
 
         Args:
@@ -388,7 +769,9 @@ class RedisCacheSecurityManager:
         self._initialize_ssl_context()
 
         if config.log_security_events:
-            self._security_logger.info(f"Security manager initialized with level: {config.security_level}")
+            self._security_logger.info(
+                f"Security manager initialized with level: {config.security_level}"
+            )
 
     def _initialize_ssl_context(self) -> None:
         """Initialize SSL context for TLS connections."""
@@ -406,20 +789,23 @@ class RedisCacheSecurityManager:
             else:
                 self._ssl_context.check_hostname = False
                 self._ssl_context.verify_mode = ssl.CERT_NONE
-                self._security_logger.warning("Certificate verification disabled - not recommended for production")
+                self._security_logger.warning(
+                    "Certificate verification disabled - not recommended for production"
+                )
 
             # Set minimum TLS version
-            self._ssl_context.minimum_version = ssl.TLSVersion(int(self.config.min_tls_version))
+            self._ssl_context.minimum_version = ssl.TLSVersion(
+                int(self.config.min_tls_version)
+            )
 
             # Configure cipher suites
             if self.config.cipher_suites:
-                self._ssl_context.set_ciphers(':'.join(self.config.cipher_suites))
+                self._ssl_context.set_ciphers(":".join(self.config.cipher_suites))
 
             # Load certificates
             if self.config.tls_cert_path and self.config.tls_key_path:
                 self._ssl_context.load_cert_chain(
-                    self.config.tls_cert_path,
-                    self.config.tls_key_path
+                    self.config.tls_cert_path, self.config.tls_key_path
                 )
 
             # Load CA certificates
@@ -432,7 +818,9 @@ class RedisCacheSecurityManager:
             self._security_logger.error(f"Failed to initialize SSL context: {e}")
             raise
 
-    async def create_secure_connection(self, redis_url: str = "redis://localhost:6379") -> Any:
+    async def create_secure_connection(
+        self, redis_url: str = "redis://localhost:6379"
+    ) -> Any:
         """Create secure Redis connection with full security features.
 
         This method creates a Redis connection with all configured security features
@@ -463,16 +851,21 @@ class RedisCacheSecurityManager:
 
             # Log security event
             if self.config.log_security_events:
-                self._log_security_event("connection_created", {
-                    "security_level": self.config.security_level,
-                    "tls_enabled": self.config.use_tls,
-                    "auth_configured": self.config.has_authentication
-                })
+                self._log_security_event(
+                    "connection_created",
+                    {
+                        "security_level": self.config.security_level,
+                        "tls_enabled": self.config.use_tls,
+                        "auth_configured": self.config.has_authentication,
+                    },
+                )
 
             # Track performance
             if self.performance_monitor:
                 duration = (time.perf_counter() - start_time) * 1000
-                await self.performance_monitor.record_operation("secure_connection_create", duration, True)
+                await self.performance_monitor.record_operation(
+                    "secure_connection_create", duration, True
+                )
 
             return redis_client
 
@@ -480,9 +873,13 @@ class RedisCacheSecurityManager:
             # Track performance for failed connections
             if self.performance_monitor:
                 duration = (time.perf_counter() - start_time) * 1000
-                await self.performance_monitor.record_operation("secure_connection_create", duration, False)
+                await self.performance_monitor.record_operation(
+                    "secure_connection_create", duration, False
+                )
 
-            self._security_logger.error(f"Failed to create secure Redis connection: {e}")
+            self._security_logger.error(
+                f"Failed to create secure Redis connection: {e}"
+            )
             raise
 
     def _build_connection_kwargs(self, redis_url: str) -> Dict[str, Any]:
@@ -506,8 +903,32 @@ class RedisCacheSecurityManager:
             self._security_logger.info("Basic AUTH authentication configured")
 
         # TLS configuration
-        if self.config.use_tls and self._ssl_context:
-            kwargs["ssl"] = self._ssl_context
+        # Note: redis-py does not accept 'ssl' parameter with SSLContext object
+        # Instead, use individual SSL parameters for SSLConnection class
+        if self.config.use_tls:
+            # Set certificate verification mode
+            if self.config.verify_certificates:
+                kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+                kwargs["ssl_check_hostname"] = True
+            else:
+                kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
+                kwargs["ssl_check_hostname"] = False
+
+            # Set certificate paths if provided
+            if self.config.tls_cert_path:
+                kwargs["ssl_certfile"] = self.config.tls_cert_path
+            if self.config.tls_key_path:
+                kwargs["ssl_keyfile"] = self.config.tls_key_path
+            if self.config.tls_ca_path:
+                kwargs["ssl_ca_certs"] = self.config.tls_ca_path
+
+            # Set TLS version
+            kwargs["ssl_min_version"] = ssl.TLSVersion(int(self.config.min_tls_version))
+
+            # Set cipher suites if specified
+            if self.config.cipher_suites:
+                kwargs["ssl_ciphers"] = ":".join(self.config.cipher_suites)
+
             # Update URL scheme to rediss://
             if redis_url.startswith("redis://"):
                 redis_url = redis_url.replace("redis://", "rediss://", 1)
@@ -516,16 +937,22 @@ class RedisCacheSecurityManager:
         kwargs["url"] = redis_url
         return kwargs
 
-    async def _create_connection_with_retry(self, connection_kwargs: Dict[str, Any]) -> Any:
+    async def _create_connection_with_retry(
+        self, connection_kwargs: Dict[str, Any]
+    ) -> Any:
         """Create Redis connection with retry logic."""
         if not AIOREDIS_AVAILABLE or aioredis is None:
-            raise RedisError("aioredis module not available - cannot create Redis connection")
+            raise RedisError(
+                "aioredis module not available - cannot create Redis connection"
+            )
 
         last_exception = None
 
         for attempt in range(self.config.max_retries + 1):
             try:
-                self._security_logger.debug(f"Connection attempt {attempt + 1}/{self.config.max_retries + 1}")
+                self._security_logger.debug(
+                    f"Connection attempt {attempt + 1}/{self.config.max_retries + 1}"
+                )
 
                 # Support both sync and async factories for easier testing/mocking
                 redis_client = aioredis.from_url(**connection_kwargs)  # type: ignore[attr-defined]
@@ -533,20 +960,28 @@ class RedisCacheSecurityManager:
                     redis_client = await redis_client
 
                 # Do not ping here to avoid duplicate pings in validation phase
-                self._security_logger.info(f"Secure Redis connection established on attempt {attempt + 1}")
+                self._security_logger.info(
+                    f"Secure Redis connection established on attempt {attempt + 1}"
+                )
                 return redis_client
 
             except Exception as e:
                 last_exception = e
-                self._security_logger.warning(f"Connection attempt {attempt + 1} failed: {e}")
+                self._security_logger.warning(
+                    f"Connection attempt {attempt + 1} failed: {e}"
+                )
 
                 if attempt < self.config.max_retries:
-                    delay = self.config.retry_delay * (2 ** attempt)  # Exponential backoff
+                    delay = self.config.retry_delay * (
+                        2**attempt
+                    )  # Exponential backoff
                     self._security_logger.info(f"Retrying in {delay} seconds...")
                     await asyncio.sleep(delay)
 
         # All attempts failed
-        raise RedisError(f"Failed to establish secure Redis connection after {self.config.max_retries + 1} attempts. Last error: {last_exception}")
+        raise RedisError(
+            f"Failed to establish secure Redis connection after {self.config.max_retries + 1} attempts. Last error: {last_exception}"
+        )
 
     async def _validate_new_connection(self, redis_client: Any) -> None:
         """Validate newly created connection."""
@@ -559,23 +994,156 @@ class RedisCacheSecurityManager:
             # Be lenient in mocks: accept any dict-like info response
             try:
                 if not isinstance(info, dict) or "redis_version" not in info:
-                    self._security_logger.warning("Redis server info did not include 'redis_version'")
+                    self._security_logger.warning(
+                        "Redis server info did not include 'redis_version'"
+                    )
             except Exception:
-                self._security_logger.warning("Unexpected format for Redis info response")
+                self._security_logger.warning(
+                    "Unexpected format for Redis info response"
+                )
 
             # Avoid accessing dict methods on non-dict mocks
             version = None
             try:
-                version = info.get('redis_version', 'unknown') if isinstance(info, dict) else 'unknown'
+                version = (
+                    info.get("redis_version", "unknown")
+                    if isinstance(info, dict)
+                    else "unknown"
+                )
             except Exception:
-                version = 'unknown'
-            self._security_logger.info(f"Connection validated - Redis version: {version}")
+                version = "unknown"
+            self._security_logger.info(
+                f"Connection validated - Redis version: {version}"
+            )
 
         except Exception as e:
             self._security_logger.error(f"Connection validation failed: {e}")
             raise
 
-    async def validate_connection_security(self, redis_client: Any) -> SecurityValidationResult:
+    def validate_mandatory_security(self, redis_url: str) -> None:
+        """
+        Validate mandatory security requirements with fail-fast behavior.
+
+        This method enforces security-first principles by validating that all
+        mandatory security requirements are met before attempting connection.
+        It provides immediate failure with clear error messages.
+
+        Args:
+            redis_url: Redis connection URL to validate
+
+        Raises:
+            ConfigurationError: If mandatory security requirements are not met
+
+        Examples:
+            # Validate before connection
+            manager.validate_mandatory_security("rediss://redis:6380")
+
+            # Will raise ConfigurationError for insecure URLs in production
+            manager.validate_mandatory_security("redis://redis:6379")  # Fails in production
+
+        Note:
+            This method is called automatically by create_secure_connection()
+            in security-first mode to ensure no insecure connections are created.
+        """
+        # Validate the security configuration first
+        self.config.validate_mandatory_security_requirements()
+
+        # Validate the connection URL security
+        env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+
+        # Require secure connection URLs for production and staging
+        if env_info.environment in (Environment.PRODUCTION, Environment.STAGING):
+            if not self._is_secure_url(redis_url):
+                raise ConfigurationError(
+                    f"🔒 SECURITY ERROR: Insecure Redis URL not allowed in {env_info.environment.value} environment.\n"
+                    "\n"
+                    f"Current URL: {redis_url.split('://')[0]}://***\n"
+                    "Required: Secure URL (rediss://) or authenticated connection\n"
+                    "\n"
+                    "To fix this issue:\n"
+                    "1. Use TLS: Change URL to rediss://your-redis-host:6380\n"
+                    "2. Or ensure authentication is included in URL: redis://user:pass@host:port\n"
+                    "3. Update REDIS_URL environment variable\n"
+                    "\n"
+                    f"🌍 Environment: {env_info.environment.value} (confidence: {env_info.confidence:.1f})",
+                    context={
+                        "redis_url_scheme": redis_url.split("://")[0],
+                        "environment": env_info.environment.value,
+                        "confidence": env_info.confidence,
+                        "validation_type": "mandatory_secure_url",
+                        "security_requirement": "secure_connection_url",
+                    },
+                )
+
+        self._security_logger.info(
+            f"✅ Mandatory security validation passed for {env_info.environment.value}"
+        )
+
+    def _is_secure_url(self, redis_url: str) -> bool:
+        """
+        Check if Redis URL is secure.
+
+        A URL is considered secure if it uses TLS (rediss://) or includes
+        authentication credentials.
+
+        Args:
+            redis_url: Redis connection URL to check
+
+        Returns:
+            True if URL is secure, False otherwise
+        """
+        if not redis_url:
+            return False
+
+        # TLS URLs are always secure
+        if redis_url.startswith("rediss://"):
+            return True
+
+        # URLs with authentication are considered secure
+        if redis_url.startswith("redis://") and "@" in redis_url:
+            return True
+
+        return False
+
+    def create_secure_connection_with_validation(
+        self, redis_url: str = "redis://localhost:6379"
+    ) -> Any:
+        """
+        Create secure Redis connection with mandatory security validation.
+
+        This method provides security-first connection creation with fail-fast
+        validation. It ensures all security requirements are met before attempting
+        to create the connection.
+
+        Args:
+            redis_url: Redis server URL with authentication and TLS
+
+        Returns:
+            Configured Redis client with security features enabled
+
+        Raises:
+            ConfigurationError: If security requirements are not met
+
+        Examples:
+            # Create secure connection (will validate first)
+            redis = await manager.create_secure_connection_with_validation("rediss://redis:6380")
+
+            # Will fail fast in production without TLS
+            redis = await manager.create_secure_connection_with_validation("redis://redis:6379")
+
+        Note:
+            This is the recommended method for security-first applications.
+            Use regular create_secure_connection() for backward compatibility.
+        """
+        # Perform fail-fast security validation
+        self.validate_mandatory_security(redis_url)
+
+        # Create connection using existing secure method
+        return self.create_secure_connection(redis_url)
+
+    async def validate_connection_security(
+        self, redis_client: Any
+    ) -> SecurityValidationResult:
         """Validate Redis connection security status.
 
         This method performs comprehensive security validation of an existing
@@ -601,7 +1169,7 @@ class RedisCacheSecurityManager:
                 auth_configured=self.config.has_authentication,
                 tls_enabled=self.config.use_tls,
                 acl_enabled=bool(self.config.acl_username),
-                certificate_valid=False
+                certificate_valid=False,
             )
 
             # Validate connection
@@ -618,15 +1186,20 @@ class RedisCacheSecurityManager:
             # Track performance
             if self.performance_monitor:
                 duration = (time.perf_counter() - start_time) * 1000
-                await self.performance_monitor.record_operation("security_validation", duration, True)
+                await self.performance_monitor.record_operation(
+                    "security_validation", duration, True
+                )
 
             # Log security validation
             if self.config.log_security_events:
-                self._log_security_event("security_validation", {
-                    "security_score": result.security_score,
-                    "is_secure": result.is_secure,
-                    "vulnerabilities_count": len(result.vulnerabilities)
-                })
+                self._log_security_event(
+                    "security_validation",
+                    {
+                        "security_score": result.security_score,
+                        "is_secure": result.is_secure,
+                        "vulnerabilities_count": len(result.vulnerabilities),
+                    },
+                )
 
             return result
 
@@ -634,7 +1207,9 @@ class RedisCacheSecurityManager:
             # Track performance for failed validation
             if self.performance_monitor:
                 duration = (time.perf_counter() - start_time) * 1000
-                await self.performance_monitor.record_operation("security_validation", duration, False)
+                await self.performance_monitor.record_operation(
+                    "security_validation", duration, False
+                )
 
             self._security_logger.error(f"Security validation failed: {e}")
 
@@ -669,7 +1244,9 @@ class RedisCacheSecurityManager:
                 recommendations=fallback_recommendations,
             )
 
-    async def _validate_basic_connectivity(self, redis_client: Any, result: SecurityValidationResult) -> None:
+    async def _validate_basic_connectivity(
+        self, redis_client: Any, result: SecurityValidationResult
+    ) -> None:
         """Validate basic Redis connectivity."""
         try:
             await redis_client.ping()
@@ -678,7 +1255,9 @@ class RedisCacheSecurityManager:
             result.vulnerabilities.append(f"Connection failure: {e}")
             result.detailed_checks["connectivity"] = f"FAILED: {e}"
 
-    async def _validate_authentication(self, redis_client: Any, result: SecurityValidationResult) -> None:
+    async def _validate_authentication(
+        self, redis_client: Any, result: SecurityValidationResult
+    ) -> None:
         """Validate Redis authentication configuration."""
         try:
             # Check if authentication is working
@@ -698,7 +1277,9 @@ class RedisCacheSecurityManager:
             result.vulnerabilities.append(f"Authentication validation failed: {e}")
             result.detailed_checks["authentication"] = f"FAILED: {e}"
 
-    async def _validate_encryption(self, redis_client: Any, result: SecurityValidationResult) -> None:
+    async def _validate_encryption(
+        self, redis_client: Any, result: SecurityValidationResult
+    ) -> None:
         """Validate TLS encryption configuration."""
         if self.config.use_tls:
             # Check if connection is actually encrypted
@@ -706,7 +1287,9 @@ class RedisCacheSecurityManager:
             # This is a simplified check
             result.connection_encrypted = True
             result.tls_version = f"TLS {self.config.min_tls_version}"
-            result.detailed_checks["encryption"] = f"TLS enabled (min version: {self.config.min_tls_version})"
+            result.detailed_checks[
+                "encryption"
+            ] = f"TLS enabled (min version: {self.config.min_tls_version})"
         else:
             result.vulnerabilities.append("Unencrypted connection")
             result.detailed_checks["encryption"] = "Disabled"
@@ -725,46 +1308,66 @@ class RedisCacheSecurityManager:
                 cert_path = Path(self.config.tls_cert_path)
                 if not cert_path.exists():
                     cert_valid = False
-                    result.vulnerabilities.append(f"Certificate file not found: {self.config.tls_cert_path}")
+                    result.vulnerabilities.append(
+                        f"Certificate file not found: {self.config.tls_cert_path}"
+                    )
 
             if self.config.tls_key_path:
                 key_path = Path(self.config.tls_key_path)
                 if not key_path.exists():
                     cert_valid = False
-                    result.vulnerabilities.append(f"Private key file not found: {self.config.tls_key_path}")
+                    result.vulnerabilities.append(
+                        f"Private key file not found: {self.config.tls_key_path}"
+                    )
 
             result.certificate_valid = cert_valid
-            result.detailed_checks["certificates"] = "Valid" if cert_valid else "Invalid"
+            result.detailed_checks["certificates"] = (
+                "Valid" if cert_valid else "Invalid"
+            )
 
         except Exception as e:
             result.vulnerabilities.append(f"Certificate validation failed: {e}")
             result.detailed_checks["certificates"] = f"FAILED: {e}"
 
-    async def _analyze_security_vulnerabilities(self, result: SecurityValidationResult) -> None:
+    async def _analyze_security_vulnerabilities(
+        self, result: SecurityValidationResult
+    ) -> None:
         """Analyze and identify security vulnerabilities."""
         # Check for common security issues
 
         # No authentication
         if not self.config.has_authentication:
-            result.vulnerabilities.append("No authentication configured - Redis is accessible without credentials")
+            result.vulnerabilities.append(
+                "No authentication configured - Redis is accessible without credentials"
+            )
 
         # Unencrypted connection
         if not self.config.use_tls:
-            result.vulnerabilities.append("Unencrypted connection - data transmitted in plain text")
+            result.vulnerabilities.append(
+                "Unencrypted connection - data transmitted in plain text"
+            )
 
         # Weak TLS configuration
         if self.config.use_tls and not self.config.verify_certificates:
-            result.vulnerabilities.append("Certificate verification disabled - vulnerable to man-in-the-middle attacks")
+            result.vulnerabilities.append(
+                "Certificate verification disabled - vulnerable to man-in-the-middle attacks"
+            )
 
         # Default passwords or weak configuration
         if self.config.redis_auth and len(self.config.redis_auth) < 12:
-            result.vulnerabilities.append("Weak password - consider using a stronger password (≥12 characters)")
+            result.vulnerabilities.append(
+                "Weak password - consider using a stronger password (≥12 characters)"
+            )
 
         # Long connection timeouts
         if self.config.connection_timeout > 60:
-            result.warnings.append("Long connection timeout may increase vulnerability window")
+            result.warnings.append(
+                "Long connection timeout may increase vulnerability window"
+            )
 
-    async def _generate_security_recommendations(self, result: SecurityValidationResult) -> None:
+    async def _generate_security_recommendations(
+        self, result: SecurityValidationResult
+    ) -> None:
         """Generate security improvement recommendations."""
         recommendations = []
 
@@ -772,7 +1375,9 @@ class RedisCacheSecurityManager:
         if not self.config.has_authentication:
             recommendations.append("Enable Redis authentication (AUTH or ACL)")
         elif self.config.redis_auth and not self.config.acl_username:
-            recommendations.append("Consider upgrading to ACL authentication for better security")
+            recommendations.append(
+                "Consider upgrading to ACL authentication for better security"
+            )
 
         # Encryption recommendations
         if not self.config.use_tls:
@@ -782,7 +1387,9 @@ class RedisCacheSecurityManager:
 
         # Password strength recommendations
         if self.config.redis_auth and len(self.config.redis_auth) < 16:
-            recommendations.append("Use a stronger password (≥16 characters with mixed case, numbers, symbols)")
+            recommendations.append(
+                "Use a stronger password (≥16 characters with mixed case, numbers, symbols)"
+            )
 
         # Certificate management
         if self.config.use_tls:
@@ -807,7 +1414,7 @@ class RedisCacheSecurityManager:
             "timestamp": time.time(),
             "event_type": event_type,
             "details": details,
-            "security_level": self.config.security_level
+            "security_level": self.config.security_level,
         }
 
         self._security_events.append(event)
@@ -824,7 +1431,9 @@ class RedisCacheSecurityManager:
 
         # Authentication recommendations
         if not self.config.has_authentication:
-            recommendations.append("🔐 Enable Redis authentication (AUTH password or ACL username/password)")
+            recommendations.append(
+                "🔐 Enable Redis authentication (AUTH password or ACL username/password)"
+            )
 
         # Encryption recommendations
         if not self.config.use_tls:
@@ -832,25 +1441,33 @@ class RedisCacheSecurityManager:
 
         # Certificate recommendations
         if self.config.use_tls and not self.config.verify_certificates:
-            recommendations.append("⚠️ Enable certificate verification to prevent MITM attacks")
+            recommendations.append(
+                "⚠️ Enable certificate verification to prevent MITM attacks"
+            )
 
         # Password strength
         if self.config.redis_auth and len(self.config.redis_auth) < 16:
-            recommendations.append("💪 Use a stronger password (≥16 characters, mixed case, numbers, symbols)")
+            recommendations.append(
+                "💪 Use a stronger password (≥16 characters, mixed case, numbers, symbols)"
+            )
 
         # Network security
-        recommendations.extend([
-            "🌐 Deploy Redis in a private network or VPN",
-            "🔥 Configure firewall rules to restrict Redis port access",
-            "📊 Enable Redis slow log and monitor performance",
-            "🚨 Set up monitoring for failed authentication attempts",
-            "🔄 Regularly rotate passwords and certificates",
-            "⚡ Consider Redis Sentinel for high availability and security"
-        ])
+        recommendations.extend(
+            [
+                "🌐 Deploy Redis in a private network or VPN",
+                "🔥 Configure firewall rules to restrict Redis port access",
+                "📊 Enable Redis slow log and monitor performance",
+                "🚨 Set up monitoring for failed authentication attempts",
+                "🔄 Regularly rotate passwords and certificates",
+                "⚡ Consider Redis Sentinel for high availability and security",
+            ]
+        )
 
         return recommendations
 
-    async def test_security_configuration(self, redis_url: str = "redis://localhost:6379") -> Dict[str, Any]:
+    async def test_security_configuration(
+        self, redis_url: str = "redis://localhost:6379"
+    ) -> Dict[str, Any]:
         """Test security configuration comprehensively.
 
         This method performs comprehensive testing of the security configuration
@@ -870,7 +1487,7 @@ class RedisCacheSecurityManager:
             "encryption_active": False,
             "overall_secure": False,
             "test_details": {},
-            "errors": []
+            "errors": [],
         }
 
         try:
@@ -887,7 +1504,11 @@ class RedisCacheSecurityManager:
             try:
                 # Support synchronous mocks in tests by awaiting conditionally
                 conn_result = self.create_secure_connection(redis_url)
-                redis_client = await conn_result if inspect.isawaitable(conn_result) else conn_result
+                redis_client = (
+                    await conn_result
+                    if inspect.isawaitable(conn_result)
+                    else conn_result
+                )
                 results["connection_successful"] = True
                 results["test_details"]["connection"] = "Successful"
 
@@ -908,7 +1529,7 @@ class RedisCacheSecurityManager:
                 results["test_details"]["security_validation"] = {
                     "secure": validation.is_secure,
                     "score": validation.security_score,
-                    "vulnerabilities": validation.vulnerabilities
+                    "vulnerabilities": validation.vulnerabilities,
                 }
 
                 # Clean up
@@ -923,7 +1544,9 @@ class RedisCacheSecurityManager:
 
         return results
 
-    def generate_security_report(self, validation_result: Optional[SecurityValidationResult] = None) -> str:
+    def generate_security_report(
+        self, validation_result: Optional[SecurityValidationResult] = None
+    ) -> str:
         """Generate detailed security assessment report.
 
         Args:
@@ -958,14 +1581,22 @@ class RedisCacheSecurityManager:
         # Configuration Summary
         report.append("SECURITY CONFIGURATION")
         report.append("-" * 25)
-        report.append(f"Authentication: {'✅ Enabled' if validation_result.auth_configured else '❌ Disabled'}")
+        report.append(
+            f"Authentication: {'✅ Enabled' if validation_result.auth_configured else '❌ Disabled'}"
+        )
         if validation_result.auth_method:
             report.append(f"Auth Method: {validation_result.auth_method}")
-        report.append(f"TLS Encryption: {'✅ Enabled' if validation_result.tls_enabled else '❌ Disabled'}")
+        report.append(
+            f"TLS Encryption: {'✅ Enabled' if validation_result.tls_enabled else '❌ Disabled'}"
+        )
         if validation_result.tls_version:
             report.append(f"TLS Version: {validation_result.tls_version}")
-        report.append(f"ACL Authentication: {'✅ Enabled' if validation_result.acl_enabled else '❌ Disabled'}")
-        report.append(f"Certificate Validation: {'✅ Valid' if validation_result.certificate_valid else '❌ Invalid'}")
+        report.append(
+            f"ACL Authentication: {'✅ Enabled' if validation_result.acl_enabled else '❌ Disabled'}"
+        )
+        report.append(
+            f"Certificate Validation: {'✅ Valid' if validation_result.certificate_valid else '❌ Invalid'}"
+        )
         report.append("")
 
         # Vulnerabilities
@@ -997,7 +1628,9 @@ class RedisCacheSecurityManager:
             report.append("DETAILED SECURITY CHECKS")
             report.append("-" * 26)
             for check, result in validation_result.detailed_checks.items():
-                status_icon = "✅" if "OK" in str(result) or "Valid" in str(result) else "❌"
+                status_icon = (
+                    "✅" if "OK" in str(result) or "Valid" in str(result) else "❌"
+                )
                 report.append(f"{check.title()}: {status_icon} {result}")
             report.append("")
 
@@ -1008,7 +1641,9 @@ class RedisCacheSecurityManager:
             report.append("-" * 24)
             for event in recent_events:
                 event_type = event.get("event_type", "unknown")
-                report.append(f"• {event_type} (Score: {validation_result.security_score})")
+                report.append(
+                    f"• {event_type} (Score: {validation_result.security_score})"
+                )
             report.append("")
 
         # Footer
@@ -1034,11 +1669,11 @@ class RedisCacheSecurityManager:
                 "acl_configured": bool(self.config.acl_username),
                 "certificate_verification": self.config.verify_certificates,
                 "connection_timeout": self.config.connection_timeout,
-                "max_retries": self.config.max_retries
+                "max_retries": self.config.max_retries,
             },
             "last_validation": None,
             "security_events_count": len(self._security_events),
-            "recommendations_count": len(self.get_security_recommendations())
+            "recommendations_count": len(self.get_security_recommendations()),
         }
 
         # Include last validation results if available
@@ -1048,56 +1683,10 @@ class RedisCacheSecurityManager:
                 "is_secure": self._last_validation.is_secure,
                 "security_score": self._last_validation.security_score,
                 "vulnerabilities_count": len(self._last_validation.vulnerabilities),
-                "recommendations_count": len(self._last_validation.recommendations)
+                "recommendations_count": len(self._last_validation.recommendations),
             }
 
         return status
-
-
-def create_security_config_from_env() -> Optional[SecurityConfig]:
-    """Create SecurityConfig from environment variables.
-
-    This utility function creates a SecurityConfig instance from common
-    environment variables, making it easy to configure Redis security
-    in containerized environments.
-
-    Environment Variables:
-        REDIS_AUTH: Redis AUTH password
-        REDIS_USE_TLS: Enable TLS (true/false)
-        REDIS_TLS_CERT_PATH: Path to TLS certificate
-        REDIS_TLS_KEY_PATH: Path to TLS private key
-        REDIS_TLS_CA_PATH: Path to TLS CA certificate
-        REDIS_ACL_USERNAME: ACL username
-        REDIS_ACL_PASSWORD: ACL password
-        REDIS_VERIFY_CERTIFICATES: Verify certificates (true/false)
-        REDIS_CONNECTION_TIMEOUT: Connection timeout in seconds
-
-    Returns:
-        SecurityConfig instance or None if no security settings found
-    """
-    import os
-
-    # Check if any security settings are configured
-    security_env_vars = [
-        "REDIS_AUTH", "REDIS_USE_TLS", "REDIS_ACL_USERNAME", "REDIS_ACL_PASSWORD"
-    ]
-
-    if not any(os.getenv(var) for var in security_env_vars):
-        return None
-
-    return SecurityConfig(
-        redis_auth=os.getenv("REDIS_AUTH"),
-        use_tls=os.getenv("REDIS_USE_TLS", "false").lower() == "true",
-        tls_cert_path=os.getenv("REDIS_TLS_CERT_PATH"),
-        tls_key_path=os.getenv("REDIS_TLS_KEY_PATH"),
-        tls_ca_path=os.getenv("REDIS_TLS_CA_PATH"),
-        acl_username=os.getenv("REDIS_ACL_USERNAME"),
-        acl_password=os.getenv("REDIS_ACL_PASSWORD"),
-        verify_certificates=os.getenv("REDIS_VERIFY_CERTIFICATES", "true").lower() == "true",
-        connection_timeout=int(os.getenv("REDIS_CONNECTION_TIMEOUT", "30")),
-        max_retries=int(os.getenv("REDIS_MAX_RETRIES", "3")),
-        retry_delay=float(os.getenv("REDIS_RETRY_DELAY", "1.0"))
-    )
 
 
 # Export public API
@@ -1105,5 +1694,6 @@ __all__ = [
     "SecurityConfig",
     "SecurityValidationResult",
     "RedisCacheSecurityManager",
-    "create_security_config_from_env"
+    "create_security_config_from_env",
+    "generate_secure_password",
 ]

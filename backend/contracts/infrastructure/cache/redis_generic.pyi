@@ -95,11 +95,11 @@ import pickle
 import time
 import zlib
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.infrastructure.cache.base import CacheInterface
 from app.infrastructure.cache.memory import InMemoryCache
 from app.infrastructure.cache.monitoring import CachePerformanceMonitor
-from app.core.exceptions import InfrastructureError, ConfigurationError
 
 
 class GenericRedisCache(CacheInterface):
@@ -143,7 +143,7 @@ class GenericRedisCache(CacheInterface):
     ```
     """
 
-    def __init__(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs):
+    def __init__(self, redis_url: str = 'rediss://redis:6380', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, performance_monitor: Optional[CachePerformanceMonitor] = None, security_config: Optional['SecurityConfig'] = None, **kwargs):
         ...
 
     def register_callback(self, event: str, callback: Callable):
@@ -407,5 +407,42 @@ class GenericRedisCache(CacheInterface):
             for error in results['errors']:
                 print(f"❌ {error}")
         ```
+        """
+        ...
+
+    @classmethod
+    def create_secure(cls, redis_url: Optional[str] = None) -> 'GenericRedisCache':
+        """
+        Factory method for secure cache creation.
+        
+        Creates a GenericRedisCache instance with automatic security configuration
+        based on environment detection. This is the recommended way to create
+        cache instances in the security-first architecture.
+        
+        Args:
+            redis_url: Optional Redis connection URL. If None, uses secure defaults.
+        
+        Returns:
+            GenericRedisCache instance with mandatory security enabled
+        
+        Examples:
+            # Automatic configuration
+            cache = GenericRedisCache.create_secure()
+        
+            # Custom Redis URL
+            cache = GenericRedisCache.create_secure("rediss://production:6380")
+        
+            # Use with context manager
+            cache = GenericRedisCache.create_secure()
+            async with cache:
+                await cache.set("key", "value")
+                value = await cache.get("key")
+        
+        Note:
+            This method automatically configures:
+            - Environment-aware security settings
+            - TLS encryption and authentication
+            - Application-layer data encryption
+            - Fail-fast security validation
         """
         ...

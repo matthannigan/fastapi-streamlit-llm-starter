@@ -1020,7 +1020,7 @@ class CachePerformanceMonitor:
                     {
                         "severity": "info",
                         "message": f"Memory cache is {utilization:.1f}% full "
-                                  f"({latest.memory_cache_entry_count}/{estimated_max_entries} entries)",
+                        f"({latest.memory_cache_entry_count}/{estimated_max_entries} entries)",
                         "recommendations": [
                             "Memory cache eviction is working properly",
                             "Consider increasing memory cache size if hit rates are good",
@@ -1195,7 +1195,9 @@ class CachePerformanceMonitor:
 
         return stats
 
-    async def record_operation(self, name: str, duration_ms: float, success: bool) -> None:
+    async def record_operation(
+        self, name: str, duration_ms: float, success: bool
+    ) -> None:
         """Record a generic operation timing for integration points.
 
         This lightweight async API is used by other components (e.g., security
@@ -1256,7 +1258,11 @@ class CachePerformanceMonitor:
             ...     if operations:
             ...         print(f"{category}: {len(operations)} slow operations")
         """
-        slow_ops: Dict[str, List[Any]] = {"key_generation": [], "cache_operations": [], "compression": []}
+        slow_ops: Dict[str, List[Any]] = {
+            "key_generation": [],
+            "cache_operations": [],
+            "compression": [],
+        }
 
         # Use a robust baseline average that reduces outlier influence by
         # averaging only the lowest 80% of values.
@@ -1281,8 +1287,12 @@ class CachePerformanceMonitor:
                             "duration": metric.duration,
                             "text_length": metric.text_length,
                             "operation_type": metric.operation_type,
-                            "timestamp": datetime.fromtimestamp(metric.timestamp).isoformat(),
-                            "times_slower": (metric.duration / baseline) if baseline > 0 else float("inf"),
+                            "timestamp": datetime.fromtimestamp(
+                                metric.timestamp
+                            ).isoformat(),
+                            "times_slower": (metric.duration / baseline)
+                            if baseline > 0
+                            else float("inf"),
                         }
                     )
 
@@ -1299,8 +1309,12 @@ class CachePerformanceMonitor:
                             "duration": metric.duration,
                             "operation_type": metric.operation_type,
                             "text_length": metric.text_length,
-                            "timestamp": datetime.fromtimestamp(metric.timestamp).isoformat(),
-                            "times_slower": (metric.duration / baseline) if baseline > 0 else float("inf"),
+                            "timestamp": datetime.fromtimestamp(
+                                metric.timestamp
+                            ).isoformat(),
+                            "times_slower": (metric.duration / baseline)
+                            if baseline > 0
+                            else float("inf"),
                         }
                     )
 
@@ -1318,8 +1332,14 @@ class CachePerformanceMonitor:
                             "original_size": compression_metric.original_size,
                             "compression_ratio": compression_metric.compression_ratio,
                             "operation_type": compression_metric.operation_type,
-                            "timestamp": datetime.fromtimestamp(compression_metric.timestamp).isoformat(),
-                            "times_slower": (compression_metric.compression_time / baseline) if baseline > 0 else float("inf"),
+                            "timestamp": datetime.fromtimestamp(
+                                compression_metric.timestamp
+                            ).isoformat(),
+                            "times_slower": (
+                                compression_metric.compression_time / baseline
+                            )
+                            if baseline > 0
+                            else float("inf"),
                         }
                     )
 

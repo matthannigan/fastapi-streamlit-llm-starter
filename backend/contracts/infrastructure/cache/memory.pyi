@@ -194,8 +194,9 @@ import logging
 import sys
 import time
 from typing import Any, Dict, List, Optional
-from app.infrastructure.cache.base import CacheInterface
 from app.core.exceptions import ConfigurationError
+from app.infrastructure.cache.base import CacheInterface
+from app.infrastructure.cache.key_generator import CacheKeyGenerator
 
 
 class InMemoryCache(CacheInterface):
@@ -375,7 +376,7 @@ class InMemoryCache(CacheInterface):
         """
         Invalidate cache entries matching a glob-style pattern.
         
-        Removes all cache entries whose keys match the specified pattern. 
+        Removes all cache entries whose keys match the specified pattern.
         This method provides compatibility with Redis-based cache APIs that
         support pattern-based invalidation for administrative operations.
         
@@ -386,17 +387,17 @@ class InMemoryCache(CacheInterface):
         
         Returns:
             int: Number of cache entries that were invalidated
-            
+        
         Behavior:
             - Pattern matching uses Python fnmatch for glob-style patterns
             - Empty pattern matches all entries (complete cache clear)
             - Expired entries are also removed during pattern matching
             - Operation is atomic - either all matching keys are removed or none
-            
+        
         Example:
             >>> cache = InMemoryCache()
             >>> await cache.set("user:123", "data1")
-            >>> await cache.set("user:456", "data2") 
+            >>> await cache.set("user:456", "data2")
             >>> await cache.set("session:abc", "session_data")
             >>> count = await cache.invalidate_pattern("user:*")
             >>> assert count == 2  # Removed user:123 and user:456
@@ -448,5 +449,46 @@ class InMemoryCache(CacheInterface):
                 - redis: Redis backend status (always disconnected for InMemoryCache)
                 - memory: Memory cache status with entry counts and utilization
                 - performance: Comprehensive performance metrics including actual hit rate calculation
+        """
+        ...
+
+    def build_key(self, text: str, operation: str, options: Dict[str, Any]) -> str:
+        """
+        Build cache key using generic key generation logic.
+        
+        This helper method provides a generic interface for cache key generation
+        without any domain-specific knowledge. It delegates to the CacheKeyGenerator
+        for actual key generation, allowing domain services to build keys using
+        the infrastructure layer's key generation patterns.
+        
+        Args:
+            text: Input text for key generation
+            operation: Operation type (generic string)
+            options: Options dictionary containing all operation-specific data
+        
+        Returns:
+            Generated cache key string
+        
+        Behavior:
+            - Delegates to CacheKeyGenerator for actual key generation
+            - No domain-specific logic or knowledge about operations
+            - Generic interface suitable for any domain service usage
+            - Maintains consistency with existing key generation patterns
+        
+        Examples:
+            >>> # Basic operation key generation
+            >>> cache = InMemoryCache()
+            >>> key = cache.build_key(
+            ...     text="Sample text",
+            ...     operation="process",
+            ...     options={"param": "value"}
+            ... )
+        
+            >>> # Key generation with embedded question
+            >>> key = cache.build_key(
+            ...     text="Document content",
+            ...     operation="qa",
+            ...     options={"question": "What is this about?", "max_tokens": 150}
+            ... )
         """
         ...

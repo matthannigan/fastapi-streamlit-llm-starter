@@ -20,6 +20,7 @@
     - **[Usage Guide](./guides/infrastructure/cache/usage-guide.md)**: Practical implementation patterns, factory methods, and developer productivity *(Last updated 2025-08-27)*
     - **[API Reference](./guides/infrastructure/cache/api-reference.md)**: Complete API documentation for all cache interfaces and factory methods *(Last updated 2025-08-27)*
     - **[Configuration Guide](./guides/infrastructure/cache/configuration.md)**: Preset system, environment variables, and configuration management *(Last updated 2025-08-27)*
+    - **[Security Guide](./guides/infrastructure/cache/security.md)**: Three-layer security model with TLS encryption, authentication, and at-rest encryption *(Last updated 2025-09-29)*
     - **[Testing Guide](./guides/infrastructure/cache/testing.md)**: Testing strategies, fixtures, and performance benchmarks *(Last updated 2025-08-27)*
     - **[Troubleshooting Guide](./guides/infrastructure/cache/troubleshooting.md)**: Performance optimization, debugging workflows, and operational guidance *(Last updated 2025-08-27)*
   - **[Monitoring](./guides/infrastructure/MONITORING.md)**: Comprehensive monitoring and observability capabilities with centralized monitoring, performance analytics, health checks, and metrics collection *(Last updated 2025-07-30)*

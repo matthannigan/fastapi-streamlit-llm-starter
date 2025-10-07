@@ -248,17 +248,15 @@ def test_middleware_only(minimal_app):
 #### Scenario 1: Testing Different Environments
 
 ```python
-def test_environment_isolation():
+def test_environment_isolation(monkeypatch):
     """Test that apps pick up environment changes immediately."""
-    import os
-
     # Set development environment
-    os.environ['ENVIRONMENT'] = 'development'
+    monkeypatch.setenv('ENVIRONMENT', 'development')
     dev_app = create_app()
 
     # Change to production environment
-    os.environ['ENVIRONMENT'] = 'production'
-    os.environ['API_KEY'] = 'prod-key'
+    monkeypatch.setenv('ENVIRONMENT', 'production')
+    monkeypatch.setenv('API_KEY', 'prod-key')
     prod_app = create_app()
 
     # Both apps are independent and reflect their environment
@@ -376,12 +374,14 @@ def client():
 **Pitfall 2: Setting environment after app creation**
 ```python
 # ❌ BAD: Environment set after app created
-app = create_app()
-os.environ['API_KEY'] = 'test-key'  # Too late!
+def test_wrong_order(monkeypatch):
+    app = create_app()
+    monkeypatch.setenv('API_KEY', 'test-key')  # Too late!
 
 # ✅ GOOD: Environment set before app creation
-os.environ['API_KEY'] = 'test-key'
-app = create_app()  # Picks up API_KEY
+def test_correct_order(monkeypatch):
+    monkeypatch.setenv('API_KEY', 'test-key')
+    app = create_app()  # Picks up API_KEY
 ```
 
 **Pitfall 3: Using cached settings dependency**
@@ -686,13 +686,171 @@ pytest -v -s -m "manual" --run-manual
 
 **Detailed guidance:** `docs/guides/testing/TESTING.md`
 
+### Environment Variable Testing Patterns (CRITICAL)
+
+**⚠️ MANDATORY: Always use `monkeypatch.setenv()` for environment variables in tests.**
+
+Direct `os.environ[]` manipulation causes **permanent test pollution** and flaky tests. This was the root cause of integration test failures and is now a critical coding standard.
+
+#### The Problem: Test State Pollution
+
+```python
+# ❌ NEVER DO THIS - Causes permanent pollution
+import os
+
+def test_production_mode():
+    os.environ["ENVIRONMENT"] = "production"  # Persists forever!
+    # This change affects ALL subsequent tests
+
+# ❌ NEVER DO THIS - Even in fixtures
+@pytest.fixture
+def prod_env():
+    os.environ["ENVIRONMENT"] = "production"  # Still wrong!
+    yield
+    del os.environ["ENVIRONMENT"]  # Manual cleanup is error-prone
+```
+
+**Why this causes flakiness:**
+- Changes persist after test completes (no automatic cleanup)
+- Tests become order-dependent (later tests see polluted state)
+- Parallel execution fails (workers inherit polluted environment)
+- Tests pass individually but fail when run together
+
+#### The Solution: Use monkeypatch
+
+```python
+# ✅ CORRECT - Automatic cleanup
+def test_production_mode(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    # Automatically restored after test completes
+
+# ✅ CORRECT - In fixtures too
+@pytest.fixture
+def prod_env(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-key")
+    return monkeypatch  # Cleanup happens automatically
+```
+
+#### Essential Patterns
+
+**Pattern 1: Basic Environment Override**
+```python
+def test_with_environment(monkeypatch):
+    """Test with specific environment configuration."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-key")
+
+    # Create app AFTER setting environment
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/v1/health")
+    assert response.status_code == 200
+```
+
+**Pattern 2: Remove Environment Variable**
+```python
+def test_missing_variable(monkeypatch):
+    """Test behavior when environment variable is absent."""
+    monkeypatch.delenv("API_KEY", raising=False)
+
+    with pytest.raises(ConfigurationError):
+        create_app()
+```
+
+**Pattern 3: Reusable Environment Fixtures**
+```python
+# In conftest.py
+@pytest.fixture
+def production_env(monkeypatch):
+    """Configure production environment."""
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-key")
+    monkeypatch.setenv("CACHE_PRESET", "production")
+    return monkeypatch
+
+# In test file
+def test_production_security(production_env):
+    """Test uses production_env fixture."""
+    app = create_app()
+    # Test production behavior...
+```
+
+**Pattern 4: App Factory + Environment**
+```python
+def test_factory_with_environment(monkeypatch):
+    """
+    Demonstrates App Factory Pattern with environment configuration.
+
+    Critical: Set environment BEFORE creating app.
+    """
+    # Step 1: Configure environment
+    monkeypatch.setenv("ENVIRONMENT", "testing")
+    monkeypatch.setenv("CACHE_PRESET", "disabled")
+
+    # Step 2: Create app (picks up environment)
+    app = create_app()
+
+    # Step 3: Test with isolated configuration
+    client = TestClient(app)
+    response = client.get("/v1/health")
+    assert response.status_code == 200
+
+    # Step 4: Automatic cleanup after test
+```
+
+#### Common Mistakes to Avoid
+
+```python
+# ❌ Mistake 1: Forgetting monkeypatch parameter
+def test_environment():
+    monkeypatch.setenv("ENVIRONMENT", "production")  # NameError!
+
+# ✅ Fixed: Include monkeypatch
+def test_environment(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+# ❌ Mistake 2: Setting environment after app creation
+def test_wrong_order(monkeypatch):
+    app = create_app()  # Uses current environment
+    monkeypatch.setenv("ENVIRONMENT", "production")  # Too late!
+
+# ✅ Fixed: Set environment first
+def test_correct_order(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    app = create_app()  # Uses production environment
+
+# ❌ Mistake 3: Using os.environ in any test code
+def test_direct_modification(monkeypatch):
+    os.environ["VAR"] = "value"  # NEVER!
+
+# ✅ Fixed: Always use monkeypatch
+def test_with_monkeypatch(monkeypatch):
+    monkeypatch.setenv("VAR", "value")  # Correct!
+```
+
+#### Migration Checklist for Existing Tests
+
+If you encounter tests using `os.environ`:
+
+- [ ] Replace `os.environ["VAR"] = "value"` with `monkeypatch.setenv("VAR", "value")`
+- [ ] Replace `del os.environ["VAR"]` with `monkeypatch.delenv("VAR", raising=False)`
+- [ ] Add `monkeypatch` parameter to test function signature
+- [ ] Update fixtures to accept and use `monkeypatch`
+- [ ] Remove manual cleanup code (pytest handles it)
+- [ ] Verify environment is set BEFORE app creation
+- [ ] Test with random order: `pytest --random-order`
+
+**Reference:** See `backend/tests/integration/README.md` for comprehensive integration testing patterns with environment variables.
+
 **Agent Testing Checklist:**
 - [ ] Tests run from correct directory (use `make` commands when possible)
 - [ ] Virtual environment properly activated (`.venv` in project root)
 - [ ] Test markers used appropriately (`slow`, `manual`, `integration`)
 - [ ] Coverage maintained per architectural boundaries (Infrastructure >90%, Domain >70%)
 - [ ] Exception testing follows custom exception patterns
-- [ ] Parallel execution compatibility (use `monkeypatch.setenv()` for environment variables)
+- [ ] **CRITICAL:** Always use `monkeypatch.setenv()` for environment variables (NEVER `os.environ[]` directly)
 
 
 ## See Also

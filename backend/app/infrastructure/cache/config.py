@@ -45,7 +45,7 @@ config = (CacheConfigBuilder()
 import hashlib
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
 # Core Configuration Classes
 # ============================================================================
 
+
 @dataclass
 class ValidationResult:
     """
@@ -68,6 +69,7 @@ class ValidationResult:
         errors: List of error messages that prevent successful operation
         warnings: List of warning messages for non-critical issues
     """
+
     is_valid: bool
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -98,20 +100,21 @@ class AICacheConfig:
         enable_smart_promotion: Whether to enable smart cache promotion (default: True)
         max_text_length: Maximum text length to cache (default: 100000)
     """
+
     text_hash_threshold: int = 1000
     hash_algorithm: str = "sha256"
-    text_size_tiers: Dict[str, int] = field(default_factory=lambda: {
-        "small": 1000,
-        "medium": 10000,
-        "large": 100000
-    })
-    operation_ttls: Dict[str, int] = field(default_factory=lambda: {
-        "summarize": 7200,  # 2 hours
-        "sentiment": 3600,  # 1 hour
-        "key_points": 5400,  # 1.5 hours
-        "questions": 4800,  # 1.33 hours
-        "qa": 3600         # 1 hour
-    })
+    text_size_tiers: Dict[str, int] = field(
+        default_factory=lambda: {"small": 1000, "medium": 10000, "large": 100000}
+    )
+    operation_ttls: Dict[str, int] = field(
+        default_factory=lambda: {
+            "summarize": 7200,  # 2 hours
+            "sentiment": 3600,  # 1 hour
+            "key_points": 5400,  # 1.5 hours
+            "questions": 4800,  # 1.33 hours
+            "qa": 3600,  # 1 hour
+        }
+    )
     enable_smart_promotion: bool = True
     max_text_length: int = 100000
 
@@ -131,7 +134,9 @@ class AICacheConfig:
         # Validate text_size_tiers
         for tier_name, size in self.text_size_tiers.items():
             if not isinstance(size, int) or size <= 0:
-                result.add_error(f"text_size_tiers['{tier_name}'] must be a positive integer")
+                result.add_error(
+                    f"text_size_tiers['{tier_name}'] must be a positive integer"
+                )
 
         # Check tier progression (should be ascending)
         tier_values = list(self.text_size_tiers.values())
@@ -141,9 +146,13 @@ class AICacheConfig:
         # Validate operation_ttls
         for operation, ttl in self.operation_ttls.items():
             if not isinstance(ttl, int) or ttl <= 0:
-                result.add_error(f"operation_ttls['{operation}'] must be a positive integer")
+                result.add_error(
+                    f"operation_ttls['{operation}'] must be a positive integer"
+                )
             elif ttl > 604800:  # 1 week
-                result.add_warning(f"operation_ttls['{operation}'] is very long (>1 week)")
+                result.add_warning(
+                    f"operation_ttls['{operation}'] is very long (>1 week)"
+                )
 
         # Validate hash_algorithm
         try:
@@ -179,6 +188,7 @@ class CacheConfig:
         environment: Environment name (development, testing, production)
         ai_config: Optional AI-specific configuration
     """
+
     # Redis configuration
     redis_url: Optional[str] = None
     redis_password: Optional[str] = None
@@ -194,6 +204,7 @@ class CacheConfig:
 
     # Environment configuration
     environment: str = "development"
+    preset_name: str = ""  # Track which preset was used
 
     # AI-specific configuration
     ai_config: Optional[AICacheConfig] = None
@@ -240,7 +251,7 @@ class CacheConfig:
     @staticmethod
     def _parse_bool(value: str) -> bool:
         """Parse string value to boolean."""
-        return value.lower() in ('true', '1', 'yes', 'on')
+        return value.lower() in ("true", "1", "yes", "on")
 
     def validate(self) -> ValidationResult:
         """
@@ -253,8 +264,8 @@ class CacheConfig:
 
         # Validate Redis URL format
         if self.redis_url and not (
-            self.redis_url.startswith('redis://') or
-            self.redis_url.startswith('rediss://')
+            self.redis_url.startswith("redis://")
+            or self.redis_url.startswith("rediss://")
         ):
             result.add_error("redis_url must start with 'redis://' or 'rediss://'")
 
@@ -277,9 +288,13 @@ class CacheConfig:
         if self.use_tls:
             if self.tls_cert_path and not Path(self.tls_cert_path).exists():
                 if self.environment == "production":
-                    result.add_error(f"TLS certificate file not found: {self.tls_cert_path}")
+                    result.add_error(
+                        f"TLS certificate file not found: {self.tls_cert_path}"
+                    )
                 else:
-                    result.add_warning(f"TLS certificate file not found: {self.tls_cert_path}")
+                    result.add_warning(
+                        f"TLS certificate file not found: {self.tls_cert_path}"
+                    )
 
             if self.tls_key_path and not Path(self.tls_key_path).exists():
                 if self.environment == "production":
@@ -306,13 +321,14 @@ class CacheConfig:
         """
         config_dict = asdict(self)
         # Remove internal fields
-        config_dict.pop('_from_env', None)
+        config_dict.pop("_from_env", None)
         return config_dict
 
 
 # ============================================================================
 # Builder Pattern Implementation
 # ============================================================================
+
 
 class CacheConfigBuilder:
     """
@@ -335,7 +351,7 @@ class CacheConfigBuilder:
         """Initialize the builder with an empty configuration."""
         self._config = CacheConfig()
 
-    def for_environment(self, environment: str) -> 'CacheConfigBuilder':
+    def for_environment(self, environment: str) -> "CacheConfigBuilder":
         """
         Set configuration for a specific environment.
 
@@ -348,11 +364,14 @@ class CacheConfigBuilder:
         Raises:
             ValidationError: If environment is not supported
         """
-        valid_environments = {'development', 'testing', 'production'}
+        valid_environments = {"development", "testing", "production"}
         if environment not in valid_environments:
             raise ValidationError(
                 f"Invalid environment: {environment}. Must be one of {valid_environments}",
-                context={"provided_environment": environment, "valid_environments": list(valid_environments)}
+                context={
+                    "provided_environment": environment,
+                    "valid_environments": list(valid_environments),
+                },
             )
 
         self._config.environment = environment
@@ -377,8 +396,9 @@ class CacheConfigBuilder:
         logger.debug(f"Set environment to {environment} with defaults")
         return self
 
-    def with_redis(self, redis_url: str, password: Optional[str] = None,
-                   use_tls: bool = False) -> 'CacheConfigBuilder':
+    def with_redis(
+        self, redis_url: str, password: Optional[str] = None, use_tls: bool = False
+    ) -> "CacheConfigBuilder":
         """
         Configure Redis connection settings.
 
@@ -395,8 +415,9 @@ class CacheConfigBuilder:
         self._config.use_tls = use_tls
         return self
 
-    def with_security(self, tls_cert_path: Optional[str] = None,
-                      tls_key_path: Optional[str] = None) -> 'CacheConfigBuilder':
+    def with_security(
+        self, tls_cert_path: Optional[str] = None, tls_key_path: Optional[str] = None
+    ) -> "CacheConfigBuilder":
         """
         Configure TLS security settings.
 
@@ -416,8 +437,9 @@ class CacheConfigBuilder:
 
         return self
 
-    def with_compression(self, threshold: int = 1000,
-                         level: int = 6) -> 'CacheConfigBuilder':
+    def with_compression(
+        self, threshold: int = 1000, level: int = 6
+    ) -> "CacheConfigBuilder":
         """
         Configure compression settings.
 
@@ -432,7 +454,7 @@ class CacheConfigBuilder:
         self._config.compression_level = level
         return self
 
-    def with_memory_cache(self, size: int) -> 'CacheConfigBuilder':
+    def with_memory_cache(self, size: int) -> "CacheConfigBuilder":
         """
         Configure memory cache settings.
 
@@ -445,7 +467,7 @@ class CacheConfigBuilder:
         self._config.memory_cache_size = size
         return self
 
-    def with_ai_features(self, **ai_options) -> 'CacheConfigBuilder':
+    def with_ai_features(self, **ai_options) -> "CacheConfigBuilder":
         """
         Enable and configure AI-specific features.
 
@@ -464,15 +486,22 @@ class CacheConfigBuilder:
 
         # Validate known AI configuration options
         valid_ai_options = {
-            'text_hash_threshold', 'hash_algorithm', 'text_size_tiers',
-            'operation_ttls', 'enable_smart_promotion', 'max_text_length'
+            "text_hash_threshold",
+            "hash_algorithm",
+            "text_size_tiers",
+            "operation_ttls",
+            "enable_smart_promotion",
+            "max_text_length",
         }
 
         unknown_options = set(ai_options.keys()) - valid_ai_options
         if unknown_options:
             raise ValidationError(
                 f"Unknown AI configuration options: {unknown_options}",
-                context={"unknown_options": list(unknown_options), "valid_options": list(valid_ai_options)}
+                context={
+                    "unknown_options": list(unknown_options),
+                    "valid_options": list(valid_ai_options),
+                },
             )
 
         # Update AI configuration
@@ -481,7 +510,7 @@ class CacheConfigBuilder:
 
         return self
 
-    def from_file(self, file_path: str | Path) -> 'CacheConfigBuilder':
+    def from_file(self, file_path: str | Path) -> "CacheConfigBuilder":
         """
         Load configuration from a JSON file.
 
@@ -499,16 +528,16 @@ class CacheConfigBuilder:
         if not file_path.exists():
             raise ConfigurationError(
                 f"Configuration file not found: {file_path}",
-                context={"file_path": str(file_path)}
+                context={"file_path": str(file_path)},
             )
 
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 config_data = json.load(f)
 
             # Apply configuration data
             for key, value in config_data.items():
-                if key == 'ai_config':
+                if key == "ai_config":
                     # Handle AI config specially
                     if value:
                         if self._config.ai_config is None:
@@ -517,7 +546,7 @@ class CacheConfigBuilder:
                         for ai_key, ai_value in value.items():
                             if hasattr(self._config.ai_config, ai_key):
                                 setattr(self._config.ai_config, ai_key, ai_value)
-                elif hasattr(self._config, key) and not key.startswith('_'):
+                elif hasattr(self._config, key) and not key.startswith("_"):
                     setattr(self._config, key, value)
 
             logger.info(f"Loaded configuration from {file_path}")
@@ -525,17 +554,17 @@ class CacheConfigBuilder:
         except json.JSONDecodeError as e:
             raise ConfigurationError(
                 f"Invalid JSON in configuration file: {e}",
-                context={"file_path": str(file_path), "json_error": str(e)}
+                context={"file_path": str(file_path), "json_error": str(e)},
             )
         except Exception as e:
             raise ConfigurationError(
                 f"Failed to load configuration from file: {e}",
-                context={"file_path": str(file_path), "error_type": type(e).__name__}
+                context={"file_path": str(file_path), "error_type": type(e).__name__},
             )
 
         return self
 
-    def from_environment(self) -> 'CacheConfigBuilder':
+    def from_environment(self) -> "CacheConfigBuilder":
         """
         Load configuration from environment variables.
 
@@ -568,10 +597,15 @@ class CacheConfigBuilder:
         validation_result = self.validate()
 
         if not validation_result.is_valid:
-            error_msg = "Configuration validation failed: " + "; ".join(validation_result.errors)
+            error_msg = "Configuration validation failed: " + "; ".join(
+                validation_result.errors
+            )
             raise ValidationError(
                 error_msg,
-                context={"errors": validation_result.errors, "warnings": validation_result.warnings}
+                context={
+                    "errors": validation_result.errors,
+                    "warnings": validation_result.warnings,
+                },
             )
 
         # Log warnings if present
@@ -589,8 +623,7 @@ class CacheConfigBuilder:
         """
         return self._config.to_dict()
 
-    def save_to_file(self, file_path: str | Path,
-                     create_dirs: bool = True) -> None:
+    def save_to_file(self, file_path: str | Path, create_dirs: bool = True) -> None:
         """
         Save current configuration to a JSON file.
 
@@ -608,7 +641,7 @@ class CacheConfigBuilder:
 
         try:
             config_dict = self.to_dict()
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(config_dict, f, indent=2)
 
             logger.info(f"Saved configuration to {file_path}")
@@ -616,13 +649,14 @@ class CacheConfigBuilder:
         except Exception as e:
             raise ConfigurationError(
                 f"Failed to save configuration to file: {e}",
-                context={"file_path": str(file_path), "error_type": type(e).__name__}
+                context={"file_path": str(file_path), "error_type": type(e).__name__},
             )
 
 
 # ============================================================================
 # Environment Presets
 # ============================================================================
+
 
 class EnvironmentPresets:
     """
@@ -646,6 +680,7 @@ class EnvironmentPresets:
             CacheConfig with no caching
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("disabled")
         return preset.to_cache_config()
 
@@ -658,6 +693,7 @@ class EnvironmentPresets:
             CacheConfig optimized for minimal caching
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("minimal")
         return preset.to_cache_config()
 
@@ -670,6 +706,7 @@ class EnvironmentPresets:
             CacheConfig suitable for most use cases
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("simple")
         return preset.to_cache_config()
 
@@ -682,6 +719,7 @@ class EnvironmentPresets:
             CacheConfig optimized for development from the new preset system
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("development")
         return preset.to_cache_config()
 
@@ -696,6 +734,7 @@ class EnvironmentPresets:
         Note: Uses 'development' preset as base since it's optimized for fast feedback
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("development")
         return preset.to_cache_config()
 
@@ -708,6 +747,7 @@ class EnvironmentPresets:
             CacheConfig optimized for production from the new preset system
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("production")
         return preset.to_cache_config()
 
@@ -720,6 +760,7 @@ class EnvironmentPresets:
             CacheConfig optimized for AI development from the new preset system
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("ai-development")
         return preset.to_cache_config()
 
@@ -732,6 +773,7 @@ class EnvironmentPresets:
             CacheConfig optimized for AI production workloads from the new preset system
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         preset = cache_preset_manager.get_preset("ai-production")
         return preset.to_cache_config()
 
@@ -744,6 +786,7 @@ class EnvironmentPresets:
             List of preset names available in the system
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         return cache_preset_manager.list_presets()
 
     @staticmethod
@@ -758,6 +801,7 @@ class EnvironmentPresets:
             Dictionary with preset configuration details
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         return cache_preset_manager.get_preset_details(preset_name)
 
     @staticmethod
@@ -772,4 +816,5 @@ class EnvironmentPresets:
             Recommended preset name
         """
         from app.infrastructure.cache.cache_presets import cache_preset_manager
+
         return cache_preset_manager.recommend_preset(environment)

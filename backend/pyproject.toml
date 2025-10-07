@@ -49,6 +49,7 @@ circuitbreaker = "^2.1.3,<3.0.0"
 jsonschema = "^4.0.0,<5.0.0"
 psutil = "^7.0.0,<8.0.0"
 brotli = "^1.1.0,<2.0.0"
+cryptography = "^43.0.0,<44.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -74,6 +75,7 @@ fakeredis = "^2.10.0"
 testcontainers = "^4.0.0"
 pytest-timeout = "^2.4.0"
 pytest-randomly = "^4.0.1"
+pytest-retry = "^1.7.0"
 
 [tool.poetry.group.prod.dependencies]
 prometheus-client = "^0.16.0"

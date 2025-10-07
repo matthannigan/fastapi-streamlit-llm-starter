@@ -60,6 +60,31 @@ class FakeSettings:
         self.api_key = api_key
         self.additional_api_keys = additional_api_keys
 
+    def get_valid_api_keys(self) -> set:
+        """
+        Get all valid API keys from configuration.
+
+        Mimics the real Settings.get_valid_api_keys() method behavior
+        by parsing api_key and additional_api_keys into a set of valid keys.
+
+        Returns:
+            set: All configured API keys with whitespace trimmed
+        """
+        api_keys = set()
+
+        # Add primary API key
+        if self.api_key:
+            primary_key = self.api_key.strip()
+            if primary_key:
+                api_keys.add(primary_key)
+
+        # Add additional API keys (comma-separated)
+        if self.additional_api_keys:
+            keys = [key.strip() for key in self.additional_api_keys.split(",") if key.strip()]
+            api_keys.update(keys)
+
+        return api_keys
+
 
 @pytest.fixture
 def fake_settings():

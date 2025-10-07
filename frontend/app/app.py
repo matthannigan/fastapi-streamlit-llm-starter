@@ -143,6 +143,7 @@ Template: FastAPI + Streamlit + AI Starter
 import streamlit as st
 import json
 import re
+import time
 from typing import Dict, Any, Optional, Tuple
 
 from shared.models import TextProcessingRequest, TextProcessingOperation
@@ -181,26 +182,77 @@ def display_header() -> None:
 
 def check_api_health() -> bool:
     """Check the health status of the backend API service.
-    
+
     Performs a health check against the backend API and displays the
     connection status in the sidebar. This provides immediate feedback
     to users about service availability and helps with troubleshooting.
-    
+
+    Implements session state caching with 10-second TTL to reduce
+    unnecessary backend requests during frequent Streamlit reruns.
+
     Returns:
         bool: True if the API is healthy and accessible, False otherwise.
-        
+
     Side Effects:
         - Displays health status in the sidebar
         - Shows error message if API is unavailable
+        - Caches health status in session state for 10 seconds
     """
     with st.sidebar:
         st.subheader("🔧 System Status")
 
-        # Perform async health check with error handling
-        is_healthy = run_async(api_client.health_check())
+        # Check if we have a cached health status (within 10 seconds)
+        current_time = time.time()
+        cache_ttl = 10  # seconds
 
-        if is_healthy:
+        if ('health_status' in st.session_state and
+            'health_check_time' in st.session_state and
+            (current_time - st.session_state.health_check_time) < cache_ttl):
+            # Use cached health status
+            health_status = st.session_state.health_status
+        else:
+            # Perform fresh async health check with error handling
+            health_status = run_async(api_client.health_check())
+
+            # Cache the result
+            st.session_state.health_status = health_status
+            st.session_state.health_check_time = current_time
+
+        if health_status:
             st.success("✅ API Connected")
+
+            # Get detailed cache status from internal API for security info
+            cache_healthy = health_status.get("cache_healthy")
+
+            if cache_healthy is not None:
+                # Fetch detailed cache status from internal API
+                cache_status = run_async(api_client.get_cache_status())
+
+                if cache_status:
+                    redis_status = cache_status.get("redis", {}).get("status")
+                    security_info = cache_status.get("security", {})
+                    tls_enabled = security_info.get("configuration", {}).get("tls_enabled", False)
+
+                    if cache_healthy is True and redis_status == "connected":
+                        # Redis is connected and healthy
+                        if tls_enabled:
+                            st.success("✅ TLS-secure Redis active 🔒")
+                        else:
+                            st.warning("⚠️ Insecure Redis cache active")
+                    elif cache_healthy is False:
+                        # Redis explicitly failed
+                        st.warning("❌ Redis failure")
+                    else:
+                        # Memory-only fallback
+                        st.info("🔄 Memory Cache active")
+                else:
+                    # Fallback if cache status unavailable
+                    if cache_healthy is True:
+                        st.info("✅ Cache active")
+                    elif cache_healthy is False:
+                        st.warning("❌ Cache failure")
+                    else:
+                        st.info("🔄 Memory Cache active")
         else:
             st.error("❌ API Unavailable")
             st.warning("Please ensure the backend service is running.")

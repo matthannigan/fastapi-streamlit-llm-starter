@@ -12,14 +12,16 @@ Fixture Categories:
     - Environment variable fixtures for testing environment loading
 """
 
-import pytest
 from pathlib import Path
-from app.infrastructure.cache.config import ValidationResult, AICacheConfig
 
+import pytest
+
+from app.infrastructure.cache.config import AICacheConfig, ValidationResult
 
 # =============================================================================
 # Configuration Parameter Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def valid_basic_config_params():
@@ -28,7 +30,7 @@ def valid_basic_config_params():
         "redis_url": "redis://localhost:6379",
         "default_ttl": 3600,
         "memory_cache_size": 100,
-        "environment": "development"
+        "environment": "development",
     }
 
 
@@ -50,19 +52,15 @@ def valid_comprehensive_config_params():
         "ai_config": {
             "text_hash_threshold": 1500,
             "hash_algorithm": "sha256",
-            "text_size_tiers": {
-                "small": 1000,
-                "medium": 10000,
-                "large": 100000
-            },
+            "text_size_tiers": {"small": 1000, "medium": 10000, "large": 100000},
             "operation_ttls": {
                 "summarize": 7200,
                 "sentiment": 3600,
-                "key_points": 5400
+                "key_points": 5400,
             },
             "enable_smart_promotion": True,
-            "max_text_length": 100000
-        }
+            "max_text_length": 100000,
+        },
     }
 
 
@@ -75,13 +73,14 @@ def invalid_config_params():
         "memory_cache_size": 0,  # Zero size
         "compression_level": 15,  # Out of range
         "compression_threshold": -50,  # Negative threshold
-        "environment": "invalid-env"  # Unsupported environment
+        "environment": "invalid-env",  # Unsupported environment
     }
 
 
 # =============================================================================
 # ValidationResult Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def sample_validation_result_valid():
@@ -104,26 +103,23 @@ def sample_validation_result_invalid():
 # AI Configuration Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def valid_ai_config_params():
     """Valid AI-specific configuration parameters."""
     return {
         "text_hash_threshold": 1500,
         "hash_algorithm": "sha256",
-        "text_size_tiers": {
-            "small": 1000,
-            "medium": 10000,
-            "large": 100000
-        },
+        "text_size_tiers": {"small": 1000, "medium": 10000, "large": 100000},
         "operation_ttls": {
             "summarize": 7200,
             "sentiment": 3600,
             "key_points": 5400,
             "questions": 4800,
-            "qa": 3600
+            "qa": 3600,
         },
         "enable_smart_promotion": True,
-        "max_text_length": 100000
+        "max_text_length": 100000,
     }
 
 
@@ -133,15 +129,12 @@ def invalid_ai_config_params():
     return {
         "text_hash_threshold": -100,  # Negative threshold
         "hash_algorithm": "invalid-algorithm",  # Unsupported algorithm
-        "text_size_tiers": {
-            "small": 0,  # Zero size
-            "medium": "invalid"  # Wrong type
-        },
+        "text_size_tiers": {"small": 0, "medium": "invalid"},  # Zero size  # Wrong type
         "operation_ttls": {
             "summarize": -1000,  # Negative TTL
-            "sentiment": 1000000  # Excessively long TTL (>1 week)
+            "sentiment": 1000000,  # Excessively long TTL (>1 week)
         },
-        "max_text_length": -1000  # Negative length
+        "max_text_length": -1000,  # Negative length
     }
 
 
@@ -149,10 +142,12 @@ def invalid_ai_config_params():
 # Builder State Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def builder_with_basic_config():
     """CacheConfigBuilder with basic configuration for accumulation testing."""
     from app.infrastructure.cache.config import CacheConfigBuilder
+
     builder = CacheConfigBuilder()
     builder.for_environment("development")
     builder.with_redis("redis://test:6379")
@@ -163,13 +158,13 @@ def builder_with_basic_config():
 def builder_with_comprehensive_config(tmp_path):
     """CacheConfigBuilder with comprehensive configuration for build testing."""
     from app.infrastructure.cache.config import CacheConfigBuilder
-    
+
     # Create temporary cert files for TLS testing
     cert_file = tmp_path / "redis.crt"
     key_file = tmp_path / "redis.key"
     cert_file.write_text("dummy-cert-content")
     key_file.write_text("dummy-key-content")
-    
+
     builder = CacheConfigBuilder()
     builder.for_environment("production")
     builder.with_redis("redis://prod:6379", password="test-password", use_tls=True)
@@ -182,6 +177,7 @@ def builder_with_comprehensive_config(tmp_path):
 # =============================================================================
 # File Operation Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def sample_config_file_content():
@@ -198,11 +194,8 @@ def sample_config_file_content():
         "ai_config": {
             "text_hash_threshold": 1200,
             "hash_algorithm": "sha256",
-            "operation_ttls": {
-                "summarize": 3600,
-                "sentiment": 1800
-            }
-        }
+            "operation_ttls": {"summarize": 3600, "sentiment": 1800},
+        },
     }
 
 
@@ -210,6 +203,7 @@ def sample_config_file_content():
 def temp_config_file(tmp_path, sample_config_file_content):
     """Temporary configuration file for testing file operations."""
     import json
+
     config_file = tmp_path / "test_config.json"
     config_file.write_text(json.dumps(sample_config_file_content, indent=2))
     return config_file
@@ -227,13 +221,14 @@ def invalid_config_file(tmp_path):
 # Environment Variable Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def environment_variables_basic():
     """Basic environment variables for testing environment loading."""
     return {
         "CACHE_PRESET": "development",
         "CACHE_REDIS_URL": "redis://test:6379",
-        "CACHE_DEFAULT_TTL": "1800"
+        "CACHE_DEFAULT_TTL": "1800",
     }
 
 
@@ -253,5 +248,5 @@ def environment_variables_comprehensive():
         "CACHE_COMPRESSION_LEVEL": "6",
         "CACHE_AI_ENABLED": "true",
         "CACHE_AI_TEXT_HASH_THRESHOLD": "1500",
-        "CACHE_AI_HASH_ALGORITHM": "sha256"
+        "CACHE_AI_HASH_ALGORITHM": "sha256",
     }

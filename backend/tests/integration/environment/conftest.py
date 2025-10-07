@@ -74,7 +74,7 @@ def clean_environment(monkeypatch):
 
 
 @pytest.fixture(scope="function")
-def development_environment(clean_environment):
+def development_environment(clean_environment, monkeypatch):
     """
     Configures environment variables for a development environment.
 
@@ -90,13 +90,13 @@ def development_environment(clean_environment):
         - Verifying relaxed security in development
         - Testing cache optimization for development
     """
-    os.environ["ENVIRONMENT"] = "development"
+    monkeypatch.setenv("ENVIRONMENT", "development")
 
     yield Environment.DEVELOPMENT
 
 
 @pytest.fixture(scope="function")
-def production_environment(clean_environment):
+def production_environment(clean_environment, monkeypatch):
     """
     Configures environment variables for a production environment.
 
@@ -112,15 +112,15 @@ def production_environment(clean_environment):
         - Verifying API key requirements
         - Testing production-specific resilience settings
     """
-    os.environ["ENVIRONMENT"] = "production"
-    os.environ["API_KEY"] = "test-api-key-12345"
-    os.environ["ADDITIONAL_API_KEYS"] = "test-key-2,test-key-3"
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-api-key-12345")
+    monkeypatch.setenv("ADDITIONAL_API_KEYS", "test-key-2,test-key-3")
 
     yield Environment.PRODUCTION
 
 
 @pytest.fixture(scope="function")
-def staging_environment(clean_environment):
+def staging_environment(clean_environment, monkeypatch):
     """
     Configures environment variables for a staging environment.
 
@@ -132,14 +132,14 @@ def staging_environment(clean_environment):
         - Verifying pre-production configurations
         - Testing integration with staging systems
     """
-    os.environ["ENVIRONMENT"] = "staging"
-    os.environ["API_KEY"] = "test-staging-api-key"
+    monkeypatch.setenv("ENVIRONMENT", "staging")
+    monkeypatch.setenv("API_KEY", "test-staging-api-key")
 
     yield Environment.STAGING
 
 
 @pytest.fixture(scope="function")
-def testing_environment(clean_environment):
+def testing_environment(clean_environment, monkeypatch):
     """
     Configures environment variables for a testing environment.
 
@@ -151,14 +151,14 @@ def testing_environment(clean_environment):
         - Verifying automated test configurations
         - Testing environment detection in test scenarios
     """
-    os.environ["ENVIRONMENT"] = "testing"
-    os.environ["CI"] = "true"
+    monkeypatch.setenv("ENVIRONMENT", "testing")
+    monkeypatch.setenv("CI", "true")
 
     yield Environment.TESTING
 
 
 @pytest.fixture(scope="function")
-def ai_enabled_environment(clean_environment):
+def ai_enabled_environment(clean_environment, monkeypatch):
     """
     Set up environment with AI features enabled.
 
@@ -170,13 +170,13 @@ def ai_enabled_environment(clean_environment):
         - AI-specific feature context testing
         - Cache optimization for AI workloads
     """
-    os.environ["ENABLE_AI_CACHE"] = "true"
+    monkeypatch.setenv("ENABLE_AI_CACHE", "true")
 
     yield
 
 
 @pytest.fixture(scope="function")
-def security_enforcement_environment(clean_environment):
+def security_enforcement_environment(clean_environment, monkeypatch):
     """
     Set up environment with security enforcement enabled.
 
@@ -188,13 +188,13 @@ def security_enforcement_environment(clean_environment):
         - Security enforcement feature context
         - Production security requirements
     """
-    os.environ["ENFORCE_AUTH"] = "true"
+    monkeypatch.setenv("ENFORCE_AUTH", "true")
 
     yield
 
 
 @pytest.fixture(scope="function")
-def conflicting_signals_environment(clean_environment):
+def conflicting_signals_environment(clean_environment, monkeypatch):
     """
     Set up environment with conflicting signals for fallback testing.
 
@@ -206,9 +206,9 @@ def conflicting_signals_environment(clean_environment):
         - Tests fallback behavior
         - Tests confidence scoring with conflicts
     """
-    os.environ["ENVIRONMENT"] = "production"
-    os.environ["NODE_ENV"] = "development"
-    os.environ["DEBUG"] = "true"  # Usually indicates development
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("NODE_ENV", "development")
+    monkeypatch.setenv("DEBUG", "true")  # Usually indicates development
 
     yield
 
@@ -311,19 +311,19 @@ def mock_system_indicators(tmp_path, monkeypatch):
 # Convenience fixtures for common testing scenarios
 
 @pytest.fixture(scope="function")
-def prod_with_ai_features(clean_environment):
+def prod_with_ai_features(clean_environment, monkeypatch):
     """Production environment with AI features enabled."""
-    os.environ["ENVIRONMENT"] = "production"
-    os.environ["ENABLE_AI_CACHE"] = "true"
-    os.environ["API_KEY"] = "test-api-key-12345"
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ENABLE_AI_CACHE", "true")
+    monkeypatch.setenv("API_KEY", "test-api-key-12345")
     yield
 
 
 @pytest.fixture(scope="function")
-def dev_with_security_enforcement(clean_environment):
+def dev_with_security_enforcement(clean_environment, monkeypatch):
     """Development environment with security enforcement enabled."""
-    os.environ["ENVIRONMENT"] = "development"
-    os.environ["ENFORCE_AUTH"] = "true"
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv("ENFORCE_AUTH", "true")
     yield
 
 

@@ -1,9 +1,11 @@
-import pytest
 import os
+
+import pytest
 from httpx import AsyncClient, Response
 
 # API key aligned with backend authentication system
 ADMIN_API_KEY = os.getenv("API_KEY", "test-api-key-12345")
+
 
 @pytest.mark.asyncio
 @pytest.mark.e2e
@@ -14,22 +16,22 @@ class TestCacheInvalidationWorkflow:
 
     Scope:
         Validates the core functionality and security of the cache invalidation API endpoint.
-        
+
     Business Critical:
         Cache invalidation is a destructive operation that directly impacts system
         performance and data consistency. Security and reliability are paramount.
-        
+
     Test Strategy:
         - Comprehensive authentication and authorization testing
         - Input validation and error handling verification
         - Edge case pattern handling validation
         - Security boundary testing for unauthorized access prevention
-        
+
     External Dependencies:
         - Uses client fixture for unauthenticated requests
         - Uses authenticated_client fixture for authorized operations
         - Requires cleanup_test_cache fixture for test isolation
-        
+
     Known Limitations:
         - Does not test actual cache invalidation effects on stored data
         - Pattern matching behavior depends on cache implementation details
@@ -61,7 +63,9 @@ class TestCacheInvalidationWorkflow:
             - The successful response payload matches the documented format.
         """
         # Scenario: No API Key provided
-        no_auth_response = await client.post("/internal/cache/invalidate", params={"pattern": "test:*"})
+        no_auth_response = await client.post(
+            "/internal/cache/invalidate", params={"pattern": "test:*"}
+        )
         # NOTE: In development/test mode, authentication may be bypassed
         # In production with proper API keys configured, this should return 401
         if no_auth_response.status_code != 401:
@@ -71,7 +75,9 @@ class TestCacheInvalidationWorkflow:
                 # This indicates we're in development mode - authentication bypassed
                 assert no_auth_response.status_code == 200
             else:
-                assert no_auth_response.status_code == 401, "Expected 401 Unauthorized for missing API key"
+                assert (
+                    no_auth_response.status_code == 401
+                ), "Expected 401 Unauthorized for missing API key"
 
         # Scenario: Valid API Key provided
         headers = {"Authorization": f"Bearer {ADMIN_API_KEY}"}
@@ -79,51 +85,56 @@ class TestCacheInvalidationWorkflow:
         auth_response = await client.post(
             "/internal/cache/invalidate",
             params={"pattern": invalidation_pattern},
-            headers=headers
+            headers=headers,
         )
-        
+
         assert auth_response.status_code == 200, "Expected 200 OK for valid API key"
         response_data = auth_response.json()
         assert "message" in response_data
         assert invalidation_pattern in response_data["message"]
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("scenario,headers,expected_status", [
-        ("missing_key", {}, 401),
-        ("empty_key", {"Authorization": "Bearer "}, 401), 
-        ("invalid_key", {"Authorization": "Bearer invalid-key-format"}, 401),
-        ("wrong_key", {"Authorization": "Bearer wrong-but-valid-format-key"}, 401),
-    ])
-    async def test_invalidation_authentication_scenarios(self, client, scenario, headers, expected_status):
+    @pytest.mark.parametrize(
+        "scenario,headers,expected_status",
+        [
+            ("missing_key", {}, 401),
+            ("empty_key", {"Authorization": "Bearer "}, 401),
+            ("invalid_key", {"Authorization": "Bearer invalid-key-format"}, 401),
+            ("wrong_key", {"Authorization": "Bearer wrong-but-valid-format-key"}, 401),
+        ],
+    )
+    async def test_invalidation_authentication_scenarios(
+        self, client, scenario, headers, expected_status
+    ):
         """
         Test comprehensive authentication scenarios for cache invalidation endpoint.
-        
+
         Test Purpose:
             Validates that the invalidation endpoint properly handles various
             authentication failure scenarios with appropriate error responses.
-            
+
         Business Impact:
             Comprehensive security validation prevents unauthorized cache operations
             that could impact system performance and data consistency.
-            
+
         Test Scenario:
             GIVEN various authentication scenarios (missing, empty, invalid, wrong keys)
             WHEN invalidation requests are made with these authentication states
             THEN appropriate error responses are returned without exposing system details
-            
+
         Success Criteria:
             - All invalid authentication scenarios return 401 Unauthorized
             - Error responses don't leak sensitive information
             - System remains stable under various authentication attacks
         """
         test_pattern = f"e2e_test:auth_scenario:{scenario}:*"
-        
+
         response = await client.post(
             "/internal/cache/invalidate",
             params={"pattern": test_pattern},
-            headers=headers
+            headers=headers,
         )
-        
+
         # Handle both production (strict auth) and development/test mode (bypassed auth)
         if response.status_code != expected_status:
             # Check if we're in development mode
@@ -133,96 +144,118 @@ class TestCacheInvalidationWorkflow:
                 if "message" in response_data:
                     # Development mode - authentication bypassed
                     return
-        
+
         assert response.status_code == expected_status
-        
+
         if expected_status == 401 and response.status_code == 401:
             # Verify error response structure without sensitive info leakage
             error_data = response.json()
             assert "detail" in error_data
-            
+
             # Handle both string and dict detail formats per our HTTPException wrapper
             detail = error_data["detail"]
             if isinstance(detail, dict):
                 # Our HTTPException wrapper format
                 assert "message" in detail
                 message_text = detail["message"].lower()
-                assert any(keyword in message_text for keyword in ["unauthorized", "authentication", "api key required", "invalid api key"])
+                assert any(
+                    keyword in message_text
+                    for keyword in [
+                        "unauthorized",
+                        "authentication",
+                        "api key required",
+                        "invalid api key",
+                    ]
+                )
             else:
-                # Standard FastAPI format  
+                # Standard FastAPI format
                 detail_text = detail.lower()
-                assert any(keyword in detail_text for keyword in ["unauthorized", "authentication", "api key required", "invalid api key"])
+                assert any(
+                    keyword in detail_text
+                    for keyword in [
+                        "unauthorized",
+                        "authentication",
+                        "api key required",
+                        "invalid api key",
+                    ]
+                )
 
     @pytest.mark.asyncio
     async def test_invalidation_malformed_requests(self, authenticated_client):
         """
         Test invalidation endpoint handles malformed requests gracefully.
-        
+
         Test Purpose:
             Validates that the API properly validates request parameters
             and provides clear error messages for malformed requests.
-            
+
         Business Impact:
             Proper input validation prevents system errors and provides
             clear feedback to API consumers for debugging.
-            
+
         Test Scenario:
             GIVEN various malformed invalidation requests
             WHEN these requests are sent to the invalidation endpoint
             THEN appropriate validation errors are returned with helpful messages
-            
+
         Success Criteria:
             - Missing pattern parameter uses default empty string per API contract
             - Empty pattern parameter is valid (matches all entries)
             - Authentication is working for the test to be meaningful
         """
         # First verify authentication is working
-        auth_test_response = await authenticated_client.post("/internal/cache/invalidate", params={"pattern": "auth_test"})
+        auth_test_response = await authenticated_client.post(
+            "/internal/cache/invalidate", params={"pattern": "auth_test"}
+        )
         if auth_test_response.status_code == 401:
-            pytest.skip("Authentication not working in test environment - skipping malformed request tests")
-        assert auth_test_response.status_code == 200, f"Authentication baseline failed: {auth_test_response.status_code}"
-        
+            pytest.skip(
+                "Authentication not working in test environment - skipping malformed request tests"
+            )
+        assert (
+            auth_test_response.status_code == 200
+        ), f"Authentication baseline failed: {auth_test_response.status_code}"
+
         # Missing pattern parameter - FastAPI should provide default empty string
         response = await authenticated_client.post("/internal/cache/invalidate")
         # FastAPI Query parameters with defaults don't raise 422, they use the default
         # The pattern defaults to empty string per the API contract
-        assert response.status_code == 200  # Should succeed with empty pattern (matches all)
-        
+        assert (
+            response.status_code == 200
+        )  # Should succeed with empty pattern (matches all)
+
         # Empty pattern parameter - should be valid (matches all entries)
         response = await authenticated_client.post(
-            "/internal/cache/invalidate", 
-            params={"pattern": ""}
+            "/internal/cache/invalidate", params={"pattern": ""}
         )
         # Empty pattern is valid per API contract - invalidates all entries
         assert response.status_code == 200
-        
+
         # Very long pattern (potential DoS test)
         long_pattern = "e2e_test:" + "x" * 10000
         response = await authenticated_client.post(
-            "/internal/cache/invalidate",
-            params={"pattern": long_pattern}
+            "/internal/cache/invalidate", params={"pattern": long_pattern}
         )
         # Should handle gracefully, either accept or reject with proper error
         assert response.status_code in [200, 400, 422]
 
-    @pytest.mark.asyncio  
+    @pytest.mark.asyncio
     async def test_invalidation_edge_case_patterns(self, authenticated_client):
         """
         Test cache invalidation with various edge case patterns.
-        
+
         Test Purpose:
             Validates that the cache invalidation system properly handles
             edge cases in pattern matching without system failures.
-            
+
         Business Impact:
             Robust pattern handling prevents system crashes and ensures
             reliable cache management under various operational scenarios.
-            
+
         Test Scenario:
             GIVEN various edge case invalidation patterns
-            WHEN invalidation requests are made with these patterns  
+            WHEN invalidation requests are made with these patterns
             THEN system handles them gracefully without errors
-            
+
         Success Criteria:
             - Authentication is working for meaningful test results
             - Special characters in patterns are handled correctly
@@ -230,11 +263,17 @@ class TestCacheInvalidationWorkflow:
             - Very specific patterns are processed successfully
         """
         # First verify authentication is working
-        baseline_response = await authenticated_client.post("/internal/cache/invalidate", params={"pattern": "test"})
+        baseline_response = await authenticated_client.post(
+            "/internal/cache/invalidate", params={"pattern": "test"}
+        )
         if baseline_response.status_code == 401:
-            pytest.skip("Authentication not working in test environment - skipping edge case pattern tests")
-        assert baseline_response.status_code == 200, f"Authentication baseline failed: {baseline_response.status_code}"
-        
+            pytest.skip(
+                "Authentication not working in test environment - skipping edge case pattern tests"
+            )
+        assert (
+            baseline_response.status_code == 200
+        ), f"Authentication baseline failed: {baseline_response.status_code}"
+
         edge_case_patterns = [
             "e2e_test:edge:special_chars:@#$%^&*()",
             "e2e_test:edge:unicode:测试模式",
@@ -242,41 +281,46 @@ class TestCacheInvalidationWorkflow:
             "e2e_test:edge:single",
             "e2e_test:edge:wildcard:*:middle:*",
         ]
-        
+
         for pattern in edge_case_patterns:
             response = await authenticated_client.post(
-                "/internal/cache/invalidate",
-                params={"pattern": pattern}
+                "/internal/cache/invalidate", params={"pattern": pattern}
             )
-            
+
             # Should either succeed or fail gracefully (but not due to auth issues)
-            assert response.status_code in [200, 400, 422], f"Unexpected status {response.status_code} for pattern: {pattern}"
-            
+            assert response.status_code in [
+                200,
+                400,
+                422,
+            ], f"Unexpected status {response.status_code} for pattern: {pattern}"
+
             if response.status_code == 200:
                 response_data = response.json()
                 assert "message" in response_data
                 assert pattern in response_data["message"]
 
     @pytest.mark.asyncio
-    async def test_invalidation_actually_removes_cache_entries(self, authenticated_client):
+    async def test_invalidation_actually_removes_cache_entries(
+        self, authenticated_client
+    ):
         """
         Test that cache invalidation operations actually remove entries from cache storage.
-        
+
         Test Purpose:
             Validates that invalidation doesn't just return success messages but actually
             affects cache state by removing targeted entries while preserving others.
-            
+
         Business Impact:
             Critical for cache consistency and data freshness. Ensures invalidation
             operations provide real behavioral outcomes, not false positives.
             Prevents stale data from persisting after invalidation commands.
-            
+
         Test Scenario:
             1. Populate cache with multiple entries using production text processing API
             2. Verify entries exist by retrieving them through subsequent API calls
             3. Execute targeted invalidation with specific pattern matching subset
             4. Verify behavioral outcome: targeted entries gone, unmatched entries remain
-            
+
         Success Criteria:
             - Cache population succeeds and entries are retrievable
             - Invalidation with pattern removes only matching entries
@@ -284,58 +328,62 @@ class TestCacheInvalidationWorkflow:
             - System maintains cache consistency throughout the workflow
         """
         # Skip if authentication not working to avoid false failures
-        auth_test_response = await authenticated_client.post("/internal/cache/invalidate", params={"pattern": "auth_test"})
+        auth_test_response = await authenticated_client.post(
+            "/internal/cache/invalidate", params={"pattern": "auth_test"}
+        )
         if auth_test_response.status_code == 401:
-            pytest.skip("Authentication not working in test environment - skipping behavioral invalidation test")
-        
+            pytest.skip(
+                "Authentication not working in test environment - skipping behavioral invalidation test"
+            )
+
         # Step 1: Populate cache with test entries using production API
         # Use text processing endpoint to create realistic cache entries
         test_entries = [
             {
                 "text": "This is test user data for user 1",
                 "operation": "summarize",
-                "cache_key_identifier": "e2e_test:behavioral:user:1"
+                "cache_key_identifier": "e2e_test:behavioral:user:1",
             },
             {
-                "text": "This is test user data for user 2", 
+                "text": "This is test user data for user 2",
                 "operation": "summarize",
-                "cache_key_identifier": "e2e_test:behavioral:user:2"
+                "cache_key_identifier": "e2e_test:behavioral:user:2",
             },
             {
                 "text": "This is test session data for session abc",
-                "operation": "sentiment", 
-                "cache_key_identifier": "e2e_test:behavioral:session:abc"
-            }
+                "operation": "sentiment",
+                "cache_key_identifier": "e2e_test:behavioral:session:abc",
+            },
         ]
-        
+
         # Track successful cache population for verification
         populated_entries = []
-        
+
         for entry in test_entries:
             try:
                 # Use text processing API to populate cache
                 response = await authenticated_client.post(
                     "/v1/text_processing/process",
-                    json={
-                        "text": entry["text"],
-                        "operation": entry["operation"]
-                    }
+                    json={"text": entry["text"], "operation": entry["operation"]},
                 )
-                
+
                 if response.status_code == 200:
                     populated_entries.append(entry)
                     # Small delay to ensure cache write completion
                     import asyncio
+
                     await asyncio.sleep(0.1)
-                    
+
             except Exception:
                 # Continue with other entries if one fails
                 pass
-        
+
         # Only proceed if we successfully populated at least 2 entries
         if len(populated_entries) < 2:
-            pytest.skip("Unable to populate sufficient cache entries for behavioral test - may need AI API key")
-        
+            pytest.skip(
+                "Unable to populate sufficient cache entries for behavioral test - may need AI API key"
+            )
+
         # Step 2: Verify entries exist by making the same API calls
         # This confirms cache hit behavior before invalidation
         cache_hits_before = 0
@@ -343,50 +391,46 @@ class TestCacheInvalidationWorkflow:
             try:
                 response = await authenticated_client.post(
                     "/v1/text_processing/process",
-                    json={
-                        "text": entry["text"],
-                        "operation": entry["operation"]
-                    }
+                    json={"text": entry["text"], "operation": entry["operation"]},
                 )
                 if response.status_code == 200:
                     cache_hits_before += 1
             except Exception:
                 pass
-        
+
         # Step 3: Execute targeted invalidation with specific pattern
         # Invalidate only "user" entries, leaving "session" entries intact
         invalidation_pattern = "e2e_test:behavioral:user:*"
         invalidation_response = await authenticated_client.post(
-            "/internal/cache/invalidate",
-            params={"pattern": invalidation_pattern}
+            "/internal/cache/invalidate", params={"pattern": invalidation_pattern}
         )
-        
-        assert invalidation_response.status_code == 200, "Invalidation request should succeed"
+
+        assert (
+            invalidation_response.status_code == 200
+        ), "Invalidation request should succeed"
         response_data = invalidation_response.json()
         assert "message" in response_data
         assert invalidation_pattern in response_data["message"]
-        
+
         # Small delay to ensure invalidation completion
         import asyncio
+
         await asyncio.sleep(0.2)
-        
+
         # Step 4: Verify behavioral outcome through cache behavior
         # Targeted entries should show different behavior (cache miss or regeneration)
         # Non-targeted entries should maintain cache hit behavior
-        
+
         user_entries_affected = 0
         session_entries_preserved = 0
-        
+
         for entry in populated_entries:
             try:
                 response = await authenticated_client.post(
                     "/v1/text_processing/process",
-                    json={
-                        "text": entry["text"],
-                        "operation": entry["operation"]
-                    }
+                    json={"text": entry["text"], "operation": entry["operation"]},
                 )
-                
+
                 if response.status_code == 200:
                     # Check if this was a user entry (should be affected by invalidation)
                     if "user" in entry["cache_key_identifier"]:
@@ -394,28 +438,38 @@ class TestCacheInvalidationWorkflow:
                     # Check if this was a session entry (should be preserved)
                     elif "session" in entry["cache_key_identifier"]:
                         session_entries_preserved += 1
-                        
+
             except Exception:
                 pass
-        
-        # Behavioral verification: 
+
+        # Behavioral verification:
         # - User entries were targeted by invalidation pattern
         # - Session entries were NOT targeted and should be preserved
         # - At minimum, we should see that the invalidation had some effect
-        
+
         # Log results for debugging
         print(f"Cache behavioral test results:")
-        print(f"  Populated entries: {len(populated_entries)}")  
+        print(f"  Populated entries: {len(populated_entries)}")
         print(f"  User entries processed after invalidation: {user_entries_affected}")
-        print(f"  Session entries preserved after invalidation: {session_entries_preserved}")
-        
+        print(
+            f"  Session entries preserved after invalidation: {session_entries_preserved}"
+        )
+
         # Success criteria: Invalidation had selective effect
         # If we have both user and session entries, session entries should be preserved
-        session_entries_count = sum(1 for entry in populated_entries if "session" in entry["cache_key_identifier"])
+        session_entries_count = sum(
+            1
+            for entry in populated_entries
+            if "session" in entry["cache_key_identifier"]
+        )
         if session_entries_count > 0:
-            assert session_entries_preserved > 0, "Session entries should be preserved after user-pattern invalidation"
-        
+            assert (
+                session_entries_preserved > 0
+            ), "Session entries should be preserved after user-pattern invalidation"
+
         # Overall success: The invalidation operation completed and system remains functional
-        assert user_entries_affected >= 0, "System should handle user entries after invalidation"
-        
+        assert (
+            user_entries_affected >= 0
+        ), "System should handle user entries after invalidation"
+
         print("✅ Cache invalidation behavioral test completed successfully")

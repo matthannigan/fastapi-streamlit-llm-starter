@@ -47,7 +47,7 @@ Comprehensive configuration dataclass for AI cache settings with:
 - `compression_threshold`: Size threshold for automatic compression (0-1MB)
 - `compression_level`: Zlib compression level for bandwidth optimization (1-9)
 - `performance_monitor`: CachePerformanceMonitor instance for metrics collection
-- `security_config`: Optional security configuration for encrypted connections
+- `security_config`: DEPRECATED - Security is now automatic via GenericRedisCache inheritance
 
 ### AI-Specific Parameters (Unique to AI Response Caching)
 - `text_hash_threshold`: Character threshold for text hashing optimization (1-100000)
@@ -253,7 +253,7 @@ class AIResponseCacheConfig:
         hash_algorithm: str hash algorithm for text processing (default: 'sha256')
         operation_ttls: Dict[str, int] operation-specific TTL overrides
         performance_monitor: Optional cache performance monitor instance
-        security_config: Optional security configuration for encrypted connections
+        security_config: DEPRECATED - Security is now automatic via GenericRedisCache inheritance
     
     Public Methods:
         validate(): Comprehensive validation with detailed error reporting

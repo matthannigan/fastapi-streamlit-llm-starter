@@ -1,16 +1,36 @@
 """
 Module-level convenience functions.
 
-Contains the global detector instance and convenience functions for easy access
-to environment detection functionality without needing to create detector instances.
+Contains the detector instance (global or context-local depending on environment)
+and convenience functions for easy access to environment detection functionality
+without needing to create detector instances.
+
+Hybrid Architecture:
+    - Production: Uses global singleton for zero overhead
+    - Tests: Uses context-local storage for automatic test isolation
 """
+
+import sys
+import os
+import contextvars
 
 from .enums import Environment, FeatureContext
 from .models import EnvironmentInfo
 from .detector import EnvironmentDetector
 
-# Global instance for easy access across the application
-environment_detector = EnvironmentDetector()
+# Detect pytest at import time (same pattern as config.py)
+_IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
+
+if _IS_PYTEST:
+    # Testing: Use context-local storage for automatic test isolation
+    # Each test context gets its own detector instance that doesn't pollute other tests
+    _detector_context = contextvars.ContextVar('environment_detector', default=None)
+    environment_detector = None  # No global instance in tests
+else:
+    # Production: Use global singleton for zero overhead
+    # Single shared instance across all requests for optimal performance
+    environment_detector = EnvironmentDetector()
+    _detector_context = None
 
 
 def get_environment_info(feature_context: FeatureContext = FeatureContext.DEFAULT) -> EnvironmentInfo:
@@ -40,11 +60,12 @@ def get_environment_info(feature_context: FeatureContext = FeatureContext.DEFAUL
         ValidationError: If feature_context is not a valid FeatureContext enum value
 
     Behavior:
-        - Uses global environment_detector instance for consistent results
+        - Production: Uses global environment_detector instance for zero overhead
+        - Tests: Uses context-local detector instance for automatic test isolation
         - Performs full environment detection with confidence scoring
         - Applies feature-specific context when specified
-        - Caches detection results for performance optimization
         - Thread-safe for concurrent access across services
+        - Test contexts automatically isolated - no manual cache management needed
 
     Examples:
         >>> # Basic environment detection
@@ -64,7 +85,18 @@ def get_environment_info(feature_context: FeatureContext = FeatureContext.DEFAUL
         >>> else:
         ...     logger.warning(f"Uncertain environment detection: {security_env.reasoning}")
     """
-    return environment_detector.detect_with_context(feature_context)
+    if _IS_PYTEST:
+        # Test mode: Get or create context-local detector instance
+        # Each test context gets its own detector that doesn't pollute other tests
+        detector = _detector_context.get()
+        if detector is None:
+            # Lazy initialization per context
+            detector = EnvironmentDetector()
+            _detector_context.set(detector)
+        return detector.detect_with_context(feature_context)
+    else:
+        # Production mode: Use global singleton for optimal performance
+        return environment_detector.detect_with_context(feature_context)
 
 
 def is_production_environment(feature_context: FeatureContext = FeatureContext.DEFAULT) -> bool:

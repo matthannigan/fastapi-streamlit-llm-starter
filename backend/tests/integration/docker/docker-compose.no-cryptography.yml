@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  integration-tests-no-crypto:
+    build:
+      context: ../../..  # Build from project root
+      dockerfile: backend/tests/integration/docker/Dockerfile.no-cryptography
+    container_name: integration-tests-no-cryptography
+    volumes:
+      # Mount test results if needed
+      - ./test-results:/app/backend/test-results
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=testing
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

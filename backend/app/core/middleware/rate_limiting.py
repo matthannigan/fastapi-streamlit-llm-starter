@@ -774,6 +774,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def _init_redis(self):
         """Initialize Redis connection for distributed rate limiting."""
         try:
+            # Skip Redis initialization if cache preset is disabled
+            if getattr(self.settings, 'cache_preset', None) == 'disabled':
+                logger.debug("Rate limiting using local cache only (cache preset disabled)")
+                self.redis_client = None
+                return
+
             # Preset-based complex configuration
             cache_config = self.settings.get_cache_config()
             redis_url = cache_config.redis_url

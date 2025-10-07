@@ -220,6 +220,88 @@ class SecurityPolicyTemplate:
         return config
 ```
 
+## Redis Cache Security
+
+The template implements a comprehensive three-layer security model for Redis cache infrastructure, providing defense-in-depth protection for cached data.
+
+### Security Architecture
+
+The Redis cache security system provides:
+
+- **Transport Layer Security (TLS)**: Encrypted connections using `rediss://` protocol on port 6380
+- **Authentication**: Password-based authentication for access control
+- **Data Encryption**: At-rest encryption for sensitive cached data
+
+### Quick Setup
+
+For development environments, use the automated setup script:
+
+```bash
+# One-command secure Redis setup
+./scripts/setup-secure-redis.sh
+
+# This configures:
+# - TLS certificates (self-signed for development)
+# - Password authentication
+# - Secure port 6380
+# - Encryption configuration
+```
+
+### Configuration
+
+Secure Redis configuration through environment variables:
+
+```bash
+# Secure Redis connection (recommended)
+CACHE_REDIS_URL=rediss://localhost:6380
+
+# With password authentication
+CACHE_REDIS_URL=rediss://:your-secure-password@localhost:6380
+
+# Production configuration with full security
+CACHE_PRESET=production
+CACHE_REDIS_URL=rediss://:${REDIS_PASSWORD}@redis-prod:6380
+```
+
+### Security Features
+
+| Feature | Purpose | Configuration |
+|---------|---------|---------------|
+| **TLS Encryption** | Secure data in transit | `rediss://` protocol, port 6380 |
+| **Authentication** | Access control | Password in connection URL |
+| **Certificate Validation** | Server identity verification | TLS certificates |
+| **Graceful Fallback** | Continue operation on failure | Automatic memory cache fallback |
+
+### Verification
+
+Verify secure Redis configuration:
+
+```bash
+# Test secure connection
+redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key ping
+
+# Check cache health endpoint
+curl -H "Authorization: Bearer your-api-key" \
+     http://localhost:8000/internal/cache/health
+
+# Expected response includes:
+# - TLS: enabled
+# - Authentication: required
+# - Connection: secure
+```
+
+### Best Practices
+
+1. **Use TLS in Production**: Always use `rediss://` protocol and port 6380 for production deployments
+2. **Strong Passwords**: Generate strong Redis passwords using secure random generators
+3. **Certificate Management**: Use proper CA-signed certificates in production (not self-signed)
+4. **Regular Rotation**: Rotate Redis passwords and certificates periodically
+5. **Monitoring**: Monitor cache health and security status via internal API endpoints
+
+### Comprehensive Security Guide
+
+For detailed security configuration, troubleshooting, and advanced patterns, see the comprehensive **[Redis Cache Security Guide](./cache/security.md)**.
+
 ## Integration Patterns
 
 ### FastAPI Dependency Injection

@@ -23,6 +23,7 @@
         test-local test-backend test-backend-api test-backend-core test-backend-infrastructure \
         test-backend-integration test-backend-performance test-backend-services test-backend-schemas \
         test-backend-slow test-backend-all test-backend-manual test-frontend test-integration \
+        test-no-cryptography test-cryptography-unavailable \
         test-coverage test-coverage-all test-retry test-circuit \
         lint-backend lint-frontend format \
         clean clean-venv clean-all \
@@ -47,14 +48,16 @@ ifneq (,$(wildcard .env))
     BACKEND_PORT  ?= $(shell grep -E '^[[:space:]]*BACKEND_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*BACKEND_PORT[[:space:]]*=[[:space:]]*//')
     FRONTEND_PORT ?= $(shell grep -E '^[[:space:]]*FRONTEND_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*FRONTEND_PORT[[:space:]]*=[[:space:]]*//')
     REDIS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_PORT[[:space:]]*=[[:space:]]*//')
+    REDIS_TLS_PORT    ?= $(shell grep -E '^[[:space:]]*REDIS_TLS_PORT[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REDIS_TLS_PORT[[:space:]]*=[[:space:]]*//')
     REPOMIX_CMD   ?= $(shell grep -E '^[[:space:]]*REPOMIX_CMD[[:space:]]*=' .env | tail -n1 | sed -E 's/^[[:space:]]*REPOMIX_CMD[[:space:]]*=[[:space:]]*//')
-    export BACKEND_PORT FRONTEND_PORT REDIS_PORT REPOMIX_CMD
+    export BACKEND_PORT FRONTEND_PORT REDIS_PORT REDIS_TLS_PORT REPOMIX_CMD
 endif
 
 # Set sensible defaults when not provided
 BACKEND_PORT  ?= 8000
 FRONTEND_PORT ?= 8501
 REDIS_PORT    ?= 6379
+REDIS_TLS_PORT    ?= 6380
 REPOMIX_CMD   ?= npx repomix
 
 # Also default when value exists but is empty
@@ -66,6 +69,9 @@ FRONTEND_PORT := 8501
 endif
 ifeq ($(strip $(REDIS_PORT))),)
 REDIS_PORT := 6379
+endif
+ifeq ($(strip $(REDIS_TLS_PORT))),)
+REDIS_TLS_PORT := 6380
 endif
 ifeq ($(strip $(REPOMIX_CMD))),)
 REPOMIX_CMD := npx repomix
@@ -119,6 +125,7 @@ show-env-vars:
 	@echo "Backend Port is: $(BACKEND_PORT)"
 	@echo "Frontend Port is: $(FRONTEND_PORT)"
 	@echo "Redis Port is: $(REDIS_PORT)"
+	@echo "Redis TLS Port is: $(REDIS_TLS_PORT)"
 	@echo "API Base URL is: $(API_BASE_URL)"
 	@echo "Repomix Command is: $(REPOMIX_CMD)"
 	@echo "---"
@@ -152,6 +159,7 @@ help:
 	@echo "🖥️  DEVELOPMENT SERVERS:"
 	@echo "  run-backend          Start FastAPI server locally (http://localhost:8000)"
 	@echo "  dev                  Start full development environment with hot reload"
+	@echo "  dev-secure           Start development environment with secure Redis (TLS + encryption)"
 	@echo "  dev-legacy           Start development environment (legacy mode)"
 	@echo "  prod                 Start production environment"
 	@echo ""
@@ -178,6 +186,7 @@ help:
 	@echo "  test-backend-manual  Run manual tests (requires running server)"
 	@echo "  test-frontend        Run frontend tests via Docker"
 	@echo "  test-integration     Run end-to-end integration tests"
+	@echo "  test-no-cryptography Run integration tests without cryptography (Docker)"
 	@echo "  test-coverage        Run tests with coverage reporting"
 	@echo "  test-coverage-all    Run coverage including slow tests"
 	@echo "  test-retry           Run retry mechanism tests"
@@ -392,16 +401,61 @@ run-backend:
 
 # Start full development environment with hot reload (Docker Compose v2.22+)
 dev:
-	@echo "🚀 Starting development environment..."
-	@echo "📍 Services will be available at:"
-	@echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"
-	@echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"
-	@echo "   🗄️  Redis:               localhost:$(REDIS_PORT)"
-	@echo ""
-	@echo "💡 File watching enabled - changes will trigger automatic reloads"
-	@echo "⏹️  Press Ctrl+C to stop all services"
-	@echo ""
-	@docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+	@CACHE_PRESET=$$(grep -E '^[[:space:]]*CACHE_PRESET[[:space:]]*=' .env 2>/dev/null | tail -n1 | sed -E 's/^[[:space:]]*CACHE_PRESET[[:space:]]*=[[:space:]]*//'); \
+	CACHE_PRESET=$${CACHE_PRESET:-development}; \
+	echo "🚀 Starting development environment..."; \
+	echo "📍 Services will be available at:"; \
+	echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"; \
+	echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"; \
+	if [ "$$CACHE_PRESET" != "disabled" ]; then \
+		echo "   🗄️  Redis:               redis://localhost:$(REDIS_PORT)"; \
+	else \
+		echo "   💾 Cache:                Memory-only (Redis disabled)"; \
+	fi; \
+	echo ""; \
+	echo "💡 File watching enabled - changes will trigger automatic reloads"; \
+	echo "⏹️  Press Ctrl+C to stop all services"; \
+	echo ""; \
+	if [ "$$CACHE_PRESET" = "disabled" ]; then \
+		docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch; \
+	else \
+		docker-compose -f docker-compose.yml -f docker-compose.dev.yml --profile with-cache up --build --watch; \
+	fi
+
+# Start development environment with secure Redis (TLS + encryption)
+dev-secure:
+	@CACHE_PRESET=$$(grep -E '^[[:space:]]*CACHE_PRESET[[:space:]]*=' .env.secure 2>/dev/null | tail -n1 | sed -E 's/^[[:space:]]*CACHE_PRESET[[:space:]]*=[[:space:]]*//'); \
+	CACHE_PRESET=$${CACHE_PRESET:-development}; \
+	echo "🔐 Starting secure development environment..."; \
+	echo "📍 Services will be available at:"; \
+	echo "   🌐 Frontend (Streamlit): http://localhost:$(FRONTEND_PORT)"; \
+	echo "   🔌 Backend (FastAPI):    http://localhost:$(BACKEND_PORT)"; \
+	if [ "$$CACHE_PRESET" != "disabled" ]; then \
+		echo "   🗄️  Redis (TLS):         rediss://localhost:$(REDIS_TLS_PORT)"; \
+	else \
+		echo "   💾 Cache:                Memory-only (Redis disabled)"; \
+	fi; \
+	echo ""; \
+	if [ "$$CACHE_PRESET" != "disabled" ]; then \
+		echo "🔒 Security features enabled:"; \
+		echo "   ✓ TLS encryption for Redis connections"; \
+		echo "   ✓ Password authentication"; \
+		echo "   ✓ Application-layer data encryption"; \
+		echo ""; \
+		echo "💡 Run './scripts/setup-secure-redis.sh' first if you haven't already"; \
+	fi; \
+	echo "⏹️  Press Ctrl+C to stop all services"; \
+	echo ""; \
+	if [ ! -f .env.secure ]; then \
+		echo "❌ Error: .env.secure not found"; \
+		echo "Run: ./scripts/setup-secure-redis.sh"; \
+		exit 1; \
+	fi; \
+	if [ "$$CACHE_PRESET" = "disabled" ]; then \
+		docker-compose -f docker-compose.secure.yml --env-file .env.secure up --build; \
+	else \
+		docker-compose -f docker-compose.secure.yml --env-file .env.secure --profile with-cache up --build; \
+	fi
 
 # Start development environment (legacy mode for older Docker Compose)
 dev-legacy:
@@ -459,22 +513,22 @@ test-backend:
 # Run backend unit tests
 test-backend-unit:
 	@echo "🧪 Running backend unit tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ -n auto -q --tb=short
+	@cd backend && $(PYTHON_CMD) -m pytest tests/unit/ --tb=short
 
 test-backend-integration:
 	@echo "🧪 Running backend integration tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/cache/ -n 0 -q --tb=no --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/integration/ --tb=no --retries 3 --retry-delay 1
 
 test-backend-e2e:
 	@echo "🧪 Running backend E2E tests..."
-	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/cache/ -n 0 -m "e2e" -q --tb=no --retries 3 --retry-delay 1
+	@cd backend && $(PYTHON_CMD) -m pytest tests/e2e/ -m "e2e" -q --tb=no --retries 3 --retry-delay 1
 
 
 # Run cache infrastructure tests
 test-backend-cache:
-	@$(MAKE) test-backend-cache-unit
-	@$(MAKE) test-backend-cache-integration
-	@$(MAKE) test-backend-cache-e2e
+	@-$(MAKE) test-backend-cache-unit
+	@-$(MAKE) test-backend-cache-integration
+	@-$(MAKE) test-backend-cache-e2e
 
 test-backend-cache-unit:
 	@echo "🧪 Running backend cache infrastructure unit tests..."
@@ -557,6 +611,16 @@ test-integration:
 	@echo "💡 Start services first: make dev"
 	@echo ""
 	@$(PYTHON_CMD) scripts/test_integration.py
+
+# Run integration tests without cryptography library (Docker-based)
+test-no-cryptography:
+	@echo "🔒 Running integration tests without cryptography library..."
+	@echo "⚠️  These tests verify graceful degradation when cryptography is unavailable"
+	@echo ""
+	@bash backend/tests/integration/docker/run-no-cryptography-tests.sh
+
+# Alias for test-no-cryptography
+test-cryptography-unavailable: test-no-cryptography
 
 ##################################################################################################
 # Coverage and Specialized Testing

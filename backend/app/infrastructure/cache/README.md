@@ -6,6 +6,32 @@ sidebar_label: cache
 
 Comprehensive caching infrastructure for FastAPI applications with multiple implementations, preset-based configuration, and advanced monitoring. Supports both web applications and AI workloads with intelligent optimization.
 
+## Security-First Quick Start
+
+The cache infrastructure implements a **three-layer security model** for production-ready Redis deployments:
+
+```bash
+# 1. Setup secure Redis (one-command for development)
+./scripts/setup-secure-redis.sh
+
+# 2. Configure environment for secure connection
+export CACHE_PRESET=production
+export CACHE_REDIS_URL=rediss://localhost:6380  # Note: rediss:// protocol and port 6380
+
+# 3. Application automatically uses secure connection
+# - TLS encryption for data in transit
+# - Password authentication for access control
+# - At-rest encryption for sensitive cached data
+```
+
+**Security Benefits:**
+- **TLS Encryption**: All cache traffic encrypted using `rediss://` protocol
+- **Authentication**: Password-based access control
+- **Certificate Validation**: Server identity verification
+- **Graceful Fallback**: Automatic fallback to memory cache on connection failure
+
+**For comprehensive security configuration, see [Cache Security Guide](../../../docs/guides/infrastructure/cache/security.md).**
+
 ## Quick Start
 
 ```python
@@ -44,13 +70,13 @@ factory = CacheFactory()
 
 # Web applications
 cache = await factory.for_web_app(
-    redis_url="redis://localhost:6379",
+    redis_url="rediss://localhost:6380",
     default_ttl=1800  # 30 minutes
 )
 
 # AI applications
 ai_cache = await factory.for_ai_app(
-    redis_url="redis://localhost:6379",
+    redis_url="rediss://localhost:6380",
     default_ttl=3600,  # 1 hour
     operation_ttls={
         "summarize": 7200,  # 2 hours
@@ -79,7 +105,7 @@ test_cache = await factory.for_testing(use_memory_cache=True)
 from app.infrastructure.cache import AIResponseCache
 
 cache = AIResponseCache(
-    redis_url="redis://custom-host:6380/5",
+    redis_url="rediss://custom-host:6380/5",
     default_ttl=7200,
     text_hash_threshold=2000,
     compression_threshold=500,
@@ -166,7 +192,7 @@ print(f"Hit ratio: {stats['hit_ratio']:.2%}")
 from app.infrastructure.cache import GenericRedisCache
 
 cache = GenericRedisCache(
-    redis_url="redis://localhost:6379",
+    redis_url="rediss://localhost:6380",
     default_ttl=7200,
     memory_cache_size=500,    # L1 cache size
     compression_threshold=1024  # Compress > 1KB
@@ -194,7 +220,7 @@ data = await cache.get("session:abc")  # Served from L1 if available
 from app.infrastructure.cache import AIResponseCache
 
 cache = AIResponseCache(
-    redis_url="redis://production:6379",
+    redis_url="rediss://production:6380",
     text_hash_threshold=1000,        # Hash texts > 1000 chars
     operation_ttls={                 # Operation-specific TTLs
         "summarize": 7200,           # 2 hours
@@ -235,7 +261,7 @@ export CACHE_PRESET=production      # Web applications
 export CACHE_PRESET=ai-production   # AI workloads
 
 # Optional overrides:
-export CACHE_REDIS_URL=redis://custom-server:6379
+export CACHE_REDIS_URL=rediss://custom-server:6380
 export ENABLE_AI_CACHE=true
 export CACHE_CUSTOM_CONFIG='{"compression_level": 9}'
 ```
@@ -260,7 +286,7 @@ from app.infrastructure.cache import CacheConfigBuilder
 
 config = (CacheConfigBuilder()
     .for_environment("production")
-    .with_redis("redis://prod-cluster:6379")
+    .with_redis("rediss://prod-cluster:6380")
     .with_ai_features(text_hash_threshold=2000)
     .with_compression(threshold=500, level=6)
     .build())
@@ -337,6 +363,27 @@ metrics_data = monitor.export_metrics()
 
 ### Security Features
 
+The cache infrastructure provides **mandatory security-first configuration** for all production deployments:
+
+#### Three-Layer Security Model
+
+1. **Transport Layer Security (TLS)**
+   - Encrypted connections using `rediss://` protocol
+   - Default port 6380 for secure Redis
+   - Certificate-based server authentication
+
+2. **Authentication Layer**
+   - Password-based access control
+   - Credential management via environment variables
+   - Connection string authentication
+
+3. **Data Protection**
+   - At-rest encryption for sensitive cached data
+   - Automatic key rotation support
+   - Secure credential storage
+
+#### Production Security Configuration
+
 ```python
 from app.infrastructure.cache.security import SecurityConfig
 
@@ -349,10 +396,35 @@ security_config = SecurityConfig(
 )
 
 cache = GenericRedisCache(
-    redis_url="rediss://secure-redis:6380",  # Note: rediss://
+    redis_url="rediss://secure-redis:6380",  # Note: rediss:// protocol and port 6380
     security_config=security_config
 )
 ```
+
+#### Environment-Based Security
+
+```bash
+# Development (automated setup)
+./scripts/setup-secure-redis.sh
+export CACHE_REDIS_URL=rediss://localhost:6380
+
+# Production (with authentication)
+export CACHE_REDIS_URL=rediss://:${REDIS_PASSWORD}@redis-prod:6380
+export CACHE_PRESET=production
+```
+
+#### Verification
+
+```bash
+# Verify secure connection
+redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key ping
+
+# Check cache health with security status
+curl -H "Authorization: Bearer your-api-key" \
+     http://localhost:8000/internal/cache/health
+```
+
+**Comprehensive security documentation:** [Cache Security Guide](../../../docs/guides/infrastructure/cache/security.md)
 
 ## Integration Patterns
 
@@ -440,5 +512,91 @@ All implementations provide graceful error handling:
 - **Serialization Errors**: Logged warnings, operations continue
 - **Memory Pressure**: Automatic LRU eviction and cleanup
 - **Redis Unavailable**: Seamless degradation with health monitoring
+
+## Troubleshooting
+
+### TLS Connection Issues
+
+**Problem**: Cannot connect to secure Redis
+
+```
+Error: SSL: CERTIFICATE_VERIFY_FAILED
+```
+
+**Solutions**:
+1. Verify TLS configuration:
+   ```bash
+   redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key ping
+   ```
+
+2. Check certificate paths and permissions:
+   ```bash
+   ls -la ./certs/redis.crt ./certs/redis.key
+   chmod 600 ./certs/redis.key
+   ```
+
+3. Verify `rediss://` protocol in connection URL:
+   ```bash
+   echo $CACHE_REDIS_URL  # Should show rediss://localhost:6380
+   ```
+
+### Authentication Failures
+
+**Problem**: Redis authentication required but not provided
+
+```
+Error: NOAUTH Authentication required
+```
+
+**Solutions**:
+1. Include password in connection URL:
+   ```bash
+   export CACHE_REDIS_URL=rediss://:your-password@localhost:6380
+   ```
+
+2. Verify Redis password configuration:
+   ```bash
+   redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key \
+             -a your-password ping
+   ```
+
+3. Check environment variable loading:
+   ```python
+   import os
+   print(os.getenv('CACHE_REDIS_URL'))  # Should include password
+   ```
+
+### Port Configuration Issues
+
+**Problem**: Connection refused on default port
+
+**Solutions**:
+1. Use secure port 6380 instead of standard 6379:
+   ```bash
+   export CACHE_REDIS_URL=rediss://localhost:6380  # Not 6379
+   ```
+
+2. Verify Redis is listening on secure port:
+   ```bash
+   netstat -an | grep 6380
+   ```
+
+### Security Validation
+
+Verify complete security configuration:
+
+```bash
+# 1. Test secure connection
+redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key ping
+
+# 2. Check cache health endpoint
+curl -H "Authorization: Bearer your-api-key" \
+     http://localhost:8000/internal/cache/health
+
+# 3. Review application logs for security warnings
+tail -f logs/app.log | grep -i "redis\|cache\|tls"
+```
+
+**For comprehensive troubleshooting, see [Cache Troubleshooting Guide](../../../docs/guides/infrastructure/cache/troubleshooting.md).**
 
 Choose the right implementation for your use case, configure with presets for simplicity, and leverage the comprehensive monitoring for production optimization.

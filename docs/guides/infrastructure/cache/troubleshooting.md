@@ -1060,6 +1060,811 @@ curl -X POST "http://localhost:8000/internal/cache/analysis/post-incident" \
 }'
 ```
 
+## TLS Connection Troubleshooting
+
+### Common TLS Connection Issues
+
+#### Error: `Connection refused` or `SSL handshake failed`
+
+**Symptoms:**
+- Application fails to connect to Redis
+- `SSL handshake failed` errors in logs
+- `Connection refused` on port 6380
+- Redis client reports TLS protocol errors
+
+**Diagnostic Commands:**
+```bash
+# Verify Redis is listening on TLS port
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  -p 6380 ping
+# Expected: PONG
+
+# Check Redis server status
+docker logs redis_secure | grep -i "tls\|ssl\|error"
+
+# Test TLS connection with OpenSSL
+openssl s_client -connect localhost:6380 \
+  -CAfile certs/ca.crt \
+  -cert certs/redis.crt \
+  -key certs/redis.key
+# Expected: SSL handshake successful, connection established
+```
+
+**Root Cause Analysis:**
+```bash
+# Check if Redis is running with TLS enabled
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG GET tls-port
+# Expected: 6380
+
+# Verify TLS certificates exist and are readable
+ls -la certs/
+# Expected: ca.crt, redis.crt, redis.key with correct permissions
+
+# Check certificate validity
+openssl x509 -in certs/redis.crt -text -noout | grep -A2 "Validity"
+# Expected: Valid dates showing certificate is not expired
+```
+
+**Resolution Steps:**
+
+1. **Regenerate TLS certificates if invalid:**
+```bash
+# Backup existing certificates
+mv certs certs.backup.$(date +%Y%m%d_%H%M%S)
+
+# Generate new certificates
+./scripts/init-redis-tls.sh
+
+# Verify new certificates
+openssl verify -CAfile certs/ca.crt certs/redis.crt
+# Expected: redis.crt: OK
+```
+
+2. **Restart Redis with correct TLS configuration:**
+```bash
+# Stop existing Redis container
+docker-compose -f docker-compose.secure.yml down
+
+# Start with fresh TLS configuration
+docker-compose -f docker-compose.secure.yml up -d redis
+
+# Verify TLS port is listening
+docker exec redis_secure netstat -tln | grep 6380
+# Expected: tcp LISTEN on 6380
+```
+
+3. **Update application configuration:**
+```bash
+# Ensure correct TLS URL
+export REDIS_URL="rediss://localhost:6380"
+export REDIS_TLS_ENABLED=true
+export REDIS_TLS_CA_CERT=./certs/ca.crt
+
+# Test application connection
+python -c "
+from app.infrastructure.cache.redis_generic import GenericRedisCache
+import asyncio
+cache = GenericRedisCache.create_secure()
+print('✅ TLS connection successful')
+"
+```
+
+**Prevention:**
+- Monitor certificate expiration dates (< 30 days)
+- Automate certificate renewal procedures
+- Include TLS connection tests in health checks
+- Log TLS handshake failures for monitoring
+
+### TLS Protocol Version Issues
+
+#### Error: `unsupported protocol` or `tlsv1 alert protocol version`
+
+**Symptoms:**
+- TLS handshake fails with protocol version errors
+- Application logs show `unsupported protocol` messages
+- Connection attempts timeout during TLS negotiation
+
+**Diagnostic Commands:**
+```bash
+# Check Redis TLS protocol configuration
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG GET tls-protocols
+# Expected: TLSv1.2 TLSv1.3 (development) or TLSv1.3 (production)
+
+# Test specific TLS versions
+openssl s_client -connect localhost:6380 -tls1_2 -CAfile certs/ca.crt
+openssl s_client -connect localhost:6380 -tls1_3 -CAfile certs/ca.crt
+```
+
+**Resolution:**
+
+**For Production (TLS 1.3 only):**
+```bash
+# Update Redis configuration for TLS 1.3
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG SET tls-protocols "TLSv1.3"
+
+# Update application environment
+export REDIS_TLS_PROTOCOLS="TLSv1.3"
+
+# Restart services
+docker-compose -f docker-compose.secure.yml restart
+```
+
+**For Development (TLS 1.2+ allowed):**
+```bash
+# Allow both TLS 1.2 and 1.3 for development
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG SET tls-protocols "TLSv1.2 TLSv1.3"
+
+export REDIS_TLS_PROTOCOLS="TLSv1.2 TLSv1.3"
+```
+
+## Certificate Validation Issues
+
+### Certificate Verification Failures
+
+#### Error: `Certificate verify failed` or `Unknown CA`
+
+**Symptoms:**
+- Application fails to validate Redis server certificate
+- `SSL certificate problem: unable to get local issuer certificate`
+- `Certificate verify failed: Unknown CA` errors
+
+**Diagnostic Commands:**
+```bash
+# Verify certificate chain
+openssl verify -CAfile certs/ca.crt certs/redis.crt
+# Expected: redis.crt: OK
+
+# Check certificate details
+openssl x509 -in certs/redis.crt -text -noout | grep -E "Issuer|Subject"
+# Expected: Issuer and Subject match CA certificate
+
+# Verify CA certificate is valid
+openssl x509 -in certs/ca.crt -noout -text | grep -A2 "Validity"
+# Expected: Valid date range
+
+# Check certificate dates
+openssl x509 -in certs/redis.crt -noout -dates
+# Expected: notBefore and notAfter are current
+```
+
+**Root Cause Analysis:**
+```bash
+# Check if CA certificate matches server certificate
+CA_FINGERPRINT=$(openssl x509 -in certs/ca.crt -noout -fingerprint)
+SERVER_ISSUER=$(openssl x509 -in certs/redis.crt -noout -issuer)
+echo "CA Fingerprint: $CA_FINGERPRINT"
+echo "Server Issuer: $SERVER_ISSUER"
+
+# Verify certificate chain trust
+openssl verify -verbose -CAfile certs/ca.crt certs/redis.crt
+```
+
+**Resolution Steps:**
+
+1. **Fix certificate chain issues:**
+```bash
+# If certificates don't match, regenerate them together
+./scripts/init-redis-tls.sh
+
+# Verify the new chain
+openssl verify -CAfile certs/ca.crt certs/redis.crt
+```
+
+2. **Update application CA certificate path:**
+```bash
+# Ensure application uses correct CA certificate
+export REDIS_TLS_CA_CERT=$(pwd)/certs/ca.crt
+
+# For Docker containers, mount certificates correctly
+# docker-compose.secure.yml should have:
+# volumes:
+#   - ./certs:/tls:ro
+```
+
+3. **Configure certificate validation level:**
+
+**Production (strict validation):**
+```bash
+export REDIS_TLS_CERT_REQS=required
+export REDIS_TLS_CA_CERT=/etc/ssl/certs/redis-ca.crt
+```
+
+**Development (allow self-signed):**
+```bash
+export REDIS_TLS_CERT_REQS=optional
+export REDIS_TLS_CA_CERT=./certs/ca.crt
+```
+
+### Certificate Expiration Issues
+
+#### Warning: Certificate expiring soon or already expired
+
+**Diagnostic Commands:**
+```bash
+# Check certificate expiration
+openssl x509 -in certs/redis.crt -noout -enddate
+openssl x509 -in certs/ca.crt -noout -enddate
+
+# Calculate days until expiration
+CERT_EXPIRY=$(openssl x509 -in certs/redis.crt -noout -enddate | cut -d= -f2)
+DAYS_LEFT=$(( ( $(date -d "$CERT_EXPIRY" +%s) - $(date +%s) ) / 86400 ))
+echo "Days until expiration: $DAYS_LEFT"
+
+# List all certificate expiration dates
+for cert in certs/*.crt; do
+  echo "Certificate: $cert"
+  openssl x509 -in "$cert" -noout -enddate
+  echo
+done
+```
+
+**Resolution:**
+
+**Certificate Renewal Procedure:**
+```bash
+# Step 1: Backup current certificates
+mkdir -p certs.backup
+cp -r certs/* certs.backup/
+echo "Backup created: certs.backup/"
+
+# Step 2: Generate new certificates
+./scripts/init-redis-tls.sh
+
+# Step 3: Restart Redis with new certificates
+docker-compose -f docker-compose.secure.yml restart redis
+
+# Step 4: Verify new certificates
+openssl x509 -in certs/redis.crt -noout -dates
+
+# Step 5: Test connection
+python -c "
+from app.infrastructure.cache.redis_generic import GenericRedisCache
+import asyncio
+cache = GenericRedisCache.create_secure()
+print('✅ Certificate renewal successful')
+"
+```
+
+**Automated Monitoring:**
+```bash
+# Add to cron for certificate expiration monitoring
+cat > /etc/cron.daily/check-redis-certs << 'EOF'
+#!/bin/bash
+CERT_FILE="./certs/redis.crt"
+DAYS_WARNING=30
+
+CERT_EXPIRY=$(openssl x509 -in "$CERT_FILE" -noout -enddate | cut -d= -f2)
+DAYS_LEFT=$(( ( $(date -d "$CERT_EXPIRY" +%s) - $(date +%s) ) / 86400 ))
+
+if [ $DAYS_LEFT -lt $DAYS_WARNING ]; then
+    echo "⚠️  WARNING: Redis certificate expires in $DAYS_LEFT days"
+    # Send alert to monitoring system
+fi
+EOF
+chmod +x /etc/cron.daily/check-redis-certs
+```
+
+## Authentication Failure Debugging
+
+### Password Authentication Issues
+
+#### Error: `NOAUTH Authentication required` or `Invalid password`
+
+**Symptoms:**
+- Redis rejects connection attempts with authentication errors
+- `NOAUTH Authentication required` in application logs
+- `ERR invalid password` when connecting to Redis
+
+**Diagnostic Commands:**
+```bash
+# Check if Redis requires authentication
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG GET requirepass
+# Expected: requirepass set to password
+
+# Test authentication with password
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  -a "$REDIS_PASSWORD" \
+  ping
+# Expected: PONG
+
+# Verify password in environment
+echo "Redis password set: ${REDIS_PASSWORD:+YES}"
+```
+
+**Root Cause Analysis:**
+```bash
+# Check password in .env file
+grep REDIS_PASSWORD .env.secure
+
+# Verify password matches Redis configuration
+CONFIGURED_PASSWORD=$(docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG GET requirepass | tail -1)
+echo "Configured password: ${CONFIGURED_PASSWORD}"
+echo "Environment password: ${REDIS_PASSWORD}"
+```
+
+**Resolution Steps:**
+
+1. **Reset Redis password:**
+```bash
+# Generate new secure password
+NEW_PASSWORD=$(openssl rand -base64 32)
+
+# Update Redis configuration
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG SET requirepass "$NEW_PASSWORD"
+
+# Update environment variable
+echo "REDIS_PASSWORD=$NEW_PASSWORD" >> .env.secure
+export REDIS_PASSWORD="$NEW_PASSWORD"
+```
+
+2. **Update application configuration:**
+```bash
+# Update Redis URL with password
+export REDIS_URL="rediss://:${REDIS_PASSWORD}@localhost:6380"
+
+# Or set password separately
+export REDIS_PASSWORD="${NEW_PASSWORD}"
+```
+
+3. **Verify authentication works:**
+```bash
+# Test connection with new password
+python -c "
+import os
+from app.infrastructure.cache.redis_generic import GenericRedisCache
+cache = GenericRedisCache.create_secure()
+print('✅ Authentication successful')
+"
+```
+
+### Password Complexity Issues
+
+#### Issue: Weak password or special character problems
+
+**Diagnostic:**
+```bash
+# Check password strength
+PASSWORD_LENGTH=${#REDIS_PASSWORD}
+echo "Password length: $PASSWORD_LENGTH characters"
+
+# For production, require 48+ characters
+if [ $PASSWORD_LENGTH -lt 48 ]; then
+    echo "⚠️  WARNING: Production password should be 48+ characters"
+fi
+
+# For development, require 24+ characters
+if [ $PASSWORD_LENGTH -lt 24 ]; then
+    echo "⚠️  WARNING: Development password should be 24+ characters"
+fi
+```
+
+**Resolution:**
+```bash
+# Generate production-grade password (48 characters)
+PROD_PASSWORD=$(openssl rand -base64 36 | tr -d '\n')
+echo "Production password: $PROD_PASSWORD"
+
+# Generate development password (24 characters)
+DEV_PASSWORD=$(openssl rand -base64 18 | tr -d '\n')
+echo "Development password: $DEV_PASSWORD"
+
+# Update Redis with new password
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  CONFIG SET requirepass "$PROD_PASSWORD"
+```
+
+## Encryption Key Problems
+
+### Invalid Encryption Key Errors
+
+#### Error: `Invalid encryption key` or `Decryption failed`
+
+**Symptoms:**
+- Application fails to start with encryption key errors
+- `cryptography.fernet.InvalidToken` exceptions
+- Cached data cannot be decrypted
+- `ConfigurationError: Invalid encryption key format`
+
+**Diagnostic Commands:**
+```bash
+# Check if encryption key is set
+echo "Encryption key set: ${REDIS_ENCRYPTION_KEY:+YES}"
+
+# Validate Fernet key format
+python -c "
+from cryptography.fernet import Fernet
+import os
+import sys
+
+key = os.getenv('REDIS_ENCRYPTION_KEY', '')
+if not key:
+    print('❌ REDIS_ENCRYPTION_KEY not set')
+    sys.exit(1)
+
+try:
+    Fernet(key.encode())
+    print('✅ Valid Fernet encryption key')
+except Exception as e:
+    print(f'❌ Invalid Fernet key: {e}')
+    sys.exit(1)
+"
+
+# Check key length (should be 44 characters for base64-encoded 32 bytes)
+KEY_LENGTH=${#REDIS_ENCRYPTION_KEY}
+echo "Encryption key length: $KEY_LENGTH characters"
+if [ $KEY_LENGTH -ne 44 ]; then
+    echo "⚠️  WARNING: Fernet key should be 44 characters (base64-encoded 32 bytes)"
+fi
+```
+
+**Root Cause Analysis:**
+```bash
+# Common issues with encryption keys:
+# 1. Key contains whitespace or newlines
+# 2. Key is not base64-encoded
+# 3. Key is truncated or corrupted
+# 4. Wrong key type (not Fernet format)
+
+# Check for whitespace
+echo "$REDIS_ENCRYPTION_KEY" | od -c | head -5
+
+# Verify base64 encoding
+echo "$REDIS_ENCRYPTION_KEY" | base64 -d >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+    echo "✅ Valid base64 encoding"
+else
+    echo "❌ Invalid base64 encoding"
+fi
+```
+
+**Resolution Steps:**
+
+1. **Generate new Fernet encryption key:**
+```bash
+# Generate new key using Python
+NEW_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+
+# Or use the provided script
+NEW_KEY=$(python scripts/generate-encryption-key.py)
+
+echo "New encryption key: $NEW_KEY"
+```
+
+2. **Update environment configuration:**
+```bash
+# Update .env.secure file
+sed -i.bak "s/REDIS_ENCRYPTION_KEY=.*/REDIS_ENCRYPTION_KEY=$NEW_KEY/" .env.secure
+
+# Export for current session
+export REDIS_ENCRYPTION_KEY="$NEW_KEY"
+
+# Verify key is valid
+python -c "
+from cryptography.fernet import Fernet
+key = '$NEW_KEY'
+Fernet(key.encode())
+print('✅ Encryption key configured successfully')
+"
+```
+
+3. **Clear existing cached data (if key changed):**
+```bash
+# WARNING: This will clear all cached data
+docker exec redis_secure redis-cli --tls \
+  --cert /tls/redis.crt \
+  --key /tls/redis.key \
+  --cacert /tls/ca.crt \
+  -a "$REDIS_PASSWORD" \
+  FLUSHDB
+
+echo "⚠️  Cache cleared due to encryption key change"
+echo "   Application will re-cache data with new encryption key"
+```
+
+### Encryption Key Rotation Issues
+
+#### Issue: Need to rotate encryption keys without data loss
+
+**Key Rotation Procedure:**
+```bash
+# Step 1: Generate new encryption key
+NEW_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+echo "New encryption key generated: $NEW_KEY"
+
+# Step 2: Export all cached keys (before rotation)
+python scripts/export-cache-keys.py \
+  --output cache-backup-$(date +%Y%m%d_%H%M%S).json
+
+# Step 3: Decrypt all data with old key (if needed)
+python scripts/rotate-encryption-key.py \
+  --old-key "$REDIS_ENCRYPTION_KEY" \
+  --new-key "$NEW_KEY" \
+  --dry-run
+
+# Step 4: Perform actual rotation
+python scripts/rotate-encryption-key.py \
+  --old-key "$REDIS_ENCRYPTION_KEY" \
+  --new-key "$NEW_KEY"
+
+# Step 5: Update environment with new key
+export REDIS_ENCRYPTION_KEY="$NEW_KEY"
+sed -i "s/REDIS_ENCRYPTION_KEY=.*/REDIS_ENCRYPTION_KEY=$NEW_KEY/" .env.secure
+
+# Step 6: Restart application
+docker-compose restart backend
+```
+
+**Verification:**
+```bash
+# Test that cached data is accessible with new key
+python -c "
+from app.infrastructure.cache.redis_generic import GenericRedisCache
+import asyncio
+
+async def test_encryption():
+    cache = GenericRedisCache.create_secure()
+
+    # Test set and get with new encryption
+    await cache.set('test_key', {'test': 'data'})
+    result = await cache.get('test_key')
+
+    if result and result.get('test') == 'data':
+        print('✅ Encryption key rotation successful')
+    else:
+        print('❌ Encryption key rotation failed')
+
+asyncio.run(test_encryption())
+"
+```
+
+## Production Security Validation Failures
+
+### Security Enforcement Errors
+
+#### Error: `SECURITY ERROR: Production environment requires secure connection`
+
+**Symptoms:**
+- Application refuses to start in production
+- Security validation fails at startup
+- `Production environment requires secure Redis connection` errors
+
+**Diagnostic Commands:**
+```bash
+# Check current environment detection
+python -c "
+from app.core.environment import get_environment_info, FeatureContext
+env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
+print(f'Environment: {env_info.environment}')
+print(f'Is Production: {env_info.is_production}')
+print(f'Deployment Type: {env_info.deployment_type}')
+"
+
+# Verify Redis URL uses secure protocol
+echo "Redis URL: $REDIS_URL"
+if [[ $REDIS_URL == rediss://* ]]; then
+    echo "✅ Using secure Redis protocol (rediss://)"
+else
+    echo "❌ Insecure Redis protocol detected"
+fi
+
+# Check security environment variables
+env | grep -E "REDIS_(URL|TLS|PASSWORD|ENCRYPTION_KEY|INSECURE)" | sort
+```
+
+**Resolution Steps:**
+
+1. **Fix Redis URL to use secure protocol:**
+```bash
+# Change from insecure to secure
+# Before: redis://production-redis:6379
+# After:  rediss://production-redis:6380
+
+export REDIS_URL="rediss://production-redis:6380"
+```
+
+2. **Enable TLS explicitly:**
+```bash
+export REDIS_TLS_ENABLED=true
+export REDIS_TLS_CERT_REQS=required
+export REDIS_TLS_CA_CERT=/etc/ssl/certs/redis-ca.crt
+export REDIS_TLS_PROTOCOLS="TLSv1.3"
+```
+
+3. **Set required authentication:**
+```bash
+export REDIS_PASSWORD="${SECURE_PASSWORD}"
+export REDIS_ENCRYPTION_KEY="${GENERATED_KEY}"
+```
+
+4. **Validate security configuration:**
+```bash
+# Run security validation check
+python -c "
+from app.core.startup.redis_security import RedisSecurityValidator
+
+validator = RedisSecurityValidator()
+redis_url = 'rediss://production-redis:6380'
+insecure_override = False
+
+try:
+    validator.validate_production_security(redis_url, insecure_override)
+    print('✅ Security validation passed')
+except Exception as e:
+    print(f'❌ Security validation failed: {e}')
+"
+```
+
+### Security Override Warnings
+
+#### Issue: Application running with insecure override in production
+
+**Detection:**
+```bash
+# Check for insecure override
+if [ "$REDIS_INSECURE_ALLOW_PLAINTEXT" = "true" ]; then
+    echo "🚨 WARNING: Running with REDIS_INSECURE_ALLOW_PLAINTEXT=true"
+    echo "   This is NOT recommended for production"
+fi
+
+# Check application logs for security warnings
+docker logs backend_container 2>&1 | grep -i "security warning\|insecure"
+```
+
+**Resolution:**
+
+**Remove insecure override and implement proper security:**
+```bash
+# Step 1: Unset insecure override
+unset REDIS_INSECURE_ALLOW_PLAINTEXT
+
+# Step 2: Implement proper TLS configuration
+export REDIS_URL="rediss://production-redis:6380"
+export REDIS_TLS_ENABLED=true
+export REDIS_PASSWORD="${SECURE_PASSWORD}"
+
+# Step 3: Generate and configure TLS certificates
+./scripts/init-redis-tls.sh
+
+# Step 4: Update Redis to use TLS
+docker-compose -f docker-compose.secure.yml up -d redis
+
+# Step 5: Restart application without override
+docker-compose restart backend
+
+# Step 6: Verify secure operation
+docker logs backend_container 2>&1 | grep -i "secure redis"
+# Expected: "✅ Secure Redis cache initialized: TLS + Encryption + Auth"
+```
+
+### Security Configuration Checklist
+
+**Use this checklist to validate production security:**
+
+```bash
+# Run comprehensive security audit
+cat > /tmp/redis-security-audit.sh << 'EOF'
+#!/bin/bash
+
+echo "=== Redis Security Audit ==="
+echo
+
+# 1. Check Redis URL protocol
+echo "1. Redis URL Protocol:"
+if [[ $REDIS_URL == rediss://* ]]; then
+    echo "   ✅ Using secure protocol (rediss://)"
+else
+    echo "   ❌ FAIL: Not using secure protocol"
+fi
+
+# 2. Check TLS enabled
+echo "2. TLS Configuration:"
+if [ "$REDIS_TLS_ENABLED" = "true" ]; then
+    echo "   ✅ TLS enabled"
+else
+    echo "   ❌ FAIL: TLS not enabled"
+fi
+
+# 3. Check password strength
+echo "3. Password Configuration:"
+if [ -n "$REDIS_PASSWORD" ]; then
+    LENGTH=${#REDIS_PASSWORD}
+    if [ $LENGTH -ge 48 ]; then
+        echo "   ✅ Strong password ($LENGTH chars)"
+    elif [ $LENGTH -ge 32 ]; then
+        echo "   ⚠️  Adequate password ($LENGTH chars)"
+    else
+        echo "   ❌ FAIL: Weak password ($LENGTH chars, need 48+)"
+    fi
+else
+    echo "   ❌ FAIL: No password set"
+fi
+
+# 4. Check encryption key
+echo "4. Encryption Key:"
+if [ -n "$REDIS_ENCRYPTION_KEY" ]; then
+    KEY_LENGTH=${#REDIS_ENCRYPTION_KEY}
+    if [ $KEY_LENGTH -eq 44 ]; then
+        echo "   ✅ Valid Fernet key"
+    else
+        echo "   ❌ FAIL: Invalid key length ($KEY_LENGTH, need 44)"
+    fi
+else
+    echo "   ❌ FAIL: No encryption key set"
+fi
+
+# 5. Check certificate validation
+echo "5. Certificate Validation:"
+if [ "$REDIS_TLS_CERT_REQS" = "required" ]; then
+    echo "   ✅ Strict validation enabled"
+elif [ "$REDIS_TLS_CERT_REQS" = "optional" ]; then
+    echo "   ⚠️  Optional validation (OK for development)"
+else
+    echo "   ❌ FAIL: No certificate validation configured"
+fi
+
+# 6. Check for insecure override
+echo "6. Insecure Override:"
+if [ "$REDIS_INSECURE_ALLOW_PLAINTEXT" = "true" ]; then
+    echo "   ❌ FAIL: Insecure override enabled"
+else
+    echo "   ✅ No insecure override"
+fi
+
+# 7. Check TLS version
+echo "7. TLS Protocol Version:"
+if [[ "$REDIS_TLS_PROTOCOLS" == *"TLSv1.3"* ]]; then
+    echo "   ✅ TLS 1.3 supported"
+else
+    echo "   ⚠️  TLS 1.3 not configured"
+fi
+
+echo
+echo "=== Audit Complete ==="
+EOF
+
+chmod +x /tmp/redis-security-audit.sh
+/tmp/redis-security-audit.sh
+```
+
+**📖 For comprehensive security guidance, see [Redis Cache Security Guide](./security.md).**
+
 ## Related Documentation
 
 ### ❗️ Prerequisites
@@ -1072,6 +1877,7 @@ curl -X POST "http://localhost:8000/internal/cache/analysis/post-incident" \
 ### 🔗 Related Topics
 > Explore these related guides for additional context and complementary information.
 
+- **[Redis Cache Security Guide](./security.md)**: Comprehensive security implementation, TLS, encryption, and authentication
 - **[Cache Testing Guide](./testing.md)**: Unit and integration tests
 - **[Cache API Reference](./api-reference.md)**: Detailed API endpoints for diagnostics and management
 - **[Monitoring Infrastructure](../MONITORING.md)**: Comprehensive monitoring that includes cache performance analytics

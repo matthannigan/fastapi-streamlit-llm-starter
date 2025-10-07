@@ -246,7 +246,7 @@ class CacheKeyGenerator:
         cache_components = [f"op:{operation}", f"txt:{text_identifier}"]
 
         # Extract question from options if present (for Q&A operations)
-        question = options.get('question') if options else None
+        question = options.get("question") if options else None
 
         # Add options efficiently
         if options:

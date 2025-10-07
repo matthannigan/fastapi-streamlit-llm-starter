@@ -136,13 +136,13 @@ class CacheInterface(ABC):
     async def exists(self, key: str) -> bool:
         """
         Check if a key exists in cache without retrieving the value.
-        
+
         Args:
             key: Cache key string to check for existence.
-            
+
         Returns:
             True if key exists and is not expired, False otherwise.
-            
+
         Behavior:
             - Does not affect cache access patterns or LRU ordering
             - Respects TTL expiration rules per implementation

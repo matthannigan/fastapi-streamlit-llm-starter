@@ -47,7 +47,7 @@ Comprehensive configuration dataclass for AI cache settings with:
 - `compression_threshold`: Size threshold for automatic compression (0-1MB)
 - `compression_level`: Zlib compression level for bandwidth optimization (1-9)
 - `performance_monitor`: CachePerformanceMonitor instance for metrics collection
-- `security_config`: Optional security configuration for encrypted connections
+- `security_config`: DEPRECATED - Security is now automatic via GenericRedisCache inheritance
 
 ### AI-Specific Parameters (Unique to AI Response Caching)
 - `text_hash_threshold`: Character threshold for text hashing optimization (1-100000)
@@ -268,7 +268,7 @@ class AIResponseCacheConfig:
         hash_algorithm: str hash algorithm for text processing (default: 'sha256')
         operation_ttls: Dict[str, int] operation-specific TTL overrides
         performance_monitor: Optional cache performance monitor instance
-        security_config: Optional security configuration for encrypted connections
+        security_config: DEPRECATED - Security is now automatic via GenericRedisCache inheritance
 
     Public Methods:
         validate(): Comprehensive validation with detailed error reporting
@@ -357,7 +357,9 @@ class AIResponseCacheConfig:
     compression_threshold: int = 1000  # 1KB threshold
     compression_level: int = 6  # Balanced compression
     performance_monitor: Optional[CachePerformanceMonitor] = None
-    security_config: Optional[Any] = None  # SecurityConfig type - optional import
+    security_config: Optional[
+        Any
+    ] = None  # DEPRECATED - Security now automatic in GenericRedisCache
 
     # AI-Specific Parameters
     text_hash_threshold: int = 1000  # 1000 chars before hashing
@@ -375,12 +377,14 @@ class AIResponseCacheConfig:
     def _get_hash_algorithm_func(self) -> Callable:
         """Get the hash algorithm function from string or return callable directly."""
         if isinstance(self.hash_algorithm, str):
-            if self.hash_algorithm == 'sha256':
+            if self.hash_algorithm == "sha256":
                 return hashlib.sha256
-            elif self.hash_algorithm == 'md5':
+            elif self.hash_algorithm == "md5":
                 return hashlib.md5
             else:
-                raise ConfigurationError(f"Unsupported hash algorithm: {self.hash_algorithm}")
+                raise ConfigurationError(
+                    f"Unsupported hash algorithm: {self.hash_algorithm}"
+                )
         return self.hash_algorithm
 
     def __post_init__(self):
@@ -402,7 +406,7 @@ class AIResponseCacheConfig:
             # Set up default text size tiers if not provided
             if self.text_size_tiers is None:
                 self.text_size_tiers = {
-                    "small": 500,    # < 500 chars - memory cache friendly
+                    "small": 500,  # < 500 chars - memory cache friendly
                     "medium": 5000,  # 500-5000 chars - standard caching
                     "large": 50000,  # 5000-50000 chars - with compression
                 }
@@ -412,33 +416,43 @@ class AIResponseCacheConfig:
             self._operation_ttls_was_none = self.operation_ttls is None
             if self.operation_ttls is None:
                 self.operation_ttls = {
-                    "summarize": 7200,   # 2 hours - summaries are stable
+                    "summarize": 7200,  # 2 hours - summaries are stable
                     "sentiment": 86400,  # 24 hours - sentiment rarely changes
                     "key_points": 7200,  # 2 hours - key points are stable
-                    "questions": 3600,   # 1 hour - questions can vary
-                    "qa": 1800,          # 30 minutes - context-dependent
+                    "questions": 3600,  # 1 hour - questions can vary
+                    "qa": 1800,  # 30 minutes - context-dependent
                 }
                 logger.debug("Applied default operation_ttls")
 
             # Auto-enable L1 cache only for direct initialization (not from environment)
             # Skip auto-enablement if this came from environment variables
-            is_from_env = getattr(self, '_from_env_load', False)
+            is_from_env = getattr(self, "_from_env_load", False)
 
             should_auto_enable = (
-                not is_from_env and  # Don't auto-enable for environment variables
-                self.memory_cache_size > 0 and
-                not self.enable_l1_cache and
-                self.redis_url == "redis://redis:6379" and  # Default redis URL
-                self.text_hash_threshold == 1000 and  # Default text hash threshold
+                not is_from_env
+                and self.memory_cache_size  # Don't auto-enable for environment variables
+                > 0
+                and not self.enable_l1_cache
+                and self.redis_url == "redis://redis:6379"
+                and self.text_hash_threshold == 1000  # Default redis URL
+                and  # Default text hash threshold
                 # Check if this is the specific test case scenario (only memory_cache_size and enable_l1_cache set)
-                self.text_size_tiers == {"small": 500, "medium": 5000, "large": 50000} and  # Default tiers
-                self.operation_ttls == {"summarize": 7200, "sentiment": 86400, "key_points": 7200,
-                                        "questions": 3600, "qa": 1800}  # Default TTLs
+                self.text_size_tiers == {"small": 500, "medium": 5000, "large": 50000}
+                and self.operation_ttls  # Default tiers
+                == {
+                    "summarize": 7200,
+                    "sentiment": 86400,
+                    "key_points": 7200,
+                    "questions": 3600,
+                    "qa": 1800,
+                }  # Default TTLs
             )
 
             if should_auto_enable:
                 self.enable_l1_cache = True
-                logger.debug("Auto-enabled L1 cache due to memory_cache_size > 0 in minimal configuration")
+                logger.debug(
+                    "Auto-enabled L1 cache due to memory_cache_size > 0 in minimal configuration"
+                )
 
             # Create default performance monitor if not provided
             if self.performance_monitor is None:
@@ -452,10 +466,7 @@ class AIResponseCacheConfig:
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
                 error_msg,
-                context={
-                    'config_stage': 'post_init',
-                    'error_type': type(e).__name__
-                }
+                context={"config_stage": "post_init", "error_type": type(e).__name__},
             )
 
     def validate(self) -> ValidationResult:
@@ -488,65 +499,87 @@ class AIResponseCacheConfig:
 
         result = ValidationResult()
         result.context = {
-            'config_type': 'AIResponseCacheConfig',
-            'parameter_count': len(self.__dict__),
-            'validation_timestamp': logger.name,
+            "config_type": "AIResponseCacheConfig",
+            "parameter_count": len(self.__dict__),
+            "validation_timestamp": logger.name,
         }
 
         try:
             # Validate Redis URL format
-            if not self.redis_url.startswith(('redis://', 'rediss://', 'unix://')):
+            if not self.redis_url.startswith(("redis://", "rediss://", "unix://")):
                 result.add_error(
                     f"redis_url must start with redis://, rediss://, or unix://, got: {self.redis_url}"
                 )
 
             # Validate numeric parameters
             if self.default_ttl <= 0:
-                result.add_error(f"default_ttl must be positive, got {self.default_ttl}")
+                result.add_error(
+                    f"default_ttl must be positive, got {self.default_ttl}"
+                )
 
             if self.default_ttl > 86400 * 365:  # 1 year max
-                result.add_error(f"default_ttl too large (max 1 year), got {self.default_ttl}")
+                result.add_error(
+                    f"default_ttl too large (max 1 year), got {self.default_ttl}"
+                )
 
             if self.memory_cache_size < 0:
-                result.add_error(f"memory_cache_size must be non-negative, got {self.memory_cache_size}")
+                result.add_error(
+                    f"memory_cache_size must be non-negative, got {self.memory_cache_size}"
+                )
 
             if self.memory_cache_size > 10000:
-                result.add_error(f"memory_cache_size too large (max 10000), got {self.memory_cache_size}")
+                result.add_error(
+                    f"memory_cache_size too large (max 10000), got {self.memory_cache_size}"
+                )
 
             if self.compression_threshold < 0:
-                result.add_error(f"compression_threshold must be non-negative, got {self.compression_threshold}")
+                result.add_error(
+                    f"compression_threshold must be non-negative, got {self.compression_threshold}"
+                )
 
             if self.compression_threshold > 1024 * 1024:  # 1MB max
-                result.add_error(f"compression_threshold too large (max 1MB), got {self.compression_threshold}")
+                result.add_error(
+                    f"compression_threshold too large (max 1MB), got {self.compression_threshold}"
+                )
 
             if not 1 <= self.compression_level <= 9:
-                result.add_error(f"compression_level must be 1-9, got {self.compression_level}")
+                result.add_error(
+                    f"compression_level must be 1-9, got {self.compression_level}"
+                )
 
             if self.text_hash_threshold <= 0:
-                result.add_error(f"text_hash_threshold must be positive, got {self.text_hash_threshold}")
+                result.add_error(
+                    f"text_hash_threshold must be positive, got {self.text_hash_threshold}"
+                )
 
             if self.text_hash_threshold > 100000:
-                result.add_error(f"text_hash_threshold too large (max 100000), got {self.text_hash_threshold}")
+                result.add_error(
+                    f"text_hash_threshold too large (max 100000), got {self.text_hash_threshold}"
+                )
 
             # Validate text size tiers
             if self.text_size_tiers:
-                required_tiers = {'small', 'medium', 'large'}
+                required_tiers = {"small", "medium", "large"}
                 provided_tiers = set(self.text_size_tiers.keys())
                 missing_tiers = required_tiers - provided_tiers
 
                 if missing_tiers:
-                    result.add_error(f"text_size_tiers missing required tiers: {missing_tiers}")
+                    result.add_error(
+                        f"text_size_tiers missing required tiers: {missing_tiers}"
+                    )
 
                 # Validate tier values are positive
                 for tier_name, tier_value in self.text_size_tiers.items():
                     if not isinstance(tier_value, int) or tier_value <= 0:
-                        result.add_error(f"text_size_tiers['{tier_name}'] must be positive integer, got {tier_value}")
+                        result.add_error(
+                            f"text_size_tiers['{tier_name}'] must be positive integer, got {tier_value}"
+                        )
 
                 # Validate tier ordering
                 if all(tier in self.text_size_tiers for tier in required_tiers):
-                    small = self.text_size_tiers['small']
-                    medium = self.text_size_tiers['medium']
-                    large = self.text_size_tiers['large']
+                    small = self.text_size_tiers["small"]
+                    medium = self.text_size_tiers["medium"]
+                    large = self.text_size_tiers["large"]
 
                     if not (small < medium < large):
                         result.add_error(
@@ -556,10 +589,18 @@ class AIResponseCacheConfig:
 
             # Validate operation TTLs
             if self.operation_ttls:
-                valid_operations = {'summarize', 'sentiment', 'key_points', 'questions', 'qa'}
+                valid_operations = {
+                    "summarize",
+                    "sentiment",
+                    "key_points",
+                    "questions",
+                    "qa",
+                }
                 for operation, ttl in self.operation_ttls.items():
                     if not isinstance(ttl, int) or ttl <= 0:
-                        result.add_error(f"operation_ttls['{operation}'] must be positive integer, got {ttl}")
+                        result.add_error(
+                            f"operation_ttls['{operation}'] must be positive integer, got {ttl}"
+                        )
 
                     if ttl > 86400 * 365:  # 1 year max
                         result.add_warning(
@@ -576,15 +617,21 @@ class AIResponseCacheConfig:
 
             # Validate hash algorithm is callable or valid string
             if isinstance(self.hash_algorithm, str):
-                if self.hash_algorithm not in ['sha256', 'md5']:
-                    result.add_error(f"hash_algorithm must be callable or valid string ('sha256'/'md5'), got '{self.hash_algorithm}'")
+                if self.hash_algorithm not in ["sha256", "md5"]:
+                    result.add_error(
+                        f"hash_algorithm must be callable or valid string ('sha256'/'md5'), got '{self.hash_algorithm}'"
+                    )
             elif not callable(self.hash_algorithm):
-                result.add_error(f"hash_algorithm must be callable or valid string, got {type(self.hash_algorithm)}")
+                result.add_error(
+                    f"hash_algorithm must be callable or valid string, got {type(self.hash_algorithm)}"
+                )
 
             # Validate performance monitor
             if self.performance_monitor is not None:
-                if not hasattr(self.performance_monitor, 'record_cache_operation_time'):
-                    result.add_error("performance_monitor must have record_cache_operation_time method")
+                if not hasattr(self.performance_monitor, "record_cache_operation_time"):
+                    result.add_error(
+                        "performance_monitor must have record_cache_operation_time method"
+                    )
 
             # Validate consistency between enable_l1_cache and memory_cache_size
             if not self.enable_l1_cache and self.memory_cache_size > 0:
@@ -611,7 +658,7 @@ class AIResponseCacheConfig:
             error_msg = f"AIResponseCacheConfig validation failed with exception: {e}"
             logger.error(error_msg, exc_info=True)
             result.add_error(error_msg)
-            result.context['validation_exception'] = str(e)
+            result.context["validation_exception"] = str(e)
             return result
 
     def to_ai_cache_kwargs(self) -> Dict[str, Any]:
@@ -645,7 +692,9 @@ class AIResponseCacheConfig:
             # Also validate that field access returns expected types (defensive programming)
             redis_url = self.redis_url
             if isinstance(redis_url, property):
-                raise Exception("Field access returned property object instead of value")
+                raise Exception(
+                    "Field access returned property object instead of value"
+                )
 
             default_ttl = self.default_ttl
             compression_threshold = self.compression_threshold
@@ -659,27 +708,28 @@ class AIResponseCacheConfig:
 
             kwargs = {
                 # Legacy AIResponseCache compatible parameters
-                'redis_url': redis_url,
-                'default_ttl': default_ttl,
-                'compression_threshold': compression_threshold,
-                'compression_level': compression_level,
-                'performance_monitor': performance_monitor,
-
+                "redis_url": redis_url,
+                "default_ttl": default_ttl,
+                "compression_threshold": compression_threshold,
+                "compression_level": compression_level,
+                "performance_monitor": performance_monitor,
                 # AI-specific parameters
-                'text_hash_threshold': text_hash_threshold,
-                'hash_algorithm': hash_algorithm,
-                'text_size_tiers': text_size_tiers,
-                'memory_cache_size': memory_cache_size,
+                "text_hash_threshold": text_hash_threshold,
+                "hash_algorithm": hash_algorithm,
+                "text_size_tiers": text_size_tiers,
+                "memory_cache_size": memory_cache_size,
             }
 
             # Only include operation_ttls if it's not None (legacy compatibility)
             if operation_ttls is not None:
-                kwargs['operation_ttls'] = operation_ttls
+                kwargs["operation_ttls"] = operation_ttls
 
             # Remove None values to avoid validation issues
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
-            logger.debug(f"Generated {len(kwargs)} legacy-compatible cache kwargs from configuration")
+            logger.debug(
+                f"Generated {len(kwargs)} legacy-compatible cache kwargs from configuration"
+            )
             return kwargs
 
         except Exception as e:
@@ -688,9 +738,9 @@ class AIResponseCacheConfig:
             raise ConfigurationError(
                 error_msg,
                 context={
-                    'conversion_stage': 'to_ai_cache_kwargs',
-                    'error_type': type(e).__name__
-                }
+                    "conversion_stage": "to_ai_cache_kwargs",
+                    "error_type": type(e).__name__,
+                },
             )
 
     def to_generic_cache_kwargs(self) -> Dict[str, Any]:
@@ -724,38 +774,45 @@ class AIResponseCacheConfig:
 
             kwargs = {
                 # Generic Redis parameters for new architecture
-                'redis_url': redis_url,
-                'default_ttl': default_ttl,
-                'enable_l1_cache': enable_l1_cache,
-                'l1_cache_size': l1_cache_size,
-                'compression_threshold': compression_threshold,
-                'compression_level': compression_level,
-                'performance_monitor': performance_monitor,
+                "redis_url": redis_url,
+                "default_ttl": default_ttl,
+                "enable_l1_cache": enable_l1_cache,
+                "l1_cache_size": l1_cache_size,
+                "compression_threshold": compression_threshold,
+                "compression_level": compression_level,
+                "performance_monitor": performance_monitor,
             }
 
-            # Only include security_config if not None
+            # DEPRECATED: security_config is no longer used - security is automatic
             if security_config is not None:
-                kwargs['security_config'] = security_config
+                logger.warning(
+                    "security_config parameter is deprecated. Security features are now "
+                    "automatically enabled in GenericRedisCache. This parameter will be ignored."
+                )
 
             # Remove None values to avoid validation issues
             kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
-            logger.debug(f"Generated {len(kwargs)} generic cache kwargs from configuration")
+            logger.debug(
+                f"Generated {len(kwargs)} generic cache kwargs from configuration"
+            )
             return kwargs
 
         except Exception as e:
-            error_msg = f"Failed to convert AIResponseCacheConfig to generic cache kwargs: {e}"
+            error_msg = (
+                f"Failed to convert AIResponseCacheConfig to generic cache kwargs: {e}"
+            )
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
                 error_msg,
                 context={
-                    'conversion_stage': 'to_generic_cache_kwargs',
-                    'error_type': type(e).__name__
-                }
+                    "conversion_stage": "to_generic_cache_kwargs",
+                    "error_type": type(e).__name__,
+                },
             )
 
     @classmethod
-    def create_default(cls) -> 'AIResponseCacheConfig':
+    def create_default(cls) -> "AIResponseCacheConfig":
         """
         Create a default configuration suitable for development and testing.
 
@@ -770,7 +827,7 @@ class AIResponseCacheConfig:
         return cls()
 
     @classmethod
-    def create_production(cls, redis_url: str) -> 'AIResponseCacheConfig':
+    def create_production(cls, redis_url: str) -> "AIResponseCacheConfig":
         """
         Create a production-optimized configuration.
 
@@ -795,7 +852,7 @@ class AIResponseCacheConfig:
         )
 
     @classmethod
-    def create_development(cls) -> 'AIResponseCacheConfig':
+    def create_development(cls) -> "AIResponseCacheConfig":
         """
         Create a development-friendly configuration.
 
@@ -817,7 +874,7 @@ class AIResponseCacheConfig:
         )
 
     @classmethod
-    def create_testing(cls) -> 'AIResponseCacheConfig':
+    def create_testing(cls) -> "AIResponseCacheConfig":
         """
         Create a testing-optimized configuration.
 
@@ -842,11 +899,13 @@ class AIResponseCacheConfig:
                 "key_points": 300,
                 "questions": 300,
                 "qa": 300,
-            }
+            },
         )
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any], convert_hash_algorithm: bool = True) -> 'AIResponseCacheConfig':
+    def from_dict(
+        cls, config_dict: Dict[str, Any], convert_hash_algorithm: bool = True
+    ) -> "AIResponseCacheConfig":
         """
         Create configuration from a dictionary.
 
@@ -867,38 +926,49 @@ class AIResponseCacheConfig:
             ... }
             >>> config = AIResponseCacheConfig.from_dict(config_data)
         """
-        logger.debug(f"Creating AIResponseCacheConfig from dictionary with {len(config_dict)} parameters")
+        logger.debug(
+            f"Creating AIResponseCacheConfig from dictionary with {len(config_dict)} parameters"
+        )
 
         try:
             # Handle special fields that need conversion
             processed_dict = config_dict.copy()
 
             # Handle hash algorithm conversion based on convert_hash_algorithm flag
-            if 'hash_algorithm' in processed_dict:
-                hash_algo = processed_dict['hash_algorithm']
+            if "hash_algorithm" in processed_dict:
+                hash_algo = processed_dict["hash_algorithm"]
                 if isinstance(hash_algo, str):
-                    if hash_algo not in ['sha256', 'md5']:
-                        raise ConfigurationError(f"Unsupported hash algorithm: {hash_algo}")
+                    if hash_algo not in ["sha256", "md5"]:
+                        raise ConfigurationError(
+                            f"Unsupported hash algorithm: {hash_algo}"
+                        )
 
                     if convert_hash_algorithm:
                         # Convert string to function for from_dict calls
-                        if hash_algo == 'sha256':
-                            processed_dict['hash_algorithm'] = hashlib.sha256
-                        elif hash_algo == 'md5':
-                            processed_dict['hash_algorithm'] = hashlib.md5
+                        if hash_algo == "sha256":
+                            processed_dict["hash_algorithm"] = hashlib.sha256
+                        elif hash_algo == "md5":
+                            processed_dict["hash_algorithm"] = hashlib.md5
                     # else: keep as string for environment variable compatibility
 
             # Create performance monitor if needed
-            if 'performance_monitor' in processed_dict and processed_dict['performance_monitor'] is True:
-                processed_dict['performance_monitor'] = CachePerformanceMonitor()
+            if (
+                "performance_monitor" in processed_dict
+                and processed_dict["performance_monitor"] is True
+            ):
+                processed_dict["performance_monitor"] = CachePerformanceMonitor()
 
             # Filter out unknown parameters
             valid_fields = {field.name for field in cls.__dataclass_fields__.values()}
-            filtered_dict = {k: v for k, v in processed_dict.items() if k in valid_fields}
+            filtered_dict = {
+                k: v for k, v in processed_dict.items() if k in valid_fields
+            }
 
             unknown_params = set(processed_dict.keys()) - valid_fields
             if unknown_params:
-                logger.warning(f"Ignoring unknown configuration parameters: {unknown_params}")
+                logger.warning(
+                    f"Ignoring unknown configuration parameters: {unknown_params}"
+                )
 
             config = cls(**filtered_dict)
             logger.info("Successfully created AIResponseCacheConfig from dictionary")
@@ -910,13 +980,13 @@ class AIResponseCacheConfig:
             raise ConfigurationError(
                 error_msg,
                 context={
-                    'config_dict_keys': list(config_dict.keys()),
-                    'error_type': type(e).__name__
-                }
+                    "config_dict_keys": list(config_dict.keys()),
+                    "error_type": type(e).__name__,
+                },
             )
 
     @classmethod
-    def from_env(cls, prefix: str = "AI_CACHE_") -> 'AIResponseCacheConfig':
+    def from_env(cls, prefix: str = "AI_CACHE_") -> "AIResponseCacheConfig":
         """
         Create configuration from environment variables.
 
@@ -941,21 +1011,23 @@ class AIResponseCacheConfig:
             >>> from app.core.config import settings
             >>> config = settings.get_cache_config()  # Use preset system instead
         """
-        logger.debug(f"Creating AIResponseCacheConfig from environment with prefix '{prefix}'")
+        logger.debug(
+            f"Creating AIResponseCacheConfig from environment with prefix '{prefix}'"
+        )
 
         try:
             env_config = {}
 
             # Define environment variable mappings
             env_mappings = {
-                f"{prefix}REDIS_URL": ('redis_url', str),
-                f"{prefix}DEFAULT_TTL": ('default_ttl', int),
-                f"{prefix}MEMORY_CACHE_SIZE": ('memory_cache_size', int),
-                f"{prefix}TEXT_HASH_THRESHOLD": ('text_hash_threshold', int),
-                f"{prefix}COMPRESSION_THRESHOLD": ('compression_threshold', int),
-                f"{prefix}COMPRESSION_LEVEL": ('compression_level', int),
-                f"{prefix}ENABLE_L1_CACHE": ('enable_l1_cache', bool),
-                f"{prefix}HASH_ALGORITHM": ('hash_algorithm', str),
+                f"{prefix}REDIS_URL": ("redis_url", str),
+                f"{prefix}DEFAULT_TTL": ("default_ttl", int),
+                f"{prefix}MEMORY_CACHE_SIZE": ("memory_cache_size", int),
+                f"{prefix}TEXT_HASH_THRESHOLD": ("text_hash_threshold", int),
+                f"{prefix}COMPRESSION_THRESHOLD": ("compression_threshold", int),
+                f"{prefix}COMPRESSION_LEVEL": ("compression_level", int),
+                f"{prefix}ENABLE_L1_CACHE": ("enable_l1_cache", bool),
+                f"{prefix}HASH_ALGORITHM": ("hash_algorithm", str),
             }
 
             # Process environment variables
@@ -964,42 +1036,60 @@ class AIResponseCacheConfig:
                 if env_value is not None:
                     try:
                         if value_type == bool:
-                            env_config[config_key] = env_value.lower() in ('true', '1', 'yes', 'on')
+                            env_config[config_key] = env_value.lower() in (
+                                "true",
+                                "1",
+                                "yes",
+                                "on",
+                            )
                         elif value_type == int:
                             env_config[config_key] = int(env_value)
                         else:
                             env_config[config_key] = env_value
                     except ValueError as e:
-                        logger.warning(f"Invalid value for {env_key}: {env_value}, error: {e}")
+                        logger.warning(
+                            f"Invalid value for {env_key}: {env_value}, error: {e}"
+                        )
 
             # Handle complex JSON fields
             text_size_tiers_env = os.getenv(f"{prefix}TEXT_SIZE_TIERS")
             if text_size_tiers_env:
                 try:
-                    env_config['text_size_tiers'] = json.loads(text_size_tiers_env)
+                    env_config["text_size_tiers"] = json.loads(text_size_tiers_env)
                 except json.JSONDecodeError as e:
                     logger.warning(f"Invalid JSON for {prefix}TEXT_SIZE_TIERS: {e}")
 
             operation_ttls_env = os.getenv(f"{prefix}OPERATION_TTLS")
             if operation_ttls_env:
                 try:
-                    env_config['operation_ttls'] = json.loads(operation_ttls_env)
+                    env_config["operation_ttls"] = json.loads(operation_ttls_env)
                 except json.JSONDecodeError as e:
                     logger.warning(f"Invalid JSON for {prefix}OPERATION_TTLS: {e}")
 
             # Create configuration with environment overrides
             if env_config:
-                env_config['_from_env_load'] = True  # Mark as environment load before creation
+                env_config[
+                    "_from_env_load"
+                ] = True  # Mark as environment load before creation
                 # If L1 cache is explicitly disabled and memory_cache_size is not provided,
                 # set memory_cache_size to 0 to avoid validation inconsistency
-                if env_config.get('enable_l1_cache') is False and 'memory_cache_size' not in env_config:
-                    env_config['memory_cache_size'] = 0
+                if (
+                    env_config.get("enable_l1_cache") is False
+                    and "memory_cache_size" not in env_config
+                ):
+                    env_config["memory_cache_size"] = 0
                 config = cls.from_dict(env_config, convert_hash_algorithm=False)
-                logger.info(f"Created AIResponseCacheConfig from {len(env_config)} environment variables")
+                logger.info(
+                    f"Created AIResponseCacheConfig from {len(env_config)} environment variables"
+                )
             else:
-                empty_config = {'_from_env_load': True}  # Mark as environment load before creation
+                empty_config = {
+                    "_from_env_load": True
+                }  # Mark as environment load before creation
                 config = cls.from_dict(empty_config, convert_hash_algorithm=False)
-                logger.info("No environment variables found, using default configuration")
+                logger.info(
+                    "No environment variables found, using default configuration"
+                )
 
             return config
 
@@ -1007,15 +1097,11 @@ class AIResponseCacheConfig:
             error_msg = f"Failed to create AIResponseCacheConfig from environment: {e}"
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
-                error_msg,
-                context={
-                    'prefix': prefix,
-                    'error_type': type(e).__name__
-                }
+                error_msg, context={"prefix": prefix, "error_type": type(e).__name__}
             )
 
     @classmethod
-    def from_yaml(cls, yaml_path: str) -> 'AIResponseCacheConfig':
+    def from_yaml(cls, yaml_path: str) -> "AIResponseCacheConfig":
         """
         Create configuration from YAML file.
 
@@ -1040,14 +1126,18 @@ class AIResponseCacheConfig:
         logger.debug(f"Creating AIResponseCacheConfig from YAML file: {yaml_path}")
 
         try:
-            with open(yaml_path, 'r') as file:
+            with open(yaml_path, "r") as file:
                 yaml_data = yaml.safe_load(file)
 
             if not isinstance(yaml_data, dict):
-                raise ConfigurationError(f"YAML file must contain a dictionary, got {type(yaml_data)}")
+                raise ConfigurationError(
+                    f"YAML file must contain a dictionary, got {type(yaml_data)}"
+                )
 
             config = cls.from_dict(yaml_data)
-            logger.info(f"Successfully loaded AIResponseCacheConfig from YAML: {yaml_path}")
+            logger.info(
+                f"Successfully loaded AIResponseCacheConfig from YAML: {yaml_path}"
+            )
             return config
 
         except FileNotFoundError:
@@ -1063,11 +1153,11 @@ class AIResponseCacheConfig:
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
                 error_msg,
-                context={'yaml_path': yaml_path, 'error_type': type(e).__name__}
+                context={"yaml_path": yaml_path, "error_type": type(e).__name__},
             )
 
     @classmethod
-    def from_json(cls, json_path: str) -> 'AIResponseCacheConfig':
+    def from_json(cls, json_path: str) -> "AIResponseCacheConfig":
         """
         Create configuration from JSON file.
 
@@ -1083,11 +1173,13 @@ class AIResponseCacheConfig:
         logger.debug(f"Creating AIResponseCacheConfig from JSON file: {json_path}")
 
         try:
-            with open(json_path, 'r') as file:
+            with open(json_path, "r") as file:
                 json_data = json.load(file)
 
             config = cls.from_dict(json_data)
-            logger.info(f"Successfully loaded AIResponseCacheConfig from JSON: {json_path}")
+            logger.info(
+                f"Successfully loaded AIResponseCacheConfig from JSON: {json_path}"
+            )
             return config
 
         except FileNotFoundError:
@@ -1103,10 +1195,10 @@ class AIResponseCacheConfig:
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
                 error_msg,
-                context={'json_path': json_path, 'error_type': type(e).__name__}
+                context={"json_path": json_path, "error_type": type(e).__name__},
             )
 
-    def merge_with(self, **overrides) -> 'AIResponseCacheConfig':
+    def merge_with(self, **overrides) -> "AIResponseCacheConfig":
         """
         Merge this configuration with explicit override values.
 
@@ -1127,7 +1219,9 @@ class AIResponseCacheConfig:
             ...     default_ttl=3600
             ... )
         """
-        logger.debug(f"Merging AIResponseCacheConfig with {len(overrides)} explicit overrides")
+        logger.debug(
+            f"Merging AIResponseCacheConfig with {len(overrides)} explicit overrides"
+        )
 
         try:
             # Get base as dict
@@ -1138,22 +1232,31 @@ class AIResponseCacheConfig:
             for key, value in overrides.items():
                 if value is not None:
                     merged_dict[key] = value
-                    logger.debug(f"Explicit override: {key}={value} (was {base_dict.get(key)})")
+                    logger.debug(
+                        f"Explicit override: {key}={value} (was {base_dict.get(key)})"
+                    )
 
             # Create new configuration
             merged_config = self.from_dict(merged_dict)
-            logger.info(f"Successfully merged AIResponseCacheConfig with {len(overrides)} overrides")
+            logger.info(
+                f"Successfully merged AIResponseCacheConfig with {len(overrides)} overrides"
+            )
             return merged_config
 
         except Exception as e:
-            error_msg = f"Failed to merge AIResponseCacheConfig with explicit overrides: {e}"
+            error_msg = (
+                f"Failed to merge AIResponseCacheConfig with explicit overrides: {e}"
+            )
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
                 error_msg,
-                context={'overrides': list(overrides.keys()), 'error_type': type(e).__name__}
+                context={
+                    "overrides": list(overrides.keys()),
+                    "error_type": type(e).__name__,
+                },
             )
 
-    def merge(self, other: 'AIResponseCacheConfig') -> 'AIResponseCacheConfig':
+    def merge(self, other: "AIResponseCacheConfig") -> "AIResponseCacheConfig":
         """
         Merge this configuration with another configuration.
 
@@ -1188,16 +1291,22 @@ class AIResponseCacheConfig:
 
             # Smart merge: Try to detect which values were explicitly set in 'other'
             # by comparing against defaults and using heuristics
-            explicit_overrides = self._detect_explicit_overrides(other_dict, default_dict)
+            explicit_overrides = self._detect_explicit_overrides(
+                other_dict, default_dict
+            )
 
             # Apply explicit overrides
             for key, value in explicit_overrides.items():
                 merged_dict[key] = value
-                logger.debug(f"Smart merge override: {key}={value} (was {base_dict.get(key)})")
+                logger.debug(
+                    f"Smart merge override: {key}={value} (was {base_dict.get(key)})"
+                )
 
             # Special handling for complex fields that might have different default instances
             # but equivalent content (like performance_monitor)
-            self._handle_complex_field_merging(base_dict, other_dict, default_dict, merged_dict)
+            self._handle_complex_field_merging(
+                base_dict, other_dict, default_dict, merged_dict
+            )
 
             # Create new configuration from merged data
             merged_config = self.from_dict(merged_dict)
@@ -1208,11 +1317,12 @@ class AIResponseCacheConfig:
             error_msg = f"Failed to merge AIResponseCacheConfig instances: {e}"
             logger.error(error_msg, exc_info=True)
             raise ConfigurationError(
-                error_msg,
-                context={'error_type': type(e).__name__}
+                error_msg, context={"error_type": type(e).__name__}
             )
 
-    def _detect_explicit_overrides(self, other_dict: Dict[str, Any], default_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _detect_explicit_overrides(
+        self, other_dict: Dict[str, Any], default_dict: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Detect which values in other_dict were likely explicitly set by the user.
 
@@ -1233,7 +1343,7 @@ class AIResponseCacheConfig:
         fresh_default_dict = asdict(fresh_default)
 
         for key, value in other_dict.items():
-            if key.startswith('_') or value is None:
+            if key.startswith("_") or value is None:
                 continue
 
             fresh_default_value = fresh_default_dict.get(key)
@@ -1244,8 +1354,13 @@ class AIResponseCacheConfig:
 
         return explicit_overrides
 
-    def _handle_complex_field_merging(self, base_dict: Dict[str, Any], other_dict: Dict[str, Any],
-                                      default_dict: Dict[str, Any], merged_dict: Dict[str, Any]) -> None:
+    def _handle_complex_field_merging(
+        self,
+        base_dict: Dict[str, Any],
+        other_dict: Dict[str, Any],
+        default_dict: Dict[str, Any],
+        merged_dict: Dict[str, Any],
+    ) -> None:
         """
         Handle merging of complex fields that may have different object instances
         but equivalent content (like performance_monitor objects).
@@ -1296,7 +1411,7 @@ class AIResponseCacheConfig:
             )
 
         # Recommend operation-specific TTLs
-        if getattr(self, '_operation_ttls_was_none', False):
+        if getattr(self, "_operation_ttls_was_none", False):
             result.add_recommendation(
                 "Consider setting operation-specific TTLs for better cache management. "
                 "Different operations may benefit from different cache durations."

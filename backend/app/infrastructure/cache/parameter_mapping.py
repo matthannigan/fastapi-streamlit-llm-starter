@@ -110,6 +110,7 @@ class ValidationResult:
         ...     for error in result.errors:
         ...         print(f"❌ {error}")
     """
+
     is_valid: bool = True
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -170,28 +171,28 @@ class CacheParameterMapper:
 
         # Generic Redis parameters that are shared between all Redis cache implementations
         self._generic_parameters: Set[str] = {
-            'redis_url',           # Redis connection URL
-            'default_ttl',         # Default time-to-live for cache entries
-            'enable_l1_cache',     # Enable in-memory L1 cache tier
-            'l1_cache_size',       # Maximum entries in L1 cache
-            'compression_threshold',  # Size threshold for compression
-            'compression_level',   # Zlib compression level (1-9)
-            'performance_monitor',  # CachePerformanceMonitor instance
-            'security_config',      # SecurityConfig for secure connections
+            "redis_url",  # Redis connection URL
+            "default_ttl",  # Default time-to-live for cache entries
+            "enable_l1_cache",  # Enable in-memory L1 cache tier
+            "l1_cache_size",  # Maximum entries in L1 cache
+            "compression_threshold",  # Size threshold for compression
+            "compression_level",  # Zlib compression level (1-9)
+            "performance_monitor",  # CachePerformanceMonitor instance
+            "security_config",  # SecurityConfig for secure connections
         }
 
         # AI-specific parameters unique to AI response caching
         self._ai_specific_parameters: Set[str] = {
-            'text_hash_threshold', # Character threshold for text hashing
-            'hash_algorithm',      # Hash algorithm for large texts
-            'text_size_tiers',     # Text categorization thresholds
-            'operation_ttls',      # TTL values per AI operation type
+            "text_hash_threshold",  # Character threshold for text hashing
+            "hash_algorithm",  # Hash algorithm for large texts
+            "text_size_tiers",  # Text categorization thresholds
+            "operation_ttls",  # TTL values per AI operation type
         }
 
         # Parameter mappings: AI parameter -> Generic parameter
         # These handle cases where AI parameters map to generic equivalents
         self._parameter_mappings: Dict[str, str] = {
-            'memory_cache_size': 'l1_cache_size',  # AI uses memory_cache_size, generic uses l1_cache_size
+            "memory_cache_size": "l1_cache_size",  # AI uses memory_cache_size, generic uses l1_cache_size
         }
 
         # Conflicting parameters that have different meanings in each context
@@ -201,61 +202,58 @@ class CacheParameterMapper:
 
         # Valid value ranges and types for parameter validation
         self._parameter_validators: Dict[str, Dict[str, Any]] = {
-            'redis_url': {
-                'type': str,
-                'required': False,
-                'validator': self._validate_redis_url
+            "redis_url": {
+                "type": str,
+                "required": False,
+                "validator": self._validate_redis_url,
             },
-            'default_ttl': {
-                'type': int,
-                'required': False,
-                'min_value': 1,
-                'max_value': 86400 * 365  # 1 year max
+            "default_ttl": {
+                "type": int,
+                "required": False,
+                "min_value": 1,
+                "max_value": 86400 * 365,  # 1 year max
             },
-            'enable_l1_cache': {
-                'type': bool,
-                'required': False
+            "enable_l1_cache": {"type": bool, "required": False},
+            "l1_cache_size": {
+                "type": int,
+                "required": False,
+                "min_value": 1,
+                "max_value": 10000,
             },
-            'l1_cache_size': {
-                'type': int,
-                'required': False,
-                'min_value': 1,
-                'max_value': 10000
+            "memory_cache_size": {
+                "type": int,
+                "required": False,
+                "min_value": 1,
+                "max_value": 10000,
             },
-            'memory_cache_size': {
-                'type': int,
-                'required': False,
-                'min_value': 1,
-                'max_value': 10000
+            "compression_threshold": {
+                "type": int,
+                "required": False,
+                "min_value": 0,
+                "max_value": 1024 * 1024,  # 1MB max
             },
-            'compression_threshold': {
-                'type': int,
-                'required': False,
-                'min_value': 0,
-                'max_value': 1024 * 1024  # 1MB max
+            "compression_level": {
+                "type": int,
+                "required": False,
+                "min_value": 1,
+                "max_value": 9,
             },
-            'compression_level': {
-                'type': int,
-                'required': False,
-                'min_value': 1,
-                'max_value': 9
+            "text_hash_threshold": {
+                "type": int,
+                "required": False,
+                "min_value": 1,
+                "max_value": 100000,
             },
-            'text_hash_threshold': {
-                'type': int,
-                'required': False,
-                'min_value': 1,
-                'max_value': 100000
+            "text_size_tiers": {
+                "type": dict,
+                "required": False,
+                "validator": self._validate_text_size_tiers,
             },
-            'text_size_tiers': {
-                'type': dict,
-                'required': False,
-                'validator': self._validate_text_size_tiers
+            "operation_ttls": {
+                "type": dict,
+                "required": False,
+                "validator": self._validate_operation_ttls,
             },
-            'operation_ttls': {
-                'type': dict,
-                'required': False,
-                'validator': self._validate_operation_ttls
-            }
         }
 
         logger.info(
@@ -263,7 +261,9 @@ class CacheParameterMapper:
             f"{len(self._ai_specific_parameters)} AI-specific, and {len(self._parameter_mappings)} mapped parameters"
         )
 
-    def map_ai_to_generic_params(self, ai_params: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def map_ai_to_generic_params(
+        self, ai_params: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Separate AI parameters into generic Redis parameters and AI-specific parameters.
 
@@ -296,7 +296,9 @@ class CacheParameterMapper:
             >>> # generic_params = {'redis_url': '...', 'l1_cache_size': 100, 'compression_threshold': 2000}
             >>> # ai_specific_params = {'text_hash_threshold': 1000}
         """
-        logger.debug(f"Mapping AI parameters to generic parameters: {list(ai_params.keys())}")
+        logger.debug(
+            f"Mapping AI parameters to generic parameters: {list(ai_params.keys())}"
+        )
 
         try:
             generic_params: Dict[str, Any] = {}
@@ -323,12 +325,17 @@ class CacheParameterMapper:
 
                 # Unknown parameter - log warning but don't fail
                 else:
-                    logger.warning(f"Unknown parameter '{param_name}' - treating as AI-specific")
+                    logger.warning(
+                        f"Unknown parameter '{param_name}' - treating as AI-specific"
+                    )
                     ai_specific_params[param_name] = param_value
 
             # Ensure L1 cache is enabled if l1_cache_size is provided
-            if 'l1_cache_size' in generic_params and 'enable_l1_cache' not in generic_params:
-                generic_params['enable_l1_cache'] = True
+            if (
+                "l1_cache_size" in generic_params
+                and "enable_l1_cache" not in generic_params
+            ):
+                generic_params["enable_l1_cache"] = True
                 logger.debug("Auto-enabled L1 cache due to l1_cache_size parameter")
 
             logger.info(
@@ -344,12 +351,14 @@ class CacheParameterMapper:
             raise ConfigurationError(
                 error_msg,
                 context={
-                    'ai_params': list(ai_params.keys()),
-                    'error_type': type(e).__name__
-                }
+                    "ai_params": list(ai_params.keys()),
+                    "error_type": type(e).__name__,
+                },
             )
 
-    def validate_parameter_compatibility(self, ai_params: Dict[str, Any]) -> ValidationResult:
+    def validate_parameter_compatibility(
+        self, ai_params: Dict[str, Any]
+    ) -> ValidationResult:
         """
         Validate parameter compatibility and identify potential conflicts.
 
@@ -376,19 +385,24 @@ class CacheParameterMapper:
             Error: Parameter 'memory_cache_size' must be >= 1, got -10
             Error: Parameter 'text_hash_threshold' must be int, got str
         """
-        logger.debug(f"Validating parameter compatibility for {len(ai_params)} parameters")
+        logger.debug(
+            f"Validating parameter compatibility for {len(ai_params)} parameters"
+        )
 
         result = ValidationResult()
         result.context = {
-            'total_parameters': len(ai_params),
-            'validation_timestamp': logger.name,  # Using logger name as placeholder for timestamp
-            'parameter_names': list(ai_params.keys())
+            "total_parameters": len(ai_params),
+            "validation_timestamp": logger.name,  # Using logger name as placeholder for timestamp
+            "parameter_names": list(ai_params.keys()),
         }
 
         try:
             # Classify parameters for the result
             for param_name in ai_params.keys():
-                if param_name in self._generic_parameters or param_name in self._parameter_mappings:
+                if (
+                    param_name in self._generic_parameters
+                    or param_name in self._parameter_mappings
+                ):
                     result.generic_params.add(param_name)
                 elif param_name in self._ai_specific_parameters:
                     result.ai_specific_params.add(param_name)
@@ -405,7 +419,9 @@ class CacheParameterMapper:
 
             # Final validation summary
             if result.is_valid:
-                logger.info(f"Parameter validation passed for {len(ai_params)} parameters")
+                logger.info(
+                    f"Parameter validation passed for {len(ai_params)} parameters"
+                )
             else:
                 logger.warning(
                     f"Parameter validation failed with {len(result.errors)} errors "
@@ -418,10 +434,12 @@ class CacheParameterMapper:
             error_msg = f"Parameter validation failed with exception: {e}"
             logger.error(error_msg, exc_info=True)
             result.add_error(error_msg)
-            result.context['validation_exception'] = str(e)
+            result.context["validation_exception"] = str(e)
             return result
 
-    def _validate_single_parameter(self, param_name: str, param_value: Any, result: ValidationResult) -> None:
+    def _validate_single_parameter(
+        self, param_name: str, param_value: Any, result: ValidationResult
+    ) -> None:
         """Validate a single parameter against its validation rules."""
         if param_name not in self._parameter_validators:
             logger.debug(f"No validation rules for parameter '{param_name}' - skipping")
@@ -430,7 +448,7 @@ class CacheParameterMapper:
         validator_config = self._parameter_validators[param_name]
 
         # Type validation
-        expected_type = validator_config.get('type')
+        expected_type = validator_config.get("type")
         if expected_type and not isinstance(param_value, expected_type):
             result.add_error(
                 f"Parameter '{param_name}' must be {expected_type.__name__}, got {type(param_value).__name__}"
@@ -438,7 +456,7 @@ class CacheParameterMapper:
             return  # Skip further validation if type is wrong
 
         # Required validation
-        if validator_config.get('required', False) and param_value is None:
+        if validator_config.get("required", False) and param_value is None:
             result.add_error(f"Parameter '{param_name}' is required but not provided")
             return
 
@@ -447,34 +465,50 @@ class CacheParameterMapper:
             return
 
         # Range validation for numeric parameters
-        min_value = validator_config.get('min_value')
-        max_value = validator_config.get('max_value')
+        min_value = validator_config.get("min_value")
+        max_value = validator_config.get("max_value")
 
-        if min_value is not None and isinstance(param_value, (int, float)) and param_value < min_value:
-            result.add_error(f"Parameter '{param_name}' must be >= {min_value}, got {param_value}")
+        if (
+            min_value is not None
+            and isinstance(param_value, (int, float))
+            and param_value < min_value
+        ):
+            result.add_error(
+                f"Parameter '{param_name}' must be >= {min_value}, got {param_value}"
+            )
 
-        if max_value is not None and isinstance(param_value, (int, float)) and param_value > max_value:
-            result.add_error(f"Parameter '{param_name}' must be <= {max_value}, got {param_value}")
+        if (
+            max_value is not None
+            and isinstance(param_value, (int, float))
+            and param_value > max_value
+        ):
+            result.add_error(
+                f"Parameter '{param_name}' must be <= {max_value}, got {param_value}"
+            )
 
         # Custom validator function
-        custom_validator = validator_config.get('validator')
+        custom_validator = validator_config.get("validator")
         if custom_validator:
             try:
                 custom_validator(param_value, result, param_name)
             except Exception as e:
                 result.add_error(f"Custom validation failed for '{param_name}': {e}")
 
-    def _validate_redis_url(self, redis_url: str, result: ValidationResult, param_name: str) -> None:
+    def _validate_redis_url(
+        self, redis_url: str, result: ValidationResult, param_name: str
+    ) -> None:
         """Custom validator for Redis URL format."""
-        if not redis_url.startswith(('redis://', 'rediss://', 'unix://')):
+        if not redis_url.startswith(("redis://", "rediss://", "unix://")):
             result.add_error(
                 f"Parameter '{param_name}' must be a valid Redis URL "
                 f"(redis://, rediss://, or unix://), got: {redis_url}"
             )
 
-    def _validate_text_size_tiers(self, text_size_tiers: Dict[str, int], result: ValidationResult, param_name: str) -> None:
+    def _validate_text_size_tiers(
+        self, text_size_tiers: Dict[str, int], result: ValidationResult, param_name: str
+    ) -> None:
         """Custom validator for text size tiers configuration."""
-        required_tiers = {'small', 'medium', 'large'}
+        required_tiers = {"small", "medium", "large"}
         provided_tiers = set(text_size_tiers.keys())
 
         missing_tiers = required_tiers - provided_tiers
@@ -492,16 +526,22 @@ class CacheParameterMapper:
 
         # Validate tier ordering: small < medium < large
         if all(tier in text_size_tiers for tier in required_tiers):
-            if not (text_size_tiers['small'] < text_size_tiers['medium'] < text_size_tiers['large']):
+            if not (
+                text_size_tiers["small"]
+                < text_size_tiers["medium"]
+                < text_size_tiers["large"]
+            ):
                 result.add_error(
                     f"Text size tiers must be ordered: small < medium < large, "
                     f"got: small={text_size_tiers['small']}, medium={text_size_tiers['medium']}, "
                     f"large={text_size_tiers['large']}"
                 )
 
-    def _validate_operation_ttls(self, operation_ttls: Dict[str, int], result: ValidationResult, param_name: str) -> None:
+    def _validate_operation_ttls(
+        self, operation_ttls: Dict[str, int], result: ValidationResult, param_name: str
+    ) -> None:
         """Custom validator for operation TTL configuration."""
-        valid_operations = {'summarize', 'sentiment', 'key_points', 'questions', 'qa'}
+        valid_operations = {"summarize", "sentiment", "key_points", "questions", "qa"}
 
         for operation, ttl in operation_ttls.items():
             # Validate TTL is positive integer
@@ -524,32 +564,34 @@ class CacheParameterMapper:
                     f"Valid operations: {valid_operations}"
                 )
 
-    def _check_parameter_conflicts(self, ai_params: Dict[str, Any], result: ValidationResult) -> None:
+    def _check_parameter_conflicts(
+        self, ai_params: Dict[str, Any], result: ValidationResult
+    ) -> None:
         """Check for parameter conflicts and inconsistencies."""
 
         # Check for memory_cache_size vs l1_cache_size conflict
-        if 'memory_cache_size' in ai_params and 'l1_cache_size' in ai_params:
-            memory_size = ai_params['memory_cache_size']
-            l1_size = ai_params['l1_cache_size']
+        if "memory_cache_size" in ai_params and "l1_cache_size" in ai_params:
+            memory_size = ai_params["memory_cache_size"]
+            l1_size = ai_params["l1_cache_size"]
             if memory_size != l1_size:
                 result.add_conflict(
-                    'memory_cache_size',
+                    "memory_cache_size",
                     f"memory_cache_size ({memory_size}) conflicts with l1_cache_size ({l1_size}). "
-                    f"These parameters map to the same GenericRedisCache parameter."
+                    f"These parameters map to the same GenericRedisCache parameter.",
                 )
 
         # Check L1 cache consistency
-        if 'enable_l1_cache' in ai_params and not ai_params['enable_l1_cache']:
-            if 'l1_cache_size' in ai_params or 'memory_cache_size' in ai_params:
+        if "enable_l1_cache" in ai_params and not ai_params["enable_l1_cache"]:
+            if "l1_cache_size" in ai_params or "memory_cache_size" in ai_params:
                 result.add_warning(
                     "L1 cache is disabled but cache size is specified. "
                     "The size parameter will be ignored."
                 )
 
         # Check compression configuration consistency
-        if 'compression_level' in ai_params and 'compression_threshold' in ai_params:
-            threshold = ai_params['compression_threshold']
-            level = ai_params['compression_level']
+        if "compression_level" in ai_params and "compression_threshold" in ai_params:
+            threshold = ai_params["compression_threshold"]
+            level = ai_params["compression_level"]
 
             if threshold == 0 and level > 1:
                 result.add_warning(
@@ -557,21 +599,23 @@ class CacheParameterMapper:
                     "Consider setting compression_level to 1 or increasing compression_threshold."
                 )
 
-    def _add_configuration_recommendations(self, ai_params: Dict[str, Any], result: ValidationResult) -> None:
+    def _add_configuration_recommendations(
+        self, ai_params: Dict[str, Any], result: ValidationResult
+    ) -> None:
         """Add configuration recommendations based on parameter analysis."""
 
-
         # Recommend enabling L1 cache for performance
-        if ('l1_cache_size' in ai_params or 'memory_cache_size' in ai_params) and \
-           ai_params.get('enable_l1_cache') is False:
+        if (
+            "l1_cache_size" in ai_params or "memory_cache_size" in ai_params
+        ) and ai_params.get("enable_l1_cache") is False:
             result.add_recommendation(
                 "Consider enabling L1 cache (enable_l1_cache=True) for better performance "
                 "when cache size is specified"
             )
 
         # Recommend reasonable compression settings
-        compression_threshold = ai_params.get('compression_threshold', 1000)
-        compression_level = ai_params.get('compression_level', 6)
+        compression_threshold = ai_params.get("compression_threshold", 1000)
+        compression_level = ai_params.get("compression_level", 6)
 
         if compression_threshold > 10000:
             result.add_recommendation(
@@ -586,7 +630,7 @@ class CacheParameterMapper:
             )
 
         # Recommend text hash threshold consistency
-        text_hash_threshold = ai_params.get('text_hash_threshold', 1000)
+        text_hash_threshold = ai_params.get("text_hash_threshold", 1000)
         if text_hash_threshold != compression_threshold:
             result.add_recommendation(
                 f"Text hash threshold ({text_hash_threshold}) differs from compression threshold "
@@ -608,15 +652,16 @@ class CacheParameterMapper:
             >>> print(f"Parameter mappings: {info['parameter_mappings']}")
         """
         return {
-            'generic_parameters': sorted(self._generic_parameters),
-            'ai_specific_parameters': sorted(self._ai_specific_parameters),
-            'parameter_mappings': dict(self._parameter_mappings),
-            'parameter_conflicts': dict(self._parameter_conflicts),
-            'validation_rules': {
-                param: {k: v for k, v in rules.items() if k != 'validator'}
+            "generic_parameters": sorted(self._generic_parameters),
+            "ai_specific_parameters": sorted(self._ai_specific_parameters),
+            "parameter_mappings": dict(self._parameter_mappings),
+            "parameter_conflicts": dict(self._parameter_conflicts),
+            "validation_rules": {
+                param: {k: v for k, v in rules.items() if k != "validator"}
                 for param, rules in self._parameter_validators.items()
             },
-            'total_parameters': len(self._generic_parameters) + len(self._ai_specific_parameters)
+            "total_parameters": len(self._generic_parameters)
+            + len(self._ai_specific_parameters),
         }
 
 

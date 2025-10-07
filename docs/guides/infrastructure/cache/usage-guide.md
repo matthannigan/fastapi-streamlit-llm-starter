@@ -88,12 +88,97 @@ cached = await cache.get_cached_response(
 ```bash
 # NEW: Preset-based configuration (replaces 28+ CACHE_* variables)
 CACHE_PRESET=development                    # Choose preset for your use case
-CACHE_REDIS_URL=redis://localhost:6379     # Essential Redis connection override
+CACHE_REDIS_URL=rediss://localhost:6380     # Essential Redis connection override (TLS)
 ENABLE_AI_CACHE=true                        # AI features toggle
 
 # Available presets:
 # disabled, minimal, simple, development, production, ai-development, ai-production
 ```
+
+## 🔒 Secure Redis Setup
+
+### One-Command Secure Development Setup
+
+**Security is mandatory and always enabled.** All Redis connections use TLS encryption and data encryption at rest.
+
+```bash
+# Complete secure Redis setup in one command
+./scripts/setup-secure-redis.sh
+
+# Starts TLS-enabled Redis with:
+# ✅ TLS 1.2+ encryption for all connections
+# ✅ Certificate-based authentication
+# ✅ Strong password generation
+# ✅ Fernet data encryption at rest
+# ✅ Docker network isolation
+```
+
+**What the script does:**
+1. Generates TLS certificates (4096-bit RSA)
+2. Creates secure Redis password
+3. Generates Fernet encryption key
+4. Creates `.env.secure` configuration
+5. Starts secure Redis container
+6. Validates connection and encryption
+
+### Secure Configuration
+
+After running the setup script, your configuration uses secure connections:
+
+```bash
+# Secure Redis configuration (automatically generated)
+REDIS_URL=rediss://localhost:6380          # TLS-enabled (note: rediss://)
+REDIS_PASSWORD=<generated-secure-password>
+REDIS_ENCRYPTION_KEY=<generated-fernet-key>
+REDIS_TLS_ENABLED=true
+
+# Cache configuration works the same
+CACHE_PRESET=development
+ENABLE_AI_CACHE=true
+```
+
+**Key Security Features:**
+- 🔐 **TLS Encryption**: All data encrypted in transit (TLS 1.2+)
+- 🔑 **Data Encryption**: All cached data encrypted at rest (Fernet/AES-128)
+- 🛡️ **Authentication**: Password required for all connections
+- 🌐 **Network Isolation**: Redis isolated in internal Docker network
+- ⚡ **Automatic**: Security configured automatically, no manual setup
+
+### Production Security Setup
+
+For production deployments:
+
+```bash
+# Generate production-grade secure configuration
+python scripts/generate-secure-env.py --environment production
+
+# Production security requirements:
+# - TLS 1.3 required
+# - 48+ character passwords
+# - 256-bit encryption keys
+# - Certificate validation enforced
+# - Network isolation mandatory
+```
+
+**See comprehensive security documentation:**
+- **Security Guide**: `docs/guides/infrastructure/cache/security.md`
+- **Quick Start**: `docs/get-started/CACHE_QUICK_START.md`
+- **Environment Variables**: `docs/get-started/ENVIRONMENT_VARIABLES.md`
+
+### Security Troubleshooting
+
+**Connection Issues:**
+```bash
+# Verify Redis is running with TLS
+docker ps | grep redis_secure
+
+# Test TLS connection
+redis-cli --tls --cert certs/redis.crt --key certs/redis.key \
+  --cacert certs/ca.crt -p 6380 -a "$REDIS_PASSWORD" ping
+# Expected: PONG
+```
+
+**For detailed troubleshooting**, see the Security Troubleshooting section in `docs/guides/infrastructure/cache/security.md`.
 
 ## 🎯 Factory Method Selection Guide
 
@@ -140,7 +225,7 @@ ENABLE_AI_CACHE=true                        # AI features toggle
 ```python
 # Basic web application cache
 web_cache = await factory.for_web_app(
-    redis_url="redis://localhost:6379",
+    redis_url="rediss://localhost:6380",  # Secure TLS connection
     default_ttl=1800,              # 30 minutes - good for session data
     enable_memory_cache=True,      # Enable fast memory tier
     memory_cache_size=200,         # 200 items in memory
@@ -151,7 +236,7 @@ web_cache = await factory.for_web_app(
 
 # Production web cache with enhanced settings
 production_web_cache = await factory.for_web_app(
-    redis_url="redis://redis-cluster:6379",
+    redis_url="rediss://redis-cluster:6380",  # Secure TLS connection
     default_ttl=3600,              # 1 hour for production stability
     memory_cache_size=500,         # Larger memory cache
     compression_threshold=1000,     # More aggressive compression
@@ -174,7 +259,7 @@ production_web_cache = await factory.for_web_app(
 ```python
 # Basic AI application cache
 ai_cache = await factory.for_ai_app(
-    redis_url="redis://ai-redis:6379",
+    redis_url="rediss://ai-redis:6380",  # Secure TLS connection
     default_ttl=3600,              # 1 hour base TTL
     memory_cache_size=100,         # Smaller memory cache for AI responses
     compression_threshold=1000,     # Aggressive compression
@@ -211,7 +296,7 @@ memory_test_cache = await factory.for_testing(
 
 # Redis test cache with isolated database
 redis_test_cache = await factory.for_testing(
-    redis_url="redis://localhost:6379/15",  # Database 15 for tests
+    redis_url="rediss://localhost:6380/15",  # Database 15 for tests (TLS)
     default_ttl=60,                # 1 minute TTL
     enable_memory_cache=False,     # Disable memory cache for predictable behavior
     compression_level=1,           # Fast compression for speed
@@ -244,15 +329,15 @@ redis_test_cache = await factory.for_testing(
 ```bash
 # For AI applications in development
 CACHE_PRESET=ai-development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380  # Secure TLS connection
 
-# For AI applications in production  
+# For AI applications in production
 CACHE_PRESET=ai-production
-CACHE_REDIS_URL=redis://production:6379
+CACHE_REDIS_URL=rediss://production:6380  # Secure TLS connection
 
 # For simple web applications
 CACHE_PRESET=development
-CACHE_REDIS_URL=redis://localhost:6379
+CACHE_REDIS_URL=rediss://localhost:6380  # Secure TLS connection
 
 # Advanced JSON overrides for complex scenarios
 CACHE_CUSTOM_CONFIG='{
@@ -273,7 +358,7 @@ from app.infrastructure.cache.config import CacheConfigBuilder
 # Development environment configuration
 dev_config = (CacheConfigBuilder()
     .for_environment("development")
-    .with_redis("redis://localhost:6379")
+    .with_redis("rediss://localhost:6380")  # Secure TLS connection
     .with_compression(threshold=2000, level=4)
     .with_memory_cache(size=50)
     .build())
@@ -281,7 +366,7 @@ dev_config = (CacheConfigBuilder()
 # Production environment with AI features
 prod_ai_config = (CacheConfigBuilder()
     .for_environment("production")
-    .with_redis("redis://prod-redis:6379", use_tls=True)
+    .with_redis("rediss://prod-redis:6380", use_tls=True)  # Secure TLS connection
     .with_compression(threshold=1000, level=6)
     .with_memory_cache(size=200)
     .with_ai_features(
@@ -517,7 +602,7 @@ class UserDomainService:
 ```python
 # Development cache with debugging features
 dev_cache = await factory.for_web_app(
-    redis_url="redis://localhost:6379",
+    redis_url="rediss://localhost:6380",
     default_ttl=900,               # 15 minutes for rapid testing
     memory_cache_size=50,          # Small memory footprint
     compression_threshold=5000,     # Less aggressive compression
@@ -527,7 +612,7 @@ dev_cache = await factory.for_web_app(
 
 # Environment variables for development
 # CACHE_PRESET=development
-# CACHE_REDIS_URL=redis://localhost:6379
+# CACHE_REDIS_URL=rediss://localhost:6380
 ```
 
 ### Testing Environment
@@ -542,7 +627,7 @@ unit_test_cache = await factory.for_testing(
 
 # Integration test cache with Redis test database
 integration_cache = await factory.for_testing(
-    redis_url="redis://localhost:6379/15",
+    redis_url="rediss://localhost:6380/15",
     default_ttl=120,
     enable_memory_cache=False,     # Disable for predictable behavior
     compression_level=1,           # Fast compression
@@ -551,7 +636,7 @@ integration_cache = await factory.for_testing(
 
 # Environment variables for testing
 # CACHE_PRESET=minimal
-# CACHE_REDIS_URL=redis://localhost:6379/15
+# CACHE_REDIS_URL=rediss://localhost:6380/15
 ```
 
 ### Production Environment
@@ -559,7 +644,7 @@ integration_cache = await factory.for_testing(
 ```python
 # Production web cache with high availability
 prod_web_cache = await factory.for_web_app(
-    redis_url="redis://redis-cluster:6379",
+    redis_url="rediss://redis-cluster:6380",
     default_ttl=3600,              # 1 hour for stability
     memory_cache_size=500,         # Large memory cache
     compression_threshold=1000,     # Aggressive compression
@@ -569,7 +654,7 @@ prod_web_cache = await factory.for_web_app(
 
 # Production AI cache with enhanced features
 prod_ai_cache = await factory.for_ai_app(
-    redis_url="redis://ai-redis-cluster:6379",
+    redis_url="rediss://ai-redis-cluster:6380",
     default_ttl=7200,              # 2 hours base TTL
     compression_threshold=500,      # Very aggressive compression
     compression_level=8,           # High compression level
@@ -587,10 +672,10 @@ prod_ai_cache = await factory.for_ai_app(
 
 # Environment variables for production
 # CACHE_PRESET=production
-# CACHE_REDIS_URL=redis://redis-cluster:6379
+# CACHE_REDIS_URL=rediss://redis-cluster:6380
 # For AI workloads:
 # CACHE_PRESET=ai-production
-# CACHE_REDIS_URL=redis://ai-redis-cluster:6379
+# CACHE_REDIS_URL=rediss://ai-redis-cluster:6380
 ```
 
 ## ⚠️ Best Practices & Anti-patterns
@@ -687,7 +772,7 @@ for i in range(100000):
 #### ❌ Unhandled Redis Connection Errors
 ```python
 # ❌ BAD: No error handling
-cache = GenericRedisCache(redis_url="redis://redis:6379")
+cache = GenericRedisCache(redis_url="rediss://redis:6380")
 await cache.connect()  # May throw unhandled exception
 ```
 
@@ -1063,7 +1148,7 @@ async def redis_test_cache():
     """Redis cache with test database"""
     factory = CacheFactory()
     cache = await factory.for_testing(
-        redis_url="redis://localhost:6379/15",  # Test database
+        redis_url="rediss://localhost:6380/15",  # Test database
         fail_on_connection_error=False
     )
     yield cache
@@ -1081,7 +1166,7 @@ async def test_cache_persistence(redis_test_cache):
     # Create new cache instance
     factory = CacheFactory()
     new_cache = await factory.for_testing(
-        redis_url="redis://localhost:6379/15"
+        redis_url="rediss://localhost:6380/15"
     )
     
     # Data should persist
@@ -1176,12 +1261,12 @@ for check, result in validation_results:
 ```bash
 # Production environment variables
 CACHE_PRESET=production
-CACHE_REDIS_URL=redis://redis-cluster:6379
+CACHE_REDIS_URL=rediss://redis-cluster:6380
 ENABLE_AI_CACHE=true
 
 # For AI-heavy workloads
 CACHE_PRESET=ai-production
-CACHE_REDIS_URL=redis://ai-redis-cluster:6379
+CACHE_REDIS_URL=rediss://ai-redis-cluster:6380
 
 # Advanced configuration override (if needed)
 CACHE_CUSTOM_CONFIG='{

@@ -34,16 +34,31 @@ export CACHE_PRESET=disabled         # Testing without cache
 export CACHE_PRESET=minimal          # Lightweight caching
 ```
 
-## 🔧 Add Redis (Optional - 1 minute)
+## 🔒 Secure Redis Setup (Recommended - 1 minute)
+
+**Security is mandatory and always enabled.** All Redis connections use TLS encryption.
 
 ```bash
-# With your chosen preset, optionally add Redis
-export CACHE_PRESET=development
-export CACHE_REDIS_URL=redis://localhost:6379
+# One-command secure Redis setup for development
+./scripts/setup-secure-redis.sh
 
-# Start Redis (if needed)
-docker run -d -p 6379:6379 redis:latest
+# This automatically:
+# ✅ Generates TLS certificates (4096-bit RSA)
+# ✅ Creates secure password
+# ✅ Generates encryption key
+# ✅ Starts TLS-enabled Redis container
+# ✅ Creates .env.secure configuration
+
+# Your cache is now secure by default
+export CACHE_PRESET=development
+# CACHE_REDIS_URL=rediss://localhost:6380 (auto-configured)
 ```
+
+**Security Features:**
+- 🔐 TLS 1.2+ encryption for all connections
+- 🔑 Data encrypted at rest (Fernet/AES-128)
+- 🛡️ Password authentication required
+- 🌐 Docker network isolation
 
 Without Redis, the cache automatically falls back to memory-only mode.
 
@@ -87,7 +102,7 @@ export CACHE_PRESET=development
 ### Production Web App
 ```bash
 export CACHE_PRESET=production
-export CACHE_REDIS_URL=redis://production-redis:6379
+export CACHE_REDIS_URL=rediss://production-redis:6380
 # Automatic: 2hr TTL, optimized performance, production logging
 ```
 
@@ -101,7 +116,7 @@ export GEMINI_API_KEY=your-api-key
 ### AI Production Deployment
 ```bash
 export CACHE_PRESET=ai-production
-export CACHE_REDIS_URL=redis://ai-redis:6379
+export CACHE_REDIS_URL=rediss://ai-redis:6380
 export GEMINI_API_KEY=your-production-api-key
 # Automatic: AI optimizations, 4hr TTL, maximum performance
 ```
@@ -117,7 +132,7 @@ export CACHE_PRESET=minimal
 ### Override Specific Settings
 ```bash
 export CACHE_PRESET=production
-export CACHE_REDIS_URL=redis://custom-redis:6379  # Custom Redis
+export CACHE_REDIS_URL=rediss://custom-redis:6380  # Custom Redis
 export ENABLE_AI_CACHE=false                      # Disable AI features
 ```
 
@@ -183,7 +198,7 @@ export CACHE_LOG_LEVEL=DEBUG
 ```bash
 # 1-3 environment variables
 export CACHE_PRESET=development
-export CACHE_REDIS_URL=redis://localhost:6379  # Optional override
+export CACHE_REDIS_URL=rediss://localhost:6380  # Optional override
 export ENABLE_AI_CACHE=true                     # Optional toggle
 ```
 

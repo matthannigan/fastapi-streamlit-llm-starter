@@ -36,7 +36,19 @@ AUTH_MODE=simple  # or 'advanced' for enhanced features
 RESILIENCE_PRESET=development  # or 'simple', 'production'
 ```
 
-### 3. Start Backend
+### 3. Setup Secure Redis (Optional)
+```bash
+# For development with secure Redis (recommended)
+./scripts/setup-secure-redis.sh
+
+# This configures:
+# - TLS encryption
+# - Password authentication
+# - Secure port 6380
+# - Development certificates
+```
+
+### 4. Start Backend
 ```bash
 # Using Makefile (recommended)
 make install                # Creates virtual environment and installs dependencies
@@ -48,7 +60,7 @@ cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 4. Start Frontend
+### 5. Start Frontend
 ```bash
 # Using Makefile (recommended)
 make install-frontend-local  # Install frontend dependencies in current venv
@@ -60,7 +72,7 @@ cd frontend
 streamlit run app/app.py --server.port 8501
 ```
 
-### 5. Test the System
+### 6. Test the System
 ```bash
 # Using Makefile (recommended)
 make test-backend          # Run backend tests
@@ -71,6 +83,10 @@ curl -H "Authorization: Bearer your-secure-api-key-here" \
      -H "Content-Type: application/json" \
      -d '{"text":"Hello world","operation":"summarize"}' \
      http://localhost:8000/v1/text_processing/process
+
+# Verify secure Redis connection
+curl -H "Authorization: Bearer your-secure-api-key-here" \
+     http://localhost:8000/internal/cache/health
 ```
 
 **🎉 You're ready to go!**
@@ -182,7 +198,7 @@ graph TB
    PORT=8000
    
    # Infrastructure Settings
-   REDIS_URL=redis://localhost:6379       # Optional - falls back to memory cache
+   REDIS_URL=rediss://localhost:6380      # Secure Redis with TLS (optional - falls back to memory cache)
    CORS_ORIGINS=["http://localhost:8501"]
    DISABLE_INTERNAL_DOCS=false           # Enable internal API docs in development
    ```
@@ -981,13 +997,24 @@ Error: Redis connection failed
 ```
 **Solutions:**
 - Redis is optional - the application automatically falls back to memory cache
+- For secure Redis, verify TLS configuration:
+  ```bash
+  # Check secure Redis is running on port 6380
+  redis-cli -p 6380 --tls --cert ./certs/redis.crt --key ./certs/redis.key ping
+  ```
 - Check Redis connection: `docker-compose exec redis redis-cli ping`
-- Verify `REDIS_URL` environment variable
+- Verify `REDIS_URL` environment variable uses `rediss://` protocol and port 6380
 - Monitor cache performance:
   ```bash
   curl http://localhost:8000/internal/cache/stats \
     -H "X-API-Key: your-key"
   ```
+- Verify cache security configuration:
+  ```bash
+  curl http://localhost:8000/internal/cache/health \
+    -H "X-API-Key: your-key"
+  ```
+- See **[Redis Cache Security Guide](../guides/infrastructure/cache/security.md)** for comprehensive security troubleshooting
 
 #### 5. AI Model Issues
 ```

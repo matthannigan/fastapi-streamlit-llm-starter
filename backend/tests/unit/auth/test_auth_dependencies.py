@@ -29,21 +29,41 @@ from app.core.exceptions import AuthenticationError
 
 @contextmanager
 def mock_auth_config(fake_settings, api_keys_set, mock_env_detection=None, auth_config_patch=None):
-    """Helper context manager to properly mock auth configuration."""
+    """
+    Helper context manager to properly mock auth configuration.
+
+    This context manager patches multiple auth-related dependencies to enable
+    isolated testing of authentication logic without requiring full FastAPI
+    dependency injection or actual Settings instances.
+
+    Args:
+        fake_settings: FakeSettings instance to use for authentication configuration
+        api_keys_set: Set of valid API keys for authentication
+        mock_env_detection: Optional mock for environment detection (get_environment_info)
+        auth_config_patch: Optional mock for auth_config object
+
+    Yields:
+        FakeSettings: The fake_settings instance for use in dependency function calls
+    """
+    # Mock get_settings dependency to return our fake settings
+    def mock_get_settings():
+        return fake_settings
+
     with patch('app.infrastructure.security.auth.settings', fake_settings):
-        with patch('app.infrastructure.security.auth.api_key_auth.api_keys', api_keys_set):
-            if auth_config_patch:
-                with patch('app.infrastructure.security.auth.auth_config', auth_config_patch):
-                    if mock_env_detection:
-                        with patch('app.infrastructure.security.auth.get_environment_info', mock_env_detection):
-                            yield
-                    else:
-                        yield
-            elif mock_env_detection:
-                with patch('app.infrastructure.security.auth.get_environment_info', mock_env_detection):
-                    yield
-            else:
-                yield
+        with patch('app.dependencies.get_settings', mock_get_settings):
+            with patch('app.infrastructure.security.auth.api_key_auth.api_keys', api_keys_set):
+                if auth_config_patch:
+                    with patch('app.infrastructure.security.auth.auth_config', auth_config_patch):
+                        if mock_env_detection:
+                            with patch('app.infrastructure.security.auth.get_environment_info', mock_env_detection):
+                                yield fake_settings
+                        else:
+                            yield fake_settings
+                elif mock_env_detection:
+                    with patch('app.infrastructure.security.auth.get_environment_info', mock_env_detection):
+                        yield fake_settings
+                else:
+                    yield fake_settings
 
 
 class TestVerifyApiKeyDependency:
@@ -99,8 +119,8 @@ class TestVerifyApiKeyDependency:
         valid_http_bearer_credentials.credentials = "test-primary-key-123"
 
         # When: verify_api_key dependency is called
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
-            result = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials)
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
+            result = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: The API key string is returned successfully
         assert result == "test-primary-key-123"
@@ -117,8 +137,8 @@ class TestVerifyApiKeyDependency:
             Ensures API key authentication works with both Bearer and X-API-Key headers.
         """
         # When: verify_api_key dependency is called with X-API-Key header
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
-            result = await verify_api_key(mock_request_with_x_api_key, None)
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
+            result = await verify_api_key(mock_request_with_x_api_key, None, settings)
 
         # Then: The API key string is returned successfully
         assert result == "test-primary-key-123"
@@ -152,9 +172,9 @@ class TestVerifyApiKeyDependency:
 
         # When: verify_api_key dependency is called
         # Then: AuthenticationError is raised with detailed context
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with pytest.raises(AuthenticationError) as exc_info:
-                await verify_api_key(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await verify_api_key(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify error contains appropriate context
             error_msg = str(exc_info.value)
@@ -189,9 +209,9 @@ class TestVerifyApiKeyDependency:
 
         # When: verify_api_key dependency is called
         # Then: AuthenticationError is raised indicating missing credentials
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection) as settings:
             with pytest.raises(AuthenticationError) as exc_info:
-                await verify_api_key(mock_request, None)  # No credentials provided
+                await verify_api_key(mock_request, None, settings)  # No credentials provided
 
             # Verify error message contains appropriate guidance
             error_msg = str(exc_info.value)
@@ -227,8 +247,8 @@ class TestVerifyApiKeyDependency:
         # And: No credentials are provided in request
 
         # When: verify_api_key dependency is called
-        with mock_auth_config(fake_settings, set()):
-            result = await verify_api_key(mock_request, None)  # No credentials provided
+        with mock_auth_config(fake_settings, set()) as settings:
+            result = await verify_api_key(mock_request, None, settings)  # No credentials provided
 
         # Then: "development" string is returned allowing access
         assert result == "development"
@@ -259,9 +279,9 @@ class TestVerifyApiKeyDependency:
         # Given: APIKeyAuth configuration and environment detection available
         # When: verify_api_key fails with invalid or missing credentials
         # Then: AuthenticationError context includes environment details
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection) as settings:
             with pytest.raises(AuthenticationError) as exc_info:
-                await verify_api_key(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await verify_api_key(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify environment context is included
             assert exc_info.value.context is not None
@@ -302,10 +322,10 @@ class TestVerifyApiKeyDependency:
 
         # When: verify_api_key is called with valid credentials
         # Then: Authentication logic continues with fallback context
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
                 # Should still succeed with valid credentials despite env detection failure
-                result = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials)
+                result = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
                 assert result == "test-primary-key-123"
 
         # Test with invalid credentials - should still fail gracefully
@@ -315,10 +335,10 @@ class TestVerifyApiKeyDependency:
         invalid_credentials = Mock(spec=HTTPAuthorizationCredentials)
         invalid_credentials.credentials = "invalid-key"
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
                 with pytest.raises(AuthenticationError) as exc_info:
-                    await verify_api_key(invalid_request, invalid_credentials)
+                    await verify_api_key(invalid_request, invalid_credentials, settings)
 
                 # Should still provide some context even with env detection failure
                 assert exc_info.value.context is not None
@@ -380,9 +400,9 @@ class TestVerifyApiKeyWithMetadataDependency:
         mock_auth_config_obj.enable_user_tracking = True  # Enable to get metadata
         mock_auth_config_obj.enable_request_logging = False
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
             with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
-                result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials)
+                result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: Dictionary containing 'api_key' and metadata fields is returned
         assert isinstance(result, dict)
@@ -423,7 +443,7 @@ class TestVerifyApiKeyWithMetadataDependency:
         mock_auth_config_obj.enable_user_tracking = True
         mock_auth_config_obj.enable_request_logging = False
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
             # Also need to mock the api_key_auth config to enable user tracking
             # And provide metadata for the key
             key_metadata = {
@@ -436,7 +456,7 @@ class TestVerifyApiKeyWithMetadataDependency:
             with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
                 with patch('app.infrastructure.security.auth.api_key_auth._key_metadata', key_metadata):
                     # When: verify_api_key_with_metadata is called with valid credentials
-                    result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials)
+                    result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: Returned metadata includes key_type and permissions information
         assert "key_type" in result
@@ -476,11 +496,11 @@ class TestVerifyApiKeyWithMetadataDependency:
         mock_auth_config_obj.enable_user_tracking = False
         mock_auth_config_obj.enable_request_logging = True
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
             # Also need to mock the api_key_auth config to enable request logging
             with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
                 # When: verify_api_key_with_metadata is called with valid credentials
-                result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials)
+                result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: Returned metadata includes timestamp, endpoint, and method information
         assert "timestamp" in result
@@ -512,9 +532,9 @@ class TestVerifyApiKeyWithMetadataDependency:
         # Given: Configuration that would cause verify_api_key to fail
         # When: verify_api_key_with_metadata is called with same parameters
         # Then: The same AuthenticationError is raised by delegation
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection) as settings:
             with pytest.raises(AuthenticationError) as exc_info:
-                await verify_api_key_with_metadata(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await verify_api_key_with_metadata(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify the same error type and message as basic dependency
             error_msg = str(exc_info.value)
@@ -552,9 +572,9 @@ class TestVerifyApiKeyWithMetadataDependency:
         mock_auth_config_obj.enable_user_tracking = False
         mock_auth_config_obj.enable_request_logging = False
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection, mock_auth_config_obj) as settings:
             with patch('app.infrastructure.security.auth.api_key_auth.config', mock_auth_config_obj):
-                result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials)
+                result = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: Returned metadata is minimal when advanced features are disabled
         assert "api_key" in result
@@ -614,8 +634,8 @@ class TestOptionalVerifyApiKeyDependency:
         """
         # Given: No Authorization header or credentials are provided
         # When: optional_verify_api_key dependency is called
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection):
-            result = await optional_verify_api_key(mock_request, None)
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection) as settings:
+            result = await optional_verify_api_key(mock_request, None, settings)
 
         # Then: None is returned without raising any exceptions
         assert result is None
@@ -648,8 +668,8 @@ class TestOptionalVerifyApiKeyDependency:
         valid_http_bearer_credentials.credentials = "test-primary-key-123"
 
         # When: optional_verify_api_key dependency is called
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
-            result = await optional_verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials)
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
+            result = await optional_verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: The validated API key is returned
         assert result == "test-primary-key-123"
@@ -682,9 +702,9 @@ class TestOptionalVerifyApiKeyDependency:
 
         # When: optional_verify_api_key dependency is called
         # Then: AuthenticationError is raised for invalid key
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with pytest.raises(AuthenticationError) as exc_info:
-                await optional_verify_api_key(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await optional_verify_api_key(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify appropriate error for invalid credentials
             error_msg = str(exc_info.value)
@@ -713,8 +733,8 @@ class TestOptionalVerifyApiKeyDependency:
         """
         # Given: No API keys configured (development mode)
         # When: optional_verify_api_key is called without credentials
-        with mock_auth_config(fake_settings, set()):
-            result = await optional_verify_api_key(mock_request, None)
+        with mock_auth_config(fake_settings, set()) as settings:
+            result = await optional_verify_api_key(mock_request, None, settings)
 
         # Then: None is returned (consistent with "no credentials provided" behavior)
         assert result is None
@@ -767,8 +787,8 @@ class TestVerifyApiKeyHttpDependency:
         valid_http_bearer_credentials.credentials = "test-primary-key-123"
 
         # When: verify_api_key_http dependency is called
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
-            result = await verify_api_key_http(mock_request_with_bearer_token, valid_http_bearer_credentials)
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
+            result = await verify_api_key_http(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # Then: The validated API key is returned normally
         assert result == "test-primary-key-123"
@@ -798,9 +818,9 @@ class TestVerifyApiKeyHttpDependency:
         # Given: Invalid API key credentials are provided
         # When: verify_api_key_http dependency is called
         # Then: HTTPException with 401 status is raised
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with pytest.raises(HTTPException) as exc_info:
-                await verify_api_key_http(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await verify_api_key_http(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify HTTP exception properties
             assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
@@ -830,9 +850,9 @@ class TestVerifyApiKeyHttpDependency:
         # Given: No credentials are provided (authentication required)
         # When: verify_api_key_http dependency is called
         # Then: HTTPException includes WWW-Authenticate: Bearer header
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection) as settings:
             with pytest.raises(HTTPException) as exc_info:
-                await verify_api_key_http(mock_request, None)
+                await verify_api_key_http(mock_request, None, settings)
 
             # Verify WWW-Authenticate header is present
             assert "WWW-Authenticate" in exc_info.value.headers
@@ -863,9 +883,9 @@ class TestVerifyApiKeyHttpDependency:
         # Given: Invalid authentication credentials
         # When: verify_api_key_http dependency is called
         # Then: HTTPException with 401 Unauthorized status is raised
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with pytest.raises(HTTPException) as exc_info:
-                await verify_api_key_http(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await verify_api_key_http(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify 401 status code
             assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
@@ -897,9 +917,9 @@ class TestVerifyApiKeyHttpDependency:
         # Given: Authentication failure with environment context
         # When: verify_api_key_http converts error to HTTPException
         # Then: Original error message and context are preserved in detail
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}, mock_environment_detection) as settings:
             with pytest.raises(HTTPException) as exc_info:
-                await verify_api_key_http(mock_request_with_invalid_bearer, invalid_http_bearer_credentials)
+                await verify_api_key_http(mock_request_with_invalid_bearer, invalid_http_bearer_credentials, settings)
 
             # Verify error detail structure
             detail = exc_info.value.detail
@@ -932,8 +952,8 @@ class TestVerifyApiKeyHttpDependency:
         """
         # Given: No API keys configured (development mode)
         # When: verify_api_key_http is called without credentials
-        with mock_auth_config(fake_settings, set()):
-            result = await verify_api_key_http(mock_request, None)
+        with mock_auth_config(fake_settings, set()) as settings:
+            result = await verify_api_key_http(mock_request, None, settings)
 
         # Then: "development" string is returned (no HTTPException)
         assert result == "development"
@@ -988,18 +1008,18 @@ class TestAuthenticationDependencyEdgeCases:
         empty_request.headers = Mock()
         empty_request.headers.get = Mock(return_value=None)
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with pytest.raises(AuthenticationError):
-                await verify_api_key(empty_request, empty_creds)
+                await verify_api_key(empty_request, empty_creds, settings)
 
         # Test with None credentials object but headers present
         none_request = Mock(spec=Request)
         none_request.headers = Mock()
         none_request.headers.get = Mock(return_value=None)
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with pytest.raises(AuthenticationError):
-                await verify_api_key(none_request, None)
+                await verify_api_key(none_request, None, settings)
 
     @pytest.mark.asyncio
     async def test_dependencies_maintain_consistent_behavior_across_variants(self, fake_settings_with_primary_key, mock_request_with_bearer_token, valid_http_bearer_credentials):
@@ -1026,18 +1046,18 @@ class TestAuthenticationDependencyEdgeCases:
         # Configure credentials
         valid_http_bearer_credentials.credentials = "test-primary-key-123"
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             # Test basic verify_api_key
-            result1 = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials)
+            result1 = await verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
             
             # Test HTTP wrapper variant
-            result2 = await verify_api_key_http(mock_request_with_bearer_token, valid_http_bearer_credentials)
+            result2 = await verify_api_key_http(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
             
             # Test optional variant
-            result3 = await optional_verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials)
+            result3 = await optional_verify_api_key(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
             
             # Test metadata variant
-            result4 = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials)
+            result4 = await verify_api_key_with_metadata(mock_request_with_bearer_token, valid_http_bearer_credentials, settings)
 
         # All should authenticate successfully
         assert result1 == "test-primary-key-123"
@@ -1077,20 +1097,20 @@ class TestAuthenticationDependencyEdgeCases:
         invalid_creds.credentials = "wrong-key"
 
         # Even with environment detection failure, invalid keys should be rejected
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
                 with pytest.raises(AuthenticationError):
-                    await verify_api_key(invalid_request, invalid_creds)
+                    await verify_api_key(invalid_request, invalid_creds, settings)
 
         # No credentials should also be rejected when keys are configured
         no_creds_request = Mock(spec=Request)
         no_creds_request.headers = Mock()
         no_creds_request.headers.get = Mock(return_value=None)
 
-        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+        with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
             with patch('app.infrastructure.security.auth.get_environment_info', side_effect=failing_env_detection):
                 with pytest.raises(AuthenticationError):
-                    await verify_api_key(no_creds_request, None)
+                    await verify_api_key(no_creds_request, None, settings)
 
     @pytest.mark.asyncio
     async def test_dependencies_handle_concurrent_access_safely(self, fake_settings_with_primary_key):
@@ -1130,13 +1150,13 @@ class TestAuthenticationDependencyEdgeCases:
         invalid_creds.credentials = "invalid-key"
 
         async def valid_auth():
-            with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
-                return await verify_api_key(valid_request, valid_creds)
+            with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
+                return await verify_api_key(valid_request, valid_creds, settings)
 
         async def invalid_auth():
-            with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}):
+            with mock_auth_config(fake_settings_with_primary_key, {"test-primary-key-123"}) as settings:
                 try:
-                    await verify_api_key(invalid_request, invalid_creds)
+                    await verify_api_key(invalid_request, invalid_creds, settings)
                     return "should_not_succeed"
                 except AuthenticationError:
                     return "failed_as_expected"
