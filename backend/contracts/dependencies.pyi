@@ -13,7 +13,7 @@ consistency, and graceful error handling across all application components.
 The module implements a layered dependency injection strategy following enterprise-grade patterns:
 
 **1. Configuration Layer**: Singleton and fresh configuration providers with caching optimization
-**2. Service Layer**: Async service initialization with graceful degradation and error resilience  
+**2. Service Layer**: Async service initialization with graceful degradation and error resilience
 **3. Monitoring Layer**: Health check infrastructure with comprehensive system validation
 **4. Integration Layer**: Seamless integration between FastAPI endpoints and infrastructure services
 
@@ -160,11 +160,11 @@ All service dependencies automatically integrate with comprehensive configuratio
 def configure_test_dependencies(app: FastAPI):
     # Override production dependencies with test alternatives
     app.dependency_overrides[get_settings] = get_fresh_settings
-    
+
     # Custom test service configurations
     def get_test_cache():
         return MockCacheService()
-    
+
     app.dependency_overrides[get_cache_service] = get_test_cache
 ```
 
@@ -214,13 +214,14 @@ resilience across all deployment environments.
 
 from functools import lru_cache
 import logging
+from typing import Any
 from fastapi import Depends
 from app.core.config import Settings, settings, create_settings
-from app.infrastructure.cache import AIResponseCache
-from app.infrastructure.monitoring import HealthChecker, check_ai_model_health, check_cache_health, check_resilience_health
+from app.infrastructure.cache import CacheInterface
+from app.infrastructure.monitoring import HealthChecker, ComponentStatus, check_ai_model_health, check_cache_health, check_resilience_health
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """
     Cached application settings dependency provider with singleton pattern for FastAPI dependency injection.
@@ -245,19 +246,19 @@ def get_settings() -> Settings:
         - Uses `@lru_cache()` decorator for O(1) access after first invocation
         - Ensures configuration consistency throughout application lifecycle
         - Provides thread-safe access for concurrent request processing
-        
+    
         **Performance Optimization:**
         - Environment variable parsing occurs only once during first call
         - Subsequent calls return cached instance with no computation overhead
         - Memory efficient with single Settings instance shared across requests
         - Eliminates redundant configuration validation and parsing
-        
+    
         **Configuration Consistency:**
         - Guarantees identical configuration values across all application components
         - Prevents configuration drift during application runtime
         - Maintains stable configuration for dependency injection chains
         - Ensures predictable behavior for all services requiring configuration
-        
+    
         **Integration Patterns:**
         - Designed specifically for FastAPI's dependency injection system
         - Compatible with nested dependency injection scenarios
@@ -268,9 +269,9 @@ def get_settings() -> Settings:
         >>> # Basic FastAPI dependency injection
         >>> from fastapi import FastAPI, Depends
         >>> from app.dependencies import get_settings
-        >>> 
+        >>>
         >>> app = FastAPI()
-        >>> 
+        >>>
         >>> @app.get("/config-info")
         >>> async def config_info(settings: Settings = Depends(get_settings)):
         ...     return {
@@ -278,20 +279,20 @@ def get_settings() -> Settings:
         ...         "environment": settings.environment,
         ...         "redis_configured": bool(settings.redis_url)
         ...     }
-        
+    
         >>> # Nested dependency injection
         >>> async def get_database_url(settings: Settings = Depends(get_settings)) -> str:
         ...     return f"postgresql://{settings.db_host}:{settings.db_port}/{settings.db_name}"
-        >>> 
+        >>>
         >>> @app.get("/database")
         >>> async def database_info(db_url: str = Depends(get_database_url)):
         ...     return {"database_url": db_url}
-        
+    
         >>> # Performance verification - same instance returned
         >>> settings1 = get_settings()
         >>> settings2 = get_settings()
         >>> assert settings1 is settings2  # Same object reference
-        >>> 
+        >>>
         >>> # Configuration access patterns
         >>> settings = get_settings()
         >>> if settings.debug:
@@ -404,7 +405,7 @@ def get_fresh_settings() -> Settings:
     ...
 
 
-async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIResponseCache:
+async def get_cache_service(settings: Settings = Depends(get_settings)) -> CacheInterface:
     """
     Asynchronous AI response cache service dependency provider with Redis connectivity and graceful degradation.
     
@@ -418,9 +419,9 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
                  Redis connection details, TTL settings, compression thresholds, and performance tuning options
     
     Returns:
-        AIResponseCache: Fully configured AI response cache service instance providing:
+        CacheInterface: Fully configured cache service instance providing:
                         - Redis-backed persistent caching with automatic connection management
-                        - Memory-only fallback operation when Redis is unavailable  
+                        - Memory-only fallback operation when Redis is unavailable
                         - Comprehensive text processing and response compression capabilities
                         - Intelligent cache key generation with collision prevention
                         - Performance optimization with configurable text size tiers
@@ -432,13 +433,13 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         - Applies all cache-related configuration parameters automatically
         - Initializes internal data structures for optimal performance
         - Sets up compression and text processing capabilities
-        
+    
         **Redis Connection Management:**
         - Attempts asynchronous Redis connection during service initialization
         - Implements graceful degradation when Redis connection fails
         - Logs connection failures as warnings without blocking service operation
         - Maintains service functionality with memory-only caching as fallback
-        
+    
         **Configuration Integration:**
         - Automatically applies redis_url for persistent storage backend
         - Configures default_ttl for cache expiration management
@@ -446,13 +447,13 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         - Applies compression_threshold and compression_level for response optimization
         - Configures text_size_tiers for intelligent caching strategies
         - Sets memory_cache_size for in-memory cache capacity management
-        
+    
         **Error Handling and Resilience:**
         - Continues operation even when Redis connection fails
         - Logs meaningful warning messages for operational monitoring
         - Provides full cache functionality in memory-only mode
         - Ensures no request processing disruption due to cache initialization issues
-        
+    
         **Performance Characteristics:**
         - Asynchronous initialization for non-blocking dependency resolution
         - Optimized configuration application for minimal setup overhead
@@ -463,9 +464,9 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         >>> # Basic FastAPI dependency injection
         >>> from fastapi import FastAPI, Depends
         >>> from app.dependencies import get_cache_service
-        >>> 
+        >>>
         >>> app = FastAPI()
-        >>> 
+        >>>
         >>> @app.post("/process-text")
         >>> async def process_text(
         ...     text: str,
@@ -476,24 +477,24 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         ...     cached_result = await cache.get(cache_key)
         ...     if cached_result:
         ...         return {"result": cached_result, "from_cache": True}
-        ...     
+        ...
         ...     # Process and cache new response using standard interface
         ...     result = await process_ai_request(text)
         ...     await cache.set(cache_key, result, ttl=3600)
         ...     return {"result": result, "from_cache": False}
-        
+    
         >>> # Service configuration verification
         >>> cache = await get_cache_service()
         >>> assert cache.default_ttl > 0  # TTL configured
         >>> assert cache.compression_threshold > 0  # Compression enabled
-        >>> 
+        >>>
         >>> # Redis connectivity check
         >>> try:
         ...     await cache.connect()
         ...     redis_available = True
         ... except Exception:
         ...     redis_available = False  # Graceful fallback to memory-only
-        
+    
         >>> # Advanced usage with custom configuration
         >>> async def get_specialized_cache(
         ...     settings: Settings = Depends(get_settings)
@@ -501,7 +502,7 @@ async def get_cache_service(settings: Settings = Depends(get_settings)) -> AIRes
         ...     cache = await get_cache_service(settings)
         ...     # Additional specialized configuration
         ...     return cache
-        
+    
         >>> # Performance monitoring integration
         >>> @app.get("/cache-stats")
         >>> async def cache_stats(cache: AIResponseCache = Depends(get_cache_service)):
@@ -577,9 +578,9 @@ async def get_health_checker(settings: Settings = Depends(get_settings)) -> Heal
         >>> # Basic FastAPI health endpoint integration
         >>> from fastapi import FastAPI, Depends
         >>> from app.dependencies import get_health_checker
-        >>> 
+        >>>
         >>> app = FastAPI()
-        >>> 
+        >>>
         >>> @app.get("/health")
         >>> async def health_check(checker: HealthChecker = Depends(get_health_checker)):
         ...     health_status = await checker.check_all_health()
@@ -588,25 +589,25 @@ async def get_health_checker(settings: Settings = Depends(get_settings)) -> Heal
         ...         "components": health_status.component_results,
         ...         "timestamp": health_status.timestamp
         ...     }
-        
+    
         >>> # Individual component health checking
         >>> checker = get_health_checker()
         >>> ai_health = await checker.check_health("ai_model")
         >>> cache_health = await checker.check_health("cache")
         >>> resilience_health = await checker.check_health("resilience")
-        
+    
         >>> # Health checker configuration verification
         >>> checker = get_health_checker()
         >>> registered_checks = list(checker._checks.keys())
         >>> assert "ai_model" in registered_checks
         >>> assert "cache" in registered_checks
         >>> assert "resilience" in registered_checks
-        
+    
         >>> # Singleton pattern verification
         >>> checker1 = get_health_checker()
         >>> checker2 = get_health_checker()
         >>> assert checker1 is checker2  # Same object reference
-        
+    
         >>> # Advanced health monitoring integration
         >>> @app.get("/health/detailed")
         >>> async def detailed_health(checker: HealthChecker = Depends(get_health_checker)):
@@ -635,7 +636,7 @@ async def get_health_checker(settings: Settings = Depends(get_settings)) -> Heal
     ...
 
 
-def create_dependency_factory(settings_obj: Settings):
+def create_dependency_factory(settings_obj: Settings) -> Any:
     """
     Factory function that creates a dependency factory for use with specific Settings instances.
     
