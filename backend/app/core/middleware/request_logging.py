@@ -46,8 +46,8 @@ from app.core.config import Settings
 logger = logging.getLogger(__name__)
 
 # Context variables for request tracking
-request_id_context: ContextVar[str] = ContextVar('request_id', default='')
-request_start_time_context: ContextVar[float] = ContextVar('request_start_time', default=0.0)
+request_id_context: ContextVar[str] = ContextVar("request_id", default="")
+request_start_time_context: ContextVar[float] = ContextVar("request_start_time", default=0.0)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -104,8 +104,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.settings = settings
-        self.slow_request_threshold = getattr(settings, 'slow_request_threshold', 1000)  # ms
-        self.sensitive_headers = {'authorization', 'x-api-key', 'cookie'}
+        self.slow_request_threshold = getattr(settings, "slow_request_threshold", 1000)  # ms
+        self.sensitive_headers = {"authorization", "x-api-key", "cookie"}
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
@@ -160,25 +160,25 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         logger.info(
             f"Request started: {request.method} {request.url.path} [req_id: {request_id}]",
             extra={
-                'request_id': request_id,
-                'method': request.method,
-                'path': request.url.path,
-                'query_params': dict(request.query_params),
-                'user_agent': request.headers.get('user-agent', 'unknown'),
-                'client_ip': request.client.host if request.client else 'unknown'
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "query_params": dict(request.query_params),
+                "user_agent": request.headers.get("user-agent", "unknown"),
+                "client_ip": request.client.host if request.client else "unknown"
             }
         )
 
         try:
             # Process request through remaining middleware and handlers
-            response = await call_next(request)
+            response: Response = await call_next(request)
 
             # Calculate request duration
             duration_ms = (time.time() - start_time) * 1000
 
             # Get response size if available
-            response_size = getattr(response, 'content-length', 'unknown')
-            if hasattr(response, 'body') and response.body:
+            response_size = getattr(response, "content-length", "unknown")
+            if hasattr(response, "body") and response.body:
                 response_size = f"{len(response.body)}B"
 
             # Determine log level based on status code
@@ -194,12 +194,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 f"Request completed: {request.method} {request.url.path} "
                 f"{response.status_code} {response_size} {duration_ms:.1f}ms [req_id: {request_id}]",
                 extra={
-                    'request_id': request_id,
-                    'method': request.method,
-                    'path': request.url.path,
-                    'status_code': response.status_code,
-                    'duration_ms': duration_ms,
-                    'response_size': response_size
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "duration_ms": duration_ms,
+                    "response_size": response_size
                 }
             )
 
@@ -212,11 +212,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 f"Request failed: {request.method} {request.url.path} "
                 f"{type(exc).__name__} {duration_ms:.1f}ms [req_id: {request_id}]",
                 extra={
-                    'request_id': request_id,
-                    'method': request.method,
-                    'path': request.url.path,
-                    'duration_ms': duration_ms,
-                    'exception_type': type(exc).__name__
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "duration_ms": duration_ms,
+                    "exception_type": type(exc).__name__
                 },
                 exc_info=True
             )

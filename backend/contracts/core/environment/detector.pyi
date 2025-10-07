@@ -6,7 +6,7 @@ using signals from various sources and applies confidence scoring.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from .enums import FeatureContext
 from .models import DetectionConfig, EnvironmentInfo, EnvironmentSignal
 from .patterns import collect_detection_signals
@@ -73,7 +73,7 @@ class EnvironmentDetector:
             print(f"  - {signal['source']}: {signal['reasoning']}")
     """
 
-    def __init__(self, config: Optional[DetectionConfig] = None):
+    def __init__(self, config: DetectionConfig | None = None):
         """
         Initialize environment detector with configuration and caching.
         

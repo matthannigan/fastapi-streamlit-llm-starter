@@ -6,7 +6,7 @@ EnvironmentSignal, EnvironmentInfo, and DetectionConfig.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, NamedTuple
+from typing import Dict, List, Any, NamedTuple
 
 from .enums import Environment, FeatureContext
 
@@ -14,18 +14,18 @@ from .enums import Environment, FeatureContext
 class EnvironmentSignal(NamedTuple):
     """
     Single environment detection signal with confidence scoring and reasoning.
-    
+
     Represents one piece of evidence used in environment detection, such as
     an environment variable, system indicator, or hostname pattern match.
     Each signal includes confidence scoring to enable weighted decision making.
-    
+
     Attributes:
         source: Detection mechanism that generated this signal (e.g., "env_var", "hostname_pattern")
         value: Raw value that triggered the detection (e.g., "production", "staging.example.com")
         environment: Environment classification this signal indicates
         confidence: Confidence score from 0.0-1.0 for this detection
         reasoning: Human-readable explanation of why this signal indicates the environment
-    
+
     Examples:
         >>> signal = EnvironmentSignal(
         ...     source="ENVIRONMENT",
@@ -48,11 +48,11 @@ class EnvironmentSignal(NamedTuple):
 class EnvironmentInfo:
     """
     Comprehensive environment detection result with confidence scoring and metadata.
-    
+
     Contains the final environment determination along with confidence scoring,
     reasoning, and supporting evidence. Includes feature-specific context and
     metadata for advanced use cases like preset selection or security overrides.
-    
+
     Attributes:
         environment: Final determined environment classification
         confidence: Overall confidence score from 0.0-1.0 for the detection
@@ -61,7 +61,7 @@ class EnvironmentInfo:
         feature_context: Feature-specific context used in detection
         additional_signals: All environment signals collected during detection
         metadata: Feature-specific metadata and configuration hints
-    
+
     Usage:
         # Basic environment checking
         env_info = detector.detect_environment()
@@ -95,11 +95,11 @@ class EnvironmentInfo:
 class DetectionConfig:
     """
     Configuration for environment detection behavior and patterns.
-    
+
     Controls how the EnvironmentDetector identifies environments through
     environment variables, patterns, indicators, and feature-specific overrides.
     Allows customization of detection logic for different deployment scenarios.
-    
+
     Attributes:
         env_var_precedence: Environment variables checked in priority order
         development_patterns: Regex patterns indicating development environments
@@ -108,7 +108,7 @@ class DetectionConfig:
         development_indicators: System indicators suggesting development
         production_indicators: System indicators suggesting production
         feature_contexts: Feature-specific configuration overrides
-    
+
     Examples:
         # Custom configuration for specialized deployment
         config = DetectionConfig(
@@ -125,68 +125,68 @@ class DetectionConfig:
     """
     # Environment variable precedence (highest to lowest priority)
     env_var_precedence: List[str] = field(default_factory=lambda: [
-        'ENVIRONMENT',
-        'NODE_ENV', 
-        'FLASK_ENV',
-        'APP_ENV',
-        'ENV',
-        'DEPLOYMENT_ENV',
-        'DJANGO_SETTINGS_MODULE',
-        'RAILS_ENV'
+        "ENVIRONMENT",
+        "NODE_ENV",
+        "FLASK_ENV",
+        "APP_ENV",
+        "ENV",
+        "DEPLOYMENT_ENV",
+        "DJANGO_SETTINGS_MODULE",
+        "RAILS_ENV"
     ])
-    
+
     # Pattern matching configurations
     development_patterns: List[str] = field(default_factory=lambda: [
-        r'.*dev.*',
-        r'.*local.*', 
-        r'.*test.*',
-        r'.*sandbox.*',
-        r'.*demo.*'
+        r".*dev.*",
+        r".*local.*",
+        r".*test.*",
+        r".*sandbox.*",
+        r".*demo.*"
     ])
-    
+
     staging_patterns: List[str] = field(default_factory=lambda: [
-        r'.*stag.*',
-        r'.*pre-?prod.*',
-        r'.*preprod.*',
-        r'.*uat.*',
-        r'.*integration.*'
+        r".*stag.*",
+        r".*pre-?prod.*",
+        r".*preprod.*",
+        r".*uat.*",
+        r".*integration.*"
     ])
-    
+
     production_patterns: List[str] = field(default_factory=lambda: [
-        r'.*prod.*',
-        r'.*live.*',
-        r'.*release.*',
-        r'.*stable.*',
-        r'.*main.*',
-        r'.*master.*'
+        r".*prod.*",
+        r".*live.*",
+        r".*release.*",
+        r".*stable.*",
+        r".*main.*",
+        r".*master.*"
     ])
-    
+
     # System indicator configurations
     development_indicators: List[str] = field(default_factory=lambda: [
-        'DEBUG=true',
-        'DEBUG=1',
-        '.env',
-        '.git',
-        'docker-compose.dev.yml'
+        "DEBUG=true",
+        "DEBUG=1",
+        ".env",
+        ".git",
+        "docker-compose.dev.yml"
     ])
-    
+
     production_indicators: List[str] = field(default_factory=lambda: [
-        'PRODUCTION=true',
-        'PROD=true',
-        'DEBUG=false',
-        'DEBUG=0'
+        "PRODUCTION=true",
+        "PROD=true",
+        "DEBUG=false",
+        "DEBUG=0"
     ])
-    
+
     # Feature-specific overrides
     feature_contexts: Dict[FeatureContext, Dict[str, Any]] = field(default_factory=lambda: {
         FeatureContext.AI_ENABLED: {
-            'environment_var': 'ENABLE_AI_CACHE',
-            'true_values': ['true', '1', 'yes'],
-            'preset_modifier': 'ai-'
+            "environment_var": "ENABLE_AI_CACHE",
+            "true_values": ["true", "1", "yes"],
+            "preset_modifier": "ai-"
         },
         FeatureContext.SECURITY_ENFORCEMENT: {
-            'environment_var': 'ENFORCE_AUTH',
-            'true_values': ['true', '1', 'yes'],
-            'production_override': True
+            "environment_var": "ENFORCE_AUTH",
+            "true_values": ["true", "1", "yes"],
+            "production_override": True
         }
     })

@@ -41,10 +41,10 @@ app.add_middleware(RateLimitMiddleware, settings=settings)
 
 import time
 import logging
-from typing import Dict, Optional
+from typing import Dict, Callable, Any
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from fastapi import Request, status
+from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 import redis.asyncio as redis
 from redis.exceptions import RedisError
@@ -441,7 +441,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, settings: Settings):
         ...
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
         Process request with rate limiting.
         """

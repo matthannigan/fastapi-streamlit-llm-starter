@@ -6,7 +6,7 @@ EnvironmentSignal, EnvironmentInfo, and DetectionConfig.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, NamedTuple
+from typing import Dict, List, Any, NamedTuple
 from .enums import Environment, FeatureContext
 
 

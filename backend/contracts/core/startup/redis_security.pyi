@@ -40,11 +40,35 @@ print(validation_report.summary())
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, TypedDict
 from app.core.environment import Environment, FeatureContext, get_environment_info
 from app.core.exceptions import ConfigurationError
+
+
+class TLSValidationResult(TypedDict):
+    """
+    Result of TLS certificate validation.
+    """
+
+    ...
+
+
+class EncryptionValidationResult(TypedDict):
+    """
+    Result of encryption key validation.
+    """
+
+    ...
+
+
+class AuthValidationResult(TypedDict):
+    """
+    Result of Redis authentication validation.
+    """
+
+    ...
 
 
 @dataclass
@@ -83,13 +107,13 @@ class RedisSecurityValidator:
     provide appropriate security levels for different deployment contexts.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the Redis security validator.
         """
         ...
 
-    def validate_production_security(self, redis_url: Optional[str], insecure_override: bool = False) -> None:
+    def validate_production_security(self, redis_url: str | None, insecure_override: bool = False) -> None:
         """
         Validate Redis security for production environments.
         
@@ -122,7 +146,7 @@ class RedisSecurityValidator:
         """
         ...
 
-    def validate_tls_certificates(self, cert_path: Optional[str] = None, key_path: Optional[str] = None, ca_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_tls_certificates(self, cert_path: str | None = None, key_path: str | None = None, ca_path: str | None = None) -> TLSValidationResult:
         """
         Validate TLS certificate files and their properties.
         
@@ -143,7 +167,7 @@ class RedisSecurityValidator:
         """
         ...
 
-    def validate_encryption_key(self, encryption_key: Optional[str] = None) -> Dict[str, Any]:
+    def validate_encryption_key(self, encryption_key: str | None = None) -> EncryptionValidationResult:
         """
         Validate encryption key format and strength.
         
@@ -158,7 +182,7 @@ class RedisSecurityValidator:
         """
         ...
 
-    def validate_redis_auth(self, redis_url: str, auth_password: Optional[str] = None) -> Dict[str, Any]:
+    def validate_redis_auth(self, redis_url: str, auth_password: str | None = None) -> AuthValidationResult:
         """
         Validate Redis authentication configuration.
         
@@ -174,7 +198,7 @@ class RedisSecurityValidator:
         """
         ...
 
-    def validate_security_configuration(self, redis_url: Optional[str], encryption_key: Optional[str] = None, tls_cert_path: Optional[str] = None, tls_key_path: Optional[str] = None, tls_ca_path: Optional[str] = None, auth_password: Optional[str] = None, test_connectivity: bool = False) -> SecurityValidationResult:
+    def validate_security_configuration(self, redis_url: str | None, encryption_key: str | None = None, tls_cert_path: str | None = None, tls_key_path: str | None = None, tls_ca_path: str | None = None, auth_password: str | None = None, test_connectivity: bool = False) -> SecurityValidationResult:
         """
         Perform comprehensive security configuration validation.
         
@@ -208,7 +232,7 @@ class RedisSecurityValidator:
         """
         ...
 
-    def validate_startup_security(self, redis_url: Optional[str], insecure_override: Optional[bool] = None) -> None:
+    def validate_startup_security(self, redis_url: str | None, insecure_override: bool | None = None) -> None:
         """
         Comprehensive Redis security validation for application startup.
         
@@ -234,7 +258,7 @@ class RedisSecurityValidator:
         ...
 
 
-def validate_redis_security(redis_url: Optional[str], insecure_override: Optional[bool] = None) -> None:
+def validate_redis_security(redis_url: str | None, insecure_override: bool | None = None) -> None:
     """
     Convenience function for Redis security validation.
     

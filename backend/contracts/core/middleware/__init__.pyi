@@ -322,7 +322,7 @@ from app.core.middleware import get_request_id, get_request_duration
 async def my_endpoint(request: Request):
     request_id = get_request_id(request)
     duration = get_request_duration(request)
-    
+
     logger.info(f"Processing request {request_id}, duration: {duration}ms")
     return {"request_id": request_id}
 ```
@@ -445,14 +445,14 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
         - Sets up centralized exception handling with structured error responses
         - Integrates with application logging and monitoring systems
         - Provides graceful degradation when optional components fail
-        
+    
     Middleware Stack Order (LIFO Execution):
         Due to FastAPI's Last-In-First-Out middleware execution, the setup order
         is reverse of the actual execution order:
-        
+    
         Setup Order → Execution Order:
         1. Security Middleware → Runs 4th (request validation)
-        2. Request Logging → Runs 3rd (correlation ID generation)  
+        2. Request Logging → Runs 3rd (correlation ID generation)
         3. Performance Monitoring → Runs 2nd (timing context)
         4. Global Exception Handler → Catches all exceptions
         5. CORS Middleware → Runs 1st (preflight handling)
@@ -470,7 +470,7 @@ def setup_middleware(app: FastAPI, settings: Settings) -> None:
         >>> from fastapi import FastAPI
         >>> from app.core.middleware import setup_middleware
         >>> from app.core.config import settings
-        >>> 
+        >>>
         >>> app = FastAPI()
         >>> setup_middleware(app, settings)
         >>> # Production-ready middleware stack is now active
@@ -580,7 +580,7 @@ def get_request_id(request: Request) -> str:
     ...
 
 
-def get_request_duration(_request: Request) -> Optional[float]:
+def get_request_duration(_request: Request) -> float | None:
     """
     Get the current request duration in milliseconds.
     

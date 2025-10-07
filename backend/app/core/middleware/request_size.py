@@ -33,7 +33,7 @@ app.add_middleware(RequestSizeLimitMiddleware, settings=settings)
 """
 
 import logging
-from typing import Callable, Any
+from typing import Callable, Any, Dict, cast
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 from fastapi import Request, Response, status
@@ -82,7 +82,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         #     '/v1/upload': 52428800  # 50MB for upload endpoint
         # }
     """
-    
+
     def __init__(self, app: ASGIApp, settings: Settings):
         """
         Initialize request size limiting middleware with hierarchical limit configuration.
@@ -105,32 +105,32 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         self.settings = settings
 
         # Methods that can have request bodies
-        self.body_methods = {'POST', 'PUT', 'PATCH'}
+        self.body_methods = {"POST", "PUT", "PATCH"}
 
         # Default size limits (in bytes) - fallback values
         default_limits = {
             # Global default
-            'default': 10 * 1024 * 1024,  # 10MB
+            "default": 10 * 1024 * 1024,  # 10MB
 
             # Content-type specific limits
-            'application/json': 5 * 1024 * 1024,      # 5MB for JSON
-            'text/plain': 1 * 1024 * 1024,            # 1MB for text
-            'multipart/form-data': 50 * 1024 * 1024,  # 50MB for files
-            'application/octet-stream': 100 * 1024 * 1024,  # 100MB for binary
+            "application/json": 5 * 1024 * 1024,      # 5MB for JSON
+            "text/plain": 1 * 1024 * 1024,            # 1MB for text
+            "multipart/form-data": 50 * 1024 * 1024,  # 50MB for files
+            "application/octet-stream": 100 * 1024 * 1024,  # 100MB for binary
 
             # Endpoint specific limits
-            '/v1/text_processing/process': 2 * 1024 * 1024,      # 2MB
-            '/v1/text_processing/batch_process': 20 * 1024 * 1024,  # 20MB
-            '/v1/text_processing/upload': 50 * 1024 * 1024,  # 50MB
+            "/v1/text_processing/process": 2 * 1024 * 1024,      # 2MB
+            "/v1/text_processing/batch_process": 20 * 1024 * 1024,  # 20MB
+            "/v1/text_processing/upload": 50 * 1024 * 1024,  # 50MB
         }
 
         # Use custom settings if provided, otherwise use defaults
-        custom_limits = getattr(settings, 'request_size_limits', {})
+        custom_limits = getattr(settings, "request_size_limits", {})
         if custom_limits:
             self.default_limits = custom_limits.copy()
         else:
             self.default_limits = default_limits.copy()
-    
+
     def _get_size_limit(self, request: Request) -> int:
         """
         Determine the appropriate size limit for the current request using hierarchical lookup.
@@ -149,18 +149,18 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         """
         # Check endpoint-specific limits first
         endpoint_limit = self.default_limits.get(request.url.path)
-        if endpoint_limit:
-            return endpoint_limit
+        if endpoint_limit is not None:
+            return int(endpoint_limit)
 
         # Check content-type specific limits
-        content_type = request.headers.get('content-type', '').split(';')[0].strip()
+        content_type = request.headers.get("content-type", "").split(";")[0].strip()
         content_type_limit = self.default_limits.get(content_type)
-        if content_type_limit:
-            return content_type_limit
+        if content_type_limit is not None:
+            return int(content_type_limit)
 
         # Use default limit
-        return self.default_limits['default']
-    
+        return int(self.default_limits["default"])
+
     def _format_size(self, size_bytes: int) -> str:
         """
         Convert size in bytes to human-readable format with appropriate units.
@@ -179,13 +179,12 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         """
         if size_bytes < 1024:
             return f"{size_bytes}B"
-        elif size_bytes < 1024 * 1024:
-            return f"{size_bytes / 1024:.1f}KB"  # noqa: E231
-        elif size_bytes < 1024 * 1024 * 1024:
-            return f"{size_bytes / (1024 * 1024):.1f}MB"  # noqa: E231
-        else:
-            return f"{size_bytes / (1024 * 1024 * 1024):.1f}GB"  # noqa: E231
-    
+        if size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f}KB"
+        if size_bytes < 1024 * 1024 * 1024:
+            return f"{size_bytes / (1024 * 1024):.1f}MB"
+        return f"{size_bytes / (1024 * 1024 * 1024):.1f}GB"
+
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
         Process HTTP request with comprehensive size validation and DoS protection.
@@ -224,13 +223,14 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         """
         # Skip size checking for methods without bodies
         if request.method not in self.body_methods:
-            return await call_next(request)
-        
+            response: Response = await call_next(request)
+            return response
+
         # Get size limit for this request
         size_limit = self._get_size_limit(request)
-        
+
         # Check Content-Length header first (if present)
-        content_length = request.headers.get('content-length')
+        content_length = request.headers.get("content-length")
         if content_length:
             try:
                 declared_size = int(content_length)
@@ -239,7 +239,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         f"Request size {self._format_size(declared_size)} exceeds limit "
                         f"{self._format_size(size_limit)} for {request.url.path}"
                     )
-                    
+
                     return JSONResponse(
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                         content={
@@ -263,43 +263,43 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
                         "error_code": "INVALID_CONTENT_LENGTH"
                     }
                 )
-        
+
         # For streaming requests or requests without Content-Length,
         # we need to validate during body reading
         original_receive = request.receive
         body_size = 0
-        
-        async def size_limiting_receive():
+
+        async def size_limiting_receive() -> Dict[str, Any]:
             nonlocal body_size
             message = await original_receive()
-            
+
             if message["type"] == "http.request":
                 body_chunk = message.get("body", b"")
                 body_size += len(body_chunk)
-                
+
                 if body_size > size_limit:
                     # Raise app-level error for uniform handling
                     raise RequestTooLargeError(
                         f"Request body size {body_size} exceeds limit {size_limit}"
                     )
-            
-            return message
-        
+
+            return cast("Dict[str, Any]", message)
+
         # Replace the receive callable
         request._receive = size_limiting_receive
-        
+
         try:
-            response = await call_next(request)
-            
+            processed_response: Response = await call_next(request)
+
             # Add informational headers about size limits
-            response.headers["X-Max-Request-Size"] = str(size_limit)
-            response.headers["X-Request-Size-Limit"] = self._format_size(size_limit)
-            
-            return response
-            
+            processed_response.headers["X-Max-Request-Size"] = str(size_limit)
+            processed_response.headers["X-Request-Size-Limit"] = self._format_size(size_limit)
+
+            return processed_response
+
         except RequestTooLargeError as e:
             logger.warning(f"Streaming request too large: {e}")
-            
+
             return JSONResponse(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 content={
@@ -317,7 +317,6 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
 class RequestTooLargeException(Exception):
     """Deprecated. Use RequestTooLargeError from app.core.exceptions instead."""
-    pass
 
 
 # Alternative ASGI-level implementation for even better performance
@@ -373,7 +372,7 @@ class ASGIRequestSizeLimitMiddleware:
         self.app = app
         self.max_size = max_size
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """
         Process ASGI request with protocol-level size validation and DoS protection.
 
@@ -398,17 +397,17 @@ class ASGIRequestSizeLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        
+
         # Check if this is a method that can have a body
         method = scope.get("method", "GET")
         if method not in {"POST", "PUT", "PATCH"}:
             await self.app(scope, receive, send)
             return
-        
+
         # Check Content-Length header
         headers = dict(scope.get("headers", []))
         content_length = headers.get(b"content-length")
-        
+
         if content_length:
             try:
                 size = int(content_length.decode())
@@ -439,35 +438,35 @@ class ASGIRequestSizeLimitMiddleware:
                     "body": b'{"error": "Invalid Content-Length", "error_code": "INVALID_CONTENT_LENGTH"}',
                 })
                 return
-        
+
         # For streaming validation, wrap the receive callable
         body_size = 0
-        
-        async def size_limiting_receive():
+
+        async def size_limiting_receive() -> Dict[str, Any]:
             nonlocal body_size
             message = await receive()
-            
+
             if message["type"] == "http.request":
                 body = message.get("body", b"")
                 body_size += len(body)
-                
+
                 if body_size > self.max_size:
                     # Let the global handler or upstream middleware handle it
                     raise RequestTooLargeError("Request too large")
-            
-            return message
-        
+
+            return cast("Dict[str, Any]", message)
+
         response_started = False
-        
-        async def intercept_send(message):
+
+        async def intercept_send(message: Dict[str, Any]) -> None:
             nonlocal response_started
             if message["type"] == "http.response.start":
                 response_started = True
             await send(message)
-        
+
         try:
             await self.app(scope, size_limiting_receive, intercept_send)
-        except Exception as e:
+        except Exception:
             # Only send error response if we haven't started sending a response yet
             if not response_started:
                 await send({
