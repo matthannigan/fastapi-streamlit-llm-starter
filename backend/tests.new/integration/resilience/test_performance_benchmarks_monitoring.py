@@ -222,8 +222,8 @@ class TestPerformanceBenchmarksMonitoring:
         within_memory_limit = result.memory_usage <= threshold.max_memory_mb
 
         # Configuration loading should be very fast
-        assert within_time_limit, f"Config loading too slow: {result.execution_time".3f"}s > {threshold.max_time}s"
-        assert within_memory_limit, f"Config loading uses too much memory: {result.memory_usage".1f"}MB > {threshold.max_memory_mb}MB"
+        assert within_time_limit, f"Config loading too slow: {result.execution_time:.3f}s > {threshold.max_time}s"
+        assert within_memory_limit, f"Config loading uses too much memory: {result.memory_usage:.1f}MB > {threshold.max_memory_mb}MB"
 
         # Verify benchmark metadata
         assert "config_type" in result.metadata
@@ -267,8 +267,8 @@ class TestPerformanceBenchmarksMonitoring:
         within_memory_limit = result.memory_usage <= threshold.max_memory_mb
 
         # Operation execution should be reasonably fast
-        assert within_time_limit, f"Operation execution too slow: {result.execution_time".3f"}s > {threshold.max_time}s"
-        assert within_memory_limit, f"Operation execution uses too much memory: {result.memory_usage".1f"}MB > {threshold.max_memory_mb}MB"
+        assert within_time_limit, f"Operation execution too slow: {result.execution_time:.3f}s > {threshold.max_time}s"
+        assert within_memory_limit, f"Operation execution uses too much memory: {result.memory_usage:.1f}MB > {threshold.max_memory_mb}MB"
 
     def test_comprehensive_benchmark_suite_execution(self, benchmark_suite, performance_thresholds):
         """
@@ -378,9 +378,9 @@ class TestPerformanceBenchmarksMonitoring:
             for violation in violations:
                 print(f"Performance violation in {violation['benchmark']}:")
                 if violation['violations']['time']:
-                    print(f"  Time: {violation['result'].execution_time".3f"}s > {violation['threshold'].max_time}s")
+                    print(f"  Time: {violation['result'].execution_time:.3f}s > {violation['threshold'].max_time}s")
                 if violation['violations']['memory']:
-                    print(f"  Memory: {violation['result'].memory_usage".1f"}MB > {violation['threshold'].max_memory_mb}MB")
+                    print(f"  Memory: {violation['result'].memory_usage:.1f}MB > {violation['threshold'].max_memory_mb}MB")
 
         # Verify violations are properly detected (may be empty in normal conditions)
         assert isinstance(violations, list)

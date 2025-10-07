@@ -488,7 +488,7 @@ class TemplateListResponse(BaseModel):
 
 class TemplateSuggestionResponse(BaseModel):
     """Response model for template suggestions."""
-    suggested_template: str | None
+    suggested_template: str | None = None
     confidence: float
     reasoning: str
     available_templates: List[str]

@@ -1123,7 +1123,7 @@ class AIResponseCacheConfig:
         logger.debug(f"Creating AIResponseCacheConfig from YAML file: {yaml_path}")
 
         try:
-            with open(yaml_path) as file:
+            with open(yaml_path, "r") as file:
                 yaml_data = yaml.safe_load(file)
 
             if not isinstance(yaml_data, dict):
@@ -1170,7 +1170,7 @@ class AIResponseCacheConfig:
         logger.debug(f"Creating AIResponseCacheConfig from JSON file: {json_path}")
 
         try:
-            with open(json_path) as file:
+            with open(json_path, "r") as file:
                 json_data = json.load(file)
 
             config = cls.from_dict(json_data)

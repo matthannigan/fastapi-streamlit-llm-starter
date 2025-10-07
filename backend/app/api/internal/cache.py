@@ -146,7 +146,7 @@ import logging
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 from app.core.exceptions import (
     ConfigurationError,
@@ -281,60 +281,58 @@ class CachePerformanceResponse(BaseModel):
     invalidation: Dict[str, Any] | None = Field(
         None, description="Cache invalidation statistics"
     )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "timestamp": "2024-01-15T10:30:00.123456",
-                "retention_hours": 1,
-                "cache_hit_rate": 85.5,
-                "total_cache_operations": 150,
-                "cache_hits": 128,
-                "cache_misses": 22,
-                "key_generation": {
-                    "total_operations": 75,
-                    "avg_duration": 0.002,
-                    "median_duration": 0.0015,
-                    "max_duration": 0.012,
-                    "min_duration": 0.0008,
-                    "avg_text_length": 1250,
-                    "max_text_length": 5000,
-                    "slow_operations": 2,
-                },
-                "cache_operations": {
-                    "total_operations": 150,
-                    "avg_duration": 0.0045,
-                    "median_duration": 0.003,
-                    "max_duration": 0.025,
-                    "min_duration": 0.001,
-                    "slow_operations": 5,
-                    "by_operation_type": {
-                        "get": {
-                            "count": 100,
-                            "avg_duration": 0.003,
-                            "max_duration": 0.015,
-                        },
-                        "set": {
-                            "count": 50,
-                            "avg_duration": 0.007,
-                            "max_duration": 0.025,
-                        },
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "timestamp": "2024-01-15T10:30:00.123456",
+            "retention_hours": 1,
+            "cache_hit_rate": 85.5,
+            "total_cache_operations": 150,
+            "cache_hits": 128,
+            "cache_misses": 22,
+            "key_generation": {
+                "total_operations": 75,
+                "avg_duration": 0.002,
+                "median_duration": 0.0015,
+                "max_duration": 0.012,
+                "min_duration": 0.0008,
+                "avg_text_length": 1250,
+                "max_text_length": 5000,
+                "slow_operations": 2,
+            },
+            "cache_operations": {
+                "total_operations": 150,
+                "avg_duration": 0.0045,
+                "median_duration": 0.003,
+                "max_duration": 0.025,
+                "min_duration": 0.001,
+                "slow_operations": 5,
+                "by_operation_type": {
+                    "get": {
+                        "count": 100,
+                        "avg_duration": 0.003,
+                        "max_duration": 0.015,
+                    },
+                    "set": {
+                        "count": 50,
+                        "avg_duration": 0.007,
+                        "max_duration": 0.025,
                     },
                 },
-                "compression": {
-                    "total_operations": 25,
-                    "avg_compression_ratio": 0.65,
-                    "median_compression_ratio": 0.62,
-                    "best_compression_ratio": 0.45,
-                    "worst_compression_ratio": 0.89,
-                    "avg_compression_time": 0.003,
-                    "max_compression_time": 0.015,
-                    "total_bytes_processed": 524288,
-                    "total_bytes_saved": 183500,
-                    "overall_savings_percent": 35.0,
-                },
-            }
+            },
+            "compression": {
+                "total_operations": 25,
+                "avg_compression_ratio": 0.65,
+                "median_compression_ratio": 0.62,
+                "best_compression_ratio": 0.45,
+                "worst_compression_ratio": 0.89,
+                "avg_compression_time": 0.003,
+                "max_compression_time": 0.015,
+                "total_bytes_processed": 524288,
+                "total_bytes_saved": 183500,
+                "overall_savings_percent": 35.0,
+            },
         }
+    })
 
 
 # For cache endpoints, we'll use flexible response models that can handle
