@@ -82,7 +82,7 @@ pagination = PaginationInfo(
 
 from datetime import datetime
 from typing import Dict, Any
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import ConfigDict, BaseModel, Field, field_serializer
 from pydantic.types import SerializationInfo
 
 
@@ -178,21 +178,18 @@ class ErrorResponse(BaseModel):
     def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
         """Serialize datetime to ISO format string for JSON compatibility."""
         return dt.isoformat()
-
-    class Config:
-        """Pydantic model configuration."""
-        json_schema_extra = {
-            "example": {
-                "success": False,
-                "error": "Invalid request data: text field is required",
-                "error_code": "VALIDATION_ERROR",
-                "details": {
-                    "field": "text",
-                    "request_id": "req_12345"
-                },
-                "timestamp": "2025-01-12T10:30:45.123456"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "success": False,
+            "error": "Invalid request data: text field is required",
+            "error_code": "VALIDATION_ERROR",
+            "details": {
+                "field": "text",
+                "request_id": "req_12345"
+            },
+            "timestamp": "2025-01-12T10:30:45.123456"
         }
+    })
 
 
 class SuccessResponse(BaseModel):
@@ -257,16 +254,13 @@ class PaginationInfo(BaseModel):
     total_pages: int = Field(..., ge=0, description="Total number of pages")
     has_next: bool = Field(..., description="Whether more pages are available")
     has_previous: bool = Field(..., description="Whether previous pages exist")
-
-    class Config:
-        """Pydantic model configuration."""
-        json_schema_extra = {
-            "example": {
-                "page": 1,
-                "page_size": 20,
-                "total_items": 150,
-                "total_pages": 8,
-                "has_next": True,
-                "has_previous": False
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "page": 1,
+            "page_size": 20,
+            "total_items": 150,
+            "total_pages": 8,
+            "has_next": True,
+            "has_previous": False
         }
+    })
