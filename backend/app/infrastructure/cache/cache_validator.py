@@ -39,7 +39,7 @@ and template generation capabilities.
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class ValidationResult:
         self,
         message: str,
         field_path: str = "",
-        context: Optional[Dict[str, Any]] = None,
+        context: Dict[str, Any] | None = None,
     ) -> None:
         """Add an error message and mark validation as invalid."""
         self.messages.append(
@@ -127,7 +127,7 @@ class ValidationResult:
         self,
         message: str,
         field_path: str = "",
-        context: Optional[Dict[str, Any]] = None,
+        context: Dict[str, Any] | None = None,
     ) -> None:
         """Add a warning message."""
         self.messages.append(
@@ -143,7 +143,7 @@ class ValidationResult:
         self,
         message: str,
         field_path: str = "",
-        context: Optional[Dict[str, Any]] = None,
+        context: Dict[str, Any] | None = None,
     ) -> None:
         """Add an info message."""
         self.messages.append(
@@ -161,11 +161,11 @@ class CacheValidator:
     Comprehensive cache configuration validator with JSON schema support.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize validator with schemas and templates."""
         self.schemas = self._load_schemas()
         self.templates = self._load_templates()
-        self._validation_cache = {}
+        self._validation_cache: Dict[str, Any] = {}
         logger.info("Initialized CacheValidator with schemas and templates")
 
     def validate_preset(self, preset_dict: Dict[str, Any]) -> ValidationResult:
@@ -292,7 +292,7 @@ class CacheValidator:
             "log_level",
         }
 
-        for key in overrides.keys():
+        for key in overrides:
             if key not in valid_keys:
                 result.add_warning(
                     f"Unknown override key '{key}' - will be ignored",

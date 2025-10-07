@@ -40,11 +40,9 @@ and advanced customization capabilities.
 """
 
 from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Optional, Any, NamedTuple
+from typing import Dict, List, Any, NamedTuple
 from enum import Enum
-import json
 import logging
-import os
 import re
 
 from app.infrastructure.resilience.retry import RetryConfig
@@ -64,11 +62,11 @@ class EnvironmentRecommendation(NamedTuple):
 class ResilienceStrategy(str, Enum):
     """
     Resilience strategy enumeration defining optimized patterns for different operation criticality levels.
-    
+
     Provides predefined strategy configurations that automatically optimize retry attempts,
     circuit breaker thresholds, and timeout values based on operation requirements and
     acceptable latency/reliability trade-offs.
-    
+
     Values:
         AGGRESSIVE: Fast retries (3 attempts), low circuit breaker thresholds (3 failures)
                    for user-facing operations requiring quick response
@@ -78,18 +76,18 @@ class ResilienceStrategy(str, Enum):
                      for resource-intensive operations and batch processing
         CRITICAL: Maximum retries (5 attempts), highest thresholds (15 failures)
                  for mission-critical operations requiring highest reliability
-                 
+
     Behavior:
         - String enum supporting serialization and direct comparison
         - Each strategy maps to specific retry and circuit breaker configurations
         - Strategies balance latency, reliability, and resource consumption
         - Enables consistent resilience patterns across different services
-        
+
     Examples:
         >>> strategy = ResilienceStrategy.BALANCED
         >>> config = DEFAULT_PRESETS[strategy]
         >>> print(f"Max attempts: {config.retry_config.max_attempts}")
-        
+
         >>> # Strategy selection based on operation criticality
         >>> if operation_type == "user_facing":
         ...     strategy = ResilienceStrategy.AGGRESSIVE
@@ -108,42 +106,42 @@ class ResilienceStrategy(str, Enum):
 class ResilienceConfig:
     """
     Comprehensive resilience configuration with retry mechanisms, circuit breakers, and strategy management.
-    
+
     Provides complete configuration for resilience patterns including retry behavior,
     circuit breaker policies, and feature toggles. Integrates with strategy-based presets
     while supporting custom configuration overrides for specific requirements.
-    
+
     Attributes:
         strategy: ResilienceStrategy enum defining the overall resilience approach
         retry_config: RetryConfig with exponential backoff and jitter settings
         circuit_breaker_config: CircuitBreakerConfig with failure thresholds and recovery
         enable_circuit_breaker: bool to enable/disable circuit breaker functionality
         enable_retry: bool to enable/disable retry mechanisms
-        
+
     State Management:
         - Immutable configuration after creation for consistent behavior
         - Strategy-based defaults with override capabilities
         - Comprehensive validation ensuring configuration integrity
         - Thread-safe access for concurrent resilience operations
-        
+
     Usage:
         # Strategy-based configuration
         config = ResilienceConfig(strategy=ResilienceStrategy.CRITICAL)
-        
+
         # Custom configuration with overrides
         config = ResilienceConfig(
             strategy=ResilienceStrategy.BALANCED,
             retry_config=RetryConfig(max_attempts=5),
             circuit_breaker_config=CircuitBreakerConfig(failure_threshold=3)
         )
-        
+
         # Feature-specific configuration
         config = ResilienceConfig(
             strategy=ResilienceStrategy.CONSERVATIVE,
             enable_circuit_breaker=False,  # Retry-only mode
             enable_retry=True
         )
-        
+
         # Integration with orchestrator
         orchestrator = AIServiceResilience()
         @orchestrator.with_resilience("ai_operation", custom_config=config)
@@ -284,10 +282,10 @@ class ResiliencePreset:
             retry_config=RetryConfig(
                 max_attempts=self.retry_attempts,
                 max_delay_seconds=min(self.retry_attempts * 20, 120),
-                exponential_multiplier=1.0 if self.default_strategy == ResilienceStrategy.BALANCED else 
+                exponential_multiplier=1.0 if self.default_strategy == ResilienceStrategy.BALANCED else
                                      0.5 if self.default_strategy == ResilienceStrategy.AGGRESSIVE else 1.5,
                 exponential_min=1.0 if self.default_strategy == ResilienceStrategy.AGGRESSIVE else 2.0,
-                exponential_max=5.0 if self.default_strategy == ResilienceStrategy.AGGRESSIVE else 
+                exponential_max=5.0 if self.default_strategy == ResilienceStrategy.AGGRESSIVE else
                               10.0 if self.default_strategy == ResilienceStrategy.BALANCED else 30.0
             ),
             circuit_breaker_config=CircuitBreakerConfig(
@@ -309,7 +307,7 @@ PRESETS = {
         operation_overrides={},
         environment_contexts=["development", "testing", "staging", "production"]
     ),
-    
+
     "development": ResiliencePreset(
         name="Development",
         description="Fast-fail configuration optimized for development speed",
@@ -323,7 +321,7 @@ PRESETS = {
         },
         environment_contexts=["development", "testing"]
     ),
-    
+
     "production": ResiliencePreset(
         name="Production",
         description="High-reliability configuration for production workloads",
@@ -399,7 +397,7 @@ class PresetManager:
             print(f"{name}: {details['description']}")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize preset manager with default presets and validation capabilities.
 
@@ -424,17 +422,17 @@ class PresetManager:
         """
         self.presets = PRESETS.copy()
         logger.info(f"Initialized PresetManager with {len(self.presets)} presets")
-    
+
     def get_preset(self, name: str) -> ResiliencePreset:
         """
         Get preset by name with validation.
-        
+
         Args:
             name: Preset name (simple, development, production)
-            
+
         Returns:
             ResiliencePreset object
-            
+
         Raises:
             ValueError: If preset name is not found
         """
@@ -442,23 +440,23 @@ class PresetManager:
             available = list(self.presets.keys())
             raise ValueError(f"Unknown preset '{name}'. Available presets: {available}")
         return self.presets[name]
-    
+
     def list_presets(self) -> List[str]:
         """
         Get list of available preset names.
-        
+
         Returns:
             List of preset names (e.g., ["simple", "development", "production"])
         """
         return list(self.presets.keys())
-    
+
     def get_preset_details(self, name: str) -> Dict[str, Any]:
         """
         Get detailed information about a specific preset.
-        
+
         Args:
             name: Preset name to get details for
-            
+
         Returns:
             Dictionary containing preset configuration details, description, and context
         """
@@ -475,81 +473,81 @@ class PresetManager:
             },
             "environment_contexts": preset.environment_contexts
         }
-    
+
     def validate_preset(self, preset: ResiliencePreset) -> bool:
         """
         Validate preset configuration values.
-        
+
         Args:
             preset: Preset to validate
-            
+
         Returns:
             True if valid, False otherwise
         """
         try:
             from app.infrastructure.resilience.config_validator import config_validator
-            
+
             # Convert preset to dict for validation
             preset_dict = preset.to_dict()
-            
+
             # Use JSON schema validation if available
             validation_result = config_validator.validate_preset(preset_dict)
-            
+
             if not validation_result.is_valid:
                 for error in validation_result.errors:
                     logger.error(f"Preset validation error: {error}")
                 return False
-            
+
             # Log any warnings
             for warning in validation_result.warnings:
                 logger.warning(f"Preset validation warning: {warning}")
-            
+
             return True
-            
+
         except ImportError:
             # Fallback to basic validation if validation_schemas not available
             return self._basic_validate_preset(preset)
-    
+
     def _basic_validate_preset(self, preset: ResiliencePreset) -> bool:
         """Basic preset validation without JSON schema."""
         # Validate retry attempts
         if preset.retry_attempts < 1 or preset.retry_attempts > 10:
             logger.error(f"Invalid retry_attempts: {preset.retry_attempts} (must be 1-10)")
             return False
-        
+
         # Validate circuit breaker threshold
         if preset.circuit_breaker_threshold < 1 or preset.circuit_breaker_threshold > 20:
             logger.error(f"Invalid circuit_breaker_threshold: {preset.circuit_breaker_threshold} (must be 1-20)")
             return False
-        
+
         # Validate recovery timeout
         if preset.recovery_timeout < 10 or preset.recovery_timeout > 300:
             logger.error(f"Invalid recovery_timeout: {preset.recovery_timeout} (must be 10-300)")
             return False
-        
+
         # Validate operation overrides contain valid strategies
         for operation, strategy in preset.operation_overrides.items():
             if not isinstance(strategy, ResilienceStrategy):
-                logger.error(f"Invalid strategy for operation {operation}: {strategy}")
+                logger.error(f"Invalid strategy for operation {operation}: {strategy}")  # type: ignore[unreachable]
                 return False
-        
+
         return True
-    
-    def recommend_preset(self, environment: Optional[str] = None) -> str:
+
+    def recommend_preset(self, environment: str | None = None) -> str:
         """
         Recommend appropriate preset for given environment.
-        
+
         Args:
             environment: Environment name (dev, test, staging, prod, etc.)
             If None, will auto-detect from environment variables
-            
+
         Returns:
             Recommended preset name
         """
         recommendation = self.recommend_preset_with_details(environment)
         return recommendation.preset_name
-    
-    def recommend_preset_with_details(self, environment: Optional[str] = None) -> EnvironmentRecommendation:
+
+    def recommend_preset_with_details(self, environment: str | None = None) -> EnvironmentRecommendation:
         """
         Get detailed environment-aware preset recommendation with confidence scoring and reasoning.
 
@@ -602,9 +600,9 @@ class PresetManager:
         """
         if environment is None:
             return self._auto_detect_environment()
-        
+
         env_lower = environment.lower().strip()
-        
+
         # High-confidence exact matches
         exact_matches = {
             "development": ("development", 0.95, "Exact match for development environment"),
@@ -617,7 +615,7 @@ class PresetManager:
             "prod": ("production", 0.90, "Standard abbreviation for production"),
             "live": ("production", 0.85, "Live environment implies production"),
         }
-        
+
         if env_lower in exact_matches:
             preset, confidence, reasoning = exact_matches[env_lower]
             return EnvironmentRecommendation(
@@ -626,17 +624,17 @@ class PresetManager:
                 reasoning=reasoning,
                 environment_detected=environment
             )
-        
+
         # Pattern-based matching for complex environment names
         preset, confidence, reasoning = self._pattern_match_environment(env_lower)
-        
+
         return EnvironmentRecommendation(
             preset_name=preset,
             confidence=confidence,
             reasoning=reasoning,
             environment_detected=environment
         )
-    
+
     def _auto_detect_environment(self) -> EnvironmentRecommendation:
         """
         Auto-detect environment using unified environment detection service.
@@ -681,64 +679,64 @@ class PresetManager:
             reasoning=reasoning,
             environment_detected=environment_detected
         )
-    
+
     def _pattern_match_environment(self, env_str: str) -> tuple[str, float, str]:
         """
         Use pattern matching to classify environment strings.
-        
+
         Args:
             env_str: Environment string to classify
-            
+
         Returns:
             Tuple of (preset_name, confidence, reasoning)
         """
         # Staging patterns (check first to avoid conflicts with other patterns)
         staging_patterns = [
-            r'.*stag.*',
-            r'.*pre-?prod.*',
-            r'.*preprod.*',
-            r'.*uat.*',
-            r'.*integration.*'
+            r".*stag.*",
+            r".*pre-?prod.*",
+            r".*preprod.*",
+            r".*uat.*",
+            r".*integration.*"
         ]
-        
+
         for pattern in staging_patterns:
             if re.match(pattern, env_str, re.IGNORECASE):
                 return ("production", 0.70, f"Environment name '{env_str}' matches staging pattern, using production preset")
-        
+
         # Development patterns
         dev_patterns = [
-            r'.*dev.*',
-            r'.*local.*',
-            r'.*test.*',
-            r'.*sandbox.*',
-            r'.*demo.*'
+            r".*dev.*",
+            r".*local.*",
+            r".*test.*",
+            r".*sandbox.*",
+            r".*demo.*"
         ]
-        
+
         for pattern in dev_patterns:
             if re.match(pattern, env_str, re.IGNORECASE):
                 return ("development", 0.75, f"Environment name '{env_str}' matches development pattern")
-        
+
         # Production patterns
         prod_patterns = [
-            r'.*prod.*',
-            r'.*live.*',
-            r'.*release.*',
-            r'.*stable.*',
-            r'.*main.*',
-            r'.*master.*'
+            r".*prod.*",
+            r".*live.*",
+            r".*release.*",
+            r".*stable.*",
+            r".*main.*",
+            r".*master.*"
         ]
-        
+
         for pattern in prod_patterns:
             if re.match(pattern, env_str, re.IGNORECASE):
                 return ("production", 0.75, f"Environment name '{env_str}' matches production pattern")
-        
+
         # Unknown pattern
         return ("simple", 0.40, f"Unknown environment pattern '{env_str}', defaulting to simple preset")
-    
+
     def get_all_presets_summary(self) -> Dict[str, Dict[str, Any]]:
         """
         Get summary of all available presets with their detailed information.
-        
+
         Returns:
             Dictionary mapping preset names to their detailed configuration information
         """
@@ -751,11 +749,11 @@ class PresetManager:
 def get_default_presets() -> Dict[ResilienceStrategy, ResilienceConfig]:
     """
     Returns a dictionary of default resilience strategy configurations.
-    
+
     Creates pre-configured ResilienceConfig objects for each available strategy
     (aggressive, balanced, conservative, critical) with optimized settings for
     different operational requirements.
-    
+
     Returns:
         Dictionary mapping ResilienceStrategy enum values to configured ResilienceConfig objects
     """

@@ -164,7 +164,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from statistics import mean, median
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -173,7 +173,7 @@ class PerformanceMetric:
     Data class for storing individual performance measurements.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         ...
 
 
@@ -183,7 +183,7 @@ class CompressionMetric:
     Data class for storing compression performance measurements.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         ...
 
 
@@ -193,7 +193,7 @@ class MemoryUsageMetric:
     Data class for storing memory usage measurements.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         ...
 
 
@@ -203,7 +203,7 @@ class InvalidationMetric:
     Data class for storing cache invalidation measurements.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         ...
 
 
@@ -231,7 +231,7 @@ class CachePerformanceMonitor:
         """
         ...
 
-    def record_key_generation_time(self, duration: float, text_length: int, operation_type: str = '', additional_data: Optional[Dict[str, Any]] = None):
+    def record_key_generation_time(self, duration: float, text_length: int, operation_type: str = '', additional_data: Dict[str, Any] | None = None) -> None:
         """
         Record key generation performance metrics.
         
@@ -243,7 +243,7 @@ class CachePerformanceMonitor:
         """
         ...
 
-    def record_cache_operation_time(self, operation: str, duration: float, cache_hit: bool, text_length: int = 0, additional_data: Optional[Dict[str, Any]] = None):
+    def record_cache_operation_time(self, operation: str, duration: float, cache_hit: bool, text_length: int = 0, additional_data: Dict[str, Any] | None = None) -> None:
         """
         Record cache operation performance (get/set operations).
         
@@ -256,7 +256,7 @@ class CachePerformanceMonitor:
         """
         ...
 
-    def record_compression_ratio(self, original_size: int, compressed_size: int, compression_time: float, operation_type: str = ''):
+    def record_compression_ratio(self, original_size: int, compressed_size: int, compression_time: float, operation_type: str = '') -> None:
         """
         Record compression performance and efficiency metrics.
         
@@ -268,7 +268,7 @@ class CachePerformanceMonitor:
         """
         ...
 
-    def record_memory_usage(self, memory_cache: Dict[str, Any], redis_stats: Optional[Dict[str, Any]] = None, additional_data: Optional[Dict[str, Any]] = None):
+    def record_memory_usage(self, memory_cache: Dict[str, Any], redis_stats: Dict[str, Any] | None = None, additional_data: Dict[str, Any] | None = None) -> None:
         """
         Record current memory usage of cache components.
         
@@ -279,7 +279,7 @@ class CachePerformanceMonitor:
         """
         ...
 
-    def record_invalidation_event(self, pattern: str, keys_invalidated: int, duration: float, invalidation_type: str = 'manual', operation_context: str = '', additional_data: Optional[Dict[str, Any]] = None):
+    def record_invalidation_event(self, pattern: str, keys_invalidated: int, duration: float, invalidation_type: str = 'manual', operation_context: str = '', additional_data: Dict[str, Any] | None = None) -> None:
         """
         Record cache invalidation event for frequency analysis.
         
@@ -447,7 +447,7 @@ class CachePerformanceMonitor:
         """
         ...
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """
         Reset all performance statistics and measurements.
         

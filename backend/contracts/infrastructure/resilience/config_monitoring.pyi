@@ -7,10 +7,9 @@ configuration including usage patterns, performance metrics, and change auditing
 
 import time
 import json
-import os
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, NamedTuple
+from datetime import datetime, timedelta, UTC
+from typing import Dict, List, Any, NamedTuple, Generator
 from dataclasses import dataclass, asdict
 from enum import Enum
 from collections import defaultdict, deque
@@ -419,7 +418,7 @@ class ConfigurationMetricsCollector:
         ...
 
     @contextmanager
-    def track_config_operation(self, operation: str, preset_name: str = 'unknown', session_id: Optional[str] = None, user_context: Optional[str] = None):
+    def track_config_operation(self, operation: str, preset_name: str = 'unknown', session_id: str | None = None, user_context: str | None = None) -> Generator[None, None, None]:
         """
         Context manager for automatic configuration operation tracking with timing and error handling.
         
@@ -480,7 +479,7 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def record_preset_usage(self, preset_name: str, operation: str = 'load', session_id: Optional[str] = None, user_context: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    def record_preset_usage(self, preset_name: str, operation: str = 'load', session_id: str | None = None, user_context: str | None = None, metadata: Dict[str, Any] | None = None) -> None:
         """
         Record usage of a specific preset.
         
@@ -493,7 +492,7 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def record_config_load(self, preset_name: str, operation: str, duration_ms: float, session_id: Optional[str] = None, user_context: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    def record_config_load(self, preset_name: str, operation: str, duration_ms: float, session_id: str | None = None, user_context: str | None = None, metadata: Dict[str, Any] | None = None) -> None:
         """
         Record configuration loading performance.
         
@@ -507,7 +506,7 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def record_config_error(self, preset_name: str, operation: str, error_message: str, session_id: Optional[str] = None, user_context: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    def record_config_error(self, preset_name: str, operation: str, error_message: str, session_id: str | None = None, user_context: str | None = None, metadata: Dict[str, Any] | None = None) -> None:
         """
         Record configuration error.
         
@@ -521,7 +520,7 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def record_config_change(self, old_preset: str, new_preset: str, operation: str = 'change', session_id: Optional[str] = None, user_context: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    def record_config_change(self, old_preset: str, new_preset: str, operation: str = 'change', session_id: str | None = None, user_context: str | None = None, metadata: Dict[str, Any] | None = None) -> None:
         """
         Record configuration change event.
         
@@ -535,7 +534,7 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def record_validation_event(self, preset_name: str, is_valid: bool, operation: str = 'validate', session_id: Optional[str] = None, user_context: Optional[str] = None, validation_errors: Optional[List[str]] = None, metadata: Optional[Dict[str, Any]] = None):
+    def record_validation_event(self, preset_name: str, is_valid: bool, operation: str = 'validate', session_id: str | None = None, user_context: str | None = None, validation_errors: List[str] | None = None, metadata: Dict[str, Any] | None = None) -> None:
         """
         Record configuration validation event.
         
@@ -550,13 +549,13 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def get_usage_statistics(self, time_window_hours: Optional[int] = None) -> ConfigurationUsageStats:
+    def get_usage_statistics(self, time_window_hours: int | None = None) -> ConfigurationUsageStats:
         """
         Get configuration usage statistics.
         
         Args:
             time_window_hours: Time window for statistics (None for all time)
-            
+        
         Returns:
             Configuration usage statistics
         """
@@ -569,7 +568,7 @@ class ConfigurationMetricsCollector:
         Args:
             preset_name: Name of the preset
             hours: Number of hours to analyze
-            
+        
         Returns:
             List of hourly usage counts
         """
@@ -581,7 +580,7 @@ class ConfigurationMetricsCollector:
         
         Args:
             hours: Number of hours to analyze
-            
+        
         Returns:
             Performance metrics summary
         """
@@ -593,7 +592,7 @@ class ConfigurationMetricsCollector:
         
         Args:
             max_alerts: Maximum number of alerts to return
-            
+        
         Returns:
             List of active alerts
         """
@@ -605,13 +604,13 @@ class ConfigurationMetricsCollector:
         
         Args:
             session_id: Session identifier
-            
+        
         Returns:
             List of metrics for the session
         """
         ...
 
-    def clear_old_metrics(self, hours: int = 24):
+    def clear_old_metrics(self, hours: int = 24) -> None:
         """
         Clear metrics older than specified hours.
         
@@ -620,14 +619,14 @@ class ConfigurationMetricsCollector:
         """
         ...
 
-    def export_metrics(self, format: str = 'json', time_window_hours: Optional[int] = None) -> str:
+    def export_metrics(self, format: str = 'json', time_window_hours: int | None = None) -> str:
         """
         Export metrics in specified format.
         
         Args:
             format: Export format ('json' or 'csv')
             time_window_hours: Time window for export (None for all)
-            
+        
         Returns:
             Exported metrics as string
         """

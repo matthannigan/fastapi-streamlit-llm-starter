@@ -227,7 +227,7 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass, field
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict
 
 # Version and compatibility information
 __version__ = "2.0.0"
@@ -356,17 +356,15 @@ class AIResponseCacheConfig:
     enable_l1_cache: bool = True
     compression_threshold: int = 1000  # 1KB threshold
     compression_level: int = 6  # Balanced compression
-    performance_monitor: Optional[CachePerformanceMonitor] = None
-    security_config: Optional[
-        Any
-    ] = None  # DEPRECATED - Security now automatic in GenericRedisCache
+    performance_monitor: CachePerformanceMonitor | None = None
+    security_config: Any | None = None  # DEPRECATED - Security now automatic in GenericRedisCache
 
     # AI-Specific Parameters
     text_hash_threshold: int = 1000  # 1000 chars before hashing
-    hash_algorithm: Union[str, Callable] = field(default_factory=lambda: hashlib.sha256)
-    text_size_tiers: Optional[Dict[str, int]] = None
-    operation_ttls: Optional[Dict[str, int]] = None
-    enable_smart_promotion: Optional[bool] = None
+    hash_algorithm: str | Callable = field(default_factory=lambda: hashlib.sha256)
+    text_size_tiers: Dict[str, int] | None = None
+    operation_ttls: Dict[str, int] | None = None
+    enable_smart_promotion: bool | None = None
 
     # Mapped Parameters (AI -> Generic)
     memory_cache_size: int = 100  # Maps to l1_cache_size
@@ -379,12 +377,11 @@ class AIResponseCacheConfig:
         if isinstance(self.hash_algorithm, str):
             if self.hash_algorithm == "sha256":
                 return hashlib.sha256
-            elif self.hash_algorithm == "md5":
+            if self.hash_algorithm == "md5":
                 return hashlib.md5
-            else:
-                raise ConfigurationError(
-                    f"Unsupported hash algorithm: {self.hash_algorithm}"
-                )
+            raise ConfigurationError(
+                f"Unsupported hash algorithm: {self.hash_algorithm}"
+            )
         return self.hash_algorithm
 
     def __post_init__(self):
@@ -1126,7 +1123,7 @@ class AIResponseCacheConfig:
         logger.debug(f"Creating AIResponseCacheConfig from YAML file: {yaml_path}")
 
         try:
-            with open(yaml_path, "r") as file:
+            with open(yaml_path) as file:
                 yaml_data = yaml.safe_load(file)
 
             if not isinstance(yaml_data, dict):
@@ -1173,7 +1170,7 @@ class AIResponseCacheConfig:
         logger.debug(f"Creating AIResponseCacheConfig from JSON file: {json_path}")
 
         try:
-            with open(json_path, "r") as file:
+            with open(json_path) as file:
                 json_data = json.load(file)
 
             config = cls.from_dict(json_data)
@@ -1367,7 +1364,6 @@ class AIResponseCacheConfig:
         """
         # For now, use simple merging for complex fields
         # In the future, this could be enhanced to do deep comparison of complex objects
-        pass
 
     def _add_configuration_recommendations(self, result: ValidationResult) -> None:
         """

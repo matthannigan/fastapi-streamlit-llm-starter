@@ -193,7 +193,7 @@ Version Compatibility:
 import logging
 import sys
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.core.exceptions import ConfigurationError
 from app.infrastructure.cache.base import CacheInterface
@@ -331,7 +331,7 @@ class InMemoryCache(CacheInterface):
             return False
         return time.time() > entry["expires_at"]
 
-    def _cleanup_expired(self):
+    def _cleanup_expired(self) -> None:
         """
         Remove expired entries from cache.
 
@@ -348,7 +348,7 @@ class InMemoryCache(CacheInterface):
         for key in expired_keys:
             # adjust memory usage before removing
             try:
-                entry = self._cache.get(key)
+                entry: Dict[str, Any] | None = self._cache.get(key)
                 if entry is not None:
                     self._memory_usage_bytes -= entry.get("size_bytes", 0)
             finally:
@@ -359,7 +359,7 @@ class InMemoryCache(CacheInterface):
         if expired_keys:
             logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
 
-    def _update_access_order(self, key: str):
+    def _update_access_order(self, key: str) -> None:
         """
         Update the access order for LRU tracking.
 
@@ -370,7 +370,7 @@ class InMemoryCache(CacheInterface):
             self._access_order.remove(key)
         self._access_order.append(key)
 
-    def _evict_lru_if_needed(self):
+    def _evict_lru_if_needed(self) -> None:
         """
         Evict least recently used entries if cache exceeds max size.
         """
@@ -427,7 +427,7 @@ class InMemoryCache(CacheInterface):
             logger.warning(f"Cache get error for key {key}: {e}")
             return None
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Set a value in cache with optional TTL (implements CacheInterface).
 
@@ -569,7 +569,7 @@ class InMemoryCache(CacheInterface):
 
         # Back-compat fields expected by shared statistics fixtures
         # Human-readable memory usage string (simple KB/MB formatting)
-        bytes_val = stats["memory_usage_bytes"]
+        bytes_val = int(stats["memory_usage_bytes"])
         if bytes_val >= 1024 * 1024:
             mem_str = f"{bytes_val / (1024 * 1024):.1f}MB"
         elif bytes_val >= 1024:
@@ -633,7 +633,7 @@ class InMemoryCache(CacheInterface):
 
         return True
 
-    async def get_ttl(self, key: str) -> Optional[int]:
+    async def get_ttl(self, key: str) -> int | None:
         """
         Get the remaining time-to-live for a key.
 

@@ -9,7 +9,7 @@ and configuration tracking across all infrastructure services.
 
 The monitoring system follows a layered observability approach:
 - **Metrics Layer**: Real-time performance and operational metrics collection
-- **Health Layer**: Component and system health monitoring with async-first design  
+- **Health Layer**: Component and system health monitoring with async-first design
 - **Configuration Layer**: Configuration change tracking and validation monitoring
 - **Alerting Layer**: Threshold-based alerting and notification system (future)
 

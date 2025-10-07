@@ -164,7 +164,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from statistics import mean, median
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -177,9 +177,9 @@ class PerformanceMetric:
     text_length: int
     timestamp: float
     operation_type: str = ""
-    additional_data: Optional[Dict[str, Any]] = None
+    additional_data: Dict[str, Any] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.additional_data is None:
             self.additional_data = {}
 
@@ -195,7 +195,7 @@ class CompressionMetric:
     timestamp: float
     operation_type: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.compression_ratio == 0 and self.original_size > 0:
             self.compression_ratio = self.compressed_size / self.original_size
 
@@ -213,9 +213,9 @@ class MemoryUsageMetric:
     timestamp: float
     cache_utilization_percent: float
     warning_threshold_reached: bool = False
-    additional_data: Optional[Dict[str, Any]] = None
+    additional_data: Dict[str, Any] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.additional_data is None:
             self.additional_data = {}
 
@@ -230,9 +230,9 @@ class InvalidationMetric:
     timestamp: float
     invalidation_type: str = ""  # 'manual', 'automatic', 'ttl_expired', etc.
     operation_context: str = ""  # Context that triggered invalidation
-    additional_data: Optional[Dict[str, Any]] = None
+    additional_data: Dict[str, Any] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.additional_data is None:
             self.additional_data = {}
 
@@ -301,8 +301,8 @@ class CachePerformanceMonitor:
         duration: float,
         text_length: int,
         operation_type: str = "",
-        additional_data: Optional[Dict[str, Any]] = None,
-    ):
+        additional_data: Dict[str, Any] | None = None,
+    ) -> None:
         """
         Record key generation performance metrics.
 
@@ -342,8 +342,8 @@ class CachePerformanceMonitor:
         duration: float,
         cache_hit: bool,
         text_length: int = 0,
-        additional_data: Optional[Dict[str, Any]] = None,
-    ):
+        additional_data: Dict[str, Any] | None = None,
+    ) -> None:
         """
         Record cache operation performance (get/set operations).
 
@@ -392,7 +392,7 @@ class CachePerformanceMonitor:
         compressed_size: int,
         compression_time: float,
         operation_type: str = "",
-    ):
+    ) -> None:
         """
         Record compression performance and efficiency metrics.
 
@@ -430,9 +430,9 @@ class CachePerformanceMonitor:
     def record_memory_usage(
         self,
         memory_cache: Dict[str, Any],
-        redis_stats: Optional[Dict[str, Any]] = None,
-        additional_data: Optional[Dict[str, Any]] = None,
-    ):
+        redis_stats: Dict[str, Any] | None = None,
+        additional_data: Dict[str, Any] | None = None,
+    ) -> None:
         """
         Record current memory usage of cache components.
 
@@ -515,8 +515,8 @@ class CachePerformanceMonitor:
         duration: float,
         invalidation_type: str = "manual",
         operation_context: str = "",
-        additional_data: Optional[Dict[str, Any]] = None,
-    ):
+        additional_data: Dict[str, Any] | None = None,
+    ) -> None:
         """
         Record cache invalidation event for frequency analysis.
 
@@ -841,19 +841,19 @@ class CachePerformanceMonitor:
                 import psutil
 
                 process = psutil.Process()
-                return process.memory_info().rss / 1024 / 1024  # Convert bytes to MB
+                return float(process.memory_info().rss) / 1024 / 1024  # Convert bytes to MB
             except ImportError:
                 pass
 
             # Fallback to reading /proc/self/status on Linux
             try:
-                with open("/proc/self/status", "r") as f:
+                with open("/proc/self/status") as f:
                     for line in f:
                         if line.startswith("VmRSS:"):
                             # Extract memory in KB and convert to MB
                             kb = int(line.split()[1])
                             return kb / 1024
-            except (IOError, ValueError, IndexError):
+            except (OSError, ValueError, IndexError):
                 pass
 
             # If all methods fail, return 0
@@ -1030,7 +1030,7 @@ class CachePerformanceMonitor:
 
         return warnings
 
-    def _cleanup_old_measurements(self, measurements: List):
+    def _cleanup_old_measurements(self, measurements: List) -> None:
         """
         Clean up old measurements based on retention policy and size limits.
 
@@ -1345,7 +1345,7 @@ class CachePerformanceMonitor:
 
         return slow_ops
 
-    def reset_stats(self):
+    def reset_stats(self) -> None:
         """
         Reset all performance statistics and measurements.
 

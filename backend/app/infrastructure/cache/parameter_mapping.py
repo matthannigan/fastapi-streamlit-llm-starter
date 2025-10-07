@@ -163,7 +163,7 @@ class CacheParameterMapper:
         validation = mapper.validate_parameter_compatibility(ai_params)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the parameter mapper with comprehensive parameter definitions."""
         logger.debug("Initializing CacheParameterMapper")
 
@@ -398,7 +398,7 @@ class CacheParameterMapper:
 
         try:
             # Classify parameters for the result
-            for param_name in ai_params.keys():
+            for param_name in ai_params:
                 if (
                     param_name in self._generic_parameters
                     or param_name in self._parameter_mappings
@@ -667,6 +667,6 @@ class CacheParameterMapper:
 
 # Public exports
 __all__ = [
-    "ValidationResult",
     "CacheParameterMapper",
+    "ValidationResult",
 ]

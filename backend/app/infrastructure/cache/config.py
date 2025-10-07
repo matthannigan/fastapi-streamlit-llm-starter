@@ -47,7 +47,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 from app.core.exceptions import ConfigurationError, ValidationError
 
@@ -190,11 +190,11 @@ class CacheConfig:
     """
 
     # Redis configuration
-    redis_url: Optional[str] = None
-    redis_password: Optional[str] = None
+    redis_url: str | None = None
+    redis_password: str | None = None
     use_tls: bool = False
-    tls_cert_path: Optional[str] = None
-    tls_key_path: Optional[str] = None
+    tls_cert_path: str | None = None
+    tls_key_path: str | None = None
 
     # Cache configuration
     default_ttl: int = 3600  # 1 hour
@@ -207,7 +207,7 @@ class CacheConfig:
     preset_name: str = ""  # Track which preset was used
 
     # AI-specific configuration
-    ai_config: Optional[AICacheConfig] = None
+    ai_config: AICacheConfig | None = None
     enable_ai_cache: bool = False
 
     # Internal flags
@@ -397,7 +397,7 @@ class CacheConfigBuilder:
         return self
 
     def with_redis(
-        self, redis_url: str, password: Optional[str] = None, use_tls: bool = False
+        self, redis_url: str, password: str | None = None, use_tls: bool = False
     ) -> "CacheConfigBuilder":
         """
         Configure Redis connection settings.
@@ -416,7 +416,7 @@ class CacheConfigBuilder:
         return self
 
     def with_security(
-        self, tls_cert_path: Optional[str] = None, tls_key_path: Optional[str] = None
+        self, tls_cert_path: str | None = None, tls_key_path: str | None = None
     ) -> "CacheConfigBuilder":
         """
         Configure TLS security settings.
@@ -532,7 +532,7 @@ class CacheConfigBuilder:
             )
 
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 config_data = json.load(f)
 
             # Apply configuration data
@@ -805,7 +805,7 @@ class EnvironmentPresets:
         return cache_preset_manager.get_preset_details(preset_name)
 
     @staticmethod
-    def recommend_preset(environment: Optional[str] = None) -> str:
+    def recommend_preset(environment: str | None = None) -> str:
         """
         Recommend appropriate preset for given environment.
 

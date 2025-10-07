@@ -115,10 +115,9 @@ Integration Points:
 
 import logging
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Type
 from dataclasses import dataclass
 from circuitbreaker import CircuitBreaker
-from app.core.exceptions import AIServiceException
 
 
 @dataclass
@@ -372,7 +371,7 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             enable_degraded_mode()
     """
 
-    def __init__(self, failure_threshold = 5, recovery_timeout = 60, expected_exception = None, name = None):
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60, expected_exception: Type[BaseException] | None = None, name: str | None = None) -> None:
         """
         Initialize enhanced circuit breaker with metrics collection and monitoring.
         
@@ -423,7 +422,7 @@ class EnhancedCircuitBreaker(CircuitBreaker):
         """
         ...
 
-    def call(self, func, *args, **kwargs):
+    def call(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
         """
         Execute function with circuit breaker protection and comprehensive metrics collection.
         

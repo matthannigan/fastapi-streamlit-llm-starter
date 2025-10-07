@@ -34,7 +34,7 @@ cache_type = manager.cache_type  # "redis_secure" or "memory"
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from app.core.exceptions import ConfigurationError
 
 
@@ -50,7 +50,7 @@ class CacheManager:
     and all cached data is encrypted at rest.
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: str | None = None):
         """
         Initialize cache manager with automatic backend selection.
         
@@ -95,7 +95,7 @@ class CacheManager:
         """
         ...
 
-    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """
         Set value in cache with transparent backend selection.
         

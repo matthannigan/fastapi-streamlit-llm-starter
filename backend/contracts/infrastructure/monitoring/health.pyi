@@ -165,7 +165,7 @@ policy management capabilities.
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List
 import asyncio
 import logging
 import time
@@ -217,7 +217,7 @@ class HealthCheckTimeoutError(HealthCheckError):
         - Inherits from HealthCheckError for consistent exception hierarchy
         - Automatically raised by timeout mechanisms in health check execution
         - Includes timing context for debugging performance issues
-        
+    
     Usage:
         >>> try:
         ...     status = await health_checker.check_component("slow_service")
@@ -430,7 +430,7 @@ class HealthChecker:
             print(f"Health check infrastructure error: {e}")
     """
 
-    def __init__(self, default_timeout_ms: int = 2000, per_component_timeouts_ms: Optional[Dict[str, int]] = None, retry_count: int = 1, backoff_base_seconds: float = 0.1) -> None:
+    def __init__(self, default_timeout_ms: int = 2000, per_component_timeouts_ms: Dict[str, int] | None = None, retry_count: int = 1, backoff_base_seconds: float = 0.1) -> None:
         """
         Initialize health checker with configurable timeout and retry policies.
         
@@ -672,7 +672,7 @@ async def check_ai_model_health() -> ComponentStatus:
     ...
 
 
-async def check_cache_health(cache_service = None) -> ComponentStatus:
+async def check_cache_health(cache_service: Any = None) -> ComponentStatus:
     """
     Check cache system health and operational status using dependency injection for optimal performance.
     

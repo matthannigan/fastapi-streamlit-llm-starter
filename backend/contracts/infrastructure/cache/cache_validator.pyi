@@ -39,7 +39,7 @@ and template generation capabilities.
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class ValidationSeverity(str, Enum):
@@ -92,19 +92,19 @@ class ValidationResult:
         """
         ...
 
-    def add_error(self, message: str, field_path: str = '', context: Optional[Dict[str, Any]] = None) -> None:
+    def add_error(self, message: str, field_path: str = '', context: Dict[str, Any] | None = None) -> None:
         """
         Add an error message and mark validation as invalid.
         """
         ...
 
-    def add_warning(self, message: str, field_path: str = '', context: Optional[Dict[str, Any]] = None) -> None:
+    def add_warning(self, message: str, field_path: str = '', context: Dict[str, Any] | None = None) -> None:
         """
         Add a warning message.
         """
         ...
 
-    def add_info(self, message: str, field_path: str = '', context: Optional[Dict[str, Any]] = None) -> None:
+    def add_info(self, message: str, field_path: str = '', context: Dict[str, Any] | None = None) -> None:
         """
         Add an info message.
         """
@@ -116,7 +116,7 @@ class CacheValidator:
     Comprehensive cache configuration validator with JSON schema support.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize validator with schemas and templates.
         """

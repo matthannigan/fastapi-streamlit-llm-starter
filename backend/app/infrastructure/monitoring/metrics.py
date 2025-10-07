@@ -52,7 +52,7 @@ json_format = metrics.export_json()
 
 Metrics collection integrates with:
 - Cache performance monitoring
-- Resilience pattern monitoring  
+- Resilience pattern monitoring
 - AI service operation tracking
 - HTTP request/response monitoring
 - Database connection monitoring
@@ -88,7 +88,7 @@ requirements and chosen observability stack.
 #
 # class MetricType(Enum):
 #     COUNTER = "counter"
-#     GAUGE = "gauge" 
+#     GAUGE = "gauge"
 #     HISTOGRAM = "histogram"
 #     SUMMARY = "summary"
 #
@@ -103,7 +103,7 @@ requirements and chosen observability stack.
 #         self.name = name
 #         self.description = description
 #         self.values: List[MetricValue] = []
-#     
+#
 #     @abstractmethod
 #     def collect(self) -> List[MetricValue]:
 #         pass
@@ -112,7 +112,7 @@ requirements and chosen observability stack.
 #     def __init__(self, name: str, description: str):
 #         super().__init__(name, description)
 #         self._value = 0.0
-#     
+#
 #     def increment(self, amount: float = 1.0, labels: Dict[str, str] = None):
 #         self._value += amount
 #         # Implementation details
@@ -120,14 +120,14 @@ requirements and chosen observability stack.
 # class MetricsCollector:
 #     def __init__(self):
 #         self.metrics: Dict[str, Metric] = {}
-#     
+#
 #     def register(self, metric: Metric):
 #         self.metrics[metric.name] = metric
-#     
+#
 #     def export_prometheus(self) -> str:
 #         # Implementation for Prometheus format export
 #         pass
-#     
+#
 #     def export_json(self) -> str:
 #         # Implementation for JSON format export
 #         pass

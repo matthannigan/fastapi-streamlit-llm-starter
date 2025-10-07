@@ -166,7 +166,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List
 
 import asyncio
 import logging
@@ -212,15 +212,15 @@ class HealthCheckError(Exception):
 class HealthCheckTimeoutError(HealthCheckError):
     """
     Exception raised when health check operations exceed configured timeout limits.
-    
+
     Indicates that a component health check took longer than the allowed time,
     suggesting potential system performance issues or component unavailability.
-    
+
     Behavior:
         - Inherits from HealthCheckError for consistent exception hierarchy
         - Automatically raised by timeout mechanisms in health check execution
         - Includes timing context for debugging performance issues
-        
+
     Usage:
         >>> try:
         ...     status = await health_checker.check_component("slow_service")
@@ -304,7 +304,7 @@ class ComponentStatus:
     status: HealthStatus
     message: str = ""
     response_time_ms: float = 0.0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Dict[str, Any] | None = None
 
 
 @dataclass
@@ -442,7 +442,7 @@ class HealthChecker:
     def __init__(
         self,
         default_timeout_ms: int = 2000,
-        per_component_timeouts_ms: Optional[Dict[str, int]] = None,
+        per_component_timeouts_ms: Dict[str, int] | None = None,
         retry_count: int = 1,
         backoff_base_seconds: float = 0.1,
     ) -> None:
@@ -578,7 +578,7 @@ class HealthChecker:
 
         timeout_ms = self._per_component_timeouts_ms.get(name, self._default_timeout_ms)
         attempt = 0
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         start_overall = time.perf_counter()
         while attempt <= self._retry_count:
             try:
@@ -586,7 +586,7 @@ class HealthChecker:
                 elapsed_ms = (time.perf_counter() - start_overall) * 1000.0
                 result.response_time_ms = max(result.response_time_ms, elapsed_ms)
                 return result
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 last_error = HealthCheckTimeoutError(f"Health check '{name}' timed out after {timeout_ms}ms")
                 logger.warning(str(last_error))
             except Exception as e:  # noqa: BLE001
@@ -806,7 +806,7 @@ async def check_ai_model_health() -> ComponentStatus:
         )
 
 
-async def check_cache_health(cache_service=None) -> ComponentStatus:
+async def check_cache_health(cache_service: Any = None) -> ComponentStatus:
     """
     Check cache system health and operational status using dependency injection for optimal performance.
 
@@ -842,7 +842,7 @@ async def check_cache_health(cache_service=None) -> ComponentStatus:
             cache_service = await get_cache_service(settings)
 
             # Only connect if cache service has connect method (Redis cache)
-            if hasattr(cache_service, 'connect'):
+            if hasattr(cache_service, "connect"):
                 try:
                     await cache_service.connect()
                 except Exception as e:  # noqa: BLE001

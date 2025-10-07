@@ -64,7 +64,7 @@ cache = await factory.create_cache_from_config(config)
 **Example - Application Startup:**
 ```python
 # Recommended: Factory method with environment-specific defaults
-async def setup_cache_layer():
+async def setup_cache_layer() -> CacheInterface:
     factory = CacheFactory()
 
     # Production web application
@@ -141,13 +141,13 @@ class CacheFactory:
         True
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the CacheFactory with default configuration.
         """
         ...
 
-    async def for_web_app(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 1800, enable_l1_cache: bool = True, l1_cache_size: int = 200, compression_threshold: int = 2000, compression_level: int = 6, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs) -> CacheInterface:
+    async def for_web_app(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 1800, enable_l1_cache: bool = True, l1_cache_size: int = 200, compression_threshold: int = 2000, compression_level: int = 6, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs: Any) -> CacheInterface:
         """
         Create a cache optimized for web applications with balanced performance.
         
@@ -219,7 +219,7 @@ class CacheFactory:
         """
         ...
 
-    async def for_ai_app(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, text_hash_threshold: int = 500, memory_cache_size: Optional[int] = None, operation_ttls: Optional[Dict[str, int]] = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs) -> CacheInterface:
+    async def for_ai_app(self, redis_url: str = 'redis://redis:6379', default_ttl: int = 3600, enable_l1_cache: bool = True, l1_cache_size: int = 100, compression_threshold: int = 1000, compression_level: int = 6, text_hash_threshold: int = 500, memory_cache_size: int | None = None, operation_ttls: Dict[str, int] | None = None, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, **kwargs: Any) -> CacheInterface:
         """
         Create a cache optimized for AI applications with enhanced storage and compression.
         
@@ -305,7 +305,7 @@ class CacheFactory:
         """
         ...
 
-    async def for_testing(self, redis_url: str = 'redis://redis:6379/15', default_ttl: int = 60, enable_l1_cache: bool = False, l1_cache_size: int = 50, compression_threshold: int = 1000, compression_level: int = 1, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, use_memory_cache: bool = False, **kwargs) -> CacheInterface:
+    async def for_testing(self, redis_url: str = 'redis://redis:6379/15', default_ttl: int = 60, enable_l1_cache: bool = False, l1_cache_size: int = 50, compression_threshold: int = 1000, compression_level: int = 1, security_config: Optional['SecurityConfig'] = None, fail_on_connection_error: bool = False, use_memory_cache: bool = False, **kwargs: Any) -> CacheInterface:
         """
         Create a cache optimized for testing environments with short TTLs and fast operations.
         

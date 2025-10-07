@@ -122,7 +122,7 @@ try:
     MONITORING_AVAILABLE = True
 except ImportError:
     MONITORING_AVAILABLE = False
-    CachePerformanceMonitor = None
+    CachePerformanceMonitor = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ class CacheDependencyManager:
 
     @staticmethod
     async def _get_or_create_cache(
-        cache_key: str, factory_func, *args, **kwargs
+        cache_key: str, factory_func: Any, *args: Any, **kwargs: Any
     ) -> CacheInterface:
         """
         Get existing cache from registry or create new one with factory function.
@@ -227,10 +227,9 @@ class CacheDependencyManager:
                 if cache is not None:
                     logger.debug(f"Using existing cache from registry: {cache_key}")
                     return await CacheDependencyManager._ensure_cache_connected(cache)
-                else:
-                    # Clean up dead reference
-                    logger.debug(f"Removing dead cache reference: {cache_key}")
-                    del _cache_registry[cache_key]
+                # Clean up dead reference
+                logger.debug(f"Removing dead cache reference: {cache_key}")
+                del _cache_registry[cache_key]
 
             # Create new cache instance
             logger.info(f"Creating new cache instance: {cache_key}")
@@ -249,7 +248,7 @@ class CacheDependencyManager:
             except Exception as e:
                 logger.error(f"Failed to create cache {cache_key}: {e}")
                 raise InfrastructureError(
-                    f"Failed to create cache instance: {str(e)}",
+                    f"Failed to create cache instance: {e!s}",
                     context={
                         "cache_key": cache_key,
                         "factory_func": factory_func.__name__
@@ -267,7 +266,7 @@ class CacheDependencyManager:
 # ============================================================================
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """
     Get cached application settings instance.
@@ -291,7 +290,7 @@ def get_settings() -> Settings:
     return Settings()
 
 
-async def get_cache_config(settings: Settings = Depends(get_settings)):
+async def get_cache_config(settings: Settings = Depends(get_settings)) -> Dict[str, Any]:
     """
     Build cache configuration from application settings using preset system.
 
@@ -358,7 +357,7 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
         except Exception as fallback_error:
             logger.error(f"Fallback cache configuration also failed: {fallback_error}")
             raise ConfigurationError(
-                f"Failed to build cache configuration and fallback failed: {str(e)}",
+                f"Failed to build cache configuration and fallback failed: {e!s}",
                 context={
                     "original_error": str(e),
                     "fallback_error": str(fallback_error),
@@ -373,7 +372,7 @@ async def get_cache_config(settings: Settings = Depends(get_settings)):
 # ============================================================================
 
 
-async def get_cache_service(config=Depends(get_cache_config)) -> CacheInterface:
+async def get_cache_service(config: Dict[str, Any] = Depends(get_cache_config)) -> CacheInterface:
     """
     Get main cache service with explicit factory usage and registry management.
 
@@ -408,7 +407,7 @@ async def get_cache_service(config=Depends(get_cache_config)) -> CacheInterface:
         # Use factory for explicit cache creation
         factory = CacheFactory()
 
-        async def create_cache():
+        async def create_cache() -> CacheInterface:
             logger.info("Creating cache using CacheFactory.create_cache_from_config()")
             return await factory.create_cache_from_config(
                 config_dict,
@@ -795,9 +794,8 @@ async def get_cache_service_conditional(
         if enable_ai:
             logger.info("Conditional cache: using AI cache service")
             return await get_ai_cache_service(config)
-        else:
-            logger.info("Conditional cache: using web cache service")
-            return await get_web_cache_service(config)
+        logger.info("Conditional cache: using web cache service")
+        return await get_web_cache_service(config)
 
     except Exception as e:
         logger.error(f"Failed to get conditional cache service: {e}")
@@ -827,7 +825,7 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
             cleanup_stats  =  await cleanup_cache_registry()
             logger.info(f"Cache cleanup completed: {cleanup_stats}")
     """
-    cleanup_stats = {
+    cleanup_stats: Dict[str, Any] = {
         "total_entries": 0,
         "active_caches": 0,
         "dead_references": 0,
@@ -863,7 +861,7 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
                             logger.debug(f"Disconnected cache: {cache_key}")
                         except Exception as e:
                             error_msg = (
-                                f"Failed to disconnect cache {cache_key}: {str(e)}"
+                                f"Failed to disconnect cache {cache_key}: {e!s}"
                             )
                             cleanup_stats["errors"].append(error_msg)
                             logger.error(error_msg)
@@ -879,7 +877,7 @@ async def cleanup_cache_registry() -> Dict[str, Any]:
         return cleanup_stats
 
     except Exception as e:
-        error_msg = f"Cache registry cleanup failed: {str(e)}"
+        error_msg = f"Cache registry cleanup failed: {e!s}"
         cleanup_stats["errors"].append(error_msg)
         logger.error(error_msg)
         return cleanup_stats
@@ -958,7 +956,7 @@ async def get_cache_health_status(
             except Exception as e:
                 health_status["ping_success"] = False
                 health_status["status"] = "degraded"
-                health_status["errors"].append(f"Ping operation failed: {str(e)}")
+                health_status["errors"].append(f"Ping operation failed: {e!s}")
                 logger.warning(f"Cache ping operation failed: {e}")
 
         # Fall back to operation test only if ping() is not available
@@ -992,7 +990,7 @@ async def get_cache_health_status(
                     await cache.delete(test_key)
                 except Exception as cleanup_error:
                     health_status["warnings"].append(
-                        f"Failed to clean up test data: {str(cleanup_error)}"
+                        f"Failed to clean up test data: {cleanup_error!s}"
                     )
                     logger.warning(
                         f"Failed to clean up health check test data: {cleanup_error}"
@@ -1000,7 +998,7 @@ async def get_cache_health_status(
 
             except Exception as e:
                 health_status["status"] = "unhealthy"
-                health_status["errors"].append(f"Operation test failed: {str(e)}")
+                health_status["errors"].append(f"Operation test failed: {e!s}")
                 logger.error(f"Cache operation test failed: {e}")
 
         # Add cache statistics if available
@@ -1011,7 +1009,7 @@ async def get_cache_health_status(
                 logger.debug("Added cache statistics to health status")
             except Exception as e:
                 health_status["warnings"].append(
-                    f"Failed to get cache statistics: {str(e)}"
+                    f"Failed to get cache statistics: {e!s}"
                 )
                 logger.warning(f"Failed to get cache statistics: {e}")
 
@@ -1028,5 +1026,5 @@ async def get_cache_health_status(
     except Exception as e:
         logger.error(f"Cache health check failed: {e}")
         health_status["status"] = "error"
-        health_status["errors"].append(f"Health check failed: {str(e)}")
+        health_status["errors"].append(f"Health check failed: {e!s}")
         return health_status

@@ -37,7 +37,7 @@ if encryption.is_enabled:
 import json
 import logging
 import time
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict
 
 from app.core.exceptions import ConfigurationError
 
@@ -48,8 +48,8 @@ try:
     CRYPTOGRAPHY_AVAILABLE = True
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
-    Fernet = None
-    InvalidToken = Exception
+    Fernet = None  # type: ignore
+    InvalidToken = Exception  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class EncryptedCacheLayer:
     """
 
     def __init__(
-        self, encryption_key: Optional[str] = None, performance_monitoring: bool = True
+        self, encryption_key: str | None = None, performance_monitoring: bool = True
     ):
         """
         Initialize the encrypted cache layer.
@@ -160,7 +160,7 @@ class EncryptedCacheLayer:
             raise ConfigurationError(
                 f"🔒 ENCRYPTION ERROR: Invalid encryption key.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "To fix this issue:\n"
                 '1. Generate a new key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"\n'
@@ -237,7 +237,7 @@ class EncryptedCacheLayer:
             raise ConfigurationError(
                 f"🔒 ENCRYPTION ERROR: Failed to serialize cache data.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "Ensure cache data contains only JSON-serializable types:\n"
                 "- Basic types: str, int, float, bool, None\n"
@@ -254,7 +254,7 @@ class EncryptedCacheLayer:
             raise ConfigurationError(
                 f"🔒 ENCRYPTION ERROR: Data encryption failed.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "This may indicate:\n"
                 "- Corrupted encryption key\n"
@@ -332,7 +332,7 @@ class EncryptedCacheLayer:
             raise ConfigurationError(
                 f"🔒 DECRYPTION ERROR: Failed to deserialize cache data.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "This may indicate:\n"
                 "- Corrupted cache data\n"
@@ -350,7 +350,7 @@ class EncryptedCacheLayer:
             raise ConfigurationError(
                 f"🔒 DECRYPTION ERROR: Data decryption failed.\n"
                 "\n"
-                f"Error: {str(e)}\n"
+                f"Error: {e!s}\n"
                 "\n"
                 "This may indicate:\n"
                 "- Invalid encryption key\n"
