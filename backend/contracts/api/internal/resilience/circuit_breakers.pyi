@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Resilience Circuit Breaker Management API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides REST API endpoints for monitoring and managing circuit
@@ -65,10 +65,10 @@ Authentication:
 Example:
     Get all circuit breaker statuses:
         GET /internal/resilience/circuit-breakers
-        
+
     Get specific circuit breaker details:
         GET /internal/resilience/circuit-breakers/text_processing_service
-        
+
     Reset a circuit breaker:
         POST /internal/resilience/circuit-breakers/text_processing_service/reset
 
@@ -79,27 +79,17 @@ Note:
     re-opening of the circuit breaker.
 """
 
-import json
 import logging
-import os
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-from pydantic import BaseModel, Field
-from app.core.config import Settings, settings
-from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Any
+from app.infrastructure.security.auth import verify_api_key
 from app.infrastructure.resilience.orchestrator import ai_resilience
-from app.services.text_processor import TextProcessorService
-from app.api.v1.deps import get_text_processor
-from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
-from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
 
 router = APIRouter(prefix='/resilience', tags=['Resilience Core'])
 
 
 @router.get('/circuit-breakers')
-async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
+async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Get comprehensive status information for all circuit breakers.
     
@@ -109,7 +99,7 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
     
     Args:
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Circuit breaker status data containing:
             - Dictionary mapping circuit breaker names to their status information
@@ -119,10 +109,10 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
                 - Last failure timestamps
                 - Recovery timeout configuration
                 - Performance metrics and statistics
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if circuit breaker status retrieval fails
-        
+    
     Example:
         >>> response = await get_circuit_breaker_status()
         >>> {
@@ -143,7 +133,7 @@ async def get_circuit_breaker_status(api_key: str = Depends(verify_api_key)):
 
 
 @router.get('/circuit-breakers/{breaker_name}')
-async def get_circuit_breaker_details(breaker_name: str, api_key: str = Depends(verify_api_key)):
+async def get_circuit_breaker_details(breaker_name: str, api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Get detailed information about a specific circuit breaker.
     
@@ -154,7 +144,7 @@ async def get_circuit_breaker_details(breaker_name: str, api_key: str = Depends(
     Args:
         breaker_name: Name of the specific circuit breaker to retrieve details for
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Detailed circuit breaker information containing:
             - name: Circuit breaker name
@@ -164,11 +154,11 @@ async def get_circuit_breaker_details(breaker_name: str, api_key: str = Depends(
             - recovery_timeout: Time before attempting half-open state
             - last_failure_time: Timestamp of most recent failure
             - metrics: Additional performance and operational metrics
-            
+    
     Raises:
         HTTPException: 404 Not Found if circuit breaker doesn't exist
         HTTPException: 500 Internal Server Error if details retrieval fails
-        
+    
     Example:
         >>> response = await get_circuit_breaker_details("text_processing_service")
         >>> {
@@ -185,7 +175,7 @@ async def get_circuit_breaker_details(breaker_name: str, api_key: str = Depends(
 
 
 @router.post('/circuit-breakers/{breaker_name}/reset')
-async def reset_circuit_breaker(breaker_name: str, api_key: str = Depends(verify_api_key)):
+async def reset_circuit_breaker(breaker_name: str, api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Reset a specific circuit breaker to closed state for emergency recovery.
     
@@ -196,23 +186,23 @@ async def reset_circuit_breaker(breaker_name: str, api_key: str = Depends(verify
     Args:
         breaker_name: Name of the specific circuit breaker to reset
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, str]: Reset confirmation containing:
             - message: Human-readable confirmation message
             - name: Name of the circuit breaker that was reset
             - new_state: New state of the circuit breaker (should be "closed")
-            
+    
     Raises:
         HTTPException: 404 Not Found if circuit breaker doesn't exist
         HTTPException: 500 Internal Server Error if reset operation fails
-        
+    
     Warning:
         Circuit breakers are critical safety components that protect against
         cascading failures. Manual resets should be used carefully and only
         when the underlying issues have been resolved to prevent immediate
         re-opening of the circuit breaker.
-        
+    
     Example:
         >>> response = await reset_circuit_breaker("text_processing_service")
         >>> {

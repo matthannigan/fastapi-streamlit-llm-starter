@@ -5,7 +5,7 @@ backend/app/api/internal/resilience/
 ├── models.py
 ├── health.py              # 6 endpoints - health/metrics
 ├── config_presets.py      # 6 endpoints - preset recommendations
-├── config_templates.py    # 4 endpoints - template patterns  
+├── config_templates.py    # 4 endpoints - template patterns
 ├── config_validation.py   # 7 endpoints - config validation functions
 ├── circuit_breakers.py    # 3 endpoints - CB management
 ├── monitoring.py          # 7 endpoints - analytics
@@ -22,12 +22,12 @@ from .performance import router as resilience_performance_router
 
 
 __all__ = [
-    "resilience_health_router",
     "resilience_circuit_breakers_router",
-    "resilience_config_router",
     "resilience_config_presets_router",
+    "resilience_config_router",
     "resilience_config_templates_router",
     "resilience_config_validation_router",
+    "resilience_health_router",
     "resilience_monitoring_router",
     "resilience_performance_router"
 ]

@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Resilience Configuration Template Management API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides REST API endpoints for managing and utilizing resilience
@@ -60,7 +60,7 @@ Example:
             "template_name": "production",
             "overrides": {"retry_attempts": 5}
         }
-        
+
     To get template suggestions for a configuration:
         POST /internal/resilience/suggest-template
         {
@@ -73,21 +73,11 @@ Note:
     helps identify appropriate templates for existing configurations.
 """
 
-import json
 import logging
-import os
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-from pydantic import BaseModel, Field
-from app.core.config import Settings, settings
-from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
-from app.infrastructure.resilience.orchestrator import ai_resilience
-from app.services.text_processor import TextProcessorService
-from app.api.v1.deps import get_text_processor
-from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
-from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Any
+from app.infrastructure.security.auth import verify_api_key
+from app.infrastructure.resilience.config_validator import config_validator
 from app.api.internal.resilience.models import TemplateListResponse, TemplateBasedConfigRequest, TemplateSuggestionResponse, ValidationResponse, CustomConfigRequest
 
 router = APIRouter(prefix='/resilience/config', tags=['Resilience Configuration'])
@@ -103,16 +93,16 @@ async def get_configuration_templates(api_key: str = Depends(verify_api_key)) ->
     
     Args:
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         TemplateListResponse: Response containing available templates:
             - templates: Dictionary mapping template names to template information
             - Each template includes description, use cases, and configuration structure
             - Template metadata including version and compatibility information
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if template listing fails
-        
+    
     Example:
         >>> response = await get_configuration_templates()
         >>> TemplateListResponse(
@@ -130,7 +120,7 @@ async def get_configuration_templates(api_key: str = Depends(verify_api_key)) ->
 
 
 @router.get('/templates/{template_name}')
-async def get_configuration_template(template_name: str, api_key: str = Depends(verify_api_key)):
+async def get_configuration_template(template_name: str, api_key: str = Depends(verify_api_key)) -> Dict[str, Any]:
     """
     Get detailed information about a specific configuration template.
     
@@ -140,7 +130,7 @@ async def get_configuration_template(template_name: str, api_key: str = Depends(
     Args:
         template_name: Name of the specific template to retrieve
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, Any]: Template configuration containing:
             - name: Template identifier
@@ -150,11 +140,11 @@ async def get_configuration_template(template_name: str, api_key: str = Depends(
             - defaults: Default values for all parameters
             - metadata: Template version and compatibility information
             - customization_options: Available override and customization points
-            
+    
     Raises:
         HTTPException: 404 Not Found if template doesn't exist
         HTTPException: 500 Internal Server Error if template retrieval fails
-        
+    
     Example:
         >>> response = await get_configuration_template("production")
         >>> {
@@ -185,17 +175,17 @@ async def validate_template_based_config(request: TemplateBasedConfigRequest, ap
                 - template_name: Name of the template to use as base
                 - overrides: Optional dictionary of parameter overrides
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         ValidationResponse: Validation results containing:
             - is_valid: Boolean indicating if the template-based configuration is valid
             - errors: List of validation errors that must be fixed
             - warnings: List of warnings about potential issues
             - suggestions: List of suggestions for improvement
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if validation process fails
-        
+    
     Example:
         >>> request = TemplateBasedConfigRequest(
         ...     template_name="production",
@@ -225,17 +215,17 @@ async def suggest_template_for_config(request: CustomConfigRequest, api_key: str
         request: Custom configuration request containing the configuration
                 to analyze for template matching
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         TemplateSuggestionResponse: Template suggestion containing:
             - suggested_template: Name of the recommended template (if any)
             - confidence: Confidence score (0.0-1.0) in the suggestion
             - reasoning: Detailed explanation for the suggestion decision
             - available_templates: List of all available template names
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if template suggestion fails
-        
+    
     Example:
         >>> request = CustomConfigRequest(
         ...     configuration={

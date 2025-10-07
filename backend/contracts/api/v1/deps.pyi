@@ -1,8 +1,8 @@
 """
 Domain Service: API Dependency Providers
 
-📚 **EXAMPLE IMPLEMENTATION** - Replace in your project  
-💡 **Demonstrates infrastructure usage patterns**  
+📚 **EXAMPLE IMPLEMENTATION** - Replace in your project
+💡 **Demonstrates infrastructure usage patterns**
 🔄 **Expected to be modified/replaced**
 
 This module provides FastAPI dependency providers for domain services, demonstrating
@@ -101,19 +101,19 @@ async def get_text_processor(settings: Settings = Depends(get_settings), cache: 
         - Composes settings and cache services into unified domain service interface
         - Provides async-compatible service initialization for optimal FastAPI integration
         - Enables dependency injection chains for complex service hierarchies
-        
+    
         **Infrastructure Integration:**
         - Automatically inherits all configuration from injected settings dependency
         - Leverages cache service for response optimization and performance enhancement
         - Integrates with monitoring and health checking through infrastructure services
         - Provides seamless fallback mechanisms when infrastructure services degrade
-        
+    
         **Performance Optimization:**
         - Uses async dependency resolution for non-blocking service creation
         - Enables concurrent processing through async service patterns
         - Optimizes memory usage through efficient service composition
         - Minimizes initialization overhead with direct service instantiation
-        
+    
         **Error Handling:**
         - Inherits robust error handling from composed infrastructure services
         - Provides graceful degradation when cache service is unavailable
@@ -124,9 +124,9 @@ async def get_text_processor(settings: Settings = Depends(get_settings), cache: 
         >>> # Basic FastAPI endpoint integration
         >>> from fastapi import APIRouter, Depends
         >>> from app.api.v1.deps import get_text_processor
-        >>> 
+        >>>
         >>> router = APIRouter()
-        >>> 
+        >>>
         >>> @router.post("/process-text")
         >>> async def process_text(
         ...     text: str,
@@ -134,7 +134,7 @@ async def get_text_processor(settings: Settings = Depends(get_settings), cache: 
         ... ):
         ...     result = await processor.process_text(text, "summarize")
         ...     return {"result": result, "cached": result.from_cache}
-        
+    
         >>> # Advanced endpoint with error handling
         >>> @router.post("/advanced-processing")
         >>> async def advanced_processing(
@@ -150,14 +150,14 @@ async def get_text_processor(settings: Settings = Depends(get_settings), cache: 
         ...         return {"success": True, "data": result}
         ...     except Exception as e:
         ...         return {"success": False, "error": str(e)}
-        
+    
         >>> # Service verification and health checking
         >>> processor = await get_text_processor()
         >>> assert processor.settings is not None
         >>> assert processor.cache is not None
         >>> health_status = await processor.health_check()
         >>> assert health_status["ai_service"] is True
-        
+    
         >>> # Batch processing integration
         >>> @router.post("/batch-process")
         >>> async def batch_process(
@@ -210,19 +210,19 @@ def get_text_processor_service(settings: Settings = Depends(get_settings), cache
         - Composes infrastructure services into unified domain service interface
         - Provides compatibility with synchronous FastAPI endpoints and testing frameworks
         - Avoids LRU caching due to AIResponseCache non-hashable object constraints
-        
+    
         **Infrastructure Integration:**
         - Integrates with application settings for comprehensive configuration management
         - Leverages cache service for performance optimization and response caching
         - Maintains compatibility with all infrastructure monitoring and health checking
         - Provides seamless integration with logging and error handling systems
-        
+    
         **Performance Considerations:**
         - Creates fresh service instances for each dependency resolution (no caching)
         - Optimizes for memory efficiency through direct service instantiation
         - Maintains fast dependency resolution suitable for high-traffic scenarios
         - Balances performance with object lifecycle management requirements
-        
+    
         **Error Handling:**
         - Inherits comprehensive error handling from infrastructure service dependencies
         - Maintains service functionality with graceful degradation patterns
@@ -233,9 +233,9 @@ def get_text_processor_service(settings: Settings = Depends(get_settings), cache
         >>> # Basic synchronous FastAPI endpoint integration
         >>> from fastapi import APIRouter, Depends
         >>> from app.api.v1.deps import get_text_processor_service
-        >>> 
+        >>>
         >>> router = APIRouter()
-        >>> 
+        >>>
         >>> @router.post("/sync-process")
         >>> def sync_process_text(
         ...     text: str,
@@ -244,36 +244,36 @@ def get_text_processor_service(settings: Settings = Depends(get_settings), cache
         ...     # Note: Even with sync dependency, service operations may still be async
         ...     result = await processor.process_text(text, "summarize")
         ...     return {"result": result}
-        
+    
         >>> # Testing integration with synchronous dependency
         >>> def test_text_processor_creation():
         ...     from app.dependencies import get_settings, get_cache_service
         ...     settings = get_settings()
         ...     cache = await get_cache_service()
-        ...     
+        ...
         ...     processor = get_text_processor_service(settings, cache)
         ...     assert isinstance(processor, TextProcessorService)
         ...     assert processor.settings == settings
         ...     assert processor.cache == cache
-        
+    
         >>> # Dependency override for testing scenarios
         >>> from fastapi.testclient import TestClient
         >>> from unittest.mock import Mock
-        >>> 
+        >>>
         >>> def get_mock_processor():
         ...     mock_settings = Mock()
         ...     mock_cache = Mock()
         ...     return get_text_processor_service(mock_settings, mock_cache)
-        >>> 
+        >>>
         >>> app.dependency_overrides[get_text_processor_service] = get_mock_processor
         >>> client = TestClient(app)
-        
+    
         >>> # Service configuration verification
         >>> processor = get_text_processor_service()
         >>> assert hasattr(processor, 'settings')
         >>> assert hasattr(processor, 'cache')
         >>> assert callable(processor.process_text)
-        
+    
         >>> # Multiple instance creation behavior (no caching)
         >>> processor1 = get_text_processor_service()
         >>> processor2 = get_text_processor_service()

@@ -1,7 +1,7 @@
 """Infrastructure Service: Resilience API Data Models
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module defines comprehensive Pydantic models for all resilience API
@@ -56,7 +56,7 @@ validation, and monitoring capabilities.
 
 - `PresetDetails`: Detailed preset information with full configuration
   - `name` (str): Preset identifier
-  - `description` (str): Human-readable preset description  
+  - `description` (str): Human-readable preset description
   - `configuration` (Dict[str, Any]): Complete preset configuration object
   - `environment_contexts` (List[str]): Applicable environment contexts
 
@@ -96,7 +96,7 @@ validation, and monitoring capabilities.
 - `ValidationResponse`: Configuration validation results with detailed feedback
   - `is_valid` (bool): Whether configuration passed validation
   - `errors` (List[str]): Validation error messages (default: empty list)
-  - `warnings` (List[str]): Validation warning messages (default: empty list)  
+  - `warnings` (List[str]): Validation warning messages (default: empty list)
   - `suggestions` (List[str]): Optimization suggestions (default: empty list)
   - `security_info` (Optional[Dict[str, Any]]): Security validation metadata (default: None)
 
@@ -128,7 +128,7 @@ validation, and monitoring capabilities.
 ### Request/Response Pairing
 Models are designed with clear request/response pairing for API endpoints:
 - Template operations: `TemplateValidationRequest` → `ValidationResponse`
-- Custom config: `CustomConfigRequest` → `ValidationResponse`  
+- Custom config: `CustomConfigRequest` → `ValidationResponse`
 - Benchmarking: `BenchmarkRunRequest` → performance metrics data
 - Recommendations: environment context → `RecommendationResponse` variants
 
@@ -206,7 +206,7 @@ request = BenchmarkRunRequest(
 
 ### Functional Groupings
 1. **Configuration Models**: Template and custom configuration handling
-2. **Validation Models**: Request/response pairs for validation workflows  
+2. **Validation Models**: Request/response pairs for validation workflows
 3. **Preset Models**: Resilience preset management and recommendations
 4. **Metrics Models**: Performance and monitoring data structures
 5. **Recommendation Models**: Environment detection and preset suggestions
@@ -222,7 +222,7 @@ throughout the resilience infrastructure. Ensure backward compatibility and
 comprehensive testing for any modifications.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from pydantic import BaseModel, Field
 
 
@@ -231,12 +231,12 @@ from pydantic import BaseModel, Field
 class TemplateValidationRequest(BaseModel):
     """
     Template-based configuration validation request with override support for flexible customization.
-    
+
     This model represents requests for validating resilience configurations based on predefined
     templates with optional customization overrides. It enables template-driven configuration
     validation while maintaining flexibility for environment-specific customizations and testing
     scenarios with structured parameter validation.
-    
+
     Attributes:
         template_name: Unique identifier for the base configuration template to validate against.
                       Must correspond to an available template in the resilience system's
@@ -244,26 +244,26 @@ class TemplateValidationRequest(BaseModel):
         overrides: Optional configuration overrides to apply over the base template settings.
                   Allows customization of specific template parameters while maintaining
                   template structure and validation rules (defaults to empty dictionary).
-    
+
     Behavior:
         **Template Resolution:**
         - Validates that specified template_name exists in available template catalog
         - Applies base template configuration as validation foundation
         - Merges override parameters with template defaults for comprehensive validation
         - Maintains template structure integrity while enabling customization flexibility
-        
+
         **Override Processing:**
         - Applies overrides on top of base template configuration using deep merge semantics
         - Validates override parameters against template schema and constraints
         - Preserves template defaults for parameters not specified in overrides
         - Enables partial customization without requiring complete configuration specification
-        
+
         **Validation Integration:**
         - Provides structured input for template-based validation endpoints
         - Enables testing of template configurations with environment-specific modifications
         - Supports validation workflow integration with template management systems
         - Facilitates configuration testing and validation automation scenarios
-    
+
     Examples:
         >>> # Basic template validation request
         >>> request = TemplateValidationRequest(
@@ -272,7 +272,7 @@ class TemplateValidationRequest(BaseModel):
         ... )
         >>> assert request.template_name == "production"
         >>> assert request.overrides == {}
-        
+
         >>> # Template validation with custom overrides
         >>> custom_request = TemplateValidationRequest(
         ...     template_name="development",
@@ -282,7 +282,7 @@ class TemplateValidationRequest(BaseModel):
         ...     }
         ... )
         >>> assert custom_request.overrides["retry_attempts"] == 5
-        
+
         >>> # API request integration
         >>> import httpx
         >>> validation_data = {
@@ -291,7 +291,7 @@ class TemplateValidationRequest(BaseModel):
         ... }
         >>> response = await client.post("/internal/resilience/config/validate-template",
         ...                             json=validation_data)
-    
+
     Note:
         This model is designed for template-based configuration workflows where base templates
         provide sensible defaults while overrides enable environment-specific customization.
@@ -311,7 +311,7 @@ class BenchmarkRunRequest(BaseModel):
     """Request model for running performance benchmarks."""
     iterations: int = 50
     include_slow: bool = False
-    operations: Optional[List[str]] = None  # Specific operations to benchmark
+    operations: List[str] | None = None  # Specific operations to benchmark
 
 
 class ValidationRequest(BaseModel):
@@ -322,7 +322,7 @@ class ValidationRequest(BaseModel):
 class TemplateBasedConfigRequest(BaseModel):
     """Request model for template-based configuration."""
     template_name: str
-    overrides: Optional[Dict[str, Any]] = None
+    overrides: Dict[str, Any] | None = None
 
 
 # Response models
@@ -330,12 +330,12 @@ class TemplateBasedConfigRequest(BaseModel):
 class ResilienceMetricsResponse(BaseModel):
     """
     Comprehensive resilience system metrics response with multi-dimensional monitoring data.
-    
+
     This response model provides complete visibility into resilience infrastructure performance,
     including operation-level metrics, circuit breaker status information, and aggregated system
     summaries. It serves as the primary data structure for resilience monitoring dashboards,
     alerting systems, and performance analysis workflows with structured metric organization.
-    
+
     Attributes:
         operations: Operation-level metrics and performance data organized by operation identifier.
                    Each operation entry contains detailed metrics including success rates, failure
@@ -346,26 +346,26 @@ class ResilienceMetricsResponse(BaseModel):
         summary: Aggregated system-wide metrics providing overall resilience system health status,
                 performance indicators, and high-level operational statistics for dashboard display
                 and alerting integration purposes.
-    
+
     Behavior:
         **Comprehensive Metrics Collection:**
         - Aggregates operation-level performance metrics across all monitored operations
         - Provides circuit breaker state and performance information for failure detection
         - Includes system-wide summary statistics for high-level health assessment
         - Maintains temporal metric data for trend analysis and performance monitoring
-        
+
         **Monitoring Integration:**
         - Structures metrics data for integration with monitoring and alerting systems
         - Provides hierarchical metric organization from system-level to operation-specific details
         - Enables performance trend analysis and capacity planning through historical data
         - Supports dashboard visualization and operational monitoring workflow integration
-        
+
         **Operational Visibility:**
         - Exposes resilience pattern effectiveness and system health indicators
         - Provides detailed failure analysis data and recovery pattern information
         - Enables performance optimization through comprehensive metric exposure
         - Supports troubleshooting and operational analysis with detailed metric breakdowns
-    
+
     Examples:
         >>> # Comprehensive metrics response structure
         >>> metrics = ResilienceMetricsResponse(
@@ -391,27 +391,27 @@ class ResilienceMetricsResponse(BaseModel):
         ...         "system_uptime": "99.8%"
         ...     }
         ... )
-        
+
         >>> # Operational monitoring integration
         >>> def analyze_resilience_health(metrics: ResilienceMetricsResponse):
         ...     health_indicators = []
-        ...     
+        ...
         ...     # Check operation performance
         ...     for op_name, op_metrics in metrics.operations.items():
         ...         if op_metrics.get("success_rate", 0) < 95.0:
         ...             health_indicators.append(f"low_success_rate_{op_name}")
-        ...     
+        ...
         ...     # Check circuit breaker status
         ...     for cb_name, cb_metrics in metrics.circuit_breakers.items():
         ...         if cb_metrics.get("state") == "open":
         ...             health_indicators.append(f"circuit_breaker_open_{cb_name}")
-        ...     
+        ...
         ...     return {
         ...         "healthy": len(health_indicators) == 0,
         ...         "issues": health_indicators,
         ...         "overall_status": metrics.summary.get("overall_health")
         ...     }
-        
+
         >>> # Dashboard data preparation
         >>> def prepare_dashboard_metrics(metrics: ResilienceMetricsResponse):
         ...     return {
@@ -419,11 +419,11 @@ class ResilienceMetricsResponse(BaseModel):
         ...         "operation_count": len(metrics.operations),
         ...         "active_circuit_breakers": len(metrics.circuit_breakers),
         ...         "avg_success_rate": sum(
-        ...             op.get("success_rate", 0) 
+        ...             op.get("success_rate", 0)
         ...             for op in metrics.operations.values()
         ...         ) / max(len(metrics.operations), 1)
         ...     }
-    
+
     Note:
         This response model provides comprehensive resilience system visibility and is designed
         for integration with monitoring systems, operational dashboards, and alerting platforms.
@@ -488,7 +488,7 @@ class TemplateListResponse(BaseModel):
 
 class TemplateSuggestionResponse(BaseModel):
     """Response model for template suggestions."""
-    suggested_template: Optional[str]
+    suggested_template: str | None
     confidence: float
     reasoning: str
     available_templates: List[str]
@@ -500,7 +500,7 @@ class ValidationResponse(BaseModel):
     errors: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     suggestions: List[str] = Field(default_factory=list)
-    security_info: Optional[Dict[str, Any]] = Field(default=None, description="Additional security validation metadata")
+    security_info: Dict[str, Any] | None = Field(default=None, description="Additional security validation metadata")
 
 
 class CurrentConfigResponse(BaseModel):
@@ -509,6 +509,6 @@ class CurrentConfigResponse(BaseModel):
     is_legacy_config: bool
     configuration: Dict[str, Any]
     operation_strategies: Dict[str, str]
-    custom_overrides: Optional[Dict[str, Any]] = None
-    strategies: Optional[Dict[str, Dict[str, Any]]] = None  # Complete strategies mapping for backward compatibility
+    custom_overrides: Dict[str, Any] | None = None
+    strategies: Dict[str, Dict[str, Any]] | None = None  # Complete strategies mapping for backward compatibility
 

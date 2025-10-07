@@ -1,7 +1,7 @@
 """Domain Service: Application Health Check API
 
-📚 **EXAMPLE IMPLEMENTATION** - Replace in your project  
-💡 **Demonstrates infrastructure usage patterns**  
+📚 **EXAMPLE IMPLEMENTATION** - Replace in your project
+💡 **Demonstrates infrastructure usage patterns**
 🔄 **Expected to be modified/replaced**
 
 This module provides a comprehensive health check endpoint for the application,
@@ -54,7 +54,7 @@ The health check evaluates three main components:
 ### Degraded Status Example
 ```json
 {
-    "status": "degraded", 
+    "status": "degraded",
     "ai_model_available": false,
     "resilience_healthy": null,
     "cache_healthy": true
@@ -106,6 +106,7 @@ from app.schemas.health import (
 
 from app.core.config import settings
 from app.dependencies import get_health_checker
+from app.infrastructure.monitoring import HealthChecker
 from app.infrastructure.monitoring.health import SystemHealthStatus
 
 # Create a router for health endpoints
@@ -163,7 +164,7 @@ logger = logging.getLogger(__name__)
         }
     }
 )
-async def health_check(health_checker = Depends(get_health_checker)):
+async def health_check(health_checker: HealthChecker = Depends(get_health_checker)) -> HealthResponse:
     """
     System health validation endpoint with multi-component monitoring and graceful degradation.
 

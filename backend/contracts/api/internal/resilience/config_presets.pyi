@@ -1,8 +1,8 @@
 """
 Infrastructure Service: Resilience Preset Management API
 
-🏗️ **STABLE API** - Changes affect all template users  
-📋 **Minimum test coverage**: 90%  
+🏗️ **STABLE API** - Changes affect all template users
+📋 **Minimum test coverage**: 90%
 🔧 **Configuration-driven behavior**
 
 This module provides comprehensive REST API endpoints for managing and querying
@@ -51,10 +51,10 @@ Authentication:
 Example:
     To get a recommendation for production environment:
         GET /internal/resilience/recommend/prod
-        
+
     To auto-detect environment and get recommendation:
         GET /internal/resilience/recommend-auto
-        
+
     To list all available presets:
         GET /internal/resilience/presets
 
@@ -65,21 +65,11 @@ Note:
     without requiring explicit environment specification.
 """
 
-import json
 import logging
-import os
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-from pydantic import BaseModel, Field
-from app.core.config import Settings, settings
-from app.infrastructure.security.auth import verify_api_key, optional_verify_api_key
-from app.infrastructure.resilience.orchestrator import ai_resilience
-from app.services.text_processor import TextProcessorService
-from app.api.v1.deps import get_text_processor
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Dict, List
+from app.infrastructure.security.auth import verify_api_key
 from app.infrastructure.resilience.config_presets import preset_manager, PresetManager
-from app.infrastructure.resilience.performance_benchmarks import performance_benchmark
-from app.infrastructure.resilience.config_validator import config_validator, ValidationResult
 from app.api.internal.resilience.models import PresetSummary, PresetDetails, DetailedRecommendationResponse, AutoDetectResponse
 
 router = APIRouter(prefix='/resilience/config', tags=['Resilience Configuration'])
@@ -103,7 +93,7 @@ async def list_presets(preset_mgr: PresetManager = Depends(get_preset_manager), 
     Args:
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         List[PresetSummary]: List of preset summaries, each containing:
             - name: Preset name identifier
@@ -113,10 +103,10 @@ async def list_presets(preset_mgr: PresetManager = Depends(get_preset_manager), 
             - recovery_timeout: Circuit breaker recovery timeout
             - default_strategy: Default resilience strategy
             - environment_contexts: List of suitable deployment environments
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if preset listing fails
-        
+    
     Example:
         >>> response = await list_presets()
         >>> [
@@ -146,7 +136,7 @@ async def get_preset_details(preset_name: str, preset_mgr: PresetManager = Depen
         preset_name: Name of the specific preset to retrieve details for
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         PresetDetails: Comprehensive preset information containing:
             - Complete configuration parameters
@@ -155,11 +145,11 @@ async def get_preset_details(preset_name: str, preset_mgr: PresetManager = Depen
             - Environment suitability information
             - Performance characteristics
             - Usage recommendations
-            
+    
     Raises:
         HTTPException: 404 Not Found if preset doesn't exist
         HTTPException: 500 Internal Server Error if preset details retrieval fails
-        
+    
     Example:
         >>> response = await get_preset_details("production")
         >>> PresetDetails(
@@ -185,17 +175,17 @@ async def get_all_presets_summary(preset_mgr: PresetManager = Depends(get_preset
     Args:
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         Dict[str, PresetDetails]: Dictionary mapping preset names to detailed information:
             - Keys: Preset names (e.g., "production", "development", "testing")
             - Values: PresetDetails objects containing complete configuration
             - Each preset includes retry configs, circuit breaker settings,
               strategies, and environment suitability information
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if presets summary retrieval fails
-        
+    
     Example:
         >>> response = await get_all_presets_summary()
         >>> {
@@ -222,11 +212,11 @@ async def recommend_preset(environment: str, preset_mgr: PresetManager = Depends
     scoring and comprehensive reasoning for the recommendation decision.
     
     Args:
-        environment: Target deployment environment name 
+        environment: Target deployment environment name
                     (e.g., "dev", "test", "staging", "prod", "production")
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         DetailedRecommendationResponse: Comprehensive recommendation containing:
             - recommended_preset: Name of the recommended preset
@@ -235,10 +225,10 @@ async def recommend_preset(environment: str, preset_mgr: PresetManager = Depends
             - alternative_presets: List of alternative preset options
             - environment_analysis: Analysis of environment characteristics
             - configuration_highlights: Key configuration aspects
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if recommendation generation fails
-        
+    
     Example:
         >>> response = await recommend_preset("production")
         >>> DetailedRecommendationResponse(
@@ -264,7 +254,7 @@ async def auto_recommend_preset(preset_mgr: PresetManager = Depends(get_preset_m
     Args:
         preset_mgr: Preset manager dependency for accessing preset data
         api_key: API key for authentication (injected via dependency)
-        
+    
     Returns:
         AutoDetectResponse: Auto-detection results containing:
             - environment_detected: Detected environment name with detection method
@@ -272,15 +262,15 @@ async def auto_recommend_preset(preset_mgr: PresetManager = Depends(get_preset_m
             - confidence: Confidence score (0.0-1.0) in the recommendation
             - reasoning: Detailed explanation for the recommendation decision
             - detection_method: Method used for environment detection
-            
+    
     Raises:
         HTTPException: 500 Internal Server Error if auto-detection or recommendation fails
-        
+    
     Note:
         The auto-detection analyzes environment variables, system properties,
         and deployment context to intelligently determine the appropriate
         environment and corresponding resilience configuration.
-        
+    
     Example:
         >>> response = await auto_recommend_preset()
         >>> AutoDetectResponse(
