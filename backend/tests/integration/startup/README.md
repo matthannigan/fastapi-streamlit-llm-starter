@@ -4,14 +4,18 @@ Integration tests for comprehensive system startup validation following our **sm
 
 ## Test Organization
 
-### Critical Integration Seams (17 Tests Total)
+### Critical Integration Seams (28 Tests Total)
 
 #### **ENVIRONMENT-AWARE SECURITY** (Foundation for startup validation)
 
-1. **`test_environment_aware_security.py`** (FOUNDATION)
+1. **`test_environment_aware_security.py`** (FOUNDATION) - **11 tests across 4 comprehensive test classes**
    - Environment detection → Security configuration enforcement
    - RedisSecurityValidator → get_environment_info() → Security Rule Application
-   - Tests production TLS requirements, development flexibility, override mechanisms
+   - Comprehensive production error message validation with all fix options
+   - Infrastructure security checklist validation for insecure overrides
+   - Complete staging environment security validation flow
+   - Staging environment informational messaging and security awareness
+   - Tests production TLS requirements, development flexibility, staging behaviors, override mechanisms
 
 #### **COMPREHENSIVE VALIDATION** (Core system functionality)
 
@@ -110,6 +114,12 @@ make test-backend PYTEST_ARGS="tests/integration/startup/ -v -k 'auth'"
 make test-backend PYTEST_ARGS="tests/integration/startup/ -v -k 'certificate'"
 make test-backend PYTEST_ARGS="tests/integration/startup/ -v -k 'encryption'"
 
+# Run specific test classes
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestComprehensiveProductionErrorMessages -v"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestInsecureOverrideWarningContent -v"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestStagingEnvironmentSecurityValidation -v"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestStagingEnvironmentInformationalMessaging -v"
+
 # Run specific test file
 make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py -v"
 make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py -v"
@@ -153,9 +163,14 @@ make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_vali
 ### **Environment-Aware Security Validation**
 - ✅ Production environments enforce TLS requirements for Redis connections
 - ✅ Development environments provide flexible security rules for local testing
+- ✅ Staging environments provide flexible security rules with appropriate messaging
 - ✅ Override mechanisms generate appropriate warnings while allowing security bypasses
-- ✅ Environment detection accurately identifies deployment context
+- ✅ Production security errors include comprehensive fix options with code examples
+- ✅ Override warnings include complete infrastructure security checklist
+- ✅ Staging environment logs informational messages about security flexibility
+- ✅ Environment detection accurately identifies deployment context (production, staging, development)
 - ✅ Security rule application adapts based on environment classification
+- ✅ Behavioral validation demonstrates environment-specific security enforcement
 
 ### **Comprehensive Security Validation**
 - ✅ All security components (TLS, encryption, authentication) participate in validation
@@ -314,6 +329,18 @@ make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_
 
 # Test development flexibility
 make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestEnvironmentAwareSecurityValidation::test_development_environment_allows_insecure_redis_url_with_warning -v -s"
+
+# Test comprehensive production error messages
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestComprehensiveProductionErrorMessages::test_production_error_includes_all_fix_options -v -s"
+
+# Test insecure override warnings
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestInsecureOverrideWarningContent::test_production_override_warning_includes_security_checklist -v -s"
+
+# Test staging environment security validation
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestStagingEnvironmentSecurityValidation::test_staging_environment_bypasses_tls_enforcement -v -s"
+
+# Test staging environment informational messaging
+make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py::TestStagingEnvironmentInformationalMessaging::test_staging_environment_logs_informational_message -v -s"
 ```
 
 ### **Comprehensive Validation Problems**

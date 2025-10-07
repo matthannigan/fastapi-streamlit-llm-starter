@@ -12,3 +12,6 @@ Use as many as 4 parallel @agent-integration-test-implementer sub-agents to impl
 1. Comprehensive validation workflow
 2. Authentication validation
 3. Multi-component error aggregation
+
+
+Following our integration testing philosophy at `docs/guides/testing/INTEGRATION_TESTS.md`, use as many as 4 parallel @agent-integration-test-implementer sub-agents to implement all integration tests from the test plan described in `backend/tests/integration/startup/TEST_PLAN_migrated-skipped-unit-tests.md`.

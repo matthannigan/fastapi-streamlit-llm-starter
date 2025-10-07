@@ -487,68 +487,6 @@ class TestValidateTlsCertificates:
             assert "O=TestOrg" in subject
             assert "C=US" in subject
 
-    @pytest.mark.skip(reason="This test requires integration testing approach to properly simulate missing cryptography library. "
-                      "Mocking cryptography availability at the unit test level interferes with module imports and "
-                      "causes import-time side effects. The warning behavior for missing cryptography should be verified "
-                      "through integration tests with cryptography uninstalled. See integration test plan: "
-                      "tests/integration/startup/test_redis_security_cryptography_unavailable.py")
-    def test_validate_tls_certificates_warns_without_cryptography_library(self, redis_security_validator, mock_cert_path_exists, mock_cryptography_unavailable):
-        """
-        Test that validate_tls_certificates() warns when cryptography unavailable.
-
-        Verifies:
-            validate_tls_certificates() adds warning when cryptography library
-            is not available, limiting validation capability.
-
-        Business Impact:
-            Informs operators that certificate validation is limited,
-            preventing false confidence in validation completeness.
-
-        Scenario:
-            Given: Certificate files exist
-            And: cryptography library is not available (ImportError)
-            When: validate_tls_certificates() is called
-            Then: result["warnings"] contains library unavailable message
-            And: Basic file existence validation still occurs
-            And: No expiration validation is performed
-
-        Note:
-            This test is skipped because properly simulating a missing cryptography
-            library requires integration testing where the module is not imported at all.
-            Unit-level mocking of import mechanisms causes side effects with pytest's
-            own module loading. The warning behavior should be verified through:
-            1. Integration tests with a separate test environment
-            2. Manual testing with cryptography uninstalled
-            3. Code review of the warning message generation
-
-        Fixtures Used:
-            - redis_security_validator: Real validator instance
-            - mock_cert_path_exists: Certificate files
-            - mock_cryptography_unavailable: Would simulate missing library (not used due to skip)
-        """
-        # Given: Certificate files exist but cryptography unavailable
-        validator = redis_security_validator
-        cert_path = str(mock_cert_path_exists["cert"])
-
-        # When: validate_tls_certificates() is called without cryptography
-        result = validator.validate_tls_certificates(cert_path=cert_path)
-
-        # Then: Basic file validation still works
-        assert result["valid"] is True
-        assert "cert_path" in result["cert_info"]
-        assert result["cert_info"]["cert_path"] == str(mock_cert_path_exists["cert"].absolute())
-
-        # And: Warning about missing cryptography library is generated
-        assert len(result["warnings"]) > 0
-        warning_message = result["warnings"][0]
-        assert "cryptography library not available" in warning_message.lower()
-        assert "limited" in warning_message.lower()
-
-        # And: No certificate parsing information is available
-        assert "expires" not in result["cert_info"]
-        assert "days_until_expiry" not in result["cert_info"]
-        assert "subject" not in result["cert_info"]
-
     def test_validate_tls_certificates_with_none_paths_returns_valid(self, redis_security_validator):
         """
         Test that validate_tls_certificates() handles None paths gracefully.
@@ -896,61 +834,6 @@ class TestValidateEncryptionKey:
         assert key_info["format"] == "Fernet (AES-128-CBC with HMAC)"
         assert key_info["length"] == "256-bit"
         assert key_info["status"] == "Valid and functional"
-
-    @pytest.mark.skip(reason="This test requires integration testing approach to properly simulate missing cryptography library. "
-                      "Mocking cryptography availability at the unit test level interferes with module imports and "
-                      "causes import-time side effects. The validation failure for missing cryptography should be verified "
-                      "through integration tests with cryptography uninstalled. See integration test plan: "
-                      "tests/integration/startup/test_redis_security_cryptography_unavailable.py")
-    def test_validate_encryption_key_fails_without_cryptography_library(self, redis_security_validator, valid_fernet_key, mock_cryptography_unavailable):
-        """
-        Test that validate_encryption_key() fails when cryptography unavailable.
-
-        Verifies:
-            validate_encryption_key() returns valid=False with error when
-            cryptography library is not installed.
-
-        Business Impact:
-            Prevents application startup with encryption enabled but no
-            cryptography library, catching dependency issues.
-
-        Scenario:
-            Given: Valid encryption key provided
-            And: cryptography library is not available (ImportError)
-            When: validate_encryption_key() is called
-            Then: result["valid"] is False
-            And: result["errors"] contains "library not available" message
-            And: Error indicates encryption cannot be validated
-
-        Note:
-            This test is skipped because properly simulating a missing cryptography
-            library requires integration testing where the module is not imported at all.
-            Unit-level mocking of import mechanisms causes side effects with pytest's
-            own module loading. The error behavior should be verified through:
-            1. Integration tests with a separate test environment
-            2. Manual testing with cryptography uninstalled
-            3. Code review of the error message generation
-
-        Fixtures Used:
-            - redis_security_validator: Real validator instance
-            - valid_fernet_key: Valid key (but can't validate)
-            - mock_cryptography_unavailable: Would simulate missing library (not used due to skip)
-        """
-        # Given: Valid key but cryptography library unavailable
-        validator = redis_security_validator
-
-        # When: validate_encryption_key() is called without cryptography
-        result = validator.validate_encryption_key(encryption_key=valid_fernet_key)
-
-        # Then: Validation fails
-        assert result["valid"] is False
-        assert len(result["errors"]) > 0
-
-        # And: Error message indicates library unavailable
-        error_message = result["errors"][0]
-        assert "cryptography library not available" in error_message.lower()
-        assert "cannot be validated" in error_message.lower()
-
 
 class TestValidateRedisAuth:
     """

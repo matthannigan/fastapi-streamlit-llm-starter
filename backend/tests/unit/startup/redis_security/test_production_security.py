@@ -187,36 +187,6 @@ class TestValidateProductionSecurityWithProductionEnvironment:
         assert "production" in error_message.lower()
         assert "TLS" in error_message or "rediss://" in error_message or "secure" in error_message.lower()
 
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_error_includes_fix_options(self):
-        """
-        Test that production security error includes comprehensive fix guidance.
-
-        Verifies:
-            ConfigurationError for production security includes all three
-            documented fix options with detailed instructions.
-
-        Business Impact:
-            Provides developers with actionable steps to resolve security
-            issues, reducing time to fix and preventing confusion.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_override_warning_lists_requirements(self):
-        """
-        Test that insecure override warning lists infrastructure security requirements.
-
-        Verifies:
-            Security warning for insecure override includes checklist of
-            required infrastructure security measures.
-
-        Business Impact:
-            Ensures operators understand minimum security requirements when
-            using insecure override, maintaining security awareness.
-        """
-        pass
-
     def test_validate_production_security_handles_empty_url(
         self,
         redis_security_validator,
@@ -394,35 +364,3 @@ class TestValidateProductionSecurityWithStagingEnvironment:
         - Test staging-specific messaging
         - Confirm flexible security approach
     """
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_skips_validation_in_staging(self):
-        """
-        Test that production security validation is skipped in staging environment.
-
-        Verifies:
-            validate_production_security() skips TLS enforcement for staging
-            environment per non-production flexibility.
-
-        Business Impact:
-            Allows staging deployments to test configurations without
-            mandatory TLS, supporting varied deployment scenarios.
-        """
-        pass
-
-    @pytest.mark.skip(reason="Environment mocking requires integration testing approach")
-    def test_validate_production_security_logs_staging_info_message(self):
-        """
-        Test that staging environment logs appropriate informational message.
-
-        Verifies:
-            Staging environment detection logs message explaining flexible
-            security for staging per graduated messaging approach.
-
-        Business Impact:
-            Communicates security expectations for staging while allowing
-            deployment flexibility.
-        """
-        pass
-
-
