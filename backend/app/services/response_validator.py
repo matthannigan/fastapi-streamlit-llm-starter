@@ -11,7 +11,7 @@ leakage, prompt injection attempts, verbatim input regurgitation, and malformed 
 ## Key Security Features
 
 - System prompt leakage detection and prevention
-- Internal reasoning and debug information filtering  
+- Internal reasoning and debug information filtering
 - Prompt injection and jailbreak attempt detection
 - Developer information and debug content removal
 - AI refusal phrase identification
@@ -178,7 +178,7 @@ with additional type-specific validation logic.
 
 import re
 import logging
-from typing import List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -186,17 +186,17 @@ logger = logging.getLogger(__name__)
 class ResponseValidator:
     """
     Comprehensive AI response validation service for security, quality, and format compliance.
-    
+
     This service provides multi-layered validation of AI-generated responses to ensure security,
     prevent information leakage, maintain output quality standards, and protect against various
     attack vectors. It serves as a critical security layer between AI model outputs and end users.
-    
+
     Attributes:
         RAW_FORBIDDEN_PATTERNS: List of regex patterns for detecting security threats and leakage
         COMPILED_PATTERNS: Pre-compiled regex patterns for efficient pattern matching
         AI_REFUSAL_PATTERNS: Patterns for detecting AI refusal responses
         VERBATIM_THRESHOLD: Threshold for detecting verbatim input regurgitation
-        
+
     Public Methods:
         validate(): Main validation method for comprehensive response checking
         _is_response_valid_for_type(): Type-specific validation logic
@@ -205,14 +205,14 @@ class ResponseValidator:
         _validate_sentiment_response(): Specialized sentiment validation
         _validate_questions_response(): Question format validation
         _validate_key_points_response(): Key points structure validation
-        
+
     State Management:
         - Stateless validation (no internal state between calls)
         - Thread-safe for concurrent validation operations
         - Immutable pattern definitions for consistent behavior
         - Performance-optimized with compiled regex patterns
         - Integration with logging systems for security event tracking
-        
+
     Behavior:
         - Performs comprehensive security scanning for forbidden patterns
         - Validates response format compliance based on operation type
@@ -221,11 +221,11 @@ class ResponseValidator:
         - Ensures minimum quality standards for different response types
         - Logs security events and validation failures for monitoring
         - Provides detailed error messages for debugging and improvement
-        
+
     Examples:
         >>> # Basic response validation
         >>> validator = ResponseValidator()
-        >>> 
+        >>>
         >>> # Validate summary response
         >>> try:
         ...     clean_summary = validator.validate(
@@ -237,7 +237,7 @@ class ResponseValidator:
         ...     print(f"Validated summary: {clean_summary}")
         ... except ValueError as e:
         ...     print(f"Validation failed: {e}")
-        
+
         >>> # Validate sentiment analysis response
         >>> sentiment_response = SentimentResult(
         ...     sentiment="positive",
@@ -250,7 +250,7 @@ class ResponseValidator:
         ...     request_text="Great product, highly recommended!",
         ...     system_instruction="Analyze sentiment"
         ... )
-        
+
         >>> # Security validation (will raise ValueError)
         >>> try:
         ...     validator.validate(
@@ -262,7 +262,7 @@ class ResponseValidator:
         ... except ValueError as e:
         ...     print(f"Security validation failed: {e}")
     """
-    
+
     # Raw patterns that should be forbidden in AI responses
     RAW_FORBIDDEN_PATTERNS = [
         # System prompt leakage patterns
@@ -276,14 +276,14 @@ class ResponseValidator:
         r"According to my instructions",
         r"My role is to",
         r"I have been programmed to",
-        
+
         # Internal reasoning leakage
         r"thinking step by step",
         r"let me think about this",
         r"my reasoning is",
         r"internal thoughts:",
         r"chain of thought:",
-        
+
         # Developer/debug information leakage
         r"debug mode",
         r"development version",
@@ -293,7 +293,7 @@ class ResponseValidator:
         r"FIXME:",
         r"console\.log",
         r"print\(",
-        
+
         # Common prompt injection attempts
         r"ignore previous instructions",
         r"disregard the above",
@@ -302,7 +302,7 @@ class ResponseValidator:
         r"override:",
         r"admin mode",
         r"developer mode",
-        
+
         # Potential jailbreak attempts
         r"pretend you are",
         r"act as if",
@@ -310,14 +310,14 @@ class ResponseValidator:
         r"simulation mode",
         r"hypothetical scenario",
     ]
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         """Initialize the validator with compiled patterns."""
         self.forbidden_patterns = [
-            re.compile(pattern, re.IGNORECASE) 
+            re.compile(pattern, re.IGNORECASE)
             for pattern in self.RAW_FORBIDDEN_PATTERNS
         ]
-        
+
         self.refusal_phrases = [
             "i cannot fulfill this request",
             "i am unable to",
@@ -326,35 +326,35 @@ class ResponseValidator:
             "i am not able to provide assistance with that",
             "my apologies, but i cannot",
         ]
-    
-    def validate(self, response: str, expected_type: str, 
+
+    def validate(self, response: Any, expected_type: str,
                 request_text: str = "", system_instruction: str = "") -> str:
         """
         Validate AI response for security issues and format compliance.
-        
+
         This function performs comprehensive validation of AI-generated responses to detect:
         - System prompt leakage and instruction exposure
         - Forbidden response patterns that indicate security issues
         - Verbatim input regurgitation
         - AI refusal/error messages
         - Basic format validation based on expected output type
-        
+
         Args:
             response: The AI-generated response text to validate
             expected_type: Expected response type (e.g., 'summary', 'sentiment', 'key_points', 'questions', 'qa')
             request_text: Original user input text (optional, for regurgitation checks)
             system_instruction: System instruction used (optional, for leakage checks)
-            
+
         Returns:
             str: The validated response if all checks pass
-            
+
         Raises:
             ValueError: If response contains forbidden patterns or fails validation
-            
+
         Examples:
             >>> validate_ai_response("This is a good summary.", "summary")
             "This is a good summary."
-            
+
             >>> validate_ai_response("System prompt: You are...", "summary")
             ValueError: Response contains forbidden pattern: system prompt leakage detected
         """
@@ -362,73 +362,73 @@ class ResponseValidator:
         if not isinstance(response, str):
             logger.warning("AI response is not a string, converting to string")
             response = str(response)
-        
+
         # Start with the original response
-        validated_response = response.strip()
-        
+        validated_response: str = response.strip()
+
         # If response is completely empty, handle based on expected type
         if not validated_response:
             logger.warning(f"Empty response received for expected type: {expected_type}")
-            if expected_type in ['summary', 'qa']:
+            if expected_type in ["summary", "qa"]:
                 raise ValueError(f"Empty response not allowed for {expected_type}")
             return validated_response
-        
+
         # Normalize for case-insensitive comparison (migrated from _validate_ai_output)
         lower_output = validated_response.lower()
-        
+
         # Check for leakage of system instruction (migrated from _validate_ai_output)
         if system_instruction:
             lower_system_instruction = system_instruction.lower()
             if lower_system_instruction in lower_output:
                 logger.warning("Potential system instruction leakage in AI output.")
                 raise ValueError("Response contains system instruction leakage")
-        
+
         # Check for leakage of substantial portions of the user's input if it's very long
         # (migrated from _validate_ai_output)
         if request_text and len(request_text) > 250 and request_text.lower() in lower_output:
             logger.warning("Potential verbatim user input leakage in AI output for long input.")
             raise ValueError("Response contains verbatim input regurgitation")
-        
+
         # Check for common AI error/refusal placeholders
         self._check_refusal_phrases(validated_response)
-        
+
         # Check for forbidden response patterns
         self._check_forbidden_patterns(validated_response)
-        
+
         # Expected type validation
         if expected_type:
-            if expected_type == 'summary':
+            if expected_type == "summary":
                 # Check if summary is too short (less than 10 characters likely not useful)
                 if len(validated_response) < 10:
                     logger.warning(f"Summary response too short: {len(validated_response)} characters")
                     raise ValueError("Summary response is too short to be useful")
-                    
-            elif expected_type == 'sentiment':
+
+            elif expected_type == "sentiment":
                 # For sentiment, we expect some structured content or at least meaningful text
                 if len(validated_response) < 5:
                     logger.warning(f"Sentiment response too short: {len(validated_response)} characters")
                     raise ValueError("Sentiment response is too short")
-                    
-            elif expected_type == 'key_points':
+
+            elif expected_type == "key_points":
                 # Key points should have some substantial content
                 if len(validated_response) < 5:
                     logger.warning(f"Key points response too short: {len(validated_response)} characters")
                     raise ValueError("Key points response is too short")
-                    
-            elif expected_type == 'questions':
+
+            elif expected_type == "questions":
                 # Questions should contain at least one question mark or have substantial content
-                if '?' not in validated_response and len(validated_response) < 10:
+                if "?" not in validated_response and len(validated_response) < 10:
                     logger.warning("Questions response lacks question marks and is very short")
                     raise ValueError("Questions response should contain actual questions")
-                    
-            elif expected_type == 'qa':
+
+            elif expected_type == "qa":
                 # Q&A responses should be meaningful (not just "yes" or "no" typically)
                 if len(validated_response) < 5:
                     logger.warning(f"Q&A response too short: {len(validated_response)} characters")
                     raise ValueError("Q&A response is too short to be meaningful")
-        
-        return validated_response 
-        
+
+        return validated_response
+
     def _check_forbidden_patterns(self, response: str) -> None:
         """Check for forbidden response patterns."""
         for pattern in self.forbidden_patterns:
@@ -437,7 +437,7 @@ class ResponseValidator:
                 matched_text = match.group(0)
                 logger.warning(f"Forbidden pattern detected: '{matched_text}'")
                 raise ValueError(f"Response contains forbidden pattern: {matched_text}")
-    
+
     def _check_refusal_phrases(self, response: str) -> None:
         """Check for AI refusal phrases."""
         lower_output = response.lower()

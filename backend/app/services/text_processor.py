@@ -114,8 +114,7 @@ The service provides comprehensive metrics and health checks:
 import time
 import asyncio
 import uuid
-import re
-from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
+from typing import Dict, Any, List, Union, TYPE_CHECKING
 import logging
 from pydantic_ai import Agent
 
@@ -155,12 +154,12 @@ logger = logging.getLogger(__name__)
 class TextProcessorService:
     """
     Comprehensive AI-powered text processing service with production-ready resilience and security features.
-    
+
     This service provides a complete solution for AI-powered text analysis operations including
     summarization, sentiment analysis, key point extraction, question generation, and question-answering.
     It integrates seamlessly with infrastructure services to provide caching, resilience patterns,
     security validation, and performance monitoring.
-    
+
     Attributes:
         settings: Application configuration containing AI model settings, resilience configuration,
                  and operational parameters for text processing operations
@@ -171,21 +170,21 @@ class TextProcessorService:
         response_validator: Output validator for security and quality assurance of AI responses
         ai_resilience: Resilience orchestrator providing circuit breakers, retry logic, and fallback responses
         concurrency_semaphore: Semaphore for controlling concurrent batch operations and resource management
-        
+
     Public Methods:
         process_text(): Process single text processing requests with full resilience and caching
         process_batch(): Process multiple requests concurrently with automatic batch management
         _configure_resilience_strategies(): Configure operation-specific resilience strategies
         _get_fallback_response(): Provide fallback responses when AI services are unavailable
         _get_fallback_sentiment(): Generate neutral sentiment when sentiment analysis fails
-        
+
     State Management:
         - Thread-safe for concurrent request processing across multiple workers
         - Maintains internal state for resilience patterns and circuit breaker status
         - Automatic resource management with proper cleanup and connection handling
         - Immutable configuration after initialization for consistent behavior
         - Integration with monitoring systems for operational visibility
-        
+
     Behavior:
         - Performs input sanitization on all user-provided text before processing
         - Checks cache for existing responses before making AI API calls
@@ -195,19 +194,19 @@ class TextProcessorService:
         - Provides fallback responses when AI services are unavailable
         - Logs comprehensive processing metrics and security events
         - Supports batch processing with configurable concurrency limits
-        
+
     Examples:
         >>> # Basic service initialization
         >>> from app.services import TextProcessorService
         >>> from app.core.config import settings
         >>> from app.infrastructure.cache import get_ai_cache_service
-        >>> 
+        >>>
         >>> cache_service = get_ai_cache_service()
         >>> processor = TextProcessorService(settings, cache_service)
-        
+
         >>> # Single operation processing
         >>> from shared.models import TextProcessingRequest, TextProcessingOperation
-        >>> 
+        >>>
         >>> request = TextProcessingRequest(
         ...     text="Sample text for analysis",
         ...     operation=TextProcessingOperation.SUMMARIZE,
@@ -215,7 +214,7 @@ class TextProcessorService:
         ... )
         >>> response = await processor.process_text(request)
         >>> print(f"Summary: {response.result}")
-        
+
         >>> # Question-answering with required question parameter
         >>> qa_request = TextProcessingRequest(
         ...     text="Document content to analyze",
@@ -224,10 +223,10 @@ class TextProcessorService:
         ... )
         >>> qa_response = await processor.process_text(qa_request)
         >>> print(f"Answer: {qa_response.result}")
-        
+
         >>> # Batch processing with automatic concurrency control
         >>> from shared.models import BatchTextProcessingRequest
-        >>> 
+        >>>
         >>> batch_request = BatchTextProcessingRequest(
         ...     requests=[
         ...         TextProcessingRequest(text="Text 1", operation="summarize"),
@@ -239,7 +238,7 @@ class TextProcessorService:
         >>> batch_response = await processor.process_batch(batch_request)
         >>> print(f"Processed {batch_response.completed_items} of {batch_response.total_items} items")
     """
-    
+
     def __init__(self, settings: Settings, cache: Union["AIResponseCache", "InMemoryCache"]):
         """
         Initialize the text processor with AI agent, resilience patterns, and security validation.
@@ -250,7 +249,7 @@ class TextProcessorService:
             cache: AI-capable cache service (AIResponseCache or InMemoryCache) for storing and
                   retrieving processed results. InMemoryCache is used as fallback when Redis is
                   unavailable (CACHE_PRESET=disabled)
-        
+
         Behavior:
             - Initializes PydanticAI agent with configured model and temperature settings
             - Sets up input sanitizer for security validation and prompt injection prevention
@@ -259,16 +258,16 @@ class TextProcessorService:
             - Creates concurrency semaphore for batch processing resource management
             - Registers operation-specific resilience strategies from configuration
             - Prepares logging infrastructure for comprehensive request tracking
-            
+
         Raises:
             ConfigurationError: If required settings are missing or invalid
             InfrastructureError: If cache service initialization fails
             ValueError: If AI model configuration is invalid
-            
+
         Examples:
             >>> # Basic initialization with default settings
             >>> processor = TextProcessorService(settings, cache_service)
-            
+
             >>> # Initialization with custom resilience configuration
             >>> custom_settings = Settings(
             ...     gemini_api_key="your-api-key",
@@ -280,40 +279,40 @@ class TextProcessorService:
         """
         self.settings = settings
         self.cache = cache
-        
+
         # During tests with mocked AI agent, we don't need the actual API key
         # Check if we're in a test environment by looking for pytest or mock_ai_agent
         import sys
         is_testing = "pytest" in sys.modules
-        
+
         if not self.settings.gemini_api_key and not is_testing:
             raise ValueError("GEMINI_API_KEY environment variable is required")
-        
+
         self.agent = Agent(
             model=self.settings.ai_model,
             system_prompt="You are a helpful AI assistant specialized in text analysis.",
         )
-        
+
         # Use provided cache service
         self.cache_service = cache
-        
+
         # Initialize the advanced sanitizer
         self.sanitizer = PromptSanitizer()
         self.response_validator = ResponseValidator()
-        
+
         # Register operations with resilience service
         self._register_operations()
 
-    def _register_operations(self):
+    def _register_operations(self) -> None:
         """Register text processing operations with resilience service."""
         operations = {
-            "summarize_text":     getattr(self.settings, 'summarize_resilience_strategy',  'balanced'),
-            "analyze_sentiment":  getattr(self.settings, 'sentiment_resilience_strategy',  'balanced'),
-            "extract_key_points": getattr(self.settings, 'key_points_resilience_strategy', 'balanced'),
-            "generate_questions": getattr(self.settings, 'questions_resilience_strategy',  'balanced'),
-            "answer_question":    getattr(self.settings, 'qa_resilience_strategy',         'balanced'),
+            "summarize_text":     getattr(self.settings, "summarize_resilience_strategy",  "balanced"),
+            "analyze_sentiment":  getattr(self.settings, "sentiment_resilience_strategy",  "balanced"),
+            "extract_key_points": getattr(self.settings, "key_points_resilience_strategy", "balanced"),
+            "generate_questions": getattr(self.settings, "questions_resilience_strategy",  "balanced"),
+            "answer_question":    getattr(self.settings, "qa_resilience_strategy",         "balanced"),
         }
-        
+
         for operation_name, strategy_name in operations.items():
             try:
                 # Convert string strategy to enum
@@ -325,39 +324,39 @@ class TextProcessorService:
                 ai_resilience.register_operation(operation_name, ResilienceStrategy.BALANCED)
 
     async def _get_fallback_response(
-            self, 
-            operation: TextProcessingOperation, 
-            text: str, 
-            question: Optional[str] = None) -> Any:
+            self,
+            operation: TextProcessingOperation,
+            text: str,
+            question: str | None = None) -> Any:
         """
         Provide fallback responses when AI service is unavailable.
-        
+
         This method returns cached responses or generates simple fallback messages
         when the circuit breaker is open or retries are exhausted.
         """
         logger.warning(f"Providing fallback response for {operation}")
-        
+
         # Try to get cached response first
-        operation_value = operation.value if hasattr(operation, 'value') else operation
+        operation_value = operation.value if hasattr(operation, "value") else operation
         cache_key = await self._build_cache_key(text, operation_value, {}, question)
         cached_response = await self.cache_service.get(cache_key)
-        
+
         if cached_response:
             logger.info(f"Using cached fallback for {operation}")
             # Extract the appropriate field from cached response dict
             if isinstance(cached_response, dict):
                 if operation == TextProcessingOperation.SUMMARIZE:
-                    return cached_response.get('result', "Service temporarily unavailable. Please try again later for text summarization.")
-                elif operation == TextProcessingOperation.SENTIMENT:
-                    return cached_response.get('sentiment')
-                elif operation == TextProcessingOperation.KEY_POINTS:
-                    return cached_response.get('key_points', ["Service temporarily unavailable", "Please try again later"])
-                elif operation == TextProcessingOperation.QUESTIONS:
-                    return cached_response.get('questions', ["What is the main topic of this text?", "Can you provide more details?"])
-                elif operation == TextProcessingOperation.QA:
-                    return cached_response.get('result', "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later.")
+                    return cached_response.get("result", "Service temporarily unavailable. Please try again later for text summarization.")
+                if operation == TextProcessingOperation.SENTIMENT:
+                    return cached_response.get("sentiment")
+                if operation == TextProcessingOperation.KEY_POINTS:
+                    return cached_response.get("key_points", ["Service temporarily unavailable", "Please try again later"])
+                if operation == TextProcessingOperation.QUESTIONS:
+                    return cached_response.get("questions", ["What is the main topic of this text?", "Can you provide more details?"])
+                if operation == TextProcessingOperation.QA:
+                    return cached_response.get("result", "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later.")
             return cached_response
-        
+
         # Generate simple fallback responses
         fallback_responses = {
             TextProcessingOperation.SUMMARIZE: "Service temporarily unavailable. Please try again later for text summarization.",
@@ -366,9 +365,9 @@ class TextProcessorService:
             TextProcessingOperation.QUESTIONS: ["What is the main topic of this text?", "Can you provide more details?"],
             TextProcessingOperation.QA: "I'm sorry, I cannot answer your question right now. The service is temporarily unavailable. Please try again later."
         }
-        
+
         return fallback_responses.get(operation, "Service temporarily unavailable. Please try again later.")
-    
+
     async def _get_fallback_sentiment(self) -> SentimentResult:
         """Provide fallback sentiment when AI service is unavailable."""
         return SentimentResult(
@@ -376,43 +375,42 @@ class TextProcessorService:
             confidence=0.0,
             explanation="Unable to analyze sentiment - service temporarily unavailable"
         )
-    
+
     async def process_text(self, request: TextProcessingRequest) -> TextProcessingResponse:
         """Process text with caching and resilience support."""
         # Generate unique processing ID for internal tracing
         processing_id = str(uuid.uuid4())
-        
+
         logger.info(f"PROCESSING_START - ID: {processing_id}, Operation: {request.operation}, Text Length: {len(request.text)}")
-        
+
         # Check cache first
-        operation_value = request.operation.value if hasattr(request.operation, 'value') else request.operation
+        operation_value = request.operation.value if hasattr(request.operation, "value") else request.operation
         cache_key = await self._build_cache_key(
-            request.text, 
-            operation_value, 
-            request.options or {}, 
+            request.text,
+            operation_value,
+            request.options or {},
             request.question
         )
         cached_response = await self.cache_service.get(cache_key)
-        
+
         if cached_response:
             logger.info(f"Cache hit for operation: {request.operation}")
             logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: CACHE_HIT")
             # Ensure the response being returned matches the TextProcessingResponse structure
             # If cached_response is a dict, it needs to be converted
             if isinstance(cached_response, dict):
-                cached_response['cache_hit'] = True
+                cached_response["cache_hit"] = True
                 return TextProcessingResponse(**cached_response)
-            elif isinstance(cached_response, TextProcessingResponse): # Or if it's already the correct type
+            if isinstance(cached_response, TextProcessingResponse): # Or if it's already the correct type
                 cached_response.cache_hit = True
                 return cached_response
-            else:
-                 # Handle cases where cache might return a simple string or other type not directly convertible
-                 # This part depends on how the cache stores data. Assuming it stores a dict.
-                 logger.warning(f"Unexpected cache response type: {type(cached_response)}")
-                 # Attempt to recreate response, or handle error
-                 # For now, let's assume it's a dict as per Pydantic model usage
-                 cached_response['cache_hit'] = True
-                 return TextProcessingResponse(**cached_response)
+            # Handle cases where cache might return a simple string or other type not directly convertible
+            # This part depends on how the cache stores data. Assuming it stores a dict.
+            logger.warning(f"Unexpected cache response type: {type(cached_response)}")
+            # Attempt to recreate response, or handle error
+            # For now, let's assume it's a dict as per Pydantic model usage
+            cached_response["cache_hit"] = True
+            return TextProcessingResponse(**cached_response)
 
 
         # Sanitize inputs for processing with enhanced security for AI operations
@@ -422,13 +420,13 @@ class TextProcessorService:
         sanitized_question = self.sanitizer.sanitize_input(request.question) if request.question else None
 
         start_time = time.time()
-        
+
         try:
             logger.info(f"Processing text with operation: {request.operation}")
-            
+
             if request.operation not in [op.value for op in TextProcessingOperation]:
                 raise ValueError(f"Unsupported operation: {request.operation}")
-            
+
             processing_time = time.time() - start_time
             response = TextProcessingResponse(
                 operation=request.operation,
@@ -436,7 +434,7 @@ class TextProcessorService:
                 cache_hit=False,
                 metadata={"word_count": len(sanitized_text.split())} # Use sanitized_text for word_count
             )
-            
+
             try:
                 if request.operation == TextProcessingOperation.SUMMARIZE:
                     response.result = await self._summarize_text_with_resilience(sanitized_text, sanitized_options)
@@ -450,7 +448,7 @@ class TextProcessorService:
                     response.result = await self._answer_question_with_resilience(sanitized_text, sanitized_question)
                 else:
                     raise ValueError(f"Unsupported operation: {request.operation}")
-            
+
             except ServiceUnavailableError:
                 if request.operation == TextProcessingOperation.SENTIMENT:
                     response.sentiment = await self._get_fallback_sentiment()
@@ -461,74 +459,74 @@ class TextProcessorService:
                     response.questions = await self._get_fallback_response(request.operation, sanitized_text)
                 else:
                     response.result = await self._get_fallback_response(request.operation, sanitized_text, sanitized_question)
-                
+
                 # Mark as degraded service
                 response.metadata["service_status"] = "degraded"
                 response.metadata["fallback_used"] = True
                 logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: FALLBACK_USED")
-            
+
             # Cache the successful response (even fallback responses)
             # Reuse the cache_key from above to avoid redundant key generation
             ttl = self._get_ttl_for_operation(operation_value)
             await self.cache_service.set(cache_key, response.model_dump(), ttl)
-                
+
             processing_time = time.time() - start_time
             response.processing_time = processing_time
-            logger.info(f"Processing completed in {processing_time:.2f}s")  # noqa: E231
+            logger.info(f"Processing completed in {processing_time:.2f}s")
             logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: SUCCESS, Duration: {processing_time:.2f}s")
             return response
-            
+
         except Exception as e:
             processing_time = time.time() - start_time
-            logger.error(f"Error processing text: {str(e)}")
+            logger.error(f"Error processing text: {e!s}")
             logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: ERROR, Duration: {processing_time:.2f}s")
             raise
-    
-    @with_balanced_resilience("summarize_text")
+
+    @with_balanced_resilience("summarize_text")  # type: ignore[misc]
     async def _summarize_text_with_resilience(self, text: str, options: Dict[str, Any]) -> str:
         """Summarize text with resilience patterns."""
         return await self._summarize_text(text, options)
-    
-    @with_aggressive_resilience("analyze_sentiment")
+
+    @with_aggressive_resilience("analyze_sentiment")  # type: ignore[misc]
     async def _analyze_sentiment_with_resilience(self, text: str) -> SentimentResult:
         """Analyze sentiment with resilience patterns."""
         return await self._analyze_sentiment(text)
-    
-    @with_balanced_resilience("extract_key_points")
+
+    @with_balanced_resilience("extract_key_points")  # type: ignore[misc]
     async def _extract_key_points_with_resilience(self, text: str, options: Dict[str, Any]) -> List[str]:
         """Extract key points with resilience patterns."""
         return await self._extract_key_points(text, options)
-    
-    @with_balanced_resilience("generate_questions")
+
+    @with_balanced_resilience("generate_questions")  # type: ignore[misc]
     async def _generate_questions_with_resilience(self, text: str, options: Dict[str, Any]) -> List[str]:
         """Generate questions with resilience patterns."""
         return await self._generate_questions(text, options)
-    
-    @with_conservative_resilience("answer_question")
+
+    @with_conservative_resilience("answer_question")  # type: ignore[misc]
     async def _answer_question_with_resilience(self, text: str, question: str) -> str:
         """Answer question with resilience patterns."""
         return await self._answer_question(text, question)
-    
+
     async def _summarize_text(self, text: str, options: Dict[str, Any]) -> str:
         """Summarize the provided text."""
         # Options are sanitized by process_text before being passed here or to the _with_resilience wrapper
         max_length = options.get("max_length", 100)
-        
+
         # User text is already pre-sanitized by process_text
         additional_instructions = f"Keep the summary to approximately {max_length} words."
-        
+
         prompt = create_safe_prompt(
             template_name="summarize",
             user_input=text,
             additional_instructions=additional_instructions
         )
-        
+
         try:
             try:
                 result = await self.agent.run(prompt)
                 # Use the validator instance
                 validated_output = self.response_validator.validate(
-                    result.output.strip(), 'summary', text, "summarization"
+                    result.output.strip(), "summary", text, "summarization"
                 )
                 return validated_output
             except ValueError as ve:
@@ -537,23 +535,23 @@ class TextProcessorService:
         except Exception as e:
             logger.error(f"AI agent error in summarization: {e}")
             # Convert to our custom exception for proper retry handling
-            raise TransientAIError(f"Failed to summarize text: {str(e)}")
-    
+            raise TransientAIError(f"Failed to summarize text: {e!s}")
+
     async def _analyze_sentiment(self, text: str) -> SentimentResult:
         """Analyze sentiment of the provided text."""
         # User text is already pre-sanitized
-        
+
         prompt = create_safe_prompt(
             template_name="sentiment",
             user_input=text
         )
-        
+
         try:
             result = await self.agent.run(prompt)
             raw_output = result.output.strip()
             # Validate the raw string output before JSON parsing
             try:
-                validated_raw_output = self.response_validator.validate(raw_output, 'sentiment', text, "sentiment analysis")
+                validated_raw_output = self.response_validator.validate(raw_output, "sentiment", text, "sentiment analysis")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in sentiment analysis: {ve}. Problematic response: {raw_output[:200]}...")
                 return SentimentResult(
@@ -561,7 +559,7 @@ class TextProcessorService:
                     confidence=0.0,
                     explanation="An error occurred while processing your request. The AI response could not be validated."
                 )
-            
+
             import json
             try:
                 sentiment_data = json.loads(validated_raw_output)
@@ -577,43 +575,43 @@ class TextProcessorService:
                 )
         except Exception as e:
             logger.error(f"AI agent error in sentiment analysis: {e}")
-            raise TransientAIError(f"Failed to analyze sentiment: {str(e)}")
-    
+            raise TransientAIError(f"Failed to analyze sentiment: {e!s}")
+
     async def _extract_key_points(self, text: str, options: Dict[str, Any]) -> List[str]:
         """Extract key points from the text."""
         # Options are sanitized by process_text before being passed here or to the _with_resilience wrapper
         max_points = options.get("max_points", 5)
         # User text is already pre-sanitized
-        
+
         additional_instructions = f"Extract the {max_points} most important key points."
-        
+
         prompt = create_safe_prompt(
             template_name="key_points",
             user_input=text,
             additional_instructions=additional_instructions
         )
-        
+
         try:
             result = await self.agent.run(prompt)
             try:
-                validated_output_str = self.response_validator.validate(result.output.strip(), 'key_points', text, "key points extraction")
+                validated_output_str = self.response_validator.validate(result.output.strip(), "key_points", text, "key points extraction")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in key points extraction: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return ["An error occurred while processing your request. The AI response could not be validated."]
-            
+
             points = []
             # Process the validated string
-            for line in validated_output_str.split('\n'):
+            for line in validated_output_str.split("\n"):
                 line = line.strip()
-                if line.startswith('-'):
+                if line.startswith("-"):
                     points.append(line[1:].strip())
-                elif line and not line.startswith('Key Points:'): # Avoid including the "Key Points:" header if AI repeats it
+                elif line and not line.startswith("Key Points:"): # Avoid including the "Key Points:" header if AI repeats it
                     points.append(line)
             return points[:max_points]
         except Exception as e:
             logger.error(f"AI agent error in key points extraction: {e}")
-            raise TransientAIError(f"Failed to extract key points: {str(e)}")
-    
+            raise TransientAIError(f"Failed to extract key points: {e!s}")
+
     async def _generate_questions(self, text: str, options: Dict[str, Any]) -> List[str]:
         """Generate questions about the text."""
         # Options are sanitized by process_text before being passed here or to the _with_resilience wrapper
@@ -621,34 +619,34 @@ class TextProcessorService:
         # User text is already pre-sanitized
 
         additional_instructions = f"Generate {num_questions} thoughtful questions."
-        
+
         prompt = create_safe_prompt(
             template_name="questions",
             user_input=text,
             additional_instructions=additional_instructions
         )
-        
+
         try:
             result = await self.agent.run(prompt)
             try:
-                validated_output_str = self.response_validator.validate(result.output.strip(), 'questions', text, "question generation")
+                validated_output_str = self.response_validator.validate(result.output.strip(), "questions", text, "question generation")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in question generation: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return ["An error occurred while processing your request. The AI response could not be validated."]
-            
+
             questions = []
             # Process the validated string
-            for line in validated_output_str.split('\n'):
+            for line in validated_output_str.split("\n"):
                 line = line.strip()
-                if line and not line.startswith('Questions:'): # Avoid including the "Questions:" header
-                    if line[0].isdigit() and '.' in line[:5]: # Basic check for numbered lists
-                        line = line.split('.', 1)[1].strip()
+                if line and not line.startswith("Questions:"): # Avoid including the "Questions:" header
+                    if line[0].isdigit() and "." in line[:5]: # Basic check for numbered lists
+                        line = line.split(".", 1)[1].strip()
                     questions.append(line)
             return questions[:num_questions]
         except Exception as e:
             logger.error(f"AI agent error in question generation: {e}")
-            raise TransientAIError(f"Failed to generate questions: {str(e)}")
-    
+            raise TransientAIError(f"Failed to generate questions: {e!s}")
+
     async def _answer_question(self, text: str, question: str) -> str:
         """Answer a question about the text."""
         # User text and question are already pre-sanitized
@@ -660,26 +658,26 @@ class TextProcessorService:
             user_input=text,
             user_question=question
         )
-        
+
         try:
             result = await self.agent.run(prompt)
             # Pass `text` (sanitized user context) and `system_instruction`.
             # `question` is also part of the prompt but `text` is the primary user-generated free-form content.
             try:
-                validated_output = self.response_validator.validate(result.output.strip(), 'qa', text, "question answering")
+                validated_output = self.response_validator.validate(result.output.strip(), "qa", text, "question answering")
                 return validated_output
             except ValueError as ve:
                 logger.error(f"AI response validation failed in question answering: {ve}. Problematic response: {result.output.strip()[:200]}...")
                 return "An error occurred while processing your request. The AI response could not be validated."
         except Exception as e:
             logger.error(f"AI agent error in question answering: {e}")
-            raise TransientAIError(f"Failed to answer question: {str(e)}")
+            raise TransientAIError(f"Failed to answer question: {e!s}")
 
     async def process_batch(self, batch_request: BatchTextProcessingRequest) -> BatchTextProcessingResponse:
         """Process a batch of text processing requests concurrently with resilience."""
         # Generate unique processing ID for internal batch tracing
         batch_processing_id = str(uuid.uuid4())
-        
+
         start_time = time.time()
         total_requests = len(batch_request.requests)
         batch_id = batch_request.batch_id or f"batch_{int(time.time())}"
@@ -698,7 +696,7 @@ class TextProcessorService:
                     # No sanitization needed for item_request.operation itself as it's an enum/string check
                     if not hasattr(TextProcessingOperation, item_request.operation.upper()):
                         raise ValueError(f"Unsupported operation: {item_request.operation}")
-                    
+
                     # Create a new TextProcessingRequest object for process_text
                     # process_text will handle the sanitization of its inputs
                     current_request = TextProcessingRequest(
@@ -707,18 +705,18 @@ class TextProcessorService:
                         options=item_request.options, # Pass original options
                         question=item_request.question # Pass original question
                     )
-                    
+
                     # Process with resilience (this will use the resilience decorators)
                     # process_text will sanitize
                     response = await self.process_text(current_request)
                     return BatchTextProcessingItem(request_index=index, status=BatchTextProcessingStatus.COMPLETED, response=response)
-                    
+
                 except ServiceUnavailableError as e:
-                    logger.warning(f"Batch item {index} (batch_id: {batch_id}) degraded service: {str(e)}")
+                    logger.warning(f"Batch item {index} (batch_id: {batch_id}) degraded service: {e!s}")
                     return BatchTextProcessingItem(request_index=index, status=BatchTextProcessingStatus.FAILED, error=str(e))
 
                 except Exception as e:
-                    logger.error(f"Batch item {index} (batch_id: {batch_id}) failed: {str(e)}")
+                    logger.error(f"Batch item {index} (batch_id: {batch_id}) failed: {e!s}")
                     return BatchTextProcessingItem(request_index=index, status=BatchTextProcessingStatus.FAILED, error=str(e))
 
         for i, request_item in enumerate(batch_request.requests):
@@ -726,12 +724,12 @@ class TextProcessorService:
             tasks.append(task)
 
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Filter out any exceptions and ensure we only have BatchTextProcessingItem objects
         results: List[BatchTextProcessingItem] = []
         for i, result in enumerate(raw_results):
             if isinstance(result, Exception):
-                logger.error(f"Batch item {i} (batch_id: {batch_id}) failed with exception: {str(result)}")
+                logger.error(f"Batch item {i} (batch_id: {batch_id}) failed with exception: {result!s}")
                 results.append(BatchTextProcessingItem(request_index=i, status=BatchTextProcessingStatus.FAILED, error=str(result)))
             elif isinstance(result, BatchTextProcessingItem):
                 results.append(result)
@@ -744,7 +742,7 @@ class TextProcessorService:
         total_time = time.time() - start_time
 
         logger.info(f"BATCH_PROCESSING_END - ID: {batch_processing_id}, Batch ID: {batch_id}, Completed: {completed_count}/{total_requests}, Duration: {total_time:.2f}s")
-        logger.info(f"Batch (batch_id: {batch_id}) completed. Successful: {completed_count}/{total_requests}. Time: {total_time:.2f}s")  # noqa: E231
+        logger.info(f"Batch (batch_id: {batch_id}) completed. Successful: {completed_count}/{total_requests}. Time: {total_time:.2f}s")
 
         return BatchTextProcessingResponse(
             batch_id=batch_id,
@@ -754,48 +752,48 @@ class TextProcessorService:
             results=results,
             total_processing_time=total_time
         )
-    
+
     def get_resilience_health(self) -> Dict[str, Any]:
         """Get resilience health status for this service."""
         return ai_resilience.get_health_status()
-    
+
     def get_resilience_metrics(self) -> Dict[str, Any]:
         """Get resilience metrics for this service."""
         return ai_resilience.get_all_metrics()
-    
+
     # =============================================================================
     # DOMAIN CACHE KEY BUILDING LOGIC
     # =============================================================================
-    
+
     async def _build_cache_key(
-        self, 
-        text: str, 
-        operation: str, 
-        options: Dict[str, Any], 
-        question: Optional[str] = None
+        self,
+        text: str,
+        operation: str,
+        options: Dict[str, Any],
+        question: str | None = None
     ) -> str:
         """
         Build cache key using domain-specific logic and question parameter handling.
-        
+
         This method encapsulates domain-specific cache key building logic, properly
         embedding question parameters in the options dictionary before delegating
         to the infrastructure layer's generic key generation.
-        
+
         Args:
             text: Input text for key generation
             operation: Operation type (summarize, sentiment, key_points, questions, qa)
             options: Options dictionary containing operation-specific parameters
             question: Question for Q&A operations, embedded in options if present
-            
+
         Returns:
             Generated cache key string
-            
+
         Behavior:
             - Embeds question parameter in options dictionary if present
             - Delegates to infrastructure layer's build_key() method for actual generation
             - Maintains backwards compatibility with existing key generation logic
             - Handles all operation types with consistent key generation patterns
-            
+
         Examples:
             >>> # Standard operation without question
             >>> key = await service._build_cache_key(
@@ -803,7 +801,7 @@ class TextProcessorService:
             ...     operation="summarize",
             ...     options={"max_length": 100}
             ... )
-            
+
             >>> # Q&A operation with question embedded in options
             >>> key = await service._build_cache_key(
             ...     text="Document content",
@@ -814,43 +812,43 @@ class TextProcessorService:
         """
         # Embed question in options dictionary if present
         if question:
-            options = {**options, 'question': question}
-        
+            options = {**options, "question": question}
+
         # Use generic infrastructure cache key building
         return self.cache_service.build_key(text, operation, options)
-    
-    def _get_ttl_for_operation(self, operation: str) -> Optional[int]:
+
+    def _get_ttl_for_operation(self, operation: str) -> int | None:
         """
         Get operation-specific TTL for cache storage.
-        
+
         This method provides domain-specific TTL logic for different operation types,
         ensuring appropriate cache lifetimes based on the nature of each operation.
-        
+
         Args:
             operation: Operation type (summarize, sentiment, key_points, questions, qa)
-            
+
         Returns:
             TTL in seconds for the operation, or None to use cache default
-            
+
         Behavior:
             - Returns operation-specific TTL values based on content volatility
             - Summarization has longer TTL as summaries change less frequently
             - Q&A operations have shorter TTL as answers may need fresher context
             - Sentiment analysis has moderate TTL balancing accuracy and performance
-            
+
         Examples:
             >>> ttl = service._get_ttl_for_operation("summarize")
             >>> # Returns 7200 (2 hours) for summary operations
-            
-            >>> ttl = service._get_ttl_for_operation("qa") 
+
+            >>> ttl = service._get_ttl_for_operation("qa")
             >>> # Returns 1800 (30 minutes) for Q&A operations
         """
         # Operation-specific TTL logic based on content characteristics
         operation_ttls = {
-            'summarize': 7200,    # 2 hours - summaries change less frequently
-            'sentiment': 3600,    # 1 hour - sentiment relatively stable but contextual
-            'key_points': 5400,   # 1.5 hours - key points moderately stable
-            'questions': 3600,    # 1 hour - questions benefit from fresher context
-            'qa': 1800,           # 30 minutes - Q&A answers need fresher context
+            "summarize": 7200,    # 2 hours - summaries change less frequently
+            "sentiment": 3600,    # 1 hour - sentiment relatively stable but contextual
+            "key_points": 5400,   # 1.5 hours - key points moderately stable
+            "questions": 3600,    # 1 hour - questions benefit from fresher context
+            "qa": 1800,           # 30 minutes - Q&A answers need fresher context
         }
         return operation_ttls.get(operation)

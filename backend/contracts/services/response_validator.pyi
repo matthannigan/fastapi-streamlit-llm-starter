@@ -12,7 +12,7 @@ leakage, prompt injection attempts, verbatim input regurgitation, and malformed 
 ## Key Security Features
 
 - System prompt leakage detection and prevention
-- Internal reasoning and debug information filtering  
+- Internal reasoning and debug information filtering
 - Prompt injection and jailbreak attempt detection
 - Developer information and debug content removal
 - AI refusal phrase identification
@@ -179,7 +179,7 @@ with additional type-specific validation logic.
 
 import re
 import logging
-from typing import List
+from typing import Any
 
 
 class ResponseValidator:
@@ -195,7 +195,7 @@ class ResponseValidator:
         COMPILED_PATTERNS: Pre-compiled regex patterns for efficient pattern matching
         AI_REFUSAL_PATTERNS: Patterns for detecting AI refusal responses
         VERBATIM_THRESHOLD: Threshold for detecting verbatim input regurgitation
-        
+    
     Public Methods:
         validate(): Main validation method for comprehensive response checking
         _is_response_valid_for_type(): Type-specific validation logic
@@ -204,14 +204,14 @@ class ResponseValidator:
         _validate_sentiment_response(): Specialized sentiment validation
         _validate_questions_response(): Question format validation
         _validate_key_points_response(): Key points structure validation
-        
+    
     State Management:
         - Stateless validation (no internal state between calls)
         - Thread-safe for concurrent validation operations
         - Immutable pattern definitions for consistent behavior
         - Performance-optimized with compiled regex patterns
         - Integration with logging systems for security event tracking
-        
+    
     Behavior:
         - Performs comprehensive security scanning for forbidden patterns
         - Validates response format compliance based on operation type
@@ -220,11 +220,11 @@ class ResponseValidator:
         - Ensures minimum quality standards for different response types
         - Logs security events and validation failures for monitoring
         - Provides detailed error messages for debugging and improvement
-        
+    
     Examples:
         >>> # Basic response validation
         >>> validator = ResponseValidator()
-        >>> 
+        >>>
         >>> # Validate summary response
         >>> try:
         ...     clean_summary = validator.validate(
@@ -236,7 +236,7 @@ class ResponseValidator:
         ...     print(f"Validated summary: {clean_summary}")
         ... except ValueError as e:
         ...     print(f"Validation failed: {e}")
-        
+    
         >>> # Validate sentiment analysis response
         >>> sentiment_response = SentimentResult(
         ...     sentiment="positive",
@@ -249,7 +249,7 @@ class ResponseValidator:
         ...     request_text="Great product, highly recommended!",
         ...     system_instruction="Analyze sentiment"
         ... )
-        
+    
         >>> # Security validation (will raise ValueError)
         >>> try:
         ...     validator.validate(
@@ -262,13 +262,13 @@ class ResponseValidator:
         ...     print(f"Security validation failed: {e}")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the validator with compiled patterns.
         """
         ...
 
-    def validate(self, response: str, expected_type: str, request_text: str = '', system_instruction: str = '') -> str:
+    def validate(self, response: Any, expected_type: str, request_text: str = '', system_instruction: str = '') -> str:
         """
         Validate AI response for security issues and format compliance.
         
@@ -284,17 +284,17 @@ class ResponseValidator:
             expected_type: Expected response type (e.g., 'summary', 'sentiment', 'key_points', 'questions', 'qa')
             request_text: Original user input text (optional, for regurgitation checks)
             system_instruction: System instruction used (optional, for leakage checks)
-            
+        
         Returns:
             str: The validated response if all checks pass
-            
+        
         Raises:
             ValueError: If response contains forbidden patterns or fails validation
-            
+        
         Examples:
             >>> validate_ai_response("This is a good summary.", "summary")
             "This is a good summary."
-            
+        
             >>> validate_ai_response("System prompt: You are...", "summary")
             ValueError: Response contains forbidden pattern: system prompt leakage detected
         """
