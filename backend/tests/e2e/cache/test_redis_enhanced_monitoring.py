@@ -132,8 +132,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                     ):
                         print("Performance monitor unavailable, skipping load test")
                         return
-                    else:
-                        raise AssertionError(f"Unexpected 500 error: {error_data}")
+                    raise AssertionError(f"Unexpected 500 error: {error_data}")
 
                 assert baseline_response.status_code == 200
                 assert baseline_duration < 2.0, "Baseline metrics should be fast"
@@ -194,8 +193,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                 if "Performance monitor not available" in str(e):
                     print("Performance monitor unavailable, skipping load test")
                     return
-                else:
-                    raise
+                raise
 
     @pytest.mark.asyncio
     async def test_redis_connection_monitoring_and_recovery(
@@ -288,8 +286,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                 if "Performance monitor not available" in str(e):
                     print("Performance monitor unavailable, connection test complete")
                     return
-                else:
-                    raise
+                raise
 
     @pytest.mark.asyncio
     async def test_redis_memory_usage_monitoring(self, enhanced_client_with_preset):
@@ -340,8 +337,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                             "Performance monitor unavailable, skipping memory metrics test"
                         )
                         return
-                    else:
-                        raise AssertionError(f"Unexpected 500 error: {error_data}")
+                    raise AssertionError(f"Unexpected 500 error: {error_data}")
 
                 assert metrics_response.status_code == 200
                 metrics_data = metrics_response.json()
@@ -365,8 +361,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                         "Performance monitor unavailable, skipping memory metrics test"
                     )
                     return
-                else:
-                    raise
+                raise
 
     @pytest.mark.asyncio
     async def test_redis_ttl_and_expiration_monitoring(
@@ -436,8 +431,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                             "Performance monitor unavailable, TTL test operations completed"
                         )
                         return
-                    else:
-                        raise AssertionError(f"Unexpected 500 error: {error_data}")
+                    raise AssertionError(f"Unexpected 500 error: {error_data}")
 
                 assert post_ttl_metrics.status_code == 200
                 ttl_metrics_data = post_ttl_metrics.json()
@@ -462,8 +456,7 @@ class TestRedisEnhancedMonitoringWorkflow:
                         "Performance monitor unavailable, TTL test operations completed"
                     )
                     return
-                else:
-                    raise
+                raise
 
     @pytest.mark.asyncio
     async def test_redis_monitoring_consistency_across_operations(

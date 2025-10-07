@@ -1,7 +1,5 @@
-import os
 
 import pytest
-from httpx import AsyncClient, Response
 
 # Import the centralized test data from conftest
 from .conftest import PRESET_SCENARIOS

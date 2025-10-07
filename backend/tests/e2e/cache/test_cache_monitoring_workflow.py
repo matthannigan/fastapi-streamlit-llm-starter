@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from httpx import AsyncClient, Response
 
 # API key aligned with backend authentication system
 ADMIN_API_KEY = os.getenv("API_KEY", "test-api-key-12345")
@@ -400,7 +399,7 @@ class TestCacheMonitoringWorkflow:
         initial_cache_misses = initial_metrics.get("cache_misses", 0)
 
         # Log baseline for debugging
-        print(f"Baseline metrics:")
+        print("Baseline metrics:")
         print(f"  Total operations: {initial_total_ops}")
         print(f"  Cache hits: {initial_cache_hits}")
         print(f"  Cache misses: {initial_cache_misses}")
@@ -482,7 +481,7 @@ class TestCacheMonitoringWorkflow:
         final_cache_misses = final_metrics.get("cache_misses", 0)
 
         # Log results for debugging
-        print(f"Final metrics:")
+        print("Final metrics:")
         print(
             f"  Total operations: {final_total_ops} (change: +{final_total_ops - initial_total_ops})"
         )
@@ -492,7 +491,7 @@ class TestCacheMonitoringWorkflow:
         print(
             f"  Cache misses: {final_cache_misses} (change: +{final_cache_misses - initial_cache_misses})"
         )
-        print(f"Expected changes:")
+        print("Expected changes:")
         print(f"  Operations: +{executed_operations}")
         print(f"  Hits: +{expected_new_hits}")
         print(f"  Misses: +{expected_new_misses}")

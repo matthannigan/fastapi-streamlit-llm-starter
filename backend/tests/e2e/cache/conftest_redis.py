@@ -8,7 +8,6 @@ enabling comprehensive testing of Redis-specific features and behaviors.
 import os
 
 import pytest
-import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from testcontainers.redis import RedisContainer
 
