@@ -340,7 +340,6 @@ API_KEY={api_key}
 
 # Cache Configuration
 CACHE_PRESET={self.security.cache_preset}
-ENABLE_AI_CACHE=true
 
 # Resilience Configuration
 RESILIENCE_PRESET={self.security.resilience_preset}

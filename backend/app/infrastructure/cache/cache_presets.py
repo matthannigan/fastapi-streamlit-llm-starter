@@ -834,9 +834,6 @@ class CachePresetManager:
         # Import unified environment service
         from app.core.environment import FeatureContext, get_environment_info
 
-        # Check for AI cache enablement first (preserve original logic order)
-        enable_ai = os.getenv("ENABLE_AI_CACHE", "").lower() in ("true", "1", "yes")
-
         # Check for explicit CACHE_PRESET override first (preserve original fallback behavior)
         cache_preset = os.getenv("CACHE_PRESET")
         if cache_preset and cache_preset in self.presets:
@@ -862,35 +859,14 @@ class CachePresetManager:
         base_preset = preset_mapping.get(env_info.environment, "simple")
 
         # Handle special fallback case for very low confidence (no clear signals)
-        # Match original behavior: when confidence is low and environment is unknown/development,
-        # fall back to 'simple' or 'ai-development' based on AI enablement
+        # Use simple preset as safe default when confidence is low
         if env_info.confidence <= 0.5 and env_info.environment in [
             "unknown",
             "development",
         ]:
-            if enable_ai:
-                preset_name = "ai-development"
-                reasoning = "No clear environment indicators found, using AI development preset as safe default"
-                environment_detected = "unknown (auto-detected, AI-enabled)"
-            else:
-                preset_name = "simple"
-                reasoning = "No clear environment indicators found, using simple preset as safe default"
-                environment_detected = "unknown (auto-detected)"
-        # Apply AI-specific preset selection for normal cases
-        elif enable_ai:
-            ai_preset = f"ai-{base_preset}"
-            if ai_preset in self.presets:
-                preset_name = ai_preset
-                reasoning = f"{env_info.reasoning} with AI cache features enabled"
-                environment_detected = (
-                    f"{env_info.environment} (auto-detected, AI-enabled)"
-                )
-            else:
-                preset_name = base_preset
-                reasoning = f"{env_info.reasoning} (AI preset not available, using base preset)"
-                environment_detected = (
-                    f"{env_info.environment} (auto-detected, fallback)"
-                )
+            preset_name = "simple"
+            reasoning = "No clear environment indicators found, using simple preset as safe default"
+            environment_detected = "unknown (auto-detected)"
         else:
             preset_name = base_preset
             reasoning = env_info.reasoning

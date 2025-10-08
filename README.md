@@ -150,10 +150,9 @@ CACHE_TEXT_HASH_THRESHOLD=1000
 CACHE_OPERATION_TTLS='{"summarize": 7200, "sentiment": 1800}'
 # ... 22+ more variables
 
-# NEW WAY (1-4 variables)
+# NEW WAY (1-3 variables)
 CACHE_PRESET=development                    # Choose preset for your use case
 CACHE_REDIS_URL=rediss://localhost:6380     # Secure Redis with TLS (optional override)
-ENABLE_AI_CACHE=true                        # Optional AI features toggle
 ```
 
 **🎯 Available Presets**: `disabled` | `minimal` | `simple` | `development` | `production` | `ai-development` | `ai-production`
@@ -208,9 +207,6 @@ CACHE_PRESET=development      # Choose: disabled, minimal, simple, development, 
 
 # Optional: Secure Redis connection (recommended for production)
 CACHE_REDIS_URL=rediss://localhost:6380
-
-# Optional: AI cache features toggle
-ENABLE_AI_CACHE=true
 ```
 
 **Available Resilience Presets:**
@@ -432,7 +428,6 @@ if __name__ == "__main__":
 # NEW: Simplified preset-based configuration (replaces 28+ variables)
 CACHE_PRESET=ai-development           # Choose preset for your use case
 CACHE_REDIS_URL=rediss://localhost:6380  # Secure Redis with TLS (essential connection override)
-ENABLE_AI_CACHE=true                  # Enable AI-specific features
 
 # Available presets: disabled, minimal, simple, development, production, ai-development, ai-production
 ```

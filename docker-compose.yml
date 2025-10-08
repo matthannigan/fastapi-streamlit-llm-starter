@@ -20,7 +20,6 @@ services:
       - CACHE_PRESET=${CACHE_PRESET:-development}
       # Essential overrides (only specify if different from preset defaults)
       - CACHE_REDIS_URL=redis://redis:6379
-      - ENABLE_AI_CACHE=${ENABLE_AI_CACHE:-true}
       # Advanced customization via JSON (optional - overrides preset defaults)
       # - CACHE_CUSTOM_CONFIG={"default_ttl": 3600, "max_connections": 15}
     volumes:

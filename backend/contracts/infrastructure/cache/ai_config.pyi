@@ -108,7 +108,6 @@ config = AIResponseCacheConfig(
 # Use preset-based configuration (replaces 28+ individual variables)
 os.environ['CACHE_PRESET'] = 'ai-production'
 os.environ['CACHE_REDIS_URL'] = 'redis://prod:6379'  # Optional override
-os.environ['ENABLE_AI_CACHE'] = 'true'  # Optional override
 
 # Load from preset system via Settings
 from app.core.config import settings
@@ -518,7 +517,6 @@ class AIResponseCacheConfig:
         Preset System (RECOMMENDED):
             CACHE_PRESET: Cache preset name (ai-development, ai-production, etc.)
             CACHE_REDIS_URL: Optional Redis URL override
-            ENABLE_AI_CACHE: Optional AI features toggle
             CACHE_CUSTOM_CONFIG: Optional JSON configuration override
         
         Examples:

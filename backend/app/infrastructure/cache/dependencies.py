@@ -301,7 +301,7 @@ async def get_cache_config(settings: Settings = Depends(get_settings)) -> Dict[s
 
     Preset System:
         - Loads configuration from settings.cache_preset (default: "development")
-        - Supports overrides via CACHE_REDIS_URL and ENABLE_AI_CACHE environment variables
+        - Supports overrides via CACHE_REDIS_URL environment variable
         - Supports custom JSON configuration via CACHE_CUSTOM_CONFIG
         - Provides fallback to "simple" preset on configuration errors
 

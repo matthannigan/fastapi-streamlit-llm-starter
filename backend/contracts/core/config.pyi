@@ -85,7 +85,7 @@ async def get_config(settings: Settings = Depends(get_settings_factory())):
 
 ### Cache Configuration (Preset-Based)
 - **Available Presets**: disabled, simple, development, production, ai-development, ai-production
-- **Override Support**: CACHE_REDIS_URL, ENABLE_AI_CACHE environment variables
+- **Override Support**: CACHE_REDIS_URL environment variable
 - **Custom Configuration**: CACHE_CUSTOM_CONFIG for advanced JSON-based customization
 - **Fallback Strategy**: Automatic fallback from Redis to in-memory caching
 
@@ -112,7 +112,6 @@ async def get_config(settings: Settings = Depends(get_settings_factory())):
 # Cache configuration - single preset replaces 28+ individual variables
 CACHE_PRESET=production
 CACHE_REDIS_URL=redis://production-redis:6379  # Optional override
-ENABLE_AI_CACHE=true                           # Optional override
 
 # Resilience configuration - single preset replaces 47+ individual variables
 RESILIENCE_PRESET=production
@@ -485,7 +484,6 @@ class Settings(BaseSettings):
             - Resolves cache_preset field to load base configuration from preset system
             - Maps 'testing' preset alias to 'development' preset for convenience
             - Applies CACHE_REDIS_URL environment variable override if present
-            - Applies ENABLE_AI_CACHE environment variable override if present (true/false/1/0)
             - Applies CACHE_CUSTOM_CONFIG JSON overrides if provided and valid
             - Logs all applied overrides and configuration loading actions
             - Falls back to 'simple' preset if primary preset loading fails

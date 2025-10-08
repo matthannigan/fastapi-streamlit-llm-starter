@@ -407,7 +407,6 @@ API_KEY=${PRESERVED_API_KEY:-$(generate_secure_password 24)}
 
 # Cache Configuration
 CACHE_PRESET=${PRESERVED_CACHE_PRESET:-ai-development}
-ENABLE_AI_CACHE=true
 
 # Resilience Configuration
 RESILIENCE_PRESET=${PRESERVED_RESILIENCE_PRESET:-development}
