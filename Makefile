@@ -671,6 +671,11 @@ lint:
 	fi; \
 	exit $$exit_code
 
+lint-recent:
+	@echo "🔍 Running recent code quality checks on recently changed Python files..."
+	@{ git diff --name-only ; git diff --name-only --staged ; git ls-files --other --exclude-standard ; } | sort | uniq | grep '\.py$' | xargs ruff check --fix
+	@{ git diff --name-only ; git diff --name-only --staged ; git ls-files --other --exclude-standard ; } | sort | uniq | grep '\.py$' | xargs .venv/bin/python -m mypy --ignore-missing-imports
+
 # Run backend code quality checks only
 lint-backend:
 	@echo "🔍 Running backend code quality checks..."
@@ -936,11 +941,18 @@ repomix:
 	@$(REPOMIX_CMD) --output repomix-output/repomix_ALL_U.md --quiet --ignore "docs/code_ref*/**/*,**/contracts/**/*"
 	@echo "📝 Creating full repository compressed documentation..."
 	@$(REPOMIX_CMD) --output repomix-output/repomix_ALL_C.md --quiet --ignore "docs/code_ref*/**/*,**/contracts/**/*" --compress
+	@$(MAKE) repomix-recent
 	@$(MAKE) repomix-backend
 	@$(MAKE) repomix-backend-contracts
 	@$(MAKE) repomix-frontend  
 	@$(MAKE) repomix-docs
 	@echo "✅ All repository documentation generated in repomix-output/"
+
+repomix-recent:
+	@echo "📄 Generating recent repository documentation..."
+	@mkdir -p repomix-output
+	@{ git diff --name-only ; git diff --name-only --staged ; git ls-files --other --exclude-standard ; } | sort | uniq | $(REPOMIX_CMD) --stdin --quiet --output repomix-output/repomix_recent.md
+
 
 # Generate backend main documentation
 repomix-backend: repomix-backend-tests
