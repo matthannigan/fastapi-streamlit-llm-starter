@@ -1,0 +1,151 @@
+# Security Scanner Configuration
+#
+# This file contains the default configuration for all security scanners.
+# Environment-specific overrides are in dev.yaml and prod.yaml.
+#
+# Configuration Structure:
+# - input_scanners: Scanners that process user input (prompts, queries)
+# - output_scanners: Scanners that process AI-generated output
+# - performance: Performance optimization settings
+# - logging: Logging and monitoring configuration
+
+# Input Scanner Configuration
+# These scanners process user-provided content like prompts and queries
+input_scanners:
+  prompt_injection:
+    enabled: true
+    threshold: 0.8
+    action: "block"
+    use_onnx: true
+    model_name: "microsoft/deberta-v3-base-injection"
+    scan_timeout: 30
+    enabled_violation_types: ["injection", "jailbreak", "prompt_leak"]
+    metadata:
+      description: "Detects prompt injection and jailbreak attempts"
+      severity: "high"
+
+  toxicity_input:
+    enabled: true
+    threshold: 0.7
+    action: "warn"
+    use_onnx: true
+    model_name: "unitary/toxic-bert"
+    scan_timeout: 25
+    enabled_violation_types: ["toxicity", "obscene", "threat", "insult", "identity_hate"]
+    metadata:
+      description: "Detects toxic content in user input"
+      severity: "medium"
+
+  pii_detection:
+    enabled: true
+    threshold: 0.7
+    action: "redact"
+    use_onnx: true
+    model_name: "bigcode/starpii"
+    scan_timeout: 45
+    enabled_violation_types: ["email", "phone", "ssn", "credit_card", "name", "address"]
+    redact: true
+    metadata:
+      description: "Detects and redacts personally identifiable information"
+      severity: "high"
+
+  malicious_url:
+    enabled: false
+    threshold: 0.9
+    action: "block"
+    use_onnx: false
+    scan_timeout: 15
+    enabled_violation_types: ["malware", "phishing", "suspicious"]
+    metadata:
+      description: "Detects malicious URLs in input"
+      severity: "high"
+
+# Output Scanner Configuration
+# These scanners process AI-generated content before returning to users
+output_scanners:
+  toxicity_output:
+    enabled: true
+    threshold: 0.8
+    action: "block"
+    use_onnx: true
+    model_name: "unitary/toxic-bert"
+    scan_timeout: 25
+    enabled_violation_types: ["toxicity", "obscene", "threat", "insult", "identity_hate"]
+    metadata:
+      description: "Detects toxic content in AI output"
+      severity: "high"
+
+  bias_detection:
+    enabled: true
+    threshold: 0.7
+    action: "flag"
+    use_onnx: true
+    model_name: "d4data/bias-detection"
+    scan_timeout: 30
+    enabled_violation_types: ["gender", "racial", "age", "religious", "political"]
+    metadata:
+      description: "Detects potential bias in AI output"
+      severity: "medium"
+
+  harmful_content:
+    enabled: false
+    threshold: 0.8
+    action: "block"
+    use_onnx: true
+    model_name: "microsoft/DialoGPT-medium-harmful"
+    scan_timeout: 35
+    enabled_violation_types: ["violence", "self_harm", "sexual", "illegal"]
+    metadata:
+      description: "Detects harmful content in AI output"
+      severity: "high"
+
+# Performance Configuration
+# These settings optimize scanner performance and resource usage
+performance:
+  cache_enabled: true
+  cache_ttl_seconds: 3600
+  cache_redis_url: "redis://localhost:6379"
+  lazy_loading: true
+  onnx_providers: ["CPUExecutionProvider"]
+  batch_processing_enabled: false
+  max_batch_size: 5
+  max_concurrent_scans: 10
+  memory_limit_mb: 2048
+  enable_model_caching: true
+  enable_result_caching: true
+  cache_warmup_enabled: false
+  metrics_collection_enabled: true
+  health_check_interval_seconds: 30
+
+# Logging Configuration
+# Controls what and how security events are logged
+logging:
+  enabled: true
+  level: "INFO"
+  log_scan_operations: true
+  log_violations: true
+  log_performance_metrics: true
+  include_scanned_text: false
+  sanitize_pii_in_logs: true
+  log_format: "json"
+  retention_days: 30
+
+# Service Configuration
+# General settings for the security scanning service
+service:
+  name: "security-scanner"
+  version: "1.0.0"
+  environment: "development"
+  debug_mode: false
+  api_key_required: false
+  rate_limit_enabled: false
+  rate_limit_requests_per_minute: 60
+
+# Feature Flags
+# Control experimental or optional features
+features:
+  experimental_scanners: false
+  advanced_analytics: false
+  real_time_monitoring: false
+  custom_scanner_support: false
+  ml_feedback_loop: false

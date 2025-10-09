@@ -146,7 +146,7 @@ for any modifications.
 import logging
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 from app.core.exceptions import ConfigurationError, InfrastructureError
 from app.dependencies import get_cache_service
 from app.infrastructure.cache import AIResponseCache
@@ -193,8 +193,7 @@ class CachePerformanceResponse(BaseModel):
     Comprehensive cache performance metrics response.
     """
 
-    class Config:
-        ...
+    ...
 
 
 async def get_performance_monitor(cache_service: AIResponseCache = Depends(get_cache_service)) -> CachePerformanceMonitor:

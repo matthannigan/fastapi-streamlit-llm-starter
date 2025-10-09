@@ -1,0 +1,100 @@
+# Development Environment Security Configuration Overrides
+#
+# This file contains development-specific overrides for security scanner configuration.
+# These settings are optimized for local development with more lenient thresholds
+# and CPU-only processing for faster iteration.
+
+# Input Scanner Overrides for Development
+# More lenient thresholds for easier testing and debugging
+input_scanners:
+  prompt_injection:
+    enabled: true
+    threshold: 0.9  # More lenient for development
+    action: "warn"   # Warn instead of block to avoid disrupting development
+    use_onnx: true
+    onnx_providers: ["CPUExecutionProvider"]  # CPU-only for development
+
+  toxicity_input:
+    enabled: true
+    threshold: 0.9  # More lenient for development
+    action: "warn"   # Warn instead of block
+    use_onnx: true
+    onnx_providers: ["CPUExecutionProvider"]
+
+  pii_detection:
+    enabled: true
+    threshold: 0.9  # More lenient for development
+    action: "flag"  # Flag instead of redact for easier debugging
+    use_onnx: true
+    onnx_providers: ["CPUExecutionProvider"]
+    redact: false   # Don't redact in development for easier testing
+
+  malicious_url:
+    enabled: false  # Disabled in development to avoid external dependencies
+
+# Output Scanner Overrides for Development
+output_scanners:
+  toxicity_output:
+    enabled: true
+    threshold: 0.9  # More lenient for development
+    action: "warn"   # Warn instead of block
+    use_onnx: true
+    onnx_providers: ["CPUExecutionProvider"]
+
+  bias_detection:
+    enabled: true
+    threshold: 0.8  # More lenient for development
+    action: "flag"  # Flag instead of block
+    use_onnx: true
+    onnx_providers: ["CPUExecutionProvider"]
+
+  harmful_content:
+    enabled: false  # Disabled to reduce false positives in development
+
+# Performance Configuration for Development
+# Optimized for fast iteration and debugging
+performance:
+  cache_enabled: true
+  cache_ttl_seconds: 300  # Shorter cache for easier testing (5 minutes)
+  lazy_loading: true
+  onnx_providers: ["CPUExecutionProvider"]  # CPU-only for development
+  batch_processing_enabled: false
+  max_batch_size: 3  # Smaller batches for faster feedback
+  max_concurrent_scans: 5  # Fewer concurrent scans for debugging
+  memory_limit_mb: 1024  # Lower memory limit for development
+  enable_model_caching: false  # Disable caching to ensure fresh models
+  enable_result_caching: false  # Disable result caching for testing
+  cache_warmup_enabled: false
+  metrics_collection_enabled: true
+  health_check_interval_seconds: 10  # More frequent health checks
+
+# Logging Configuration for Development
+# More verbose logging for debugging
+logging:
+  enabled: true
+  level: "DEBUG"  # Debug level for development
+  log_scan_operations: true
+  log_violations: true
+  log_performance_metrics: true
+  include_scanned_text: true  # Include text for easier debugging
+  sanitize_pii_in_logs: false  # Don't sanitize in development (be careful!)
+  log_format: "text"  # Text format for easier reading in terminals
+  retention_days: 7  # Shorter retention for development
+
+# Service Configuration for Development
+service:
+  name: "security-scanner-dev"
+  version: "1.0.0-dev"
+  environment: "development"
+  debug_mode: true  # Enable debug mode
+  api_key_required: false  # No API key required for development
+  rate_limit_enabled: false  # No rate limiting in development
+
+# Feature Flags for Development
+# Enable experimental features for testing
+features:
+  experimental_scanners: true   # Enable experimental scanners for testing
+  advanced_analytics: true      # Enable advanced analytics for development
+  real_time_monitoring: true    # Enable real-time monitoring
+  custom_scanner_support: true  # Enable custom scanner support for testing
+  ml_feedback_loop: false       # Keep disabled to avoid complexity
