@@ -189,6 +189,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from app.api.internal.cache import router as cache_router
 from app.api.internal.monitoring import monitoring_router
+from app.api.internal.security_cache import router as security_cache_router
 from app.api.internal.resilience import resilience_circuit_breakers_router, resilience_config_presets_router, resilience_config_router, resilience_config_templates_router, resilience_config_validation_router, resilience_health_router, resilience_monitoring_router, resilience_performance_router
 from app.api.v1.auth import auth_router
 from app.api.v1.health import health_router
@@ -684,15 +685,83 @@ def create_internal_app_with_settings(settings_obj: 'Settings', include_routers:
     
     This is an internal helper function that creates the internal administrative API application
     using the provided settings instance. It enables the main create_app() factory
-    to maintain the dual-API architecture while providing proper configuration isolation.
+    to maintain the dual-API architecture while providing proper configuration isolation
+    and comprehensive infrastructure management capabilities including security cache monitoring.
     
     Args:
-        settings_obj: Settings instance to use for configuration
-        include_routers: Whether to register API routers
-        include_middleware: Whether to configure middleware stack (currently unused for internal app)
+        settings_obj: Settings instance to use for configuration. Must be a valid Settings
+                     object with all required configuration properties populated.
+        include_routers: Whether to register API routers (default: True). When False,
+                        creates a minimal FastAPI instance without endpoint registration,
+                        useful for testing scenarios focused on configuration validation.
+        include_middleware: Whether to configure middleware stack (currently unused for internal app).
+                           Internal API typically operates without CORS middleware as it's
+                           designed for internal administrative access only.
     
     Returns:
-        FastAPI: Configured internal API application instance
+        FastAPI: Fully configured internal API application instance containing:
+                - Security-aware documentation access with production mode restrictions
+                - System monitoring endpoints with real-time metrics and health status
+                - Cache infrastructure management with performance optimization tools
+                - Security cache monitoring and management endpoints for enhanced security oversight
+                - Comprehensive resilience configuration and monitoring capabilities
+                - Professional API organization with detailed operational categorization
+    
+    Behavior:
+        **Application Configuration:**
+        - Creates FastAPI instance with internal-specific API metadata and documentation
+        - Configures security-aware access control for documentation in production environments
+        - Sets up professional API tags organized by administrative functional areas
+        - Implements environment-based documentation access restrictions
+    
+        **Router Registration (when include_routers=True):**
+        - Includes system monitoring router for comprehensive infrastructure visibility
+        - Registers cache management router for performance optimization and troubleshooting
+        - Integrates security cache router for security-focused cache monitoring and management
+        - Adds comprehensive resilience management across 8 specialized router categories
+        - Provides unified operational interface across all infrastructure components
+    
+        **Security and Access Control:**
+        - Disables documentation endpoints in production mode for security hardening
+        - Restricts OpenAPI schema access based on environment configuration
+        - Implements proper security boundaries between internal and external access
+        - Provides controlled access to sensitive operational and security information
+    
+        **Configuration Isolation:**
+        - Uses provided settings instance for complete configuration control
+        - Overrides dependency injection to ensure consistent settings usage
+        - Maintains isolation from other FastAPI instances in multi-instance scenarios
+        - Enables test scenarios with custom configuration overrides
+    
+    Examples:
+        >>> # Create internal app with custom settings for testing
+        >>> test_settings = Settings(debug=True, log_level="DEBUG")
+        >>> internal_app = create_internal_app_with_settings(test_settings)
+        >>> assert internal_app.title == "AI Text Processor - Internal API"
+        >>> assert "/monitoring" in [route.path for route in internal_app.routes]
+    
+        >>> # Create minimal internal app without routers for configuration testing
+        >>> minimal_app = create_internal_app_with_settings(
+        ...     settings_obj=settings,
+        ...     include_routers=False
+        ... )
+        >>> assert len(minimal_app.routes) < len(internal_app.routes)
+    
+        >>> # Security cache router integration verification
+        >>> routes = [route.path for route in internal_app.routes if hasattr(route, 'path')]
+        >>> security_routes = [r for r in routes if 'security' in r]
+        >>> assert len(security_routes) > 0  # Security endpoints are included
+    
+        >>> # Production mode security configuration
+        >>> prod_settings = Settings(debug=False, environment="production")
+        >>> prod_app = create_internal_app_with_settings(prod_settings)
+        >>> # Documentation access restricted in production mode
+    
+    Note:
+        This function is primarily used by the main create_app() factory to maintain
+        proper configuration isolation between public and internal APIs. The internal
+        application provides essential operational capabilities including security cache
+        management while maintaining appropriate security boundaries and access controls.
     """
     ...
 
@@ -703,13 +772,15 @@ def create_internal_app() -> FastAPI:
     
     This factory function constructs the complete internal API application designed for
     operations teams, monitoring systems, and administrative tools. It provides extensive
-    system visibility, infrastructure management, resilience monitoring, and operational
-    control capabilities while maintaining appropriate security boundaries and access control.
+    system visibility, infrastructure management, resilience monitoring, security cache
+    oversight, and operational control capabilities while maintaining appropriate security
+    boundaries and access control.
     
     Returns:
         FastAPI: Fully configured internal API application instance containing:
                 - Comprehensive system monitoring endpoints with real-time metrics
                 - Cache infrastructure management with performance optimization tools
+                - Security cache monitoring and management endpoints for enhanced security oversight
                 - Advanced resilience configuration and monitoring capabilities
                 - Security-aware documentation access with production mode restrictions
                 - Professional API organization with detailed endpoint categorization
@@ -727,13 +798,14 @@ def create_internal_app() -> FastAPI:
         - Disables documentation endpoints in production mode for security hardening
         - Restricts OpenAPI schema access based on environment configuration
         - Implements proper security boundaries between internal and external access
-        - Provides controlled access to sensitive operational information
+        - Provides controlled access to sensitive operational and security information
     
         **Endpoint Organization:**
-        - Organizes endpoints into logical categories (monitoring, cache, resilience)
+        - Organizes endpoints into logical categories (monitoring, cache, security, resilience)
         - Provides comprehensive resilience management across multiple specialized routers
         - Implements extensive monitoring capabilities with real-time system visibility
         - Offers cache management tools for performance optimization and troubleshooting
+        - Includes security cache endpoints for security-focused cache monitoring and management
     
         **Documentation Enhancement:**
         - Implements custom Swagger UI with cross-API navigation capabilities
@@ -744,7 +816,8 @@ def create_internal_app() -> FastAPI:
         **Router Integration:**
         - Integrates system monitoring router with health checks and performance metrics
         - Includes cache management router with status monitoring and optimization tools
-        - Registers comprehensive resilience management across 8 specialized router categories
+        - Registers security cache router for security-focused cache oversight and management
+        - Adds comprehensive resilience management across 8 specialized router categories
         - Provides unified operational interface across all infrastructure components
     
     Examples:
@@ -762,12 +835,17 @@ def create_internal_app() -> FastAPI:
         ...     assert internal_app.redoc_url is None  # Disabled in production
         ...     assert internal_app.openapi_url is None  # Disabled in production
     
-        >>> # Comprehensive router integration
+        >>> # Comprehensive router integration including security cache
         >>> routes = [route.path for route in internal_app.routes]
         >>> assert "/" in routes  # Internal root endpoint
         >>> assert any("/monitoring" in path for path in routes)  # System monitoring
         >>> assert any("/cache" in path for path in routes)  # Cache management
+        >>> assert any("/security" in path for path in routes)  # Security cache management
         >>> assert any("/resilience" in path for path in routes)  # Resilience management
+    
+        >>> # Security cache endpoints availability verification
+        >>> security_routes = [r for r in routes if 'security/cache' in r]
+        >>> assert len(security_routes) > 0  # Security cache endpoints are included
     
         >>> # API tag organization for operational clarity
         >>> tag_names = [tag["name"] for tag in internal_app.openapi_tags]
@@ -778,7 +856,7 @@ def create_internal_app() -> FastAPI:
     Note:
         This function is called automatically during application startup and creates
         an application that is mounted at /internal on the main public application.
-        The internal API provides essential operational capabilities while maintaining
-        appropriate security boundaries and access controls.
+        The internal API provides essential operational capabilities including security
+        cache management while maintaining appropriate security boundaries and access controls.
     """
     ...

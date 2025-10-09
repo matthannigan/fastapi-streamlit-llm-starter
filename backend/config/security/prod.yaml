@@ -1,0 +1,115 @@
+# Production Environment Security Configuration Overrides
+#
+# This file contains production-specific overrides for security scanner configuration.
+# These settings are optimized for production security with stricter thresholds,
+# GPU support with CPU fallback, and comprehensive monitoring.
+
+# Input Scanner Overrides for Production
+# Stricter thresholds and actions for production security
+input_scanners:
+  prompt_injection:
+    enabled: true
+    threshold: 0.6  # Stricter threshold for production
+    action: "block"  # Block prompt injection attempts
+    use_onnx: true
+    onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]  # GPU with CPU fallback
+    scan_timeout: 20  # Faster timeout for production
+
+  toxicity_input:
+    enabled: true
+    threshold: 0.7  # Stricter threshold
+    action: "block"  # Block toxic input
+    use_onnx: true
+    onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    scan_timeout: 20
+
+  pii_detection:
+    enabled: true
+    threshold: 0.6  # Stricter threshold for PII
+    action: "redact"  # Redact PII in production
+    use_onnx: true
+    onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    scan_timeout: 30
+    redact: true  # Always redact PII in production
+
+  malicious_url:
+    enabled: true  # Enable malicious URL detection in production
+    threshold: 0.8
+    action: "block"
+    use_onnx: false  # Use API-based detection for better accuracy
+    scan_timeout: 10
+
+# Output Scanner Overrides for Production
+output_scanners:
+  toxicity_output:
+    enabled: true
+    threshold: 0.6  # Stricter threshold for output
+    action: "block"  # Block toxic output
+    use_onnx: true
+    onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    scan_timeout: 20
+
+  bias_detection:
+    enabled: true
+    threshold: 0.6  # Stricter threshold
+    action: "flag"  # Flag potential bias for review
+    use_onnx: true
+    onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    scan_timeout: 25
+
+  harmful_content:
+    enabled: true  # Enable harmful content detection in production
+    threshold: 0.7
+    action: "block"
+    use_onnx: true
+    onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    scan_timeout: 30
+
+# Performance Configuration for Production
+# Optimized for high throughput and reliability
+performance:
+  cache_enabled: true
+  cache_ttl_seconds: 7200  # Longer cache for production (2 hours)
+  lazy_loading: true
+  onnx_providers: ["CUDAExecutionProvider", "CPUExecutionProvider"]  # GPU with CPU fallback
+  batch_processing_enabled: true  # Enable batch processing for efficiency
+  max_batch_size: 10  # Larger batches for production
+  max_concurrent_scans: 20  # Higher concurrency for production
+  memory_limit_mb: 4096  # Higher memory limit for production
+  enable_model_caching: true  # Enable model caching for performance
+  enable_result_caching: true  # Enable result caching for performance
+  cache_warmup_enabled: true  # Warm up cache on startup
+  metrics_collection_enabled: true
+  health_check_interval_seconds: 60  # Standard health check interval
+
+# Logging Configuration for Production
+# Secure logging with PII protection
+logging:
+  enabled: true
+  level: "INFO"  # Info level for production
+  log_scan_operations: true
+  log_violations: true
+  log_performance_metrics: true
+  include_scanned_text: false  # Never include scanned text in production
+  sanitize_pii_in_logs: true  # Always sanitize PII in logs
+  log_format: "json"  # JSON format for log aggregation
+  retention_days: 90  # Longer retention for production
+
+# Service Configuration for Production
+service:
+  name: "security-scanner"
+  version: "1.0.0"
+  environment: "production"
+  debug_mode: false  # Disable debug mode in production
+  api_key_required: true  # Require API key authentication
+  rate_limit_enabled: true  # Enable rate limiting
+  rate_limit_requests_per_minute: 120  # Production rate limit
+
+# Feature Flags for Production
+# Conservative feature selection for stability
+features:
+  experimental_scanners: false  # Disable experimental scanners in production
+  advanced_analytics: true      # Enable advanced analytics for monitoring
+  real_time_monitoring: true    # Enable real-time monitoring
+  custom_scanner_support: false # Disable custom scanners in production
+  ml_feedback_loop: false       # Keep disabled for stability

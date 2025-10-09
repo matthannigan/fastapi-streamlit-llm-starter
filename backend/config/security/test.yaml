@@ -1,0 +1,83 @@
+# Testing Environment Security Configuration Overrides
+#
+# This file contains test-specific overrides for security scanner configuration.
+# These settings are optimized for fast test execution with minimal scanners
+# and aggressive caching to reduce test time.
+
+# Input Scanner Overrides for Testing
+# Minimal scanners for fast test execution
+input_scanners:
+  prompt_injection:
+    enabled: true
+    threshold: 0.95  # Very high threshold to reduce false positives in tests
+    action: "warn"
+    use_onnx: false  # Use mock implementations for faster tests
+    scan_timeout: 5   # Very short timeout for fast tests
+
+  toxicity_input:
+    enabled: false  # Disabled for faster tests
+
+  pii_detection:
+    enabled: false  # Disabled for faster tests
+
+  malicious_url:
+    enabled: false  # Disabled for faster tests
+
+# Output Scanner Overrides for Testing
+output_scanners:
+  toxicity_output:
+    enabled: false  # Disabled for faster tests
+
+  bias_detection:
+    enabled: false  # Disabled for faster tests
+
+  harmful_content:
+    enabled: false  # Disabled for faster tests
+
+# Performance Configuration for Testing
+# Optimized for maximum speed in test execution
+performance:
+  cache_enabled: true
+  cache_ttl_seconds: 1  # Very short cache for tests
+  lazy_loading: true
+  onnx_providers: ["CPUExecutionProvider"]
+  batch_processing_enabled: false
+  max_batch_size: 1
+  max_concurrent_scans: 1  # Single thread for deterministic tests
+  memory_limit_mb: 256  # Very low memory limit for tests
+  enable_model_caching: false  # Disable caching for test isolation
+  enable_result_caching: false  # Disable caching for test isolation
+  cache_warmup_enabled: false
+  metrics_collection_enabled: false  # Disable metrics for faster tests
+  health_check_interval_seconds: 300  # Infrequent health checks
+
+# Logging Configuration for Testing
+# Minimal logging for faster test execution
+logging:
+  enabled: false  # Disable logging for faster tests
+  level: "ERROR"  # Only log errors in tests
+  log_scan_operations: false
+  log_violations: false
+  log_performance_metrics: false
+  include_scanned_text: false
+  sanitize_pii_in_logs: true
+  log_format: "text"
+  retention_days: 1
+
+# Service Configuration for Testing
+service:
+  name: "security-scanner-test"
+  version: "1.0.0-test"
+  environment: "testing"
+  debug_mode: true
+  api_key_required: false
+  rate_limit_enabled: false
+
+# Feature Flags for Testing
+# All features disabled for stable tests
+features:
+  experimental_scanners: false
+  advanced_analytics: false
+  real_time_monitoring: false
+  custom_scanner_support: false
+  ml_feedback_loop: false

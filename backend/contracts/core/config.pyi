@@ -295,10 +295,21 @@ class Settings(BaseSettings):
         resilience_custom_config: Custom JSON configuration for advanced resilience settings (optional)
         health_check_timeout_ms: Default timeout for health checks in milliseconds (default: 2000)
         health_check_enabled_components: List of components to include in health checks (default: ["ai_model", "cache", "resilience"])
+        security_environment: Security scanner environment (development, production, testing) for configuration loading (default: "development")
+        security_config_path: Custom path to security configuration directory (default: None, uses config/security)
+        security_preset: Security scanner configuration preset for quick setup (development, production, testing) (default: "development")
+        security_cache_enabled: Enable security scanner configuration and result caching (default: True)
+        security_onnx_enabled: Enable ONNX model optimization for security scanners (default: True)
+        security_debug: Enable comprehensive debug logging for security operations (default: False)
+        security_hot_reload: Enable hot reload for security configuration files in development (default: False)
+        security_api_key_required: Require API key authentication for security scanner endpoints (default: False)
+        security_rate_limit_enabled: Enable rate limiting for security scanner endpoints (default: False)
+        security_rate_limit_rpm: Maximum requests per minute per client for security scanner endpoints (default: 60)
     
     Public Methods:
         get_cache_config(): Get complete cache configuration from preset with overrides applied
         get_resilience_config(): Get complete resilience configuration from preset with overrides applied
+        get_security_config(): Get complete security scanner configuration from YAML files with environment overrides
         get_operation_strategy(): Get resilience strategy for specific operation types
         get_valid_api_keys(): Get list of all valid API keys (primary + additional)
     
@@ -379,11 +390,39 @@ class Settings(BaseSettings):
         enabled_components = settings.health_check_enabled_components
         retry_count = settings.health_check_retry_count
     
+        # Security scanner configuration access
+        security_config = settings.get_security_config()
+        enabled_scanners = security_config.get_enabled_scanners()
+        debug_mode = security_config.debug_mode
+    
+        # Environment-specific security configuration
+        prod_security_config = settings.get_security_config(environment="production")
+        assert prod_security_config.environment == "production"
+    
+        # Security configuration with session tracking
+        security_config = settings.get_security_config(
+            session_id="scan_request_456",
+            user_context="api_security_scan"
+        )
+    
+        # Direct security settings access
+        security_env = settings.security_environment
+        caching_enabled = settings.security_cache_enabled
+        onnx_enabled = settings.security_onnx_enabled
+        debug_mode = settings.security_debug
+        rate_limit_rpm = settings.security_rate_limit_rpm
+    
         # Error handling patterns
         try:
             cache_config = settings.get_cache_config()
         except ConfigurationError as e:
             logger.error(f"Cache configuration failed: {e}")
+            # Application should handle fallback or fail gracefully
+    
+        try:
+            security_config = settings.get_security_config()
+        except ConfigurationError as e:
+            logger.error(f"Security configuration failed: {e}")
             # Application should handle fallback or fail gracefully
     """
 
@@ -454,6 +493,30 @@ class Settings(BaseSettings):
     def validate_enabled_health_components(cls, v: List[str]) -> List[str]:
         """
         Checks that all enabled components are valid and warns if none are enabled.
+        """
+        ...
+
+    @field_validator('security_environment')
+    @classmethod
+    def validate_security_environment(cls, v: str) -> str:
+        """
+        Validate security environment name.
+        """
+        ...
+
+    @field_validator('security_preset')
+    @classmethod
+    def validate_security_preset(cls, v: str) -> str:
+        """
+        Validate security preset name.
+        """
+        ...
+
+    @field_validator('security_rate_limit_rpm')
+    @classmethod
+    def validate_security_rate_limit_rpm(cls, v: int) -> int:
+        """
+        Validate security rate limit RPM and warn about suboptimal values.
         """
         ...
 
@@ -571,6 +634,68 @@ class Settings(BaseSettings):
             >>> config = settings.get_resilience_config()
             >>> assert config.retry_config.max_attempts == 7
             >>> assert config.circuit_breaker_config.failure_threshold == 15
+        """
+        ...
+
+    def get_security_config(self, environment: str | None = None, session_id: str | None = None, user_context: str | None = None, cache_bust: bool = False) -> 'SecurityConfig':
+        """
+        Get complete security scanner configuration from YAML files with environment overrides.
+        
+        This is the main entry point for security scanner configuration that implements
+        the YAML-based architecture with environment-specific overrides. It automatically
+        resolves configuration from YAML files and provides comprehensive monitoring
+        and error handling with fallback behavior.
+        
+        Args:
+            environment: Override security environment (development, production, testing)
+                         If None, uses security_environment field from settings
+            session_id: Optional session identifier for monitoring and analytics
+            user_context: Optional user context string for monitoring and analytics
+            cache_bust: Force configuration cache refresh
+        
+        Returns:
+            SecurityConfig object containing complete security configuration:
+            - scanners: Dictionary of scanner configurations by type
+            - performance: Performance optimization settings
+            - logging: Logging and monitoring configuration
+            - service: General service configuration
+            - features: Feature flags and experimental settings
+        
+        Raises:
+            ConfigurationError: When configuration loading or validation fails
+        
+        Behavior:
+            - Loads base configuration from config/security/scanners.yaml
+            - Applies environment-specific overrides from {environment}.yaml
+            - Applies environment variable overrides with highest precedence
+            - Validates configuration against Pydantic models
+            - Caches configuration for performance (unless cache_bust=True)
+            - Logs all configuration resolution steps for debugging
+            - Records configuration loading metrics and monitoring data
+            - Provides session and user context tracking for operational monitoring
+        
+        Examples:
+            >>> # Basic configuration loading
+            >>> config = settings.get_security_config()
+            >>> assert config.environment in ["development", "production", "testing"]
+            >>> assert len(config.scanners) > 0
+        
+            >>> # Environment-specific configuration
+            >>> config = settings.get_security_config(environment="production")
+            >>> assert config.environment == "production"
+            >>> assert any(s.threshold < 0.8 for s in config.scanners.values())
+        
+            >>> # Configuration with session tracking
+            >>> config = settings.get_security_config(
+            ...     session_id="scan_request_123",
+            ...     user_context="text_processing_scan"
+            ... )
+            >>> enabled_scanners = config.get_enabled_scanners()
+            >>> assert len(enabled_scanners) > 0
+        
+            >>> # Force cache refresh
+            >>> config = settings.get_security_config(cache_bust=True)
+            >>> assert config is not None
         """
         ...
 
@@ -731,7 +856,7 @@ class Settings(BaseSettings):
         """
         ...
 
-    def get_operation_configs(self) -> dict:
+    def get_operation_configs(self) -> dict[str, str]:
         """
         Get all operation configurations (for test compatibility).
         """
@@ -743,7 +868,7 @@ class Settings(BaseSettings):
         """
         ...
 
-    def get_all_operation_strategies(self) -> dict:
+    def get_all_operation_strategies(self) -> dict[str, str]:
         """
         Get all operation strategy mappings (for test compatibility).
         """

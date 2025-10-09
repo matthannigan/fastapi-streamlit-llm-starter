@@ -30,8 +30,7 @@ This schema is used by health check endpoints to provide standardized status
 information for load balancers, monitoring systems, and operational dashboards.
 """
 
-from pydantic import BaseModel, Field, field_serializer
-from pydantic.types import SerializationInfo
+from pydantic import BaseModel, Field, field_serializer, FieldSerializationInfo
 from datetime import datetime
 
 
@@ -122,7 +121,7 @@ class HealthResponse(BaseModel):
     """
 
     @field_serializer('timestamp')
-    def serialize_timestamp(self, dt: datetime, _info: SerializationInfo) -> str:
+    def serialize_timestamp(self, dt: datetime, _info: FieldSerializationInfo) -> str:
         """
         Serialize datetime to ISO 8601 format string for JSON compatibility.
         
