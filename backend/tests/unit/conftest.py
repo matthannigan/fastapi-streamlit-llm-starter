@@ -12,6 +12,8 @@ Fixture Categories:
 """
 import pytest
 from unittest.mock import Mock, MagicMock
+from datetime import datetime, timedelta
+import threading as real_threading
 
 
 @pytest.fixture
@@ -285,6 +287,501 @@ def empty_encryption_key():
 
 
 # =============================================================================
+# Shared Mock Date/Time Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def fake_time_module():
+    """
+    Fake time module implementation for deterministic timing testing.
+
+    Provides a controllable time implementation that allows tests to control
+    time progression without using real time delays. This enables deterministic
+    testing of timeout behavior, validation timing, performance measurements,
+    and time-dependent configuration validation without making tests slow.
+
+    State Management:
+        - Current time starts at a fixed timestamp (1000000000.0 seconds)
+        - Time can be advanced programmatically for testing
+        - All time operations return consistent, predictable results
+        - Maintains realistic time interface compatibility
+
+    Public Methods:
+        time(): Returns current fake timestamp
+        sleep(seconds): Advances time by specified seconds (no real delay)
+        monotonic(): Returns monotonic time from same base
+        advance(seconds): Advances time by specified amount
+        reset(): Resets time to initial value
+
+    Use Cases:
+        - Testing circuit breaker recovery timeout behavior
+        - Testing validation timeout behavior
+        - Testing performance measurement accuracy
+        - Testing time-based circuit breaker behavior
+        - Testing retry backoff timing logic
+        - Testing configuration reload timing
+        - Testing background validation scheduling
+        - Any time-dependent resilience logic testing
+
+    Test Customization:
+        def test_timeout_behavior(fake_time_module):
+            # Start at known time
+            fake_time_module.reset()
+
+            # Simulate operation taking 5 seconds
+            fake_time_module.advance(5.0)
+
+            # Test timeout logic
+            assert fake_time_module.time() >= 5.0
+
+    Example:
+        def test_circuit_breaker_recovery_timing(fake_time_module, monkeypatch):
+            # Replace time module with our fake
+            monkeypatch.setattr('app.infrastructure.resilience.circuit_breaker.time', fake_time_module)
+
+            cb = EnhancedCircuitBreaker(recovery_timeout=60)
+
+            # Trigger failure at t=0
+            fake_time_module.reset()
+            # ... cause circuit to open ...
+
+            # Advance time past recovery timeout
+            fake_time_module.advance(61)
+
+            # Circuit should now allow recovery attempts
+            assert cb.state == "HALF_OPEN"
+
+    Default Behavior:
+        - Time starts at timestamp 1000000000.0 (approximately 2001-09-09)
+        - Time only moves forward (no backwards time travel)
+        - sleep() advances time without actual delay
+        - monotonic() shares same time base as time() for consistency
+
+    Time Precision:
+        - Supports microsecond precision for realistic timing
+        - Maintains floating-point time values like real time module
+        - Provides consistent behavior across all time functions
+
+    Note:
+        This fake enables fast, deterministic testing of time-dependent logic
+        without making tests slow or flaky due to real timing variations.
+    """
+
+    class FakeTimeModule:
+        def __init__(self):
+            self._current_time = 1000000000.0  # Fixed base timestamp
+            self._start_time = self._current_time
+            self._monotonic_base = 0.0
+
+        def time(self) -> float:
+            """Return current fake time as Unix timestamp."""
+            return self._current_time
+
+        def monotonic(self) -> float:
+            """Return monotonic time from fixed base."""
+            return self._current_time - self._monotonic_base
+
+        def sleep(self, seconds: float) -> None:
+            """Advance time without real delay."""
+            if seconds >= 0:
+                self._current_time += seconds
+
+        def advance(self, seconds: float) -> None:
+            """Advance time by specified amount for testing."""
+            if seconds >= 0:
+                self._current_time += seconds
+
+        def reset(self) -> None:
+            """Reset time to initial value."""
+            self._current_time = self._start_time
+
+        def set_time(self, timestamp: float) -> None:
+            """Set absolute time for specific test scenarios."""
+            if timestamp >= self._start_time:
+                self._current_time = timestamp
+
+        def get_elapsed_since(self, start_time: float) -> float:
+            """Get elapsed time since given timestamp."""
+            return max(0.0, self._current_time - start_time)
+
+    fake_time = FakeTimeModule()
+    return fake_time
+
+
+@pytest.fixture
+def fake_datetime():
+    """
+    Fake datetime implementation for deterministic timestamp testing.
+
+    Provides a controllable datetime implementation that allows tests
+    to control time progression without using real time delays.
+    This enables deterministic testing of time-dependent circuit breaker
+    behavior like recovery timeouts and metrics timestamps.
+
+    State Management:
+        - Current time starts at a fixed datetime (2023-01-01 12:00:00)
+        - Time can be advanced programmatically for testing
+        - All datetime operations return consistent, predictable results
+        - Maintains realistic datetime interface compatibility
+
+    Public Methods:
+        now(): Returns current fake datetime
+        advance_timedelta(delta): Advances time by specified timedelta
+        advance_seconds(seconds): Advances time by specified seconds
+        reset(): Resets time to initial value
+
+    Use Cases:
+        - Testing circuit breaker recovery timeout behavior
+        - Testing metrics timestamp recording and accuracy
+        - Testing time-based state transitions without real delays
+        - Any time-dependent resilience logic testing
+
+    Test Customization:
+        def test_recovery_timeout(fake_datetime):
+            # Start at known time
+            fake_datetime.reset()
+
+            # Trigger failure and advance time
+            # ... circuit breaker opens ...
+            fake_datetime.advance_seconds(61)  # Past 60s timeout
+
+            # Test recovery behavior
+
+    Example:
+        def test_circuit_breaker_recovery_timing(fake_datetime, monkeypatch):
+            # Replace datetime with our fake
+            monkeypatch.setattr('app.infrastructure.resilience.circuit_breaker.datetime', fake_datetime)
+
+            cb = EnhancedCircuitBreaker(recovery_timeout=60)
+
+            # Trigger failure at t=0
+            fake_datetime.reset()
+            # ... cause circuit to open ...
+
+            # Advance time past recovery timeout
+            fake_datetime.advance_seconds(61)
+
+            # Circuit should now allow recovery attempts
+            assert cb.state == "HALF_OPEN"
+
+    State Behavior:
+        - Time starts at 2023-01-01 12:00:00 UTC for consistency
+        - Time can be advanced positively but not backwards
+        - All datetime objects are real datetime instances with fake times
+        - Maintains thread safety for concurrent test scenarios
+    """
+
+    class FakeDatetime:
+        def __init__(self):
+            self._current_time = datetime(2023, 1, 1, 12, 0, 0)
+            self._initial_time = self._current_time
+            # Attributes to make this behave like datetime module
+            self.datetime: "FakeDatetime" = None  # type: ignore
+            self.timedelta = timedelta
+
+        def now(self):
+            """Return current fake datetime."""
+            return self._current_time
+
+        def advance_timedelta(self, delta: timedelta):
+            """Advance time by specified timedelta."""
+            if delta.total_seconds() >= 0:
+                self._current_time += delta
+
+        def advance_seconds(self, seconds: float):
+            """Advance time by specified seconds."""
+            if seconds >= 0:
+                self._current_time += timedelta(seconds=seconds)
+
+        def reset(self):
+            """Reset time to initial value."""
+            self._current_time = self._initial_time
+
+        def __call__(self):
+            """Make the fake datetime callable like datetime class."""
+            return self
+
+        # Support datetime class methods
+        @classmethod
+        def from_real_datetime(cls, real_dt):
+            """Create fake datetime from real datetime value."""
+            fake = cls()
+            fake._current_time = real_dt
+            fake._initial_time = real_dt
+            return fake
+
+    fake_datetime = FakeDatetime()
+    # Set self-reference after instantiation
+    fake_datetime.datetime = fake_datetime
+
+    return fake_datetime
+
+
+# =============================================================================
+# Shared Mock Threading Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def fake_threading_module():
+    """
+    Fake threading module implementation for deterministic thread testing.
+
+    Provides a controllable threading implementation that allows tests to simulate
+    thread behavior without creating actual threads. This enables deterministic
+    testing of concurrent validation, background processing, and thread-safe
+    configuration validation without making tests slow or non-deterministic.
+
+    State Management:
+        - Thread creation and management simulation
+        - Lock acquisition and release tracking
+        - Thread state monitoring without actual thread creation
+        - Realistic threading interface compatibility
+
+    Thread Simulation:
+        - Threads are created but not actually started
+        - Thread states can be manipulated programmatically for testing
+        - Lock behavior is simulated with state tracking
+        - Thread lifecycle events are captured for assertions
+
+    Public Methods:
+        Thread(*args, **kwargs): Create fake thread instance
+        Lock(): Create fake lock instance
+        current_thread(): Return fake current thread info
+        active_count(): Return simulated active thread count
+        enumerate(): List all simulated active threads
+
+    Configuration Methods:
+        set_thread_state(thread_id, state): Set thread state for testing
+        simulate_thread_completion(thread_id): Simulate thread finishing
+        set_lock_acquired(lock_id, acquired): Simulate lock state
+        advance_thread_progress(thread_id, progress): Simulate thread progress
+
+    Use Cases:
+        - Testing concurrent validation without actual threading complexity
+        - Testing thread-safe configuration access patterns
+        - Testing background validation processing
+        - Testing lock contention and resolution behavior
+        - Any threading-dependent validation logic testing
+
+    Test Customization:
+        def test_concurrent_validation(fake_threading_module):
+            # Create fake threads for concurrent validation
+            threads = []
+            for i in range(3):
+                thread = fake_threading_module.Thread(target=validate_config, args=(config,))
+                threads.append(thread)
+
+            # Simulate thread execution
+            for thread in threads:
+                fake_threading_module.set_thread_state(thread.ident, "running")
+                fake_threading_module.simulate_thread_completion(thread.ident)
+
+    Example:
+        def test_config_validator_thread_safety(fake_threading_module, monkeypatch):
+            from app.infrastructure.resilience.config_validator import ConfigValidator
+
+            # Replace threading with our fake
+            monkeypatch.setattr('app.infrastructure.resilience.config_validator.threading', fake_threading_module)
+
+            validator = ConfigValidator()
+
+            # Test concurrent validation
+            fake_lock = fake_threading_module.Lock()
+
+            # Simulate concurrent access
+            fake_threading_module.set_lock_acquired(id(fake_lock), True)
+
+            # Test thread-safe validation
+            result = validator.validate_concurrently(config_data)
+
+            # Verify thread safety mechanisms were used
+            assert fake_lock.acquire.called or fake_lock.__enter__.called
+
+    Thread States Simulated:
+        - "new": Thread created but not started
+        - "running": Thread currently executing
+        - "finished": Thread completed execution
+        - "blocked": Thread waiting for lock or resource
+
+    Lock Behavior:
+        - Lock acquisition can be simulated for testing contention
+        - Lock release tracking for verification
+        - Context manager support (with statement)
+        - Recursive lock behavior simulation
+
+    Performance Benefits:
+        - No actual thread creation overhead
+        - Deterministic test execution regardless of thread scheduling
+        - Fast test execution without thread synchronization delays
+        - Complete control over thread timing and behavior
+
+    Note:
+        This fake enables testing of threading-dependent validation logic
+        without the complexity and non-determinism of actual threading.
+    """
+
+    class FakeThread:
+        def __init__(self, target=None, args=None, kwargs=None, name=None):
+            self.target = target
+            self.args = args or ()
+            self.kwargs = kwargs or {}
+            self.name = name or f"FakeThread-{id(self)}"
+            self.ident = id(self)
+            self._state = "new"
+            self._result = None
+            self._exception = None
+
+        def start(self):
+            """Simulate thread start without actual thread creation."""
+            self._state = "running"
+
+        def run(self):
+            """Simulate thread execution."""
+            if self.target:
+                try:
+                    self._result = self.target(*self.args, **self.kwargs)
+                except Exception as e:
+                    self._exception = e
+                self._state = "finished"
+
+        def join(self, timeout=None):
+            """Simulate thread join without blocking."""
+            # Simulate thread completion if not already finished
+            if self._state == "running":
+                self._state = "finished"
+
+        def is_alive(self):
+            """Check if thread is simulated as alive."""
+            return self._state == "running"
+
+        def get_state(self):
+            """Get current simulated thread state."""
+            return self._state
+
+        def get_result(self):
+            """Get thread execution result if available."""
+            return self._result
+
+        def get_exception(self):
+            """Get thread execution exception if available."""
+            return self._exception
+
+    class FakeLock:
+        def __init__(self):
+            self._locked = False
+            self._owner = None
+            self._acquisition_count = 0
+
+        def acquire(self, blocking=True, timeout=-1):
+            """Simulate lock acquisition."""
+            if not self._locked or self._owner == real_threading.current_thread():
+                self._locked = True
+                self._owner = real_threading.current_thread()
+                self._acquisition_count += 1
+                return True
+            return False
+
+        def release(self):
+            """Simulate lock release."""
+            if self._locked and self._owner == real_threading.current_thread():
+                self._acquisition_count -= 1
+                if self._acquisition_count == 0:
+                    self._locked = False
+                    self._owner = None
+
+        def __enter__(self):
+            """Context manager entry."""
+            self.acquire()
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            """Context manager exit."""
+            self.release()
+
+        def locked(self):
+            """Check if lock is currently held."""
+            return self._locked
+
+        def get_owner(self):
+            """Get current lock owner."""
+            return self._owner
+
+    class FakeThreadingModule:
+        def __init__(self):
+            self._threads = {}
+            self._locks = {}
+            self._current_thread = FakeThread(name="MainThread")
+            self._active_count = 1
+
+        def Thread(self, target=None, args=None, kwargs=None, name=None):
+            """Create fake thread instance."""
+            thread = FakeThread(target, args, kwargs, name)
+            self._threads[thread.ident] = thread
+            return thread
+
+        def Lock(self):
+            """Create fake lock instance."""
+            lock = FakeLock()
+            self._locks[id(lock)] = lock
+            return lock
+
+        def current_thread(self):
+            """Return fake current thread."""
+            return self._current_thread
+
+        def active_count(self):
+            """Return simulated active thread count."""
+            active = sum(1 for t in self._threads.values() if t.is_alive())
+            return active + 1  # +1 for main thread
+
+        def enumerate(self):
+            """List all simulated active threads."""
+            active_threads = [t for t in self._threads.values() if t.is_alive()]
+            active_threads.append(self._current_thread)
+            return active_threads
+
+        def set_thread_state(self, thread_id, state):
+            """Set thread state for testing."""
+            if thread_id in self._threads:
+                self._threads[thread_id]._state = state
+
+        def simulate_thread_completion(self, thread_id):
+            """Simulate thread completion."""
+            if thread_id in self._threads:
+                thread = self._threads[thread_id]
+                if thread._state == "running":
+                    thread.run()
+
+        def set_lock_acquired(self, lock_id, acquired, owner=None):
+            """Set lock acquisition state for testing."""
+            if lock_id in self._locks:
+                lock = self._locks[lock_id]
+                lock._locked = acquired
+                lock._owner = owner or real_threading.current_thread()
+                if acquired:
+                    lock._acquisition_count += 1
+
+        def advance_thread_progress(self, thread_id, progress_ratio=0.5):
+            """Simulate thread progress for testing."""
+            if thread_id in self._threads:
+                thread = self._threads[thread_id]
+                # For simulation purposes, we could add progress tracking
+                thread._progress = progress_ratio
+
+        def get_thread_by_id(self, thread_id):
+            """Get thread instance by ID."""
+            return self._threads.get(thread_id)
+
+        def get_lock_by_id(self, lock_id):
+            """Get lock instance by ID."""
+            return self._locks.get(lock_id)
+
+    return FakeThreadingModule()
+
+
+# =============================================================================
 # Shared Mock Logger Fixture (System Boundary)
 # =============================================================================
 
@@ -296,18 +793,23 @@ def mock_logger():
 
     Provides a spec'd mock logger that simulates logging.Logger
     for testing log message generation without actual I/O. Used by
-    encryption, startup, and other infrastructure modules.
+    encryption, resilience, startup, and other infrastructure modules.
 
     Default Behavior:
-        - All log methods available (info, warning, error, debug)
+        - All log methods available (info, warning, error, debug, critical)
         - No actual logging output (mocked)
+        - Call tracking for assertions in tests
+        - Realistic method signatures matching logging.Logger
         - Can be configured per-test for specific scenarios
 
     Use Cases:
-        - Testing log messages in cache encryption module
-        - Testing log messages in startup validation module
-        - Testing warning/error logging across infrastructure
-        - Any module needing to test logging behavior
+        - Testing log messages in various modules
+        - Testing state change logging
+        - Testing metrics logging and monitoring behavior
+        - Testing warning/error logging during failures
+        - Testing validation result logging
+        - Testing performance measurement logging
+        - Any component needing to test logging behavior
 
     Test Customization:
         def test_logs_warning(mock_logger, monkeypatch):

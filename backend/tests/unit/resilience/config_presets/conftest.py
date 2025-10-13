@@ -18,62 +18,8 @@ from unittest.mock import Mock, MagicMock
 from typing import Pattern, List, Dict, Any
 
 
-@pytest.fixture
-def mock_logger():
-    """
-    Mock logger for testing config presets logging behavior.
-
-    Provides a spec'd mock logger that simulates logging.Logger
-    for testing log message generation without actual I/O. Config
-    presets components log validation results, environment detection,
-    and operational messages for monitoring and debugging.
-
-    Default Behavior:
-        - All log methods available (info, warning, error, debug)
-        - No actual logging output (mocked)
-        - Call tracking for assertions in tests
-        - Realistic method signatures matching logging.Logger
-
-    Use Cases:
-        - Testing preset validation logging and error messages
-        - Testing environment detection logging and recommendations
-        - Testing configuration loading and validation logging
-        - Testing operational monitoring and debugging messages
-
-    Test Customization:
-        def test_logs_validation_errors(mock_logger):
-            # Configure mock to capture specific log calls
-            mock_logger.warning.assert_called_with("Invalid preset configuration detected")
-
-    Example:
-        def test_preset_manager_logs_recommendations(mock_logger, monkeypatch):
-            # Replace the module logger with our mock
-            monkeypatch.setattr('app.infrastructure.resilience.config_presets.logger', mock_logger)
-
-            # Test environment recommendation
-            manager = PresetManager()
-            recommendation = manager.recommend_preset("production")
-
-            # Verify logging occurred
-            mock_logger.info.assert_called()
-
-    State Management:
-        - Tracks all log method calls for assertion verification
-        - Maintains call history for complex logging scenarios
-        - Supports configuration of expected log patterns
-        - Provides clear failure messages for log assertion errors
-
-    Note:
-        This is a proper system boundary mock - logging performs I/O
-        and should be mocked for unit tests to avoid actual log output.
-    """
-    mock = MagicMock()
-    mock.info = Mock(return_value=None)
-    mock.warning = Mock(return_value=None)
-    mock.error = Mock(return_value=None)
-    mock.debug = Mock(return_value=None)
-    mock.critical = Mock(return_value=None)
-    return mock
+# Note: mock_logger has been moved to the shared resilience/conftest.py
+# file to eliminate duplication across modules
 
 
 @pytest.fixture
