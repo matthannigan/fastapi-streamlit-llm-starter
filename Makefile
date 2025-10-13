@@ -969,6 +969,15 @@ repomix-backend-tests:
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-tests_U.md --quiet --include "backend/tests/**/*"
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-tests_C.md --quiet --include "backend/tests/**/*" --compress
 
+# Generate backend unit test fixtures documentation
+repomix-backend-conftest:
+	@echo "📄 Generating backend unit test fixtures documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-conftest_U.md --quiet --include "backend/tests/**/conftest.py"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-conftest_shared-unit_U.md --quiet --include "backend/tests/unit/*/conftest.py,backend/tests/unit/conftest.py"
+#	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-conftest_resilience_U.md --quiet --include "backend/tests/unit/resilience/**/conftest.py,backend/tests/unit/conftest.py"
+#	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-conftest_llm_security_U.md --quiet --include "backend/tests/unit/llm_security/**/conftest.py,backend/tests/unit/conftest.py"
+
 # Generate backend contracts documentation 
 repomix-backend-contracts: generate-contracts
 	@echo "📄 Generating backend cache documentation..."
