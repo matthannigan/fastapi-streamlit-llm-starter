@@ -1,0 +1,37 @@
+Security Performance Benchmark Summary
+==================================================
+
+Timestamp: 2025-10-08T05:26:12.127741
+Environment: macOS-14.7.6-arm64-arm-64bit-Mach-O
+Python: 3.13.7
+
+Scanner Performance Results:
+------------------------------
+
+ScannerType.PROMPT_INJECTION (unknown) ✅ PASS
+  Requests: 5/15
+  Latency - Avg: 41.2ms, P95: 42.9ms
+  Memory - Avg: 0.2MB, Peak: 0.3MB
+  Throughput: 24.3 req/s
+
+ScannerType.TOXICITY_INPUT (unknown) ✅ PASS
+  Requests: 5/15
+  Latency - Avg: 37.2ms, P95: 38.5ms
+  Memory - Avg: 0.0MB, Peak: 0.2MB
+  Throughput: 26.9 req/s
+
+ScannerType.PII_DETECTION (unknown) ❌ FAIL
+  Requests: 0/15
+  Latency - Avg: 0.0ms, P95: 0.0ms
+  Memory - Avg: 0.0MB, Peak: 0.0MB
+  Throughput: 0.0 req/s
+
+ScannerType.BIAS_DETECTION (concurrent_error) ❌ FAIL
+  Requests: 0/10
+  Latency - Avg: 0.0ms, P95: 0.0ms
+  Memory - Avg: 0.0MB, Peak: 0.0MB
+  Throughput: 0.0 req/s
+
+Recommendations:
+--------------------
+1. Low success rate in: prompt_injection, toxicity_input, pii_detection, bias_detection. Check scanner configuration and error handling.

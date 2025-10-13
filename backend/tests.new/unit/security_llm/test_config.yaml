@@ -1,0 +1,50 @@
+# Test Security Configuration
+#
+# This is a test configuration file used for testing the configuration loader.
+# It demonstrates the expected structure and format.
+
+input_scanners:
+  prompt_injection:
+    enabled: true
+    threshold: 0.8
+    action: "block"
+    use_onnx: true
+    scan_timeout: 30
+    metadata:
+      description: "Test prompt injection scanner"
+
+  toxicity_input:
+    enabled: true
+    threshold: 0.7
+    action: "warn"
+    use_onnx: true
+    scan_timeout: 25
+    metadata:
+      description: "Test toxic input scanner"
+
+output_scanners:
+  toxicity_output:
+    enabled: true
+    threshold: 0.8
+    action: "block"
+    use_onnx: true
+    scan_timeout: 25
+    metadata:
+      description: "Test toxic output scanner"
+
+performance:
+  cache_enabled: true
+  cache_ttl_seconds: 300
+  max_concurrent_scans: 5
+  memory_limit_mb: 1024
+
+logging:
+  enabled: true
+  level: "INFO"
+  log_scan_operations: true
+  include_scanned_text: false
+
+service:
+  name: "security-scanner-test"
+  environment: "testing"
+  debug_mode: true

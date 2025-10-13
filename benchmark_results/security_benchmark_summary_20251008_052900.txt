@@ -1,0 +1,26 @@
+Security Performance Benchmark Summary
+==================================================
+
+Timestamp: 2025-10-08T05:29:00.458452
+Environment: macOS-14.7.6-arm64-arm-64bit-Mach-O
+Python: 3.13.7
+
+Scanner Performance Results:
+------------------------------
+
+prompt_injection (unknown) ❌ FAIL
+  Requests: 20/30
+  Latency - Avg: 43.7ms, P95: 68.3ms
+  Memory - Avg: 0.1MB, Peak: 0.5MB
+  Throughput: 22.9 req/s
+
+toxicity_input (unknown) ❌ FAIL
+  Requests: 20/30
+  Latency - Avg: 43.2ms, P95: 52.5ms
+  Memory - Avg: 0.0MB, Peak: 0.0MB
+  Throughput: 23.2 req/s
+
+Recommendations:
+--------------------
+1. Consider ONNX optimization for slow scanners: prompt_injection, toxicity_input. Target p95 latency < 50ms.
+2. Low success rate in: prompt_injection, toxicity_input. Check scanner configuration and error handling.

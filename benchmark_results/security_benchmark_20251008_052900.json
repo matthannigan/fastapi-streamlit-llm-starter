@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-10-08T05:29:00.458452",
+  "environment_info": {
+    "platform": "macOS-14.7.6-arm64-arm-64bit-Mach-O",
+    "python_version": "3.13.7",
+    "processor": "arm",
+    "architecture": [
+      "64bit",
+      "Mach-O"
+    ],
+    "hostname": "MGH-MacBook-Air",
+    "pytorch_version": "2.8.0",
+    "cuda_available": false,
+    "onnxruntime_version": "1.23.1",
+    "onnx_available_providers": [
+      "CoreMLExecutionProvider",
+      "AzureExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "total_memory_gb": 24.0,
+    "available_memory_gb": 9.37
+  },
+  "scanner_metrics": {
+    "prompt_injection": {
+      "scanner_name": "prompt_injection",
+      "model_type": "unknown",
+      "total_requests": 30,
+      "successful_requests": 20,
+      "failed_requests": 10,
+      "avg_latency_ms": 43.73555206693709,
+      "p50_latency_ms": 42.822979390621185,
+      "p95_latency_ms": 68.32341570407152,
+      "p99_latency_ms": 68.32341570407152,
+      "min_latency_ms": 37.115124985575676,
+      "max_latency_ms": 68.32341570407152,
+      "avg_memory_mb": 0.06015625,
+      "peak_memory_mb": 0.5,
+      "violations_per_request": 0,
+      "requests_per_second": 22.864693658593904
+    },
+    "toxicity_input": {
+      "scanner_name": "toxicity_input",
+      "model_type": "unknown",
+      "total_requests": 30,
+      "successful_requests": 20,
+      "failed_requests": 10,
+      "avg_latency_ms": 43.16422091796994,
+      "p50_latency_ms": 42.59227076545358,
+      "p95_latency_ms": 52.51245852559805,
+      "p99_latency_ms": 52.51245852559805,
+      "min_latency_ms": 35.310959443449974,
+      "max_latency_ms": 52.51245852559805,
+      "avg_memory_mb": 0.0015625,
+      "peak_memory_mb": 0.03125,
+      "violations_per_request": 0,
+      "requests_per_second": 23.167335787211773
+    }
+  },
+  "comparison_metrics": {},
+  "performance_targets_met": {
+    "prompt_injection": false,
+    "toxicity_input": false
+  },
+  "recommendations": [
+    "Consider ONNX optimization for slow scanners: prompt_injection, toxicity_input. Target p95 latency < 50ms.",
+    "Low success rate in: prompt_injection, toxicity_input. Check scanner configuration and error handling."
+  ]
+}
