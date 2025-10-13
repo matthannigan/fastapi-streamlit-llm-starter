@@ -4,6 +4,8 @@ Local Scanner module test fixtures providing mocks for ML models and external de
 This module provides test doubles for external dependencies of the LLM security local scanner
 module, focusing on ML model operations, security scanning workflows, and external library
 interactions like Transformers, Presidio, and ONNX Runtime.
+
+SHARED MOCKS: MockSecurityResult, MockViolation, MockScannerConfig, MockSecurityConfig are imported from parent conftest.py
 """
 
 from typing import Dict, Any, Optional, List, Union
@@ -13,6 +15,10 @@ from datetime import datetime, UTC
 import asyncio
 import time
 
+# Import shared mocks from parent conftest - these are used across multiple modules
+# MockSecurityResult, MockViolation, MockScannerConfig, MockSecurityConfig, and their fixtures
+# are now defined in backend/tests/unit/llm_security/conftest.py
+
 # Import classes that would normally be from the actual implementation
 # from app.infrastructure.security.llm.scanners.local_scanner import (
 #     ModelCache, BaseScanner, PromptInjectionScanner, ToxicityScanner, PIIScanner, BiasScanner, LocalLLMSecurityScanner
@@ -21,114 +27,8 @@ import time
 # from app.infrastructure.security.llm.config import ScannerConfig, SecurityConfig, ScannerType
 
 
-class MockSecurityResult:
-    """Mock SecurityResult for testing scanner validation operations."""
-
-    def __init__(self,
-                 is_safe: bool = True,
-                 violations: Optional[List] = None,
-                 score: float = 1.0,
-                 scanned_text: str = "test input",
-                 scan_duration_ms: int = 50,
-                 scanner_results: Optional[Dict] = None,
-                 metadata: Optional[Dict] = None):
-        self.is_safe = is_safe
-        self.violations = violations or []
-        self.score = score
-        self.scanned_text = scanned_text
-        self.scan_duration_ms = scan_duration_ms
-        self.scanner_results = scanner_results or {}
-        self.metadata = metadata or {"scan_type": "input"}
-        self.timestamp = datetime.now(UTC)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization testing."""
-        return {
-            "is_safe": self.is_safe,
-            "violations": [v.to_dict() if hasattr(v, 'to_dict') else v for v in self.violations],
-            "score": self.score,
-            "scanned_text": self.scanned_text,
-            "scan_duration_ms": self.scan_duration_ms,
-            "scanner_results": self.scanner_results,
-            "metadata": self.metadata,
-            "timestamp": self.timestamp.isoformat()
-        }
-
-
-class MockViolation:
-    """Mock Violation for testing security violation scenarios."""
-
-    def __init__(self,
-                 violation_type: str = "prompt_injection",
-                 severity: str = "medium",
-                 description: str = "Test violation",
-                 confidence: float = 0.8,
-                 start_index: int = 0,
-                 end_index: int = 10,
-                 text: str = "test"):
-        self.type = violation_type
-        self.severity = severity
-        self.description = description
-        self.confidence = confidence
-        self.start_index = start_index
-        self.end_index = end_index
-        self.text = text
-        self.timestamp = datetime.now(UTC)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization testing."""
-        return {
-            "type": self.type,
-            "severity": self.severity,
-            "description": self.description,
-            "confidence": self.confidence,
-            "start_index": self.start_index,
-            "end_index": self.end_index,
-            "text": self.text,
-            "timestamp": self.timestamp.isoformat()
-        }
-
-
-class MockScannerConfig:
-    """Mock ScannerConfig for testing scanner configuration."""
-
-    def __init__(self,
-                 enabled: bool = True,
-                 threshold: float = 0.7,
-                 action: str = "warn",
-                 model_name: Optional[str] = None,
-                 model_params: Optional[Dict] = None,
-                 scan_timeout: int = 30,
-                 enabled_violation_types: Optional[List[str]] = None,
-                 metadata: Optional[Dict] = None):
-        self.enabled = enabled
-        self.threshold = threshold
-        self.action = action
-        self.model_name = model_name
-        self.model_params = model_params or {}
-        self.scan_timeout = scan_timeout
-        self.enabled_violation_types = enabled_violation_types or []
-        self.metadata = metadata or {}
-
-
-class MockSecurityConfig:
-    """Mock SecurityConfig for testing scanner service configuration."""
-
-    def __init__(self,
-                 scanners: Optional[Dict] = None,
-                 performance: Optional[Dict] = None,
-                 logging: Optional[Dict] = None,
-                 service_name: str = "test-security-service",
-                 environment: str = "testing"):
-        self.scanners = scanners or {}
-        self.performance = performance or {"max_concurrent_scans": 5}
-        self.logging = logging or {"enabled": True, "level": "DEBUG"}
-        self.service_name = service_name
-        self.environment = environment
-
-    def get_scanner_config(self, scanner_type: str) -> MockScannerConfig:
-        """Get scanner configuration by type."""
-        return self.scanners.get(scanner_type, MockScannerConfig())
+# NOTE: MockSecurityResult, MockViolation, MockScannerConfig, MockSecurityConfig removed
+# These are now shared fixtures in parent conftest.py
 
 
 class MockModelCache:
@@ -169,7 +69,7 @@ class MockModelCache:
                 raise Exception(f"Failed to load model: {model_name}") from e
             raise
 
-    def get_cache_stats(self) -> Dict[str, int]:
+    def get_cache_stats(self) -> Dict[str, Any]:
         """Mock cache statistics."""
         total_hits = sum(stats.get("hits", 0) for stats in self._cache_stats.values())
         return {
@@ -216,9 +116,12 @@ class MockModelCache:
 
 
 class MockBaseScanner:
-    """Mock BaseScanner for testing individual scanner implementations."""
+    """Mock BaseScanner for testing individual scanner implementations.
+    
+    Uses shared MockScannerConfig from parent conftest.py.
+    """
 
-    def __init__(self, config: MockScannerConfig, model_cache: MockModelCache):
+    def __init__(self, config, model_cache: MockModelCache):
         self.config = config
         self.model_cache = model_cache
         self._model = None
@@ -248,8 +151,11 @@ class MockBaseScanner:
         )
         self._initialized = True
 
-    async def scan(self, text: str) -> List[MockViolation]:
+    async def scan(self, text: str) -> List:
         """Mock text scanning."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockViolation
+        
         self._scan_calls.append({
             "text": text[:50] + "..." if len(text) > 50 else text,
             "timestamp": "mock-timestamp"
@@ -289,12 +195,15 @@ class MockBaseScanner:
 class MockPromptInjectionScanner(MockBaseScanner):
     """Mock PromptInjectionScanner for testing prompt injection detection."""
 
-    def __init__(self, config: MockScannerConfig, model_cache: MockModelCache):
+    def __init__(self, config, model_cache: MockModelCache):
         super().__init__(config, model_cache)
         self.scanner_type = "prompt_injection"
 
-    async def scan(self, text: str) -> List[MockViolation]:
+    async def scan(self, text: str) -> List:
         """Mock prompt injection scanning."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockViolation
+        
         violations = await super().scan(text)
 
         # Add prompt injection specific logic
@@ -313,12 +222,15 @@ class MockPromptInjectionScanner(MockBaseScanner):
 class MockToxicityScanner(MockBaseScanner):
     """Mock ToxicityScanner for testing toxicity detection."""
 
-    def __init__(self, config: MockScannerConfig, model_cache: MockModelCache):
+    def __init__(self, config, model_cache: MockModelCache):
         super().__init__(config, model_cache)
         self.scanner_type = "toxicity"
 
-    async def scan(self, text: str) -> List[MockViolation]:
+    async def scan(self, text: str) -> List:
         """Mock toxicity scanning."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockViolation
+        
         violations = await super().scan(text)
 
         # Add toxicity specific logic
@@ -337,12 +249,15 @@ class MockToxicityScanner(MockBaseScanner):
 class MockPIIScanner(MockBaseScanner):
     """Mock PIIScanner for testing PII detection."""
 
-    def __init__(self, config: MockScannerConfig, model_cache: MockModelCache):
+    def __init__(self, config, model_cache: MockModelCache):
         super().__init__(config, model_cache)
         self.scanner_type = "pii"
 
-    async def scan(self, text: str) -> List[MockViolation]:
+    async def scan(self, text: str) -> List:
         """Mock PII scanning."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockViolation
+        
         violations = []
 
         if not self.config.enabled:
@@ -385,12 +300,15 @@ class MockPIIScanner(MockBaseScanner):
 class MockBiasScanner(MockBaseScanner):
     """Mock BiasScanner for testing bias detection."""
 
-    def __init__(self, config: MockScannerConfig, model_cache: MockModelCache):
+    def __init__(self, config, model_cache: MockModelCache):
         super().__init__(config, model_cache)
         self.scanner_type = "bias"
 
-    async def scan(self, text: str) -> List[MockViolation]:
+    async def scan(self, text: str) -> List:
         """Mock bias scanning."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockViolation
+        
         violations = await super().scan(text)
 
         # Add bias specific logic
@@ -407,9 +325,15 @@ class MockBiasScanner(MockBaseScanner):
 
 
 class MockLocalLLMSecurityScanner:
-    """Mock LocalLLMSecurityScanner for testing comprehensive security scanning."""
+    """Mock LocalLLMSecurityScanner for testing comprehensive security scanning.
+    
+    Uses shared MockSecurityConfig from parent conftest.py.
+    """
 
-    def __init__(self, config: Optional[MockSecurityConfig] = None, config_path: Optional[str] = None, environment: Optional[str] = None):
+    def __init__(self, config=None, config_path: Optional[str] = None, environment: Optional[str] = None):
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockSecurityConfig
+        
         self.config = config or MockSecurityConfig()
         self.config_path = config_path
         self.environment = environment or "testing"
@@ -457,8 +381,11 @@ class MockLocalLLMSecurityScanner:
 
         return warmup_times
 
-    async def validate_input(self, text: str, context: Optional[Dict] = None) -> MockSecurityResult:
+    async def validate_input(self, text: str, context: Optional[Dict] = None):
         """Mock input validation."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockSecurityResult
+        
         self._validate_calls.append({
             "type": "input",
             "text": text[:50] + "..." if len(text) > 50 else text,
@@ -488,8 +415,11 @@ class MockLocalLLMSecurityScanner:
             metadata={"scan_type": "input", "context": context}
         )
 
-    async def validate_output(self, text: str, context: Optional[Dict] = None) -> MockSecurityResult:
+    async def validate_output(self, text: str, context: Optional[Dict] = None):
         """Mock output validation."""
+        # Import at runtime to avoid circular imports
+        from ...conftest import MockSecurityResult
+        
         self._validate_calls.append({
             "type": "output",
             "text": text[:50] + "..." if len(text) > 50 else text,
@@ -545,36 +475,8 @@ class MockLocalLLMSecurityScanner:
 
 # Pytest Fixtures
 
-@pytest.fixture
-def mock_security_result():
-    """Factory fixture to create MockSecurityResult instances for testing."""
-    def _create_result(**kwargs) -> MockSecurityResult:
-        return MockSecurityResult(**kwargs)
-    return _create_result
-
-
-@pytest.fixture
-def mock_violation():
-    """Factory fixture to create MockViolation instances for testing."""
-    def _create_violation(**kwargs) -> MockViolation:
-        return MockViolation(**kwargs)
-    return _create_violation
-
-
-@pytest.fixture
-def mock_scanner_config():
-    """Factory fixture to create MockScannerConfig instances for testing."""
-    def _create_config(**kwargs) -> MockScannerConfig:
-        return MockScannerConfig(**kwargs)
-    return _create_config
-
-
-@pytest.fixture
-def mock_security_config():
-    """Factory fixture to create MockSecurityConfig instances for testing."""
-    def _create_config(**kwargs) -> MockSecurityConfig:
-        return MockSecurityConfig(**kwargs)
-    return _create_config
+# NOTE: mock_security_result, mock_violation, mock_scanner_config, mock_security_config fixtures removed
+# These are now shared fixtures in parent conftest.py
 
 
 @pytest.fixture
@@ -586,50 +488,65 @@ def mock_model_cache():
 
 
 @pytest.fixture
-def mock_base_scanner():
-    """Factory fixture to create MockBaseScanner instances for testing."""
-    def _create_scanner(config: Optional[MockScannerConfig] = None, model_cache: Optional[MockModelCache] = None) -> MockBaseScanner:
-        config = config or MockScannerConfig()
+def mock_base_scanner(mock_scanner_config):
+    """Factory fixture to create MockBaseScanner instances for testing.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
+    def _create_scanner(config=None, model_cache: Optional[MockModelCache] = None) -> MockBaseScanner:
+        config = config or mock_scanner_config()
         model_cache = model_cache or MockModelCache()
         return MockBaseScanner(config, model_cache)
     return _create_scanner
 
 
 @pytest.fixture
-def mock_prompt_injection_scanner():
-    """Factory fixture to create MockPromptInjectionScanner instances for testing."""
-    def _create_scanner(config: Optional[MockScannerConfig] = None, model_cache: Optional[MockModelCache] = None) -> MockPromptInjectionScanner:
-        config = config or MockScannerConfig(model_name="prompt_injection_model")
+def mock_prompt_injection_scanner(mock_scanner_config):
+    """Factory fixture to create MockPromptInjectionScanner instances for testing.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
+    def _create_scanner(config=None, model_cache: Optional[MockModelCache] = None) -> MockPromptInjectionScanner:
+        config = config or mock_scanner_config(model_name="prompt_injection_model")
         model_cache = model_cache or MockModelCache()
         return MockPromptInjectionScanner(config, model_cache)
     return _create_scanner
 
 
 @pytest.fixture
-def mock_toxicity_scanner():
-    """Factory fixture to create MockToxicityScanner instances for testing."""
-    def _create_scanner(config: Optional[MockScannerConfig] = None, model_cache: Optional[MockModelCache] = None) -> MockToxicityScanner:
-        config = config or MockScannerConfig(model_name="toxicity_model")
+def mock_toxicity_scanner(mock_scanner_config):
+    """Factory fixture to create MockToxicityScanner instances for testing.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
+    def _create_scanner(config=None, model_cache: Optional[MockModelCache] = None) -> MockToxicityScanner:
+        config = config or mock_scanner_config(model_name="toxicity_model")
         model_cache = model_cache or MockModelCache()
         return MockToxicityScanner(config, model_cache)
     return _create_scanner
 
 
 @pytest.fixture
-def mock_pii_scanner():
-    """Factory fixture to create MockPIIScanner instances for testing."""
-    def _create_scanner(config: Optional[MockScannerConfig] = None, model_cache: Optional[MockModelCache] = None) -> MockPIIScanner:
-        config = config or MockScannerConfig(model_name="pii_model")
+def mock_pii_scanner(mock_scanner_config):
+    """Factory fixture to create MockPIIScanner instances for testing.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
+    def _create_scanner(config=None, model_cache: Optional[MockModelCache] = None) -> MockPIIScanner:
+        config = config or mock_scanner_config(model_name="pii_model")
         model_cache = model_cache or MockModelCache()
         return MockPIIScanner(config, model_cache)
     return _create_scanner
 
 
 @pytest.fixture
-def mock_bias_scanner():
-    """Factory fixture to create MockBiasScanner instances for testing."""
-    def _create_scanner(config: Optional[MockScannerConfig] = None, model_cache: Optional[MockModelCache] = None) -> MockBiasScanner:
-        config = config or MockScannerConfig(model_name="bias_model")
+def mock_bias_scanner(mock_scanner_config):
+    """Factory fixture to create MockBiasScanner instances for testing.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
+    def _create_scanner(config=None, model_cache: Optional[MockModelCache] = None) -> MockBiasScanner:
+        config = config or mock_scanner_config(model_name="bias_model")
         model_cache = model_cache or MockModelCache()
         return MockBiasScanner(config, model_cache)
     return _create_scanner
@@ -638,7 +555,7 @@ def mock_bias_scanner():
 @pytest.fixture
 def mock_local_llm_security_scanner():
     """Factory fixture to create MockLocalLLMSecurityScanner instances for testing."""
-    def _create_scanner(config: Optional[MockSecurityConfig] = None,
+    def _create_scanner(config=None,
                         config_path: Optional[str] = None,
                         environment: Optional[str] = None) -> MockLocalLLMSecurityScanner:
         return MockLocalLLMSecurityScanner(config=config, config_path=config_path, environment=environment)
@@ -663,38 +580,41 @@ def scanner_test_texts():
 
 
 @pytest.fixture
-def scanner_configuration_scenarios():
-    """Various scanner configuration scenarios for testing."""
+def scanner_configuration_scenarios(mock_scanner_config):
+    """Various scanner configuration scenarios for testing.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
     return {
         "minimal_config": {
             "scanners": {
-                "prompt_injection": MockScannerConfig(enabled=True, threshold=0.8)
+                "prompt_injection": mock_scanner_config(enabled=True, threshold=0.8)
             },
             "description": "Minimal configuration with only prompt injection"
         },
         "strict_config": {
             "scanners": {
-                "prompt_injection": MockScannerConfig(enabled=True, threshold=0.5, action="block"),
-                "toxicity_input": MockScannerConfig(enabled=True, threshold=0.6, action="block"),
-                "toxicity_output": MockScannerConfig(enabled=True, threshold=0.7, action="block"),
-                "pii_detection": MockScannerConfig(enabled=True, threshold=0.8, action="redact"),
-                "bias_detection": MockScannerConfig(enabled=True, threshold=0.6, action="flag")
+                "prompt_injection": mock_scanner_config(enabled=True, threshold=0.5, action="block"),
+                "toxicity_input": mock_scanner_config(enabled=True, threshold=0.6, action="block"),
+                "toxicity_output": mock_scanner_config(enabled=True, threshold=0.7, action="block"),
+                "pii_detection": mock_scanner_config(enabled=True, threshold=0.8, action="redact"),
+                "bias_detection": mock_scanner_config(enabled=True, threshold=0.6, action="flag")
             },
             "description": "Strict security configuration for production"
         },
         "development_config": {
             "scanners": {
-                "prompt_injection": MockScannerConfig(enabled=True, threshold=0.9, action="warn"),
-                "toxicity_input": MockScannerConfig(enabled=False),  # Disabled for dev
-                "toxicity_output": MockScannerConfig(enabled=True, threshold=0.8, action="warn"),
-                "pii_detection": MockScannerConfig(enabled=False),  # Disabled for dev
-                "bias_detection": MockScannerConfig(enabled=True, threshold=0.9, action="warn")
+                "prompt_injection": mock_scanner_config(enabled=True, threshold=0.9, action="warn"),
+                "toxicity_input": mock_scanner_config(enabled=False),  # Disabled for dev
+                "toxicity_output": mock_scanner_config(enabled=True, threshold=0.8, action="warn"),
+                "pii_detection": mock_scanner_config(enabled=False),  # Disabled for dev
+                "bias_detection": mock_scanner_config(enabled=True, threshold=0.9, action="warn")
             },
             "description": "Development configuration with relaxed settings"
         },
         "testing_config": {
             "scanners": {
-                "prompt_injection": MockScannerConfig(enabled=True, threshold=0.95, action="warn", model_name="test_model")
+                "prompt_injection": mock_scanner_config(enabled=True, threshold=0.95, action="warn", model_name="test_model")
             },
             "description": "Testing configuration with high threshold"
         },
@@ -737,8 +657,11 @@ def scanner_performance_test_data():
 
 
 @pytest.fixture
-def scanner_error_scenarios():
-    """Various error scenarios for testing scanner error handling."""
+def scanner_error_scenarios(mock_scanner_config):
+    """Various error scenarios for testing scanner error handling.
+    
+    Uses shared mock_scanner_config fixture from parent conftest.
+    """
     return {
         "model_load_failure": {
             "scenario": "Scanner fails to load model",
@@ -748,7 +671,7 @@ def scanner_error_scenarios():
         },
         "scanner_initialization_failure": {
             "scenario": "Scanner fails during initialization",
-            "config": MockScannerConfig(enabled=True, model_name="broken_model"),
+            "config": mock_scanner_config(enabled=True, model_name="broken_model"),
             "expected_error": "Failed to initialize scanner",
             "should_gracefully_degrade": True
         },
