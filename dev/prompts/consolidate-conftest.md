@@ -1,10 +1,10 @@
-You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, read the attached `TESTING.md` file. Summarize the 3 most important principles and the 3 most important anti-patterns from this document.
+You are a senior software engineer specializing in writing maintainable, scalable, behavior-driven tests. First, review `docs/guides/testing/WRITING_TESTS.md` and `docs/guides/testing/UNIT_TESTS.md`. Then summarize the 3 most important principles and the 3 most important anti-patterns from these documents.
 
 ---
 
 Your next goal is to ensure our test suite is as clean and efficient as our production code and adheres to DRY (Don't Repeat Yourself) principles.
 
-I have provided a markdown export showing the contents of multiple `conftest.py` files from a specific directory (`[parent_directory]`) and its subdirectories (`[parent_directory]/**/`).
+I have provided a markdown export showing the contents of multiple `conftest.py` files from a specific directory (`[parent_directory]`) and its `module`-based subdirectories (`[parent_directory]/**/`).
 
 Please perform a thorough review of these fixtures and provide a detailed refactoring plan. Your plan should identify which fixtures are good candidates for consolidation into the shared, parent `conftest.py` file at `[parent_directory]/conftest.py`.
 
@@ -20,7 +20,7 @@ Please perform a thorough review of these fixtures and provide a detailed refact
     * For each fixture, provide a brief, one-sentence justification for why it should be shared.
 
 3.  **Fixtures to KEEP in Local `conftest.py` Files:**
-    * List fixtures that should remain in their specific subdirectories (e.g., `[parent_directory]/redis_ai/conftest.py`).
+    * List fixtures that should remain in their specific subdirectories (e.g., `[parent_directory]/[module]/conftest.py`).
     * **Criteria for Keeping Local:** A fixture should remain local if it is tightly coupled to the specific module it tests. Prime candidates include:
         * Mocks for dependencies that are unique to that one module (e.g., `mock_parameter_mapper` for `redis_ai`).
         * Complex, stateful mocks that are only relevant to one component's tests (e.g., `mock_redis_client` for `redis_generic`).

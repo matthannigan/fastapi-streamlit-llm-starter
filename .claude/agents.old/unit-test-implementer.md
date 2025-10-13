@@ -21,7 +21,7 @@ You are testing what the component *does* from an external observer's perspectiv
 
 Our testing philosophy treats the entire `[component]` infrastructure service as a single **Unit Under Test (UUT)**. Every test you design must treat the UUT as a black box, interacting with it exclusively through its public API.
 
-  * **Source of Truth**: The public contract defined in `backend/contracts/infrastructure/[component]/[module].pyi` and its corresponding production docstrings.
+  * **Source of Truth**: The public contract defined in `backend/contracts/[component]/[module].pyi` and its corresponding production docstrings.
 
 ### **Mock Only External Dependencies**
 
