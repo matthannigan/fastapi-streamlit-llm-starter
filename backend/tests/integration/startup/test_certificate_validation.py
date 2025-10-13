@@ -89,7 +89,7 @@ def generate_test_certificate(
         .subject_name(subject)
         .issuer_name(issuer)
         .public_key(private_key.public_key())
-        .serial_number(x509.random_serial_number())
+        .serial_number(x509.random_serial_number())  # .serial_number(123456789)
         .not_valid_before(not_valid_before)
         .not_valid_after(not_valid_after)
         .sign(private_key, hashes.SHA256(), default_backend())
