@@ -4,6 +4,8 @@ ONNX Utils module test fixtures providing mocks for ONNX Runtime and external de
 This module provides test doubles for external dependencies of the LLM security ONNX utils
 module, focusing on ONNX Runtime operations, model downloading, file system interactions,
 and provider management scenarios.
+
+SHARED MOCKS: MockInfrastructureError is imported from parent conftest.py
 """
 
 from typing import Dict, Any, Optional, List, Tuple
@@ -14,19 +16,16 @@ from datetime import datetime, UTC
 import tempfile
 import shutil
 
+# Import shared mocks from parent conftest - these are used across multiple modules
+# MockInfrastructureError and its fixture are now defined in backend/tests/unit/llm_security/conftest.py
+
 # Import classes that would normally be from the actual implementation
 # from app.infrastructure.security.llm.onnx_utils import (
 #     ONNXModelInfo, ProviderInfo, ONNXModelDownloader, ONNXProviderManager, ONNXModelManager
 # )
 
 
-class MockInfrastructureError(Exception):
-    """Mock InfrastructureError for testing ONNX utils error handling."""
-
-    def __init__(self, message: str, context: Optional[Dict] = None):
-        self.message = message
-        self.context = context or {}
-        super().__init__(message)
+# NOTE: MockInfrastructureError removed - now shared fixture in parent conftest.py
 
 
 class MockONNXModelInfo:
@@ -101,6 +100,9 @@ class MockONNXModelDownloader:
 
     def verify_model_hash(self, model_path: Path, expected_hash: Optional[str] = None) -> str:
         """Mock model hash verification."""
+        # Import at runtime to avoid circular imports
+        from ..conftest import MockInfrastructureError
+        
         self._hash_verification_calls.append({
             "operation": "verify_hash",
             "model_path": str(model_path),
@@ -134,6 +136,9 @@ class MockONNXModelDownloader:
 
     async def download_model(self, model_name: str, force_download: bool = False) -> Path:
         """Mock model downloading."""
+        # Import at runtime to avoid circular imports
+        from ..conftest import MockInfrastructureError
+        
         self._download_calls.append({
             "operation": "download",
             "model_name": model_name,
@@ -292,6 +297,9 @@ class MockONNXModelManager:
 
     async def load_model(self, model_name: str, optimize_for: str = 'latency', verify_hash: Optional[str] = None) -> Tuple[Any, str, Dict[str, Any]]:
         """Mock model loading with provider fallback."""
+        # Import at runtime to avoid circular imports
+        from ..conftest import MockInfrastructureError
+        
         self._load_calls.append({
             "operation": "load_model",
             "model_name": model_name,
@@ -393,10 +401,7 @@ class MockONNXModelManager:
 
 # Pytest Fixtures
 
-@pytest.fixture
-def mock_infrastructure_error():
-    """Mock InfrastructureError exception for testing ONNX utils error handling."""
-    return MockInfrastructureError
+# NOTE: mock_infrastructure_error fixture removed - now shared fixture in parent conftest.py
 
 
 @pytest.fixture

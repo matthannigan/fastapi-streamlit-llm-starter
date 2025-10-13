@@ -4,6 +4,8 @@ Config loader module test fixtures providing mocks for file system and YAML load
 This module provides test doubles for external dependencies of the LLM security config
 loader module, focusing on file system operations, YAML parsing, and environment
 variable handling for configuration loading scenarios.
+
+SHARED MOCKS: MockConfigurationError, MockSecurityConfig are imported from parent conftest.py
 """
 
 from typing import Dict, Any, Optional, Union
@@ -11,46 +13,35 @@ import pytest
 from unittest.mock import Mock, MagicMock, mock_open
 from pathlib import Path
 
+# Import shared mocks from parent conftest - these are used across multiple modules
+# MockConfigurationError, MockSecurityConfig, and their fixtures
+# are now defined in backend/tests/unit/llm_security/conftest.py
+
 # Import classes that would normally be from the actual implementation
 # from app.infrastructure.security.llm.config_loader import (
 #     ConfigurationError, SecurityConfigLoader
 # )
 
 
-class MockConfigurationError(Exception):
-    """Mock ConfigurationError for testing config loader error handling."""
-
-    def __init__(self, message: str, suggestion: Optional[str] = None, file_path: Optional[str] = None):
-        self.message = message
-        self.suggestion = suggestion
-        self.file_path = file_path
-        super().__init__(message)
+# NOTE: MockConfigurationError removed - now shared fixture in parent conftest.py
 
 
-class MockSecurityConfig:
-    """Mock SecurityConfig for testing config loader functionality."""
-
-    def __init__(self, **kwargs):
-        self.scanners = kwargs.get("scanners", {})
-        self.performance = kwargs.get("performance", {})
-        self.logging = kwargs.get("logging", {})
-        self.service_name = kwargs.get("service_name", "test-service")
-        self.environment = kwargs.get("environment", "testing")
-        self.version = kwargs.get("version", "1.0.0")
-        self.preset = kwargs.get("preset")
-        self.debug_mode = kwargs.get("debug_mode", False)
-        self.custom_settings = kwargs.get("custom_settings", {})
+# NOTE: MockSecurityConfig removed - now shared fixture in parent conftest.py
 
 
 class MockSecurityConfigLoader:
-    """Mock SecurityConfigLoader for testing configuration loading patterns."""
+    """Mock SecurityConfigLoader for testing configuration loading patterns.
+    
+    Uses shared MockSecurityConfig from parent conftest.py.
+    """
 
     def __init__(self,
                  config_path: Optional[str] = None,
                  environment: Optional[str] = None,
                  cache_enabled: bool = True,
                  cache_ttl: int = 300,
-                 debug_mode: Optional[bool] = None):
+                 debug_mode: Optional[bool] = None,
+                 mock_security_config_factory=None):
         self.config_path = config_path or "config/security"
         self.environment = environment or "testing"
         self.cache_enabled = cache_enabled
@@ -59,11 +50,13 @@ class MockSecurityConfigLoader:
         self._cache = {}
         self._load_calls = []
         self._cache_clear_calls = []
+        # Store the factory for creating MockSecurityConfig instances
+        self._config_factory = mock_security_config_factory
 
     def load_config(self,
                     environment: Optional[str] = None,
                     enable_hot_reload: bool = False,
-                    cache_bust: bool = False) -> MockSecurityConfig:
+                    cache_bust: bool = False):
         """Mock configuration loading with caching and environment support."""
 
         load_call = {
@@ -81,15 +74,27 @@ class MockSecurityConfigLoader:
         if not cache_bust and self.cache_enabled and cache_key in self._cache:
             return self._cache[cache_key]
 
-        # Create mock config
-        config = MockSecurityConfig(
-            service_name=f"{env}-security-service",
-            environment=env,
-            debug_mode=self.debug_mode,
-            scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
-            performance={"max_concurrent_scans": 10},
-            logging={"log_level": "DEBUG" if env == "development" else "INFO"}
-        )
+        # Create mock config using factory if available, otherwise create directly
+        if self._config_factory:
+            config = self._config_factory(
+                service_name=f"{env}-security-service",
+                environment=env,
+                debug_mode=self.debug_mode,
+                scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
+                performance={"max_concurrent_scans": 10},
+                logging={"log_level": "DEBUG" if env == "development" else "INFO"}
+            )
+        else:
+            # Fallback: import at runtime to avoid circular imports
+            from ..conftest import MockSecurityConfig
+            config = MockSecurityConfig(
+                service_name=f"{env}-security-service",
+                environment=env,
+                debug_mode=self.debug_mode,
+                scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
+                performance={"max_concurrent_scans": 10},
+                logging={"log_level": "DEBUG" if env == "development" else "INFO"}
+            )
 
         # Cache if enabled
         if self.cache_enabled:
@@ -127,24 +132,19 @@ class MockSecurityConfigLoader:
         return self._cache_clear_calls.copy()
 
 
-@pytest.fixture
-def mock_configuration_error():
-    """Mock ConfigurationError exception for testing config loader error handling."""
-    return MockConfigurationError
+# NOTE: mock_configuration_error and mock_security_config fixtures removed
+# These are now shared fixtures in parent conftest.py
 
 
 @pytest.fixture
-def mock_security_config():
-    """Factory fixture to create MockSecurityConfig instances for testing."""
-    def _create_config(**kwargs) -> MockSecurityConfig:
-        return MockSecurityConfig(**kwargs)
-    return _create_config
-
-
-@pytest.fixture
-def mock_security_config_loader():
-    """Factory fixture to create MockSecurityConfigLoader instances for testing."""
+def mock_security_config_loader(mock_security_config):
+    """Factory fixture to create MockSecurityConfigLoader instances for testing.
+    
+    Injects shared mock_security_config fixture from parent conftest.
+    """
     def _create_loader(**kwargs) -> MockSecurityConfigLoader:
+        # Inject the config factory
+        kwargs.setdefault('mock_security_config_factory', mock_security_config)
         return MockSecurityConfigLoader(**kwargs)
     return _create_loader
 

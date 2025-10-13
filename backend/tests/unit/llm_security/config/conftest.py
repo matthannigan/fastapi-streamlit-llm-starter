@@ -5,11 +5,17 @@ This module provides realistic test data fixtures for the LLM security configura
 components. Since the config module contains only Pydantic models with enum/stdlib
 dependencies, the fixtures focus on providing representative test data rather than
 mocking external dependencies.
+
+SHARED MOCKS: MockScannerType, MockViolationAction, MockPresetName are imported from parent conftest.py
 """
 
 from typing import Dict, Any
 import pytest
 from pydantic import BaseModel
+
+# Import shared mocks from parent conftest - these are used across multiple modules
+# MockScannerType, MockViolationAction, MockPresetName, and their fixtures
+# are now defined in backend/tests/unit/llm_security/conftest.py
 
 # Import the configuration classes from the contract
 # Note: These would normally be imported from the actual implementation
@@ -19,68 +25,28 @@ from pydantic import BaseModel
 # )
 
 
-class MockScannerType:
-    """Mock ScannerType enum for testing."""
-    PROMPT_INJECTION = "prompt_injection"
-    TOXICITY_INPUT = "toxicity_input"
-    PII_DETECTION = "pii_detection"
-    MALICIOUS_URL = "malicious_url"
-    SUSPICIOUS_PATTERN = "suspicious_pattern"
-    TOXICITY_OUTPUT = "toxicity_output"
-    BIAS_DETECTION = "bias_detection"
-    HARMFUL_CONTENT = "harmful_content"
-    FACTUALITY_CHECK = "factuality_check"
-    SENTIMENT_ANALYSIS = "sentiment_analysis"
+# NOTE: MockScannerType, MockViolationAction, MockPresetName removed
+# These are now shared fixtures in parent conftest.py
 
 
-class MockViolationAction:
-    """Mock ViolationAction enum for testing."""
-    NONE = "none"
-    WARN = "warn"
-    BLOCK = "block"
-    REDACT = "redact"
-    FLAG = "flag"
-
-
-class MockPresetName:
-    """Mock PresetName enum for testing."""
-    STRICT = "strict"
-    BALANCED = "balanced"
-    LENIENT = "lenient"
-    DEVELOPMENT = "development"
-    PRODUCTION = "production"
+# NOTE: scanner_type, violation_action, preset_name fixtures removed
+# These are now shared fixtures in parent conftest.py
 
 
 @pytest.fixture
-def scanner_type():
-    """Mock ScannerType enum providing access to scanner type constants."""
-    return MockScannerType()
-
-
-@pytest.fixture
-def violation_action():
-    """Mock ViolationAction enum providing access to action constants."""
-    return MockViolationAction()
-
-
-@pytest.fixture
-def preset_name():
-    """Mock PresetName enum providing access to preset constants."""
-    return MockPresetName()
-
-
-@pytest.fixture
-def minimal_scanner_config():
+def minimal_scanner_config(violation_action):
     """
     Minimal ScannerConfig with only required fields for basic testing.
 
     Provides a simple configuration suitable for testing scanner functionality
     without complex parameter validation or performance considerations.
+    
+    Uses shared violation_action fixture from parent conftest.
     """
     return {
         "enabled": True,
         "threshold": 0.7,
-        "action": MockViolationAction.WARN,
+        "action": violation_action.WARN,
         "model_name": None,
         "model_params": {},
         "scan_timeout": 30,
@@ -90,18 +56,20 @@ def minimal_scanner_config():
 
 
 @pytest.fixture
-def strict_scanner_config():
+def strict_scanner_config(violation_action):
     """
     Strict ScannerConfig with high sensitivity for security-critical testing.
 
     Provides a configuration suitable for testing security scenarios where
     maximum detection sensitivity is required, such as high-risk environments
     or security validation testing.
+    
+    Uses shared violation_action fixture from parent conftest.
     """
     return {
         "enabled": True,
         "threshold": 0.3,  # Lower threshold = more sensitive
-        "action": MockViolationAction.BLOCK,
+        "action": violation_action.BLOCK,
         "model_name": "strict-security-model-v1",
         "model_params": {
             "sensitivity": "high",
@@ -118,17 +86,19 @@ def strict_scanner_config():
 
 
 @pytest.fixture
-def custom_model_scanner_config():
+def custom_model_scanner_config(violation_action):
     """
     ScannerConfig with custom model configuration for model testing scenarios.
 
     Provides a configuration suitable for testing custom model integration,
     parameter validation, and model-specific behavior scenarios.
+    
+    Uses shared violation_action fixture from parent conftest.
     """
     return {
         "enabled": True,
         "threshold": 0.5,
-        "action": MockViolationAction.REDACT,
+        "action": violation_action.REDACT,
         "model_name": "custom-toxicity-model-v2",
         "model_params": {
             "language": "en",
@@ -147,17 +117,19 @@ def custom_model_scanner_config():
 
 
 @pytest.fixture
-def disabled_scanner_config():
+def disabled_scanner_config(violation_action):
     """
     ScannerConfig with scanner disabled for testing disabled behavior.
 
     Provides a configuration suitable for testing scanner bypass behavior,
     configuration validation, and enabled/disabled state management.
+    
+    Uses shared violation_action fixture from parent conftest.
     """
     return {
         "enabled": False,
         "threshold": 0.8,
-        "action": MockViolationAction.NONE,
+        "action": violation_action.NONE,
         "model_name": None,
         "model_params": {},
         "scan_timeout": 10,
@@ -325,13 +297,15 @@ def minimal_security_config(scanner_type, minimal_scanner_config, development_pe
 
 
 @pytest.fixture
-def strict_security_config(scanner_type, strict_scanner_config, production_performance_config, privacy_first_logging_config):
+def strict_security_config(scanner_type, strict_scanner_config, production_performance_config, privacy_first_logging_config, violation_action, preset_name):
     """
     Strict SecurityConfig with maximum security settings for high-risk testing.
 
     Provides a comprehensive security configuration suitable for testing
     security-critical scenarios with maximum detection sensitivity and
     comprehensive scanner coverage.
+    
+    Uses shared scanner_type, violation_action, preset_name fixtures from parent conftest.
     """
     # Create strict configs for multiple scanner types
     strict_configs = {
@@ -339,16 +313,16 @@ def strict_security_config(scanner_type, strict_scanner_config, production_perfo
         scanner_type.TOXICITY_INPUT: {
             **strict_scanner_config,
             "model_name": "strict-toxicity-model",
-            "action": MockViolationAction.BLOCK
+            "action": violation_action.BLOCK
         },
         scanner_type.PII_DETECTION: {
             **strict_scanner_config,
             "threshold": 0.2,  # Even more sensitive for PII
-            "action": MockViolationAction.REDACT
+            "action": violation_action.REDACT
         },
         scanner_type.MALICIOUS_URL: {
             **strict_scanner_config,
-            "action": MockViolationAction.BLOCK,
+            "action": violation_action.BLOCK,
             "scan_timeout": 30
         }
     }
@@ -359,7 +333,7 @@ def strict_security_config(scanner_type, strict_scanner_config, production_perfo
         "logging": privacy_first_logging_config,
         "service_name": "strict-security-service",
         "version": "1.0.0",
-        "preset": MockPresetName.STRICT,
+        "preset": preset_name.STRICT,
         "environment": "production",
         "debug_mode": False,
         "custom_settings": {
@@ -370,18 +344,20 @@ def strict_security_config(scanner_type, strict_scanner_config, production_perfo
 
 
 @pytest.fixture
-def development_security_config(scanner_type, custom_model_scanner_config, development_performance_config, development_logging_config):
+def development_security_config(scanner_type, custom_model_scanner_config, development_performance_config, development_logging_config, violation_action, preset_name):
     """
     Development SecurityConfig with debug-friendly settings for development testing.
 
     Provides a comprehensive security configuration suitable for development
     testing with verbose logging, relaxed security settings, and debug features.
+    
+    Uses shared scanner_type, violation_action, preset_name fixtures from parent conftest.
     """
     dev_configs = {
         scanner_type.PROMPT_INJECTION: {
             "enabled": True,
             "threshold": 0.8,  # More lenient for development
-            "action": MockViolationAction.WARN,
+            "action": violation_action.WARN,
             "model_name": "dev-prompt-injection-model",
             "model_params": {"debug_mode": True},
             "scan_timeout": 15,
@@ -392,7 +368,7 @@ def development_security_config(scanner_type, custom_model_scanner_config, devel
         scanner_type.BIAS_DETECTION: {
             "enabled": True,
             "threshold": 0.6,
-            "action": MockViolationAction.FLAG,
+            "action": violation_action.FLAG,
             "model_name": "dev-bias-detection-model",
             "model_params": {"detailed_analysis": True},
             "scan_timeout": 25,
@@ -407,7 +383,7 @@ def development_security_config(scanner_type, custom_model_scanner_config, devel
         "logging": development_logging_config,
         "service_name": "development-security-service",
         "version": "1.0.0-dev",
-        "preset": MockPresetName.DEVELOPMENT,
+        "preset": preset_name.DEVELOPMENT,
         "environment": "development",
         "debug_mode": True,
         "custom_settings": {
@@ -442,12 +418,15 @@ def environment_override_data():
 
 
 @pytest.fixture
-def legacy_config_data(scanner_type, violation_action):
+def legacy_config_data():
     """
     Legacy configuration data for testing backward compatibility.
 
     Provides configuration data in the legacy format that might be found
     in older configuration files, ensuring backward compatibility testing.
+    
+    Note: scanner_type and violation_action are no longer passed as parameters;
+    uses string values directly for legacy format.
     """
     return {
         "scanners": {
@@ -484,38 +463,40 @@ def nested_config_data(scanner_type, violation_action):
 
     Provides configuration data in the modern nested format with separate
     input_scanners and output_scanners sections for testing current format.
+    
+    Uses shared scanner_type and violation_action fixtures from parent conftest.
     """
     return {
         "input_scanners": {
             scanner_type.PROMPT_INJECTION: {
                 "enabled": True,
                 "threshold": 0.5,
-                "action": MockViolationAction.BLOCK,
+                "action": violation_action.BLOCK,
                 "model_name": "nested-prompt-injection-model",
                 "scan_timeout": 30
             },
             scanner_type.TOXICITY_INPUT: {
                 "enabled": True,
                 "threshold": 0.6,
-                "action": MockViolationAction.WARN,
+                "action": violation_action.WARN,
                 "model_params": {"language": "en"}
             },
             scanner_type.PII_DETECTION: {
                 "enabled": True,
                 "threshold": 0.3,
-                "action": MockViolationAction.REDACT
+                "action": violation_action.REDACT
             }
         },
         "output_scanners": {
             scanner_type.TOXICITY_OUTPUT: {
                 "enabled": True,
                 "threshold": 0.7,
-                "action": MockViolationAction.WARN
+                "action": violation_action.WARN
             },
             scanner_type.BIAS_DETECTION: {
                 "enabled": True,
                 "threshold": 0.8,
-                "action": MockViolationAction.FLAG
+                "action": violation_action.FLAG
             }
         },
         "service": {

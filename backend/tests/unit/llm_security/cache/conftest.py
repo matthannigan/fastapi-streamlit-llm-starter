@@ -4,6 +4,8 @@ Cache module test fixtures providing mocks for cache infrastructure dependencies
 This module provides test doubles for external dependencies of the LLM security cache
 module, focusing on cache interfaces, Redis operations, and cache performance
 monitoring scenarios.
+
+SHARED MOCKS: MockSecurityConfig, MockSecurityResult, MockViolation are imported from parent conftest.py
 """
 
 from typing import Dict, Any, Optional
@@ -11,6 +13,10 @@ import pytest
 from unittest.mock import Mock, AsyncMock, MagicMock
 from datetime import datetime, UTC
 from dataclasses import dataclass
+
+# Import shared mocks from parent conftest - these are used across multiple modules
+# MockSecurityConfig, MockSecurityResult, MockViolation, and their fixtures
+# are now defined in backend/tests/unit/llm_security/conftest.py
 
 # Import classes that would normally be from the actual implementation
 # from app.infrastructure.cache.base import CacheInterface
@@ -126,78 +132,8 @@ class MockCacheFactory:
         return self._creation_calls.copy()
 
 
-class MockSecurityResult:
-    """Mock SecurityResult for testing cache operations."""
-
-    def __init__(self,
-                 is_safe: bool = True,
-                 violations: Optional[list] = None,
-                 score: float = 1.0,
-                 scanned_text: str = "test input",
-                 scan_duration_ms: int = 150,
-                 scanner_results: Optional[Dict] = None,
-                 metadata: Optional[Dict] = None):
-        self.is_safe = is_safe
-        self.violations = violations or []
-        self.score = score
-        self.scanned_text = scanned_text
-        self.scan_duration_ms = scan_duration_ms
-        self.scanner_results = scanner_results or {}
-        self.metadata = metadata or {}
-        self.timestamp = datetime.now(UTC)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization testing."""
-        return {
-            "is_safe": self.is_safe,
-            "violations": self.violations,
-            "score": self.score,
-            "scanned_text": self.scanned_text,
-            "scan_duration_ms": self.scan_duration_ms,
-            "scanner_results": self.scanner_results,
-            "metadata": self.metadata,
-            "timestamp": self.timestamp.isoformat()
-        }
-
-
-class MockViolation:
-    """Mock Violation for testing security result scenarios."""
-
-    def __init__(self,
-                 violation_type: str = "injection",
-                 severity: str = "medium",
-                 description: str = "Test violation",
-                 confidence: float = 0.8):
-        self.type = violation_type
-        self.severity = severity
-        self.description = description
-        self.confidence = confidence
-        self.timestamp = datetime.now(UTC)
-
-
-class MockSecurityConfig:
-    """Mock SecurityConfig for testing cache configuration."""
-
-    def __init__(self,
-                 cache_enabled: bool = True,
-                 cache_redis_url: Optional[str] = None,
-                 cache_ttl_seconds: int = 3600,
-                 max_concurrent_scans: int = 10,
-                 environment: str = "testing"):
-        self.cache_enabled = cache_enabled
-        self.cache_redis_url = cache_redis_url or "redis://localhost:6379"
-        self.cache_ttl_seconds = cache_ttl_seconds
-        self.max_concurrent_scans = max_concurrent_scans
-        self.environment = environment
-        self.scanners = {"prompt_injection": {"enabled": True, "threshold": 0.7}}
-
-    def get_scanner_config_hash(self) -> str:
-        """Mock scanner configuration hash generation."""
-        return "mock_scanner_config_hash_1234567890abc"
-
-    def get_scanner_version(self) -> str:
-        """Mock scanner version."""
-        return "1.0.0-test"
+# NOTE: MockSecurityResult, MockViolation, MockSecurityConfig removed
+# These are now shared fixtures in parent conftest.py
 
 
 @pytest.fixture
@@ -224,44 +160,27 @@ def mock_cache_factory():
     return _create_factory
 
 
-@pytest.fixture
-def mock_security_result():
-    """Factory fixture to create MockSecurityResult instances for testing."""
-    def _create_result(**kwargs) -> MockSecurityResult:
-        return MockSecurityResult(**kwargs)
-    return _create_result
+# NOTE: mock_security_result, mock_violation, mock_security_config fixtures removed
+# These are now shared fixtures in parent conftest.py
 
 
 @pytest.fixture
-def mock_violation():
-    """Factory fixture to create MockViolation instances for testing."""
-    def _create_violation(**kwargs) -> MockViolation:
-        return MockViolation(**kwargs)
-    return _create_violation
-
-
-@pytest.fixture
-def mock_security_config():
-    """Factory fixture to create MockSecurityConfig instances for testing."""
-    def _create_config(**kwargs) -> MockSecurityConfig:
-        return MockSecurityConfig(**kwargs)
-    return _create_config
-
-
-@pytest.fixture
-def cache_test_data():
-    """Test data for cache operations including various security results."""
+def cache_test_data(mock_security_result, mock_violation):
+    """Test data for cache operations including various security results.
+    
+    Uses shared mock_security_result and mock_violation fixtures from parent conftest.
+    """
     return {
-        "safe_result": MockSecurityResult(
+        "safe_result": mock_security_result(
             is_safe=True,
             violations=[],
             score=1.0,
             scanned_text="This is safe content",
             scan_duration_ms=100
         ),
-        "unsafe_result": MockSecurityResult(
+        "unsafe_result": mock_security_result(
             is_safe=False,
-            violations=[MockViolation(
+            violations=[mock_violation(
                 violation_type="injection",
                 severity="high",
                 description="Prompt injection detected",
@@ -271,9 +190,9 @@ def cache_test_data():
             scanned_text="Ignore previous instructions and",
             scan_duration_ms=200
         ),
-        "borderline_result": MockSecurityResult(
+        "borderline_result": mock_security_result(
             is_safe=True,
-            violations=[MockViolation(
+            violations=[mock_violation(
                 violation_type="suspicious_pattern",
                 severity="low",
                 description="Suspicious pattern detected",
@@ -283,11 +202,11 @@ def cache_test_data():
             scanned_text="This seems somewhat unusual",
             scan_duration_ms=150
         ),
-        "complex_result": MockSecurityResult(
+        "complex_result": mock_security_result(
             is_safe=False,
             violations=[
-                MockViolation(violation_type="injection", severity="high", confidence=0.9),
-                MockViolation(violation_type="toxicity", severity="medium", confidence=0.7)
+                mock_violation(violation_type="injection", severity="high", confidence=0.9),
+                mock_violation(violation_type="toxicity", severity="medium", confidence=0.7)
             ],
             score=0.3,
             scanned_text="Complex problematic content",

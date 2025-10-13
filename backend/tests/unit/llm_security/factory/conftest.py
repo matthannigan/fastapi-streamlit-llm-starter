@@ -4,6 +4,8 @@ Factory module test fixtures providing mocks and fakes for external dependencies
 This module provides test doubles for external dependencies of the LLM security factory
 module, following the "Prefer Fakes, Mock at Boundaries" philosophy. The factory
 module has cross-module dependencies that require careful mocking for isolated testing.
+
+SHARED MOCKS: MockConfigurationError, MockInfrastructureError, MockSecurityConfig are imported from parent conftest.py
 """
 
 from typing import Dict, Any, Optional, Union
@@ -11,19 +13,17 @@ import pytest
 from unittest.mock import Mock, MagicMock, AsyncMock
 from pathlib import Path
 
+# Import shared mocks from parent conftest - these are used across multiple modules
+# MockConfigurationError, MockInfrastructureError, MockSecurityConfig, and their fixtures
+# are now defined in backend/tests/unit/llm_security/conftest.py
+
 # Import exceptions that the factory depends on
 # Note: These would normally be imported from the actual implementation
 # from app.core.exceptions import ConfigurationError, InfrastructureError
 
 
-class MockConfigurationError(Exception):
-    """Mock ConfigurationError for testing factory error handling."""
-    pass
-
-
-class MockInfrastructureError(Exception):
-    """Mock InfrastructureError for testing factory error handling."""
-    pass
+# NOTE: MockConfigurationError, MockInfrastructureError removed
+# These are now shared fixtures in parent conftest.py
 
 
 class MockSecurityService:
@@ -95,143 +95,26 @@ class MockSecurityService:
         return self._scan_results.copy()
 
 
-class MockSecurityConfig:
-    """Mock SecurityConfig for testing factory configuration loading."""
-
-    def __init__(self,
-                 scanners: Optional[Dict] = None,
-                 performance: Optional[Dict] = None,
-                 logging: Optional[Dict] = None,
-                 service_name: str = "mock-security-service",
-                 version: str = "1.0.0",
-                 preset: Optional[str] = None,
-                 environment: str = "testing",
-                 debug_mode: bool = False,
-                 custom_settings: Optional[Dict] = None):
-        self.scanners = scanners or {}
-        self.performance = performance or {}
-        self.logging = logging or {}
-        self.service_name = service_name
-        self.version = version
-        self.preset = preset
-        self.environment = environment
-        self.debug_mode = debug_mode
-        self.custom_settings = custom_settings or {}
-        self._creation_method = None
-
-    def get_scanner_config(self, scanner_type: str):
-        """Mock method to get scanner configuration."""
-        return self.scanners.get(scanner_type)
-
-    def is_scanner_enabled(self, scanner_type: str) -> bool:
-        """Mock method to check if scanner is enabled."""
-        config = self.get_scanner_config(scanner_type)
-        return config is not None and config.get("enabled", False)
-
-    def get_enabled_scanners(self) -> list:
-        """Mock method to list enabled scanners."""
-        return [scanner_type for scanner_type in self.scanners.keys()
-                if self.is_scanner_enabled(scanner_type)]
-
-    def merge_with_environment_overrides(self, overrides: Dict[str, Any]) -> 'MockSecurityConfig':
-        """Mock method to apply environment overrides."""
-        new_config = MockSecurityConfig(
-            scanners=self.scanners.copy(),
-            performance=self.performance.copy(),
-            logging=self.logging.copy(),
-            service_name=overrides.get("SECURITY_SERVICE_NAME", self.service_name),
-            version=self.version,
-            preset=self.preset,
-            environment=overrides.get("SECURITY_ENVIRONMENT", self.environment),
-            debug_mode=overrides.get("SECURITY_DEBUG", "false").lower() == "true",
-            custom_settings=self.custom_settings.copy()
-        )
-        new_config._creation_method = "environment_override"
-        return new_config
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Mock method to export configuration to dictionary."""
-        return {
-            "scanners": self.scanners,
-            "performance": self.performance,
-            "logging": self.logging,
-            "service_name": self.service_name,
-            "version": self.version,
-            "preset": self.preset,
-            "environment": self.environment,
-            "debug_mode": self.debug_mode,
-            "custom_settings": self.custom_settings,
-            "enabled_scanners": self.get_enabled_scanners()
-        }
-
-    @classmethod
-    def create_from_preset(cls, preset: str, environment: str = "development") -> 'MockSecurityConfig':
-        """Mock factory method to create config from preset."""
-        preset_configs = {
-            "strict": {
-                "scanners": {"prompt_injection": {"enabled": True, "threshold": 0.3}},
-                "performance": {"max_concurrent_scans": 10},
-                "logging": {"log_level": "INFO"}
-            },
-            "balanced": {
-                "scanners": {"prompt_injection": {"enabled": True, "threshold": 0.7}},
-                "performance": {"max_concurrent_scans": 15},
-                "logging": {"log_level": "INFO"}
-            },
-            "development": {
-                "scanners": {"prompt_injection": {"enabled": True, "threshold": 0.8}},
-                "performance": {"max_concurrent_scans": 2},
-                "logging": {"log_level": "DEBUG"}
-            },
-            "production": {
-                "scanners": {"prompt_injection": {"enabled": True, "threshold": 0.5}},
-                "performance": {"max_concurrent_scans": 20},
-                "logging": {"log_level": "INFO"}
-            }
-        }
-
-        config_data = preset_configs.get(preset, preset_configs["balanced"])
-        config = cls(
-            scanners=config_data["scanners"],
-            performance=config_data["performance"],
-            logging=config_data["logging"],
-            service_name=f"{preset}-security-service",
-            preset=preset,
-            environment=environment,
-            debug_mode=(environment == "development")
-        )
-        config._creation_method = "preset"
-        return config
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'MockSecurityConfig':
-        """Mock factory method to create config from dictionary."""
-        config = cls(
-            scanners=data.get("scanners", {}),
-            performance=data.get("performance", {}),
-            logging=data.get("logging", {}),
-            service_name=data.get("service_name", "dict-service"),
-            version=data.get("version", "1.0.0"),
-            preset=data.get("preset"),
-            environment=data.get("environment", "testing"),
-            debug_mode=data.get("debug_mode", False),
-            custom_settings=data.get("custom_settings", {})
-        )
-        config._creation_method = "dict"
-        return config
+# NOTE: MockSecurityConfig removed - now shared fixture in parent conftest.py
+# The factory module uses the shared MockSecurityConfig which has most of the same methods
 
 
 class MockSecurityServiceFactory:
-    """Mock SecurityServiceFactory for testing factory patterns."""
+    """Mock SecurityServiceFactory for testing factory patterns.
+    
+    Uses shared MockSecurityConfig from parent conftest.py.
+    """
 
-    def __init__(self):
+    def __init__(self, mock_security_config_factory=None):
         self._service_cache = {}
         self._creation_calls = []
         self._clear_cache_calls = []
+        # Store the factory for creating MockSecurityConfig instances
+        self._config_factory = mock_security_config_factory
 
     def create_service(self,
                       mode: str = 'local',
-                      config: Optional[MockSecurityConfig] = None,
+                      config=None,
                       environment_overrides: Optional[Dict[str, Any]] = None,
                       cache_key: Optional[str] = None) -> MockSecurityService:
         """Mock service creation with caching and configuration management."""
@@ -256,16 +139,45 @@ class MockSecurityServiceFactory:
 
         # Create new service
         if config is None:
-            config = MockSecurityConfig.create_from_preset("balanced")
+            # Use factory if available, otherwise import at runtime
+            if self._config_factory:
+                config = self._config_factory(
+                    scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
+                    performance={"max_concurrent_scans": 15},
+                    logging={"log_level": "INFO"},
+                    service_name="balanced-security-service",
+                    preset="balanced",
+                    environment="development",
+                    debug_mode=True
+                )
+            else:
+                from ..conftest import MockSecurityConfig
+                config = MockSecurityConfig(
+                    scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
+                    performance={"max_concurrent_scans": 15},
+                    logging={"log_level": "INFO"},
+                    service_name="balanced-security-service",
+                    preset="balanced",
+                    environment="development",
+                    debug_mode=True
+                )
 
-        # Apply environment overrides if provided
+        # Apply environment overrides if provided (simplified)
         if environment_overrides:
-            config = config.merge_with_environment_overrides(environment_overrides)
+            # For simplicity, just update service_name
+            if hasattr(config, 'service_name'):
+                config.service_name = environment_overrides.get("SECURITY_SERVICE_NAME", config.service_name)
 
         # Create service based on mode
+        config_dict = config.to_dict() if hasattr(config, 'to_dict') else {
+            "scanners": getattr(config, 'scanners', {}),
+            "performance": getattr(config, 'performance', {}),
+            "service_name": getattr(config, 'service_name', 'default-service')
+        }
+        
         service = MockSecurityService(
             service_name=f"{mode}-security-service",
-            config=config.to_dict()
+            config=config_dict
         )
 
         # Cache the service
@@ -302,16 +214,8 @@ class MockSecurityServiceFactory:
         return self._clear_cache_calls.copy()
 
 
-@pytest.fixture
-def mock_configuration_error():
-    """Mock ConfigurationError exception for testing factory error handling."""
-    return MockConfigurationError
-
-
-@pytest.fixture
-def mock_infrastructure_error():
-    """Mock InfrastructureError exception for testing factory error handling."""
-    return MockInfrastructureError
+# NOTE: mock_configuration_error, mock_infrastructure_error, mock_security_config fixtures removed
+# These are now shared fixtures in parent conftest.py
 
 
 @pytest.fixture
@@ -324,25 +228,23 @@ def mock_security_service():
 
 
 @pytest.fixture
-def mock_security_config():
-    """Factory fixture to create MockSecurityConfig instances for testing."""
-    def _create_config(**kwargs) -> MockSecurityConfig:
-        return MockSecurityConfig(**kwargs)
-    return _create_config
-
-
-@pytest.fixture
-def mock_security_service_factory():
-    """Factory fixture to create MockSecurityServiceFactory instances for testing."""
+def mock_security_service_factory(mock_security_config):
+    """Factory fixture to create MockSecurityServiceFactory instances for testing.
+    
+    Injects shared mock_security_config fixture from parent conftest.
+    """
     def _create_factory() -> MockSecurityServiceFactory:
-        return MockSecurityServiceFactory()
+        return MockSecurityServiceFactory(mock_security_config_factory=mock_security_config)
     return _create_factory
 
 
 @pytest.fixture
-def minimal_security_config():
-    """Minimal SecurityConfig for basic factory testing."""
-    return MockSecurityConfig(
+def minimal_security_config(mock_security_config):
+    """Minimal SecurityConfig for basic factory testing.
+    
+    Uses shared mock_security_config fixture from parent conftest.
+    """
+    return mock_security_config(
         scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
         performance={"max_concurrent_scans": 2},
         logging={"log_level": "DEBUG"},
@@ -353,20 +255,36 @@ def minimal_security_config():
 
 
 @pytest.fixture
-def strict_security_config():
-    """Strict SecurityConfig for security-critical factory testing."""
-    return MockSecurityConfig.create_from_preset(
+def strict_security_config(mock_security_config):
+    """Strict SecurityConfig for security-critical factory testing.
+    
+    Uses shared mock_security_config fixture from parent conftest.
+    """
+    return mock_security_config(
+        scanners={"prompt_injection": {"enabled": True, "threshold": 0.3}},
+        performance={"max_concurrent_scans": 10},
+        logging={"log_level": "INFO"},
+        service_name="strict-security-service",
         preset="strict",
-        environment="production"
+        environment="production",
+        debug_mode=False
     )
 
 
 @pytest.fixture
-def development_security_config():
-    """Development SecurityConfig for development environment factory testing."""
-    return MockSecurityConfig.create_from_preset(
+def development_security_config(mock_security_config):
+    """Development SecurityConfig for development environment factory testing.
+    
+    Uses shared mock_security_config fixture from parent conftest.
+    """
+    return mock_security_config(
+        scanners={"prompt_injection": {"enabled": True, "threshold": 0.8}},
+        performance={"max_concurrent_scans": 2},
+        logging={"log_level": "DEBUG"},
+        service_name="development-security-service",
         preset="development",
-        environment="development"
+        environment="development",
+        debug_mode=True
     )
 
 
@@ -503,6 +421,9 @@ def invalid_factory_config_data():
 @pytest.fixture
 def mocked_yaml_loader():
     """Mock YAML loader for testing factory configuration file loading."""
+    # Import at runtime to avoid circular imports
+    from ..conftest import MockConfigurationError
+    
     mock_loader = Mock()
 
     # Mock successful loading
