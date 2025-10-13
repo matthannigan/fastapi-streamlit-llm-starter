@@ -15,7 +15,7 @@ External Dependencies Handled:
 import pytest
 from unittest.mock import Mock, MagicMock
 from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from contextlib import contextmanager
 import time as real_time
 
@@ -26,7 +26,7 @@ class FakeMemorySnapshot:
     current: int
     peak: int
     timestamp: float
-    metadata: Dict[str, Any]
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -38,134 +38,11 @@ class FakePerformanceMetrics:
     cpu_usage: float
     success: bool
     error_message: Optional[str] = None
-    metadata: Dict[str, Any] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
-@pytest.fixture
-def fake_time_module():
-    """
-    Fake time module implementation for deterministic timing testing.
-
-    Provides a controllable time implementation that allows tests to control
-    time progression without using real time delays. This enables deterministic
-    testing of timeout behavior, performance measurements, and timing-dependent
-    logic without making tests slow or non-deterministic.
-
-    State Management:
-        - Current time starts at a fixed timestamp (1000000000.0 seconds)
-        - Time can be advanced programmatically for testing
-        - All time operations return consistent, predictable results
-        - Maintains realistic time interface compatibility
-
-    Public Methods:
-        time(): Returns current fake timestamp
-        sleep(seconds): Advances time by specified seconds (no real delay)
-        monotonic(): Returns monotonic time from same base
-        advance(seconds): Advances time by specified amount
-        reset(): Resets time to initial value
-
-    Use Cases:
-        - Testing timeout behavior without real delays
-        - Testing performance measurement accuracy
-        - Testing time-based circuit breaker behavior
-        - Testing retry backoff timing logic
-        - Any time-dependent performance testing
-
-    Test Customization:
-        def test_timeout_behavior(fake_time_module):
-            # Start at known time
-            fake_time_module.reset()
-
-            # Simulate operation taking 5 seconds
-            fake_time_module.advance(5.0)
-
-            # Test timeout logic
-            assert fake_time_module.time() >= 5.0
-
-    Example:
-        def test_performance_benchmark_timing(fake_time_module, monkeypatch):
-            from app.infrastructure.resilience.performance_benchmarks import PerformanceBenchmarker
-
-            # Replace time module with our fake
-            monkeypatch.setattr('app.infrastructure.resilience.performance_benchmarks.time', fake_time_module)
-
-            benchmarker = PerformanceBenchmarker()
-
-            # Simulate fast operation
-            start_time = fake_time_module.time()
-            fake_time_module.advance(0.1)  # 100ms operation
-            end_time = fake_time_module.time()
-
-            metrics = benchmarker.measure_operation("test_operation", lambda: None)
-
-            # Verify timing was measured correctly
-            assert metrics.execution_time == 0.1
-
-    Default Behavior:
-        - Time starts at timestamp 1000000000.0 (approximately 2001-09-09)
-        - Time only moves forward (no backwards time travel)
-        - sleep() advances time without actual delay
-        - monotonic() shares same time base as time() for consistency
-
-    Time Precision:
-        - Supports microsecond precision for realistic timing
-        - Maintains floating-point time values like real time module
-        - Provides consistent behavior across all time functions
-
-    Note:
-        This fake enables fast, deterministic testing of time-dependent logic
-        without making tests slow or flaky due to real timing variations.
-    """
-
-    class FakeTimeModule:
-        def __init__(self):
-            self._current_time = 1000000000.0  # Fixed base timestamp
-            self._start_time = self._current_time
-            self._monotonic_base = 0.0
-
-        def time(self) -> float:
-            """Return current fake time as Unix timestamp."""
-            return self._current_time
-
-        def monotonic(self) -> float:
-            """Return monotonic time from fixed base."""
-            return self._current_time - self._monotonic_base
-
-        def sleep(self, seconds: float) -> None:
-            """Advance time without real delay."""
-            if seconds >= 0:
-                self._current_time += seconds
-
-        def advance(self, seconds: float) -> None:
-            """Advance time by specified amount for testing."""
-            if seconds >= 0:
-                self._current_time += seconds
-
-        def reset(self) -> None:
-            """Reset time to initial value."""
-            self._current_time = self._start_time
-
-        def set_time(self, timestamp: float) -> None:
-            """Set absolute time for specific test scenarios."""
-            if timestamp >= self._start_time:
-                self._current_time = timestamp
-
-        def get_elapsed_since(self, start_time: float) -> float:
-            """Get elapsed time since given timestamp."""
-            return max(0.0, self._current_time - start_time)
-
-        # Context manager for time-based testing
-        @contextmanager
-        def time_limited(self, timeout_seconds: float):
-            """Context manager that fails if time limit exceeded."""
-            start_time = self._current_time
-            yield
-            elapsed = self._current_time - start_time
-            if elapsed > timeout_seconds:
-                raise TimeoutError(f"Operation exceeded timeout: {elapsed}s > {timeout_seconds}s")
-
-    fake_time = FakeTimeModule()
-    return fake_time
+# Note: fake_time_module and mock_logger have been moved to the shared
+# resilience/conftest.py file to eliminate duplication across modules
 
 
 @pytest.fixture
@@ -313,7 +190,7 @@ def fake_tracemalloc_module():
                 raise RuntimeError("tracemalloc is not tracing")
             self._peak_memory = self._current_memory
 
-        def set_memory_usage(self, current: int, peak: int = None) -> None:
+        def set_memory_usage(self, current: int, peak: Optional[int] = None) -> None:
             """Configure memory usage values for testing."""
             if self._tracing_enabled:
                 self._current_memory = max(0, current)
@@ -581,63 +458,6 @@ def fake_statistics_module():
     return FakeStatisticsModule()
 
 
-@pytest.fixture
-def mock_logger():
-    """
-    Mock logger for testing performance benchmarks logging behavior.
-
-    Provides a spec'd mock logger that simulates logging.Logger
-    for testing log message generation without actual I/O. Performance
-    benchmark components log measurement results, alerts, and operational
-    messages for monitoring and debugging.
-
-    Default Behavior:
-        - All log methods available (info, warning, error, debug)
-        - No actual logging output (mocked)
-        - Call tracking for assertions in tests
-        - Realistic method signatures matching logging.Logger
-
-    Use Cases:
-        - Testing performance measurement logging
-        - Testing benchmark alert and warning logging
-        - Testing metrics logging and monitoring behavior
-        - Any component needing to test performance-related logging
-
-    Test Customization:
-        def test_performance_logging(mock_logger):
-            # Configure mock to capture specific log calls
-            mock_logger.info.assert_called_with("Performance benchmark completed successfully")
-
-    Example:
-        def test_benchmark_logs_metrics(mock_logger, monkeypatch):
-            # Replace the module logger with our mock
-            monkeypatch.setattr('app.infrastructure.resilience.performance_benchmarks.logger', mock_logger)
-
-            benchmarker = PerformanceBenchmarker()
-            metrics = benchmarker.run_benchmark("test_operation")
-
-            # Verify performance metrics were logged
-            mock_logger.info.assert_called()
-            assert any("execution_time" in str(call) for call in mock_logger.info.call_args_list)
-
-    Log Messages Captured:
-        - Performance measurement results
-        - Memory usage and allocation tracking
-        - Benchmark completion status
-        - Performance alerts and warnings
-        - Statistical analysis results
-
-    Note:
-        This is a proper system boundary mock - logging performs I/O
-        and should be mocked for unit tests to avoid actual log output.
-    """
-    mock = MagicMock()
-    mock.info = Mock(return_value=None)
-    mock.warning = Mock(return_value=None)
-    mock.error = Mock(return_value=None)
-    mock.debug = Mock(return_value=None)
-    mock.critical = Mock(return_value=None)
-    return mock
 
 
 @pytest.fixture

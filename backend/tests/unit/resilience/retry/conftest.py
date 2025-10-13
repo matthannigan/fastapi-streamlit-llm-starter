@@ -1,144 +1,19 @@
 """
-Retry module test fixtures providing external dependency isolation.
+Retry module test fixtures providing component-specific test doubles.
 
-Provides Fakes and Mocks for external dependencies following the philosophy of
-creating realistic test doubles that enable behavior-driven testing while isolating
-the retry component from systems outside its boundary.
+Provides component-specific fixtures for testing retry logic behavior following
+the philosophy of behavior-driven testing.
 
-External Dependencies Handled:
+Note: Common fixtures (mock_classify_ai_exception) have been moved to the shared
+resilience/conftest.py file to eliminate duplication across modules.
+
+External Dependencies Handled (in shared conftest.py):
     - app.core.exceptions.classify_ai_exception: Core exception classification function (mocked)
 """
 
 import pytest
 from unittest.mock import Mock, MagicMock
 from typing import Any
-
-
-@pytest.fixture
-def mock_classify_ai_exception():
-    """
-    Mock for the classify_ai_exception function from app.core.exceptions.
-
-    Provides a controllable mock that simulates the core exception classification
-    behavior used by retry logic to determine if exceptions are retryable.
-    This isolates retry module tests from the actual exception classification
-    implementation while maintaining realistic behavior patterns.
-
-    Default Behavior:
-        - Returns True for transient/retryable exceptions by default
-        - Returns False for permanent/non-retryable exceptions by default
-        - Configurable behavior for different test scenarios
-        - Call tracking for assertions in tests
-        - Realistic function signature matching the real classify_ai_exception
-
-    Configuration Methods:
-        set_retryable(exception_type): Mark exception type as retryable (returns True)
-        set_non_retryable(exception_type): Mark exception type as non-retryable (returns False)
-        reset_behavior(): Reset to default classification behavior
-
-    Use Cases:
-        - Testing retry decision logic based on exception classification
-        - Testing different exception scenarios (network, auth, rate limits)
-        - Testing tenacity integration with exception classification
-        - Any test requiring exception classification behavior
-
-    Test Customization:
-        def test_retry_with_custom_exceptions(mock_classify_ai_exception):
-            # Configure mock for specific test scenarios
-            mock_classify_ai_exception.set_retryable(ConnectionError)
-            mock_classify_ai_exception.set_non_retryable(AuthenticationError)
-
-    Example:
-        def test_should_retry_on_exception(mock_classify_ai_exception):
-            # Configure mock behavior
-            mock_classify_ai_exception.return_value = True  # Exception is retryable
-
-            # Test retry logic
-            from app.infrastructure.resilience.retry import should_retry_on_exception
-
-            # Create mock retry state with exception
-            mock_retry_state = Mock()
-            mock_retry_state.outcome.failed = True
-            mock_retry_state.outcome.exception.return_value = ConnectionError("timeout")
-
-            result = should_retry_on_exception(mock_retry_state)
-            assert result is True
-
-            # Verify classification was called
-            mock_classify_ai_exception.assert_called_once()
-
-    Default Classification Rules:
-        - Network errors (ConnectionError, TimeoutError): retryable (True)
-        - HTTP 5xx server errors: retryable (True)
-        - HTTP 429 rate limit errors: retryable (True)
-        - Authentication/authorization errors: non-retryable (False)
-        - HTTP 4xx client errors: non-retryable (False)
-        - Unknown exceptions: conservative approach, non-retryable (False)
-
-    State Management:
-        - Maintains classification rules across test calls
-        - Can be reconfigured per test scenario
-        - Provides deterministic behavior for consistent testing
-        - Tracks calls and exceptions for assertion verification
-
-    Note:
-        This is a proper system boundary mock - classify_ai_exception is
-        defined outside the resilience module and should be mocked to isolate
-        retry logic from the core exception classification implementation.
-    """
-    mock = Mock(spec=callable, return_value=False)  # Default: non-retryable
-
-    # Classification behavior storage
-    classification_rules = {
-        # Default retryable exceptions
-        ConnectionError: True,
-        TimeoutError: True,
-        # Default non-retryable exceptions
-        ValueError: False,
-        TypeError: False,
-        AuthenticationError: False,
-        PermissionError: False,
-    }
-
-    def configure_behavior(exception_type, is_retryable):
-        """Configure classification behavior for specific exception type."""
-        classification_rules[exception_type] = is_retryable
-
-    def get_classification(exception_instance):
-        """Get classification for exception instance based on configured rules."""
-        exception_type = type(exception_instance)
-
-        # Check exact type match
-        if exception_type in classification_rules:
-            return classification_rules[exception_type]
-
-        # Check for subclass matches
-        for base_type, is_retryable in classification_rules.items():
-            if issubclass(exception_type, base_type):
-                return is_retryable
-
-        # Default to conservative non-retryable
-        return False
-
-    def mock_classify_function(exc):
-        """Mock implementation that mimics real classify_ai_exception behavior."""
-        result = get_classification(exc)
-        mock.return_value = result
-        return result
-
-    # Configure the mock to use our implementation
-    mock.side_effect = mock_classify_function
-
-    # Add configuration methods to the mock object
-    mock.set_retryable = lambda exc_type: configure_behavior(exc_type, True)
-    mock.set_non_retryable = lambda exc_type: configure_behavior(exc_type, False)
-    mock.reset_behavior = lambda: classification_rules.update({
-        ConnectionError: True, TimeoutError: True,
-        ValueError: False, TypeError: False,
-        AuthenticationError: False, PermissionError: False,
-    })
-
-    return mock
 
 
 @pytest.fixture
