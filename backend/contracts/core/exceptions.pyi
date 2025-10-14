@@ -61,6 +61,7 @@ Integration Notes:
 
 from typing import Any, Dict
 import httpx
+from circuitbreaker import CircuitBreakerError
 
 
 class ApplicationError(Exception):
