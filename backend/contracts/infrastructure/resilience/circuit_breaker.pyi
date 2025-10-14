@@ -273,6 +273,41 @@ class ResilienceMetrics:
         """
         ...
 
+    def reset(self) -> None:
+        """
+        Clear all metrics for testing or periodic reset operations.
+        
+        Resets all counters and timestamps to their initial state.
+        This method is useful for periodic monitoring windows or test isolation.
+        
+        Behavior:
+            - Sets all counter metrics to 0
+            - Sets both timestamp fields to None
+            - Preserves the dataclass structure
+            - Can be called safely multiple times
+        
+        Use Cases:
+            - Periodic reset for monitoring windows as documented in Usage
+            - Test isolation between test cases
+            - Counter overflow prevention in long-running processes
+            - Starting fresh metrics collection after maintenance
+        
+        Examples:
+            >>> metrics = ResilienceMetrics()
+            >>> metrics.total_calls = 100
+            >>> metrics.successful_calls = 95
+            >>> metrics.failed_calls = 5
+            >>> metrics.last_success = datetime.now()
+            >>> metrics.reset()
+            >>> metrics.total_calls
+            0
+            >>> metrics.successful_calls
+            0
+            >>> metrics.last_success is None
+            True
+        """
+        ...
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert metrics to dictionary for JSON serialization and monitoring integration.

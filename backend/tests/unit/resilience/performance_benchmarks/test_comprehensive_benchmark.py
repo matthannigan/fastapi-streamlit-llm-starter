@@ -21,6 +21,17 @@ Business Critical:
 """
 
 import pytest
+from unittest.mock import Mock, MagicMock, patch
+from typing import Dict, Any, List
+import time as real_time
+
+# Import the classes we need to test
+from app.infrastructure.resilience.performance_benchmarks import (
+    ConfigurationPerformanceBenchmark,
+    BenchmarkSuite,
+    BenchmarkResult,
+    PerformanceThreshold
+)
 
 
 class TestRunComprehensiveBenchmarkExecution:
@@ -64,7 +75,61 @@ class TestRunComprehensiveBenchmarkExecution:
         Fixtures Used:
             - None required for execution verification
         """
-        pass
+        # Given: A benchmark instance ready to run comprehensive suite
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Expected operations to verify
+        expected_operations = [
+            "preset_loading",
+            "settings_initialization",
+            "resilience_config_loading",
+            "service_initialization",
+            "custom_config_loading",
+            "legacy_config_loading",
+            "validation_performance"
+        ]
+
+        # Create mock results for each operation
+        mock_results = {}
+        for operation in expected_operations:
+            mock_results[operation] = BenchmarkResult(
+                operation=operation,
+                duration_ms=10.0,
+                memory_peak_mb=1.0,
+                iterations=1,
+                avg_duration_ms=10.0,
+                min_duration_ms=10.0,
+                max_duration_ms=10.0,
+                std_dev_ms=0.0,
+                success_rate=1.0,
+                metadata={"test": True}
+            )
+
+        # Mock all benchmark methods using patch.multiple
+        mocks = {}
+        for operation in expected_operations:
+            method_name = f"benchmark_{operation}"
+            mocks[method_name] = Mock(return_value=mock_results[operation])
+
+        # Use the patch context manager properly with the full import path
+        with patch.multiple(
+            "app.infrastructure.resilience.performance_benchmarks.ConfigurationPerformanceBenchmark",
+            **mocks
+        ):
+            # When: run_comprehensive_benchmark is called
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: All seven standard benchmarks execute
+        for operation in expected_operations:
+            method_name = f"benchmark_{operation}"
+            mock_method = mocks[method_name]
+            mock_method.assert_called_once()
+
+        # And: BenchmarkSuite.results contains results for all operations
+        assert len(suite.results) == 7
+        executed_operations = [result.operation for result in suite.results]
+        for expected_operation in expected_operations:
+            assert expected_operation in executed_operations
 
     def test_run_comprehensive_benchmark_clears_previous_results(self):
         """
@@ -87,7 +152,83 @@ class TestRunComprehensiveBenchmarkExecution:
         Fixtures Used:
             - None required for result clearing verification
         """
-        pass
+        # Given: A benchmark instance with results from previous run
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Add some previous results to simulate contamination
+        previous_result = BenchmarkResult(
+            operation="previous_operation",
+            duration_ms=100.0,
+            memory_peak_mb=2.0,
+            iterations=5,
+            avg_duration_ms=20.0,
+            min_duration_ms=15.0,
+            max_duration_ms=25.0,
+            std_dev_ms=3.0,
+            success_rate=1.0,
+            metadata={"old": True}
+        )
+        benchmark.results.append(previous_result)
+
+        # Verify previous results exist
+        assert len(benchmark.results) == 1
+        assert benchmark.results[0].operation == "previous_operation"
+
+        # Mock the benchmark methods to return predictable results
+        with patch.object(benchmark, 'benchmark_preset_loading') as mock_preset:
+            with patch.object(benchmark, 'benchmark_settings_initialization') as mock_settings:
+                mock_preset.return_value = BenchmarkResult(
+                    operation="preset_loading",
+                    duration_ms=10.0,
+                    memory_peak_mb=1.0,
+                    iterations=1,
+                    avg_duration_ms=10.0,
+                    min_duration_ms=10.0,
+                    max_duration_ms=10.0,
+                    std_dev_ms=0.0,
+                    success_rate=1.0,
+                    metadata={}
+                )
+                mock_settings.return_value = BenchmarkResult(
+                    operation="settings_initialization",
+                    duration_ms=15.0,
+                    memory_peak_mb=1.5,
+                    iterations=1,
+                    avg_duration_ms=15.0,
+                    min_duration_ms=15.0,
+                    max_duration_ms=15.0,
+                    std_dev_ms=0.0,
+                    success_rate=1.0,
+                    metadata={}
+                )
+
+                # Mock the remaining benchmarks to avoid actual execution
+                with patch.multiple(
+                    benchmark,
+                    benchmark_resilience_config_loading=Mock(return_value=mock_settings.return_value),
+                    benchmark_service_initialization=Mock(return_value=mock_settings.return_value),
+                    benchmark_custom_config_loading=Mock(return_value=mock_settings.return_value),
+                    benchmark_legacy_config_loading=Mock(return_value=mock_settings.return_value),
+                    benchmark_validation_performance=Mock(return_value=mock_settings.return_value)
+                ):
+                    # When: run_comprehensive_benchmark is called
+                    suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: Previous results are cleared before execution
+        # Only current benchmark results should be present
+        assert len(benchmark.results) == 7  # Should have 7 current results
+        current_operations = [result.operation for result in benchmark.results]
+        assert "previous_operation" not in current_operations
+
+        # And: Only current benchmark results are present in the suite
+        assert len(suite.results) == 7
+        suite_operations = [result.operation for result in suite.results]
+        assert "previous_operation" not in suite_operations
+        assert all(op in [
+            "preset_loading", "settings_initialization", "resilience_config_loading",
+            "service_initialization", "custom_config_loading", "legacy_config_loading",
+            "validation_performance"
+        ] for op in suite_operations)
 
     def test_run_comprehensive_benchmark_returns_benchmark_suite(self):
         """
@@ -110,7 +251,55 @@ class TestRunComprehensiveBenchmarkExecution:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Given: A benchmark executing comprehensive suite
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Mock all benchmark methods to return predictable results
+        mock_result = BenchmarkResult(
+            operation="test_operation",
+            duration_ms=10.0,
+            memory_peak_mb=1.0,
+            iterations=1,
+            avg_duration_ms=10.0,
+            min_duration_ms=10.0,
+            max_duration_ms=10.0,
+            std_dev_ms=0.0,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        with patch.multiple(
+            benchmark,
+            benchmark_preset_loading=Mock(return_value=mock_result),
+            benchmark_settings_initialization=Mock(return_value=mock_result),
+            benchmark_resilience_config_loading=Mock(return_value=mock_result),
+            benchmark_service_initialization=Mock(return_value=mock_result),
+            benchmark_custom_config_loading=Mock(return_value=mock_result),
+            benchmark_legacy_config_loading=Mock(return_value=mock_result),
+            benchmark_validation_performance=Mock(return_value=mock_result)
+        ):
+            # When: run_comprehensive_benchmark completes
+            result = benchmark.run_comprehensive_benchmark()
+
+        # Then: Return value is a BenchmarkSuite instance
+        assert isinstance(result, BenchmarkSuite)
+
+        # And: Suite contains all required result attributes
+        required_attributes = [
+            'name', 'results', 'total_duration_ms', 'pass_rate',
+            'failed_benchmarks', 'timestamp', 'environment_info'
+        ]
+        for attr in required_attributes:
+            assert hasattr(result, attr), f"Missing required attribute: {attr}"
+
+        # Verify attribute types are correct
+        assert isinstance(result.name, str)
+        assert isinstance(result.results, list)
+        assert isinstance(result.total_duration_ms, (int, float))
+        assert isinstance(result.pass_rate, (int, float))
+        assert isinstance(result.failed_benchmarks, list)
+        assert isinstance(result.timestamp, str)
+        assert isinstance(result.environment_info, dict)
 
     def test_run_comprehensive_benchmark_sets_suite_name(self):
         """
@@ -133,7 +322,45 @@ class TestRunComprehensiveBenchmarkExecution:
         Fixtures Used:
             - None required for name verification
         """
-        pass
+        # Given: A comprehensive benchmark execution
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Mock all benchmark methods to avoid actual execution
+        mock_result = BenchmarkResult(
+            operation="test_operation",
+            duration_ms=10.0,
+            memory_peak_mb=1.0,
+            iterations=1,
+            avg_duration_ms=10.0,
+            min_duration_ms=10.0,
+            max_duration_ms=10.0,
+            std_dev_ms=0.0,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        with patch.multiple(
+            benchmark,
+            benchmark_preset_loading=Mock(return_value=mock_result),
+            benchmark_settings_initialization=Mock(return_value=mock_result),
+            benchmark_resilience_config_loading=Mock(return_value=mock_result),
+            benchmark_service_initialization=Mock(return_value=mock_result),
+            benchmark_custom_config_loading=Mock(return_value=mock_result),
+            benchmark_legacy_config_loading=Mock(return_value=mock_result),
+            benchmark_validation_performance=Mock(return_value=mock_result)
+        ):
+            # When: run_comprehensive_benchmark completes
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: BenchmarkSuite.name equals "Resilience Configuration Performance Benchmark"
+        expected_name = "Resilience Configuration Performance Benchmark"
+        assert suite.name == expected_name
+
+        # And: Suite can be identified in performance tracking systems
+        # Verify the name is descriptive and identifiable
+        assert "Resilience" in suite.name
+        assert "Performance" in suite.name
+        assert "Benchmark" in suite.name
 
     def test_run_comprehensive_benchmark_accumulates_all_results(self):
         """
@@ -156,7 +383,65 @@ class TestRunComprehensiveBenchmarkExecution:
         Fixtures Used:
             - None required for result accumulation verification
         """
-        pass
+        # Given: A comprehensive benchmark suite execution
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Create distinct mock results for each benchmark to verify accumulation
+        expected_operations = [
+            "preset_loading",
+            "settings_initialization",
+            "resilience_config_loading",
+            "service_initialization",
+            "custom_config_loading",
+            "legacy_config_loading",
+            "validation_performance"
+        ]
+
+        mock_results = {}
+        for i, operation in enumerate(expected_operations):
+            mock_results[operation] = BenchmarkResult(
+                operation=operation,
+                duration_ms=10.0 + i * 5,  # Different duration for each
+                memory_peak_mb=1.0 + i * 0.5,  # Different memory for each
+                iterations=1,
+                avg_duration_ms=10.0 + i * 5,
+                min_duration_ms=10.0 + i * 5,
+                max_duration_ms=10.0 + i * 5,
+                std_dev_ms=0.0,
+                success_rate=1.0,
+                metadata={"operation_id": i}
+            )
+
+        # Mock all benchmark methods with their specific results
+        mocks = {}
+        for operation in expected_operations:
+            method_name = f"benchmark_{operation}"
+            mocks[operation] = Mock(return_value=mock_results[operation])
+
+        with patch.multiple(benchmark, **mocks):
+            # When: run_comprehensive_benchmark completes all benchmarks
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: BenchmarkSuite.results contains at least 7 BenchmarkResult objects
+        assert len(suite.results) >= 7
+        assert all(isinstance(result, BenchmarkResult) for result in suite.results)
+
+        # And: Each standard benchmark has a corresponding result
+        result_operations = [result.operation for result in suite.results]
+        for expected_operation in expected_operations:
+            assert expected_operation in result_operations
+
+        # Verify each result is unique and properly accumulated
+        unique_operations = set(result_operations)
+        assert len(unique_operations) == 7  # All 7 should be unique
+
+        # Verify the specific mock results were accumulated correctly
+        for result in suite.results:
+            assert result.operation in expected_operations
+            expected_result = mock_results[result.operation]
+            assert result.duration_ms == expected_result.duration_ms
+            assert result.memory_peak_mb == expected_result.memory_peak_mb
+            assert result.metadata == expected_result.metadata
 
 
 class TestRunComprehensiveBenchmarkPerformanceThresholds:
@@ -200,7 +485,134 @@ class TestRunComprehensiveBenchmarkPerformanceThresholds:
         Fixtures Used:
             - None required for threshold evaluation logic
         """
-        pass
+        # Given: A comprehensive benchmark with all standard benchmarks
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Create mock results with varying performance characteristics
+        mock_results = {
+            "preset_loading": BenchmarkResult(
+                operation="preset_loading",
+                duration_ms=50.0,
+                memory_peak_mb=1.0,
+                iterations=1,
+                avg_duration_ms=5.0,  # Should pass PRESET_ACCESS (<10ms)
+                min_duration_ms=4.0,
+                max_duration_ms=6.0,
+                std_dev_ms=0.5,
+                success_rate=1.0,
+                metadata={}
+            ),
+            "settings_initialization": BenchmarkResult(
+                operation="settings_initialization",
+                duration_ms=200.0,
+                memory_peak_mb=2.0,
+                iterations=1,
+                avg_duration_ms=200.0,  # Should fail CONFIG_LOADING (>100ms)
+                min_duration_ms=180.0,
+                max_duration_ms=220.0,
+                std_dev_ms=10.0,
+                success_rate=1.0,
+                metadata={}
+            ),
+            "validation_performance": BenchmarkResult(
+                operation="validation_performance",
+                duration_ms=60.0,
+                memory_peak_mb=1.5,
+                iterations=1,
+                avg_duration_ms=60.0,  # Should fail VALIDATION (>50ms)
+                min_duration_ms=55.0,
+                max_duration_ms=65.0,
+                std_dev_ms=3.0,
+                success_rate=1.0,
+                metadata={}
+            ),
+            "service_initialization": BenchmarkResult(
+                operation="service_initialization",
+                duration_ms=300.0,
+                memory_peak_mb=3.0,
+                iterations=1,
+                avg_duration_ms=150.0,  # Should pass SERVICE_INIT (<200ms)
+                min_duration_ms=140.0,
+                max_duration_ms=160.0,
+                std_dev_ms=5.0,
+                success_rate=1.0,
+                metadata={}
+            )
+        }
+
+        # Create mocks for remaining benchmarks with passing results
+        passing_result = BenchmarkResult(
+            operation="test",
+            duration_ms=80.0,
+            memory_peak_mb=1.8,
+            iterations=1,
+            avg_duration_ms=80.0,  # Should pass CONFIG_LOADING (<100ms)
+            min_duration_ms=75.0,
+            max_duration_ms=85.0,
+            std_dev_ms=2.5,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        # Mock all benchmark methods
+        mocks = {
+            'benchmark_preset_loading': Mock(return_value=mock_results["preset_loading"]),
+            'benchmark_settings_initialization': Mock(return_value=mock_results["settings_initialization"]),
+            'benchmark_validation_performance': Mock(return_value=mock_results["validation_performance"]),
+            'benchmark_service_initialization': Mock(return_value=mock_results["service_initialization"]),
+            'benchmark_resilience_config_loading': Mock(return_value=BenchmarkResult(
+                operation="resilience_config_loading",
+                duration_ms=80.0,
+                memory_peak_mb=1.8,
+                iterations=1,
+                avg_duration_ms=80.0,  # Should pass CONFIG_LOADING (<100ms)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            )),
+            'benchmark_custom_config_loading': Mock(return_value=BenchmarkResult(
+                operation="custom_config_loading",
+                duration_ms=80.0,
+                memory_peak_mb=1.8,
+                iterations=1,
+                avg_duration_ms=80.0,  # Should pass CONFIG_LOADING (<100ms)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            )),
+            'benchmark_legacy_config_loading': Mock(return_value=BenchmarkResult(
+                operation="legacy_config_loading",
+                duration_ms=80.0,
+                memory_peak_mb=1.8,
+                iterations=1,
+                avg_duration_ms=80.0,  # Should pass CONFIG_LOADING (<100ms)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            ))
+        }
+
+        with patch.multiple(benchmark, **mocks):
+            # When: run_comprehensive_benchmark completes execution
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: Each result is evaluated against its performance threshold
+        # Verify pass rate reflects threshold evaluation
+        assert 0.0 <= suite.pass_rate <= 1.0
+
+        # And: Pass/fail status is determined based on threshold comparison
+        # Expected passing operations: preset_loading (5ms < 10ms), service_initialization (150ms < 200ms),
+        # resilience_config_loading (80ms < 100ms), custom_config_loading (80ms < 100ms),
+        # legacy_config_loading (80ms < 100ms)
+        # Expected failing operations: settings_initialization (200ms > 100ms), validation_performance (60ms > 50ms)
+        expected_pass_rate = 5.0 / 7.0  # 5 passing out of 7 total
+        assert abs(suite.pass_rate - expected_pass_rate) < 0.01
 
     def test_run_comprehensive_benchmark_calculates_pass_rate_with_all_passing(self, fake_time_module, monkeypatch):
         """
@@ -224,7 +636,118 @@ class TestRunComprehensiveBenchmarkPerformanceThresholds:
         Fixtures Used:
             - fake_time_module: Ensures fast execution for threshold compliance
         """
-        pass
+        # Given: A fake time module ensuring fast execution times
+        fake_time_module.set_time(1000.0)
+
+        # And: All benchmarks execute within their performance thresholds
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Create mock results that all pass their respective thresholds
+        passing_results = {
+            "preset_loading": BenchmarkResult(
+                operation="preset_loading",
+                duration_ms=50.0,
+                memory_peak_mb=1.0,
+                iterations=1,
+                avg_duration_ms=5.0,  # < 10ms (PRESET_ACCESS)
+                min_duration_ms=4.0,
+                max_duration_ms=6.0,
+                std_dev_ms=0.5,
+                success_rate=1.0,
+                metadata={}
+            ),
+            "settings_initialization": BenchmarkResult(
+                operation="settings_initialization",
+                duration_ms=80.0,
+                memory_peak_mb=2.0,
+                iterations=1,
+                avg_duration_ms=80.0,  # < 100ms (CONFIG_LOADING)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            ),
+            "validation_performance": BenchmarkResult(
+                operation="validation_performance",
+                duration_ms=40.0,
+                memory_peak_mb=1.5,
+                iterations=1,
+                avg_duration_ms=40.0,  # < 50ms (VALIDATION)
+                min_duration_ms=35.0,
+                max_duration_ms=45.0,
+                std_dev_ms=2.0,
+                success_rate=1.0,
+                metadata={}
+            ),
+            "service_initialization": BenchmarkResult(
+                operation="service_initialization",
+                duration_ms=150.0,
+                memory_peak_mb=3.0,
+                iterations=1,
+                avg_duration_ms=150.0,  # < 200ms (SERVICE_INIT)
+                min_duration_ms=140.0,
+                max_duration_ms=160.0,
+                std_dev_ms=5.0,
+                success_rate=1.0,
+                metadata={}
+            )
+        }
+
+        # Mock all benchmark methods with passing results
+        mocks = {
+            'benchmark_preset_loading': Mock(return_value=passing_results["preset_loading"]),
+            'benchmark_settings_initialization': Mock(return_value=passing_results["settings_initialization"]),
+            'benchmark_validation_performance': Mock(return_value=passing_results["validation_performance"]),
+            'benchmark_service_initialization': Mock(return_value=passing_results["service_initialization"]),
+            'benchmark_resilience_config_loading': Mock(return_value=BenchmarkResult(
+                operation="resilience_config_loading",
+                duration_ms=80.0,
+                memory_peak_mb=2.0,
+                iterations=1,
+                avg_duration_ms=80.0,  # < 100ms (CONFIG_LOADING)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            )),
+            'benchmark_custom_config_loading': Mock(return_value=BenchmarkResult(
+                operation="custom_config_loading",
+                duration_ms=80.0,
+                memory_peak_mb=2.0,
+                iterations=1,
+                avg_duration_ms=80.0,  # < 100ms (CONFIG_LOADING)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            )),
+            'benchmark_legacy_config_loading': Mock(return_value=BenchmarkResult(
+                operation="legacy_config_loading",
+                duration_ms=80.0,
+                memory_peak_mb=2.0,
+                iterations=1,
+                avg_duration_ms=80.0,  # < 100ms (CONFIG_LOADING)
+                min_duration_ms=75.0,
+                max_duration_ms=85.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            ))
+        }
+
+        with patch.multiple(benchmark, **mocks):
+            # When: run_comprehensive_benchmark completes
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: BenchmarkSuite.pass_rate equals 1.0
+        assert suite.pass_rate == 1.0
+
+        # And: All benchmarks are counted as passing
+        assert len(suite.results) == 7
+        assert all(result.success_rate == 1.0 for result in suite.results)
 
     def test_run_comprehensive_benchmark_calculates_pass_rate_with_some_failures(self, fake_time_module, monkeypatch):
         """
@@ -248,7 +771,80 @@ class TestRunComprehensiveBenchmarkPerformanceThresholds:
         Fixtures Used:
             - fake_time_module: Controls execution times for threshold testing
         """
-        pass
+        # Given: A fake time module causing some benchmarks to exceed thresholds
+        fake_time_module.set_time(1000.0)
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Create results with 5 passing and 2 failing benchmarks
+        passing_result = BenchmarkResult(
+            operation="test",
+            duration_ms=50.0,
+            memory_peak_mb=1.0,
+            iterations=1,
+            avg_duration_ms=50.0,  # Should pass most thresholds
+            min_duration_ms=45.0,
+            max_duration_ms=55.0,
+            std_dev_ms=2.0,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        failing_result = BenchmarkResult(
+            operation="test",
+            duration_ms=500.0,
+            memory_peak_mb=5.0,
+            iterations=1,
+            avg_duration_ms=500.0,  # Should fail most thresholds
+            min_duration_ms=450.0,
+            max_duration_ms=550.0,
+            std_dev_ms=20.0,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        # Mock 5 passing and 2 failing benchmarks
+        mocks = {
+            'benchmark_preset_loading': Mock(return_value=BenchmarkResult(
+                operation="preset_loading", duration_ms=25.0, memory_peak_mb=1.0, iterations=1,
+                avg_duration_ms=5.0, min_duration_ms=4.0, max_duration_ms=6.0, std_dev_ms=0.5, success_rate=1.0, metadata={}  # Pass
+            )),
+            'benchmark_settings_initialization': Mock(return_value=BenchmarkResult(
+                operation="settings_initialization", duration_ms=200.0, memory_peak_mb=2.0, iterations=1,
+                avg_duration_ms=200.0, min_duration_ms=180.0, max_duration_ms=220.0, std_dev_ms=10.0, success_rate=1.0, metadata={}  # Fail
+            )),
+            'benchmark_resilience_config_loading': Mock(return_value=BenchmarkResult(
+                operation="resilience_config_loading", duration_ms=80.0, memory_peak_mb=1.5, iterations=1,
+                avg_duration_ms=80.0, min_duration_ms=75.0, max_duration_ms=85.0, std_dev_ms=2.5, success_rate=1.0, metadata={}  # Pass
+            )),
+            'benchmark_service_initialization': Mock(return_value=BenchmarkResult(
+                operation="service_initialization", duration_ms=150.0, memory_peak_mb=2.5, iterations=1,
+                avg_duration_ms=150.0, min_duration_ms=140.0, max_duration_ms=160.0, std_dev_ms=5.0, success_rate=1.0, metadata={}  # Pass
+            )),
+            'benchmark_custom_config_loading': Mock(return_value=BenchmarkResult(
+                operation="custom_config_loading", duration_ms=80.0, memory_peak_mb=1.5, iterations=1,
+                avg_duration_ms=80.0, min_duration_ms=75.0, max_duration_ms=85.0, std_dev_ms=2.5, success_rate=1.0, metadata={}  # Pass
+            )),
+            'benchmark_legacy_config_loading': Mock(return_value=BenchmarkResult(
+                operation="legacy_config_loading", duration_ms=300.0, memory_peak_mb=3.0, iterations=1,
+                avg_duration_ms=300.0, min_duration_ms=280.0, max_duration_ms=320.0, std_dev_ms=15.0, success_rate=1.0, metadata={}  # Fail
+            )),
+            'benchmark_validation_performance': Mock(return_value=BenchmarkResult(
+                operation="validation_performance", duration_ms=40.0, memory_peak_mb=1.2, iterations=1,
+                avg_duration_ms=40.0, min_duration_ms=35.0, max_duration_ms=45.0, std_dev_ms=2.0, success_rate=1.0, metadata={}  # Pass
+            ))
+        }
+
+        with patch.multiple(benchmark, **mocks):
+            # When: run_comprehensive_benchmark completes
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: BenchmarkSuite.pass_rate approximately equals 0.71 (5/7)
+        expected_pass_rate = 5.0 / 7.0
+        assert abs(suite.pass_rate - expected_pass_rate) < 0.01
+
+        # And: Partial failures are accurately reflected
+        assert 0.0 < suite.pass_rate < 1.0
+        assert len(suite.results) == 7
 
     def test_run_comprehensive_benchmark_calculates_pass_rate_with_all_failures(self, fake_time_module, monkeypatch):
         """
@@ -272,7 +868,66 @@ class TestRunComprehensiveBenchmarkPerformanceThresholds:
         Fixtures Used:
             - fake_time_module: Simulates slow execution exceeding all thresholds
         """
-        pass
+        # Given: A fake time module causing all benchmarks to exceed thresholds
+        fake_time_module.set_time(1000.0)
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Create failing results that exceed all thresholds
+        failing_result = BenchmarkResult(
+            operation="test",
+            duration_ms=1000.0,
+            memory_peak_mb=10.0,
+            iterations=1,
+            avg_duration_ms=1000.0,  # Should fail all thresholds
+            min_duration_ms=900.0,
+            max_duration_ms=1100.0,
+            std_dev_ms=50.0,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        # Mock all benchmarks to fail
+        mocks = {
+            'benchmark_preset_loading': Mock(return_value=BenchmarkResult(
+                operation="preset_loading", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_settings_initialization': Mock(return_value=BenchmarkResult(
+                operation="settings_initialization", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_resilience_config_loading': Mock(return_value=BenchmarkResult(
+                operation="resilience_config_loading", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_service_initialization': Mock(return_value=BenchmarkResult(
+                operation="service_initialization", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_custom_config_loading': Mock(return_value=BenchmarkResult(
+                operation="custom_config_loading", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_legacy_config_loading': Mock(return_value=BenchmarkResult(
+                operation="legacy_config_loading", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_validation_performance': Mock(return_value=BenchmarkResult(
+                operation="validation_performance", duration_ms=1000.0, memory_peak_mb=10.0, iterations=1,
+                avg_duration_ms=1000.0, min_duration_ms=900.0, max_duration_ms=1100.0, std_dev_ms=50.0, success_rate=1.0, metadata={}
+            ))
+        }
+
+        with patch.multiple(benchmark, **mocks):
+            # When: run_comprehensive_benchmark completes
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: BenchmarkSuite.pass_rate equals 0.0
+        assert suite.pass_rate == 0.0
+
+        # And: Complete failure is clearly indicated
+        assert len(suite.results) == 7
+        assert all(result.avg_duration_ms > 200 for result in suite.results)  # All exceed thresholds
 
 
 class TestRunComprehensiveBenchmarkEnvironmentContext:
@@ -539,5 +1194,229 @@ class TestRunComprehensiveBenchmarkTotalDuration:
         Fixtures Used:
             - fake_time_module: Tracks cumulative timing across benchmarks
         """
-        pass
+        # Given: A fake time module tracking cumulative execution
+        fake_time_module.set_time(1000.0)
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Mock benchmark results with predictable timing
+        mock_result = BenchmarkResult(
+            operation="test",
+            duration_ms=50.0,
+            memory_peak_mb=1.0,
+            iterations=1,
+            avg_duration_ms=50.0,
+            min_duration_ms=45.0,
+            max_duration_ms=55.0,
+            std_dev_ms=2.0,
+            success_rate=1.0,
+            metadata={}
+        )
+
+        # Mock all benchmarks with distinct results
+        mocks = {
+            'benchmark_preset_loading': Mock(return_value=BenchmarkResult(
+                operation="preset_loading", duration_ms=50.0, memory_peak_mb=1.0, iterations=1,
+                avg_duration_ms=50.0, min_duration_ms=45.0, max_duration_ms=55.0, std_dev_ms=2.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_settings_initialization': Mock(return_value=BenchmarkResult(
+                operation="settings_initialization", duration_ms=60.0, memory_peak_mb=1.2, iterations=1,
+                avg_duration_ms=60.0, min_duration_ms=55.0, max_duration_ms=65.0, std_dev_ms=2.5, success_rate=1.0, metadata={}
+            )),
+            'benchmark_resilience_config_loading': Mock(return_value=BenchmarkResult(
+                operation="resilience_config_loading", duration_ms=70.0, memory_peak_mb=1.4, iterations=1,
+                avg_duration_ms=70.0, min_duration_ms=65.0, max_duration_ms=75.0, std_dev_ms=3.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_service_initialization': Mock(return_value=BenchmarkResult(
+                operation="service_initialization", duration_ms=80.0, memory_peak_mb=1.6, iterations=1,
+                avg_duration_ms=80.0, min_duration_ms=75.0, max_duration_ms=85.0, std_dev_ms=3.5, success_rate=1.0, metadata={}
+            )),
+            'benchmark_custom_config_loading': Mock(return_value=BenchmarkResult(
+                operation="custom_config_loading", duration_ms=90.0, memory_peak_mb=1.8, iterations=1,
+                avg_duration_ms=90.0, min_duration_ms=85.0, max_duration_ms=95.0, std_dev_ms=4.0, success_rate=1.0, metadata={}
+            )),
+            'benchmark_legacy_config_loading': Mock(return_value=BenchmarkResult(
+                operation="legacy_config_loading", duration_ms=100.0, memory_peak_mb=2.0, iterations=1,
+                avg_duration_ms=100.0, min_duration_ms=95.0, max_duration_ms=105.0, std_dev_ms=4.5, success_rate=1.0, metadata={}
+            )),
+            'benchmark_validation_performance': Mock(return_value=BenchmarkResult(
+                operation="validation_performance", duration_ms=110.0, memory_peak_mb=2.2, iterations=1,
+                avg_duration_ms=110.0, min_duration_ms=105.0, max_duration_ms=115.0, std_dev_ms=5.0, success_rate=1.0, metadata={}
+            ))
+        }
+
+        with patch.multiple(benchmark, **mocks):
+            # When: run_comprehensive_benchmark executes all benchmarks
+            suite = benchmark.run_comprehensive_benchmark()
+
+        # Then: total_duration_ms reflects total execution time
+        assert suite.total_duration_ms > 0
+        assert isinstance(suite.total_duration_ms, (int, float))
+
+        # And: Duration is reported in milliseconds for consistency
+        # Verify it's a reasonable duration (not in seconds or nanoseconds)
+        assert 1 < suite.total_duration_ms < 100000  # Between 1ms and 100s
+
+
+class TestBenchmarkSuiteConversion:
+    """
+    Tests for BenchmarkSuite.to_dict() and to_json() conversion methods.
+
+    Scope:
+        Verifies proper conversion of BenchmarkSuite to dictionary and JSON
+        formats for serialization and analysis.
+
+    Business Impact:
+        Conversion methods enable benchmark result storage, transmission,
+        and analysis in external systems and reporting tools.
+
+    Test Strategy:
+        - Test to_dict() method completeness
+        - Test to_json() method format
+        - Test serialization integrity
+    """
+
+    def test_benchmark_suite_to_dict_conversion(self):
+        """
+        Test that BenchmarkSuite.to_dict() converts all suite data to dictionary.
+
+        Verifies:
+            All suite attributes are properly converted to dictionary format with
+            correct types and structure for serialization.
+
+        Business Impact:
+            Dictionary conversion enables storage and transmission of benchmark
+            results in structured format for analysis and reporting.
+
+        Scenario:
+            Given: A BenchmarkSuite with complete test data
+            When: to_dict() method is called
+            Then: All suite attributes are present in dictionary
+            And: Data types are preserved correctly
+            And: BenchmarkResult objects are converted to dictionaries
+
+        Fixtures Used:
+            - None required for conversion testing
+        """
+        # Given: A BenchmarkSuite with complete test data
+        test_results = [
+            BenchmarkResult(
+                operation="test_operation",
+                duration_ms=100.0,
+                memory_peak_mb=5.0,
+                iterations=10,
+                avg_duration_ms=10.0,
+                min_duration_ms=8.0,
+                max_duration_ms=12.0,
+                std_dev_ms=1.0,
+                success_rate=1.0,
+                metadata={"test": "data"}
+            )
+        ]
+
+        suite = BenchmarkSuite(
+            name="Test Benchmark Suite",
+            results=test_results,
+            total_duration_ms=500.0,
+            pass_rate=1.0,
+            failed_benchmarks=[],
+            timestamp="2023-01-01 00:00:00 UTC",
+            environment_info={"python_version": "3.9", "platform": "test"}
+        )
+
+        # When: to_dict() method is called
+        result_dict = suite.to_dict()
+
+        # Then: All suite attributes are present in dictionary
+        expected_keys = [
+            "name", "results", "total_duration_ms", "pass_rate",
+            "failed_benchmarks", "timestamp", "environment_info"
+        ]
+        for key in expected_keys:
+            assert key in result_dict, f"Missing key: {key}"
+
+        # And: Data types are preserved correctly
+        assert isinstance(result_dict["name"], str)
+        assert isinstance(result_dict["results"], list)
+        assert isinstance(result_dict["total_duration_ms"], (int, float))
+        assert isinstance(result_dict["pass_rate"], (int, float))
+        assert isinstance(result_dict["failed_benchmarks"], list)
+        assert isinstance(result_dict["timestamp"], str)
+        assert isinstance(result_dict["environment_info"], dict)
+
+        # And: BenchmarkResult objects are converted to dictionaries
+        assert len(result_dict["results"]) == 1
+        result_entry = result_dict["results"][0]
+        assert isinstance(result_entry, dict)
+        assert result_entry["operation"] == "test_operation"
+        assert result_entry["avg_duration_ms"] == 10.0
+
+    def test_benchmark_suite_to_json_conversion(self):
+        """
+        Test that BenchmarkSuite.to_json() converts suite to JSON string.
+
+        Verifies:
+            Suite data is properly serialized to JSON format with proper
+            structure and valid JSON syntax for storage and transmission.
+
+        Business Impact:
+            JSON conversion enables easy storage, transmission, and integration
+            with web-based tools and external analysis systems.
+
+        Scenario:
+            Given: A BenchmarkSuite with test data
+            When: to_json() method is called
+            Then: Valid JSON string is returned
+            And: JSON contains all suite data
+            And: JSON can be parsed back to reconstruct data
+
+        Fixtures Used:
+            - None required for JSON conversion testing
+        """
+        import json
+
+        # Given: A BenchmarkSuite with test data
+        test_results = [
+            BenchmarkResult(
+                operation="json_test",
+                duration_ms=75.0,
+                memory_peak_mb=3.0,
+                iterations=5,
+                avg_duration_ms=15.0,
+                min_duration_ms=12.0,
+                max_duration_ms=18.0,
+                std_dev_ms=2.0,
+                success_rate=1.0,
+                metadata={"format": "json"}
+            )
+        ]
+
+        suite = BenchmarkSuite(
+            name="JSON Test Suite",
+            results=test_results,
+            total_duration_ms=300.0,
+            pass_rate=0.8,
+            failed_benchmarks=["failed_benchmark"],
+            timestamp="2023-01-01 12:00:00 UTC",
+            environment_info={"format": "json", "test": True}
+        )
+
+        # When: to_json() method is called
+        json_string = suite.to_json()
+
+        # Then: Valid JSON string is returned
+        assert isinstance(json_string, str)
+        assert len(json_string) > 0
+
+        # And: JSON contains all suite data
+        parsed_data = json.loads(json_string)
+        assert parsed_data["name"] == "JSON Test Suite"
+        assert parsed_data["pass_rate"] == 0.8
+        assert "failed_benchmark" in parsed_data["failed_benchmarks"]
+        assert parsed_data["environment_info"]["format"] == "json"
+
+        # And: JSON can be parsed back to reconstruct data
+        assert len(parsed_data["results"]) == 1
+        result = parsed_data["results"][0]
+        assert result["operation"] == "json_test"
+        assert result["avg_duration_ms"] == 15.0
 

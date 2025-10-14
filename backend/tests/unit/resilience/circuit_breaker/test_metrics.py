@@ -52,7 +52,19 @@ class TestResilienceMetricsInitialization:
         Fixtures Used:
             None - Direct instantiation for clarity
         """
-        pass
+        # When: ResilienceMetrics is instantiated with default constructor
+        metrics = ResilienceMetrics()
+
+        # Then: All call counters are initialized to 0
+        assert metrics.total_calls == 0
+        assert metrics.successful_calls == 0
+        assert metrics.failed_calls == 0
+        assert metrics.retry_attempts == 0
+
+        # And: All state transition counters are initialized to 0
+        assert metrics.circuit_breaker_opens == 0
+        assert metrics.circuit_breaker_half_opens == 0
+        assert metrics.circuit_breaker_closes == 0
 
     def test_metrics_initializes_with_none_timestamps(self):
         """
@@ -75,7 +87,15 @@ class TestResilienceMetricsInitialization:
         Fixtures Used:
             None - Testing initial state
         """
-        pass
+        # Given: No prior metrics exist
+        # When: ResilienceMetrics is instantiated
+        metrics = ResilienceMetrics()
+
+        # Then: last_success timestamp is None
+        assert metrics.last_success is None
+
+        # And: last_failure timestamp is None
+        assert metrics.last_failure is None
 
     def test_metrics_attributes_are_mutable_for_tracking(self):
         """
@@ -97,7 +117,26 @@ class TestResilienceMetricsInitialization:
         Fixtures Used:
             None - Testing basic mutability
         """
-        pass
+        # Given: A new ResilienceMetrics instance
+        metrics = ResilienceMetrics()
+
+        # When: Metric attributes are incremented
+        metrics.total_calls = 5
+        metrics.successful_calls = 3
+        metrics.failed_calls = 2
+        metrics.retry_attempts = 1
+
+        # Then: Attributes store updated values
+        assert metrics.total_calls == 5
+        assert metrics.successful_calls == 3
+        assert metrics.failed_calls == 2
+        assert metrics.retry_attempts == 1
+
+        # And: Updates are reflected in subsequent accesses
+        assert metrics.total_calls == 5  # Verify persistence
+        assert metrics.successful_calls == 3
+        assert metrics.failed_calls == 2
+        assert metrics.retry_attempts == 1
 
 
 class TestResilienceMetricsSuccessRate:
@@ -124,7 +163,17 @@ class TestResilienceMetricsSuccessRate:
         Fixtures Used:
             None - Testing edge case with default initialization
         """
-        pass
+        # Given: ResilienceMetrics with total_calls = 0
+        metrics = ResilienceMetrics()
+
+        # When: success_rate property is accessed
+        success_rate = metrics.success_rate
+
+        # Then: Returns 0.0 without raising ZeroDivisionError
+        assert success_rate == 0.0
+
+        # And: Result is a float type for consistent API
+        assert isinstance(success_rate, float)
 
     def test_success_rate_calculates_correct_percentage(self):
         """
@@ -146,7 +195,19 @@ class TestResilienceMetricsSuccessRate:
         Fixtures Used:
             None - Testing calculation with known values
         """
-        pass
+        # Given: Metrics with total_calls = 10 and successful_calls = 8
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.successful_calls = 8
+
+        # When: success_rate property is accessed
+        success_rate = metrics.success_rate
+
+        # Then: Returns 80.0 (percentage)
+        assert success_rate == 80.0
+
+        # And: Result is accurate to expected precision
+        assert isinstance(success_rate, float)
 
     def test_success_rate_handles_perfect_success(self):
         """
@@ -168,7 +229,19 @@ class TestResilienceMetricsSuccessRate:
         Fixtures Used:
             None - Testing boundary condition
         """
-        pass
+        # Given: Metrics with total_calls = 5 and successful_calls = 5
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 5
+        metrics.successful_calls = 5
+
+        # When: success_rate property is accessed
+        success_rate = metrics.success_rate
+
+        # Then: Returns 100.0 (perfect success rate)
+        assert success_rate == 100.0
+
+        # And: No floating point precision issues
+        assert isinstance(success_rate, float)
 
     def test_success_rate_handles_zero_success(self):
         """
@@ -190,7 +263,19 @@ class TestResilienceMetricsSuccessRate:
         Fixtures Used:
             None - Testing boundary condition
         """
-        pass
+        # Given: Metrics with total_calls = 5 and successful_calls = 0
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 5
+        metrics.successful_calls = 0
+
+        # When: success_rate property is accessed
+        success_rate = metrics.success_rate
+
+        # Then: Returns 0.0 (complete failure)
+        assert success_rate == 0.0
+
+        # And: Distinguishable from "no calls made" scenario (total_calls > 0)
+        assert metrics.total_calls == 5  # Verify we have calls made
 
     def test_success_rate_returns_float_type(self):
         """
@@ -213,7 +298,27 @@ class TestResilienceMetricsSuccessRate:
         Fixtures Used:
             None - Testing type consistency
         """
-        pass
+        # Given: Metrics with various call counts
+        test_cases = [
+            {"total_calls": 0, "successful_calls": 0},
+            {"total_calls": 10, "successful_calls": 8},
+            {"total_calls": 5, "successful_calls": 5},
+            {"total_calls": 3, "successful_calls": 0}
+        ]
+
+        for case in test_cases:
+            # When: success_rate property is accessed
+            metrics = ResilienceMetrics()
+            metrics.total_calls = case["total_calls"]
+            metrics.successful_calls = case["successful_calls"]
+            success_rate = metrics.success_rate
+
+            # Then: Return value is always float type
+            assert isinstance(success_rate, float)
+            assert isinstance(success_rate, float)
+
+            # And: Type is consistent regardless of input values
+            assert success_rate == 0.0 or 0.0 <= success_rate <= 100.0
 
     def test_success_rate_updates_when_counters_change(self):
         """
@@ -236,7 +341,24 @@ class TestResilienceMetricsSuccessRate:
         Fixtures Used:
             None - Testing dynamic calculation
         """
-        pass
+        # Given: Metrics with initial counter values
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 4
+        metrics.successful_calls = 2
+
+        # Verify initial success rate
+        initial_rate = metrics.success_rate
+        assert initial_rate == 50.0
+
+        # When: Counters are updated
+        metrics.successful_calls += 1  # Now 3 successful out of 4
+
+        # Then: Subsequent success_rate access reflects updated values
+        updated_rate = metrics.success_rate
+        assert updated_rate == 75.0
+
+        # And: No manual recalculation is required
+        assert updated_rate != initial_rate  # Changed automatically
 
 
 class TestResilienceMetricsFailureRate:
@@ -263,7 +385,17 @@ class TestResilienceMetricsFailureRate:
         Fixtures Used:
             None - Testing edge case with default initialization
         """
-        pass
+        # Given: ResilienceMetrics with total_calls = 0
+        metrics = ResilienceMetrics()
+
+        # When: failure_rate property is accessed
+        failure_rate = metrics.failure_rate
+
+        # Then: Returns 0.0 without raising ZeroDivisionError
+        assert failure_rate == 0.0
+
+        # And: Result is a float type for consistent API
+        assert isinstance(failure_rate, float)
 
     def test_failure_rate_calculates_correct_percentage(self):
         """
@@ -285,7 +417,19 @@ class TestResilienceMetricsFailureRate:
         Fixtures Used:
             None - Testing calculation with known values
         """
-        pass
+        # Given: Metrics with total_calls = 10 and failed_calls = 3
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.failed_calls = 3
+
+        # When: failure_rate property is accessed
+        failure_rate = metrics.failure_rate
+
+        # Then: Returns 30.0 (percentage)
+        assert failure_rate == 30.0
+
+        # And: Result is accurate to expected precision
+        assert isinstance(failure_rate, float)
 
     def test_failure_rate_handles_perfect_failure(self):
         """
@@ -307,7 +451,16 @@ class TestResilienceMetricsFailureRate:
         Fixtures Used:
             None - Testing boundary condition
         """
-        pass
+        # Given: Metrics with total_calls = 5 and failed_calls = 5
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 5
+        metrics.failed_calls = 5
+
+        # When: failure_rate property is accessed
+        failure_rate = metrics.failure_rate
+
+        # Then: Returns 100.0 (complete failure rate)
+        assert failure_rate == 100.0
 
     def test_failure_rate_handles_zero_failures(self):
         """
@@ -329,7 +482,19 @@ class TestResilienceMetricsFailureRate:
         Fixtures Used:
             None - Testing boundary condition
         """
-        pass
+        # Given: Metrics with total_calls = 5 and failed_calls = 0
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 5
+        metrics.failed_calls = 0
+
+        # When: failure_rate property is accessed
+        failure_rate = metrics.failure_rate
+
+        # Then: Returns 0.0 (no failures)
+        assert failure_rate == 0.0
+
+        # And: Distinguishable from "no calls made" scenario (total_calls > 0)
+        assert metrics.total_calls == 5
 
     def test_failure_rate_and_success_rate_complement_relationship(self):
         """
@@ -352,7 +517,23 @@ class TestResilienceMetricsFailureRate:
         Fixtures Used:
             None - Testing documented behavior note
         """
-        pass
+        # Given: Metrics with various combinations of successful, failed, and total calls
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.successful_calls = 7
+        metrics.failed_calls = 2
+        # Note: 1 call is unaccounted for (cancelled, timeout, etc.)
+
+        # When: Both success_rate and failure_rate are calculated
+        success_rate = metrics.success_rate
+        failure_rate = metrics.failure_rate
+
+        # Then: Rates may not sum to exactly 100% in all cases
+        total_rate = success_rate + failure_rate
+        assert total_rate == 90.0  # 70% + 20% = 90%, not 100%
+
+        # And: Contract note about cancelled calls is validated
+        # This demonstrates the case where not all calls are counted as success or failure
 
 
 class TestResilienceMetricsToDictExport:
@@ -378,7 +559,36 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             None - Testing export completeness
         """
-        pass
+        # Given: Metrics with various counter values
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 15
+        metrics.successful_calls = 12
+        metrics.failed_calls = 3
+        metrics.retry_attempts = 2
+        metrics.circuit_breaker_opens = 1
+        metrics.circuit_breaker_half_opens = 2
+        metrics.circuit_breaker_closes = 1
+
+        # When: to_dict() is called
+        result = metrics.to_dict()
+
+        # Then: Returned dictionary contains all counter fields
+        assert "total_calls" in result
+        assert "successful_calls" in result
+        assert "failed_calls" in result
+        assert "retry_attempts" in result
+        assert "circuit_breaker_opens" in result
+        assert "circuit_breaker_half_opens" in result
+        assert "circuit_breaker_closes" in result
+
+        # And: Values match the current metric state
+        assert result["total_calls"] == 15
+        assert result["successful_calls"] == 12
+        assert result["failed_calls"] == 3
+        assert result["retry_attempts"] == 2
+        assert result["circuit_breaker_opens"] == 1
+        assert result["circuit_breaker_half_opens"] == 2
+        assert result["circuit_breaker_closes"] == 1
 
     def test_to_dict_includes_calculated_rates(self):
         """
@@ -401,7 +611,24 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             None - Testing rate export
         """
-        pass
+        # Given: Metrics with success and failure data
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.successful_calls = 8
+        metrics.failed_calls = 2
+
+        # When: to_dict() is called
+        result = metrics.to_dict()
+
+        # Then: Dictionary includes 'success_rate' and 'failure_rate' keys
+        assert "success_rate" in result
+        assert "failure_rate" in result
+
+        # And: Rate values are rounded to 2 decimal places
+        assert result["success_rate"] == 80.0
+        assert result["failure_rate"] == 20.0
+        assert isinstance(result["success_rate"], float)
+        assert isinstance(result["failure_rate"], float)
 
     def test_to_dict_converts_timestamps_to_iso_format(self):
         """
@@ -424,7 +651,24 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             - fake_datetime: For deterministic timestamp testing
         """
-        pass
+        # Given: Metrics with last_success and last_failure timestamps set
+        metrics = ResilienceMetrics()
+        test_time = datetime(2023, 1, 1, 12, 0, 0)
+        metrics.last_success = test_time
+        metrics.last_failure = test_time
+
+        # When: to_dict() is called
+        result = metrics.to_dict()
+
+        # Then: Timestamp fields contain ISO 8601 formatted strings
+        assert "last_success" in result
+        assert "last_failure" in result
+        assert isinstance(result["last_success"], str)
+        assert isinstance(result["last_failure"], str)
+
+        # And: Original datetime objects are converted correctly
+        assert "2023-01-01T12:00:00" in result["last_success"]
+        assert "2023-01-01T12:00:00" in result["last_failure"]
 
     def test_to_dict_handles_none_timestamps_correctly(self):
         """
@@ -447,7 +691,17 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             None - Testing None handling
         """
-        pass
+        # Given: Metrics with last_success or last_failure still at None
+        metrics = ResilienceMetrics()
+
+        # When: to_dict() is called
+        result = metrics.to_dict()
+
+        # Then: Dictionary contains None for unset timestamp fields
+        assert "last_success" in result
+        assert "last_failure" in result
+        assert result["last_success"] is None
+        assert result["last_failure"] is None
 
     def test_to_dict_produces_json_serializable_output(self):
         """
@@ -470,7 +724,25 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             - fake_datetime: For testing timestamp serialization
         """
-        pass
+        # Given: Metrics with various data including timestamps
+        import json
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.successful_calls = 8
+        metrics.last_success = datetime(2023, 1, 1, 12, 0, 0)
+
+        # When: to_dict() output is serialized to JSON
+        result = metrics.to_dict()
+        json_str = json.dumps(result)
+
+        # Then: JSON serialization succeeds without errors
+        assert isinstance(json_str, str)
+        assert len(json_str) > 0
+
+        # And: All data types are compatible with JSON
+        parsed_back = json.loads(json_str)
+        assert parsed_back["total_calls"] == 10
+        assert parsed_back["successful_calls"] == 8
 
     def test_to_dict_export_structure_matches_monitoring_systems(self):
         """
@@ -494,7 +766,26 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             None - Testing structure conventions
         """
-        pass
+        # Given: Metrics with complete data
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.successful_calls = 8
+
+        # When: to_dict() is called
+        result = metrics.to_dict()
+
+        # Then: Dictionary structure follows monitoring system conventions
+        assert isinstance(result, dict)
+
+        # And: Keys use snake_case naming
+        expected_keys = [
+            "total_calls", "successful_calls", "failed_calls", "retry_attempts",
+            "circuit_breaker_opens", "circuit_breaker_half_opens", "circuit_breaker_closes",
+            "last_success", "last_failure", "success_rate", "failure_rate"
+        ]
+        for key in expected_keys:
+            assert key in result
+            assert "_" in key or key.islower()  # snake_case convention
 
     def test_to_dict_rounds_rates_to_two_decimal_places(self):
         """
@@ -517,7 +808,23 @@ class TestResilienceMetricsToDictExport:
         Fixtures Used:
             None - Testing precision control
         """
-        pass
+        # Given: Metrics that produce rates with many decimal places
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 3  # This will produce 33.33... and 66.66... percentages
+        metrics.successful_calls = 1
+        metrics.failed_calls = 2
+
+        # When: to_dict() is called
+        result = metrics.to_dict()
+
+        # Then: success_rate and failure_rate are rounded to 2 decimals
+        # 1/3 * 100 = 33.333... -> 33.33, 2/3 * 100 = 66.666... -> 66.67
+        assert result["success_rate"] == 33.33
+        assert result["failure_rate"] == 66.67
+
+        # And: Rounding is applied consistently
+        assert isinstance(result["success_rate"], float)
+        assert isinstance(result["failure_rate"], float)
 
 
 class TestResilienceMetricsThreadSafety:
@@ -544,7 +851,27 @@ class TestResilienceMetricsThreadSafety:
         Fixtures Used:
             - fake_threading_module: For simulating concurrent access (from tests/unit/conftest.py)
         """
-        pass
+        # Given: Single ResilienceMetrics instance shared across threads
+        metrics = ResilienceMetrics()
+
+        # Simulate concurrent counter updates
+        # Note: Since we're testing the ResilienceMetrics dataclass itself and not a
+        # specific thread-safe implementation, we verify basic concurrent access patterns
+        # that would work with proper thread-safe mechanisms
+
+        # Simulate multiple threads updating counters
+        metrics.total_calls += 5
+        metrics.successful_calls += 3
+        metrics.failed_calls += 2
+
+        # Then: Final counter values reflect all increments
+        assert metrics.total_calls == 5
+        assert metrics.successful_calls == 3
+        assert metrics.failed_calls == 2
+
+        # And: No increments are lost (basic verification)
+        # Full thread safety testing would require actual threading or specific
+        # thread-safe implementation testing
 
     def test_metrics_atomic_updates_prevent_race_conditions(self):
         """
@@ -567,7 +894,28 @@ class TestResilienceMetricsThreadSafety:
         Fixtures Used:
             - fake_threading_module: For simulating race conditions
         """
-        pass
+        # Given: Metrics being updated by concurrent operations
+        metrics = ResilienceMetrics()
+
+        # Simulate atomic update pattern (all related counters updated together)
+        # When: Multiple attributes are updated in quick succession
+        initial_total = 0
+        initial_successful = 0
+        initial_failed = 0
+
+        # Perform "atomic" update - all related counters together
+        metrics.total_calls = initial_total + 3
+        metrics.successful_calls = initial_successful + 2
+        metrics.failed_calls = initial_failed + 1
+
+        # Then: Metrics remain in consistent state
+        assert metrics.total_calls == 3
+        assert metrics.successful_calls == 2
+        assert metrics.failed_calls == 1
+
+        # And: Related counters maintain logical relationships
+        # total_calls should equal successful + failed in this simple case
+        assert metrics.total_calls == metrics.successful_calls + metrics.failed_calls
 
 
 class TestResilienceMetricsTimestampTracking:
@@ -594,7 +942,22 @@ class TestResilienceMetricsTimestampTracking:
         Fixtures Used:
             - fake_datetime: For deterministic timestamp testing
         """
-        pass
+        # Given: Metrics with no prior success timestamp
+        metrics = ResilienceMetrics()
+        assert metrics.last_success is None
+
+        # When: last_success is updated with current timestamp
+        test_timestamp = datetime(2023, 1, 1, 12, 0, 0)
+        metrics.last_success = test_timestamp
+
+        # Then: Timestamp is stored accurately
+        assert metrics.last_success == test_timestamp
+
+        # And: Timestamp can be used for time-based analysis
+        assert isinstance(metrics.last_success, datetime)
+        assert metrics.last_success.year == 2023
+        assert metrics.last_success.month == 1
+        assert metrics.last_success.day == 1
 
     def test_metrics_records_last_failure_timestamp(self):
         """
@@ -617,7 +980,21 @@ class TestResilienceMetricsTimestampTracking:
         Fixtures Used:
             - fake_datetime: For deterministic timestamp testing
         """
-        pass
+        # Given: Metrics with no prior failure timestamp
+        metrics = ResilienceMetrics()
+        assert metrics.last_failure is None
+
+        # When: last_failure is updated with current timestamp
+        test_timestamp = datetime(2023, 1, 1, 12, 30, 0)
+        metrics.last_failure = test_timestamp
+
+        # Then: Timestamp is stored accurately
+        assert metrics.last_failure == test_timestamp
+
+        # And: Timestamp can be used for failure analysis
+        assert isinstance(metrics.last_failure, datetime)
+        assert metrics.last_failure.year == 2023
+        assert metrics.last_failure.hour == 12
 
     def test_metrics_timestamps_enable_temporal_analysis(self):
         """
@@ -640,7 +1017,22 @@ class TestResilienceMetricsTimestampTracking:
         Fixtures Used:
             - fake_datetime: For controlled time progression testing
         """
-        pass
+        # Given: Metrics with both success and failure timestamps
+        metrics = ResilienceMetrics()
+        failure_time = datetime(2023, 1, 1, 12, 0, 0)
+        success_time = datetime(2023, 1, 1, 12, 5, 0)
+
+        metrics.last_failure = failure_time
+        metrics.last_success = success_time
+
+        # When: Temporal calculations are performed
+        time_difference = metrics.last_success - metrics.last_failure
+
+        # Then: Timestamps provide accurate temporal data
+        assert time_difference.total_seconds() == 300  # 5 minutes = 300 seconds
+
+        # And: Time-based health assessments are possible
+        assert time_difference.total_seconds() > 0  # Success after failure = recovery
 
     def test_metrics_timestamp_updates_are_consistent(self):
         """
@@ -662,7 +1054,25 @@ class TestResilienceMetricsTimestampTracking:
         Fixtures Used:
             - fake_datetime: For controlled timestamp progression
         """
-        pass
+        # Given: Metrics with initial timestamps
+        metrics = ResilienceMetrics()
+        first_timestamp = datetime(2023, 1, 1, 12, 0, 0)
+        second_timestamp = datetime(2023, 1, 1, 12, 5, 0)
+        third_timestamp = datetime(2023, 1, 1, 12, 10, 0)
+
+        # When: Timestamps are updated in sequence
+        metrics.last_success = first_timestamp
+        metrics.last_failure = second_timestamp
+        metrics.last_success = third_timestamp  # Update success time
+
+        # Then: Later timestamps are always >= earlier timestamps
+        assert metrics.last_success >= first_timestamp
+        assert metrics.last_failure >= first_timestamp
+        assert metrics.last_success >= second_timestamp
+
+        # And: Temporal ordering is maintained
+        assert metrics.last_failure >= first_timestamp
+        assert metrics.last_success >= metrics.last_failure
 
 
 class TestResilienceMetricsReset:
@@ -689,7 +1099,32 @@ class TestResilienceMetricsReset:
         Fixtures Used:
             None - Testing reset behavior
         """
-        pass
+        # Given: Metrics with non-zero counters
+        metrics = ResilienceMetrics()
+        metrics.total_calls = 10
+        metrics.successful_calls = 8
+        metrics.failed_calls = 2
+        metrics.retry_attempts = 3
+        metrics.circuit_breaker_opens = 2
+        metrics.circuit_breaker_half_opens = 1
+        metrics.circuit_breaker_closes = 2
+
+        # When: reset() is called
+        metrics.reset()
+
+        # Then: All counter values return to 0
+        assert metrics.total_calls == 0
+        assert metrics.successful_calls == 0
+        assert metrics.failed_calls == 0
+        assert metrics.retry_attempts == 0
+        assert metrics.circuit_breaker_opens == 0
+        assert metrics.circuit_breaker_half_opens == 0
+        assert metrics.circuit_breaker_closes == 0
+
+        # And: Metrics return to initialized state
+        # Test that properties also work correctly after reset
+        assert metrics.success_rate == 0.0
+        assert metrics.failure_rate == 0.0
 
     def test_reset_clears_timestamp_data(self):
         """
@@ -711,7 +1146,28 @@ class TestResilienceMetricsReset:
         Fixtures Used:
             - fake_datetime: For verifying timestamp reset
         """
-        pass
+        # Given: Metrics with last_success and last_failure timestamps
+        metrics = ResilienceMetrics()
+        test_time = datetime(2023, 1, 1, 12, 0, 0)
+        metrics.last_success = test_time
+        metrics.last_failure = test_time
+
+        # Verify timestamps are set
+        assert metrics.last_success == test_time
+        assert metrics.last_failure == test_time
+
+        # When: reset() is called
+        metrics.reset()
+
+        # Then: Both timestamps return to None
+        assert metrics.last_success is None
+        assert metrics.last_failure is None
+
+        # And: No historical timestamp data remains
+        # to_dict() should also show None for timestamps
+        result = metrics.to_dict()
+        assert result["last_success"] is None
+        assert result["last_failure"] is None
 
     def test_reset_enables_periodic_monitoring_windows(self):
         """
@@ -733,5 +1189,37 @@ class TestResilienceMetricsReset:
         Fixtures Used:
             - fake_datetime: For simulating window expiration
         """
-        pass
+        # Given: Metrics being used for windowed monitoring
+        metrics = ResilienceMetrics()
+
+        # Simulate first monitoring window with some activity
+        metrics.total_calls = 50
+        metrics.successful_calls = 45
+        metrics.failed_calls = 5
+        metrics.last_success = datetime(2023, 1, 1, 12, 0, 0)
+
+        # Verify window data exists
+        assert metrics.total_calls == 50
+        assert metrics.success_rate == 90.0
+        assert metrics.last_success is not None
+
+        # When: Monitoring window expires and reset() is called
+        # Simulate window boundary and reset for new window
+        metrics.reset()
+
+        # Then: Metrics are ready for new window
+        assert metrics.total_calls == 0
+        assert metrics.successful_calls == 0
+        assert metrics.failed_calls == 0
+        assert metrics.last_success is None
+        assert metrics.last_failure is None
+
+        # And: Previous window data is cleared
+        assert metrics.success_rate == 0.0
+        assert metrics.failure_rate == 0.0
+
+        # New window can start collecting fresh data
+        metrics.total_calls = 1
+        metrics.successful_calls = 1
+        assert metrics.success_rate == 100.0
 

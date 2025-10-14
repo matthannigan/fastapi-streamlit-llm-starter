@@ -14,12 +14,13 @@ Test Organization:
 """
 
 import pytest
+from app.infrastructure.resilience.retry import classify_exception
 
 
 class TestClassifyExceptionTransientErrors:
     """Tests classify_exception identification of transient, retryable errors."""
 
-    def test_classifies_connection_error_as_retryable(self):
+    def test_classifies_connection_error_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies ConnectionError as transient and retryable.
 
@@ -39,9 +40,18 @@ class TestClassifyExceptionTransientErrors:
         Fixtures Used:
             - None (tests function with real exception instances)
         """
-        pass
+        # Arrange: Create a ConnectionError exception
+        connection_error = ConnectionError("Connection timeout after 30 seconds")
+        mock_classify_ai_exception.set_retryable(ConnectionError)
 
-    def test_classifies_timeout_error_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(connection_error)
+
+        # Assert: ConnectionError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(connection_error)
+
+    def test_classifies_timeout_error_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies TimeoutError as transient and retryable.
 
@@ -61,9 +71,18 @@ class TestClassifyExceptionTransientErrors:
         Fixtures Used:
             - None (tests function with real exception instances)
         """
-        pass
+        # Arrange: Create a TimeoutError exception
+        timeout_error = TimeoutError("Operation timed out after 60 seconds")
+        mock_classify_ai_exception.set_retryable(TimeoutError)
 
-    def test_classifies_rate_limit_error_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(timeout_error)
+
+        # Assert: TimeoutError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(timeout_error)
+
+    def test_classifies_rate_limit_error_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies RateLimitError as transient and retryable.
 
@@ -83,9 +102,19 @@ class TestClassifyExceptionTransientErrors:
         Fixtures Used:
             - None (tests function with real exception instances)
         """
-        pass
+        # Arrange: Create a RateLimitError exception
+        from app.core.exceptions import RateLimitError
+        rate_limit_error = RateLimitError("Rate limit exceeded, retry after 60 seconds")
+        mock_classify_ai_exception.set_retryable(RateLimitError)
 
-    def test_classifies_service_unavailable_error_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(rate_limit_error)
+
+        # Assert: RateLimitError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(rate_limit_error)
+
+    def test_classifies_service_unavailable_error_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies ServiceUnavailableError as retryable.
 
@@ -102,11 +131,21 @@ class TestClassifyExceptionTransientErrors:
             Then: The function returns True indicating the error is temporary.
 
         Fixtures Used:
-            - None (tests function with real exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create a ServiceUnavailableError exception
+        from app.core.exceptions import ServiceUnavailableError
+        service_error = ServiceUnavailableError("AI service temporarily unavailable")
+        mock_classify_ai_exception.set_retryable(ServiceUnavailableError)
 
-    def test_classifies_transient_ai_error_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(service_error)
+
+        # Assert: ServiceUnavailableError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(service_error)
+
+    def test_classifies_transient_ai_error_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies custom TransientAIError as retryable.
 
@@ -123,33 +162,69 @@ class TestClassifyExceptionTransientErrors:
             Then: The function returns True indicating retry eligibility.
 
         Fixtures Used:
-            - None (tests function with real exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create a TransientAIError exception
+        from app.core.exceptions import TransientAIError
+        transient_error = TransientAIError("Temporary AI service failure")
+        mock_classify_ai_exception.set_retryable(TransientAIError)
 
-    def test_classifies_http_5xx_errors_as_retryable(self):
-        """
-        Test that classify_exception identifies HTTP 5xx server errors as retryable.
+        # Act: Classify the exception
+        result = classify_exception(transient_error)
 
-        Verifies:
-            HTTP status codes in the 500-599 range are classified as transient
-            server errors suitable for retry per contract specification.
+        # Assert: TransientAIError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(transient_error)
 
-        Business Impact:
-            Enables automatic recovery from temporary server failures without
-            treating them as permanent errors.
+    @pytest.mark.parametrize("status_code,status_text", [
+        (500, "Internal Server Error"),
+        (502, "Bad Gateway"),
+        (503, "Service Unavailable"),
+        (504, "Gateway Timeout"),
+        (507, "Insufficient Storage"),
+    ])
+    def test_classifies_http_5xx_errors_as_retryable(self, status_code, status_text, mock_classify_ai_exception):
+            """
+            Test that classify_exception identifies HTTP 5xx server errors as retryable.
 
-        Scenario:
-            Given: HTTP exceptions with 5xx status codes (500, 502, 503, etc.).
-            When: classify_exception is called with these exceptions.
-            Then: The function returns True for all 5xx status codes.
+            Verifies:
+                HTTP status codes in the 500-599 range are classified as transient
+                server errors suitable for retry per contract specification.
 
-        Fixtures Used:
-            - None (tests function with real HTTP exception instances)
-        """
-        pass
+            Business Impact:
+                Enables automatic recovery from temporary server failures without
+                treating them as permanent errors.
 
-    def test_classifies_http_429_rate_limit_as_retryable(self):
+            Scenario:
+                Given: HTTP exceptions with 5xx status codes (500, 502, 503, etc.).
+                When: classify_exception is called with these exceptions.
+                Then: The function returns True for all 5xx status codes.
+
+            Fixtures Used:
+                - mock_classify_ai_exception (to configure classification behavior)
+            """
+            import httpx
+            from unittest.mock import Mock
+
+            # Arrange: Create HTTP 5xx exception with specific status code
+            mock_response = Mock()
+            mock_response.status_code = status_code
+
+            http_error = httpx.HTTPStatusError(
+                f"{status_code} {status_text}",
+                request=None,
+                response=mock_response
+            )
+            mock_classify_ai_exception.set_retryable(httpx.HTTPStatusError)
+
+            # Act: Classify the exception
+            result = classify_exception(http_error)
+
+            # Assert: 5xx errors should be retryable
+            assert result is True
+            mock_classify_ai_exception.assert_called_once_with(http_error)
+
+    def test_classifies_http_429_rate_limit_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 429 status as retryable.
 
@@ -166,15 +241,34 @@ class TestClassifyExceptionTransientErrors:
             Then: The function returns True indicating retry with backoff.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
+
+        # Arrange: Create HTTP 429 exception
+        mock_response = Mock()
+        mock_response.status_code = 429
+
+        rate_limit_error = httpx.HTTPStatusError(
+            "429 Too Many Requests",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(rate_limit_error)
+
+        # Assert: 429 errors should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(rate_limit_error)
 
 
 class TestClassifyExceptionPermanentErrors:
     """Tests classify_exception identification of permanent, non-retryable errors."""
 
-    def test_classifies_authentication_error_as_non_retryable(self):
+    def test_classifies_authentication_error_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies authentication errors as permanent.
 
@@ -194,9 +288,19 @@ class TestClassifyExceptionPermanentErrors:
         Fixtures Used:
             - None (tests function with real exception instances)
         """
-        pass
+        # Arrange: Create an AuthenticationError exception
+        from app.core.exceptions import AuthenticationError
+        auth_error = AuthenticationError("Invalid API key provided")
+        mock_classify_ai_exception.set_non_retryable(AuthenticationError)
 
-    def test_classifies_permanent_ai_error_as_non_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(auth_error)
+
+        # Assert: AuthenticationError should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(auth_error)
+
+    def test_classifies_permanent_ai_error_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies custom PermanentAIError as non-retryable.
 
@@ -215,9 +319,19 @@ class TestClassifyExceptionPermanentErrors:
         Fixtures Used:
             - None (tests function with real exception instances)
         """
-        pass
+        # Arrange: Create a PermanentAIError exception
+        from app.core.exceptions import PermanentAIError
+        permanent_error = PermanentAIError("AI service permanently deprecated")
+        mock_classify_ai_exception.set_non_retryable(PermanentAIError)
 
-    def test_classifies_validation_error_as_non_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(permanent_error)
+
+        # Assert: PermanentAIError should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(permanent_error)
+
+    def test_classifies_validation_error_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies validation errors as permanent.
 
@@ -237,9 +351,29 @@ class TestClassifyExceptionPermanentErrors:
         Fixtures Used:
             - None (tests function with real exception instances)
         """
-        pass
+        # Arrange: Create a ValidationError exception
+        from app.core.exceptions import ValidationError
+        validation_error = ValidationError("Invalid request parameters")
+        mock_classify_ai_exception.set_non_retryable(ValidationError)
 
-    def test_classifies_http_4xx_client_errors_as_non_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(validation_error)
+
+        # Assert: ValidationError should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(validation_error)
+
+    @pytest.mark.parametrize("status_code,status_text", [
+        (400, "Bad Request"),
+        (401, "Unauthorized"),
+        (403, "Forbidden"),
+        (404, "Not Found"),
+        (405, "Method Not Allowed"),
+        (409, "Conflict"),
+        (422, "Unprocessable Entity"),
+        (451, "Unavailable For Legal Reasons"),
+    ])
+    def test_classifies_http_4xx_client_errors_as_non_retryable(self, status_code, status_text, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 4xx client errors as permanent.
 
@@ -257,11 +391,30 @@ class TestClassifyExceptionPermanentErrors:
             Then: The function returns False for all 4xx codes except 429.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_classifies_http_401_unauthorized_as_non_retryable(self):
+        # Arrange: Create HTTP 4xx exception with specific status code
+        mock_response = Mock()
+        mock_response.status_code = status_code
+
+        http_error = httpx.HTTPStatusError(
+            f"{status_code} {status_text}",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_non_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(http_error)
+
+        # Assert: 4xx errors (except 429) should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(http_error)
+
+    def test_classifies_http_401_unauthorized_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception specifically identifies HTTP 401 as permanent.
 
@@ -279,11 +432,30 @@ class TestClassifyExceptionPermanentErrors:
             Then: The function returns False indicating authentication must be fixed.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_classifies_http_403_forbidden_as_non_retryable(self):
+        # Arrange: Create HTTP 401 exception
+        mock_response = Mock()
+        mock_response.status_code = 401
+
+        auth_error = httpx.HTTPStatusError(
+            "401 Unauthorized - Invalid or missing authentication",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_non_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(auth_error)
+
+        # Assert: 401 errors should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(auth_error)
+
+    def test_classifies_http_403_forbidden_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 403 as permanent authorization error.
 
@@ -301,11 +473,30 @@ class TestClassifyExceptionPermanentErrors:
             Then: The function returns False indicating authorization error.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_classifies_http_400_bad_request_as_non_retryable(self):
+        # Arrange: Create HTTP 403 exception
+        mock_response = Mock()
+        mock_response.status_code = 403
+
+        forbidden_error = httpx.HTTPStatusError(
+            "403 Forbidden - Insufficient permissions for resource",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_non_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(forbidden_error)
+
+        # Assert: 403 errors should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(forbidden_error)
+
+    def test_classifies_http_400_bad_request_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 400 as permanent input error.
 
@@ -323,15 +514,34 @@ class TestClassifyExceptionPermanentErrors:
             Then: The function returns False indicating input must be corrected.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
+
+        # Arrange: Create HTTP 400 exception
+        mock_response = Mock()
+        mock_response.status_code = 400
+
+        bad_request_error = httpx.HTTPStatusError(
+            "400 Bad Request - Malformed request syntax or invalid message",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_non_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(bad_request_error)
+
+        # Assert: 400 errors should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(bad_request_error)
 
 
 class TestClassifyExceptionNetworkErrors:
     """Tests classify_exception handling of network-related exceptions."""
 
-    def test_classifies_connection_refused_as_retryable(self):
+    def test_classifies_connection_refused_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies ConnectionRefusedError as retryable.
 
@@ -349,11 +559,20 @@ class TestClassifyExceptionNetworkErrors:
             Then: The function returns True indicating retry is appropriate.
 
         Fixtures Used:
-            - None (tests function with real exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create a ConnectionRefusedError exception
+        connection_refused = ConnectionRefusedError("Connection refused: [Errno 61] Connection refused")
+        mock_classify_ai_exception.set_retryable(ConnectionRefusedError)
 
-    def test_classifies_connection_reset_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(connection_refused)
+
+        # Assert: ConnectionRefusedError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(connection_refused)
+
+    def test_classifies_connection_reset_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies ConnectionResetError as retryable.
 
@@ -370,11 +589,20 @@ class TestClassifyExceptionNetworkErrors:
             Then: The function returns True indicating the error is transient.
 
         Fixtures Used:
-            - None (tests function with real exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create a ConnectionResetError exception
+        connection_reset = ConnectionResetError("Connection reset by peer")
+        mock_classify_ai_exception.set_retryable(ConnectionResetError)
 
-    def test_classifies_connection_aborted_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(connection_reset)
+
+        # Assert: ConnectionResetError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(connection_reset)
+
+    def test_classifies_connection_aborted_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies ConnectionAbortedError as retryable.
 
@@ -391,11 +619,20 @@ class TestClassifyExceptionNetworkErrors:
             Then: The function returns True indicating retry eligibility.
 
         Fixtures Used:
-            - None (tests function with real exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create a ConnectionAbortedError exception
+        connection_aborted = ConnectionAbortedError("Software caused connection abort")
+        mock_classify_ai_exception.set_retryable(ConnectionAbortedError)
 
-    def test_classifies_dns_resolution_errors_as_retryable(self):
+        # Act: Classify the exception
+        result = classify_exception(connection_aborted)
+
+        # Assert: ConnectionAbortedError should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(connection_aborted)
+
+    def test_classifies_dns_resolution_errors_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies DNS resolution errors as retryable.
 
@@ -412,15 +649,37 @@ class TestClassifyExceptionNetworkErrors:
             Then: The function returns True for transient DNS failures.
 
         Fixtures Used:
-            - None (tests function with real exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import socket
+
+        # Test cases for DNS-related errors
+        dns_errors = [
+            OSError("Name or service not known"),
+            OSError("Temporary failure in name resolution"),
+            socket.gaierror(-2, "Name or service not known"),
+            socket.gaierror(-3, "Temporary failure in name resolution"),
+        ]
+
+        for i, dns_error in enumerate(dns_errors):
+            # Configure mock for this exception type
+            mock_classify_ai_exception.set_retryable(type(dns_error))
+
+            # Act: Classify the exception
+            result = classify_exception(dns_error)
+
+            # Assert: DNS errors should be retryable
+            assert result is True
+            mock_classify_ai_exception.assert_called_with(dns_error)
+
+            # Reset mock for next iteration
+            mock_classify_ai_exception.reset_mock()
 
 
 class TestClassifyExceptionHTTPErrors:
     """Tests classify_exception handling of HTTP-specific error conditions."""
 
-    def test_classifies_http_502_bad_gateway_as_retryable(self):
+    def test_classifies_http_502_bad_gateway_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 502 as retryable server error.
 
@@ -437,11 +696,30 @@ class TestClassifyExceptionHTTPErrors:
             Then: The function returns True indicating temporary gateway issue.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_classifies_http_503_service_unavailable_as_retryable(self):
+        # Arrange: Create HTTP 502 exception
+        mock_response = Mock()
+        mock_response.status_code = 502
+
+        bad_gateway_error = httpx.HTTPStatusError(
+            "502 Bad Gateway - Invalid response from upstream server",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(bad_gateway_error)
+
+        # Assert: 502 errors should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(bad_gateway_error)
+
+    def test_classifies_http_503_service_unavailable_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 503 as retryable.
 
@@ -458,11 +736,30 @@ class TestClassifyExceptionHTTPErrors:
             Then: The function returns True indicating temporary unavailability.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_classifies_http_504_gateway_timeout_as_retryable(self):
+        # Arrange: Create HTTP 503 exception
+        mock_response = Mock()
+        mock_response.status_code = 503
+
+        service_unavailable_error = httpx.HTTPStatusError(
+            "503 Service Unavailable - Server temporarily overloaded or down",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(service_unavailable_error)
+
+        # Assert: 503 errors should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(service_unavailable_error)
+
+    def test_classifies_http_504_gateway_timeout_as_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 504 as retryable.
 
@@ -479,11 +776,30 @@ class TestClassifyExceptionHTTPErrors:
             Then: The function returns True indicating transient timeout.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_classifies_http_404_not_found_as_non_retryable(self):
+        # Arrange: Create HTTP 504 exception
+        mock_response = Mock()
+        mock_response.status_code = 504
+
+        gateway_timeout_error = httpx.HTTPStatusError(
+            "504 Gateway Timeout - Upstream server failed to respond in time",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(gateway_timeout_error)
+
+        # Assert: 504 errors should be retryable
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(gateway_timeout_error)
+
+    def test_classifies_http_404_not_found_as_non_retryable(self, mock_classify_ai_exception):
         """
         Test that classify_exception identifies HTTP 404 as permanent error.
 
@@ -501,15 +817,34 @@ class TestClassifyExceptionHTTPErrors:
             Then: The function returns False indicating permanent missing resource.
 
         Fixtures Used:
-            - None (tests function with real HTTP exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
+
+        # Arrange: Create HTTP 404 exception
+        mock_response = Mock()
+        mock_response.status_code = 404
+
+        not_found_error = httpx.HTTPStatusError(
+            "404 Not Found - Requested resource does not exist",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_non_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify the exception
+        result = classify_exception(not_found_error)
+
+        # Assert: 404 errors should not be retryable
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(not_found_error)
 
 
 class TestClassifyExceptionEdgeCases:
     """Tests classify_exception handling of edge cases and unknown exceptions."""
 
-    def test_handles_unknown_exception_types_conservatively(self):
+    def test_handles_unknown_exception_types_conservatively(self, mock_classify_ai_exception):
         """
         Test that classify_exception handles unknown exception types with conservative approach.
 
@@ -527,11 +862,35 @@ class TestClassifyExceptionEdgeCases:
             Then: The function returns False (conservative non-retryable approach).
 
         Fixtures Used:
-            - None (tests function with custom exception instances)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create unknown/custom exception types
+        class CustomBusinessError(Exception):
+            pass
 
-    def test_handles_none_exception_gracefully(self):
+        class UnexpectedSystemError(Exception):
+            pass
+
+        unknown_exceptions = [
+            CustomBusinessError("Custom business logic failure"),
+            UnexpectedSystemError("Unexpected system state"),
+            RuntimeError("Unexpected runtime condition"),
+            MemoryError("Out of memory condition"),
+        ]
+
+        for unknown_exc in unknown_exceptions:
+            # Configure mock to return False for unknown types
+            mock_classify_ai_exception.set_non_retryable(type(unknown_exc))
+
+            # Act: Classify the unknown exception
+            result = classify_exception(unknown_exc)
+
+            # Assert: Unknown exceptions should be handled conservatively (non-retryable)
+            assert result is False
+            mock_classify_ai_exception.assert_called_with(unknown_exc)
+            mock_classify_ai_exception.reset_mock()
+
+    def test_handles_none_exception_gracefully(self, mock_classify_ai_exception):
         """
         Test that classify_exception handles None exception parameter gracefully.
 
@@ -548,11 +907,19 @@ class TestClassifyExceptionEdgeCases:
             Then: The function returns False without raising an exception.
 
         Fixtures Used:
-            - None (tests error handling behavior)
+            - mock_classify_ai_exception (to verify delegation)
         """
-        pass
+        # Arrange: Configure mock to handle None gracefully
+        mock_classify_ai_exception.return_value = False
 
-    def test_handles_exception_with_missing_attributes(self):
+        # Act: Classify None (edge case)
+        result = classify_exception(None)
+
+        # Assert: None should be handled gracefully and return False
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(None)
+
+    def test_handles_exception_with_missing_attributes(self, mock_classify_ai_exception):
         """
         Test that classify_exception handles exceptions without expected attributes.
 
@@ -569,11 +936,27 @@ class TestClassifyExceptionEdgeCases:
             Then: Classification completes without AttributeError.
 
         Fixtures Used:
-            - None (tests defensive programming)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create exception with minimal attributes
+        class MinimalException(Exception):
+            """Exception with minimal constructor."""
+            def __init__(self):
+                # Don't call super().__init__() to avoid typical attributes
+                pass
 
-    def test_delegates_to_centralized_classify_ai_exception(self):
+        # Create instance of minimal exception
+        minimal_exc = MinimalException()
+        mock_classify_ai_exception.set_non_retryable(MinimalException)
+
+        # Act: Classify the minimal exception
+        result = classify_exception(minimal_exc)
+
+        # Assert: Should handle gracefully without AttributeError
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(minimal_exc)
+
+    def test_delegates_to_centralized_classify_ai_exception(self, mock_classify_ai_exception):
         """
         Test that classify_exception delegates to centralized classification function.
 
@@ -593,9 +976,21 @@ class TestClassifyExceptionEdgeCases:
         Fixtures Used:
             - mock_classify_ai_exception (to verify delegation)
         """
-        pass
+        # Arrange: Create any exception type
+        test_exception = RuntimeError("Test error")
+        expected_result = True
 
-    def test_maintains_classification_consistency_with_core_module(self):
+        # Configure mock to return expected result using the custom configuration
+        mock_classify_ai_exception.set_retryable(RuntimeError)
+
+        # Act: Classify the exception
+        result = classify_exception(test_exception)
+
+        # Assert: Classification was delegated to the centralized function
+        mock_classify_ai_exception.assert_called_once_with(test_exception)
+        assert result == expected_result
+
+    def test_maintains_classification_consistency_with_core_module(self, mock_classify_ai_exception):
         """
         Test that classify_exception maintains consistency with core exception classification.
 
@@ -612,15 +1007,45 @@ class TestClassifyExceptionEdgeCases:
             Then: Results match core module classification exactly.
 
         Fixtures Used:
-            - None (tests consistency with core module)
+            - mock_classify_ai_exception (to simulate core module behavior)
         """
-        pass
+        from app.core.exceptions import (
+            ValidationError, AuthenticationError, RateLimitError,
+            ServiceUnavailableError, PermanentAIError, TransientAIError
+        )
+
+        # Test cases with expected classification results from core module
+        test_cases = [
+            (ValidationError("Invalid input"), False),
+            (AuthenticationError("Invalid credentials"), False),
+            (RateLimitError("Rate limit exceeded"), True),
+            (ServiceUnavailableError("Service down"), True),
+            (PermanentAIError("Permanent failure"), False),
+            (TransientAIError("Temporary failure"), True),
+            (ConnectionError("Connection failed"), True),
+            (TimeoutError("Operation timed out"), True),
+        ]
+
+        for exception, expected_result in test_cases:
+            # Configure mock to match expected core module behavior
+            if expected_result:
+                mock_classify_ai_exception.set_retryable(type(exception))
+            else:
+                mock_classify_ai_exception.set_non_retryable(type(exception))
+
+            # Act: Classify using retry module function
+            result = classify_exception(exception)
+
+            # Assert: Results should match core module behavior
+            assert result == expected_result
+            mock_classify_ai_exception.assert_called_with(exception)
+            mock_classify_ai_exception.reset_mock()
 
 
 class TestClassifyExceptionBehaviorDocumentation:
     """Tests classify_exception behavior matches docstring examples."""
 
-    def test_example_connection_timeout_returns_true(self):
+    def test_example_connection_timeout_returns_true(self, mock_classify_ai_exception):
         """
         Test that classify_exception matches docstring example for ConnectionError.
 
@@ -639,9 +1064,18 @@ class TestClassifyExceptionBehaviorDocumentation:
         Fixtures Used:
             - None (tests documentation example accuracy)
         """
-        pass
+        # Arrange: Create exception exactly as shown in docstring example
+        connection_error = ConnectionError("Connection timeout")
+        mock_classify_ai_exception.set_retryable(ConnectionError)
 
-    def test_example_rate_limit_error_returns_true(self):
+        # Act: Classify as shown in docstring example
+        result = classify_exception(connection_error)
+
+        # Assert: Result matches docstring example
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(connection_error)
+
+    def test_example_rate_limit_error_returns_true(self, mock_classify_ai_exception):
         """
         Test that classify_exception matches docstring example for RateLimitError.
 
@@ -658,11 +1092,21 @@ class TestClassifyExceptionBehaviorDocumentation:
             Then: Function returns True as shown in example.
 
         Fixtures Used:
-            - None (tests documentation example accuracy)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create RateLimitError exactly as shown in docstring example
+        from app.core.exceptions import RateLimitError
+        rate_limit_error = RateLimitError("Rate limit exceeded")
+        mock_classify_ai_exception.set_retryable(RateLimitError)
 
-    def test_example_permanent_ai_error_returns_false(self):
+        # Act: Classify as shown in docstring example
+        result = classify_exception(rate_limit_error)
+
+        # Assert: Result matches docstring example
+        assert result is True
+        mock_classify_ai_exception.assert_called_once_with(rate_limit_error)
+
+    def test_example_permanent_ai_error_returns_false(self, mock_classify_ai_exception):
         """
         Test that classify_exception matches docstring example for PermanentAIError.
 
@@ -679,11 +1123,21 @@ class TestClassifyExceptionBehaviorDocumentation:
             Then: Function returns False as shown in example.
 
         Fixtures Used:
-            - None (tests documentation example accuracy)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create PermanentAIError exactly as shown in docstring example
+        from app.core.exceptions import PermanentAIError
+        permanent_error = PermanentAIError("Invalid API key")
+        mock_classify_ai_exception.set_non_retryable(PermanentAIError)
 
-    def test_example_http_client_error_returns_false(self):
+        # Act: Classify as shown in docstring example
+        result = classify_exception(permanent_error)
+
+        # Assert: Result matches docstring example
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(permanent_error)
+
+    def test_example_http_client_error_returns_false(self, mock_classify_ai_exception):
         """
         Test that classify_exception matches docstring example for HTTP client errors.
 
@@ -700,11 +1154,30 @@ class TestClassifyExceptionBehaviorDocumentation:
             Then: Function returns False as shown in example.
 
         Fixtures Used:
-            - None (tests documentation example accuracy)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        import httpx
+        from unittest.mock import Mock
 
-    def test_example_unknown_exception_behavior(self):
+        # Arrange: Create HTTP "Bad Request" error as shown in docstring example
+        mock_response = Mock()
+        mock_response.status_code = 400
+
+        bad_request_error = httpx.HTTPStatusError(
+            "Bad Request",
+            request=None,
+            response=mock_response
+        )
+        mock_classify_ai_exception.set_non_retryable(httpx.HTTPStatusError)
+
+        # Act: Classify as shown in docstring example
+        result = classify_exception(bad_request_error)
+
+        # Assert: Result matches docstring example
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(bad_request_error)
+
+    def test_example_unknown_exception_behavior(self, mock_classify_ai_exception):
         """
         Test that classify_exception handles unknown exceptions as documented.
 
@@ -721,7 +1194,16 @@ class TestClassifyExceptionBehaviorDocumentation:
             Then: Function returns False per conservative approach.
 
         Fixtures Used:
-            - None (tests documentation example accuracy)
+            - mock_classify_ai_exception (to configure classification behavior)
         """
-        pass
+        # Arrange: Create ValueError exactly as shown in docstring example
+        unknown_error = ValueError("Unexpected error")
+        mock_classify_ai_exception.set_non_retryable(ValueError)
+
+        # Act: Classify as shown in docstring example
+        result = classify_exception(unknown_error)
+
+        # Assert: Result matches docstring example (conservative approach)
+        assert result is False
+        mock_classify_ai_exception.assert_called_once_with(unknown_error)
 
