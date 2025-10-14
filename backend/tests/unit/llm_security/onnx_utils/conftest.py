@@ -101,7 +101,15 @@ class MockONNXModelDownloader:
     def verify_model_hash(self, model_path: Path, expected_hash: Optional[str] = None) -> str:
         """Mock model hash verification."""
         # Import at runtime to avoid circular imports
-        from ..conftest import MockInfrastructureError
+        try:
+            from ..conftest import MockInfrastructureError
+        except ImportError:
+            # Define fallback if import fails (during direct test execution)
+            class MockInfrastructureError(Exception):
+                def __init__(self, message: str, context: Optional[Dict] = None):
+                    self.message = message
+                    self.context = context or {}
+                    super().__init__(message)
         
         self._hash_verification_calls.append({
             "operation": "verify_hash",
@@ -137,7 +145,15 @@ class MockONNXModelDownloader:
     async def download_model(self, model_name: str, force_download: bool = False) -> Path:
         """Mock model downloading."""
         # Import at runtime to avoid circular imports
-        from ..conftest import MockInfrastructureError
+        try:
+            from ..conftest import MockInfrastructureError
+        except ImportError:
+            # Define fallback if import fails (during direct test execution)
+            class MockInfrastructureError(Exception):
+                def __init__(self, message: str, context: Optional[Dict] = None):
+                    self.message = message
+                    self.context = context or {}
+                    super().__init__(message)
         
         self._download_calls.append({
             "operation": "download",
@@ -298,7 +314,15 @@ class MockONNXModelManager:
     async def load_model(self, model_name: str, optimize_for: str = 'latency', verify_hash: Optional[str] = None) -> Tuple[Any, str, Dict[str, Any]]:
         """Mock model loading with provider fallback."""
         # Import at runtime to avoid circular imports
-        from ..conftest import MockInfrastructureError
+        try:
+            from ..conftest import MockInfrastructureError
+        except ImportError:
+            # Define fallback if import fails (during direct test execution)
+            class MockInfrastructureError(Exception):
+                def __init__(self, message: str, context: Optional[Dict] = None):
+                    self.message = message
+                    self.context = context or {}
+                    super().__init__(message)
         
         self._load_calls.append({
             "operation": "load_model",

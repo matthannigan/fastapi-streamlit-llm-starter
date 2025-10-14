@@ -28,6 +28,18 @@ class MockConfigurationError(Exception):
         self.file_path = file_path
         super().__init__(message)
 
+    def __str__(self) -> str:
+        """Format error message with file context and suggestions."""
+        parts = [self.message]
+
+        if self.file_path:
+            parts.append(f"File: {self.file_path}")
+
+        if self.suggestion:
+            parts.append(f"Suggestion: {self.suggestion}")
+
+        return " | ".join(parts) if len(parts) > 1 else self.message
+
 
 class MockInfrastructureError(Exception):
     """Mock InfrastructureError for testing infrastructure-related error handling."""
@@ -179,9 +191,24 @@ class MockScannerConfig:
         self.metadata = metadata or {}
 
 
+class MockPerformanceConfig:
+    """Mock performance configuration for testing."""
+
+    def __init__(self, max_concurrent_scans: int = 10, max_memory_mb: int = 1024):
+        self.max_concurrent_scans = max_concurrent_scans
+        self.max_memory_mb = max_memory_mb
+
+    def dict(self) -> Dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "max_concurrent_scans": self.max_concurrent_scans,
+            "max_memory_mb": self.max_memory_mb
+        }
+
+
 class MockSecurityConfig:
     """Mock SecurityConfig for testing security service configuration.
-    
+
     Shared across cache, config_loader, factory, and scanner modules.
     """
 
@@ -196,7 +223,15 @@ class MockSecurityConfig:
                  debug_mode: bool = False,
                  custom_settings: Optional[Dict] = None):
         self.scanners = scanners or {}
-        self.performance = performance or {"max_concurrent_scans": 10}
+        if isinstance(performance, MockPerformanceConfig):
+            self.performance = performance
+        elif isinstance(performance, dict):
+            self.performance = MockPerformanceConfig(
+                max_concurrent_scans=performance.get("max_concurrent_scans", 10),
+                max_memory_mb=performance.get("max_memory_mb", 1024)
+            )
+        else:
+            self.performance = MockPerformanceConfig()
         self.logging = logging or {"enabled": True, "level": "DEBUG"}
         self.service_name = service_name
         self.version = version
@@ -219,12 +254,50 @@ class MockSecurityConfig:
     def get_scanner_version(self) -> str:
         """Mock scanner version."""
         return "1.0.0-test"
-    
+
+    def get_enabled_scanners(self) -> List[str]:
+        """Get list of enabled scanner types."""
+        enabled = []
+        for scanner_type, config in self.scanners.items():
+            if isinstance(config, dict) and config.get("enabled", True):
+                enabled.append(scanner_type)
+            elif hasattr(config, "enabled") and config.enabled:
+                enabled.append(scanner_type)
+        # Default to at least one scanner for testing
+        return enabled or ["prompt_injection"]
+
+    def merge_with_environment_overrides(self, overrides: Dict[str, Any]) -> 'MockSecurityConfig':
+        """Create new config with environment overrides applied."""
+        # Create new performance config with overrides
+        new_performance = MockPerformanceConfig(
+            max_concurrent_scans=overrides.get("max_concurrent_scans", self.performance.max_concurrent_scans),
+            max_memory_mb=self.performance.max_memory_mb
+        )
+
+        # Create a copy with overrides applied
+        new_config = MockSecurityConfig(
+            scanners=self.scanners.copy(),
+            performance=new_performance,
+            logging=self.logging.copy(),
+            service_name=overrides.get("SECURITY_SERVICE_NAME", self.service_name),
+            version=self.version,
+            preset=self.preset,
+            environment=self.environment,
+            debug_mode=overrides.get("SECURITY_DEBUG", self.debug_mode),
+            custom_settings=self.custom_settings.copy()
+        )
+
+        # Apply logging overrides
+        if "log_level" in overrides:
+            new_config.logging["level"] = overrides["log_level"]
+
+        return new_config
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization testing."""
         return {
             "scanners": self.scanners,
-            "performance": self.performance,
+            "performance": self.performance.dict() if hasattr(self.performance, 'dict') else self.performance,
             "logging": self.logging,
             "service_name": self.service_name,
             "version": self.version,
