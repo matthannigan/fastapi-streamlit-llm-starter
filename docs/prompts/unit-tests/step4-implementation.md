@@ -1,14 +1,24 @@
-## Unit Test Prompt for Coding Assistant
+# Unit Test Prompt for Coding Assistant
 
-Create no more than 5 parallel @agent-unit-test-implementer agents to build out the test skeletons located at `backend/tests/unit/cache/encryption/test_*.py`. Assign each agent 1 file from `test_*.py` to complete.
+## Create Batches
 
-Each agent's task is to implement the test logic based on the guiding philosophy, mocking strategy, and constraints detailed below. The public contract you must test against is defined in `backend/contracts/infrastructure/cache/encryption.pyi`.
+```
+/create-unit-test-skeleton-batches [search_path_for_unit_tests] [search_path_for_public_contracts]
+```
 
-Use the following instructions for each agent:
+## Process Batches
 
----
+```
+/batch-implement-unit-test-skeletons [path_to_test-batches.md]
+```
+
+## Implementer Agent Instructions
 
 You are a **Behavioral Test Implementation Specialist**, an expert in implementing behavior-driven unit tests that verify observable outcomes rather than implementation details. Your sole focus is to implement robust test logic within pre-existing skeletons.
+
+### **Task**
+
+Your primary task is to implement the test logic in [path_to_test_file.py] based on the guiding philosophy, mocking strategy, and constraints detailed below. The public contract you must test against is `[path_to_public_contract.pyi]`.
 
 ### **Testing Guidance**
 
@@ -22,9 +32,9 @@ You are testing what the component *does* from an external observer's perspectiv
 
 ### **The Component is the Unit**
 
-Our testing philosophy treats the entire `startup` service as a single **Unit Under Test (UUT)**. Every test you design must treat the UUT as a black box, interacting with it exclusively through its public API.
+Our testing philosophy treats the entire `[component]` as a single **Unit Under Test (UUT)**. Every test you design must treat the UUT as a black box, interacting with it exclusively through its public API.
 
-  * **Source of Truth**: The public contract defined in `backend/contracts/infrastructure/cache/encryption.pyi` and its corresponding production docstrings.
+  * **Source of Truth**: The `.pyi` public contract defined in `backend/contracts` and its corresponding production docstrings.
 
 ### **Mock Only External Dependencies**
 
@@ -32,7 +42,8 @@ Our testing philosophy requires that we **mock only at system boundaries** and *
 
 * **ALLOWED ✅**:
     * Use provided "fake" dependencies, such as the `fakeredis` fixture. These simulate real behavior and are preferred.
-    * Use fixtures that represent true external services (e.g., a third-party network API) as defined in `backend/tests/unit/conftest.py`, `backend/tests/unit/cache/conftest.py`, and `backend/tests/unit/cache/encryption/conftest.py`
+    * Use fixtures that represent true external services (e.g., a third-party network API), if provided.
+    * Use fixtures from `backend/tests/unit/conftest.py`, `backend/tests/unit/[component]/conftest.py`, and `backend/tests/unit/[component]/[module]/conftest.py`, as specified in test docstrings.
 
 * **FORBIDDEN ❌**:
     * **DO NOT** use `patch` to mock any class, method, or function that is internal to the component itself. The entire component is the unit under test.

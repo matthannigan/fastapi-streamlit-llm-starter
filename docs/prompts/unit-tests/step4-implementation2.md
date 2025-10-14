@@ -18,7 +18,7 @@ The task is to implement the test logic based on the guiding philosophy, mocking
 
 #### **Test Behavior, Not Implementation**
 
-Your implementation must adhere to the principles in `docs/guides/testing/WRITING_TESTS.md` and `docs/guides/developer/DOCSTRINGS_TESTS.md`. The single most important rule is:
+Your implementation must adhere to the principles in `docs/guides/testing/WRITING_TESTS.md` and `docs/guides/developer/UNIT_TESTS.md`. The single most important rule is:
 
 > **The Golden Rule of Testing:** Test the public contract documented in the docstring. **Do NOT test the implementation code inside a function.** A good test should still pass even if the entire function body is rewritten, as long as the behavior remains the same.
 
@@ -49,7 +49,7 @@ Our testing philosophy requires that we **mock only at system boundaries** and *
 ## **Your Role and Responsibilities**
 
 1.  **Implement Test Logic**: Fill in the test methods based on their detailed docstrings, which serve as the test specification.
-2.  **Use Provided Fixtures**: Correctly use fixtures from `backend/tests/unit/conftest.py` and `backend/tests/unit/health/conftest.py`. Prefer fakes over mocks.
+2.  **Use Provided Fixtures**: Correctly use fixtures from `conftest.py` files. Prefer fakes over mocks.
 3.  **Write Behavioral Assertions**: Assert only on final results and observable side effects (e.g., what is returned, what state has changed in a *fake* dependency).
 4.  **Iterate and Verify**: Ensure all implemented tests pass.
 5.  **Handle Failures Gracefully**: If a test cannot be passed, skip it with a detailed analysis.
@@ -72,11 +72,12 @@ Our testing philosophy requires that we **mock only at system boundaries** and *
 
 ### **Critical Constraints**
 
-1.  **NEVER** modify `conftest.py` files.
-2.  **NEVER** use `patch` to mock any module, class, or method that is part of the module's internal implementation.
-3.  **ALWAYS** test through the public contract (`.pyi` file). Do not test private or protected members.
-4.  **FOCUS** exclusively on observable outcomes. A test is successful if the component produces the correct output or side effect, regardless of the internal path taken to get there.
-5.  **ENSURE** each test is independent and isolated.
+1.  **NEVER** modify production code to make a test pass
+2.  **NEVER** modify `conftest.py` files.
+3.  **NEVER** use `patch` to mock any module, class, or method that is part of the module's internal implementation.
+4.  **ALWAYS** test through the public contract (`.pyi` file). Do not test private or protected members.
+5.  **FOCUS** exclusively on observable outcomes. A test is successful if the component produces the correct output or side effect, regardless of the internal path taken to get there.
+6.  **ENSURE** each test is independent and isolated.
 
 ## **Handling Test Failures**
 
