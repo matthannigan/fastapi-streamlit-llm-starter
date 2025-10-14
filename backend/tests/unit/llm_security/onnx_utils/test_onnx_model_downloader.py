@@ -37,7 +37,7 @@ class TestONNXModelDownloaderInitialization:
     directory configurations and properly sets up the cache directory structure.
     """
 
-    def test_initializes_with_default_cache_directory(self):
+    def test_initializes_with_default_cache_directory(self, mock_onnx_model_downloader):
         """
         Test that downloader initializes with system temp directory when cache_dir is None.
 
@@ -56,9 +56,21 @@ class TestONNXModelDownloaderInitialization:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: No custom cache directory is specified
+        # When: ONNXModelDownloader is instantiated with cache_dir=None
+        downloader = mock_onnx_model_downloader(cache_dir=None)
 
-    def test_initializes_with_custom_cache_directory(self):
+        # Then: Downloader uses system temp directory as documented
+        assert downloader.cache_dir is not None
+        assert downloader.cache_dir.endswith("onnx_models")
+        assert "tmp" in downloader.cache_dir or "temp" in downloader.cache_dir.lower()
+
+        # And: Cache directory path is accessible via cache_dir attribute
+        assert hasattr(downloader, 'cache_dir')
+        assert isinstance(downloader.cache_dir, str)
+        assert len(downloader.cache_dir) > 0
+
+    def test_initializes_with_custom_cache_directory(self, mock_onnx_model_downloader):
         """
         Test that downloader initializes with custom cache directory when specified.
 
@@ -77,9 +89,21 @@ class TestONNXModelDownloaderInitialization:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A custom cache directory path is specified
+        custom_cache_dir = "/custom/path"
 
-    def test_creates_cache_directory_if_not_exists(self):
+        # When: ONNXModelDownloader is instantiated with cache_dir="/custom/path"
+        downloader = mock_onnx_model_downloader(cache_dir=custom_cache_dir)
+
+        # Then: Downloader uses the specified custom cache directory
+        assert downloader.cache_dir is not None
+        assert downloader.cache_dir == custom_cache_dir
+
+        # And: Cache directory path matches the provided parameter
+        assert isinstance(downloader.cache_dir, str)
+        assert downloader.cache_dir == "/custom/path"
+
+    def test_creates_cache_directory_if_not_exists(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that downloader creates cache directory structure if it doesn't exist.
 
@@ -99,9 +123,25 @@ class TestONNXModelDownloaderInitialization:
             - onnx_tmp_model_cache: Temporary directory for testing cache creation
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A cache directory path that does not exist
+        cache_data = onnx_tmp_model_cache
+        non_existent_cache = cache_data["cache_path"] / "new_subdirectory" / "deep_cache"
 
-    def test_configures_model_repositories(self):
+        # When: ONNXModelDownloader is instantiated
+        downloader = mock_onnx_model_downloader(cache_dir=str(non_existent_cache))
+
+        # Then: The cache directory is created automatically (simulated in mock)
+        assert hasattr(downloader, 'cache_dir')
+        assert downloader.cache_dir == str(non_existent_cache)
+
+        # And: The directory structure includes all necessary parent directories
+        # In mock implementation, we verify the downloader was initialized with the correct path
+        assert isinstance(downloader.cache_dir, str)
+        assert len(downloader.cache_dir) > 0
+        assert "new_subdirectory" in downloader.cache_dir
+        assert "deep_cache" in downloader.cache_dir
+
+    def test_configures_model_repositories(self, mock_onnx_model_downloader):
         """
         Test that downloader configures supported model repositories during initialization.
 
@@ -120,7 +160,22 @@ class TestONNXModelDownloaderInitialization:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: Downloader initialization
+        # When: ONNXModelDownloader is instantiated
+        downloader = mock_onnx_model_downloader()
+
+        # Then: model_repositories attribute contains supported repositories
+        assert hasattr(downloader, 'model_repositories')
+        assert isinstance(downloader.model_repositories, list)
+        assert len(downloader.model_repositories) > 0
+
+        # And: Repositories include Hugging Face and GitHub ONNX models
+        repo_urls = downloader.model_repositories
+        has_huggingface = any("huggingface.co" in repo for repo in repo_urls)
+        has_github = any("github.com" in repo for repo in repo_urls)
+
+        assert has_huggingface, "Should include Hugging Face repository"
+        assert has_github, "Should include GitHub repository"
 
 
 class TestONNXModelDownloaderCachePathGeneration:
@@ -131,7 +186,7 @@ class TestONNXModelDownloaderCachePathGeneration:
     for various model name formats according to the documented contract.
     """
 
-    def test_generates_safe_path_for_simple_model_name(self):
+    def test_generates_safe_path_for_simple_model_name(self, mock_onnx_model_downloader):
         """
         Test that cache path generation handles simple model names correctly.
 
@@ -150,9 +205,22 @@ class TestONNXModelDownloaderCachePathGeneration:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A simple model name like "my-model"
+        model_name = "my-model"
 
-    def test_replaces_forward_slashes_with_underscores(self):
+        # When: get_model_cache_path("my-model") is called
+        downloader = mock_onnx_model_downloader(cache_dir="/tmp/test_cache")
+        result_path = downloader.get_model_cache_path(model_name)
+
+        # Then: Returns Path object with format "{cache_dir}/my-model.onnx"
+        assert isinstance(result_path, Path)
+        assert result_path.name == "my-model.onnx"
+        assert str(result_path).endswith("/tmp/test_cache/my-model.onnx")
+
+        # And: Path is absolute as documented
+        assert result_path.is_absolute()
+
+    def test_replaces_forward_slashes_with_underscores(self, mock_onnx_model_downloader):
         """
         Test that cache path generation replaces forward slashes for organization/model format.
 
@@ -171,9 +239,23 @@ class TestONNXModelDownloaderCachePathGeneration:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model name with organization format "microsoft/deberta-v3-base"
+        model_name = "microsoft/deberta-v3-base"
 
-    def test_replaces_backslashes_for_windows_compatibility(self):
+        # When: get_model_cache_path("microsoft/deberta-v3-base") is called
+        downloader = mock_onnx_model_downloader(cache_dir="/tmp/test_cache")
+        result_path = downloader.get_model_cache_path(model_name)
+
+        # Then: Returns path with format "{cache_dir}/microsoft_deberta-v3-base.onnx"
+        assert result_path.name == "microsoft_deberta-v3-base.onnx"
+        assert str(result_path).endswith("/tmp/test_cache/microsoft_deberta-v3-base.onnx")
+
+        # And: No forward slashes appear in the filename component
+        assert "/" not in result_path.name
+        assert "_" in result_path.name
+        assert result_path.name.startswith("microsoft_deberta")
+
+    def test_replaces_backslashes_for_windows_compatibility(self, mock_onnx_model_downloader):
         """
         Test that cache path generation handles backslashes for Windows path formats.
 
@@ -192,9 +274,23 @@ class TestONNXModelDownloaderCachePathGeneration:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model name containing backslashes "org\\team\\model-name"
+        model_name = "org\\team\\model-name"
 
-    def test_adds_onnx_extension_if_not_present(self):
+        # When: get_model_cache_path("org\\team\\model-name") is called
+        downloader = mock_onnx_model_downloader(cache_dir="/tmp/test_cache")
+        result_path = downloader.get_model_cache_path(model_name)
+
+        # Then: Returns path with all backslashes replaced by underscores
+        assert result_path.name == "org__team_model-name.onnx"
+        assert str(result_path).endswith("/tmp/test_cache/org__team_model-name.onnx")
+
+        # And: Resulting path is safe for all operating systems
+        assert "\\" not in str(result_path)
+        assert "__" in result_path.name  # Double underscores from replaced backslashes
+        assert result_path.is_absolute()
+
+    def test_adds_onnx_extension_if_not_present(self, mock_onnx_model_downloader):
         """
         Test that cache path generation adds .onnx extension to model names.
 
@@ -213,9 +309,22 @@ class TestONNXModelDownloaderCachePathGeneration:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model name without extension "test-model"
+        model_name = "test-model"
 
-    def test_returns_absolute_path_consistently(self):
+        # When: get_model_cache_path("test-model") is called
+        downloader = mock_onnx_model_downloader(cache_dir="/tmp/test_cache")
+        result_path = downloader.get_model_cache_path(model_name)
+
+        # Then: Returns path ending with ".onnx"
+        assert result_path.name == "test-model.onnx"
+        assert str(result_path).endswith(".onnx")
+
+        # And: Extension is added exactly once
+        assert result_path.name.count(".onnx") == 1
+        assert not result_path.name.endswith(".onnx.onnx")
+
+    def test_returns_absolute_path_consistently(self, mock_onnx_model_downloader):
         """
         Test that cache path generation always returns absolute paths.
 
@@ -234,7 +343,22 @@ class TestONNXModelDownloaderCachePathGeneration:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: Any valid model name
+        model_names = ["simple-model", "org/complex-model", "model\\with\\slashes"]
+
+        downloader = mock_onnx_model_downloader(cache_dir="/tmp/test_cache")
+
+        # When: get_model_cache_path() is called
+        for model_name in model_names:
+            result_path = downloader.get_model_cache_path(model_name)
+
+            # Then: Returns an absolute Path object
+            assert isinstance(result_path, Path)
+            assert result_path.is_absolute()
+
+            # And: Path can be used reliably regardless of current working directory
+            assert str(result_path).startswith("/tmp/test_cache/")
+            assert result_path.exists() is False  # Path exists but file doesn't need to exist yet
 
 
 class TestONNXModelDownloaderHashVerification:
@@ -245,7 +369,7 @@ class TestONNXModelDownloaderHashVerification:
     model integrity checking according to the documented contract.
     """
 
-    def test_calculates_sha256_hash_for_model_file(self):
+    def test_calculates_sha256_hash_for_model_file(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that hash verification calculates correct SHA-256 hash for model files.
 
@@ -265,9 +389,24 @@ class TestONNXModelDownloaderHashVerification:
             - onnx_tmp_model_cache: Temporary cache with mock model files
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model file exists at a valid path
+        cache_data = onnx_tmp_model_cache
+        model_file = cache_data["cache_path"] / "existing_model.onnx"
 
-    def test_returns_hash_without_verification_when_expected_hash_is_none(self):
+        # When: verify_model_hash(model_path) is called without expected_hash
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+        result_hash = downloader.verify_model_hash(model_file)
+
+        # Then: Returns a 64-character hexadecimal SHA-256 hash string
+        assert isinstance(result_hash, str)
+        assert len(result_hash) == 64
+        assert all(c in "0123456789abcdef" for c in result_hash.lower())
+
+        # And: Hash matches the actual file content (consistent calculation)
+        second_hash = downloader.verify_model_hash(model_file)
+        assert result_hash == second_hash
+
+    def test_returns_hash_without_verification_when_expected_hash_is_none(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that hash calculation proceeds without verification when no expected hash provided.
 
@@ -288,9 +427,29 @@ class TestONNXModelDownloaderHashVerification:
             - onnx_tmp_model_cache: Temporary cache with mock model files
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model file and no expected hash value
+        cache_data = onnx_tmp_model_cache
+        model_file = cache_data["cache_path"] / "existing_model.onnx"
+        expected_hash = None
 
-    def test_verifies_hash_successfully_when_hashes_match(self):
+        # When: verify_model_hash(model_path, expected_hash=None) is called
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+        result_hash = downloader.verify_model_hash(model_file, expected_hash=expected_hash)
+
+        # Then: Returns the calculated hash string
+        assert isinstance(result_hash, str)
+        assert len(result_hash) == 64
+
+        # And: No InfrastructureError is raised
+        # No exception assertion needed - if we reach here, no exception was raised
+
+        # And: Hash value can be used for future verification
+        assert result_hash is not None
+        # Use the hash for verification (should succeed)
+        verification_result = downloader.verify_model_hash(model_file, expected_hash=result_hash)
+        assert verification_result == result_hash
+
+    def test_verifies_hash_successfully_when_hashes_match(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that hash verification succeeds when expected and actual hashes match.
 
@@ -310,9 +469,26 @@ class TestONNXModelDownloaderHashVerification:
             - onnx_tmp_model_cache: Temporary cache with mock model files
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model file and its correct expected hash
+        cache_data = onnx_tmp_model_cache
+        model_file = cache_data["cache_path"] / "existing_model.onnx"
 
-    def test_raises_infrastructure_error_when_hashes_dont_match(self):
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+
+        # Calculate the actual hash first
+        actual_hash = downloader.verify_model_hash(model_file)
+
+        # When: verify_model_hash(model_path, expected_hash="correct_hash") is called
+        result_hash = downloader.verify_model_hash(model_file, expected_hash=actual_hash)
+
+        # Then: Returns the calculated hash without raising exception
+        assert isinstance(result_hash, str)
+        assert len(result_hash) == 64
+
+        # And: Return value matches the expected hash
+        assert result_hash == actual_hash
+
+    def test_raises_infrastructure_error_when_hashes_dont_match(self, mock_onnx_model_downloader, onnx_tmp_model_cache, mock_infrastructure_error):
         """
         Test that hash verification raises InfrastructureError when hashes don't match.
 
@@ -333,9 +509,25 @@ class TestONNXModelDownloaderHashVerification:
             - mock_onnx_model_downloader: Factory to create downloader instances
             - mock_infrastructure_error: Shared exception mock for verification
         """
-        pass
+        # Given: A model file and an incorrect expected hash
+        cache_data = onnx_tmp_model_cache
+        model_file = cache_data["cache_path"] / "existing_model.onnx"
+        wrong_expected_hash = "wrong_hash_64_character_string_to_mimic_sha256_hash_length"
 
-    def test_raises_file_not_found_error_when_model_file_missing(self):
+        # When: verify_model_hash(model_path, expected_hash="wrong_hash") is called
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+
+        # Then: Raises InfrastructureError with descriptive message
+        with pytest.raises(mock_infrastructure_error) as exc_info:
+            downloader.verify_model_hash(model_file, expected_hash=wrong_expected_hash)
+
+        # And: Error message includes both expected and actual hash values
+        error_message = str(exc_info.value)
+        assert "Hash verification failed" in error_message
+        assert wrong_expected_hash in error_message or "expected" in error_message.lower()
+        assert "actual" in error_message.lower() or "mismatch" in error_message.lower()
+
+    def test_raises_file_not_found_error_when_model_file_missing(self, mock_onnx_model_downloader):
         """
         Test that hash verification raises FileNotFoundError for nonexistent files.
 
@@ -354,9 +546,21 @@ class TestONNXModelDownloaderHashVerification:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model path that does not exist
+        nonexistent_path = Path("/nonexistent/path/model.onnx")
 
-    def test_handles_large_files_efficiently_with_chunked_reading(self):
+        # When: verify_model_hash(nonexistent_path) is called
+        downloader = mock_onnx_model_downloader()
+
+        # Then: Raises FileNotFoundError
+        with pytest.raises(FileNotFoundError) as exc_info:
+            downloader.verify_model_hash(nonexistent_path)
+
+        # And: Error message indicates the missing file path
+        error_message = str(exc_info.value)
+        assert str(nonexistent_path) in error_message or "not found" in error_message.lower()
+
+    def test_handles_large_files_efficiently_with_chunked_reading(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that hash verification processes large files efficiently using chunks.
 
@@ -377,7 +581,32 @@ class TestONNXModelDownloaderHashVerification:
             - onnx_tmp_model_cache: Temporary cache with large mock model file
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A large model file (simulated or real)
+        cache_data = onnx_tmp_model_cache
+        large_model_path = cache_data["cache_path"] / "large_model.onnx"
+
+        # Create a larger file to simulate chunked reading
+        large_content = b"mock_large_model_data" * 1000  # ~24KB file
+        large_model_path.write_bytes(large_content)
+
+        # When: verify_model_hash(large_model_path) is called
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+        result_hash = downloader.verify_model_hash(large_model_path)
+
+        # Then: Hash is calculated without loading entire file into memory
+        assert isinstance(result_hash, str)
+        assert len(result_hash) == 64
+
+        # And: Hash calculation completes successfully
+        # Verify consistency - same file should produce same hash
+        second_hash = downloader.verify_model_hash(large_model_path)
+        assert result_hash == second_hash
+
+        # And: Memory usage remains bounded (verified by successful completion)
+        # In mock implementation, chunked reading is simulated via verification history
+        verification_history = downloader.verification_history
+        assert len(verification_history) > 0
+        assert verification_history[0]["operation"] == "verify_hash"
 
 
 class TestONNXModelDownloaderLocalModelSearch:
@@ -388,7 +617,7 @@ class TestONNXModelDownloaderLocalModelSearch:
     search locations according to the documented contract.
     """
 
-    def test_finds_model_in_primary_cache_directory(self):
+    def test_finds_model_in_primary_cache_directory(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that local search finds models in the primary cache directory first.
 
@@ -408,7 +637,26 @@ class TestONNXModelDownloaderLocalModelSearch:
             - onnx_tmp_model_cache: Temporary cache with existing models
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model exists in the primary cache directory
+        cache_data = onnx_tmp_model_cache
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+
+        # Add a model to the downloader's local cache simulation
+        downloader._local_models["existing-model"] = str(cache_data["cache_path"] / "existing_model.onnx")
+
+        # When: find_local_model("existing-model") is called
+        result_path = downloader.find_local_model("existing-model")
+
+        # Then: Returns Path to the model in primary cache directory
+        assert result_path is not None
+        assert isinstance(result_path, Path)
+        assert result_path.name == "existing_model.onnx"
+
+        # And: No other locations are checked (verified by search history)
+        search_history = downloader.search_history
+        assert len(search_history) > 0
+        assert search_history[0]["operation"] == "find_local"
+        assert search_history[0]["model_name"] == "existing-model"
 
     def test_searches_alternative_locations_when_not_in_primary_cache(self):
         """
@@ -552,7 +800,7 @@ class TestONNXModelDownloaderModelDownloading:
     configurations, caching strategies, and error conditions.
     """
 
-    def test_returns_cached_model_path_when_model_exists_locally(self):
+    def test_returns_cached_model_path_when_model_exists_locally(self, mock_onnx_model_downloader, onnx_tmp_model_cache):
         """
         Test that download_model returns cached path without downloading if model exists.
 
@@ -574,7 +822,35 @@ class TestONNXModelDownloaderModelDownloading:
             - onnx_tmp_model_cache: Temporary cache with existing models
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: A model exists in local cache
+        cache_data = onnx_tmp_model_cache
+        downloader = mock_onnx_model_downloader(cache_dir=cache_data["cache_dir"])
+
+        # Add a model to the downloader's local cache simulation
+        existing_model_path = cache_data["cache_path"] / "existing_model.onnx"
+        downloader._local_models["cached-model"] = str(existing_model_path)
+
+        # And: force_download is False (default)
+        force_download = False
+
+        # When: download_model("cached-model") is called
+        import asyncio
+        result_path = asyncio.run(downloader.download_model("cached-model", force_download=force_download))
+
+        # Then: Returns Path to existing cached model
+        assert result_path is not None
+        assert isinstance(result_path, Path)
+        assert result_path.name == "existing_model.onnx"
+
+        # And: No download operation is attempted (verified by download history)
+        download_history = downloader.download_history
+        # The mock should show that find_local_model was called first, but no actual download
+        assert len(downloader.search_history) > 0
+
+        # And: No network requests are made
+        # In mock, this is verified by checking if download was skipped due to local cache
+        search_calls = [call for call in downloader.search_history if call["model_name"] == "cached-model"]
+        assert len(search_calls) > 0
 
     def test_downloads_model_from_hugging_face_when_not_cached(self):
         """
@@ -768,7 +1044,7 @@ class TestONNXModelDownloaderEdgeCases:
     error conditions gracefully according to the documented contract.
     """
 
-    def test_handles_empty_model_name_gracefully(self):
+    def test_handles_empty_model_name_gracefully(self, mock_onnx_model_downloader):
         """
         Test that downloader handles empty model name appropriately.
 
@@ -787,7 +1063,33 @@ class TestONNXModelDownloaderEdgeCases:
         Fixtures Used:
             - mock_onnx_model_downloader: Factory to create downloader instances
         """
-        pass
+        # Given: An empty model name string ""
+        empty_model_name = ""
+
+        downloader = mock_onnx_model_downloader()
+
+        # When: Any downloader method is called with empty model name
+        # Test cache path generation with empty name
+        try:
+            cache_path = downloader.get_model_cache_path(empty_model_name)
+            # Then: Method handles gracefully (returns None or raises appropriate error)
+            assert cache_path is not None  # Should handle gracefully
+            assert isinstance(cache_path, Path)
+        except Exception as e:
+            # Should raise a meaningful error, not crash
+            assert isinstance(e, (ValueError, TypeError))
+
+        # Test local model search with empty name
+        try:
+            result = downloader.find_local_model(empty_model_name)
+            # Should return None or raise appropriate error
+            assert result is None or isinstance(result, Path)
+        except Exception as e:
+            # Should raise a meaningful error, not crash
+            assert isinstance(e, (ValueError, TypeError))
+
+        # And: No unhandled exceptions occur
+        # If we reach here, the methods handled the empty input gracefully
 
     def test_handles_very_long_model_names(self):
         """

@@ -6,12 +6,14 @@ convenience functions according to the public contract defined in config_loader.
 """
 
 import pytest
+from unittest.mock import Mock, patch, MagicMock
 
 
 class TestGetConfigLoader:
     """Test get_config_loader() singleton pattern function."""
 
-    def test_get_config_loader_returns_security_config_loader_instance(self, tmp_path, monkeypatch):
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_get_config_loader_returns_security_config_loader_instance(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that get_config_loader() returns SecurityConfigLoader instance.
 
@@ -32,9 +34,28 @@ class TestGetConfigLoader:
             - tmp_path: Pytest fixture for configuration directory.
             - monkeypatch: Pytest fixture for environment isolation.
         """
-        pass
+        # Given: Setup mock loader and valid config directory
+        mock_loader = Mock()
+        mock_loader_class.return_value = mock_loader
 
-    def test_get_config_loader_returns_same_instance_on_subsequent_calls(self, tmp_path, monkeypatch):
+        config_dir = tmp_path / "config" / "security"
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        # When: Import and call get_config_loader
+        from app.infrastructure.security.llm.config_loader import get_config_loader
+
+        # Clear any existing global instance
+        import app.infrastructure.security.llm.config_loader as config_module
+        config_module._loader_instance = None
+
+        result = get_config_loader()
+
+        # Then: Returns SecurityConfigLoader instance
+        assert result is mock_loader
+        mock_loader_class.assert_called_once_with()
+
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_get_config_loader_returns_same_instance_on_subsequent_calls(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that get_config_loader() implements singleton pattern.
 
@@ -55,9 +76,31 @@ class TestGetConfigLoader:
             - tmp_path: Pytest fixture for configuration directory.
             - monkeypatch: Pytest fixture for environment isolation.
         """
-        pass
+        # Given: Setup mock loader and config directory
+        mock_loader = Mock()
+        mock_loader_class.return_value = mock_loader
 
-    def test_get_config_loader_uses_environment_variables_for_defaults(self, tmp_path, monkeypatch):
+        config_dir = tmp_path / "config" / "security"
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        from app.infrastructure.security.llm.config_loader import get_config_loader
+        import app.infrastructure.security.llm.config_loader as config_module
+
+        # Clear any existing global instance
+        config_module._loader_instance = None
+
+        # When: Call get_config_loader twice
+        loader1 = get_config_loader()
+        loader2 = get_config_loader()
+
+        # Then: Same instance returned (singleton pattern)
+        assert loader1 is loader2
+        assert loader1 is mock_loader
+        # SecurityConfigLoader constructor only called once
+        mock_loader_class.assert_called_once_with()
+
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_get_config_loader_uses_environment_variables_for_defaults(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that get_config_loader() reads SECURITY_CONFIG_PATH for default path.
 
@@ -78,13 +121,36 @@ class TestGetConfigLoader:
             - tmp_path: Pytest fixture for configuration directory.
             - monkeypatch: Pytest fixture for setting environment variables.
         """
-        pass
+        # Given: Custom config path environment variable
+        custom_config_path = str(tmp_path / "custom" / "config")
+        monkeypatch.setenv("SECURITY_CONFIG_PATH", custom_config_path)
+
+        config_dir = tmp_path / "custom" / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        mock_loader = Mock()
+        mock_loader_class.return_value = mock_loader
+
+        from app.infrastructure.security.llm.config_loader import get_config_loader
+        import app.infrastructure.security.llm.config_loader as config_module
+
+        # Clear any existing global instance
+        config_module._loader_instance = None
+
+        # When: Call get_config_loader
+        result = get_config_loader()
+
+        # Then: Loader created with custom config path
+        mock_loader_class.assert_called_once_with()
+        # Verify the loader instance was created and returned
+        assert result is mock_loader
 
 
 class TestLoadSecurityConfig:
     """Test load_security_config() main configuration loading function."""
 
-    def test_load_security_config_with_default_parameters(self, tmp_path, monkeypatch):
+    @patch('app.infrastructure.security.llm.config_loader.get_config_loader')
+    def test_load_security_config_with_default_parameters(self, mock_get_loader, tmp_path, monkeypatch):
         """
         Test that load_security_config() loads configuration with sensible defaults.
 
@@ -105,9 +171,28 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for creating configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock global loader and configuration
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_get_loader.return_value = mock_loader
 
-    def test_load_security_config_with_custom_environment(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call with default parameters
+        result = load_security_config()
+
+        # Then: Uses global loader and calls with default parameters
+        mock_get_loader.assert_called_once_with()
+        mock_loader.load_config.assert_called_once_with(
+            environment=None,
+            enable_hot_reload=False,
+            cache_bust=False
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_load_security_config_with_custom_environment(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that load_security_config() accepts custom environment parameter.
 
@@ -128,9 +213,35 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock loader and configuration directory
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_loader_class.return_value = mock_loader
 
-    def test_load_security_config_with_custom_config_path(self, tmp_path, monkeypatch):
+        # Create valid config directory since SecurityConfigLoader will be instantiated
+        config_dir = tmp_path / "config" / "security"
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call with custom environment (creates new loader)
+        result = load_security_config(environment="production")
+
+        # Then: Creates new loader with custom environment
+        mock_loader_class.assert_called_once_with(
+            config_path=None,
+            environment="production"
+        )
+        mock_loader.load_config.assert_called_once_with(
+            environment="production",
+            enable_hot_reload=False,
+            cache_bust=False
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_load_security_config_with_custom_config_path(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that load_security_config() accepts custom configuration path.
 
@@ -151,9 +262,32 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for custom configuration location.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Custom config path and mock loader
+        custom_config_path = str(tmp_path / "custom" / "config")
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_loader_class.return_value = mock_loader
 
-    def test_load_security_config_with_hot_reload_enabled(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call with custom config path
+        result = load_security_config(config_path=custom_config_path)
+
+        # Then: Creates new loader with custom path
+        mock_loader_class.assert_called_once_with(
+            config_path=custom_config_path,
+            environment="development"  # Default environment
+        )
+        mock_loader.load_config.assert_called_once_with(
+            environment=None,
+            enable_hot_reload=False,
+            cache_bust=False
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_load_security_config_with_hot_reload_enabled(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that load_security_config() enables hot reload when requested.
 
@@ -174,9 +308,38 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock loader and configuration directory
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_loader_class.return_value = mock_loader
 
-    def test_load_security_config_with_cache_bust(self, tmp_path, monkeypatch):
+        # Create valid config directory since SecurityConfigLoader will be instantiated
+        config_dir = tmp_path / "config" / "security"
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call with hot reload enabled (creates new loader due to environment parameter)
+        result = load_security_config(
+            enable_hot_reload=True,
+            environment="development"
+        )
+
+        # Then: Creates new loader and passes hot reload parameter
+        mock_loader_class.assert_called_once_with(
+            config_path=None,
+            environment="development"
+        )
+        mock_loader.load_config.assert_called_once_with(
+            environment="development",
+            enable_hot_reload=True,
+            cache_bust=False
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.get_config_loader')
+    def test_load_security_config_with_cache_bust(self, mock_get_loader, tmp_path, monkeypatch):
         """
         Test that load_security_config() forces fresh reload when cache_bust=True.
 
@@ -197,9 +360,28 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock global loader
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_get_loader.return_value = mock_loader
 
-    def test_load_security_config_creates_new_loader_with_custom_settings(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call with cache bust enabled
+        result = load_security_config(cache_bust=True)
+
+        # Then: Passes cache_bust parameter to loader
+        mock_get_loader.assert_called_once_with()
+        mock_loader.load_config.assert_called_once_with(
+            environment=None,
+            enable_hot_reload=False,
+            cache_bust=True
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.SecurityConfigLoader')
+    def test_load_security_config_creates_new_loader_with_custom_settings(self, mock_loader_class, tmp_path, monkeypatch):
         """
         Test that load_security_config() creates new loader when custom settings provided.
 
@@ -220,9 +402,37 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for custom configuration.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Custom settings
+        custom_config_path = str(tmp_path / "custom" / "config")
+        custom_environment = "staging"
 
-    def test_load_security_config_reuses_global_loader_for_default_settings(self, tmp_path, monkeypatch):
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_loader_class.return_value = mock_loader
+
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call with custom settings
+        result = load_security_config(
+            config_path=custom_config_path,
+            environment=custom_environment
+        )
+
+        # Then: Creates new loader instead of using global
+        mock_loader_class.assert_called_once_with(
+            config_path=custom_config_path,
+            environment=custom_environment
+        )
+        mock_loader.load_config.assert_called_once_with(
+            environment=custom_environment,
+            enable_hot_reload=False,
+            cache_bust=False
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.get_config_loader')
+    def test_load_security_config_reuses_global_loader_for_default_settings(self, mock_get_loader, tmp_path, monkeypatch):
         """
         Test that load_security_config() reuses global loader for efficiency.
 
@@ -243,9 +453,27 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock global loader
+        mock_loader = Mock()
+        mock_config = Mock()
+        mock_loader.load_config.return_value = mock_config
+        mock_get_loader.return_value = mock_loader
 
-    def test_load_security_config_raises_configuration_error_on_failure(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When: Call multiple times with default settings
+        result1 = load_security_config()
+        result2 = load_security_config()
+
+        # Then: Reuses same global loader
+        assert mock_get_loader.call_count == 2
+        assert mock_loader.load_config.call_count == 2
+        # Both calls use same loader instance
+        assert result1 is mock_config
+        assert result2 is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.get_config_loader')
+    def test_load_security_config_raises_configuration_error_on_failure(self, mock_get_loader, tmp_path, monkeypatch):
         """
         Test that load_security_config() propagates ConfigurationError from loader.
 
@@ -266,13 +494,27 @@ class TestLoadSecurityConfig:
             - tmp_path: Pytest fixture for invalid configuration.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Loader raises ConfigurationError
+        mock_loader = Mock()
+        from app.infrastructure.security.llm.config_loader import ConfigurationError
+        error_message = "Configuration loading failed"
+        mock_loader.load_config.side_effect = ConfigurationError(error_message)
+        mock_get_loader.return_value = mock_loader
+
+        from app.infrastructure.security.llm.config_loader import load_security_config
+
+        # When & Then: ConfigurationError propagates
+        with pytest.raises(ConfigurationError) as exc_info:
+            load_security_config()
+
+        assert str(exc_info.value) == error_message
 
 
 class TestReloadSecurityConfig:
     """Test reload_security_config() forced configuration reload function."""
 
-    def test_reload_security_config_forces_cache_bypass(self, tmp_path, monkeypatch):
+    @patch('app.infrastructure.security.llm.config_loader.load_security_config')
+    def test_reload_security_config_forces_cache_bypass(self, mock_load_config, tmp_path, monkeypatch):
         """
         Test that reload_security_config() bypasses all caches for fresh load.
 
@@ -293,9 +535,25 @@ class TestReloadSecurityConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock load_security_config
+        mock_config = Mock()
+        mock_load_config.return_value = mock_config
 
-    def test_reload_security_config_with_custom_environment(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import reload_security_config
+
+        # When: Call reload_security_config
+        result = reload_security_config()
+
+        # Then: Calls load_security_config with cache_bust=True
+        mock_load_config.assert_called_once_with(
+            environment=None,
+            config_path=None,
+            cache_bust=True
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.load_security_config')
+    def test_reload_security_config_with_custom_environment(self, mock_load_config, tmp_path, monkeypatch):
         """
         Test that reload_security_config() accepts custom environment parameter.
 
@@ -316,9 +574,25 @@ class TestReloadSecurityConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock load_security_config
+        mock_config = Mock()
+        mock_load_config.return_value = mock_config
 
-    def test_reload_security_config_with_custom_config_path(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import reload_security_config
+
+        # When: Call with custom environment
+        result = reload_security_config(environment="production")
+
+        # Then: Passes environment parameter with cache_bust=True
+        mock_load_config.assert_called_once_with(
+            environment="production",
+            config_path=None,
+            cache_bust=True
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.load_security_config')
+    def test_reload_security_config_with_custom_config_path(self, mock_load_config, tmp_path, monkeypatch):
         """
         Test that reload_security_config() accepts custom configuration path.
 
@@ -339,9 +613,26 @@ class TestReloadSecurityConfig:
             - tmp_path: Pytest fixture for custom configuration location.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock load_security_config and custom path
+        custom_config_path = str(tmp_path / "custom" / "config")
+        mock_config = Mock()
+        mock_load_config.return_value = mock_config
 
-    def test_reload_security_config_reflects_file_modifications(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import reload_security_config
+
+        # When: Call with custom config path
+        result = reload_security_config(config_path=custom_config_path)
+
+        # Then: Passes config_path parameter with cache_bust=True
+        mock_load_config.assert_called_once_with(
+            environment=None,
+            config_path=custom_config_path,
+            cache_bust=True
+        )
+        assert result is mock_config
+
+    @patch('app.infrastructure.security.llm.config_loader.load_security_config')
+    def test_reload_security_config_reflects_file_modifications(self, mock_load_config, tmp_path, monkeypatch):
         """
         Test that reload_security_config() picks up configuration file changes.
 
@@ -362,9 +653,25 @@ class TestReloadSecurityConfig:
             - tmp_path: Pytest fixture for modifiable configuration files.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: Mock returning updated configuration
+        updated_config = Mock()
+        mock_load_config.return_value = updated_config
 
-    def test_reload_security_config_raises_configuration_error_on_failure(self, tmp_path, monkeypatch):
+        from app.infrastructure.security.llm.config_loader import reload_security_config
+
+        # When: Call reload_security_config after modifications
+        result = reload_security_config()
+
+        # Then: Returns fresh configuration reflecting file changes
+        mock_load_config.assert_called_once_with(
+            environment=None,
+            config_path=None,
+            cache_bust=True
+        )
+        assert result is updated_config
+
+    @patch('app.infrastructure.security.llm.config_loader.load_security_config')
+    def test_reload_security_config_raises_configuration_error_on_failure(self, mock_load_config, tmp_path, monkeypatch):
         """
         Test that reload_security_config() propagates ConfigurationError from loader.
 
@@ -385,4 +692,21 @@ class TestReloadSecurityConfig:
             - tmp_path: Pytest fixture for invalid configuration.
             - monkeypatch: Pytest fixture for environment setup.
         """
-        pass
+        # Given: load_security_config raises ConfigurationError
+        from app.infrastructure.security.llm.config_loader import ConfigurationError
+        error_message = "Configuration reload failed"
+        mock_load_config.side_effect = ConfigurationError(error_message)
+
+        from app.infrastructure.security.llm.config_loader import reload_security_config
+
+        # When & Then: ConfigurationError propagates
+        with pytest.raises(ConfigurationError) as exc_info:
+            reload_security_config()
+
+        assert str(exc_info.value) == error_message
+        # Verify cache_bust=True was passed before error
+        mock_load_config.assert_called_once_with(
+            environment=None,
+            config_path=None,
+            cache_bust=True
+        )

@@ -6,6 +6,7 @@ public contract defined in config.pyi.
 """
 
 import pytest
+from app.infrastructure.security.llm.config import ScannerType
 
 
 class TestScannerTypeEnumValues:
@@ -31,7 +32,19 @@ class TestScannerTypeEnumValues:
         Fixtures Used:
             None - tests enum definition directly.
         """
-        pass
+        # Verify all input scanner types exist as enum members
+        assert hasattr(ScannerType, 'PROMPT_INJECTION')
+        assert hasattr(ScannerType, 'TOXICITY_INPUT')
+        assert hasattr(ScannerType, 'PII_DETECTION')
+        assert hasattr(ScannerType, 'MALICIOUS_URL')
+        assert hasattr(ScannerType, 'SUSPICIOUS_PATTERN')
+
+        # Verify they have the expected string values
+        assert ScannerType.PROMPT_INJECTION.value == "prompt_injection"
+        assert ScannerType.TOXICITY_INPUT.value == "toxicity_input"
+        assert ScannerType.PII_DETECTION.value == "pii_detection"
+        assert ScannerType.MALICIOUS_URL.value == "malicious_url"
+        assert ScannerType.SUSPICIOUS_PATTERN.value == "suspicious_pattern"
 
     def test_scanner_type_has_output_scanner_members(self):
         """
@@ -53,7 +66,19 @@ class TestScannerTypeEnumValues:
         Fixtures Used:
             None - tests enum definition directly.
         """
-        pass
+        # Verify all output scanner types exist as enum members
+        assert hasattr(ScannerType, 'TOXICITY_OUTPUT')
+        assert hasattr(ScannerType, 'BIAS_DETECTION')
+        assert hasattr(ScannerType, 'HARMFUL_CONTENT')
+        assert hasattr(ScannerType, 'FACTUALITY_CHECK')
+        assert hasattr(ScannerType, 'SENTIMENT_ANALYSIS')
+
+        # Verify they have the expected string values
+        assert ScannerType.TOXICITY_OUTPUT.value == "toxicity_output"
+        assert ScannerType.BIAS_DETECTION.value == "bias_detection"
+        assert ScannerType.HARMFUL_CONTENT.value == "harmful_content"
+        assert ScannerType.FACTUALITY_CHECK.value == "factuality_check"
+        assert ScannerType.SENTIMENT_ANALYSIS.value == "sentiment_analysis"
 
     def test_scanner_type_enum_members_are_strings(self):
         """
@@ -74,7 +99,17 @@ class TestScannerTypeEnumValues:
         Fixtures Used:
             None - tests enum type characteristics.
         """
-        pass
+        # Test that enum members are instances of str
+        assert isinstance(ScannerType.PROMPT_INJECTION, str)
+        assert isinstance(ScannerType.TOXICITY_INPUT, str)
+        assert isinstance(ScannerType.BIAS_DETECTION, str)
+        assert isinstance(ScannerType.SENTIMENT_ANALYSIS, str)
+
+        # Test that they can be used as strings directly
+        # Note: ScannerType inherits from str, so the enum member itself is the string value
+        scanner_str = ScannerType.PROMPT_INJECTION
+        assert scanner_str == "prompt_injection"
+        assert isinstance(scanner_str, str)
 
     def test_scanner_type_values_match_expected_strings(self):
         """
@@ -96,7 +131,19 @@ class TestScannerTypeEnumValues:
         Fixtures Used:
             None - tests enum value formatting.
         """
-        pass
+        # Test that all enum values follow snake_case convention
+        all_scanner_types = list(ScannerType)
+
+        for scanner_type in all_scanner_types:
+            value = scanner_type.value
+            # Should be lowercase with underscores
+            assert value.islower(), f"ScannerType value '{value}' should be lowercase"
+            assert '_' in value or value.isalpha(), f"ScannerType value '{value}' should use snake_case format"
+
+            # Should not contain uppercase letters, spaces, or special characters except underscores
+            assert not any(c.isupper() for c in value), f"ScannerType value '{value}' should not contain uppercase letters"
+            assert ' ' not in value, f"ScannerType value '{value}' should not contain spaces"
+            assert all(c.isalnum() or c == '_' for c in value), f"ScannerType value '{value}' should only contain alphanumeric characters and underscores"
 
 
 class TestScannerTypeUsagePatterns:
@@ -122,7 +169,31 @@ class TestScannerTypeUsagePatterns:
         Fixtures Used:
             - scanner_type: Fixture providing MockScannerType instance.
         """
-        pass
+        # Use real ScannerType enum members as dictionary keys
+        scanner_configs = {
+            ScannerType.PROMPT_INJECTION: {"enabled": True, "threshold": 0.7},
+            ScannerType.TOXICITY_INPUT: {"enabled": True, "threshold": 0.8},
+            ScannerType.PII_DETECTION: {"enabled": False, "threshold": 0.6},
+        }
+
+        # Test that values can be retrieved using enum keys
+        prompt_config = scanner_configs[ScannerType.PROMPT_INJECTION]
+        assert prompt_config["enabled"] == True
+        assert prompt_config["threshold"] == 0.7
+
+        # Test that dictionary operations work correctly
+        assert ScannerType.TOXICITY_INPUT in scanner_configs
+        assert ScannerType.BIAS_DETECTION not in scanner_configs
+
+        # Test adding new entries
+        scanner_configs[ScannerType.BIAS_DETECTION] = {"enabled": True, "threshold": 0.9}
+        assert ScannerType.BIAS_DETECTION in scanner_configs
+        assert scanner_configs[ScannerType.BIAS_DETECTION]["threshold"] == 0.9
+
+        # Test iteration over dictionary
+        keys = list(scanner_configs.keys())
+        assert ScannerType.PROMPT_INJECTION in keys
+        assert ScannerType.TOXICITY_INPUT in keys
 
     def test_scanner_type_comparison_with_string_values(self, scanner_type):
         """
@@ -144,4 +215,30 @@ class TestScannerTypeUsagePatterns:
         Fixtures Used:
             - scanner_type: Fixture providing MockScannerType instance.
         """
-        pass
+        # Test that ScannerType enum members can be compared with their string values
+        assert ScannerType.PROMPT_INJECTION == "prompt_injection"
+        assert ScannerType.TOXICITY_INPUT == "toxicity_input"
+        assert ScannerType.BIAS_DETECTION == "bias_detection"
+        assert ScannerType.SENTIMENT_ANALYSIS == "sentiment_analysis"
+
+        # Test that comparison works both ways
+        assert "prompt_injection" == ScannerType.PROMPT_INJECTION
+        assert "pii_detection" == ScannerType.PII_DETECTION
+
+        # Test that different values are not equal
+        assert ScannerType.PROMPT_INJECTION != "toxicity_input"
+        assert ScannerType.BIAS_DETECTION != "prompt_injection"
+        assert ScannerType.HARMFUL_CONTENT != "bias_detection"
+
+        # Test that comparison works in conditional statements
+        scanner_name = "toxicity_output"
+        if scanner_name == ScannerType.TOXICITY_OUTPUT:
+            comparison_works = True
+        else:
+            comparison_works = False
+        assert comparison_works
+
+        # Test with a list of scanner types for configuration parsing
+        allowed_scanners = [ScannerType.PROMPT_INJECTION, ScannerType.TOXICITY_INPUT]
+        config_scanner = "prompt_injection"
+        assert config_scanner in allowed_scanners
