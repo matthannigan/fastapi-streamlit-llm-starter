@@ -985,6 +985,7 @@ repomix-backend-contracts: generate-contracts
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/*" --ignore "backend/contracts/repomix-instructions.md"
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-cache.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/cache/**/*,backend/contracts/**/*cache*.*" --ignore "backend/contracts/repomix-instructions.md"
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-resilience.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/resilience/**/*,backend/contracts/**/*resilience*.*" --ignore "backend/contracts/repomix-instructions.md"
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-contracts-llm_security.md --quiet --no-file-summary --header-text "$$(cat backend/contracts/repomix-instructions.md)" --include "backend/contracts/**/security/llm/**/*,backend/contracts/**/*llm_security*.*" --ignore "backend/contracts/repomix-instructions.md"
 
 # Generate backend cache documentation 
 repomix-backend-cache: repomix-backend-cache-tests
@@ -1028,6 +1029,16 @@ repomix-backend-security-auth-tests:
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth-tests_U.md --quiet --include "backend/tests/**/security/**/*,backend/tests/**/*security*.*,backend/tests/**/auth/**/*,backend/tests/**/auth*.*"
 #	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth-tests-e2e_U.md --quiet --include "backend/tests/infrastructure/security/e2e/**/*,backend/tests/infrastructure/security/conftest.py,backend/tests/infrastructure/auth/e2e/**/*,backend/tests/infrastructure/auth/conftest.py"
 
+repomix-backend-resilience-tests:
+	@echo "📄 Generating backend tests resilience documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-resilience-tests_U.md --quiet --include "backend/tests/unit/resilience/**/*,backend/tests/unit/conftest.py"
+	
+repomix-backend-security-llm-tests:
+	@echo "📄 Generating backend tests llm_security documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-llm-tests_U.md --quiet --include "backend/tests/unit/llm_security/**/*,backend/tests/unit/conftest.py"
+	
 # Generate frontend-only documentation
 repomix-frontend: repomix-frontend-tests
 	@echo "📄 Generating frontend documentation..."
