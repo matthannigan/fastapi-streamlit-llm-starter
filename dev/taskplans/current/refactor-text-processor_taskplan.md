@@ -95,38 +95,42 @@ Update contracts, docstrings, and perform comprehensive validation.
 **Goal**: Thoroughly understand current patterns, dependencies, and extension points.
 
 #### Task 1.1: Code Structure Analysis
-- [ ] Analyze current operation dispatch pattern:
-  - [ ] Document the `if/elif` chain in `process_text()` (lines 439-450)
-  - [ ] List all operation handler methods (`_*_with_resilience`, core methods)
-  - [ ] Map resilience decorator patterns (balanced, aggressive, conservative)
-  - [ ] Document fallback method patterns per operation type
-- [ ] Analyze operation-specific configuration:
-  - [ ] Document `_register_operations()` patterns (lines 306-324)
-  - [ ] Map operation names to resilience strategies
-  - [ ] List operation-specific settings (temperature, max_length, etc.)
-  - [ ] Document TTL mapping in `_get_ttl_for_operation()` (lines 820-854)
-- [ ] Document testing dependencies:
-  - [ ] List all test files depending on `TextProcessorService`
-  - [ ] Identify fixture patterns and test isolation challenges
-  - [ ] Note any mocking patterns for AI agent calls
-  - [ ] Document test coverage gaps
+- [X] Analyze current operation dispatch pattern:
+  - [X] Document the `if/elif` chain in `process_text()` (lines 439-450)
+  - [X] List all operation handler methods (`_*_with_resilience`, core methods)
+  - [X] Map resilience decorator patterns (balanced, aggressive, conservative)
+  - [X] Document fallback method patterns per operation type
+- [X] Analyze operation-specific configuration:
+  - [X] Document `_register_operations()` patterns (lines 306-324)
+  - [X] Map operation names to resilience strategies
+  - [X] List operation-specific settings (temperature, max_length, etc.)
+  - [X] Document TTL mapping in `_get_ttl_for_operation()` (lines 820-854)
+- [X] Document testing dependencies:
+  - [X] List all test files depending on `TextProcessorService`
+  - [X] Identify fixture patterns and test isolation challenges
+  - [X] Note any mocking patterns for AI agent calls
+  - [X] Document test coverage gaps
+
+**Analysis Complete**: See `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter/dev/taskplans/current/deliverable1_current-implementation-analysis.md`
 
 #### Task 1.2: PROS_CONS Requirements Analysis
-- [ ] Design PROS_CONS operation structure:
-  - [ ] Define request model additions (operation enum, options)
-  - [ ] Design response model for pros/cons/synthesis structure
-  - [ ] Specify prompt templates for three AI calls
-  - [ ] Define parallel execution strategy (asyncio.gather, TaskGroup)
-- [ ] Plan implementation approach:
-  - [ ] Design method structure (`_generate_pros_cons`, `_get_pros`, `_get_cons`, `_synthesize_pros_cons`)
-  - [ ] Determine resilience strategy (balanced recommended)
-  - [ ] Plan caching strategy for multi-step operation
-  - [ ] Define fallback behavior when partial failures occur
-- [ ] Document integration points:
-  - [ ] List touchpoints in `process_text()` for new operation
-  - [ ] Identify shared models updates needed
-  - [ ] Note API endpoint implications
-  - [ ] Consider frontend integration requirements
+- [X] Design PROS_CONS operation structure:
+  - [X] Define request model additions (operation enum, options)
+  - [X] Design response model for pros/cons/synthesis structure
+  - [X] Specify prompt templates for three AI calls
+  - [X] Define parallel execution strategy (asyncio.gather, TaskGroup)
+- [X] Plan implementation approach:
+  - [X] Design method structure (`_generate_pros_cons`, `_get_pros`, `_get_cons`, `_synthesize_pros_cons`)
+  - [X] Determine resilience strategy (balanced recommended)
+  - [X] Plan caching strategy for multi-step operation
+  - [X] Define fallback behavior when partial failures occur
+- [X] Document integration points:
+  - [X] List touchpoints in `process_text()` for new operation
+  - [X] Identify shared models updates needed
+  - [X] Note API endpoint implications
+  - [X] Consider frontend integration requirements
+
+**Analysis Complete**: See `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter/dev/taskplans/current/deliverable1_current-implementation-analysis.md`
 
 ---
 
@@ -134,7 +138,7 @@ Update contracts, docstrings, and perform comprehensive validation.
 **Goal**: Create detailed design for improved operation dispatch and organization.
 
 #### Task 2.1: Operation Registry Design
-- [ ] Design centralized operation registry structure:
+- [X] Design centralized operation registry structure:
   ```python
   # Example structure to design:
   OPERATION_CONFIG = {
@@ -149,34 +153,36 @@ Update contracts, docstrings, and perform comprehensive validation.
       # ... additional operations
   }
   ```
-  - [ ] Define configuration schema for operation metadata
-  - [ ] Document required vs optional metadata fields
-  - [ ] Plan validation logic for registry consistency
-  - [ ] Design accessor methods for registry queries
+  - [X] Define configuration schema for operation metadata
+  - [X] Document required vs optional metadata fields
+  - [X] Plan validation logic for registry consistency
+  - [X] Design accessor methods for registry queries
 
 #### Task 2.2: Dispatch Mechanism Design
-- [ ] Design improved operation routing:
-  - [ ] Create dispatch table mapping operations to handlers
-  - [ ] Design argument routing logic (text, question, options)
-  - [ ] Plan error handling for unknown operations
-  - [ ] Design response field routing (result, sentiment, key_points, etc.)
-- [ ] Design helper methods:
-  - [ ] `_dispatch_operation()`: Central routing method
-  - [ ] `_get_operation_handler()`: Handler lookup
-  - [ ] `_prepare_handler_arguments()`: Argument preparation
-  - [ ] `_route_response_to_field()`: Response field assignment
+- [X] Design improved operation routing:
+  - [X] Create dispatch table mapping operations to handlers
+  - [X] Design argument routing logic (text, question, options)
+  - [X] Plan error handling for unknown operations
+  - [X] Design response field routing (result, sentiment, key_points, etc.)
+- [X] Design helper methods:
+  - [X] `_dispatch_operation()`: Central routing method
+  - [X] `_get_operation_handler()`: Handler lookup (part of _dispatch_operation)
+  - [X] `_prepare_handler_arguments()`: Argument preparation
+  - [X] `_route_response_to_field()`: Response field assignment
 
 #### Task 2.3: Multi-Step Operation Pattern Design
-- [ ] Design pattern for multi-step operations:
-  - [ ] Define abstract pattern: setup → parallel execution → synthesis
-  - [ ] Create helper for parallel task execution with error handling
-  - [ ] Design partial failure handling strategy
-  - [ ] Plan result aggregation and cache key generation
-- [ ] Document pattern application to PROS_CONS:
-  - [ ] Sketch implementation structure
-  - [ ] Define sub-task resilience handling
-  - [ ] Plan cache strategy for composite results
-  - [ ] Design fallback behavior for partial failures
+- [X] Design pattern for multi-step operations:
+  - [X] Define abstract pattern: setup → parallel execution → synthesis
+  - [X] Create helper for parallel task execution with error handling
+  - [X] Design partial failure handling strategy
+  - [X] Plan result aggregation and cache key generation
+- [X] Document pattern application to PROS_CONS:
+  - [X] Sketch implementation structure
+  - [X] Define sub-task resilience handling
+  - [X] Plan cache strategy for composite results
+  - [X] Design fallback behavior for partial failures
+
+**Design Complete**: See `/Users/matth/Github/MGH/fastapi-streamlit-llm-starter/dev/taskplans/current/deliverable2_refactoring-design.md`
 
 ---
 
@@ -186,43 +192,45 @@ Update contracts, docstrings, and perform comprehensive validation.
 **Goal**: Create centralized registry for all operation-specific configuration.
 
 #### Task 3.1: Create Operation Configuration Registry
-- [ ] Implement `OPERATION_CONFIG` dictionary:
-  - [ ] Add entry for SUMMARIZE with full metadata
-  - [ ] Add entry for SENTIMENT with full metadata
-  - [ ] Add entry for KEY_POINTS with full metadata
-  - [ ] Add entry for QUESTIONS with full metadata
-  - [ ] Add entry for QA with full metadata
-  - [ ] Add scaffold entry for PROS_CONS (to be implemented)
-- [ ] Add registry accessor methods:
-  - [ ] `_get_operation_config(operation)`: Get config for operation
-  - [ ] `_get_handler_name(operation)`: Get handler method name
-  - [ ] `_get_resilience_strategy(operation)`: Get resilience strategy
-  - [ ] `_get_cache_ttl(operation)`: Get cache TTL
-  - [ ] `_get_fallback_type(operation)`: Get fallback data type
+- [X] Implement `OPERATION_CONFIG` dictionary:
+  - [X] Add entry for SUMMARIZE with full metadata
+  - [X] Add entry for SENTIMENT with full metadata
+  - [X] Add entry for KEY_POINTS with full metadata
+  - [X] Add entry for QUESTIONS with full metadata
+  - [X] Add entry for QA with full metadata
+  - [ ] Add scaffold entry for PROS_CONS (to be implemented in Phase 4)
+- [X] Add registry accessor methods:
+  - [X] `_get_operation_config(operation)`: Get config for operation
+  - [X] `_get_handler_name(operation)`: Get handler method name
+  - [X] `_get_resilience_strategy(operation)`: Get resilience strategy
+  - [X] `_get_cache_ttl_from_registry(operation)`: Get cache TTL from registry
+  - [X] `_get_fallback_type(operation)`: Get fallback data type
+  - [X] `_get_response_field(operation)`: Get response field name
 
 #### Task 3.2: Refactor Configuration Methods
-- [ ] Refactor `_register_operations()`:
-  - [ ] Update to use registry for strategy lookup
-  - [ ] Remove hardcoded operation name strings
-  - [ ] Simplify registration loop using registry
-  - [ ] Add validation that all registry entries are registered
-- [ ] Refactor `_get_ttl_for_operation()`:
-  - [ ] Replace internal dictionary with registry lookup
-  - [ ] Add fallback for operations not in registry
-  - [ ] Update docstring to reference registry
-  - [ ] Maintain backward compatibility with existing TTLs
+- [X] Refactor `_register_operations()`:
+  - [X] Update to use registry for strategy lookup
+  - [X] Remove hardcoded operation name strings (replaced with registry-driven map)
+  - [X] Simplify registration loop using registry
+  - [X] Support settings overrides for custom strategy configuration
+- [X] Refactor `_get_ttl_for_operation()`:
+  - [X] Replace internal dictionary with registry lookup
+  - [X] Add fallback for operations not in registry
+  - [X] Update docstring to reference registry
+  - [X] Maintain backward compatibility with existing TTLs
 
 #### Task 3.3: Add Registry Validation
-- [ ] Implement registry consistency checks:
-  - [ ] Validate all enum operations have registry entries
-  - [ ] Verify handler method names correspond to actual methods
-  - [ ] Check resilience strategies are valid enum values
-  - [ ] Validate TTL values are positive integers or None
-- [ ] Add initialization validation:
-  - [ ] Call validation during `__init__`
-  - [ ] Log warnings for missing or invalid entries
-  - [ ] Raise clear errors for critical misconfigurations
-  - [ ] Create unit tests for validation logic
+- [X] Implement registry consistency checks:
+  - [X] Validate all enum operations have registry entries
+  - [X] Verify handler method names correspond to actual methods
+  - [X] Check resilience strategies are valid enum values
+  - [X] Validate TTL values are positive integers
+  - [X] Validate response fields match TextProcessingResponse model
+- [X] Add initialization validation:
+  - [X] Call validation during `__init__`
+  - [X] Log success message when validation passes
+  - [X] Raise ConfigurationError for critical misconfigurations
+  - [ ] Create unit tests for validation logic (deferred to Phase 5)
 
 ---
 
@@ -232,7 +240,7 @@ Update contracts, docstrings, and perform comprehensive validation.
 **Goal**: Replace `if/elif` chains with maintainable dispatch mechanism.
 
 #### Task 4.1: Implement Dispatch Helper Methods
-- [ ] Create `_dispatch_operation()` method:
+- [X] Create `_dispatch_operation()` method:
   ```python
   async def _dispatch_operation(
       self,
@@ -243,40 +251,40 @@ Update contracts, docstrings, and perform comprehensive validation.
   ) -> Any:
       """Central dispatch for operation execution."""
   ```
-  - [ ] Implement handler lookup from registry
-  - [ ] Add operation validation
-  - [ ] Implement handler invocation with proper arguments
-  - [ ] Add comprehensive error handling
-- [ ] Create `_prepare_handler_arguments()` method:
-  - [ ] Build argument dict based on operation requirements
-  - [ ] Include text for all operations
-  - [ ] Add options for operations that need them
-  - [ ] Include question only for QA operation
-  - [ ] Handle future operation-specific parameters
+  - [X] Implement handler lookup from registry
+  - [X] Add operation validation
+  - [X] Implement handler invocation with proper arguments
+  - [X] Add comprehensive error handling
+- [X] Create `_prepare_handler_arguments()` method:
+  - [X] Build argument dict based on operation requirements
+  - [X] Include text for all operations
+  - [X] Add options for operations that need them
+  - [X] Include question only for QA operation
+  - [X] Handle future operation-specific parameters
 
 #### Task 4.2: Refactor `process_text()` Method
-- [ ] Replace `if/elif` chain (lines 439-450):
-  - [ ] Remove existing conditional blocks
-  - [ ] Add single call to `_dispatch_operation()`
-  - [ ] Update response field assignment logic
-  - [ ] Preserve all existing error handling
-- [ ] Simplify response field routing:
-  - [ ] Create helper to route result to correct response field
-  - [ ] Use registry metadata for field selection
-  - [ ] Handle special cases (sentiment, key_points, questions)
-  - [ ] Maintain backward compatibility
+- [X] Replace `if/elif` chain (lines 439-450):
+  - [X] Remove existing conditional blocks
+  - [X] Add single call to `_dispatch_operation()`
+  - [X] Update response field assignment logic
+  - [X] Preserve all existing error handling
+- [X] Simplify response field routing:
+  - [X] Create helper to route result to correct response field (`_set_response_field()`)
+  - [X] Use registry metadata for field selection
+  - [X] Handle special cases (sentiment, key_points, questions)
+  - [X] Maintain backward compatibility
 
 #### Task 4.3: Refactor Fallback Handling
-- [ ] Update `_get_fallback_response()` method:
-  - [ ] Use registry to determine fallback type
-  - [ ] Simplify fallback selection logic
-  - [ ] Maintain existing fallback values
-  - [ ] Improve fallback logging with operation metadata
-- [ ] Update exception handling in `process_text()`:
-  - [ ] Use registry for response field routing in fallback case
-  - [ ] Consolidate duplicated fallback logic
-  - [ ] Ensure consistent metadata setting
-  - [ ] Preserve existing fallback behavior
+- [X] Update `_get_fallback_response()` method:
+  - [X] Use registry to determine fallback type
+  - [X] Simplify fallback selection logic
+  - [X] Maintain existing fallback values
+  - [X] Improve fallback logging with operation metadata
+- [X] Update exception handling in `process_text()`:
+  - [X] Use registry for response field routing in fallback case
+  - [X] Consolidate duplicated fallback logic
+  - [X] Ensure consistent metadata setting
+  - [X] Preserve existing fallback behavior
 
 ---
 

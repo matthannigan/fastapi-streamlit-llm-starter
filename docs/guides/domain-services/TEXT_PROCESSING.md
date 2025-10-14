@@ -187,11 +187,11 @@ Key Batch Processing Features:
 
 ### Performance Metrics
 
-The service tracks comprehensive performance metrics:
-- Processing times per operation
-- Cache hit/miss ratios
-- Resilience pattern statistics
-- Error rates and fallback usage
+The service integrates with infrastructure monitoring systems:
+- Processing times per operation (logged automatically)
+- Cache hit/miss ratios (tracked via cache infrastructure)
+- Resilience pattern statistics (available via Internal API `/internal/resilience/*`)
+- Error rates and fallback usage (logged for operational visibility)
 
 ## Customization Guide
 
