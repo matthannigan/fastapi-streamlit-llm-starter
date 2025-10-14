@@ -61,6 +61,7 @@ Integration Notes:
 
 from typing import Any, Dict
 import httpx
+from circuitbreaker import CircuitBreakerError
 
 
 # ============================================================================
@@ -489,6 +490,9 @@ def get_http_status_for_exception(exc: Exception) -> int:
 # For smooth migration, maintain aliases to the old locations
 # These can be removed in a future version once all imports are updated
 
+# Alias for circuit breaker exception (from circuitbreaker library)
+CircuitBreakerOpenError = CircuitBreakerError
+
 __all__ = [
     # Base exceptions
     "ApplicationError",
@@ -505,6 +509,10 @@ __all__ = [
     "PermanentAIError",
     "RateLimitError",
     "ServiceUnavailableError",
+
+    # Circuit breaker exceptions
+    "CircuitBreakerError",
+    "CircuitBreakerOpenError",
 
     # Utility functions
     "classify_ai_exception",
