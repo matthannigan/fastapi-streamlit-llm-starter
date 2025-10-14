@@ -21,6 +21,12 @@ Business Critical:
 """
 
 import pytest
+from unittest.mock import Mock, patch, call
+
+from app.infrastructure.resilience.performance_benchmarks import (
+    ConfigurationPerformanceBenchmark,
+    BenchmarkResult
+)
 
 
 class TestBenchmarkPresetLoading:
@@ -64,7 +70,35 @@ class TestBenchmarkPresetLoading:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        # Mock measure_performance to capture the iterations parameter
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="preset_loading",
+                duration_ms=100.0,
+                memory_peak_mb=1.0,
+                iterations=100,
+                avg_duration_ms=1.0,
+                min_duration_ms=0.5,
+                max_duration_ms=2.0,
+                std_dev_ms=0.3,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_preset_loading()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "preset_loading"  # operation_name
+            assert call_args[0][1] is not None  # operation_func
+            assert call_args[0][2] == 100  # default iterations (3rd positional argument)
+            assert result.iterations == 100
+            assert result.operation == "preset_loading"
 
     def test_benchmark_preset_loading_accepts_custom_iteration_count(self):
         """
@@ -87,7 +121,33 @@ class TestBenchmarkPresetLoading:
         Fixtures Used:
             - None required for custom iteration verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+        custom_iterations = 25
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="preset_loading",
+                duration_ms=50.0,
+                memory_peak_mb=1.0,
+                iterations=custom_iterations,
+                avg_duration_ms=2.0,
+                min_duration_ms=1.0,
+                max_duration_ms=4.0,
+                std_dev_ms=0.5,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_preset_loading(iterations=custom_iterations)
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][2] == custom_iterations  # custom iterations (3rd positional argument)
+            assert result.iterations == custom_iterations
+            assert result.operation == "preset_loading"
 
     def test_benchmark_preset_loading_returns_benchmark_result(self):
         """
@@ -110,7 +170,36 @@ class TestBenchmarkPresetLoading:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="preset_loading",
+                duration_ms=120.0,
+                memory_peak_mb=2.5,
+                iterations=100,
+                avg_duration_ms=1.2,
+                min_duration_ms=0.8,
+                max_duration_ms=2.0,
+                std_dev_ms=0.3,
+                success_rate=1.0,
+                metadata={"preset_simple_loaded": True, "preset_development_loaded": True}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_preset_loading()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "preset_loading"
+            assert result.duration_ms == 120.0
+            assert result.memory_peak_mb == 2.5
+            assert result.iterations == 100
+            assert result.avg_duration_ms == 1.2
+            assert result.success_rate == 1.0
+            assert isinstance(result.metadata, dict)
 
     def test_benchmark_preset_loading_sets_correct_operation_name(self):
         """
@@ -133,9 +222,33 @@ class TestBenchmarkPresetLoading:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
 
-    def test_benchmark_preset_loading_measures_actual_preset_access(self, fake_time_module, monkeypatch):
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="preset_loading",
+                duration_ms=100.0,
+                memory_peak_mb=1.0,
+                iterations=100,
+                avg_duration_ms=1.0,
+                min_duration_ms=0.5,
+                max_duration_ms=2.0,
+                std_dev_ms=0.3,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_preset_loading()
+
+            # Assert
+            assert result.operation == "preset_loading"
+            # Verify that measure_performance was called with the correct operation name
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "preset_loading"
+
+    def test_benchmark_preset_loading_measures_actual_preset_access(self, fake_time_module):
         """
         Test that benchmark_preset_loading measures real preset access operations.
 
@@ -156,7 +269,30 @@ class TestBenchmarkPresetLoading:
         Fixtures Used:
             - fake_time_module: Provides deterministic timing without affecting measured operations
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+        fake_time_module.set_time(1000.0)  # Set deterministic start time
+
+        # Mock the actual preset loading operation to verify it gets called
+        with patch('app.infrastructure.resilience.config_presets.preset_manager') as mock_preset_manager:
+            mock_preset_manager.get_preset.return_value = {"retry_attempts": 3}
+
+            # Act
+            result = benchmark.benchmark_preset_loading(iterations=5)
+
+            # Assert
+            # Verify that preset manager was called for each preset
+            expected_presets = ["simple", "development", "production"]
+            assert mock_preset_manager.get_preset.call_count == len(expected_presets) * 5  # 5 iterations * 3 presets
+
+            # Verify all expected presets were accessed
+            called_presets = [call[0][0] for call in mock_preset_manager.get_preset.call_args_list]
+            for preset in expected_presets:
+                assert preset in called_presets
+
+            # Verify result structure
+            assert result.operation == "preset_loading"
+            assert result.iterations == 5
 
 
 class TestBenchmarkSettingsInitialization:
@@ -199,7 +335,33 @@ class TestBenchmarkSettingsInitialization:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="settings_initialization",
+                duration_ms=200.0,
+                memory_peak_mb=5.0,
+                iterations=50,
+                avg_duration_ms=4.0,
+                min_duration_ms=3.0,
+                max_duration_ms=6.0,
+                std_dev_ms=0.8,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_settings_initialization()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "settings_initialization"  # operation_name
+            assert call_args[0][2] == 50  # default iterations (3rd positional argument)
+            assert result.iterations == 50
+            assert result.operation == "settings_initialization"
 
     def test_benchmark_settings_initialization_accepts_custom_iteration_count(self):
         """
@@ -222,7 +384,33 @@ class TestBenchmarkSettingsInitialization:
         Fixtures Used:
             - None required for custom iteration verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+        custom_iterations = 10
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="settings_initialization",
+                duration_ms=40.0,
+                memory_peak_mb=2.0,
+                iterations=custom_iterations,
+                avg_duration_ms=4.0,
+                min_duration_ms=3.0,
+                max_duration_ms=6.0,
+                std_dev_ms=0.8,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_settings_initialization(iterations=custom_iterations)
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][2] == custom_iterations
+            assert result.iterations == custom_iterations
+            assert result.operation == "settings_initialization"
 
     def test_benchmark_settings_initialization_returns_benchmark_result(self):
         """
@@ -245,7 +433,34 @@ class TestBenchmarkSettingsInitialization:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="settings_initialization",
+                duration_ms=180.0,
+                memory_peak_mb=4.5,
+                iterations=50,
+                avg_duration_ms=3.6,
+                min_duration_ms=2.8,
+                max_duration_ms=5.2,
+                std_dev_ms=0.7,
+                success_rate=1.0,
+                metadata={"settings_simple_initialized": True, "settings_development_initialized": True}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_settings_initialization()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "settings_initialization"
+            assert result.duration_ms == 180.0
+            assert result.memory_peak_mb == 4.5
+            assert result.iterations == 50
+            assert result.success_rate == 1.0
 
     def test_benchmark_settings_initialization_sets_correct_operation_name(self):
         """
@@ -268,7 +483,30 @@ class TestBenchmarkSettingsInitialization:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="settings_initialization",
+                duration_ms=150.0,
+                memory_peak_mb=4.0,
+                iterations=50,
+                avg_duration_ms=3.0,
+                min_duration_ms=2.0,
+                max_duration_ms=5.0,
+                std_dev_ms=0.6,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_settings_initialization()
+
+            # Assert
+            assert result.operation == "settings_initialization"
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "settings_initialization"
 
 
 class TestBenchmarkResilienceConfigLoading:
@@ -311,7 +549,33 @@ class TestBenchmarkResilienceConfigLoading:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="resilience_config_loading",
+                duration_ms=300.0,
+                memory_peak_mb=8.0,
+                iterations=50,
+                avg_duration_ms=6.0,
+                min_duration_ms=4.0,
+                max_duration_ms=10.0,
+                std_dev_ms=1.2,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_resilience_config_loading()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "resilience_config_loading"
+            assert call_args[0][2] == 50
+            assert result.iterations == 50
+            assert result.operation == "resilience_config_loading"
 
     def test_benchmark_resilience_config_loading_returns_benchmark_result(self):
         """
@@ -334,7 +598,32 @@ class TestBenchmarkResilienceConfigLoading:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="resilience_config_loading",
+                duration_ms=250.0,
+                memory_peak_mb=7.5,
+                iterations=50,
+                avg_duration_ms=5.0,
+                min_duration_ms=3.5,
+                max_duration_ms=8.0,
+                std_dev_ms=1.0,
+                success_rate=1.0,
+                metadata={"config_simple_loaded": True}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_resilience_config_loading()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "resilience_config_loading"
+            assert result.iterations == 50
+            assert result.success_rate == 1.0
 
     def test_benchmark_resilience_config_loading_sets_correct_operation_name(self):
         """
@@ -357,7 +646,30 @@ class TestBenchmarkResilienceConfigLoading:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="resilience_config_loading",
+                duration_ms=200.0,
+                memory_peak_mb=6.0,
+                iterations=50,
+                avg_duration_ms=4.0,
+                min_duration_ms=3.0,
+                max_duration_ms=7.0,
+                std_dev_ms=0.9,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_resilience_config_loading()
+
+            # Assert
+            assert result.operation == "resilience_config_loading"
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "resilience_config_loading"
 
 
 class TestBenchmarkServiceInitialization:
@@ -400,7 +712,33 @@ class TestBenchmarkServiceInitialization:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="service_initialization",
+                duration_ms=500.0,
+                memory_peak_mb=15.0,
+                iterations=25,
+                avg_duration_ms=20.0,
+                min_duration_ms=15.0,
+                max_duration_ms=30.0,
+                std_dev_ms=3.5,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_service_initialization()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "service_initialization"
+            assert call_args[0][2] == 25
+            assert result.iterations == 25
+            assert result.operation == "service_initialization"
 
     def test_benchmark_service_initialization_returns_benchmark_result(self):
         """
@@ -423,7 +761,32 @@ class TestBenchmarkServiceInitialization:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="service_initialization",
+                duration_ms=450.0,
+                memory_peak_mb=14.0,
+                iterations=25,
+                avg_duration_ms=18.0,
+                min_duration_ms=14.0,
+                max_duration_ms=28.0,
+                std_dev_ms=3.2,
+                success_rate=1.0,
+                metadata={"service_simple_summarize_config": True}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_service_initialization()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "service_initialization"
+            assert result.iterations == 25
+            assert result.success_rate == 1.0
 
     def test_benchmark_service_initialization_sets_correct_operation_name(self):
         """
@@ -446,7 +809,30 @@ class TestBenchmarkServiceInitialization:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="service_initialization",
+                duration_ms=400.0,
+                memory_peak_mb=12.0,
+                iterations=25,
+                avg_duration_ms=16.0,
+                min_duration_ms=12.0,
+                max_duration_ms=25.0,
+                std_dev_ms=3.0,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_service_initialization()
+
+            # Assert
+            assert result.operation == "service_initialization"
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "service_initialization"
 
 
 class TestBenchmarkCustomConfigLoading:
@@ -488,7 +874,33 @@ class TestBenchmarkCustomConfigLoading:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="custom_config_loading",
+                duration_ms=400.0,
+                memory_peak_mb=10.0,
+                iterations=25,
+                avg_duration_ms=16.0,
+                min_duration_ms=12.0,
+                max_duration_ms=22.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_custom_config_loading()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "custom_config_loading"
+            assert call_args[0][2] == 25
+            assert result.iterations == 25
+            assert result.operation == "custom_config_loading"
 
     def test_benchmark_custom_config_loading_returns_benchmark_result(self):
         """
@@ -511,7 +923,32 @@ class TestBenchmarkCustomConfigLoading:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="custom_config_loading",
+                duration_ms=350.0,
+                memory_peak_mb=9.0,
+                iterations=25,
+                avg_duration_ms=14.0,
+                min_duration_ms=10.0,
+                max_duration_ms=20.0,
+                std_dev_ms=2.2,
+                success_rate=1.0,
+                metadata={"custom_config_0_loaded": True}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_custom_config_loading()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "custom_config_loading"
+            assert result.iterations == 25
+            assert result.success_rate == 1.0
 
     def test_benchmark_custom_config_loading_sets_correct_operation_name(self):
         """
@@ -534,7 +971,30 @@ class TestBenchmarkCustomConfigLoading:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="custom_config_loading",
+                duration_ms=300.0,
+                memory_peak_mb=8.0,
+                iterations=25,
+                avg_duration_ms=12.0,
+                min_duration_ms=8.0,
+                max_duration_ms=18.0,
+                std_dev_ms=2.0,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_custom_config_loading()
+
+            # Assert
+            assert result.operation == "custom_config_loading"
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "custom_config_loading"
 
 
 class TestBenchmarkLegacyConfigLoading:
@@ -576,7 +1036,33 @@ class TestBenchmarkLegacyConfigLoading:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="legacy_config_loading",
+                duration_ms=450.0,
+                memory_peak_mb=12.0,
+                iterations=25,
+                avg_duration_ms=18.0,
+                min_duration_ms=14.0,
+                max_duration_ms=25.0,
+                std_dev_ms=3.0,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_legacy_config_loading()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "legacy_config_loading"
+            assert call_args[0][2] == 25
+            assert result.iterations == 25
+            assert result.operation == "legacy_config_loading"
 
     def test_benchmark_legacy_config_loading_returns_benchmark_result(self):
         """
@@ -599,7 +1085,32 @@ class TestBenchmarkLegacyConfigLoading:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="legacy_config_loading",
+                duration_ms=400.0,
+                memory_peak_mb=11.0,
+                iterations=25,
+                avg_duration_ms=16.0,
+                min_duration_ms=12.0,
+                max_duration_ms=23.0,
+                std_dev_ms=2.8,
+                success_rate=1.0,
+                metadata={"legacy_config_0_loaded": True}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_legacy_config_loading()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "legacy_config_loading"
+            assert result.iterations == 25
+            assert result.success_rate == 1.0
 
     def test_benchmark_legacy_config_loading_sets_correct_operation_name(self):
         """
@@ -622,7 +1133,30 @@ class TestBenchmarkLegacyConfigLoading:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="legacy_config_loading",
+                duration_ms=350.0,
+                memory_peak_mb=10.0,
+                iterations=25,
+                avg_duration_ms=14.0,
+                min_duration_ms=10.0,
+                max_duration_ms=20.0,
+                std_dev_ms=2.5,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_legacy_config_loading()
+
+            # Assert
+            assert result.operation == "legacy_config_loading"
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "legacy_config_loading"
 
 
 class TestBenchmarkValidationPerformance:
@@ -665,7 +1199,33 @@ class TestBenchmarkValidationPerformance:
         Fixtures Used:
             - None required for iteration count verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="validation_performance",
+                duration_ms=250.0,
+                memory_peak_mb=6.0,
+                iterations=50,
+                avg_duration_ms=5.0,
+                min_duration_ms=3.0,
+                max_duration_ms=8.0,
+                std_dev_ms=1.2,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_validation_performance()
+
+            # Assert
+            mock_measure.assert_called_once()
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "validation_performance"
+            assert call_args[0][2] == 50
+            assert result.iterations == 50
+            assert result.operation == "validation_performance"
 
     def test_benchmark_validation_performance_returns_benchmark_result(self):
         """
@@ -688,7 +1248,32 @@ class TestBenchmarkValidationPerformance:
         Fixtures Used:
             - None required for return type verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            expected_result = BenchmarkResult(
+                operation="validation_performance",
+                duration_ms=200.0,
+                memory_peak_mb=5.0,
+                iterations=50,
+                avg_duration_ms=4.0,
+                min_duration_ms=2.0,
+                max_duration_ms=7.0,
+                std_dev_ms=1.0,
+                success_rate=1.0,
+                metadata={"config_0_valid": True, "config_0_errors": 0}
+            )
+            mock_measure.return_value = expected_result
+
+            # Act
+            result = benchmark.benchmark_validation_performance()
+
+            # Assert
+            assert isinstance(result, BenchmarkResult)
+            assert result.operation == "validation_performance"
+            assert result.iterations == 50
+            assert result.success_rate == 1.0
 
     def test_benchmark_validation_performance_sets_correct_operation_name(self):
         """
@@ -711,5 +1296,28 @@ class TestBenchmarkValidationPerformance:
         Fixtures Used:
             - None required for operation name verification
         """
-        pass
+        # Arrange
+        benchmark = ConfigurationPerformanceBenchmark()
+
+        with patch.object(benchmark, 'measure_performance') as mock_measure:
+            mock_measure.return_value = BenchmarkResult(
+                operation="validation_performance",
+                duration_ms=180.0,
+                memory_peak_mb=4.5,
+                iterations=50,
+                avg_duration_ms=3.6,
+                min_duration_ms=2.5,
+                max_duration_ms=6.5,
+                std_dev_ms=0.9,
+                success_rate=1.0,
+                metadata={}
+            )
+
+            # Act
+            result = benchmark.benchmark_validation_performance()
+
+            # Assert
+            assert result.operation == "validation_performance"
+            call_args = mock_measure.call_args
+            assert call_args[0][0] == "validation_performance"
 

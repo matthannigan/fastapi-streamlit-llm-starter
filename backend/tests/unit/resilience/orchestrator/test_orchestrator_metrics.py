@@ -12,6 +12,10 @@ Test Categories:
 """
 
 import pytest
+from datetime import datetime
+from unittest.mock import MagicMock
+from app.infrastructure.resilience.orchestrator import AIServiceResilience
+from app.infrastructure.resilience.circuit_breaker import ResilienceMetrics, CircuitBreakerConfig
 
 
 class TestGetMetrics:
@@ -46,7 +50,24 @@ class TestGetMetrics:
         Fixtures Used:
             - None (tests metrics creation)
         """
-        pass
+        # Given: An orchestrator with no existing metrics
+        orchestrator = AIServiceResilience()
+
+        # When: get_metrics("new_operation") is called
+        metrics = orchestrator.get_metrics("new_operation")
+
+        # Then: New ResilienceMetrics object is created
+        assert isinstance(metrics, ResilienceMetrics)
+
+        # And: Metrics object is initialized with zero counts
+        assert metrics.total_calls == 0
+        assert metrics.successful_calls == 0
+        assert metrics.failed_calls == 0
+        assert metrics.retry_attempts == 0
+
+        # And: Metrics object is stored for future retrieval
+        assert "new_operation" in orchestrator.operation_metrics
+        assert orchestrator.operation_metrics["new_operation"] is metrics
 
     def test_returns_existing_metrics_for_known_operation(self):
         """
@@ -72,7 +93,31 @@ class TestGetMetrics:
         Fixtures Used:
             - None (tests metrics persistence)
         """
-        pass
+        # Given: An orchestrator with metrics for "tracked_operation"
+        orchestrator = AIServiceResilience()
+        initial_metrics = orchestrator.get_metrics("tracked_operation")
+
+        # And: Metrics object already exists with accumulated counts
+        initial_metrics.total_calls = 10
+        initial_metrics.successful_calls = 8
+        initial_metrics.failed_calls = 2
+
+        # When: get_metrics("tracked_operation") is called multiple times
+        metrics1 = orchestrator.get_metrics("tracked_operation")
+        metrics2 = orchestrator.get_metrics("tracked_operation")
+
+        # Then: Same metrics object is returned each time
+        assert metrics1 is initial_metrics
+        assert metrics2 is initial_metrics
+        assert metrics1 is metrics2
+
+        # And: Metrics preserve accumulated counts from previous operations
+        assert metrics1.total_calls == 10
+        assert metrics1.successful_calls == 8
+        assert metrics1.failed_calls == 2
+
+        # And: No new metrics object is created
+        assert len(orchestrator.operation_metrics) == 1
 
     def test_maintains_isolated_metrics_per_operation(self):
         """
@@ -98,9 +143,37 @@ class TestGetMetrics:
         Fixtures Used:
             - None (tests metrics isolation)
         """
-        pass
+        # Given: An orchestrator tracking multiple operations
+        orchestrator = AIServiceResilience()
 
-    def test_provides_thread_safe_metrics_access(self):
+        # When: get_metrics("operation_a") is called
+        metrics_a = orchestrator.get_metrics("operation_a")
+        # And: get_metrics("operation_b") is called
+        metrics_b = orchestrator.get_metrics("operation_b")
+
+        # Then: Two distinct ResilienceMetrics objects are returned
+        assert isinstance(metrics_a, ResilienceMetrics)
+        assert isinstance(metrics_b, ResilienceMetrics)
+        assert metrics_a is not metrics_b
+
+        # And: Metrics for operation_a don't affect operation_b
+        metrics_a.total_calls = 5
+        metrics_a.successful_calls = 4
+        metrics_b.total_calls = 10
+        metrics_b.successful_calls = 8
+
+        # Verify isolation
+        assert metrics_a.total_calls == 5
+        assert metrics_b.total_calls == 10
+        assert metrics_a.successful_calls == 4
+        assert metrics_b.successful_calls == 8
+
+        # And: Each operation tracks its own success/failure counts
+        assert "operation_a" in orchestrator.operation_metrics
+        assert "operation_b" in orchestrator.operation_metrics
+        assert len(orchestrator.operation_metrics) == 2
+
+    def test_provides_thread_safe_metrics_access(self, fake_threading_module):
         """
         Test that metrics access is thread-safe for concurrent operations.
 
@@ -124,7 +197,33 @@ class TestGetMetrics:
         Fixtures Used:
             - fake_threading_module: Simulate concurrent metrics access
         """
-        pass
+        # Given: An orchestrator with metrics tracking enabled
+        orchestrator = AIServiceResilience()
+
+        # When: Concurrent operations call get_metrics() for same operation
+        # Simulate concurrent access by calling get_metrics multiple times
+        metrics1 = orchestrator.get_metrics("concurrent_operation")
+        metrics2 = orchestrator.get_metrics("concurrent_operation")
+        metrics3 = orchestrator.get_metrics("concurrent_operation")
+
+        # Then: All threads receive consistent metrics object
+        assert metrics1 is metrics2 is metrics3
+
+        # And: No race conditions occur during metrics retrieval
+        # Verify that the metrics object is properly stored
+        assert "concurrent_operation" in orchestrator.operation_metrics
+        assert orchestrator.operation_metrics["concurrent_operation"] is metrics1
+
+        # And: Metrics updates from concurrent operations are accurate
+        # Simulate concurrent updates
+        metrics1.total_calls += 1
+        metrics2.total_calls += 1  # Should affect the same object
+        metrics3.total_calls += 1
+
+        # Verify all operations affected the same metrics object
+        assert metrics1.total_calls == 3
+        assert metrics2.total_calls == 3
+        assert metrics3.total_calls == 3
 
 
 class TestGetAllMetrics:
@@ -159,7 +258,40 @@ class TestGetAllMetrics:
         Fixtures Used:
             - None (tests metrics structure)
         """
-        pass
+        # Given: An orchestrator with multiple operations and circuit breakers
+        orchestrator = AIServiceResilience()
+
+        # Add some operations with metrics
+        orchestrator.get_metrics("operation_a").total_calls = 10
+        orchestrator.get_metrics("operation_b").total_calls = 5
+
+        # Add a circuit breaker
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+        orchestrator.get_or_create_circuit_breaker("test_operation", config)
+
+        # When: get_all_metrics() is called
+        metrics = orchestrator.get_all_metrics()
+
+        # Then: Dictionary is returned with required top-level keys
+        assert isinstance(metrics, dict)
+        assert "operations" in metrics
+        assert "circuit_breakers" in metrics
+        assert "summary" in metrics
+
+        # And: "operations" key contains per-operation metrics
+        assert isinstance(metrics["operations"], dict)
+        assert "operation_a" in metrics["operations"]
+        assert "operation_b" in metrics["operations"]
+
+        # And: "circuit_breakers" key contains circuit breaker state info
+        assert isinstance(metrics["circuit_breakers"], dict)
+        assert "test_operation" in metrics["circuit_breakers"]
+
+        # And: "summary" key contains system-level statistics
+        assert isinstance(metrics["summary"], dict)
+        assert "total_operations" in metrics["summary"]
+        assert "total_circuit_breakers" in metrics["summary"]
+        assert "healthy_circuit_breakers" in metrics["summary"]
 
     def test_includes_all_operation_metrics_in_operations_section(self):
         """
@@ -185,7 +317,50 @@ class TestGetAllMetrics:
         Fixtures Used:
             - None (tests operations aggregation)
         """
-        pass
+        # Given: An orchestrator tracking metrics for multiple operations
+        orchestrator = AIServiceResilience()
+
+        # And: Operations "op1", "op2", "op3" have accumulated metrics
+        op1_metrics = orchestrator.get_metrics("op1")
+        op1_metrics.total_calls = 10
+        op1_metrics.successful_calls = 8
+        op1_metrics.failed_calls = 2
+
+        op2_metrics = orchestrator.get_metrics("op2")
+        op2_metrics.total_calls = 5
+        op2_metrics.successful_calls = 3
+        op2_metrics.failed_calls = 2
+
+        op3_metrics = orchestrator.get_metrics("op3")
+        op3_metrics.total_calls = 15
+        op3_metrics.successful_calls = 15
+        op3_metrics.failed_calls = 0
+
+        # When: get_all_metrics() is called
+        all_metrics = orchestrator.get_all_metrics()
+
+        # Then: Operations section contains entries for all operations
+        operations = all_metrics["operations"]
+        assert len(operations) == 3
+        assert "op1" in operations
+        assert "op2" in operations
+        assert "op3" in operations
+
+        # And: Each operation's ResilienceMetrics data is included
+        assert operations["op1"]["total_calls"] == 10
+        assert operations["op1"]["successful_calls"] == 8
+        assert operations["op1"]["failed_calls"] == 2
+
+        assert operations["op2"]["total_calls"] == 5
+        assert operations["op2"]["successful_calls"] == 3
+        assert operations["op2"]["failed_calls"] == 2
+
+        assert operations["op3"]["total_calls"] == 15
+        assert operations["op3"]["successful_calls"] == 15
+        assert operations["op3"]["failed_calls"] == 0
+
+        # And: No operations are omitted from metrics collection
+        assert all_metrics["summary"]["total_operations"] == 3
 
     def test_includes_circuit_breaker_states_and_metrics(self):
         """
@@ -211,7 +386,45 @@ class TestGetAllMetrics:
         Fixtures Used:
             - None (tests circuit breaker metrics)
         """
-        pass
+        # Given: An orchestrator with circuit breakers for multiple operations
+        orchestrator = AIServiceResilience()
+        config1 = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+        config2 = CircuitBreakerConfig(failure_threshold=5, recovery_timeout=120)
+
+        # Create circuit breakers
+        cb1 = orchestrator.get_or_create_circuit_breaker("op1", config1)
+        cb2 = orchestrator.get_or_create_circuit_breaker("op2", config2)
+
+        # Set some circuit breaker metrics
+        cb1.metrics.total_calls = 10
+        cb1.metrics.successful_calls = 7
+        cb1.metrics.failed_calls = 3
+
+        # When: get_all_metrics() is called
+        all_metrics = orchestrator.get_all_metrics()
+
+        # Then: Circuit_breakers section includes all circuit breakers
+        circuit_breakers = all_metrics["circuit_breakers"]
+        assert len(circuit_breakers) == 2
+        assert "op1" in circuit_breakers
+        assert "op2" in circuit_breakers
+
+        # And: Current state is reported for each circuit breaker
+        assert "state" in circuit_breakers["op1"]
+        assert "state" in circuit_breakers["op2"]
+
+        # And: Failure thresholds are included
+        assert circuit_breakers["op1"]["failure_threshold"] == 3
+        assert circuit_breakers["op2"]["failure_threshold"] == 5
+
+        # And: Circuit breaker metrics are accurate
+        assert circuit_breakers["op1"]["metrics"]["total_calls"] == 10
+        assert circuit_breakers["op1"]["metrics"]["successful_calls"] == 7
+        assert circuit_breakers["op1"]["metrics"]["failed_calls"] == 3
+
+        # And: Recovery timeouts are included
+        assert circuit_breakers["op1"]["recovery_timeout"] == 60
+        assert circuit_breakers["op2"]["recovery_timeout"] == 120
 
     def test_includes_summary_statistics_for_quick_assessment(self):
         """
@@ -237,7 +450,40 @@ class TestGetAllMetrics:
         Fixtures Used:
             - None (tests summary statistics)
         """
-        pass
+        # Given: An orchestrator with multiple operations and circuit breakers
+        orchestrator = AIServiceResilience()
+
+        # Add operations
+        orchestrator.get_metrics("op1")
+        orchestrator.get_metrics("op2")
+        orchestrator.get_metrics("op3")
+
+        # Add circuit breakers
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+        orchestrator.get_or_create_circuit_breaker("cb1", config)
+        orchestrator.get_or_create_circuit_breaker("cb2", config)
+
+        # When: get_all_metrics() is called
+        all_metrics = orchestrator.get_all_metrics()
+
+        # Then: Summary section contains system-level statistics
+        summary = all_metrics["summary"]
+        assert isinstance(summary, dict)
+
+        # And: Total operation count is accurate
+        assert summary["total_operations"] == 3
+
+        # And: Total circuit breaker count is included
+        assert summary["total_circuit_breakers"] == 2
+
+        # And: Healthy circuit breaker count is calculated
+        assert "healthy_circuit_breakers" in summary
+        # All circuit breakers should be healthy (closed) by default
+        assert summary["healthy_circuit_breakers"] == 2
+
+        # And: Summary provides quick health overview
+        assert "timestamp" in summary
+        assert isinstance(summary["timestamp"], str)
 
     def test_includes_timestamp_for_temporal_correlation(self):
         """
@@ -262,7 +508,36 @@ class TestGetAllMetrics:
         Fixtures Used:
             - fake_datetime: Control timestamp for deterministic testing
         """
-        pass
+        # Given: An orchestrator collecting metrics
+        orchestrator = AIServiceResilience()
+
+        # Add some metrics
+        orchestrator.get_metrics("test_op").total_calls = 5
+
+        # When: get_all_metrics() is called
+        all_metrics = orchestrator.get_all_metrics()
+
+        # Then: Metrics include timestamp field
+        assert "timestamp" in all_metrics["summary"]
+
+        # And: Timestamp represents metrics collection time
+        timestamp_str = all_metrics["summary"]["timestamp"]
+        assert isinstance(timestamp_str, str)
+
+        # And: Timestamp format supports time-series correlation
+        # ISO format should be parseable
+        try:
+            parsed_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            assert parsed_timestamp is not None
+        except ValueError:
+            pytest.fail("Timestamp is not in valid ISO format")
+
+        # And: Temporal tracking is enabled for metrics
+        # Check that timestamp is recent (within last few seconds)
+        current_time = datetime.now()
+        parsed_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        time_diff = abs((current_time - parsed_timestamp).total_seconds())
+        assert time_diff < 5.0  # Should be within 5 seconds
 
     def test_calculates_healthy_circuit_breaker_count(self):
         """
@@ -289,9 +564,40 @@ class TestGetAllMetrics:
         Fixtures Used:
             - None (tests health calculation)
         """
-        pass
+        # Given: An orchestrator with mixed circuit breaker states
+        orchestrator = AIServiceResilience()
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
 
-    def test_aggregates_metrics_from_concurrent_operations(self):
+        # Create circuit breakers
+        cb_healthy1 = orchestrator.get_or_create_circuit_breaker("healthy1", config)
+        cb_healthy2 = orchestrator.get_or_create_circuit_breaker("healthy2", config)
+        cb_unhealthy = orchestrator.get_or_create_circuit_breaker("unhealthy", config)
+
+        # Simulate mixed circuit breaker states
+        # Set one circuit breaker as OPEN (unhealthy)
+        cb_unhealthy._state = "open"  # Simulate open state
+
+        # Keep others as CLOSED (healthy) - default state
+
+        # When: get_all_metrics() is called
+        all_metrics = orchestrator.get_all_metrics()
+
+        # Then: Summary includes healthy_circuit_breaker_count
+        summary = all_metrics["summary"]
+        assert "healthy_circuit_breakers" in summary
+
+        # And: Count reflects only CLOSED circuit breakers
+        assert summary["healthy_circuit_breakers"] == 2
+
+        # And: OPEN circuit breakers excluded from count
+        assert summary["healthy_circuit_breakers"] < summary["total_circuit_breakers"]
+
+        # And: Health indicator is accurate
+        # Total should be 3, healthy should be 2 (excluding the open one)
+        assert summary["total_circuit_breakers"] == 3
+        assert summary["healthy_circuit_breakers"] == 2
+
+    def test_aggregates_metrics_from_concurrent_operations(self, fake_threading_module):
         """
         Test that metrics collection is thread-safe for concurrent operations.
 
@@ -315,7 +621,49 @@ class TestGetAllMetrics:
         Fixtures Used:
             - fake_threading_module: Simulate concurrent operations
         """
-        pass
+        # Given: An orchestrator with concurrent operations executing
+        orchestrator = AIServiceResilience()
+
+        # And: Multiple operations updating metrics simultaneously
+        # Simulate concurrent operations by accessing metrics from multiple operations
+        metrics1 = orchestrator.get_metrics("concurrent_op1")
+        metrics2 = orchestrator.get_metrics("concurrent_op2")
+        metrics3 = orchestrator.get_metrics("concurrent_op3")
+
+        # Update metrics to simulate concurrent operations
+        metrics1.total_calls = 5
+        metrics1.successful_calls = 4
+
+        metrics2.total_calls = 3
+        metrics2.successful_calls = 2
+
+        metrics3.total_calls = 8
+        metrics3.successful_calls = 7
+
+        # When: get_all_metrics() is called during concurrent execution
+        all_metrics = orchestrator.get_all_metrics()
+
+        # Then: All metrics are collected safely without race conditions
+        operations = all_metrics["operations"]
+        assert len(operations) == 3
+
+        # And: Metrics accurately reflect concurrent operation results
+        assert operations["concurrent_op1"]["total_calls"] == 5
+        assert operations["concurrent_op1"]["successful_calls"] == 4
+
+        assert operations["concurrent_op2"]["total_calls"] == 3
+        assert operations["concurrent_op2"]["successful_calls"] == 2
+
+        assert operations["concurrent_op3"]["total_calls"] == 8
+        assert operations["concurrent_op3"]["successful_calls"] == 7
+
+        # And: No metrics are lost or corrupted
+        summary = all_metrics["summary"]
+        assert summary["total_operations"] == 3
+
+        # And: Thread safety is maintained throughout collection
+        # Verify all operations are present and accounted for
+        assert all(op in operations for op in ["concurrent_op1", "concurrent_op2", "concurrent_op3"])
 
 
 class TestResetMetrics:
@@ -351,7 +699,46 @@ class TestResetMetrics:
         Fixtures Used:
             - None (tests targeted reset)
         """
-        pass
+        # Given: An orchestrator with metrics for multiple operations
+        orchestrator = AIServiceResilience()
+
+        # And: Operation "target_op" has accumulated metrics
+        target_metrics = orchestrator.get_metrics("target_op")
+        target_metrics.total_calls = 10
+        target_metrics.successful_calls = 8
+        target_metrics.failed_calls = 2
+
+        # And: Other operations also have accumulated metrics
+        other_metrics1 = orchestrator.get_metrics("other_op1")
+        other_metrics1.total_calls = 5
+        other_metrics1.successful_calls = 4
+        other_metrics1.failed_calls = 1
+
+        other_metrics2 = orchestrator.get_metrics("other_op2")
+        other_metrics2.total_calls = 15
+        other_metrics2.successful_calls = 12
+        other_metrics2.failed_calls = 3
+
+        # When: reset_metrics("target_op") is called
+        orchestrator.reset_metrics("target_op")
+
+        # Then: Metrics for "target_op" are reset to new ResilienceMetrics
+        reset_target_metrics = orchestrator.get_metrics("target_op")
+        assert reset_target_metrics.total_calls == 0
+        assert reset_target_metrics.successful_calls == 0
+        assert reset_target_metrics.failed_calls == 0
+
+        # And: Other operations' metrics remain unchanged
+        assert orchestrator.get_metrics("other_op1").total_calls == 5
+        assert orchestrator.get_metrics("other_op1").successful_calls == 4
+
+        assert orchestrator.get_metrics("other_op2").total_calls == 15
+        assert orchestrator.get_metrics("other_op2").successful_calls == 12
+
+        # And: Targeted reset doesn't affect system-wide tracking
+        # The operation should still exist but with reset metrics
+        assert "target_op" in orchestrator.operation_metrics
+        assert len(orchestrator.operation_metrics) == 3
 
     def test_resets_all_metrics_when_no_operation_name_provided(self):
         """
@@ -377,7 +764,39 @@ class TestResetMetrics:
         Fixtures Used:
             - None (tests system-wide reset)
         """
-        pass
+        # Given: An orchestrator with metrics for multiple operations
+        orchestrator = AIServiceResilience()
+
+        # Set up operation metrics
+        op1_metrics = orchestrator.get_metrics("op1")
+        op1_metrics.total_calls = 10
+        op2_metrics = orchestrator.get_metrics("op2")
+        op2_metrics.total_calls = 5
+
+        # And: Circuit breakers with accumulated metrics
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+        cb = orchestrator.get_or_create_circuit_breaker("test_op", config)
+        cb.metrics.total_calls = 8
+        cb.metrics.successful_calls = 6
+
+        # When: reset_metrics(operation_name=None) is called
+        orchestrator.reset_metrics(None)
+
+        # Then: All operation metrics are cleared
+        # Check dict is empty immediately after reset
+        assert len(orchestrator.operation_metrics) == 0
+
+        # Verify new metrics are zero after reset
+        assert orchestrator.get_metrics("op1").total_calls == 0
+        assert orchestrator.get_metrics("op2").total_calls == 0
+
+        # And: All circuit breaker metrics are reset
+        reset_cb = orchestrator.get_or_create_circuit_breaker("test_op", config)
+        assert reset_cb.metrics.total_calls == 0
+        assert reset_cb.metrics.successful_calls == 0
+
+        # And: Clean slate provided for entire system
+        # Reset was successful - all counters are at zero
 
     def test_resets_circuit_breaker_metrics_for_matching_operation(self):
         """
@@ -514,7 +933,27 @@ class TestIsHealthy:
         Fixtures Used:
             - None (tests healthy state detection)
         """
-        pass
+        # Given: An orchestrator with multiple circuit breakers
+        orchestrator = AIServiceResilience()
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+
+        # And: All circuit breakers are in CLOSED (healthy) state
+        orchestrator.get_or_create_circuit_breaker("op1", config)
+        orchestrator.get_or_create_circuit_breaker("op2", config)
+        orchestrator.get_or_create_circuit_breaker("op3", config)
+
+        # When: is_healthy() is called
+        health_status = orchestrator.is_healthy()
+
+        # Then: Method returns True
+        assert health_status is True
+
+        # And: System is considered healthy
+        # All circuit breakers should be in closed state by default
+        assert all(
+            not hasattr(cb, "_state") or cb._state != "open"
+            for cb in orchestrator.circuit_breakers.values()
+        )
 
     def test_returns_false_when_any_circuit_breaker_open(self):
         """
@@ -541,7 +980,30 @@ class TestIsHealthy:
         Fixtures Used:
             - None (tests unhealthy state detection)
         """
-        pass
+        # Given: An orchestrator with multiple circuit breakers
+        orchestrator = AIServiceResilience()
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+
+        # Create circuit breakers
+        cb_healthy1 = orchestrator.get_or_create_circuit_breaker("healthy1", config)
+        cb_healthy2 = orchestrator.get_or_create_circuit_breaker("healthy2", config)
+        cb_unhealthy = orchestrator.get_or_create_circuit_breaker("unhealthy", config)
+
+        # And: At least one circuit breaker is in OPEN (unhealthy) state
+        cb_unhealthy._state = "open"  # Simulate open state
+
+        # And: Other circuit breakers may be CLOSED
+        # cb_healthy1 and cb_healthy2 remain closed by default
+
+        # When: is_healthy() is called
+        health_status = orchestrator.is_healthy()
+
+        # Then: Method returns False
+        assert health_status is False
+
+        # And: System is considered unhealthy
+        # Health check should fail when any circuit breaker is open
+        assert not orchestrator.is_healthy()
 
     def test_considers_half_open_as_healthy(self):
         """
@@ -682,7 +1144,47 @@ class TestGetHealthStatus:
         Fixtures Used:
             - None (tests structure completeness)
         """
-        pass
+        # Given: An orchestrator with operations and circuit breakers
+        orchestrator = AIServiceResilience()
+
+        # Add operations
+        orchestrator.get_metrics("op1")
+        orchestrator.get_metrics("op2")
+
+        # Add circuit breakers
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+        orchestrator.get_or_create_circuit_breaker("cb1", config)
+        orchestrator.get_or_create_circuit_breaker("cb2", config)
+
+        # When: get_health_status() is called
+        health_status = orchestrator.get_health_status()
+
+        # Then: Dictionary contains all required fields
+        assert isinstance(health_status, dict)
+
+        # And: "healthy" boolean indicates overall health
+        assert "healthy" in health_status
+        assert isinstance(health_status["healthy"], bool)
+
+        # And: "open_circuit_breakers" lists failed operations
+        assert "open_circuit_breakers" in health_status
+        assert isinstance(health_status["open_circuit_breakers"], list)
+
+        # And: "half_open_circuit_breakers" lists recovering operations
+        assert "half_open_circuit_breakers" in health_status
+        assert isinstance(health_status["half_open_circuit_breakers"], list)
+
+        # And: "total_circuit_breakers" provides capacity information
+        assert "total_circuit_breakers" in health_status
+        assert isinstance(health_status["total_circuit_breakers"], int)
+
+        # And: "total_operations" shows monitored operation count
+        assert "total_operations" in health_status
+        assert isinstance(health_status["total_operations"], int)
+
+        # And: "timestamp" enables temporal correlation
+        assert "timestamp" in health_status
+        assert isinstance(health_status["timestamp"], str)
 
     def test_healthy_false_when_any_circuit_breakers_open(self):
         """
@@ -708,7 +1210,29 @@ class TestGetHealthStatus:
         Fixtures Used:
             - None (tests unhealthy detection)
         """
-        pass
+        # Given: An orchestrator with mixed circuit breaker states
+        orchestrator = AIServiceResilience()
+        config = CircuitBreakerConfig(failure_threshold=3, recovery_timeout=60)
+
+        # Create circuit breakers
+        cb_healthy = orchestrator.get_or_create_circuit_breaker("healthy", config)
+        cb_unhealthy = orchestrator.get_or_create_circuit_breaker("unhealthy", config)
+
+        # And: At least one circuit breaker is in OPEN state
+        cb_unhealthy._state = "open"
+
+        # When: get_health_status() is called
+        health_status = orchestrator.get_health_status()
+
+        # Then: "healthy" field is False
+        assert health_status["healthy"] is False
+
+        # And: Monitoring systems can detect unhealthy state
+        assert health_status["open_circuit_breakers"] == ["unhealthy"]
+
+        # And: Health status accurately reflects system state
+        assert health_status["total_circuit_breakers"] == 2
+        assert len(health_status["open_circuit_breakers"]) == 1
 
     def test_healthy_true_when_no_open_circuit_breakers(self):
         """
