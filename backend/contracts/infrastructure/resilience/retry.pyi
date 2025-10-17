@@ -109,6 +109,7 @@ docstrings with usage examples and behavior specifications.
 
 from dataclasses import dataclass
 from typing import Any
+from app.core.exceptions import ValidationError
 from app.core.exceptions import classify_ai_exception
 
 
@@ -184,7 +185,14 @@ class RetryConfig:
             print(f"Invalid configuration: {e}")
     """
 
-    ...
+    def __post_init__(self):
+        """
+        Validate all configuration parameters are within acceptable ranges.
+        
+        Raises:
+            ValidationError: If any parameter is outside its documented range
+        """
+        ...
 
 
 def classify_exception(exc: Exception) -> bool:

@@ -455,6 +455,26 @@ class ConfigurationMetricsCollector:
                 retention_hours=1
             )
         """
+        # Validate max_events
+        if not isinstance(max_events, int):
+            raise ValueError(
+                f"max_events must be a positive integer, got {type(max_events).__name__}"
+            )
+        if max_events <= 0:
+            raise ValueError(
+                f"max_events must be a positive integer, got {max_events}"
+            )
+
+        # Validate retention_hours
+        if not isinstance(retention_hours, int):
+            raise ValueError(
+                f"retention_hours must be a positive integer, got {type(retention_hours).__name__}"
+            )
+        if retention_hours <= 0:
+            raise ValueError(
+                f"retention_hours must be a positive integer, got {retention_hours}"
+            )
+
         self.max_events = max_events
         self.retention_hours = retention_hours
         self.metrics: deque = deque(maxlen=max_events)

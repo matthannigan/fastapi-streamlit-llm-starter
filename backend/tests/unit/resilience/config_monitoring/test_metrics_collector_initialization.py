@@ -141,12 +141,6 @@ class TestConfigurationMetricsCollectorInitialization:
         # And: Retention policy is configured for 48 hours
         assert collector.retention_hours == custom_retention_hours
     
-    @pytest.mark.skip(reason="Implementation does not validate max_events parameter. "
-                      "The __init__ method in config_monitoring.py (lines 421-480) accepts max_events "
-                      "without validation, even though the docstring documents that ValueError should "
-                      "be raised for invalid values. The implementation directly assigns self.max_events = max_events "
-                      "and uses it in deque(maxlen=max_events) without checking if it's positive. "
-                      "This is a discrepancy between documented contract and actual implementation.")
     def test_initialization_with_invalid_max_events_raises_value_error(self):
         """
         Test that negative or zero max_events raises ValueError per contract.
@@ -168,14 +162,16 @@ class TestConfigurationMetricsCollectorInitialization:
         Fixtures Used:
             - None (tests validation behavior)
         """
-        pass
+        # Test with zero max_events
+        with pytest.raises(ValueError) as exc_info:
+            ConfigurationMetricsCollector(max_events=0)
+        assert "positive integer" in str(exc_info.value).lower()
+
+        # Test with negative max_events
+        with pytest.raises(ValueError) as exc_info:
+            ConfigurationMetricsCollector(max_events=-10)
+        assert "positive integer" in str(exc_info.value).lower()
     
-    @pytest.mark.skip(reason="Implementation does not validate retention_hours parameter. "
-                      "The __init__ method in config_monitoring.py (lines 421-480) accepts retention_hours "
-                      "without validation, even though the docstring documents that ValueError should "
-                      "be raised for invalid values. The implementation directly assigns self.retention_hours = retention_hours "
-                      "without checking if it's positive. "
-                      "This is a discrepancy between documented contract and actual implementation.")
     def test_initialization_with_invalid_retention_hours_raises_value_error(self):
         """
         Test that invalid retention_hours raises ValueError per contract.
@@ -197,7 +193,15 @@ class TestConfigurationMetricsCollectorInitialization:
         Fixtures Used:
             - None (tests validation behavior)
         """
-        pass
+        # Test with zero retention_hours
+        with pytest.raises(ValueError) as exc_info:
+            ConfigurationMetricsCollector(retention_hours=0)
+        assert "positive integer" in str(exc_info.value).lower()
+
+        # Test with negative retention_hours
+        with pytest.raises(ValueError) as exc_info:
+            ConfigurationMetricsCollector(retention_hours=-5)
+        assert "positive integer" in str(exc_info.value).lower()
     
     def test_initialization_creates_thread_safe_storage_structures(self):
         """

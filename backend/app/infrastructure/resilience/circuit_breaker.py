@@ -120,6 +120,8 @@ from dataclasses import dataclass
 
 from circuitbreaker import CircuitBreaker  # type: ignore[import-untyped]
 
+from app.core.exceptions import ValidationError
+
 logger = logging.getLogger(__name__)
 
 
@@ -458,10 +460,11 @@ class EnhancedCircuitBreaker(CircuitBreaker):
                   multiple circuit breakers in metrics. Default: None
 
         Raises:
-            ValueError: If failure_threshold or recovery_timeout are not positive integers
-            TypeError: If expected_exception is not an exception class or tuple
+            ValidationError: If failure_threshold or recovery_timeout are not positive integers,
+                           or if expected_exception is not an exception class or tuple
 
         Behavior:
+            - Validates all parameters before initialization
             - Initializes comprehensive metrics collection for monitoring
             - Sets up state tracking for circuit breaker transitions
             - Configures base CircuitBreaker with provided parameters
@@ -492,6 +495,52 @@ class EnhancedCircuitBreaker(CircuitBreaker):
             assert cb.recovery_timeout == 60
             assert cb.metrics.total_calls == 0
         """
+        # Validate failure_threshold
+        if not isinstance(failure_threshold, int):
+            raise ValidationError(
+                f"failure_threshold must be a positive integer, got {type(failure_threshold).__name__}",
+                {"parameter": "failure_threshold", "provided_type": type(failure_threshold).__name__}
+            )
+        if failure_threshold <= 0:
+            raise ValidationError(
+                f"failure_threshold must be positive, got {failure_threshold}",
+                {"parameter": "failure_threshold", "value": failure_threshold}
+            )
+
+        # Validate recovery_timeout
+        if not isinstance(recovery_timeout, int):
+            raise ValidationError(
+                f"recovery_timeout must be a positive integer, got {type(recovery_timeout).__name__}",
+                {"parameter": "recovery_timeout", "provided_type": type(recovery_timeout).__name__}
+            )
+        if recovery_timeout <= 0:
+            raise ValidationError(
+                f"recovery_timeout must be positive, got {recovery_timeout}",
+                {"parameter": "recovery_timeout", "value": recovery_timeout}
+            )
+
+        # Validate expected_exception
+        if expected_exception is not None:
+            if isinstance(expected_exception, tuple):
+                # Validate each item in the tuple is an exception class
+                for exc in expected_exception:
+                    if not isinstance(exc, type) or not issubclass(exc, BaseException):
+                        raise ValidationError(
+                            f"expected_exception tuple must contain only exception classes, "
+                            f"got {type(exc).__name__}",
+                            {"parameter": "expected_exception", "invalid_item_type": type(exc).__name__}
+                        )
+            elif isinstance(expected_exception, type) and issubclass(expected_exception, BaseException):
+                # Single exception class is valid
+                pass
+            else:
+                # Not None, not a tuple, not an exception class
+                raise ValidationError(
+                    f"expected_exception must be an exception class or tuple of exception classes, "
+                    f"got {type(expected_exception).__name__}",
+                    {"parameter": "expected_exception", "provided_type": type(expected_exception).__name__}
+                )
+
         # Store the parameters as instance attributes for compatibility
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout

@@ -17,7 +17,7 @@ from unittest.mock import Mock
 
 from app.infrastructure.resilience.orchestrator import AIServiceResilience
 from app.infrastructure.resilience.circuit_breaker import CircuitBreakerConfig, EnhancedCircuitBreaker
-from app.core.exceptions import TransientAIError
+from app.core.exceptions import TransientAIError, ValidationError
 
 
 class TestGetOrCreateCircuitBreaker:
@@ -339,136 +339,132 @@ class TestGetOrCreateCircuitBreaker:
 
     def test_validates_minimum_failure_threshold(self):
         """
-        Test that configuration accepts provided failure threshold values.
+        Test that failure_threshold must be positive per public contract requirements.
 
         Verifies:
-            CircuitBreakerConfig failure_threshold values are passed through
-            to the circuit breaker as configured per implementation behavior.
+            CircuitBreakerConfig validates failure_threshold is positive (>0)
+            per docstring requirement "failure_threshold (minimum 1)".
 
         Business Impact:
-            Ensures circuit breaker configuration is applied as specified
-            without unwanted validation that might limit operational flexibility.
+            Prevents misconfiguration with invalid threshold values that could
+            cause circuit breakers to behave unpredictably.
 
         Scenario:
             Given: An orchestrator instance
-            And: Various CircuitBreakerConfig values including low thresholds
-            When: get_or_create_circuit_breaker() is called with different configs
-            Then: Circuit breaker is created with the exact provided threshold
-            And: Configuration values are preserved without modification
-            And: No validation errors are raised for threshold values
+            When: Valid positive failure thresholds are provided
+            Then: Circuit breakers are created successfully
+            When: Invalid non-positive thresholds are provided (0, negative)
+            Then: ValidationError is raised with clear error message
 
         Fixtures Used:
-            - None (tests configuration application)
+            - None (tests validation behavior)
         """
         # Given: An orchestrator instance
         orchestrator = AIServiceResilience()
 
-        # Test various threshold values - the implementation accepts them as provided
-        test_thresholds = [0, 1, 2, 5, 10, -1, -10]
-
-        for threshold in test_thresholds:
-            # And: A CircuitBreakerConfig with the test threshold
+        # Test valid positive thresholds - should work correctly
+        valid_thresholds = [1, 2, 3, 5, 10, 100]
+        for threshold in valid_thresholds:
             config = CircuitBreakerConfig(
                 failure_threshold=threshold,
                 recovery_timeout=60
             )
 
-            # When: get_or_create_circuit_breaker() is called with the config
+            # When: get_or_create_circuit_breaker() is called with valid config
             circuit_breaker = orchestrator.get_or_create_circuit_breaker(
                 f"test_operation_{threshold}", config
             )
 
             # Then: Circuit breaker is created with the exact provided threshold
-            assert circuit_breaker.failure_threshold == threshold, (
-                f"Circuit breaker should preserve configured threshold {threshold}, "
-                f"but got {circuit_breaker.failure_threshold}"
-            )
-
-            # And: Circuit breaker is properly configured
+            assert circuit_breaker.failure_threshold == threshold
             assert isinstance(circuit_breaker, EnhancedCircuitBreaker)
             assert hasattr(circuit_breaker, 'EXPECTED_EXCEPTION')
 
-        # Test that positive thresholds work correctly for typical usage
-        typical_thresholds = [1, 3, 5, 10]
-        for threshold in typical_thresholds:
+        # Test invalid non-positive thresholds - should raise ValidationError
+        invalid_thresholds = [0, -1, -10]
+        for threshold in invalid_thresholds:
             config = CircuitBreakerConfig(
                 failure_threshold=threshold,
                 recovery_timeout=60
             )
 
-            circuit_breaker = orchestrator.get_or_create_circuit_breaker(
-                f"typical_operation_{threshold}", config
-            )
+            # When: get_or_create_circuit_breaker() is called with invalid threshold
+            # Then: ValidationError is raised with informative message
+            with pytest.raises(ValidationError) as exc_info:
+                orchestrator.get_or_create_circuit_breaker(
+                    f"invalid_operation_{threshold}", config
+                )
 
-            assert circuit_breaker.failure_threshold == threshold
-            assert circuit_breaker.recovery_timeout == 60
+            # Verify error message contains context
+            error_message = str(exc_info.value).lower()
+            assert "failure_threshold" in error_message
+            assert "positive" in error_message
+            assert str(threshold) in str(exc_info.value)
 
     def test_validates_minimum_recovery_timeout(self):
         """
-        Test that configuration accepts provided recovery timeout values.
+        Test that recovery_timeout must be positive per public contract requirements.
 
         Verifies:
-            CircuitBreakerConfig recovery_timeout values are passed through
-            to the circuit breaker as configured per implementation behavior.
+            CircuitBreakerConfig validates recovery_timeout is positive (>0)
+            per docstring requirement "recovery_timeout in seconds (minimum 10)".
 
         Business Impact:
-            Ensures circuit breaker recovery timeout configuration is applied
-            as specified without unwanted validation that might limit operational
-            flexibility for different operational scenarios.
+            Prevents misconfiguration with invalid timeout values that could
+            cause circuit breakers to behave unpredictably or never recover.
 
         Scenario:
             Given: An orchestrator instance
-            And: Various CircuitBreakerConfig timeout values including short timeouts
-            When: get_or_create_circuit_breaker() is called with different configs
-            Then: Circuit breaker is created with the exact provided timeout
-            And: Configuration values are preserved without modification
-            And: No validation errors are raised for timeout values
+            When: Valid positive recovery timeouts are provided
+            Then: Circuit breakers are created successfully
+            When: Invalid non-positive timeouts are provided (0, negative)
+            Then: ValidationError is raised with clear error message
 
         Fixtures Used:
-            - None (tests configuration application)
+            - None (tests validation behavior)
         """
         # Given: An orchestrator instance
         orchestrator = AIServiceResilience()
 
-        # Test various timeout values - the implementation accepts them as provided
-        test_timeouts = [0, 1, 5, 10, 30, 60, -1, -10]
-
-        for timeout in test_timeouts:
-            # And: A CircuitBreakerConfig with the test timeout
+        # Test valid positive timeouts - should work correctly
+        valid_timeouts = [1, 5, 10, 30, 60, 120, 300]
+        for timeout in valid_timeouts:
             config = CircuitBreakerConfig(
                 failure_threshold=3,
                 recovery_timeout=timeout
             )
 
-            # When: get_or_create_circuit_breaker() is called with the config
+            # When: get_or_create_circuit_breaker() is called with valid config
             circuit_breaker = orchestrator.get_or_create_circuit_breaker(
                 f"test_operation_timeout_{timeout}", config
             )
 
             # Then: Circuit breaker is created with the exact provided timeout
-            assert circuit_breaker.recovery_timeout == timeout, (
-                f"Circuit breaker should preserve configured timeout {timeout}, "
-                f"but got {circuit_breaker.recovery_timeout}"
-            )
-
-            # And: Circuit breaker is properly configured
+            assert circuit_breaker.recovery_timeout == timeout
             assert isinstance(circuit_breaker, EnhancedCircuitBreaker)
             assert hasattr(circuit_breaker, 'EXPECTED_EXCEPTION')
+            assert circuit_breaker.failure_threshold == 3
 
-        # Test that reasonable timeouts work correctly for typical usage
-        typical_timeouts = [10, 30, 60, 300]
-        for timeout in typical_timeouts:
+        # Test invalid non-positive timeouts - should raise ValidationError
+        invalid_timeouts = [0, -1, -10]
+        for timeout in invalid_timeouts:
             config = CircuitBreakerConfig(
                 failure_threshold=3,
                 recovery_timeout=timeout
             )
 
-            circuit_breaker = orchestrator.get_or_create_circuit_breaker(
-                f"typical_operation_timeout_{timeout}", config
-            )
+            # When: get_or_create_circuit_breaker() is called with invalid timeout
+            # Then: ValidationError is raised with informative message
+            with pytest.raises(ValidationError) as exc_info:
+                orchestrator.get_or_create_circuit_breaker(
+                    f"invalid_operation_timeout_{timeout}", config
+                )
 
-            assert circuit_breaker.recovery_timeout == timeout
-            assert circuit_breaker.failure_threshold == 3
+            # Verify error message contains context
+            error_message = str(exc_info.value).lower()
+            assert "recovery_timeout" in error_message
+            assert "positive" in error_message
+            assert str(timeout) in str(exc_info.value)
 
 
 class TestCircuitBreakerThreadSafety:

@@ -28,6 +28,7 @@ from app.infrastructure.resilience.circuit_breaker import (
     EnhancedCircuitBreaker,
     ResilienceMetrics
 )
+from app.core.exceptions import ValidationError
 
 
 class TestEnhancedCircuitBreakerBasicInitialization:
@@ -251,7 +252,7 @@ class TestEnhancedCircuitBreakerParameterValidation:
         Test that circuit breaker validates failure_threshold is a positive integer.
 
         Verifies:
-            Raises contract: "ValueError: If failure_threshold or recovery_timeout are not positive integers"
+            Raises contract: "ValidationError: If failure_threshold or recovery_timeout are not positive integers"
 
         Business Impact:
             Prevents invalid circuit breaker configurations that could cause malfunction
@@ -265,16 +266,32 @@ class TestEnhancedCircuitBreakerParameterValidation:
         Fixtures Used:
             None - Testing validation at initialization
         """
-        # This test requires integration testing approach with real components
-        # instead of unit testing with mocks to properly verify the behavior
-        pytest.skip("Replace with integration test using real components")
+        # Test negative failure_threshold
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(failure_threshold=-1)
+        assert "failure_threshold must be positive" in str(exc_info.value)
+
+        # Test zero failure_threshold
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(failure_threshold=0)
+        assert "failure_threshold must be positive" in str(exc_info.value)
+
+        # Test non-integer failure_threshold (float)
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(failure_threshold=3.5)
+        assert "failure_threshold must be a positive integer" in str(exc_info.value)
+
+        # Test non-integer failure_threshold (string)
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(failure_threshold="5")
+        assert "failure_threshold must be a positive integer" in str(exc_info.value)
 
     def test_circuit_breaker_validates_recovery_timeout_is_positive(self):
         """
         Test that circuit breaker validates recovery_timeout is a positive integer.
 
         Verifies:
-            Raises contract: "ValueError: If failure_threshold or recovery_timeout are not positive integers"
+            Raises contract: "ValidationError: If failure_threshold or recovery_timeout are not positive integers"
 
         Business Impact:
             Prevents invalid timeout configurations that could prevent recovery
@@ -288,16 +305,32 @@ class TestEnhancedCircuitBreakerParameterValidation:
         Fixtures Used:
             None - Testing validation at initialization
         """
-        # This test requires integration testing approach with real components
-        # instead of unit testing with mocks to properly verify the behavior
-        pytest.skip("Replace with integration test using real components")
+        # Test negative recovery_timeout
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(recovery_timeout=-1)
+        assert "recovery_timeout must be positive" in str(exc_info.value)
+
+        # Test zero recovery_timeout
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(recovery_timeout=0)
+        assert "recovery_timeout must be positive" in str(exc_info.value)
+
+        # Test non-integer recovery_timeout (float)
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(recovery_timeout=60.5)
+        assert "recovery_timeout must be a positive integer" in str(exc_info.value)
+
+        # Test non-integer recovery_timeout (string)
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(recovery_timeout="60")
+        assert "recovery_timeout must be a positive integer" in str(exc_info.value)
 
     def test_circuit_breaker_validates_expected_exception_type(self):
         """
         Test that circuit breaker validates expected_exception is an exception class.
 
         Verifies:
-            Raises contract: "TypeError: If expected_exception is not an exception class or tuple"
+            Raises contract: "ValidationError: If expected_exception is not an exception class or tuple"
 
         Business Impact:
             Prevents runtime errors from invalid exception filtering configuration
@@ -311,9 +344,42 @@ class TestEnhancedCircuitBreakerParameterValidation:
         Fixtures Used:
             None - Testing type validation
         """
-        # This test requires integration testing approach with real components
-        # instead of unit testing with mocks to properly verify the behavior
-        pytest.skip("Replace with integration test using real components")
+        # Test string instead of exception class
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(expected_exception="ValueError")
+        assert "expected_exception must be an exception class" in str(exc_info.value)
+
+        # Test integer instead of exception class
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(expected_exception=42)
+        assert "expected_exception must be an exception class" in str(exc_info.value)
+
+        # Test non-exception class
+        class NotAnException:
+            pass
+
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(expected_exception=NotAnException)
+        assert "expected_exception must be an exception class" in str(exc_info.value)
+
+        # Test tuple with non-exception class
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(expected_exception=(ValueError, NotAnException))
+        assert "expected_exception tuple must contain only exception classes" in str(exc_info.value)
+
+        # Test tuple with string
+        with pytest.raises(ValidationError) as exc_info:
+            EnhancedCircuitBreaker(expected_exception=(ValueError, "TimeoutError"))
+        assert "expected_exception tuple must contain only exception classes" in str(exc_info.value)
+
+        # Verify that valid exception classes work
+        # Single exception class
+        cb1 = EnhancedCircuitBreaker(expected_exception=ValueError)
+        assert cb1 is not None
+
+        # Tuple of exception classes
+        cb2 = EnhancedCircuitBreaker(expected_exception=(ValueError, ConnectionError))
+        assert cb2 is not None
 
 
 class TestEnhancedCircuitBreakerMetricsSetup:
@@ -711,7 +777,7 @@ class TestEnhancedCircuitBreakerConfigurationStorage:
         assert config_for_metrics['failure_threshold'] == 7
         assert config_for_metrics['recovery_timeout'] == 150
 
-    def test_circuit_breaker_configuration_compatible_with_base_class(self, mock_circuitbreaker_library):
+    def test_circuit_breaker_configuration_compatible_with_base_class(self):
         """
         Test that configuration is passed correctly to base CircuitBreaker.
 
@@ -728,11 +794,36 @@ class TestEnhancedCircuitBreakerConfigurationStorage:
             And: Base circuit breaker is configured correctly
 
         Fixtures Used:
-            - mock_circuitbreaker_library: To verify base class initialization
+            None - Testing parameter passing to parent class
         """
-        # This test requires integration testing approach with real components
-        # instead of unit testing with mocks to properly verify the behavior
-        pytest.skip("Replace with integration test using real components")
+        # Given: Circuit breaker with custom parameters
+        custom_threshold = 7
+        custom_timeout = 120
+        custom_exception = (ValueError, ConnectionError)
+        custom_name = "test_service"
+
+        # When: EnhancedCircuitBreaker is initialized
+        # We'll verify by checking that the parent class receives the parameters
+        with patch('app.infrastructure.resilience.circuit_breaker.CircuitBreaker.__init__', return_value=None) as mock_parent_init:
+            cb = EnhancedCircuitBreaker(
+                failure_threshold=custom_threshold,
+                recovery_timeout=custom_timeout,
+                expected_exception=custom_exception,
+                name=custom_name
+            )
+
+            # Then: Parameters are passed to base CircuitBreaker.__init__
+            mock_parent_init.assert_called_once_with(
+                failure_threshold=custom_threshold,
+                recovery_timeout=custom_timeout,
+                expected_exception=custom_exception,
+                name=custom_name
+            )
+
+        # And: Base circuit breaker is configured correctly
+        # Verify our wrapper stores the parameters as well
+        assert cb.failure_threshold == custom_threshold
+        assert cb.recovery_timeout == custom_timeout
 
 
 class TestEnhancedCircuitBreakerThreadSafetySetup:

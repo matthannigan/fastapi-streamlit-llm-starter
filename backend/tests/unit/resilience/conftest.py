@@ -241,6 +241,10 @@ def fake_time_module(monkeypatch):
             with self._lock:
                 self._time[0] += seconds
 
+        def advance(self, seconds):
+            """Alias for advance_time for backward compatibility."""
+            return self.advance_time(seconds)
+
         def set_time(self, timestamp):
             """Set the current time to a specific timestamp."""
             with self._lock:
@@ -336,13 +340,56 @@ def fake_threading_module(monkeypatch):
                 self.release_count = 0
                 self.lock_acquired = False
 
+    class MockThread:
+        def __init__(self, target=None):
+            self.target = target
+            self.ident = id(self)
+            self._started = False
+
+        def start(self):
+            """Mock thread start - executes target function immediately."""
+            self._started = True
+            if self.target:
+                # Execute the target function immediately in this mock thread
+                try:
+                    self.target()
+                except Exception:
+                    # In real threads, exceptions might be handled differently
+                    # For tests, we'll let them propagate or ignore based on the test design
+                    pass
+
+        def is_alive(self):
+            """Return whether thread is marked as alive."""
+            return self._started
+
+        def join(self, timeout=None):
+            """Mock thread join - no-op for immediate execution."""
+            pass
+
     class FakeThreadingModule:
         def __init__(self):
             self.mock_lock = MockRLock()
+            self._threads = []
+            self._thread_id_counter = 1000
 
         def RLock(self):
             """Return a new mock RLock instance."""
             return MockRLock()
+
+        def Thread(self, target=None):
+            """Create a new mock thread."""
+            thread = MockThread(target)
+            thread.ident = self._thread_id_counter
+            self._thread_id_counter += 1
+            self._threads.append(thread)
+            return thread
+
+        def simulate_thread_completion(self, thread_id):
+            """Simulate thread completion for testing."""
+            for thread in self._threads:
+                if thread.ident == thread_id:
+                    thread._started = False
+                    break
 
         def get_mock_lock(self):
             """Get the shared mock lock for inspection."""

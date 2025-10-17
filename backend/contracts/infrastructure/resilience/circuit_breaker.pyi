@@ -118,6 +118,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, Type
 from dataclasses import dataclass
 from circuitbreaker import CircuitBreaker
+from app.core.exceptions import ValidationError
 
 
 @dataclass
@@ -421,10 +422,11 @@ class EnhancedCircuitBreaker(CircuitBreaker):
                   multiple circuit breakers in metrics. Default: None
         
         Raises:
-            ValueError: If failure_threshold or recovery_timeout are not positive integers
-            TypeError: If expected_exception is not an exception class or tuple
+            ValidationError: If failure_threshold or recovery_timeout are not positive integers,
+                           or if expected_exception is not an exception class or tuple
         
         Behavior:
+            - Validates all parameters before initialization
             - Initializes comprehensive metrics collection for monitoring
             - Sets up state tracking for circuit breaker transitions
             - Configures base CircuitBreaker with provided parameters
