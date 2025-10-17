@@ -11,12 +11,14 @@ instances (not individual scanners) with proper configuration and caching.
 import pytest
 from unittest.mock import patch, MagicMock
 from app.infrastructure.security.llm.factory import SecurityServiceFactory, create_security_service
+from app.infrastructure.security.llm.config import SecurityConfig, ScannerType, ScannerConfig
+from app.core.exceptions import ConfigurationError, InfrastructureError
 
 
 class TestScannerFactoryInitialization:
     """Test SecurityServiceFactory initialization and configuration."""
 
-    def test_security_service_factory_creates_service_from_config(self, mock_security_config, mock_security_service_factory):
+    def test_security_service_factory_creates_service_from_config(self, mock_security_service_factory):
         """
         Test that SecurityServiceFactory creates service instances from SecurityConfig.
 
@@ -34,14 +36,18 @@ class TestScannerFactoryInitialization:
             Then: Returns configured SecurityService instance ready for security validation.
 
         Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
             - mock_security_service_factory: Factory fixture for SecurityServiceFactory.
         """
-        # Given
-        config = mock_security_config(
-            scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
-            performance={"max_concurrent_scans": 10},
-            service_name="test-security-service"
+        # Given - Use proper ScannerType enum and ScannerConfig
+        config = SecurityConfig(
+            service_name="test-security-service",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(
+                    enabled=True,
+                    threshold=0.7
+                )
+            }
         )
         factory = mock_security_service_factory()
 
@@ -56,7 +62,7 @@ class TestScannerFactoryInitialization:
         assert factory.creation_history[0]["mode"] == "local"
         assert factory.creation_history[0]["config"] == config
 
-    def test_security_service_factory_applies_environment_overrides(self, mock_security_config, mock_security_service_factory, environment_overrides):
+    def test_security_service_factory_applies_environment_overrides(self, mock_security_service_factory, environment_overrides):
         """
         Test that SecurityServiceFactory applies environment variable overrides.
 
@@ -74,14 +80,19 @@ class TestScannerFactoryInitialization:
             Then: Service is configured with overridden settings applied.
 
         Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
             - mock_security_service_factory: Factory fixture for SecurityServiceFactory.
             - environment_overrides: Environment variable override fixture.
         """
-        # Given
-        config = mock_security_config(
-            scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
-            service_name="base-service"
+        # Given - Use proper ScannerType enum
+        config = SecurityConfig(
+            service_name="base-service",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(
+                    enabled=True,
+                    threshold=0.7
+                )
+            }
         )
         factory = mock_security_service_factory()
 
@@ -100,7 +111,7 @@ class TestScannerFactoryInitialization:
         # The service should be created with the overrides applied (mock factory applies to service_name)
         assert service.service_name == "local-security-service"
 
-    def test_security_service_factory_uses_cache_key(self, mock_security_config, mock_security_service_factory):
+    def test_security_service_factory_uses_cache_key(self, mock_security_service_factory):
         """
         Test that SecurityServiceFactory respects custom cache keys.
 
@@ -118,11 +129,16 @@ class TestScannerFactoryInitialization:
             Then: Returns cached service instance for second request.
 
         Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
             - mock_security_service_factory: Factory fixture for SecurityServiceFactory.
         """
-        # Given
-        config = mock_security_config(service_name="cached-service")
+        # Given - Use proper SecurityConfig
+        config = SecurityConfig(
+            service_name="cached-service",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)
+            }
+        )
         factory = mock_security_service_factory()
         cache_key = "test_service_key"
 
@@ -141,7 +157,7 @@ class TestScannerFactoryInitialization:
             if creation_call.get("cache_key"):
                 assert creation_call["cache_key"] == cache_key
 
-    def test_security_service_factory_handles_different_cache_keys(self, mock_security_config, mock_security_service_factory):
+    def test_security_service_factory_handles_different_cache_keys(self, mock_security_service_factory):
         """
         Test that SecurityServiceFactory creates separate instances for different cache keys.
 
@@ -157,11 +173,16 @@ class TestScannerFactoryInitialization:
             Then: Returns different service instances for each cache key.
 
         Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
             - mock_security_service_factory: Factory fixture for SecurityServiceFactory.
         """
-        # Given
-        config = mock_security_config(service_name="multi-service")
+        # Given - Use proper SecurityConfig
+        config = SecurityConfig(
+            service_name="multi-service",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)
+            }
+        )
         factory = mock_security_service_factory()
 
         # When
@@ -244,7 +265,7 @@ class TestScannerFactoryRegistry:
         assert cache_stats["cache_keys"] == []
         assert len(factory.clear_cache_history) == 1
 
-    def test_security_service_factory_validates_mode_availability(self, mock_security_config, mock_security_service_factory):
+    def test_security_service_factory_validates_mode_availability(self, mock_security_service_factory):
         """
         Test that SecurityServiceFactory validates service mode availability.
 
@@ -262,11 +283,16 @@ class TestScannerFactoryRegistry:
             Then: Successfully creates service for valid mode.
 
         Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
             - mock_security_service_factory: Factory fixture for SecurityServiceFactory.
         """
-        # Given
-        config = mock_security_config(service_name="mode-test-service")
+        # Given - Use proper SecurityConfig
+        config = SecurityConfig(
+            service_name="mode-test-service",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)
+            }
+        )
         factory = mock_security_service_factory()
 
         # When - Test local mode (available)
@@ -279,115 +305,142 @@ class TestScannerFactoryRegistry:
         assert creation_call["mode"] == "local"
 
 
-class TestScannerFactoryErrorHandling:
-    """Test SecurityServiceFactory error handling and validation."""
+class TestSecurityServiceFactoryValidation:
+    """Test SecurityServiceFactory configuration validation and error detection."""
 
-    def test_security_service_factory_raises_configuration_error_for_invalid_mode(self, mock_security_config, mock_configuration_error):
+    def test_factory_rejects_config_with_no_scanners(self, invalid_security_config_no_scanners):
         """
-        Test that SecurityServiceFactory raises ConfigurationError for invalid service modes.
+        Test that factory raises ConfigurationError for configs with no scanners.
 
         Verifies:
-            Factory validates service mode and raises ConfigurationError when invalid
-            mode is specified.
+            Factory validates that at least one scanner is enabled per contract requirements.
 
         Business Impact:
-            Provides clear error messages for invalid mode specifications preventing
-            successful service creation.
+            Prevents deployment of security services with no actual scanning capability,
+            ensuring security coverage is always present.
+
+        Scenario:
+            Given: SecurityConfig with no scanners enabled.
+            When: Factory attempts to create service.
+            Then: ConfigurationError is raised with clear validation message.
+
+        Fixtures Used:
+            - invalid_security_config_no_scanners: Invalid config for validation testing.
+        """
+        # Given - Invalid config from fixture
+        config = invalid_security_config_no_scanners
+
+        # When & Then - Factory validation catches this
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityServiceFactory.create_service(mode="local", config=config)
+
+        assert "at least one security scanner must be enabled" in str(exc_info.value).lower()
+
+
+class TestSecurityServiceFactoryServiceCreationErrors:
+    """Test SecurityServiceFactory error handling during service instantiation."""
+
+    def test_factory_raises_configuration_error_for_invalid_mode(self):
+        """
+        Test that factory raises ConfigurationError for invalid service modes.
+
+        Verifies:
+            Factory validates service mode and raises ConfigurationError when unknown
+            mode is specified, per the public contract.
+
+        Business Impact:
+            Provides clear error messages for invalid mode specifications, preventing
+            runtime failures and guiding proper factory usage.
 
         Scenario:
             Given: Valid configuration but invalid service mode.
             When: Factory attempts to create service with invalid mode.
-            Then: ConfigurationError is raised with details about invalid mode.
-
-        Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
-            - mock_infrastructure_error: MockInfrastructureError class for validation.
+            Then: ConfigurationError is raised with mode details.
         """
-        # Given
-        config = mock_security_config(service_name="error-test-service")
+        # Given - Valid config to pass validation
+        config = SecurityConfig(
+            service_name="mode-error-test",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)
+            }
+        )
 
-        # Mock the factory to raise error for invalid mode
-        with patch('app.infrastructure.security.llm.factory.SecurityServiceFactory._create_service_instance') as mock_create:
-            # Get the mock exception from the fixture
-            MockConfigurationError = mock_configuration_error
-            mock_create.side_effect = MockConfigurationError("Unknown security service mode: invalid")
+        # When & Then - Invalid mode triggers ConfigurationError
+        with pytest.raises(ConfigurationError) as exc_info:
+            SecurityServiceFactory.create_service(mode="invalid_mode", config=config)
 
-            # When & Then
-            with pytest.raises(MockConfigurationError) as exc_info:
-                SecurityServiceFactory.create_service(mode="invalid", config=config)
+        assert "unknown security service mode" in str(exc_info.value).lower()
 
-            assert "Unknown security service mode" in str(exc_info.value)
-
-    def test_security_service_factory_raises_infrastructure_error_for_creation_failures(self, mock_security_config, mock_infrastructure_error):
+    def test_factory_raises_infrastructure_error_for_service_creation_failures(self):
         """
-        Test that SecurityServiceFactory raises InfrastructureError for service creation failures.
+        Test that factory converts service instantiation errors to InfrastructureError.
 
         Verifies:
             Factory catches service creation failures and raises InfrastructureError
-            with context about the failure.
+            with context about the failure per the public contract.
 
         Business Impact:
             Provides clear error messages distinguishing configuration issues from
-            infrastructure failures for troubleshooting.
+            infrastructure failures, enabling proper troubleshooting.
 
         Scenario:
-            Given: Valid configuration but service creation fails due to infrastructure issues.
+            Given: Valid configuration but service creation fails.
             When: Factory attempts to create service.
             Then: InfrastructureError is raised with creation failure details.
-
-        Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
-            - mock_infrastructure_error: MockInfrastructureError class for validation.
         """
-        # Given
-        config = mock_security_config(service_name="infrastructure-error-service")
+        # Given - Valid config to pass validation
+        config = SecurityConfig(
+            service_name="infrastructure-error-test",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)
+            }
+        )
 
-        # Mock the factory to raise infrastructure error for service creation
-        with patch('app.infrastructure.security.llm.factory.SecurityServiceFactory._create_service_instance') as mock_create:
-            mock_create.side_effect = mock_infrastructure_error("Failed to load ML models", {"model_type": "transformer"})
+        # Mock service creation to simulate infrastructure failure
+        with patch('app.infrastructure.security.llm.scanners.local_scanner.LocalLLMSecurityScanner') as mock_scanner:
+            mock_scanner.side_effect = RuntimeError("Failed to load ML models")
 
-            # When & Then
-            with pytest.raises(mock_infrastructure_error) as exc_info:
+            # When & Then - Infrastructure error is properly wrapped
+            with pytest.raises(InfrastructureError) as exc_info:
                 SecurityServiceFactory.create_service(mode="local", config=config)
 
-            assert "Failed to load ML models" in str(exc_info.value)
-            assert exc_info.value.context["model_type"] == "transformer"
+            assert "failed to create security service" in str(exc_info.value).lower()
 
-    def test_security_service_factory_handles_missing_dependencies(self, mock_security_config, mock_infrastructure_error):
+    def test_factory_handles_missing_dependencies_gracefully(self):
         """
-        Test that SecurityServiceFactory handles missing dependencies gracefully.
+        Test that factory handles missing ML dependencies with clear error messages.
 
         Verifies:
-            Factory catches import errors and missing dependencies, raising appropriate
-            InfrastructureError with helpful context.
+            Factory catches import errors and converts them to InfrastructureError
+            with helpful context for deployment troubleshooting.
 
         Business Impact:
-            Provides clear error messages for missing dependencies preventing service
-            creation, aiding in deployment and setup troubleshooting.
+            Provides clear guidance when required ML libraries are missing,
+            accelerating deployment issue resolution.
 
         Scenario:
-            Given: Valid configuration but required dependencies are missing.
+            Given: Valid configuration but required dependencies missing.
             When: Factory attempts to create service.
-            Then: InfrastructureError is raised with missing dependency details.
-
-        Fixtures Used:
-            - mock_security_config: Factory fixture for SecurityConfig.
+            Then: InfrastructureError is raised with dependency details.
         """
-        # Given
-        config = mock_security_config(service_name="missing-deps-service")
+        # Given - Valid config to pass validation
+        config = SecurityConfig(
+            service_name="missing-deps-test",
+            environment="testing",
+            scanners={
+                ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)
+            }
+        )
 
         # Mock import failure
-        with patch('app.infrastructure.security.llm.factory.SecurityServiceFactory._create_service_instance') as mock_create:
-            MockInfrastructureError = mock_infrastructure_error
+        with patch('app.infrastructure.security.llm.scanners.local_scanner.LocalLLMSecurityScanner') as mock_scanner:
             import_error = ImportError("No module named 'transformers'")
-            mock_create.side_effect = MockInfrastructureError(
-                f"Failed to create security service with mode 'local': {import_error}",
-                context={"original_error": str(import_error), "missing_dependency": "transformers"}
-            )
+            mock_scanner.side_effect = import_error
 
-            # When & Then
-            with pytest.raises(MockInfrastructureError) as exc_info:
+            # When & Then - Import error is properly wrapped
+            with pytest.raises(InfrastructureError) as exc_info:
                 SecurityServiceFactory.create_service(mode="local", config=config)
 
-            assert "Failed to create security service" in str(exc_info.value)
-            assert exc_info.value.context["missing_dependency"] == "transformers"
+            assert "failed to create security service" in str(exc_info.value).lower()

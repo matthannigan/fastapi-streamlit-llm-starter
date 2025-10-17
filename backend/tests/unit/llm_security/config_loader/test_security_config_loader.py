@@ -480,13 +480,23 @@ class TestSecurityConfigLoaderLoadConfig:
             - tmp_path: Pytest fixture for configuration files.
             - monkeypatch: Pytest fixture for environment isolation.
         """
+        # Import Pydantic models for type checking
+        from app.infrastructure.security.llm.config import (
+            SecurityConfig,
+            PerformanceConfig,
+            LoggingConfig
+        )
+
         # Arrange: Create loader with valid configuration
         loader = mock_security_config_loader()
 
         # Act: Load configuration (should pass validation)
         config = loader.load_config()
 
-        # Assert: Verify configuration structure (simulating Pydantic validation)
+        # Assert: Verify configuration is a valid SecurityConfig instance
+        assert isinstance(config, SecurityConfig)
+
+        # Verify configuration structure and Pydantic models
         assert hasattr(config, 'scanners')
         assert hasattr(config, 'performance')
         assert hasattr(config, 'logging')
@@ -494,14 +504,25 @@ class TestSecurityConfigLoaderLoadConfig:
         assert hasattr(config, 'environment')
         assert hasattr(config, 'version')
 
-        # Verify expected types and structure
+        # Verify Pydantic model types (real validation per contract)
         assert isinstance(config.scanners, dict)
-        # performance can be either dict or MockPerformanceConfig (which has dict() method)
-        assert isinstance(config.performance, (dict, object)) and hasattr(config.performance, 'max_concurrent_scans')
-        assert isinstance(config.logging, dict)
+        assert isinstance(config.performance, PerformanceConfig)
+        assert isinstance(config.logging, LoggingConfig)
         assert isinstance(config.service_name, str)
         assert isinstance(config.environment, str)
         assert isinstance(config.version, str)
+
+        # Verify PerformanceConfig has expected attributes
+        assert hasattr(config.performance, 'max_concurrent_scans')
+        assert hasattr(config.performance, 'cache_ttl_seconds')
+        assert hasattr(config.performance, 'max_memory_mb')
+        assert isinstance(config.performance.max_concurrent_scans, int)
+
+        # Verify LoggingConfig has expected attributes
+        assert hasattr(config.logging, 'log_level')
+        assert hasattr(config.logging, 'enable_scan_logging')
+        assert hasattr(config.logging, 'enable_violation_logging')
+        assert isinstance(config.logging.log_level, str)
 
     def test_load_config_returns_cached_result_when_available(self, tmp_path, monkeypatch, mock_security_config_loader):
         """

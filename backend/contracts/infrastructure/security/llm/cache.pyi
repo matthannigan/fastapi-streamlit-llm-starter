@@ -144,9 +144,13 @@ class CacheEntry:
         and datetime objects to Redis-compatible formats. All data is
         converted to JSON-serializable types.
         
+        Note: Unlike SecurityResult.to_dict(), this method includes the
+        full scanned_text field for cache reconstruction, not just the
+        text length. This is necessary for proper cache restoration.
+        
         Returns:
             Dictionary containing all entry data in JSON-serializable format:
-            - result: SecurityResult data as dictionary
+            - result: SecurityResult data as dictionary (with scanned_text)
             - cached_at: ISO-formatted UTC timestamp string
             - cache_key: String cache key identifier
             - scanner_config_hash: Configuration hash string

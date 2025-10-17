@@ -1205,7 +1205,7 @@ def validate_preset_config(config: Dict[str, Any]) -> List[str]:
     issues = []
 
     # Check required sections
-    required_sections = ["input_scanners", "output_scanners", "performance", "logging"]
+    required_sections = ["input_scanners", "output_scanners", "performance", "logging", "service", "features"]
     for section in required_sections:
         if section not in config:
             issues.append(f"Missing required section: {section}")

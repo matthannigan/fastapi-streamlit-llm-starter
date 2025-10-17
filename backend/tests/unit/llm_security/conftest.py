@@ -13,6 +13,9 @@ from typing import Dict, Any, Optional, List
 import pytest
 from datetime import datetime, UTC
 
+# Import real SecurityConfig for test fixtures
+from app.infrastructure.security.llm.config import SecurityConfig
+
 
 # ============================================================================
 # SHARED EXCEPTION MOCKS
@@ -309,6 +312,77 @@ class MockSecurityConfig:
 
 
 # ============================================================================
+# SHARED ASYNC CACHE MOCKS
+# ============================================================================
+
+
+class MockCacheInterface:
+    """Mock cache interface with async support for testing cache operations."""
+    
+    def __init__(self, available: bool = True):
+        self.storage = {}
+        self.operation_history = []
+        self.available = available
+    
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+        """Mock async set operation matching CacheInterface signature."""
+        if not self.available:
+            raise Exception("Cache unavailable")
+        self.storage[key] = value
+        self.operation_history.append({
+            "operation": "set",
+            "key": key,
+            "value": value,
+            "ttl": ttl
+        })
+    
+    async def get(self, key: str) -> Any | None:
+        """Mock async get operation matching CacheInterface signature."""
+        if not self.available:
+            raise Exception("Cache unavailable")
+        self.operation_history.append({
+            "operation": "get",
+            "key": key
+        })
+        return self.storage.get(key)
+    
+    async def delete(self, key: str) -> None:
+        """Mock async delete operation matching CacheInterface signature."""
+        if not self.available:
+            raise Exception("Cache unavailable")
+        self.operation_history.append({
+            "operation": "delete",
+            "key": key
+        })
+        if key in self.storage:
+            del self.storage[key]
+    
+    def reset_history(self):
+        """Reset operation history for testing."""
+        self.operation_history = []
+
+
+class MockCacheFactory:
+    """Mock cache factory with async support for testing cache initialization."""
+    
+    def __init__(self, redis_available: bool = True):
+        self.created_caches = []
+        self.redis_available = redis_available
+    
+    async def for_ai_app(self, redis_url: str, default_ttl: int):
+        """Mock async factory method that returns a working Redis cache mock."""
+        mock_cache = MockCacheInterface(available=self.redis_available)
+        self.created_caches.append(mock_cache)
+        return mock_cache
+    
+    def create_redis_cache(self, redis_url: str):
+        """Synchronous method for creating a mock Redis cache (for legacy tests)."""
+        mock_cache = MockCacheInterface(available=self.redis_available)
+        self.created_caches.append(mock_cache)
+        return mock_cache
+
+
+# ============================================================================
 # SHARED PYTEST FIXTURES
 # ============================================================================
 
@@ -369,7 +443,79 @@ def mock_scanner_config():
 
 @pytest.fixture
 def mock_security_config():
-    """Factory fixture to create MockSecurityConfig instances for testing."""
-    def _create_config(**kwargs) -> MockSecurityConfig:
-        return MockSecurityConfig(**kwargs)
+    """Factory fixture to create SecurityConfig instances for testing.
+
+    Provides valid default scanner configuration to ensure configs pass factory validation.
+    Tests can override scanners parameter to test specific scenarios.
+    """
+    def _create_config(**kwargs) -> SecurityConfig:
+        # Import the real SecurityConfig and related types
+        from app.infrastructure.security.llm.config import (
+            SecurityConfig,
+            ScannerType,
+            ScannerConfig,
+        )
+
+        # Default configuration with at least one scanner to pass factory validation
+        default_kwargs = {
+            "service_name": "test-security-service",
+            "environment": "testing",
+            "debug_mode": False,
+            "scanners": {
+                ScannerType.PROMPT_INJECTION: ScannerConfig(
+                    enabled=True,
+                    threshold=0.7
+                )
+            }
+        }
+
+        # Override with provided kwargs
+        default_kwargs.update(kwargs)
+
+        return SecurityConfig(**default_kwargs)
     return _create_config
+
+
+@pytest.fixture
+def invalid_security_config_no_scanners():
+    """Invalid SecurityConfig with no scanners for testing validation errors.
+
+    This fixture creates a SecurityConfig that intentionally violates the
+    "at least one scanner must be enabled" requirement for testing factory
+    validation error handling.
+    """
+    from app.infrastructure.security.llm.config import SecurityConfig
+
+    return SecurityConfig(
+        service_name="invalid-no-scanners",
+        environment="testing",
+        scanners={}  # Explicitly empty - will fail factory validation
+    )
+
+
+@pytest.fixture
+def mock_cache_interface():
+    """Factory fixture to create MockCacheInterface instances for testing."""
+    def _create_cache(available: bool = True) -> MockCacheInterface:
+        return MockCacheInterface(available=available)
+    return _create_cache
+
+
+@pytest.fixture
+def mock_cache_factory():
+    """Factory fixture to create MockCacheFactory instances for testing."""
+    def _create_factory(redis_available: bool = True) -> MockCacheFactory:
+        return MockCacheFactory(redis_available=redis_available)
+    return _create_factory
+
+
+@pytest.fixture
+def mock_logger():
+    """Mock logger for testing logging behavior."""
+    from unittest.mock import Mock
+    logger = Mock()
+    logger.info = Mock()
+    logger.warning = Mock()
+    logger.error = Mock()
+    logger.debug = Mock()
+    return logger
