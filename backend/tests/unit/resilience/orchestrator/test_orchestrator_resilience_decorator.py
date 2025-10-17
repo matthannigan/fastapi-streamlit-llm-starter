@@ -1174,7 +1174,6 @@ class TestWithResilienceFallbackExecution:
         # And: Fallback result is returned without delay
         assert result == "fallback_for_permanent"
 
-    @pytest.mark.skip(reason="Test requires complex argument passing validation - implementation deferred")
     def test_passes_original_arguments_to_fallback(self):
         """
         Test that fallback receives same arguments as original function.
@@ -1198,7 +1197,64 @@ class TestWithResilienceFallbackExecution:
         Fixtures Used:
             - None (tests argument passing)
         """
-        pass
+        # Given: An orchestrator with fallback function
+        orchestrator = AIServiceResilience()
+
+        custom_config = ResilienceConfig(
+            strategy=ResilienceStrategy.BALANCED,
+            retry_config=RetryConfig(max_attempts=2),
+            enable_circuit_breaker=False,
+            enable_retry=True
+        )
+
+        # Track fallback invocations with their arguments
+        fallback_args = []
+        fallback_kwargs = []
+
+        def fallback_func(arg1, arg2, kwarg1=None, kwarg2="default"):
+            """Fallback that captures arguments for verification."""
+            fallback_args.append((arg1, arg2))
+            fallback_kwargs.append({"kwarg1": kwarg1, "kwarg2": kwarg2})
+            return f"fallback_{arg1}_{arg2}_{kwarg1}_{kwarg2}"
+
+        # And: Original function signature: func(arg1, arg2, kwarg1=value)
+        def failing_function(arg1, arg2, kwarg1=None, kwarg2="default"):
+            """Function that always fails."""
+            raise ConnectionError("Always fails")
+
+        decorated_func = orchestrator.with_resilience(
+            operation_name="test_arg_passing",
+            custom_config=custom_config,
+            fallback=fallback_func
+        )(failing_function)
+
+        # When: Original function fails and fallback is invoked
+        # Test with positional and keyword arguments
+        result = asyncio.run(decorated_func("pos1", "pos2", kwarg1="kw1", kwarg2="kw2"))
+
+        # Then: Fallback is called with same arguments
+        assert len(fallback_args) == 1
+        assert fallback_args[0] == ("pos1", "pos2")
+
+        # And: All positional and keyword arguments are preserved
+        assert len(fallback_kwargs) == 1
+        assert fallback_kwargs[0]["kwarg1"] == "kw1"
+        assert fallback_kwargs[0]["kwarg2"] == "kw2"
+
+        # And: Fallback can use arguments for contextual response
+        assert result == "fallback_pos1_pos2_kw1_kw2"
+
+        # Test with positional args only (using defaults for kwargs)
+        fallback_args.clear()
+        fallback_kwargs.clear()
+
+        result2 = asyncio.run(decorated_func("arg_a", "arg_b"))
+
+        assert len(fallback_args) == 1
+        assert fallback_args[0] == ("arg_a", "arg_b")
+        assert fallback_kwargs[0]["kwarg1"] is None  # Default value
+        assert fallback_kwargs[0]["kwarg2"] == "default"  # Default value
+        assert result2 == "fallback_arg_a_arg_b_None_default"
 
     def test_raises_original_exception_when_no_fallback_provided(self):
         """
@@ -1225,7 +1281,6 @@ class TestWithResilienceFallbackExecution:
         """
         pass
 
-    @pytest.mark.skip(reason="Test requires async/sync fallback validation - implementation deferred")
     def test_supports_both_sync_and_async_fallback_functions(self):
         """
         Test that decorator supports both synchronous and asynchronous fallback functions.
@@ -1251,7 +1306,96 @@ class TestWithResilienceFallbackExecution:
         Fixtures Used:
             - None (tests sync/async fallback support)
         """
-        pass
+        # Given: An orchestrator instance
+        orchestrator = AIServiceResilience()
+
+        custom_config = ResilienceConfig(
+            strategy=ResilienceStrategy.BALANCED,
+            retry_config=RetryConfig(max_attempts=2),
+            enable_circuit_breaker=False,
+            enable_retry=True
+        )
+
+        # Test Case 1: Async function with async fallback
+        # ================================================
+
+        async_fallback_called = []
+
+        async def async_fallback(data):
+            """Async fallback function."""
+            async_fallback_called.append(True)
+            # Simulate async operation
+            await asyncio.sleep(0.001)
+            return f"async_fallback_{data}"
+
+        async def async_failing_function(data):
+            """Async function that always fails."""
+            raise ConnectionError("Async failure")
+
+        # When: Async function decorated with async fallback
+        decorated_async = orchestrator.with_resilience(
+            operation_name="test_async_fallback",
+            custom_config=custom_config,
+            fallback=async_fallback
+        )(async_failing_function)
+
+        # Then: Async fallback is awaited properly
+        result = asyncio.run(decorated_async("test_data"))
+        assert len(async_fallback_called) == 1
+        assert result == "async_fallback_test_data"
+
+        # Test Case 2: Async function with sync fallback
+        # ===============================================
+
+        sync_fallback_called = []
+
+        def sync_fallback(data):
+            """Sync fallback function."""
+            sync_fallback_called.append(True)
+            return f"sync_fallback_{data}"
+
+        async def async_failing_function2(data):
+            """Async function that always fails."""
+            raise ConnectionError("Async failure")
+
+        # When: Async function decorated with sync fallback
+        decorated_mixed = orchestrator.with_resilience(
+            operation_name="test_sync_fallback_async_func",
+            custom_config=custom_config,
+            fallback=sync_fallback
+        )(async_failing_function2)
+
+        # Then: Sync fallback is called without await
+        result2 = asyncio.run(decorated_mixed("test_data2"))
+        assert len(sync_fallback_called) == 1
+        assert result2 == "sync_fallback_test_data2"
+
+        # Test Case 3: Multiple arguments with async fallback
+        # ===================================================
+
+        multi_arg_async_fallback_called = []
+
+        async def multi_arg_async_fallback(arg1, arg2, kwarg1=None):
+            """Async fallback with multiple arguments."""
+            multi_arg_async_fallback_called.append((arg1, arg2, kwarg1))
+            await asyncio.sleep(0.001)
+            return f"multi_async_{arg1}_{arg2}_{kwarg1}"
+
+        async def multi_arg_failing_function(arg1, arg2, kwarg1=None):
+            """Async function with multiple arguments that always fails."""
+            raise ConnectionError("Multi-arg failure")
+
+        decorated_multi = orchestrator.with_resilience(
+            operation_name="test_multi_arg_async_fallback",
+            custom_config=custom_config,
+            fallback=multi_arg_async_fallback
+        )(multi_arg_failing_function)
+
+        # Then: Async fallback receives all arguments correctly
+        result3 = asyncio.run(decorated_multi("a1", "a2", kwarg1="kw1"))
+        assert len(multi_arg_async_fallback_called) == 1
+        assert multi_arg_async_fallback_called[0] == ("a1", "a2", "kw1")
+        assert result3 == "multi_async_a1_a2_kw1"
 
 
 class TestWithResilienceFunctionSignaturePreservation:

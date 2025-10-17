@@ -310,40 +310,6 @@ class TestPresetManagerValidation:
         # Then: Method returns False
         assert result is False
     
-    def test_validate_preset_rejects_invalid_default_strategy(self):
-        """
-        Test that validate_preset() rejects preset with invalid strategy enum.
-
-        Verifies:
-            The validate_preset() method returns False when default_strategy
-            is not a valid ResilienceStrategy enum value.
-
-        Business Impact:
-            Prevents runtime errors from invalid strategy references
-            that could cause configuration system failures.
-
-        Scenario:
-            Given: An initialized PresetManager instance
-            And: A custom preset with default_strategy = "invalid_strategy"
-            When: validate_preset(invalid_preset) is called
-            Then: Method returns False
-            And: Validation rejects invalid strategy value
-
-        Fixtures Used:
-            - None (tests enum validation)
-        """
-        # NOTE: This test cannot be implemented as written because ResiliencePreset
-        # is a dataclass with type hints that enforce ResilienceStrategy enum values
-        # at construction time. Invalid strategy values cause TypeError before validation.
-        # The actual validation logic for strategy types is tested in the operation_overrides test.
-
-        # This would be an integration test requiring modification of the dataclass
-        # or testing at the dictionary/schema validation level.
-        pytest.skip(
-            "Cannot test invalid default_strategy due to dataclass type enforcement. "
-            "Strategy validation is tested in operation_overrides test."
-        )
-    
     def test_validate_preset_validates_operation_overrides_strategies(self):
         """
         Test that validate_preset() validates all operation override strategy values.

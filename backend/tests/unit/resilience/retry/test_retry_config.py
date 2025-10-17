@@ -14,6 +14,7 @@ Test Organization:
 
 import pytest
 from app.infrastructure.resilience.retry import RetryConfig, should_retry_on_exception
+from app.core.exceptions import ValidationError
 
 
 class TestRetryConfigInitialization:
@@ -269,13 +270,6 @@ class TestRetryConfigInitialization:
 class TestRetryConfigValidation:
     """Tests RetryConfig parameter validation and boundary enforcement."""
 
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn't validate parameter ranges. "
-                          "The dataclass accepts any values without raising exceptions for "
-                          "invalid ranges (e.g., max_attempts=0, exponential_multiplier=15.0). "
-                          "Validation needs to be implemented in the RetryConfig class to enforce "
-                          "contract-specified ranges: max_attempts (1-20), max_delay_seconds (1-3600), "
-                          "exponential_multiplier (0.1-10.0), exponential_min (0.1-60.0), "
-                          "exponential_max (1.0-3600.0), jitter_max (0.1-60.0)")
     def test_validates_max_attempts_within_range(self):
         """
         Test that RetryConfig validates max_attempts is within documented range (1-20).
@@ -297,20 +291,19 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test values below minimum (1)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_attempts=0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_attempts=-5)
 
         # Test values above maximum (20)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_attempts=21)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_attempts=100)
 
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn't validate parameter ranges")
     def test_validates_max_delay_seconds_within_range(self):
         """
         Test that RetryConfig validates max_delay_seconds is within range (1-3600).
@@ -332,20 +325,19 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test values below minimum (1)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_delay_seconds=0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_delay_seconds=-10)
 
         # Test values above maximum (3600)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_delay_seconds=3601)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(max_delay_seconds=5000)
 
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn't validate parameter ranges")
     def test_validates_exponential_multiplier_within_range(self):
         """
         Test that RetryConfig validates exponential_multiplier is within range (0.1-10.0).
@@ -367,21 +359,18 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test values below minimum (0.1)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_multiplier=0.0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_multiplier=0.05)
 
         # Test values above maximum (10.0)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_multiplier=10.1)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_multiplier=15.0)
-
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn\'t validate parameter ranges")
-
 
     def test_validates_exponential_min_within_range(self):
         """
@@ -403,21 +392,18 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test values below minimum (0.1)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=0.0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=0.05)
 
         # Test values above maximum (60.0)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=60.1)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=100.0)
-
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn\'t validate parameter ranges")
-
 
     def test_validates_exponential_max_within_range(self):
         """
@@ -439,21 +425,18 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test values below minimum (1.0)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_max=0.5)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_max=0.0)
 
         # Test values above maximum (3600.0)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_max=3600.1)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_max=5000.0)
-
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn\'t validate parameter ranges")
-
 
     def test_validates_jitter_max_within_range(self):
         """
@@ -475,21 +458,18 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test values below minimum (0.1)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(jitter_max=0.0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(jitter_max=0.05)
 
         # Test values above maximum (60.0)
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(jitter_max=60.1)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(jitter_max=100.0)
-
-    @pytest.mark.skip(reason="Current RetryConfig implementation doesn\'t validate parameter ranges")
-
 
     def test_validates_exponential_min_less_than_or_equal_to_max(self):
         """
@@ -511,13 +491,13 @@ class TestRetryConfigValidation:
             - None (tests validation behavior)
         """
         # Test invalid relationship where min > max
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=30.0, exponential_max=10.0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=50.0, exponential_max=5.0)
 
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises(ValidationError):
             RetryConfig(exponential_min=20.0, exponential_max=15.0)
 
     def test_validate_method_checks_all_parameters(self):

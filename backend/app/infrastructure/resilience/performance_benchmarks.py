@@ -522,7 +522,7 @@ class ConfigurationPerformanceBenchmark:
             >>>
             >>> # Generate report
             >>> report = benchmark.generate_performance_report(suite)
-            >>> assert "RESILIENCE CONFIGURATION PERFORMANCE REPORT" in report
+            >>> assert "Resilience Configuration Performance Benchmark" in report
 
         Performance Thresholds Applied:
             - preset_loading: <10ms (PRESET_ACCESS threshold)
@@ -555,6 +555,10 @@ class ConfigurationPerformanceBenchmark:
         for benchmark_func in benchmarks:
             try:
                 result = benchmark_func()
+                # Explicitly ensure result is in self.results
+                # Check if already added by measure_performance() to avoid duplicates
+                if result not in self.results:
+                    self.results.append(result)
                 logger.info(f"Completed {result.operation}: {result.avg_duration_ms:.2f}ms avg")
             except Exception as e:
                 logger.error(f"Benchmark {benchmark_func.__name__} failed: {e}")
@@ -681,6 +685,35 @@ class ConfigurationPerformanceBenchmark:
 
         return trend_analysis
 
+    def _format_duration(self, duration_ms: float) -> str:
+        """
+        Format duration with appropriate precision based on magnitude.
+        
+        Args:
+            duration_ms: Duration in milliseconds
+            
+        Returns:
+            Formatted duration string with appropriate precision and units
+            
+        Behavior:
+            - Sub-centimillisecond (< 0.01ms): 4 decimal places
+            - Sub-millisecond (< 1ms): 3 decimal places  
+            - Milliseconds (< 1000ms): 2 decimal places
+            - Seconds and above (>= 1000ms): Convert to seconds with 2 decimal places
+        """
+        if duration_ms < 0.01:
+            # Sub-centimillisecond: show 4 decimal places for precision
+            return f"{duration_ms:.4f}ms"
+        elif duration_ms < 1.0:
+            # Sub-millisecond: show 3 decimal places
+            return f"{duration_ms:.3f}ms"
+        elif duration_ms < 1000.0:
+            # Milliseconds: show 2 decimal places
+            return f"{duration_ms:.2f}ms"
+        else:
+            # Seconds and above: convert to seconds for readability
+            return f"{duration_ms/1000:.2f}s"
+
     def generate_performance_report(self, suite: BenchmarkSuite) -> str:
         """
         Generate human-readable performance report.
@@ -693,10 +726,12 @@ class ConfigurationPerformanceBenchmark:
         """
         report = []
         report.append("=" * 60)
-        report.append("RESILIENCE CONFIGURATION PERFORMANCE REPORT")
+        report.append(f"{suite.name}")
         report.append("=" * 60)
         report.append(f"Timestamp: {suite.timestamp}")
-        report.append(f"Total Duration: {suite.total_duration_ms:.2f}ms")
+        # Use adaptive formatting for total duration
+        total_duration_formatted = self._format_duration(suite.total_duration_ms)
+        report.append(f"Total Duration: {total_duration_formatted}")
         report.append(f"Pass Rate: {suite.pass_rate:.1%}")
         report.append("")
 
@@ -714,8 +749,13 @@ class ConfigurationPerformanceBenchmark:
 
         for result in suite.results:
             status = "✓ PASS" if result.avg_duration_ms <= 100.0 else "✗ FAIL"
-            report.append(f"{result.operation:30} {result.avg_duration_ms:6.2f}ms {status}")
-            report.append(f"{'':30} {result.min_duration_ms:6.2f}ms min, {result.max_duration_ms:6.2f}ms max")
+            # Use adaptive formatting for durations
+            avg_formatted = self._format_duration(result.avg_duration_ms)
+            min_formatted = self._format_duration(result.min_duration_ms)
+            max_formatted = self._format_duration(result.max_duration_ms)
+            
+            report.append(f"{result.operation:30} {avg_formatted:>12} {status}")
+            report.append(f"{'':30} {min_formatted:>12} min, {max_formatted:>12} max")
             report.append(f"{'':30} {result.memory_peak_mb:6.2f}MB peak memory")
             report.append("")
 

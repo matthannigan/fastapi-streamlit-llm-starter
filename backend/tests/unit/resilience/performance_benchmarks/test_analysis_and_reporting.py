@@ -1293,7 +1293,7 @@ class TestGeneratePerformanceReport:
         Test that generated report includes clear title header.
 
         Verifies:
-            Report starts with clear title "RESILIENCE CONFIGURATION PERFORMANCE REPORT"
+            Report starts with clear title "Resilience Configuration Performance Benchmark"
             or similar for immediate identification.
 
         Business Impact:
@@ -1338,13 +1338,13 @@ class TestGeneratePerformanceReport:
         report = benchmark.generate_performance_report(test_suite)
 
         # Then: Report includes prominent title header
-        assert "RESILIENCE CONFIGURATION PERFORMANCE REPORT" in report
+        assert "Resilience Configuration Performance Benchmark" in report
 
         # And: Report type is immediately clear from title
         # Should appear at the beginning of the report
         lines = report.split('\n')
         first_lines = '\n'.join(lines[:3])
-        assert "RESILIENCE" in first_lines
+        assert "Resilience" in first_lines
 
 
 class TestAnalysisAndReportingEdgeCases:
@@ -1561,9 +1561,10 @@ class TestAnalysisAndReportingEdgeCases:
         assert isinstance(report, str)
         assert len(report) > 0
 
-        # Should contain the small timing values (may be formatted differently)
-        # Check that very small numbers appear in some format
-        assert "0.001" in report or "0.0001" in report or "micro" in report.lower() or "μs" in report
+        # Should contain the small timing values with adaptive formatting
+        # 0.001ms should be formatted with 4 decimal places: "0.0010ms"
+        # 0.0001ms should be formatted with 4 decimal places: "0.0001ms"
+        assert "0.001" in report or "0.0001" in report
 
         # And: Fast benchmark performance is accurately represented
         # Report should indicate excellent performance (likely PASS status)
@@ -1637,9 +1638,12 @@ class TestAnalysisAndReportingEdgeCases:
         assert isinstance(report, str)
         assert len(report) > 0
 
-        # Should contain large timing values
-        assert "5000" in report or "5.0" in report or "5 seconds" in report.lower()
-        assert "15000" in report or "15.0" in report or "15 seconds" in report.lower()
+        # Should contain large timing values formatted as seconds
+        # 5000ms should be formatted as "5.00s"
+        # 15000ms total duration should be formatted as "15.00s"
+        assert "5.00s" in report
+        # Total duration of 25000ms should be formatted as "25.00s"
+        assert "25.00s" in report
 
         # And: Performance issues are clearly visible
         # Should show FAIL status for these slow operations

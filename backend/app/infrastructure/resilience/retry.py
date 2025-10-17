@@ -109,6 +109,7 @@ docstrings with usage examples and behavior specifications.
 
 from dataclasses import dataclass
 from typing import Any
+from app.core.exceptions import ValidationError
 
 
 @dataclass
@@ -189,6 +190,86 @@ class RetryConfig:
     exponential_max: float = 10.0
     jitter: bool = True
     jitter_max: float = 2.0
+
+    def __post_init__(self):
+        """
+        Validate all configuration parameters are within acceptable ranges.
+        
+        Raises:
+            ValidationError: If any parameter is outside its documented range
+        """
+        # Validate max_attempts (1-20)
+        if not isinstance(self.max_attempts, int):
+            raise ValidationError(
+                f"max_attempts must be an integer, got {type(self.max_attempts).__name__}"
+            )
+        if not (1 <= self.max_attempts <= 20):
+            raise ValidationError(
+                f"max_attempts must be between 1 and 20, got {self.max_attempts}"
+            )
+
+        # Validate max_delay_seconds (1-3600)
+        if not isinstance(self.max_delay_seconds, int):
+            raise ValidationError(
+                f"max_delay_seconds must be an integer, got {type(self.max_delay_seconds).__name__}"
+            )
+        if not (1 <= self.max_delay_seconds <= 3600):
+            raise ValidationError(
+                f"max_delay_seconds must be between 1 and 3600, got {self.max_delay_seconds}"
+            )
+
+        # Validate exponential_multiplier (0.1-10.0)
+        if not isinstance(self.exponential_multiplier, (int, float)):
+            raise ValidationError(
+                f"exponential_multiplier must be a number, got {type(self.exponential_multiplier).__name__}"
+            )
+        if not (0.1 <= self.exponential_multiplier <= 10.0):
+            raise ValidationError(
+                f"exponential_multiplier must be between 0.1 and 10.0, got {self.exponential_multiplier}"
+            )
+
+        # Validate exponential_min (0.1-60.0)
+        if not isinstance(self.exponential_min, (int, float)):
+            raise ValidationError(
+                f"exponential_min must be a number, got {type(self.exponential_min).__name__}"
+            )
+        if not (0.1 <= self.exponential_min <= 60.0):
+            raise ValidationError(
+                f"exponential_min must be between 0.1 and 60.0, got {self.exponential_min}"
+            )
+
+        # Validate exponential_max (1.0-3600.0)
+        if not isinstance(self.exponential_max, (int, float)):
+            raise ValidationError(
+                f"exponential_max must be a number, got {type(self.exponential_max).__name__}"
+            )
+        if not (1.0 <= self.exponential_max <= 3600.0):
+            raise ValidationError(
+                f"exponential_max must be between 1.0 and 3600.0, got {self.exponential_max}"
+            )
+
+        # Validate jitter_max (0.1-60.0)
+        if not isinstance(self.jitter_max, (int, float)):
+            raise ValidationError(
+                f"jitter_max must be a number, got {type(self.jitter_max).__name__}"
+            )
+        if not (0.1 <= self.jitter_max <= 60.0):
+            raise ValidationError(
+                f"jitter_max must be between 0.1 and 60.0, got {self.jitter_max}"
+            )
+
+        # Validate jitter is boolean
+        if not isinstance(self.jitter, bool):
+            raise ValidationError(
+                f"jitter must be a boolean, got {type(self.jitter).__name__}"
+            )
+
+        # Validate logical consistency: exponential_min should be <= exponential_max
+        if self.exponential_min > self.exponential_max:
+            raise ValidationError(
+                f"exponential_min ({self.exponential_min}) cannot be greater than "
+                f"exponential_max ({self.exponential_max})"
+            )
 
 
 # Import all AI service exceptions from centralized location

@@ -337,7 +337,7 @@ class ConfigurationPerformanceBenchmark:
             >>>
             >>> # Generate report
             >>> report = benchmark.generate_performance_report(suite)
-            >>> assert "RESILIENCE CONFIGURATION PERFORMANCE REPORT" in report
+            >>> assert "Resilience Configuration Performance Benchmark" in report
         
         Performance Thresholds Applied:
             - preset_loading: <10ms (PRESET_ACCESS threshold)
