@@ -36,26 +36,25 @@ class MockCacheInterface:
         self._operation_calls = []
 
     async def get(self, key: str) -> Optional[Any]:
-        """Mock cache get operation."""
+        """Mock cache get operation matching CacheInterface signature."""
         self._operation_calls.append({"operation": "get", "key": key})
         if not self.available:
             return None
         return self._storage.get(key)
 
-    async def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> bool:
-        """Mock cache set operation."""
-        self._operation_calls.append({"operation": "set", "key": key, "ttl": ttl_seconds})
+    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+        """Mock cache set operation matching CacheInterface signature."""
+        self._operation_calls.append({"operation": "set", "key": key, "ttl": ttl})
         if not self.available:
-            return False
+            return
         self._storage[key] = value
-        return True
 
-    async def delete(self, key: str) -> bool:
-        """Mock cache delete operation."""
+    async def delete(self, key: str) -> None:
+        """Mock cache delete operation matching CacheInterface signature."""
         self._operation_calls.append({"operation": "delete", "key": key})
         if not self.available:
-            return False
-        return self._storage.pop(key, None) is not None
+            return
+        self._storage.pop(key, None)
 
     async def clear(self) -> bool:
         """Mock cache clear operation."""

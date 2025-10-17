@@ -310,7 +310,13 @@ class ONNXModelDownloader:
             >>> print(downloader.cache_dir)
             >>> /home/user/.cache/my_models
         """
-        self.cache_dir = Path(cache_dir or tempfile.gettempdir()) / "onnx_models"
+        if cache_dir:
+            # Use custom cache directory as-is
+            self.cache_dir = Path(cache_dir)
+        else:
+            # Default: use system temp + onnx_models subdirectory
+            self.cache_dir = Path(tempfile.gettempdir()) / "onnx_models"
+        
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Popular model repositories
@@ -357,7 +363,8 @@ class ONNXModelDownloader:
             >>> /tmp/cache/my-model.onnx
         """
         # Create safe filename from model name
-        safe_name = model_name.replace("/", "_").replace("\\", "_")
+        # Replace backslashes first (with double underscores) to differentiate from forward slashes
+        safe_name = model_name.replace("\\", "__").replace("/", "_")
         return self.cache_dir / f"{safe_name}.onnx"
 
     def verify_model_hash(self, model_path: Path, expected_hash: str | None = None) -> str:

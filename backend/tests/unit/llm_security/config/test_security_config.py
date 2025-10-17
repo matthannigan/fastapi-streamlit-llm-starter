@@ -6,6 +6,7 @@ configuration management according to the public contract defined in config.pyi.
 """
 
 import pytest
+from pydantic import ValidationError
 from app.infrastructure.security.llm.config import (
     SecurityConfig, ScannerConfig, PerformanceConfig, LoggingConfig,
     ScannerType, ViolationAction, PresetName
@@ -55,7 +56,7 @@ class TestSecurityConfigInitialization:
         assert config.logging.log_level == "INFO"
         assert config.logging.include_scanned_text is False
 
-    def test_security_config_initialization_with_scanner_configurations(self, mock_scanner_config):
+    def test_security_config_initialization_with_scanner_configurations(self):
         """
         Test that SecurityConfig accepts dictionary of scanner configurations.
 
@@ -73,7 +74,7 @@ class TestSecurityConfigInitialization:
             Then: Scanner configurations are stored for security processing.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating ScannerConfig instances.
+            None - uses actual ScannerConfig instances.
         """
         # Given: Dictionary mapping ScannerType to ScannerConfig instances
         scanners = {
@@ -294,7 +295,7 @@ class TestSecurityConfigInitialization:
 class TestSecurityConfigValidation:
     """Test SecurityConfig Pydantic validation rules."""
 
-    def test_security_config_validates_scanner_dictionary(self, mock_scanner_config):
+    def test_security_config_validates_scanner_dictionary(self):
         """
         Test that SecurityConfig validates scanner configurations dictionary.
 
@@ -312,13 +313,13 @@ class TestSecurityConfigValidation:
             Then: Validation passes and configuration is created successfully.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating ScannerConfig instances.
+            None - uses actual ScannerConfig instances.
         """
         # Given: Valid scanners dictionary with unique scanner types
         scanners = {
-            ScannerType.PROMPT_INJECTION: mock_scanner_config(enabled=True, threshold=0.5),
-            ScannerType.TOXICITY_INPUT: mock_scanner_config(enabled=False, threshold=0.7),
-            ScannerType.PII_DETECTION: mock_scanner_config(enabled=True, threshold=0.8),
+            ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True, threshold=0.5),
+            ScannerType.TOXICITY_INPUT: ScannerConfig(enabled=False, threshold=0.7),
+            ScannerType.PII_DETECTION: ScannerConfig(enabled=True, threshold=0.8),
         }
 
         # When: SecurityConfig is instantiated with scanners
@@ -330,7 +331,7 @@ class TestSecurityConfigValidation:
         assert ScannerType.TOXICITY_INPUT in config.scanners
         assert ScannerType.PII_DETECTION in config.scanners
 
-    def test_security_config_validates_duplicate_scanner_types(self, mock_scanner_config):
+    def test_security_config_validates_duplicate_scanner_types(self):
         """
         Test that SecurityConfig raises ValueError for duplicate scanner types.
 
@@ -348,7 +349,7 @@ class TestSecurityConfigValidation:
             Then: ValueError is raised indicating duplicate scanner configuration.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating duplicate configs.
+            None - uses actual ScannerConfig instances.
         """
         # Note: Python dictionaries cannot have duplicate keys by design
         # This test verifies the validation logic exists and would catch duplicates
@@ -357,8 +358,8 @@ class TestSecurityConfigValidation:
 
         # Given: Valid scanners dictionary (no duplicates possible in Python dict)
         scanners = {
-            ScannerType.PROMPT_INJECTION: mock_scanner_config(enabled=True, threshold=0.5),
-            ScannerType.TOXICITY_INPUT: mock_scanner_config(enabled=False, threshold=0.7),
+            ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True, threshold=0.5),
+            ScannerType.TOXICITY_INPUT: ScannerConfig(enabled=False, threshold=0.7),
         }
 
         # When: SecurityConfig is instantiated with unique scanners
@@ -374,8 +375,8 @@ class TestSecurityConfigValidation:
         Test that SecurityConfig validates scanner configuration object types.
 
         Verifies:
-            validate_scanners() ensures all scanner configurations are proper
-            ScannerConfig instances per contract's Raises section.
+            Pydantic validation ensures all scanner configurations are proper
+            ScannerConfig instances per contract's validation rules.
 
         Business Impact:
             Prevents type errors during security scanning by validating configuration
@@ -384,7 +385,7 @@ class TestSecurityConfigValidation:
         Scenario:
             Given: Scanners dictionary with non-ScannerConfig value.
             When: SecurityConfig instantiation is attempted.
-            Then: ValueError is raised indicating invalid configuration type.
+            Then: ValidationError is raised indicating invalid configuration type.
 
         Fixtures Used:
             None - tests validation with invalid types.
@@ -397,15 +398,15 @@ class TestSecurityConfigValidation:
         }
 
         # When: SecurityConfig instantiation is attempted
-        # Then: ValueError is raised indicating invalid configuration type
-        with pytest.raises(ValueError, match="Invalid configuration for scanner"):
+        # Then: ValidationError is raised indicating invalid configuration type
+        with pytest.raises(ValidationError):
             SecurityConfig(scanners=scanners)
 
 
 class TestSecurityConfigGetters:
     """Test SecurityConfig public getter methods."""
 
-    def test_get_scanner_config_returns_existing_configuration(self, mock_scanner_config, scanner_type):
+    def test_get_scanner_config_returns_existing_configuration(self, scanner_type):
         """
         Test that get_scanner_config() returns configuration for configured scanner.
 
@@ -423,7 +424,6 @@ class TestSecurityConfigGetters:
             Then: Returns the configured ScannerConfig instance.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating ScannerConfig.
             - scanner_type: Fixture providing MockScannerType instance.
         """
         # Given: SecurityConfig with PROMPT_INJECTION scanner configured
@@ -468,7 +468,7 @@ class TestSecurityConfigGetters:
         # Then: Returns None indicating scanner not configured
         assert result is None
 
-    def test_is_scanner_enabled_returns_true_for_enabled_scanner(self, mock_scanner_config, scanner_type):
+    def test_is_scanner_enabled_returns_true_for_enabled_scanner(self, scanner_type):
         """
         Test that is_scanner_enabled() returns True for configured and enabled scanners.
 
@@ -486,7 +486,6 @@ class TestSecurityConfigGetters:
             Then: Returns True indicating scanner should execute.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating enabled ScannerConfig.
             - scanner_type: Fixture providing MockScannerType instance.
         """
         # Given: SecurityConfig with PROMPT_INJECTION scanner enabled
@@ -499,7 +498,7 @@ class TestSecurityConfigGetters:
         # Then: Returns True indicating scanner should execute
         assert result is True
 
-    def test_is_scanner_enabled_returns_false_for_disabled_scanner(self, mock_scanner_config, scanner_type):
+    def test_is_scanner_enabled_returns_false_for_disabled_scanner(self, scanner_type):
         """
         Test that is_scanner_enabled() returns False for scanners with enabled=False.
 
@@ -517,7 +516,6 @@ class TestSecurityConfigGetters:
             Then: Returns False indicating scanner should be skipped.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating disabled ScannerConfig.
             - scanner_type: Fixture providing MockScannerType instance.
         """
         # Given: SecurityConfig with TOXICITY_INPUT scanner disabled
@@ -559,7 +557,7 @@ class TestSecurityConfigGetters:
         # Then: Returns False indicating scanner not available
         assert result is False
 
-    def test_get_enabled_scanners_returns_list_of_enabled_types(self, mock_scanner_config, scanner_type):
+    def test_get_enabled_scanners_returns_list_of_enabled_types(self, scanner_type):
         """
         Test that get_enabled_scanners() returns list of enabled scanner types.
 
@@ -577,7 +575,6 @@ class TestSecurityConfigGetters:
             Then: Returns list containing only the 2 enabled scanner types.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating mixed configs.
             - scanner_type: Fixture providing MockScannerType instance.
         """
         # Given: SecurityConfig with 2 scanners enabled and 1 disabled
@@ -634,7 +631,7 @@ class TestSecurityConfigGetters:
         empty_config = SecurityConfig()
         assert empty_config.get_enabled_scanners() == []
 
-    def test_get_enabled_scanners_preserves_dictionary_insertion_order(self, mock_scanner_config, scanner_type):
+    def test_get_enabled_scanners_preserves_dictionary_insertion_order(self, scanner_type):
         """
         Test that get_enabled_scanners() returns scanners in insertion order.
 
@@ -652,7 +649,6 @@ class TestSecurityConfigGetters:
             Then: Returns list with scanner types in original insertion order.
 
         Fixtures Used:
-            - mock_scanner_config: Factory fixture for creating ordered configs.
             - scanner_type: Fixture providing MockScannerType instance.
         """
         # Given: SecurityConfig with scanners added in specific order
@@ -1003,7 +999,7 @@ class TestSecurityConfigMergeWithEnvironmentOverrides:
 class TestSecurityConfigSerialization:
     """Test SecurityConfig to_dict() and from_dict() serialization methods."""
 
-    def test_to_dict_exports_complete_configuration(self, mock_security_config, mock_scanner_config):
+    def test_to_dict_exports_complete_configuration(self, mock_security_config):
         """
         Test that to_dict() exports all configuration fields to dictionary.
 
@@ -1022,7 +1018,6 @@ class TestSecurityConfigSerialization:
 
         Fixtures Used:
             - mock_security_config: Factory fixture for SecurityConfig.
-            - mock_scanner_config: Factory fixture for scanner configurations.
         """
         # Given: SecurityConfig with complete configuration
         config = SecurityConfig(
@@ -1253,7 +1248,7 @@ class TestSecurityConfigSerialization:
 class TestSecurityConfigRoundTripSerialization:
     """Test complete serialization and deserialization cycles."""
 
-    def test_serialization_roundtrip_preserves_all_data(self, mock_security_config, mock_scanner_config):
+    def test_serialization_roundtrip_preserves_all_data(self, mock_security_config):
         """
         Test that to_dict() followed by from_dict() preserves all configuration data.
 
@@ -1272,7 +1267,6 @@ class TestSecurityConfigRoundTripSerialization:
 
         Fixtures Used:
             - mock_security_config: Factory fixture for SecurityConfig.
-            - mock_scanner_config: Factory fixture for scanner configurations.
         """
         # Given: Original SecurityConfig with complete configuration (simplified to avoid enum issues)
         original_config = SecurityConfig(

@@ -889,7 +889,7 @@ class SecurityConfig(BaseModel):
         # Apply environment variable overrides
         for key, value in overrides.items():
             if key.startswith("SECURITY_"):
-                config_key = key[8:].lower()  # Remove "SECURITY_" prefix
+                config_key = key[9:].lower()  # Remove "SECURITY_" prefix (9 characters)
 
                 if config_key == "mode":
                     # Handle special case for security mode
@@ -954,11 +954,11 @@ class SecurityConfig(BaseModel):
             "preset": self.preset.value if self.preset and hasattr(self.preset, "value") else self.preset,
             "environment": self.environment,
             "debug_mode": self.debug_mode,
-            "scanners": {k.value: v.dict() for k, v in self.scanners.items()},
+            "scanners": {(k.value if hasattr(k, "value") else k): v.dict() for k, v in self.scanners.items()},
             "performance": self.performance.dict(),
             "logging": self.logging.dict(),
             "custom_settings": self.custom_settings,
-            "enabled_scanners": [scanner.value for scanner in self.get_enabled_scanners()],
+            "enabled_scanners": [(scanner.value if hasattr(scanner, "value") else scanner) for scanner in self.get_enabled_scanners()],
         }
 
     @classmethod
@@ -1106,11 +1106,12 @@ class SecurityConfig(BaseModel):
         logging_data = data.get("logging", {})
 
         # Extract service configuration
+        # Support both flat format (from to_dict()) and nested format (external config)
         service_data = data.get("service", {})
-        service_name = service_data.get("name", "security-scanner")
-        version = service_data.get("version", "1.0.0")
-        environment = service_data.get("environment", "development")
-        debug_mode = service_data.get("debug_mode", False)
+        service_name = data.get("service_name", service_data.get("name", "security-scanner"))
+        version = data.get("version", service_data.get("version", "1.0.0"))
+        environment = data.get("environment", service_data.get("environment", "development"))
+        debug_mode = data.get("debug_mode", service_data.get("debug_mode", False))
 
         return cls(
             service_name=service_name,

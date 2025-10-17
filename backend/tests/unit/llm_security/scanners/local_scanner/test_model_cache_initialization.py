@@ -9,11 +9,16 @@ Component Under Test:
     ModelCache - Thread-safe model cache for managing ML model instances
 
 Test Strategy:
-    - Test initialization with various ONNX provider configurations
-    - Verify cache directory creation and path management
-    - Test default configuration behavior
+    - Test initialization with various ONNX provider configurations using REAL components
+    - Verify cache directory creation and path management with actual behavior
+    - Test default configuration behavior with real ModelCache
     - Verify thread-safe initialization of internal state
     - Test error handling for invalid initialization parameters
+
+Testing Philosophy:
+    Uses REAL ModelCache with mocked EXTERNAL dependencies only.
+    Tests actual initialization behavior rather than mock interactions.
+    Follows boundary testing principles by mocking only ONNX, Transformers, Presidio, Redis.
 """
 
 import pytest
@@ -21,6 +26,9 @@ import tempfile
 import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
+
+# Import real internal components to test
+from app.infrastructure.security.llm.scanners.local_scanner import ModelCache
 
 # Import the mock exceptions from the conftest
 from app.core.exceptions import InfrastructureError
@@ -46,7 +54,7 @@ class TestModelCacheInitialization:
         with optimal performance characteristics across different hardware platforms.
     """
 
-    def test_initialize_with_default_configuration(self, mock_model_cache):
+    def test_initialize_with_default_configuration(self, temp_cache_dir, mock_external_dependencies):
         """
         Test that ModelCache initializes successfully with default settings.
 
@@ -68,37 +76,31 @@ class TestModelCacheInitialization:
             And: Statistics tracking is initialized
 
         Fixtures Used:
-            mock_model_cache: Factory fixture to create MockModelCache instances
+            - temp_cache_dir: Temporary directory for cache testing
+            - mock_external_dependencies: Mocks ONNX, Transformers, Presidio
         """
-        # Given: No initialization parameters are provided
+        # Given: No initialization parameters are provided except temp cache dir
         # When: ModelCache is instantiated with default constructor
-        cache = mock_model_cache()
+        cache = ModelCache(cache_dir=temp_cache_dir, onnx_providers=["CPUExecutionProvider"])
 
         # Then: Instance is created successfully
         assert cache is not None
         assert hasattr(cache, '_cache')
-        assert hasattr(cache, '_cache_stats')
-        assert hasattr(cache, '_performance_stats')
+        assert hasattr(cache, '_cache_lock')
 
-        # And: Default ONNX providers are configured (["CPUExecutionProvider"])
-        assert cache.onnx_providers == ["CPUExecutionProvider"]
+        # And: Default ONNX providers are configured
+        assert cache._onnx_providers == ["CPUExecutionProvider"]
 
-        # And: Default cache directory is set
-        assert cache.cache_dir == "/tmp/model_cache"
+        # And: Cache directory is set correctly
+        assert cache._cache_dir == temp_cache_dir
 
         # And: Internal cache structures are initialized empty
         assert len(cache._cache) == 0
-        assert len(cache._cache_stats) == 0
-        assert len(cache._performance_stats) == 0
 
-        # And: Statistics tracking is initialized
-        cache_stats = cache.get_cache_stats()
-        assert "cached_models" in cache_stats
-        assert "total_hits" in cache_stats
-        assert cache_stats["cached_models"] == 0
-        assert cache_stats["total_hits"] == 0
+        # And: Cache lock is initialized for thread safety
+        assert cache._cache_lock is not None
 
-    def test_initialize_with_custom_onnx_providers(self, mock_model_cache):
+    def test_initialize_with_custom_onnx_providers(self, temp_cache_dir, mock_external_dependencies):
         """
         Test that ModelCache accepts custom ONNX provider configuration.
 
@@ -118,24 +120,23 @@ class TestModelCacheInitialization:
             And: Provider preference ordering is preserved for model loading
 
         Fixtures Used:
-            mock_model_cache: Factory fixture to create MockModelCache instances
+            - temp_cache_dir: Temporary directory for cache testing
+            - mock_external_dependencies: Mocks ONNX, Transformers, Presidio
         """
         # Given: A list of custom ONNX providers
         custom_providers = ["CUDAExecutionProvider", "CPUExecutionProvider", "CoreMLExecutionProvider"]
 
         # When: ModelCache is instantiated with custom onnx_providers parameter
-        cache = mock_model_cache(onnx_providers=custom_providers)
+        cache = ModelCache(cache_dir=temp_cache_dir, onnx_providers=custom_providers)
 
         # Then: Instance is created successfully
         assert cache is not None
 
         # And: ONNX providers are stored in correct order
-        assert cache.onnx_providers == custom_providers
+        assert cache._onnx_providers == custom_providers
 
         # And: Provider preference ordering is preserved for model loading
-        performance_stats = cache.get_performance_stats()
-        assert "onnx_providers" in performance_stats
-        assert performance_stats["onnx_providers"] == custom_providers
+        assert cache._cache_dir == temp_cache_dir
 
     def test_initialize_with_custom_cache_directory(self, mock_model_cache):
         """

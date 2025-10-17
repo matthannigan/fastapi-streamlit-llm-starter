@@ -168,7 +168,6 @@ class TestCacheEntryInitialization:
 class TestCacheEntrySerialization:
     """Test CacheEntry conversion to dictionary format for Redis storage."""
 
-    @pytest.mark.skip(reason="CacheEntry.to_dict() has implementation bug: uses asdict() which doesn't serialize datetime objects in SecurityResult.timestamp field. The contract requires JSON-serializable output but current implementation fails this requirement.")
     def test_to_dict_produces_json_serializable_output(self):
         """
         Test that to_dict() produces a fully JSON-serializable dictionary.
@@ -233,7 +232,10 @@ class TestCacheEntrySerialization:
         assert isinstance(serialized["result"], dict)
         assert serialized["result"]["is_safe"] == False
         assert serialized["result"]["score"] == 0.3
+        # Note: CacheEntry.to_dict() includes scanned_text for reconstruction,
+        # unlike SecurityResult.to_dict() which excludes it for privacy
         assert serialized["result"]["scanned_text"] == "Complex test content with violations"
+        assert serialized["result"]["scanned_text_length"] == len("Complex test content with violations")
         assert serialized["result"]["scan_duration_ms"] == 250
         assert len(serialized["result"]["violations"]) == 1
         assert serialized["result"]["violations"][0]["type"] == "prompt_injection"
@@ -712,7 +714,6 @@ class TestCacheEntryDeserialization:
             # The actual implementation may have different error messages, so we check for common patterns
             assert any(keyword in error_message for keyword in ["time", "timestamp", "iso", "format", "parse", "fromisoformat", "month", "day", "hour", "minute"])
 
-    @pytest.mark.skip(reason="CacheEntry.from_dict() doesn't perform strict type validation as documented in contract. Current implementation accepts wrong data types without raising TypeError/ValueError.")
     def test_from_dict_raises_type_error_for_incorrect_data_types(self):
         """
         Test that from_dict() raises TypeError when dictionary contains wrong data types.

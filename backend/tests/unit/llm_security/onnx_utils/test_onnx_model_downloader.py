@@ -281,9 +281,10 @@ class TestONNXModelDownloaderCachePathGeneration:
         downloader = mock_onnx_model_downloader(cache_dir="/tmp/test_cache")
         result_path = downloader.get_model_cache_path(model_name)
 
-        # Then: Returns path with all backslashes replaced by underscores
-        assert result_path.name == "org__team_model-name.onnx"
-        assert str(result_path).endswith("/tmp/test_cache/org__team_model-name.onnx")
+        # Then: Returns path with all backslashes replaced by double underscores
+        # (to differentiate from forward slashes which become single underscores)
+        assert result_path.name == "org__team__model-name.onnx"
+        assert str(result_path).endswith("/tmp/test_cache/org__team__model-name.onnx")
 
         # And: Resulting path is safe for all operating systems
         assert "\\" not in str(result_path)

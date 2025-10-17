@@ -9,33 +9,37 @@ Component Under Test:
     LocalLLMSecurityScanner - Comprehensive LLM security scanner service
 
 Test Strategy:
-    - Test initialization with various configuration sources
+    - Test initialization with various configuration sources using REAL components
     - Verify scanner instance creation based on configuration
-    - Test model cache and result cache setup
-    - Verify lazy loading infrastructure
+    - Test model cache and result cache setup with actual behavior
+    - Verify lazy loading infrastructure with real components
     - Test metrics tracking initialization
+
+Testing Philosophy:
+    Uses REAL LocalLLMSecurityScanner with mocked EXTERNAL dependencies only.
+    Tests actual initialization behavior rather than mock interactions.
+    Follows boundary testing principles by mocking only ONNX, Transformers, Presidio, Redis.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock
 from datetime import datetime, UTC
 
-# Import the actual mock classes from fixtures
+# Import real internal components to test
+from app.infrastructure.security.llm.scanners.local_scanner import LocalLLMSecurityScanner
+from app.infrastructure.security.llm.config import SecurityConfig, ScannerConfig, ScannerType, ViolationAction
+
+# Import shared exception mocks and backward compatibility mocks
 try:
-    from .conftest import (
-        MockLocalLLMSecurityScanner, MockSecurityConfig, MockModelCache
-    )
     from ..conftest import (
         MockConfigurationError, MockInfrastructureError
     )
+    from .conftest import MockLocalLLMSecurityScanner
 except ImportError:
     # Fallback for when running tests directly
-    from tests.unit.llm_security.scanners.local_scanner.conftest import (
-        MockLocalLLMSecurityScanner, MockSecurityConfig, MockModelCache
-    )
     from tests.unit.llm_security.conftest import (
         MockConfigurationError, MockInfrastructureError
     )
+    from tests.unit.llm_security.scanners.local_scanner.conftest import MockLocalLLMSecurityScanner
 
 
 class TestLocalLLMSecurityScannerInitialization:
@@ -61,12 +65,12 @@ class TestLocalLLMSecurityScannerInitialization:
         performance characteristics.
     """
 
-    def test_initialize_with_default_configuration(self):
+    def test_initialize_with_default_configuration(self, real_local_scanner):
         """
         Test that LocalLLMSecurityScanner initializes with default settings.
 
         Verifies:
-            Scanner can be instantiated without parameters and loads default
+            Scanner can be instantiated with SecurityConfig and loads default
             configuration per docstring specification.
 
         Business Impact:
@@ -74,34 +78,42 @@ class TestLocalLLMSecurityScannerInitialization:
             security scanning requirements.
 
         Scenario:
-            Given: No configuration parameters are provided
-            When: LocalLLMSecurityScanner is instantiated
+            Given: A real LocalLLMSecurityScanner with mocked external deps
+            When: LocalLLMSecurityScanner is instantiated via fixture
             Then: Instance is created successfully
-            And: Default configuration is loaded from YAML
+            And: Default configuration is loaded
             And: Model cache is initialized with default settings
             And: Scanner configurations are prepared
             And: Metrics tracking is initialized
 
         Fixtures Used:
-            None (testing component initialization directly)
+            - real_local_scanner: Real LocalLLMSecurityScanner with mocked external deps
         """
-        # Given: No configuration parameters are provided
-        # When: LocalLLMSecurityScanner is instantiated with defaults
-        scanner = MockLocalLLMSecurityScanner()
+        # Given: A real LocalLLMSecurityScanner with mocked external deps
+        scanner = real_local_scanner
 
         # Then: Instance is created successfully
         assert scanner is not None
         assert hasattr(scanner, 'config')
         assert hasattr(scanner, 'model_cache')
         assert hasattr(scanner, 'result_cache')
+        assert isinstance(scanner.config, SecurityConfig)
 
-        # And: Default configuration is loaded (verified by mock instance creation)
+        # And: Default configuration is loaded
+        assert scanner.config.service_name is not None
+        assert scanner.config.scanners is not None
+
         # And: Model cache is initialized with default settings
-        # And: Scanner configurations are prepared
-        # And: Metrics tracking is initialized
-        # These are verified by the successful instantiation and the mock setup
+        assert scanner.model_cache is not None
 
-    def test_initialize_with_custom_security_config_object(self, mock_security_config):
+        # And: Scanner configurations are prepared
+        assert hasattr(scanner, 'scanner_configs')  # Internal scanner storage
+
+        # And: Metrics tracking is initialized
+        assert hasattr(scanner, 'start_time')
+        assert isinstance(scanner.start_time, datetime)
+
+    def test_initialize_with_custom_security_config_object(self):
         """
         Test that LocalLLMSecurityScanner accepts custom SecurityConfig.
 
@@ -121,27 +133,32 @@ class TestLocalLLMSecurityScannerInitialization:
             And: Model cache uses custom configuration
 
         Fixtures Used:
-            - mock_security_config: Factory to create configuration instances
+            None (testing component initialization directly)
         """
         # Given: A custom SecurityConfig with specific scanner settings
-        custom_config = mock_security_config(
-            scanners={
-                "prompt_injection": {"enabled": True, "threshold": 0.8},
-                "toxicity_input": {"enabled": True, "threshold": 0.9}
-            },
-            environment="testing"
+        custom_config = SecurityConfig()
+        custom_config.scanners[ScannerType.PROMPT_INJECTION] = ScannerConfig(
+            enabled=True, threshold=0.8, action=ViolationAction.WARN
         )
+        custom_config.scanners[ScannerType.TOXICITY_INPUT] = ScannerConfig(
+            enabled=True, threshold=0.9, action=ViolationAction.WARN
+        )
+        custom_config.service_name = "test-custom-service"
 
         # When: LocalLLMSecurityScanner is instantiated with the config
-        scanner = MockLocalLLMSecurityScanner(config=custom_config)
+        scanner = LocalLLMSecurityScanner(config=custom_config)
 
         # Then: Custom configuration is used instead of YAML
         assert scanner is not None
         assert scanner.config == custom_config
+        assert scanner.config.service_name == "test-custom-service"
 
         # And: Scanner instances reflect custom settings
+        assert ScannerType.PROMPT_INJECTION in scanner.config.scanners
+        assert ScannerType.TOXICITY_INPUT in scanner.config.scanners
+
         # And: Model cache uses custom configuration
-        # Verified by successful instantiation with custom config
+        assert scanner.model_cache is not None
 
     def test_initialize_with_custom_config_path(self):
         """
@@ -217,7 +234,7 @@ class TestLocalLLMSecurityScannerInitialization:
             # And: Appropriate presets are applied
             # Verified by successful instantiation with environment parameter
 
-    def test_initializes_model_cache_with_onnx_providers(self):
+    def test_initializes_model_cache_with_onnx_providers(self, mock_external_dependencies, real_security_config):
         """
         Test that LocalLLMSecurityScanner initializes ModelCache with ONNX config.
 
@@ -230,18 +247,20 @@ class TestLocalLLMSecurityScannerInitialization:
             across different deployment platforms.
 
         Scenario:
-            Given: LocalLLMSecurityScanner being initialized
+            Given: LocalLLMSecurityScanner being initialized with mocked external deps
             When: ModelCache is created as part of scanner initialization
             Then: Model cache includes ONNX provider configuration
             And: ONNX availability is detected and logged
             And: Hardware acceleration is available if supported
 
         Fixtures Used:
-            None (testing component initialization directly)
+            - mock_external_dependencies: Mocks ONNX, Transformers, Presidio
+            - real_security_config: Real SecurityConfig to avoid file loading
         """
-        # Given: LocalLLMSecurityScanner being initialized
+        # Given: LocalLLMSecurityScanner being initialized with mocked external deps
         # When: ModelCache is created as part of scanner initialization
-        scanner = MockLocalLLMSecurityScanner()
+        # Fixed: Pass explicit config to avoid file-based config loading
+        scanner = LocalLLMSecurityScanner(config=real_security_config)
 
         # Then: Model cache includes ONNX provider configuration
         assert scanner is not None
@@ -250,7 +269,7 @@ class TestLocalLLMSecurityScannerInitialization:
 
         # And: ONNX availability is detected and logged
         # And: Hardware acceleration is available if supported
-        # These behaviors are verified by successful instantiation
+        # These behaviors are verified by successful instantiation with mocked ONNX
 
     def test_initializes_result_cache_with_configuration(self, mock_security_config):
         """
@@ -597,17 +616,17 @@ class TestLocalLLMSecurityScannerInitializeMethod:
     configurations for lazy-loaded scanners, supporting warmup scenarios.
 
     Scope:
-        - Cache and configuration initialization
-        - Lazy loading enablement
+        - Cache and configuration initialization with REAL components
+        - Lazy loading enablement with actual behavior
         - Idempotent initialization behavior
-        - Infrastructure setup
+        - Infrastructure setup with mocked external dependencies
 
     Business Impact:
         Explicit initialization enables warm-up workflows and verification
         of scanner service readiness before handling requests.
     """
 
-    async def test_initialize_prepares_cache_and_configuration(self):
+    async def test_initialize_prepares_cache_and_configuration(self, real_local_scanner):
         """
         Test that initialize() prepares infrastructure for lazy loading.
 
@@ -627,22 +646,29 @@ class TestLocalLLMSecurityScannerInitializeMethod:
             And: No scanner models are loaded yet
 
         Fixtures Used:
-            - mock_local_llm_security_scanner: Factory to create scanner instances
+            - real_local_scanner: Real LocalLLMSecurityScanner with mocked external deps
         """
         # Given: A newly instantiated LocalLLMSecurityScanner
-        scanner = MockLocalLLMSecurityScanner()
+        scanner = real_local_scanner
 
         # When: initialize() is called
         await scanner.initialize()
 
         # Then: Cache is initialized and ready
-        # And: Scanner configurations are prepared
-        # And: Service is ready for lazy loading
-        # And: No scanner models are loaded yet
-        # Verified by the initialize method being called successfully
-        assert len(scanner._initialize_calls) > 0
+        assert scanner.result_cache is not None
 
-    async def test_initialize_is_idempotent(self):
+        # And: Scanner configurations are prepared
+        # Fixed: Use 'scanners' (public) not '_scanners' (private)
+        assert hasattr(scanner, 'scanners')
+
+        # And: Service is ready for lazy loading
+        assert scanner.config is not None
+
+        # And: No scanner models are loaded yet (lazy loading)
+        # We can verify this by checking that scanners dict is empty initially
+        assert len(scanner.scanners) == 0
+
+    async def test_initialize_is_idempotent(self, real_local_scanner):
         """
         Test that initialize() can be called multiple times safely.
 
@@ -661,10 +687,10 @@ class TestLocalLLMSecurityScannerInitializeMethod:
             And: Service remains in valid state
 
         Fixtures Used:
-            - mock_local_llm_security_scanner: Factory to create scanner instances
+            - real_local_scanner: Real LocalLLMSecurityScanner with mocked external deps
         """
         # Given: A scanner service that has been initialized
-        scanner = MockLocalLLMSecurityScanner()
+        scanner = real_local_scanner
         await scanner.initialize()  # First initialization
 
         # When: initialize() is called again
@@ -674,7 +700,8 @@ class TestLocalLLMSecurityScannerInitializeMethod:
         # And: No redundant setup is performed
         # And: Service remains in valid state
         # Idempotency is verified by both calls completing without error
-        assert len(scanner._initialize_calls) == 2
+        assert scanner.result_cache is not None
+        assert scanner.config is not None
 
     async def test_initialize_logs_readiness_status(self):
         """

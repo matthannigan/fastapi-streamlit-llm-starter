@@ -30,6 +30,7 @@ Fixtures Used:
 """
 
 import pytest
+import asyncio
 from typing import Dict, Any
 
 
@@ -78,7 +79,7 @@ class TestONNXModelInfoDataclass:
         # Then: All attributes are accessible and contain correct values
         assert model_info.model_name == "microsoft/deberta-v3-base"
         assert model_info.model_path == "/cache/models/deberta.onnx"
-        assert model_info.model_hash == "abcd1234567890abcd1234567890abcd1234567890abcd1234567890"
+        assert model_info.model_hash == "abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234"
         assert model_info.file_size_mb == 512.34
         assert model_info.providers == ["CPUExecutionProvider"]
         assert model_info.metadata == {"provider": "CPUExecutionProvider", "optimize_for": "latency"}
@@ -851,6 +852,10 @@ class TestGetONNXManagerFunction:
             - None (testing actual function behavior)
         """
         from app.infrastructure.security.llm.onnx_utils import get_onnx_manager
+        
+        # Reset global state to ensure we get a fresh manager
+        import app.infrastructure.security.llm.onnx_utils as onnx_utils_module
+        onnx_utils_module._global_manager = None
 
         # Given: cache_dir="/app/models" is provided as kwarg
         custom_cache_dir = "/tmp/test_models_cache"
@@ -858,11 +863,10 @@ class TestGetONNXManagerFunction:
         # When: get_onnx_manager(cache_dir="/app/models") is called
         manager = get_onnx_manager(cache_dir=custom_cache_dir)
 
-        # Then: Returned manager uses specified cache directory
-        assert str(manager.downloader.cache_dir).endswith(custom_cache_dir)
-
-        # And: All model operations use custom cache location
-        assert custom_cache_dir in str(manager.downloader.cache_dir)
+        # Then: Returned manager uses specified cache directory exactly as provided
+        # (custom cache dirs are used as-is, per docstring example)
+        manager_cache_path = str(manager.downloader.cache_dir)
+        assert manager_cache_path == custom_cache_dir
 
     def test_supports_preferred_providers_configuration(self):
         """
@@ -883,7 +887,11 @@ class TestGetONNXManagerFunction:
         Fixtures Used:
             - None (testing actual function behavior)
         """
-        from app.infrastructure.security.llm.onnx_utils import get_onnx_manager
+        from app.infrastructure.security.llm.onnx_utils import get_onnx_manager, _global_manager
+
+        # Reset global state to ensure we get a fresh manager
+        import app.infrastructure.security.llm.onnx_utils as onnx_utils_module
+        onnx_utils_module._global_manager = None
 
         # Given: preferred_providers=["CUDAExecutionProvider"] as kwarg
         preferred_providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
@@ -918,6 +926,10 @@ class TestGetONNXManagerFunction:
             - None (testing actual function behavior)
         """
         from app.infrastructure.security.llm.onnx_utils import get_onnx_manager
+        
+        # Reset global state to ensure we get a fresh manager
+        import app.infrastructure.security.llm.onnx_utils as onnx_utils_module
+        onnx_utils_module._global_manager = None
 
         # Given: auto_download=False is provided as kwarg
         auto_download_setting = False
@@ -940,6 +952,7 @@ class TestVerifyONNXSetupFunction:
     comprehensive diagnostics according to the documented contract.
     """
 
+    @pytest.mark.asyncio
     async def test_returns_comprehensive_diagnostics_dictionary(self):
         """
         Test that verify_onnx_setup() returns complete diagnostics information.
@@ -972,10 +985,9 @@ class TestVerifyONNXSetupFunction:
             # When: verify_onnx_setup() is called
             diagnostics = verify_onnx_setup(test_model_name)
 
-            # Since this is async, we need to handle it properly
-            import asyncio
+            # Since this test is async and verify_onnx_setup returns a coroutine, await it directly
             if asyncio.iscoroutine(diagnostics):
-                diagnostics = asyncio.run(diagnostics)
+                diagnostics = await diagnostics
 
             # Then: Returns dictionary with all documented fields
             assert isinstance(diagnostics, dict)
@@ -1012,6 +1024,7 @@ class TestVerifyONNXSetupFunction:
             # Test failed, let exception propagate
             raise
 
+    @pytest.mark.asyncio
     async def test_uses_default_test_model_when_none_specified(self):
         """
         Test that verify_onnx_setup() uses default security scanner model.
@@ -1041,9 +1054,8 @@ class TestVerifyONNXSetupFunction:
             diagnostics = verify_onnx_setup()
 
             # Handle async function
-            import asyncio
             if asyncio.iscoroutine(diagnostics):
-                diagnostics = asyncio.run(diagnostics)
+                diagnostics = await diagnostics
 
             # Then: Uses 'microsoft/deberta-v3-base-injection' for testing
             assert diagnostics["model_name"] == "microsoft/deberta-v3-base-injection"
@@ -1058,6 +1070,7 @@ class TestVerifyONNXSetupFunction:
             # Test failed, let exception propagate
             raise
 
+    @pytest.mark.asyncio
     async def test_allows_custom_test_model_specification(self):
         """
         Test that verify_onnx_setup() accepts custom model for verification.
@@ -1089,9 +1102,8 @@ class TestVerifyONNXSetupFunction:
             diagnostics = verify_onnx_setup(custom_model_name)
 
             # Handle async function
-            import asyncio
             if asyncio.iscoroutine(diagnostics):
-                diagnostics = asyncio.run(diagnostics)
+                diagnostics = await diagnostics
 
             # Then: Uses specified model for compatibility testing
             assert diagnostics["model_name"] == custom_model_name
@@ -1107,6 +1119,7 @@ class TestVerifyONNXSetupFunction:
             # Test failed, let exception propagate
             raise
 
+    @pytest.mark.asyncio
     async def test_handles_onnx_runtime_not_installed(self):
         """
         Test that verify_onnx_setup() handles missing ONNX Runtime gracefully.
@@ -1147,7 +1160,7 @@ class TestVerifyONNXSetupFunction:
                     # Handle async function
                     import asyncio
                     if asyncio.iscoroutine(diagnostics):
-                        diagnostics = asyncio.run(diagnostics)
+                        diagnostics = await diagnostics
 
                     # Then: diagnostics["onnx_available"] is False
                     assert diagnostics["onnx_available"] is False
@@ -1165,6 +1178,7 @@ class TestVerifyONNXSetupFunction:
             # Test failed, let exception propagate
             raise
 
+    @pytest.mark.asyncio
     async def test_returns_empty_recommendations_for_working_setup(self):
         """
         Test that verify_onnx_setup() returns empty recommendations when all works.
@@ -1218,7 +1232,7 @@ class TestVerifyONNXSetupFunction:
                     # Handle async function
                     import asyncio
                     if asyncio.iscoroutine(diagnostics):
-                        diagnostics = asyncio.run(diagnostics)
+                        diagnostics = await diagnostics
 
                     # Then: diagnostics["recommendations"] is empty list []
                     assert diagnostics["recommendations"] == []
@@ -1234,6 +1248,7 @@ class TestVerifyONNXSetupFunction:
             # Test failed, let exception propagate
             raise
 
+    @pytest.mark.asyncio
     async def test_checks_onnx_runtime_installation_and_version(self):
         """
         Test that verify_onnx_setup() checks ONNX Runtime availability and version.
@@ -1282,7 +1297,7 @@ class TestVerifyONNXSetupFunction:
                 # Handle async function
                 import asyncio
                 if asyncio.iscoroutine(diagnostics):
-                    diagnostics = asyncio.run(diagnostics)
+                    diagnostics = await diagnostics
 
                 # Then: diagnostics["onnx_available"] is True
                 assert diagnostics["onnx_available"] is True

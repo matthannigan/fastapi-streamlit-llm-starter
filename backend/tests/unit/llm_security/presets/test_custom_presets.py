@@ -1310,6 +1310,13 @@ class TestValidatePresetConfig:
                 "enabled": True,
                 "level": "INFO",
                 "log_scan_operations": True
+            },
+            "service": {
+                "environment": "testing",
+                "debug_mode": True
+            },
+            "features": {
+                "experimental_features": False
             }
         }
 
@@ -1362,7 +1369,9 @@ class TestValidatePresetConfig:
             },
             "output_scanners": {},
             "performance": {"max_concurrent_scans": 5},
-            "logging": {"enabled": True}
+            "logging": {"enabled": True},
+            "service": {"environment": "testing"},
+            "features": {}
         }
 
         invalid_config = {

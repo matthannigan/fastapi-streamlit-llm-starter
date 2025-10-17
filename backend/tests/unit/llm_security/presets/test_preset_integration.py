@@ -1559,7 +1559,8 @@ class TestPresetThreadSafety:
                 },
                 "service": {
                     "environment": f"test-{preset_id}"
-                }
+                },
+                "features": {}
             }
 
         def validation_worker_thread(thread_id):

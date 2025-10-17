@@ -154,9 +154,13 @@ class CacheEntry:
         and datetime objects to Redis-compatible formats. All data is
         converted to JSON-serializable types.
 
+        Note: Unlike SecurityResult.to_dict(), this method includes the
+        full scanned_text field for cache reconstruction, not just the
+        text length. This is necessary for proper cache restoration.
+
         Returns:
             Dictionary containing all entry data in JSON-serializable format:
-            - result: SecurityResult data as dictionary
+            - result: SecurityResult data as dictionary (with scanned_text)
             - cached_at: ISO-formatted UTC timestamp string
             - cache_key: String cache key identifier
             - scanner_config_hash: Configuration hash string
@@ -170,8 +174,12 @@ class CacheEntry:
             >>> assert isinstance(serialized["cached_at"], str)
             >>> assert isinstance(serialized["result"], dict)
         """
+        # Use to_dict() for the result but add back scanned_text for cache reconstruction
+        result_dict = self.result.to_dict()
+        result_dict["scanned_text"] = self.result.scanned_text  # Add back for reconstruction
+        
         return {
-            "result": asdict(self.result),
+            "result": result_dict,
             "cached_at": self.cached_at.isoformat(),
             "cache_key": self.cache_key,
             "scanner_config_hash": self.scanner_config_hash,
@@ -215,6 +223,24 @@ class CacheEntry:
             >>> assert restored.result.is_safe == entry.result.is_safe
             >>> assert restored.cached_at == entry.cached_at
         """
+        # Validate required field types (check existence first to allow KeyError for missing fields)
+        if "cache_key" in data and not isinstance(data["cache_key"], str):
+            raise TypeError(f"cache_key must be str, got {type(data['cache_key']).__name__}")
+        
+        if "scanner_config_hash" in data and not isinstance(data["scanner_config_hash"], str):
+            raise TypeError(f"scanner_config_hash must be str, got {type(data['scanner_config_hash']).__name__}")
+        
+        if "scanner_version" in data and not isinstance(data["scanner_version"], str):
+            raise TypeError(f"scanner_version must be str, got {type(data['scanner_version']).__name__}")
+        
+        if "ttl_seconds" in data and not isinstance(data["ttl_seconds"], int):
+            raise TypeError(f"ttl_seconds must be int, got {type(data['ttl_seconds']).__name__}")
+        
+        # Validate optional field type if present
+        hit_count = data.get("hit_count", 0)
+        if not isinstance(hit_count, int):
+            raise TypeError(f"hit_count must be int, got {type(hit_count).__name__}")
+        
         # Recreate SecurityResult from dict
         result_data = data["result"]
         violations = [
@@ -238,7 +264,7 @@ class CacheEntry:
             scanner_config_hash=data["scanner_config_hash"],
             scanner_version=data["scanner_version"],
             ttl_seconds=data["ttl_seconds"],
-            hit_count=data.get("hit_count", 0),
+            hit_count=hit_count,
         )
 
 
@@ -617,6 +643,14 @@ class SecurityResultCache:
             - TTL values are in seconds and should be appropriate for security scan
               result freshness requirements
         """
+        # Validate config type first before accessing attributes
+        if not isinstance(config, SecurityConfig):
+            raise TypeError(f"config must be a SecurityConfig instance, got {type(config).__name__}")
+
+        # Validate default_ttl
+        if not isinstance(default_ttl, int) or default_ttl <= 0:
+            raise ValueError(f"default_ttl must be a positive integer, got {default_ttl}")
+
         self.config = config
         self.enabled = enabled and config.performance.enable_result_caching
         self.key_prefix = key_prefix

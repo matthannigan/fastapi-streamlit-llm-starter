@@ -239,52 +239,49 @@ def mock_security_service_factory(mock_security_config):
 
 
 @pytest.fixture
-def minimal_security_config(mock_security_config):
-    """Minimal SecurityConfig for basic factory testing.
-    
-    Uses shared mock_security_config fixture from parent conftest.
-    """
-    return mock_security_config(
-        scanners={"prompt_injection": {"enabled": True, "threshold": 0.7}},
-        performance={"max_concurrent_scans": 2},
-        logging={"log_level": "DEBUG"},
+def minimal_security_config():
+    """Minimal SecurityConfig for basic factory testing with proper ScannerType enum keys."""
+    from app.infrastructure.security.llm.config import SecurityConfig, ScannerType, ScannerConfig
+
+    return SecurityConfig(
         service_name="minimal-test-service",
         environment="testing",
-        debug_mode=True
+        debug_mode=True,
+        scanners={
+            ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True, threshold=0.7)
+        }
     )
 
 
 @pytest.fixture
-def strict_security_config(mock_security_config):
-    """Strict SecurityConfig for security-critical factory testing.
-    
-    Uses shared mock_security_config fixture from parent conftest.
-    """
-    return mock_security_config(
-        scanners={"prompt_injection": {"enabled": True, "threshold": 0.3}},
-        performance={"max_concurrent_scans": 10},
-        logging={"log_level": "INFO"},
+def strict_security_config():
+    """Strict SecurityConfig for security-critical factory testing with proper ScannerType enum keys."""
+    from app.infrastructure.security.llm.config import SecurityConfig, ScannerType, ScannerConfig, PresetName
+
+    return SecurityConfig(
         service_name="strict-security-service",
-        preset="strict",
+        preset=PresetName.STRICT,
         environment="production",
-        debug_mode=False
+        debug_mode=False,
+        scanners={
+            ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True, threshold=0.3)
+        }
     )
 
 
 @pytest.fixture
-def development_security_config(mock_security_config):
-    """Development SecurityConfig for development environment factory testing.
-    
-    Uses shared mock_security_config fixture from parent conftest.
-    """
-    return mock_security_config(
-        scanners={"prompt_injection": {"enabled": True, "threshold": 0.8}},
-        performance={"max_concurrent_scans": 2},
-        logging={"log_level": "DEBUG"},
+def development_security_config():
+    """Development SecurityConfig for development environment factory testing with proper ScannerType enum keys."""
+    from app.infrastructure.security.llm.config import SecurityConfig, ScannerType, ScannerConfig, PresetName
+
+    return SecurityConfig(
         service_name="development-security-service",
-        preset="development",
+        preset=PresetName.DEVELOPMENT,
         environment="development",
-        debug_mode=True
+        debug_mode=True,
+        scanners={
+            ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True, threshold=0.8)
+        }
     )
 
 
@@ -460,31 +457,54 @@ def mocked_yaml_loader():
 
 
 @pytest.fixture
-def cached_service_scenario(mock_security_service_factory, mock_security_config):
+def cached_service_scenario(mock_security_service_factory):
     """
     Pre-configured factory with cached services for testing cache behavior.
 
     Sets up a factory with multiple cached services to test cache statistics,
     cache clearing, and cache key management functionality.
+
+    Uses SecurityConfig with proper ScannerType enum keys.
     """
+    from app.infrastructure.security.llm.config import SecurityConfig, ScannerType, ScannerConfig
+
     factory = mock_security_service_factory()
+
+    # Create configs with proper ScannerType enum keys
+    config1 = SecurityConfig(
+        service_name="cached-service-1",
+        environment="testing",
+        scanners={ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)}
+    )
+
+    config2 = SecurityConfig(
+        service_name="cached-service-2",
+        environment="testing",
+        scanners={ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)}
+    )
+
+    config3 = SecurityConfig(
+        service_name="cached-service-3",
+        environment="testing",
+        scanners={ScannerType.PROMPT_INJECTION: ScannerConfig(enabled=True)}
+    )
 
     # Create and cache multiple services
     service1 = factory.create_service(
         mode="local",
-        config=mock_security_config(service_name="cached-service-1"),
+        config=config1,
         cache_key="test_service_1"
     )
 
     service2 = factory.create_service(
         mode="local",
-        config=mock_security_config(service_name="cached-service-2"),
+        config=config2,
         cache_key="test_service_2"
     )
 
     service3 = factory.create_service(
         mode="saas",
-        config=mock_security_config(service_name="cached-service-3"),
+        config=config3,
         cache_key="test_service_3"
     )
 

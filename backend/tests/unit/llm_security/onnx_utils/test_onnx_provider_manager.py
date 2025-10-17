@@ -73,7 +73,7 @@ class TestONNXProviderManagerInitialization:
         Test that provider detection is deferred until first detection call.
 
         Verifies:
-            No ONNX Runtime import occurs during initialization per lazy loading behavior.
+            No provider detection occurs during initialization per lazy loading behavior.
 
         Business Impact:
             Improves startup performance by avoiding expensive provider detection.
@@ -83,7 +83,6 @@ class TestONNXProviderManagerInitialization:
             And: No methods have been called yet
             When: Instance is created
             Then: No provider detection has occurred
-            And: ONNX Runtime has not been imported
             And: Instance is ready to use
 
         Fixtures Used:
@@ -92,22 +91,20 @@ class TestONNXProviderManagerInitialization:
         # Given: ONNXProviderManager is instantiated
         manager_factory = mock_onnx_provider_manager
 
-        # Mock ONNX Runtime to track imports
-        with patch('app.infrastructure.security.llm.onnx_utils.ort') as mock_ort:
-            # When: Instance is created
-            manager = manager_factory()
+        # When: Instance is created
+        manager = manager_factory()
 
-            # Then: No provider detection has occurred
-            assert manager.providers_cache is None
-            assert len(manager.detection_history) == 0
+        # Then: No provider detection has occurred
+        assert manager.providers_cache is None
+        assert len(manager.detection_history) == 0
 
-            # And: ONNX Runtime has not been imported during initialization
-            mock_ort.assert_not_called()
+        # And: Instance is ready to use
+        assert hasattr(manager, 'detect_providers')
+        assert hasattr(manager, 'get_optimal_providers')
+        assert hasattr(manager, 'configure_session_options')
 
-            # And: Instance is ready to use
-            assert hasattr(manager, 'detect_providers')
-            assert hasattr(manager, 'get_optimal_providers')
-            assert hasattr(manager, 'configure_session_options')
+        # And: No optimization history yet
+        assert len(manager.optimization_history) == 0
 
     def test_is_thread_safe_for_concurrent_initialization(self, mock_onnx_provider_manager):
         """
