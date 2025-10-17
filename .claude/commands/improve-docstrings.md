@@ -1,6 +1,6 @@
 # Docstring Improvement with Change-Focused Review
 
-Analyze $AUGMENTS to determine the optimal approach for docstring improvement using up to 3 parallel, independent @agent-docstring-improver agents. Prioritize review of changed code areas while respecting existing documentation for unchanged components.
+Analyze $ARGUMENTS to determine the optimal approach for docstring improvement using up to 3 parallel, independent @agent-docstring-improver agents. Prioritize review of changed code areas while respecting existing documentation for unchanged components.
 
 **🔍 CHANGE ANALYSIS (First Step):**
 Before launching any agents, analyze git status to understand what has changed:
@@ -23,21 +23,23 @@ Before launching any agents, analyze git status to understand what has changed:
    - For new files, perform comprehensive review
 
 **📂 SINGLE FILE DETECTION:**
-IF $AUGMENTS contains only one specific file path (not a wildcard or directory):
+IF $ARGUMENTS contains only one specific file path (not a wildcard or directory):
 - Analyze the file's git status to determine review scope
 - Launch a single @agent-docstring-improver agent with change-focused instructions
 - For modified files: prioritize changed functions/classes only
 - For new/untracked files: comprehensive docstring review
 
+IF $ARGUMENTS contains only one specific file path AND a text string or list of text strings, it means the user wants those specific classes or methods to be the target of the docstring improvement within the single file.
+
 **📁 MULTIPLE FILES/DIRECTORY/WILDCARD DETECTION:**
-IF $AUGMENTS contains:
+IF $ARGUMENTS contains:
 - Multiple specific file paths
 - A directory path
 - Wildcard patterns (like `**/*.py` or `backend/app/**/*.py`)
 
 **EXCEPTION**
 - `__init__.py` files generally require special handling and should not be batch processed
-- Only launch the @agent-docstring-improver agent for an `__init__.py` file if $AUGMENTS explicitly mentions `__init__.py` 
+- Only launch the @agent-docstring-improver agent for an `__init__.py` file if $ARGUMENTS explicitly mentions `__init__.py` 
 - Do not process any `__init__.py` files found in a directory path search or that match a wildcard pattern
 
 **🔄 PARALLEL PROCESSING STRATEGY:**

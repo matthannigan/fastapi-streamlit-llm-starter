@@ -1,14 +1,14 @@
 # Fix Lint Errors with Parallel Processing
 
-Analyze $AUGMENTS to determine the optimal approach for lint fixing using our @agent-lint-fixer.
+Analyze $ARGUMENTS to determine the optimal approach for lint fixing using our @agent-lint-fixer.
 
 **📂 SINGLE FILE DETECTION:**
-IF $AUGMENTS contains only one specific file path (not a wildcard or directory):
+IF $ARGUMENTS contains only one specific file path (not a wildcard or directory):
 - Launch a single @agent-lint-fixer agent to examine that file
 - Target: comprehensive file review and clearing of lint errors for the specific file
 
 **📁 MULTIPLE FILES/DIRECTORY/WILDCARD DETECTION:**
-IF $AUGMENTS contains:
+IF $ARGUMENTS contains:
 - Multiple specific file paths
 - A directory path
 - Wildcard patterns (like `**/*.py` or `backend/app/**/*.py`)

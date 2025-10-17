@@ -1,4 +1,4 @@
-$AUGMENTS contains a list of batches. Each batch contains the following files:
+$ARGUMENTS contains a list of batches. Each batch contains the following files:
 - Public contract for the module as located in `backend/contracts/**/[component]/[module].pyi`
 - Shared component fixtures as located in `backend/tests/unit/[component]/conftest.py`
 - Shared module fixtures as located in `backend/tests/unit/[component]/[module]/conftest.py`
