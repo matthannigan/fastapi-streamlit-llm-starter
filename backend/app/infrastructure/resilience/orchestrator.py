@@ -645,7 +645,9 @@ class AIServiceResilience:
                         metrics.last_failure = datetime.now()
 
                         # Transform exceptions for better classification
-                        if not isinstance(e, AIServiceException):
+                        # Let ApplicationError (ValidationError, ConfigurationError, etc.) pass through unchanged
+                        from app.core.exceptions import ApplicationError
+                        if not isinstance(e, (AIServiceException, ApplicationError)):
                             if classify_exception(e):
                                 raise TransientAIError(str(e)) from e
                             raise PermanentAIError(str(e)) from e

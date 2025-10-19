@@ -130,13 +130,14 @@ metrics = ai_resilience.get_all_metrics()
 import time
 import asyncio
 import uuid
-from typing import Dict, Any, List, Union, TYPE_CHECKING
+from typing import Dict, Any, List, Union, TYPE_CHECKING, Optional
 import logging
 from pydantic_ai import Agent
 from app.schemas import TextProcessingOperation, TextProcessingRequest, TextProcessingResponse, SentimentResult, BatchTextProcessingRequest, BatchTextProcessingResponse, BatchTextProcessingItem, BatchTextProcessingStatus
 from app.core.config import Settings
 from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer
-from app.core.exceptions import ServiceUnavailableError, TransientAIError
+from app.core.exceptions import ServiceUnavailableError, TransientAIError, AIServiceException, ValidationError
+from tenacity import RetryError
 from app.infrastructure.resilience import ai_resilience, ResilienceStrategy, with_balanced_resilience, with_aggressive_resilience, with_conservative_resilience
 from app.services.response_validator import ResponseValidator
 
@@ -315,7 +316,7 @@ class TextProcessorService:
         >>> metrics = ai_resilience.get_all_metrics()
     """
 
-    def __init__(self, settings: Settings, cache: Union['AIResponseCache', 'InMemoryCache']):
+    def __init__(self, settings: Settings, cache: Union['AIResponseCache', 'InMemoryCache'], sanitizer: Optional[PromptSanitizer] = None, response_validator: Optional[ResponseValidator] = None, ai_resilience: Optional['AIResilienceOrchestrator'] = None):
         """
         Initialize the text processor with AI agent, resilience patterns, and security validation.
         
@@ -325,6 +326,12 @@ class TextProcessorService:
             cache: AI-capable cache service (AIResponseCache or InMemoryCache) for storing and
                    retrieving processed results. InMemoryCache is used as fallback when Redis is
                    unavailable (CACHE_PRESET=disabled)
+            sanitizer: Optional PromptSanitizer for testing (defaults to new instance).
+                      Can be injected for test isolation and mock validation.
+            response_validator: Optional ResponseValidator for testing (defaults to new instance).
+                      Can be injected for test isolation and mock validation.
+            ai_resilience: Optional resilience orchestrator for testing (defaults to global singleton).
+                      Can be injected to control circuit breaker states and retry behavior in tests.
         
         Behavior:
             - Initializes PydanticAI agent with configured model and temperature settings
@@ -352,6 +359,13 @@ class TextProcessorService:
             ...     BATCH_AI_CONCURRENCY_LIMIT=10
             ... )
             >>> processor = TextProcessorService(custom_settings, cache_service)
+        
+            >>> # Testing with injected dependencies
+            >>> mock_resilience = create_test_resilience_mock()
+            >>> processor = TextProcessorService(
+            ...     settings, cache_service,
+            ...     ai_resilience=mock_resilience
+            ... )
         """
         ...
 

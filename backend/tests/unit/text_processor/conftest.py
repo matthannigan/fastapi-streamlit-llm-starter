@@ -162,6 +162,11 @@ class FakeCache:
         options_str = str(sorted(options.items())) if options else ""
         return f"{operation}:{hash(text)}:{options_str}"
 
+    # Alias for consistency with real cache interface
+    def build_key(self, text: str, operation: str, options: Dict[str, Any]) -> str:
+        """Alias for build_cache_key to match real cache interface."""
+        return self.build_cache_key(text, operation, options)
+
     def get_hit_count(self) -> int:
         """Get number of cache hits (for testing verification)."""
         return self._hit_count
@@ -173,6 +178,10 @@ class FakeCache:
     def get_stored_ttl(self, key: str) -> Optional[int]:
         """Get stored TTL for key (for testing verification)."""
         return self._ttls.get(key)
+
+    async def get_all_keys(self) -> list:
+        """Get all cache keys for testing verification."""
+        return list(self._data.keys())
 
 
 @pytest.fixture
@@ -436,12 +445,14 @@ def mock_response_validator():
     from app.services.response_validator import ResponseValidator
     
     mock = create_autospec(ResponseValidator, instance=True)
-    
+
     # Configure default happy path behavior
+    # validate() method returns the validated string (passthrough on success)
+    mock.validate = Mock(side_effect=lambda text, *args, **kwargs: text)
     mock.validate_response = AsyncMock(return_value=True)
     mock.is_safe_response = AsyncMock(return_value=True)
     mock.get_validation_error = Mock(return_value=None)
-    
+
     return mock
 
 
@@ -575,12 +586,14 @@ def mock_pydantic_agent():
     mock = create_autospec(Agent, instance=True)
     
     # Configure default async method
-    mock.run_sync = AsyncMock()
-    
+    mock.run = AsyncMock()
+
     # Configure response structure (tests can override)
     default_response = Mock()
-    default_response.data = "Default test response"
-    mock.run_sync.return_value = default_response
+    default_response.output = Mock()
+    default_response.output.strip.return_value = "Default AI response"
+    default_response.data = "Default AI response"
+    mock.run.return_value = default_response
     
     return mock
 
@@ -607,15 +620,22 @@ def fake_cache_with_hit(fake_cache):
         - Testing processing time with cache hits
         - Verifying AI is not called when cache hits
     """
-    # Pre-populate with a typical cached response
+    # Pre-populate with a typical cached response that matches our test request
     import asyncio
+
+    # Calculate the cache key that will match our test request
+    test_text = "Sample text for testing"
+    test_operation = "summarize"
+    test_options = {"max_length": 100}
+    cache_key = fake_cache.build_cache_key(test_text, test_operation, test_options)
+
     asyncio.run(fake_cache.set(
-        "summarize:12345:",
+        cache_key,
         {
             "operation": "summarize",
-            "result": "Cached summary response",
+            "result": "Cached summary of sample text content",
             "cache_hit": False,  # Original response wasn't from cache
-            "processing_time": 0.5,
+            "processing_time": 0.01,  # Fast processing time for cache hit test
             "metadata": {"word_count": 100}
         },
         ttl=7200
@@ -633,6 +653,7 @@ def mock_response_validator_with_failure(mock_response_validator):
 
     Returns:
         Mock configured to:
+        - validate() raises ValueError (validation failure)
         - validate_response() returns False
         - get_validation_error() returns error message
 
@@ -641,6 +662,10 @@ def mock_response_validator_with_failure(mock_response_validator):
         - Testing error responses when validation fails
         - Testing validation error logging
     """
+    # Configure validate() to raise ValueError (this is what production code catches)
+    mock_response_validator.validate = Mock(
+        side_effect=ValueError("Response validation failed: harmful content detected")
+    )
     mock_response_validator.validate_response = AsyncMock(return_value=False)
     mock_response_validator.get_validation_error = Mock(
         return_value="Response validation failed: harmful content detected"

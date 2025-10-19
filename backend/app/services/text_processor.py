@@ -129,7 +129,7 @@ metrics = ai_resilience.get_all_metrics()
 import time
 import asyncio
 import uuid
-from typing import Dict, Any, List, Union, TYPE_CHECKING
+from typing import Dict, Any, List, Union, TYPE_CHECKING, Optional
 import logging
 from pydantic_ai import Agent
 
@@ -152,8 +152,11 @@ from app.core.config import Settings
 from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer # Enhanced import
 from app.core.exceptions import (
     ServiceUnavailableError,
-    TransientAIError
+    TransientAIError,
+    AIServiceException,
+    ValidationError
 )
+from tenacity import RetryError
 from app.infrastructure.resilience import (
     ai_resilience,
     ResilienceStrategy,
@@ -393,7 +396,14 @@ class TextProcessorService:
         >>> metrics = ai_resilience.get_all_metrics()
     """
 
-    def __init__(self, settings: Settings, cache: Union["AIResponseCache", "InMemoryCache"]):
+    def __init__(
+        self,
+        settings: Settings,
+        cache: Union["AIResponseCache", "InMemoryCache"],
+        sanitizer: Optional[PromptSanitizer] = None,
+        response_validator: Optional[ResponseValidator] = None,
+        ai_resilience: Optional["AIResilienceOrchestrator"] = None,
+    ):
         """
         Initialize the text processor with AI agent, resilience patterns, and security validation.
 
@@ -403,6 +413,12 @@ class TextProcessorService:
             cache: AI-capable cache service (AIResponseCache or InMemoryCache) for storing and
                    retrieving processed results. InMemoryCache is used as fallback when Redis is
                    unavailable (CACHE_PRESET=disabled)
+            sanitizer: Optional PromptSanitizer for testing (defaults to new instance).
+                      Can be injected for test isolation and mock validation.
+            response_validator: Optional ResponseValidator for testing (defaults to new instance).
+                      Can be injected for test isolation and mock validation.
+            ai_resilience: Optional resilience orchestrator for testing (defaults to global singleton).
+                      Can be injected to control circuit breaker states and retry behavior in tests.
 
         Behavior:
             - Initializes PydanticAI agent with configured model and temperature settings
@@ -430,6 +446,13 @@ class TextProcessorService:
             ...     BATCH_AI_CONCURRENCY_LIMIT=10
             ... )
             >>> processor = TextProcessorService(custom_settings, cache_service)
+
+            >>> # Testing with injected dependencies
+            >>> mock_resilience = create_test_resilience_mock()
+            >>> processor = TextProcessorService(
+            ...     settings, cache_service,
+            ...     ai_resilience=mock_resilience
+            ... )
         """
         self.settings = settings
         self.cache = cache
@@ -450,9 +473,19 @@ class TextProcessorService:
         # Use provided cache service
         self.cache_service = cache
 
-        # Initialize the advanced sanitizer
-        self.sanitizer = PromptSanitizer()
-        self.response_validator = ResponseValidator()
+        # Use provided dependencies or create defaults (dependency injection pattern)
+        self.sanitizer = sanitizer if sanitizer is not None else PromptSanitizer()
+        self.response_validator = response_validator if response_validator is not None else ResponseValidator()
+
+        # For ai_resilience, use provided parameter or module-level singleton
+        # The module-level ai_resilience (imported at top) respects test patches
+        if ai_resilience is not None:
+            self._ai_resilience = ai_resilience
+        else:
+            # Access module-level ai_resilience through current module
+            import sys
+            current_module = sys.modules[__name__]
+            self._ai_resilience = getattr(current_module, 'ai_resilience')
 
         # Register operations with resilience service
         self._register_operations()
@@ -655,13 +688,13 @@ class TextProcessorService:
             try:
                 # Convert string strategy to enum
                 strategy = ResilienceStrategy(strategy_name)
-                ai_resilience.register_operation(operation_name, strategy)
+                self._ai_resilience.register_operation(operation_name, strategy)
                 logger.info(f"Registered operation '{operation_name}' with strategy '{strategy_name}'")
             except ValueError:
                 logger.warning(f"Unknown strategy '{strategy_name}' for operation '{operation_name}', using {default_strategy}")
                 # Fall back to registry default
                 strategy = ResilienceStrategy(default_strategy)
-                ai_resilience.register_operation(operation_name, strategy)
+                self._ai_resilience.register_operation(operation_name, strategy)
 
     async def _dispatch_operation(
             self,
@@ -1132,8 +1165,11 @@ class TextProcessorService:
                 # Route result to appropriate response field using registry
                 self._set_response_field(response, request.operation, operation_result)
 
-            except ServiceUnavailableError:
-                # Get fallback response using registry
+            except (ServiceUnavailableError, TransientAIError, RetryError) as e:
+                # Get fallback response using registry for transient AI service failures
+                # This includes service unavailable, transient errors, and retry exhaustion
+                # NOTE: PermanentAIError (e.g., invalid input) is NOT caught - it should propagate
+                # to inform the client of non-recoverable errors
                 fallback_result = await self._get_fallback_response(
                     request.operation,
                     sanitized_text,
@@ -1214,7 +1250,17 @@ class TextProcessorService:
                 return validated_output
             except ValueError as ve:
                 logger.error(f"AI response validation failed in summarization: {ve}. Problematic response: {result.output.strip()[:200]}...")
-                return "An error occurred while processing your request. The AI response could not be validated."
+                raise ValidationError(
+                    f"Response validation failed for summarization: {ve}",
+                    context={
+                        "original_error": str(ve),
+                        "operation": "summarize",
+                        "text_length": len(text)
+                    }
+                )
+        except ValidationError:
+            # Let validation errors pass through without retrying
+            raise
         except Exception as e:
             logger.error(f"AI agent error in summarization: {e}")
             # Convert to our custom exception for proper retry handling
@@ -1237,10 +1283,13 @@ class TextProcessorService:
                 validated_raw_output = self.response_validator.validate(raw_output, "sentiment", text, "sentiment analysis")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in sentiment analysis: {ve}. Problematic response: {raw_output[:200]}...")
-                return SentimentResult(
-                    sentiment="neutral",
-                    confidence=0.0,
-                    explanation="An error occurred while processing your request. The AI response could not be validated."
+                raise ValidationError(
+                    f"Response validation failed for sentiment analysis: {ve}",
+                    context={
+                        "original_error": str(ve),
+                        "operation": "sentiment",
+                        "text_length": len(text)
+                    }
                 )
 
             import json
@@ -1256,6 +1305,9 @@ class TextProcessorService:
                     confidence=0.5,
                     explanation=f"Unable to analyze sentiment accurately. Validation or parsing failed. Raw: {validated_raw_output[:100]}" # Include part of raw output for debugging
                 )
+        except ValidationError:
+            # Let validation errors pass through without retrying
+            raise
         except Exception as e:
             logger.error(f"AI agent error in sentiment analysis: {e}")
             raise TransientAIError(f"Failed to analyze sentiment: {e!s}")
@@ -1280,7 +1332,14 @@ class TextProcessorService:
                 validated_output_str = self.response_validator.validate(result.output.strip(), "key_points", text, "key points extraction")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in key points extraction: {ve}. Problematic response: {result.output.strip()[:200]}...")
-                return ["An error occurred while processing your request. The AI response could not be validated."]
+                raise ValidationError(
+                    f"Response validation failed for key points extraction: {ve}",
+                    context={
+                        "original_error": str(ve),
+                        "operation": "key_points",
+                        "text_length": len(text)
+                    }
+                )
 
             points = []
             # Process the validated string
@@ -1291,6 +1350,9 @@ class TextProcessorService:
                 elif line and not line.startswith("Key Points:"): # Avoid including the "Key Points:" header if AI repeats it
                     points.append(line)
             return points[:max_points]
+        except ValidationError:
+            # Let validation errors pass through without retrying
+            raise
         except Exception as e:
             logger.error(f"AI agent error in key points extraction: {e}")
             raise TransientAIError(f"Failed to extract key points: {e!s}")
@@ -1315,7 +1377,14 @@ class TextProcessorService:
                 validated_output_str = self.response_validator.validate(result.output.strip(), "questions", text, "question generation")
             except ValueError as ve:
                 logger.error(f"AI response validation failed in question generation: {ve}. Problematic response: {result.output.strip()[:200]}...")
-                return ["An error occurred while processing your request. The AI response could not be validated."]
+                raise ValidationError(
+                    f"Response validation failed for question generation: {ve}",
+                    context={
+                        "original_error": str(ve),
+                        "operation": "questions",
+                        "text_length": len(text)
+                    }
+                )
 
             questions = []
             # Process the validated string
@@ -1326,6 +1395,9 @@ class TextProcessorService:
                         line = line.split(".", 1)[1].strip()
                     questions.append(line)
             return questions[:num_questions]
+        except ValidationError:
+            # Let validation errors pass through without retrying
+            raise
         except Exception as e:
             logger.error(f"AI agent error in question generation: {e}")
             raise TransientAIError(f"Failed to generate questions: {e!s}")
@@ -1351,7 +1423,18 @@ class TextProcessorService:
                 return validated_output
             except ValueError as ve:
                 logger.error(f"AI response validation failed in question answering: {ve}. Problematic response: {result.output.strip()[:200]}...")
-                return "An error occurred while processing your request. The AI response could not be validated."
+                raise ValidationError(
+                    f"Response validation failed for question answering: {ve}",
+                    context={
+                        "original_error": str(ve),
+                        "operation": "qa",
+                        "text_length": len(text),
+                        "question_length": len(question)
+                    }
+                )
+        except ValidationError:
+            # Let validation errors pass through without retrying
+            raise
         except Exception as e:
             logger.error(f"AI agent error in question answering: {e}")
             raise TransientAIError(f"Failed to answer question: {e!s}")
