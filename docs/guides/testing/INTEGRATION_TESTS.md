@@ -862,248 +862,167 @@ def debug_db(test_database):
 
 ## Coding Assistant Integration
 
-### Prompt 1: Identifying Integration Test Opportunities and Creating Test Plans
+### Prompts
 
-Use this prompt with your coding assistant to identify integration test opportunities and create comprehensive test plans:
+#### Prompt 1: [Identify Integration Test Opportunities and Create Test Plans](../../prompts/integration-tests/1-identify-seams.md)
 
-````markdown
-Analyze [CODEBASE/DIRECTORY/FILES] to identify integration test opportunities and create a comprehensive test plan following our integration testing philosophy.
+Use this prompt with your coding assistant to identify integration test opportunities and create comprehensive test plans.
 
-**ANALYSIS OBJECTIVES:**
-1. Identify critical seams between components that require integration testing
-2. Map data flows that cross component boundaries
-3. Find API endpoints that orchestrate multiple services
-4. Locate infrastructure abstractions that need contract verification
-5. Identify resilience patterns that require integration validation
+**CONTEXT**: This is the first pass at identifying integration opportunities based on architectural analysis. If unit tests are available, a second pass (`Prompt 2`) may follow to ensure no critical integrations are missed.
 
-**SEAM IDENTIFICATION METHODS:**
-- Start at Application Boundaries: Find all API endpoints, message queue consumers, scheduled jobs
-- Infrastructure Abstractions: Identify interfaces for cache, database, external services
-- Data Flow Tracking: Follow critical domain objects through the system
-- Import Analysis: Map dependencies between major components
+#### Prompt 2: [Mine Unit Tests for Integration Opportunities](../../prompts/integration-tests/2-mine-unit-tests.md)
 
-**TEST PLAN OUTPUT FORMAT:**
-For each identified integration point, provide:
-1. SEAM NAME: Clear description of the integration boundary
-2. COMPONENTS: List of components involved in the integration
-3. CRITICAL PATH: The data/control flow being tested
-4. TEST SCENARIOS: Specific scenarios to validate
-5. INFRASTRUCTURE NEEDS: Required test fixtures (fakeredis, test DB, etc.)
-6. PRIORITY: High/Medium/Low based on business criticality
+Use this prompt to analyze existing unit tests and identify integration testing opportunities. **This is NOT about converting unit tests** - it's about extracting integration seam insights that unit tests reveal.
 
-**PRIORITIZATION CRITERIA:**
-- HIGH: User-facing features, payment flows, authentication, data persistence
-- MEDIUM: Caching layers, monitoring, non-critical workflows
-- LOW: Admin features, reporting, nice-to-have optimizations
+**CONTEXT**: Architectural analysis (Prompt 1) has identified integration seams from a design perspective. This prompt mines unit tests to:
+1. Validate architectural seams are actually used in practice
+2. Discover integration patterns not obvious from architecture alone
+3. Identify missing seams not covered in architectural analysis
+4. Propose NEW integration tests that complement (not replace) unit tests
 
-**EXAMPLE OUTPUT:**
-```
-INTEGRATION TEST PLAN
+**KEY INSIGHT**: Unit tests reveal what integrations exist, but integration tests verify those integrations work correctly. These are **different concerns** requiring **different tests**.
 
-1. SEAM: API → TextProcessingService → Cache → Database
-   COMPONENTS: /v1/process endpoint, TextProcessingService, RedisCache, JobRepository
-   CRITICAL PATH: User request → Processing → Caching → Persistence
-   TEST SCENARIOS:
-   - Successful processing with cache hit
-   - Successful processing with cache miss
-   - Cache failure fallback to direct processing
-   - Database persistence after processing
-   INFRASTRUCTURE: fakeredis, test database
-   PRIORITY: HIGH (core user feature)
+#### Prompt 3: [Consolidate and Validate Integration Test Plan](../../prompts/integration-tests/3-review-prioritize.md)
 
-2. SEAM: AuthMiddleware → SecurityService → EnvironmentDetector
-   COMPONENTS: verify_api_key_http, APIKeyAuth, get_environment_info
-   CRITICAL PATH: Request → Authentication → Environment-based rules
-   TEST SCENARIOS:
-   - Valid API key in production environment
-   - Missing API key in production (should fail)
-   - Development environment bypass
-   INFRASTRUCTURE: None (in-memory)
-   PRIORITY: HIGH (security critical)
-```
+Use this prompt to consolidate integration opportunities from Prompts 1 and 2, eliminate duplication, and create a final validated test plan ready for implementation.
 
-**FOCUS ON:**
-- Multi-component workflows that users depend on
-- Infrastructure integration points
-- Error handling and resilience patterns
-- Security and authentication flows
-- Performance-critical paths with caching/optimization
+**CONTEXT**: You now have integration opportunities from two sources:
+- Prompt 1: Architectural seam identification (design-driven)
+- Prompt 2: Unit test mining (usage-driven)
 
-Generate a prioritized test plan that covers the most critical integration points first.
-````
+This prompt deduplicates, validates, and prioritizes to create an implementation-ready plan.
 
-### Prompt 2: Implementing Integration Tests from Test Plan
+#### Prompt 4: [Review Test Plan](../../prompts/integration-tests/4-review-test-plan.md) (**OPTIONAL**)
 
-Use this prompt to implement integration tests based on the identified test plan:
+Use this prompt to optionally have another LLM check the work by the LLM that executed Prompts 1-3.
 
-````markdown
-Implement integration tests for [SPECIFIC SEAM/COMPONENT] following our integration testing philosophy and the test plan.
+**CONTEXT**: In situations where a faster/cheaper model was used to execute prompts 1-3, it may be useful for more expensive/slower model to double-check all prior work.
 
-**IMPLEMENTATION PRINCIPLES:**
-1. TEST FROM THE OUTSIDE-IN: Start from API endpoints or entry points
-2. USE HIGH-FIDELITY FAKES: Prefer fakeredis, test containers over mocks
-3. TEST BEHAVIOR, NOT IMPLEMENTATION: Verify observable outcomes
-4. MAINTAIN TEST ISOLATION: Each test should be independent
-5. DOCUMENT INTEGRATION SCOPE: Clear docstrings about what's being tested
+This prompt serves as a final review and critique of the test plan prior to implementation.
 
-**TEST STRUCTURE TEMPLATE:**
-```python
-class Test[IntegrationName]:
-    """
-    Integration tests for [describe the integration].
-    
-    Seam Under Test:
-        [Component A] → [Component B] → [Component C]
-        
-    Critical Paths:
-        - [Path 1]: [Description]
-        - [Path 2]: [Description]
-    """
-    
-    def test_[scenario]_[expected_outcome](self, [fixtures]):
-        """
-        Test [specific behavior] across [components].
-        
-        Integration Scope:
-            [List components being integrated]
-            
-        Business Impact:
-            [Why this integration matters]
-            
-        Test Strategy:
-            - [Step 1]
-            - [Step 2]
-            - [Verification]
-            
-        Success Criteria:
-            - [Observable outcome 1]
-            - [Observable outcome 2]
-        """
-        # Arrange
-        [setup test data and state]
-        
-        # Act
-        [trigger the integration through entry point]
-        
-        # Assert
-        [verify observable outcomes]
-```
+#### Prompt 5: [Implement Priority Integration Tests from Test Plan](../../prompts/integration-tests/5-implement-tests.md)
 
-**FIXTURE REQUIREMENTS:**
-- Use shared fixtures from conftest.py where available
-- Create integration-specific fixtures for complex setups
-- Prefer function-scoped fixtures for test isolation
-- Use session-scoped fixtures only for expensive resources (test containers)
+Use this prompt to implement integration tests based on the validated, prioritized test plan from Prompt 4 (or Prompt 3 if no review).
 
-**COMMON PATTERNS TO USE:**
+**CONTEXT**: This prompt implements integration tests from a finalized test plan. The test plan should come from Prompts 3 or 4 (which consolidates Prompts 1 and 2) to ensure tests are validated and non-redundant.
 
-1. **API to Database Flow:**
-```python
-def test_api_persists_to_database(client, test_db):
-    response = client.post("/endpoint", json=data)
-    assert response.status_code == 200
-    
-    # Verify database state
-    record = test_db.query(Model).filter_by(id=response.json()["id"]).first()
-    assert record is not None
-```
+**INPUT**: Provide the specific seam/priority section from Prompt 4 (or Prompt 3 if no review) output to implement.
 
-2. **Service Integration with Cache:**
-```python
-def test_service_uses_cache(service, fake_redis_cache):
-    # First call - cache miss
-    result1 = service.process("key")
-    
-    # Second call - cache hit
-    result2 = service.process("key")
-    
-    # Verify same result (from cache)
-    assert result1 == result2
-    assert fake_redis_cache.get("key") is not None
-```
+Example: "Implement P0 seam: API → Service → Cache (cache hit/miss improves performance)"
 
-3. **Resilience Pattern Integration:**
-```python
-def test_circuit_breaker_protects_service(service, unreliable_backend):
-    # Trigger failures to open circuit
-    for _ in range(threshold):
-        unreliable_backend.fail_next_request()
-        with pytest.raises(ServiceError):
-            service.call_backend()
-    
-    # Circuit should be open
-    with pytest.raises(CircuitOpenError):
-        service.call_backend()
-```
+#### Prompt 6: [Document Implemented Integration Tests](../../prompts/integration-tests/6-documentation.md)
 
-**AVOID:**
-- Mocking internal component methods
-- Testing implementation details
-- Asserting on internal state
-- Creating overly complex test setups
-- Writing tests that depend on test execution order
+Use this prompt to create comprehensive README.md documentation for implemented integration tests.
 
-Generate comprehensive integration tests that validate the critical paths identified in the test plan.
-````
+**Context**: After implementing and debugging integration tests (Prompt 5 + Phase 3), document the actual test suite. This documentation reflects **what was implemented**, not just what was planned, accounting for any changes during development.
 
-### Prompt 3: Converting Unit Tests to Integration Tests
+**Key Principle**: Use the TEST_PLAN.md (from Prompt 3/4) as a **starting point** for understanding seams, but document the **actual implemented tests** as they exist in the codebase.
 
-Use this prompt when you need to elevate existing unit tests to integration tests:
+### Recommended Workflow
 
-````markdown
-Convert unit tests in [FILE/DIRECTORY] to integration tests that validate real component interactions.
+Our integration testing workflow follows a systematic discovery → planning → implementation approach. The workflow differs slightly depending on whether you have existing unit tests to leverage.
 
-**CONVERSION STRATEGY:**
-1. REMOVE MOCKS: Replace mocked dependencies with real or high-fidelity fake implementations
-2. EXPAND SCOPE: Test from API/entry point rather than individual methods
-3. VERIFY END-TO-END: Check final outcomes rather than intermediate calls
-4. USE REAL INFRASTRUCTURE: Replace in-memory fakes with fakeredis/test DB where appropriate
+#### Standard Workflow (With Existing Unit Tests)
 
-**CONVERSION MAPPING:**
-- Mock objects → Real service instances or high-fidelity fakes
-- Method calls → API endpoint calls
-- Return value checks → Database state verification
-- Mock assertions → Observable outcome assertions
-- In-memory state → Persistent state in test infrastructure
+**This is the most common scenario** when following our TDD/behavior-first development approach:
 
-**EXAMPLE CONVERSION:**
+**Phase 1: Discovery** (Identify Integration Opportunities)
 
-FROM (Unit Test):
-```python
-def test_service_calls_cache(mock_cache):
-    service = Service(cache=mock_cache)
-    mock_cache.get.return_value = None
-    
-    service.process("key")
-    
-    mock_cache.get.assert_called_with("key")
-    mock_cache.set.assert_called_once()
-```
+1. **Run Prompt 1** - Architectural seam identification
+   - Input: Codebase, architecture documentation
+   - Output: Design-driven seam list with confidence levels
+   - Addition: If prior integration tests exist, pass README as context
+   - Focus: What does the architecture say we should test?
 
-TO (Integration Test):
-```python
-def test_service_integrates_with_cache(client, fake_redis_cache):
-    # First request - cache miss
-    response1 = client.get("/api/resource/key")
-    assert response1.status_code == 200
-    
-    # Verify cache was populated
-    cached_value = fake_redis_cache.get("resource:key")
-    assert cached_value == response1.json()
-    
-    # Second request - cache hit
-    response2 = client.get("/api/resource/key")
-    assert response2.json() == response1.json()
-```
+2. **Run Prompt 2** - Mine unit tests for integration patterns
+   - Input: Unit test files, mocked dependencies
+   - Output: Usage-driven seam list with integration gaps
+   - Focus: What do the unit tests reveal about actual usage?
 
-**MAINTAIN TEST VALUE:**
-- Keep the core test intention
-- Expand coverage to include integration points
-- Add verification of side effects and state changes
-- Ensure tests still run reasonably fast
+**Phase 2: Planning** (Consolidate and Prioritize)
 
-Convert the tests while preserving their business value and expanding their scope to cover real integrations.
-````
+3. **Run Prompt 3** - Validate, deduplicate, and prioritize
+   - Input: Prompt 1 output + Prompt 2 output
+   - Output: Prioritized test plan (P0/P1/P2/Deferred)
+   - Focus: Which integration tests provide the most value?
+
+4. **Run Prompt 4 (OPTIONAL)** - Check prior work with different model
+  - Input: Prompt 3 output
+  - Output: Revised prioritized test plan (P0/P1/P2/Deferred)
+  - Focus: Any critique/revisions prior to implementation?
+  - When to use: Complex projects, uncertain priorities, or using fast models for Prompts 1-3
+  - When to skip: Simple projects, confident in Prompt 3 output, or already used expensive model
+
+**Phase 3: Implementation**
+
+5. **Run Prompt 5** - Implement tests by priority
+   - Input: P0 seams from Prompt 4 (or Prompt 3 if no review)
+   - Output: Working integration tests
+   - Iterate: Repeat for P1, P2 as time/priority allows
+
+6. **Debug Tests** 
+   - Get all tests passing
+   - Mark tests as E2E if testing reveals them to be more than integration
+
+**Phase 4: Documentation**
+
+7. **Run Prompt 6** - Create README for new integration tests
+   - Input: Final, implemented tests plus final test plan
+   - Output: README file summarizing work and contents of testing directory
+
+**Why This Sequence Works:**
+  - ✅ Gathers all integration opportunities BEFORE implementing
+  - ✅ Two sources of truth (architecture + actual usage patterns)
+  - ✅ Validates and consolidates BEFORE writing code
+  - ✅ Optional quality gate with different model (Prompt 4)
+  - ✅ Only writes valuable, non-redundant tests
+  - ✅ Prevents unit tests disguised as integration tests
+
+#### Alternate Workflow (No Unit Tests Yet)
+
+**Use this when starting a new component without existing tests:**
+
+**Phase 1: Discovery & Planning**
+
+1. **Run Prompt 1** - Architectural seam identification
+   - Skip Prompt 2, since no unit tests exist to mine
+   - Skip Prompt 3, no synthesis
+   - Use a slower/more expensive model to avoid Prompt 4 review
+
+**Phase 2: Implementation**
+
+2. **Run Prompt 5** - Implement tests by priority
+3. **Debug** - As needed
+
+**Phase 3: Documentation**
+
+4. **Run Prompt 6** - Create README
+
+#### Choosing Models for Each Prompt
+
+  **Cost-Effective Approach:**
+  - Prompts 1-3: Fast/cheap model (Claude Sonnet, GPT-5 mini)
+    - Analysis and planning tasks
+    - Output is reviewed before implementation
+  - Prompt 4: Expensive/smart model (Claude Opus, GPT-5 Codex)
+    - Quality gate before coding
+    - Catches issues in cheap model output
+  - Prompt 5: Fast/cheap model (Claude Haiku, GPT-5 mini)
+    - Implementation from validated plan
+    - Plan is already approved by expensive model
+
+  **Quality-First Approach:**
+  - All Prompts: Expensive/smart model
+    - Skip Prompt 4 (no need for review)
+    - Higher cost but faster workflow
+    - Best for critical components
+
+  **Time-Constrained Approach:**
+  - Prompts 1-3: Fast/cheap model
+  - Skip Prompt 4 (no review)
+  - Prompt 5: Fast/cheap model
+  - Lowest cost, fastest execution
+  - Acceptable for non-critical components
 
 ### Benefits of AI-Assisted Integration Testing
 
