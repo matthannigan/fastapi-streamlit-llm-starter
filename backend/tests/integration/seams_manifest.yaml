@@ -1,0 +1,1005 @@
+seams:
+  # ============================================================================
+  # Authentication - IMPLEMENTED TESTS
+  # ============================================================================
+  - id: auth-environment-aware-flow
+    description: Complete HTTP authentication flow with environment detection and security policy enforcement
+    status: IMPLEMENTED
+    components:
+      - FastAPI TestClient
+      - APIKeyAuth
+      - Environment Detection
+      - Security Policy
+    location: tests/integration/auth/test_environment_aware_auth_flow.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - auth
+      - environment
+      - security
+      - http
+
+  - id: auth-multi-key-endpoint
+    description: Multiple API key management with real protected endpoints and equivalence testing
+    status: IMPLEMENTED
+    components:
+      - FastAPI TestClient
+      - APIKeyAuth
+      - Protected Endpoints
+      - Multi-Key Management
+    location: tests/integration/auth/test_multi_key_endpoint_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - auth
+      - api-key
+      - endpoint
+      - security
+
+  - id: auth-status-integration
+    description: Authentication status endpoint demonstrating comprehensive authentication system integration
+    status: IMPLEMENTED
+    components:
+      - /v1/auth/status
+      - APIKeyAuth
+      - Environment Detection
+      - Response Formatting
+    location: tests/integration/auth/test_auth_status_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - auth
+      - status
+      - endpoint
+      - monitoring
+
+  # ============================================================================
+  # Cache Infrastructure - IMPLEMENTED TESTS
+  # ============================================================================
+  - id: cache-factory-integration
+    description: Cache factory assembly with settings configuration and component interoperability
+    status: IMPLEMENTED
+    components:
+      - CacheFactory
+      - Settings
+      - GenericRedisCache
+      - AIResponseCache
+      - InMemoryCache
+    location: tests/integration/cache/test_cache_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - factory
+      - assembly
+      - redis
+
+  - id: cache-preset-behavior
+    description: Preset-driven cache behavioral differences and graceful degradation patterns
+    status: IMPLEMENTED
+    components:
+      - PresetManager
+      - CacheFactory
+      - Redis
+      - InMemoryCache
+    location: tests/integration/cache/test_cache_preset_behavior.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - preset
+      - configuration
+      - fallback
+
+  - id: cache-encryption-pipeline
+    description: Complete encryption pipeline with JSON serialization, Fernet encryption, and Redis storage
+    status: IMPLEMENTED
+    components:
+      - EncryptionLayer
+      - Fernet
+      - Redis
+      - JSON Serialization
+    location: tests/integration/cache/test_cache_encryption.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - encryption
+      - security
+      - performance
+
+  - id: cache-encryption-dependency
+    description: Cryptography library dependency handling with graceful degradation and error classification
+    status: IMPLEMENTED
+    components:
+      - Cryptography Library
+      - ImportError Handling
+      - Error Classification
+    location: tests/integration/cache/test_encryption_dependency_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - encryption
+      - dependency
+      - error-handling
+
+  - id: cache-encryption-workflows
+    description: Complete AI cache workflows with encrypted storage, monitoring, and invalidation
+    status: IMPLEMENTED
+    components:
+      - AIResponseCache
+      - EncryptionLayer
+      - Cache Invalidation
+      - Health Check
+      - Performance Monitoring
+    location: tests/integration/cache/test_encryption_end_to_end_workflows.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - encryption
+      - workflow
+      - monitoring
+
+  - id: cache-encryption-factory
+    description: Factory method integration with encryption application across web, AI, and testing methods
+    status: IMPLEMENTED
+    components:
+      - CacheFactory
+      - EncryptionLayer
+      - Configuration Management
+      - AI Features
+    location: tests/integration/cache/test_encryption_factory_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - encryption
+      - factory
+      - ai
+
+  - id: cache-security-config
+    description: Security configuration integration with AUTH, ACL, TLS, and authentication validation
+    status: IMPLEMENTED
+    components:
+      - SecurityConfig
+      - CacheFactory
+      - Redis AUTH
+      - TLS Configuration
+    location: tests/integration/cache/test_cache_security.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - security
+      - tls
+      - authentication
+
+  - id: cache-lifecycle-health
+    description: Cache lifecycle management with health checks, cleanup, and dependency integration
+    status: IMPLEMENTED
+    components:
+      - Health Check
+      - Cleanup Dependency
+      - Dependency Manager
+      - Registry Management
+    location: tests/integration/cache/test_cache_lifecycle_health.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - lifecycle
+      - health
+      - cleanup
+
+  - id: cache-mgmt-api
+    description: Cache management API for invalidation, metrics, and administrative control
+    status: IMPLEMENTED
+    components:
+      - HTTP API
+      - Cache Invalidation
+      - Metrics Collection
+      - Administrative Control
+    location: tests/integration/cache/test_cache_mgmt_api.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - cache
+      - api
+      - management
+      - metrics
+
+  # ============================================================================
+  # Cache Infrastructure - DEFERRED TESTS
+  # ============================================================================
+  - id: cache-performance-monitoring
+    description: Cache performance monitoring integration with metrics collection and threshold validation
+    status: DEFERRED
+    components:
+      - CachePerformanceMonitor
+      - Cache operations
+      - Metrics collection systems
+      - Observability tools
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - cache
+      - performance
+      - monitoring
+      - metrics
+
+  # ============================================================================
+  # Environment Detection - IMPLEMENTED TESTS
+  # ============================================================================
+  - id: env-module-initialization
+    description: Module import behavior with global state management and cross-service consistency
+    status: IMPLEMENTED
+    components:
+      - Module Import System
+      - Global Detector Instance
+      - Service Startup
+    location: tests/integration/environment/test_module_initialization.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - environment
+      - startup
+      - import
+      - concurrency
+
+  - id: env-multi-context-detection
+    description: Feature-specific contexts with AI, security, cache, and resilience service integration
+    status: IMPLEMENTED
+    components:
+      - Feature Context Selection
+      - Environment Detection
+      - Service Metadata
+    location: tests/integration/environment/test_multi_context_detection.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - environment
+      - context
+      - ai
+      - security
+
+  - id: env-security-enforcement
+    description: Security policy enforcement based on environment detection for API access control
+    status: IMPLEMENTED
+    components:
+      - Environment Detection
+      - Security Policy
+      - Authentication Behavior
+      - API Access
+    location: tests/integration/environment/test_security_environment_enforcement.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - environment
+      - security
+      - enforcement
+      - policy
+
+  - id: env-confidence-fallback
+    description: Service behavior under various confidence scenarios with signal resolution and recovery
+    status: IMPLEMENTED
+    components:
+      - Signal Collection
+      - Confidence Analysis
+      - Fallback Decision
+      - Service Behavior
+    location: tests/integration/environment/test_confidence_fallback_system.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - environment
+      - confidence
+      - fallback
+      - resilience
+
+  - id: env-end-to-end-validation
+    description: Complete environment propagation from variables to observable API behavior
+    status: IMPLEMENTED
+    components:
+      - Environment Variables
+      - Environment Detection
+      - All Services
+      - Observable API Behavior
+    location: tests/integration/environment/test_end_to_end_validation.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - environment
+      - end-to-end
+      - api
+      - integration
+
+  # ============================================================================
+  # Environment Detection - DEFERRED TESTS
+  # ============================================================================
+  - id: env-cache-preset-config
+    description: Cache preset environment-aware configuration with observable behavioral differences
+    status: DEFERRED
+    components:
+      - CachePresetManager
+      - EnvironmentDetector
+      - recommend_preset
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - environment
+      - cache
+      - preset
+      - configuration
+
+  - id: env-resilience-preset-config
+    description: Resilience preset environment-aware configuration with strategy selection
+    status: DEFERRED
+    components:
+      - ResiliencePresetManager
+      - EnvironmentDetector
+      - recommend_preset
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - environment
+      - resilience
+      - preset
+      - configuration
+
+  - id: env-performance-under-load
+    description: Environment detection performance under concurrent load with cache efficiency validation
+    status: DEFERRED
+    components:
+      - EnvironmentDetector
+      - Caching mechanisms
+      - Concurrent service access
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - environment
+      - performance
+      - concurrency
+      - load-testing
+
+  - id: env-custom-configuration
+    description: Environment detection with custom configuration patterns and deployment flexibility
+    status: DEFERRED
+    components:
+      - EnvironmentDetector
+      - DetectionConfig
+      - Custom patterns
+      - Overrides
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - environment
+      - configuration
+      - customization
+      - extensibility
+
+  # ============================================================================
+  # Health Monitoring - IMPLEMENTED TESTS
+  # ============================================================================
+  - id: health-contract-compliance
+    description: Health check function contract compliance with ComponentStatus validation
+    status: IMPLEMENTED
+    components:
+      - Health Check Functions
+      - ComponentStatus Contract
+      - Metadata Validation
+    location: tests/integration/health/test_contract_compliance.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - health
+      - contract
+      - compliance
+      - validation
+
+  - id: health-critical-path
+    description: Complete health monitoring through API endpoint with system state aggregation
+    status: IMPLEMENTED
+    components:
+      - HTTP Request
+      - Health Endpoint
+      - Health Checker
+      - All Components
+    location: tests/integration/health/test_critical_path_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - health
+      - api
+      - monitoring
+      - aggregation
+
+  - id: health-component-integration
+    description: Individual component health behaviors through API with cache and resilience monitoring
+    status: IMPLEMENTED
+    components:
+      - API Endpoint
+      - Health Checker
+      - Cache Infrastructure
+      - Resilience Monitoring
+    location: tests/integration/health/test_component_integration.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - health
+      - component
+      - cache
+      - resilience
+
+  # ============================================================================
+  # Health Monitoring - DEFERRED TESTS
+  # ============================================================================
+  - id: health-concurrent-performance
+    description: Health endpoint performance under concurrent load explicitly moved to performance test suite
+    status: DEFERRED
+    components:
+      - Health endpoint
+      - Concurrent request handling
+      - Performance measurement
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - health
+      - performance
+      - concurrency
+      - load-testing
+
+  - id: health-timeout-handling
+    description: Health check timeout handling performance with slow component isolation
+    status: DEFERRED
+    components:
+      - Health check timeout
+      - Component isolation
+      - Performance validation
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - health
+      - timeout
+      - performance
+      - isolation
+
+  # ============================================================================
+  # Startup Validation - IMPLEMENTED TESTS
+  # ============================================================================
+  - id: startup-env-aware-security
+    description: Environment detection with security configuration enforcement and TLS requirements
+    status: IMPLEMENTED
+    components:
+      - Environment Detection
+      - RedisSecurityValidator
+      - Security Policy
+      - TLS Enforcement
+    location: tests/integration/startup/test_environment_aware_security.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - environment
+      - security
+      - tls
+
+  - id: startup-comprehensive-validation
+    description: Complete security validation orchestration with multi-component result aggregation
+    status: IMPLEMENTED
+    components:
+      - validate_security_configuration
+      - Component Validators
+      - Result Aggregation
+    location: tests/integration/startup/test_comprehensive_validation.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - validation
+      - security
+      - orchestration
+
+  - id: startup-auth-validation
+    description: API key authentication configuration with Redis auth enforcement and credential security
+    status: IMPLEMENTED
+    components:
+      - API Key Validation
+      - Redis Authentication
+      - Credential Security
+    location: tests/integration/startup/test_authentication_validation.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - auth
+      - validation
+      - credentials
+
+  - id: startup-certificate-validation
+    description: TLS certificate validation with expiration checking and security verification
+    status: IMPLEMENTED
+    components:
+      - TLS Certificate Validation
+      - Certificate Expiration
+      - Path Resolution
+    location: tests/integration/startup/test_certificate_validation.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - certificate
+      - tls
+      - validation
+
+  - id: startup-encryption-key-validation
+    description: Encryption key validation with format verification and strength requirements
+    status: IMPLEMENTED
+    components:
+      - Encryption Key Validation
+      - Key Format
+      - Strength Verification
+    location: tests/integration/startup/test_encryption_key_validation.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - encryption
+      - key
+      - validation
+
+  - id: startup-cache-crypto-unavailable
+    description: Cache encryption graceful degradation when cryptography library is unavailable
+    status: IMPLEMENTED
+    components:
+      - Cache Encryption
+      - Cryptography Library
+      - Graceful Degradation
+    location: tests/integration/startup/test_cache_encryption_cryptography_unavailable.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - cache
+      - encryption
+      - graceful-degradation
+
+  - id: startup-redis-crypto-unavailable
+    description: Redis security validation graceful degradation without cryptography library
+    status: IMPLEMENTED
+    components:
+      - Redis Security Validation
+      - Cryptography Library
+      - Certificate Validation
+    location: tests/integration/startup/test_redis_security_cryptography_unavailable.py
+    plan_source: README.md
+    priority: null
+    tags:
+      - startup
+      - redis
+      - security
+      - graceful-degradation
+
+  # ============================================================================
+  # Startup Security - DEFERRED TESTS
+  # ============================================================================
+  - id: startup-app-lifecycle-integration
+    description: Application startup security validation with cache initialization integration
+    status: DEFERRED
+    components:
+      - app.main lifespan
+      - validate_redis_security
+      - get_cache_service
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - startup
+      - lifecycle
+      - security
+      - integration
+
+  # ============================================================================
+  # Resilience - PLANNED TESTS - P0 (Must Have)
+  # ============================================================================
+  - id: resilience-api-circuit-breaker
+    description: Core administrative functionality for resilience management with circuit breaker integration
+    status: PLANNED
+    components:
+      - FastAPI TestClient
+      - AIServiceResilience
+      - EnhancedCircuitBreaker
+      - circuitbreaker library
+      - mock AI service
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - resilience
+      - circuit-breaker
+      - api
+      - admin
+
+  - id: resilience-config-presets
+    description: Critical deployment configuration management with environment detection and preset application
+    status: PLANNED
+    components:
+      - AIServiceResilience
+      - PresetManager
+      - environment detection
+      - configuration loading
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - resilience
+      - configuration
+      - preset
+      - environment
+
+  - id: resilience-textproc-integration
+    description: Core user-facing functionality with resilience protection and AI service integration
+    status: PLANNED
+    components:
+      - TextProcessorService
+      - AIServiceResilience decorators
+      - mock PydanticAI agent
+      - cache integration
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - resilience
+      - text-processor
+      - ai
+      - cache
+
+  # ============================================================================
+  # Resilience - PLANNED TESTS - P1 (Should Have)
+  # ============================================================================
+  - id: resilience-performance-benchmarks
+    description: Performance SLA validation with real system resources and regression detection
+    status: PLANNED
+    components:
+      - PerformanceBenchmarker
+      - time module
+      - tracemalloc
+      - statistics module
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - resilience
+      - performance
+      - benchmark
+      - sla
+
+  - id: resilience-config-validator-security
+    description: Security and validation controls with rate limiting and pattern detection
+    status: PLANNED
+    components:
+      - ResilienceConfigValidator
+      - ValidationRateLimiter
+      - threading module
+      - time module
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - resilience
+      - validation
+      - security
+      - rate-limit
+
+  - id: resilience-library-integration
+    description: Critical third-party library integration validation for circuitbreaker and tenacity
+    status: PLANNED
+    components:
+      - circuitbreaker library
+      - tenacity library
+      - AIServiceResilience
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - resilience
+      - library
+      - circuit-breaker
+      - retry
+
+  - id: resilience-cache-failure-degradation
+    description: Service resilience during cache outages with graceful degradation and recovery
+    status: PLANNED
+    components:
+      - TextProcessorService
+      - AIResponseCache
+      - fakeredis
+      - resilience decorators
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - resilience
+      - cache
+      - failure
+      - degradation
+
+  # ============================================================================
+  # Resilience - PLANNED TESTS - P2 (Could Have)
+  # ============================================================================
+  - id: resilience-config-monitoring
+    description: Operational monitoring and observability with metrics collection and alerting
+    status: PLANNED
+    components:
+      - ConfigurationMetricsCollector
+      - time module
+      - mock alerting system
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P2
+    tags:
+      - resilience
+      - monitoring
+      - metrics
+      - alerting
+
+  - id: resilience-multi-operation-coordination
+    description: Advanced resilience features with strategy coordination and operation isolation
+    status: PLANNED
+    components:
+      - Multiple resilience strategies
+      - concurrent execution
+      - performance monitoring
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P2
+    tags:
+      - resilience
+      - multi-operation
+      - coordination
+      - concurrency
+
+  # ============================================================================
+  # Resilience - DEFERRED TESTS
+  # ============================================================================
+  - id: resilience-dependency-injection
+    description: Dependency injection service initialization better suited for FastAPI integration tests
+    status: DEFERRED
+    components:
+      - FastAPI dependency injection
+      - Service initialization
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - resilience
+      - dependency-injection
+      - fastapi
+
+  - id: resilience-performance-health-integration
+    description: Performance benchmarks to health status integration with low business value
+    status: DEFERRED
+    components:
+      - Performance benchmarks
+      - Health status
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - resilience
+      - performance
+      - health
+
+  - id: resilience-template-validation
+    description: Template-based configuration validation adequately covered by unit tests
+    status: DEFERRED
+    components:
+      - Template system
+      - Configuration validation
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - resilience
+      - template
+      - validation
+
+  # ============================================================================
+  # Text Processor - PLANNED TESTS - P0 (Must Have)
+  # ============================================================================
+  - id: textproc-api-cache-performance
+    description: Reduces AI API costs and improves response time through caching with TTL management
+    status: PLANNED
+    components:
+      - /v1/text_processing/process
+      - TextProcessorService
+      - AIResponseCache
+      - fakeredis
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - text-processor
+      - cache
+      - performance
+      - api
+
+  - id: textproc-resilience-failure
+    description: Service reliability during AI service outages with circuit breaker and retry logic
+    status: PLANNED
+    components:
+      - /v1/text_processing/process
+      - TextProcessorService
+      - AIServiceResilience
+      - failure simulation
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - text-processor
+      - resilience
+      - failure
+      - circuit-breaker
+
+  - id: textproc-security-threats
+    description: Critical security protections against prompt injection and malicious AI responses
+    status: PLANNED
+    components:
+      - /v1/text_processing/process
+      - TextProcessorService
+      - PromptSanitizer
+      - ResponseValidator
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - text-processor
+      - security
+      - threat
+      - validation
+
+  - id: textproc-auth-flow
+    description: Security boundaries validation with consistent authentication across endpoints
+    status: PLANNED
+    components:
+      - /v1/text_processing/*
+      - APIKeyAuth
+      - TextProcessorService
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P0
+    tags:
+      - text-processor
+      - auth
+      - security
+      - endpoint
+
+  # ============================================================================
+  # Text Processor - PLANNED TESTS - P1 (Should Have)
+  # ============================================================================
+  - id: textproc-batch-concurrency
+    description: Bulk processing efficiency with concurrency management and error isolation
+    status: PLANNED
+    components:
+      - /v1/text_processing/batch_process
+      - TextProcessorService
+      - concurrency semaphore
+      - batch aggregation
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - text-processor
+      - batch
+      - concurrency
+      - performance
+
+  - id: textproc-cache-failure-resilience
+    description: Service resilience during cache infrastructure issues with graceful fallback
+    status: PLANNED
+    components:
+      - TextProcessorService
+      - AIResponseCache
+      - AI service fallback
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - text-processor
+      - cache
+      - resilience
+      - fallback
+
+  - id: textproc-batch-cache-integration
+    description: Cache efficiency in batch operations preventing redundant AI calls
+    status: PLANNED
+    components:
+      - /v1/text_processing/batch_process
+      - TextProcessorService
+      - AIResponseCache
+      - batch concurrency
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P1
+    tags:
+      - text-processor
+      - batch
+      - cache
+      - optimization
+
+  # ============================================================================
+  # Text Processor - PLANNED TESTS - P2 (Could Have)
+  # ============================================================================
+  - id: textproc-health-monitoring
+    description: Operational visibility with health status and resilience integration
+    status: PLANNED
+    components:
+      - /v1/text_processing/health
+      - TextProcessorService
+      - resilience health monitoring
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: P2
+    tags:
+      - text-processor
+      - health
+      - monitoring
+      - operations
+
+  # ============================================================================
+  # Text Processor - DEFERRED TESTS
+  # ============================================================================
+  - id: textproc-real-ai-api
+    description: Real AI API integration better suited for manual testing due to cost and reliability
+    status: DEFERRED
+    components:
+      - TextProcessorService
+      - PydanticAI Agent
+      - Real AI API
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - text-processor
+      - ai
+      - api
+      - manual
+
+  - id: textproc-operation-registry
+    description: Operation registry configuration adequately covered by unit tests
+    status: DEFERRED
+    components:
+      - TextProcessorService
+      - Operation Registry
+      - Configuration Management
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - text-processor
+      - registry
+      - configuration
+
+  - id: textproc-monitoring-logging
+    description: Monitoring and logging infrastructure better tested as cross-cutting concern
+    status: DEFERRED
+    components:
+      - TextProcessorService
+      - Monitoring
+      - Logging Infrastructure
+    location: null
+    plan_source: TEST_PLAN.md
+    priority: null
+    tags:
+      - text-processor
+      - monitoring
+      - logging
+
