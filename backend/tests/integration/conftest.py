@@ -225,6 +225,43 @@ def environment_state_monitor(validate_environment_state):
         print("\n🔍 Environment state monitoring detected changes - check test isolation")
 
 
+@pytest.fixture
+async def fakeredis_client():
+    """
+    FakeRedis client for lightweight integration testing.
+
+    Provides in-memory Redis simulation without Docker overhead.
+    Useful for integration tests that need realistic Redis behavior
+    without network/container complexity.
+
+    This fixture is shared across multiple integration test suites
+    (text_processor, cache, etc.) for consistent testing patterns.
+
+    Returns:
+        FakeRedis: Async-compatible fake Redis client
+
+    Note:
+        - decode_responses=False matches production Redis behavior
+        - Each test gets fresh instance (function-scoped)
+        - No network calls - all operations in-memory
+        - Full Redis API compatibility
+
+    Usage:
+        ```python
+        async def test_with_fakeredis(fakeredis_client):
+            cache = AIResponseCache(redis_client=fakeredis_client)
+            await cache.connect()
+            # Test integration behavior
+        ```
+
+    See Also:
+        - backend/tests/integration/cache/conftest.py for cache-specific patterns
+        - backend/tests/integration/text_processor/ for service integration examples
+    """
+    import fakeredis.aioredis
+    return fakeredis.aioredis.FakeRedis(decode_responses=False)
+
+
 @pytest.fixture(autouse=True, scope="function")
 def environment_state_guard():
     """

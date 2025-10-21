@@ -1,8 +1,13 @@
-First, please review `docs/guides/testing/INTEGRATION_TESTS.md` and `docs/guides/testing/WRITING_TESTS.md` and provide a summary of the 3 most important principles from each document.
+# Integration Testing
 
-Then, analyze `backend/contracts/infrastructure/cache/encryption.pyi` to identify integration test opportunities and create a comprehensive test plan following our integration testing philosophy.
+## Prompt 1: Identify Integration Test Opportunities and Create Test Plans
 
-Please note: this would be an expansion of the existing `cache` integration tests as documented in `backend/tests/integration/cache/TEST_PLAN.md` and implemented at `backend/tests/integration/cache/*.py`. If revisions to prior tests are required instead of the addition of new tests, please document those as well. 
+Analyze [CODEBASE/DIRECTORY/FILES] to identify integration test opportunities and create a comprehensive test plan following our integration testing philosophy.
+
+**If any integration tests already exist, add this:**
+This would be an expansion of the existing `[COMPONENT]` integration tests as documented in `[LOCATION_OF_INTEGRATION_TESTS_README.md]` and implemented at `[DIRECTORY_OF_INTEGRATION_TESTS]`. Do not generate integration tests that are substaintially duplicative of prior work. However, if revisions to prior tests are required instead of the addition of new tests, please document those as well. 
+
+Save the output to [LOCATION_OF_TEST_PLAN_1.md]
 
 **ANALYSIS OBJECTIVES:**
 1. Identify critical seams between components that require integration testing
@@ -25,6 +30,10 @@ For each identified integration point, provide:
 4. TEST SCENARIOS: Specific scenarios to validate
 5. INFRASTRUCTURE NEEDS: Required test fixtures (fakeredis, test DB, etc.)
 6. PRIORITY: High/Medium/Low based on business criticality
+7. CONFIDENCE: High/Medium/Low based on architectural clarity
+   - HIGH: Clear architectural boundary with known integration risks
+   - MEDIUM: Potential integration point, verify with unit test analysis (Prompt 3)
+   - LOW: May be internal implementation detail, confirm before testing
 
 **PRIORITIZATION CRITERIA:**
 - HIGH: User-facing features, payment flows, authentication, data persistence
@@ -32,8 +41,8 @@ For each identified integration point, provide:
 - LOW: Admin features, reporting, nice-to-have optimizations
 
 **EXAMPLE OUTPUT:**
-```
-INTEGRATION TEST PLAN
+```markdown
+INTEGRATION TEST PLAN (PROMPT 1 - ARCHITECTURAL ANALYSIS)
 
 1. SEAM: API → TextProcessingService → Cache → Database
    COMPONENTS: /v1/process endpoint, TextProcessingService, RedisCache, JobRepository
@@ -45,6 +54,7 @@ INTEGRATION TEST PLAN
    - Database persistence after processing
    INFRASTRUCTURE: fakeredis, test database
    PRIORITY: HIGH (core user feature)
+   CONFIDENCE: HIGH (clear architectural boundary)
 
 2. SEAM: AuthMiddleware → SecurityService → EnvironmentDetector
    COMPONENTS: verify_api_key_http, APIKeyAuth, get_environment_info
@@ -55,6 +65,16 @@ INTEGRATION TEST PLAN
    - Development environment bypass
    INFRASTRUCTURE: None (in-memory)
    PRIORITY: HIGH (security critical)
+   CONFIDENCE: HIGH (security-critical integration)
+
+3. SEAM: TextProcessingService → PromptBuilder
+   COMPONENTS: TextProcessingService, PromptBuilder
+   CRITICAL PATH: Service → Prompt construction → AI call
+   TEST SCENARIOS:
+   - Verify prompt includes user text and operation
+   INFRASTRUCTURE: None
+   PRIORITY: MEDIUM
+   CONFIDENCE: MEDIUM (may be internal detail, check unit tests in Prompt 3)
 ```
 
 **FOCUS ON:**
@@ -64,4 +84,4 @@ INTEGRATION TEST PLAN
 - Security and authentication flows
 - Performance-critical paths with caching/optimization
 
-Generate a prioritized test plan at `backend/tests/integration/cache/TEST_PLAN_encryption.md` that covers the most critical integration points first.
+Generate a prioritized test plan that covers the most critical integration points first.
