@@ -10,8 +10,7 @@
 - Uncertain about prioritization decisions
 - New to integration testing philosophy
 
-**Economic Rationale**: Pay for quality only at decision points. Use cheap models for analysis (Prompts 1-3), expensive model for validation (Prompt 4), cheap model for
-implementation (Prompt 5).
+**Economic Rationale**: Pay for quality only at decision points. Use cheap models for analysis (Prompts 1-3), expensive model for validation (Prompt 4), cheap model for implementation (Prompt 5).
 
 **When to Skip**: Simple components, confident in Prompt 3 output, or already used expensive model for Prompts 1-3.
 
@@ -20,7 +19,7 @@ implementation (Prompt 5).
 ## Input Requirements
 
 **Required Files**:
-1. **Test Plan** (Prompt 3 output): Usually named `TEST_PLAN.md` or `INTEGRATION_TEST_PLAN.md`
+1. **Test Plan** (Prompt 3 output): Usually named `TEST_PLAN.md` or `TEST_PLAN_DRAFT.md`
     - Consolidated seams from Prompts 1 and 2
     - Prioritized as P0/P1/P2/Deferred
     - Validation checkboxes should be completed
@@ -167,7 +166,79 @@ Review the prioritization matrix from Prompt 3:
 - "Test X deferred as 'too complex' but it's security-critical - reconsider as P1 with simplified approach"
 - "Test Y deferred to E2E but doesn't need real API - could use mock, add as P1"
 
-### Step 7: Validate Test Count and Scope (5 minutes)
+### Step 7: Review and Enhance Required Fixtures (15 minutes)
+
+**Review the `### Required Fixtures` section in the test plan**:
+
+If the test plan includes a `### Required Fixtures` section (typically in IMPLEMENTATION NOTES), enhance it with references to existing fixtures and implementation patterns.
+
+**Search existing integration test fixtures**:
+```bash
+# Review all integration test conftest.py files
+ls -la backend/tests/integration/**/conftest.py
+```
+
+**For each fixture in the test plan, identify**:
+
+1. **✅ Reusable Existing Fixtures**:
+   - Search for fixtures already implemented in `backend/tests/integration/**/conftest.py`
+   - Note: File path, line numbers, and what the fixture provides
+   - Example: `fakeredis_client` in `backend/tests/integration/conftest.py:228-262`
+
+2. **🔄 Adaptable Pattern References**:
+   - Find similar fixtures that can be copied and modified
+   - Document the pattern and what needs to change
+   - Example: "Pattern from `cache/conftest.py::factory_ai_cache` - adapt for text processor cache"
+
+3. **🆕 New Fixtures Needed**:
+   - Identify fixtures that don't exist but are needed
+   - Provide implementation guidance with code examples
+   - Reference similar patterns from other integration test suites
+
+**Key patterns to reference**:
+- **App Factory Pattern**: `create_app()` for test isolation (from `auth/conftest.py`)
+- **Monkeypatch Pattern**: `monkeypatch.setenv()` for environment setup (from `cache/conftest.py`)
+- **High-Fidelity Fakes**: Using `fakeredis` instead of mocks (from `integration/conftest.py`)
+- **Settings Fixtures**: Real `Settings` instances with test config (from `cache/conftest.py`)
+- **Test Data Fixtures**: Sample data patterns (from `cache/conftest.py`)
+
+**Enhanced fixture documentation format**:
+```markdown
+### Required Fixtures
+
+#### ✅ Reusable Existing Fixtures
+- **fakeredis_client** - `integration/conftest.py:228-262`
+  - Provides: High-fidelity Redis fake for cache testing
+  - Use directly in text processor tests for cache integration
+
+- **authenticated_headers** - `integration/conftest.py:92-97`
+  - Provides: Valid API key headers for authenticated requests
+  - Use directly for API endpoint tests
+
+#### 🔄 Fixtures to Adapt from Existing Patterns
+- **test_client** - Pattern from `auth/conftest.py` and `environment/conftest.py`
+  - Implementation: Use `create_app()` factory pattern
+  - Dependencies: Requires `test_settings` fixture
+  - Code example: [provide implementation]
+
+- **ai_response_cache** - Pattern from `cache/conftest.py::factory_ai_cache`
+  - Implementation: Adapt factory pattern for text processor cache
+  - Dependencies: `fakeredis_client`, `test_settings`
+  - Code example: [provide implementation]
+
+#### 🆕 New Fixtures Needed
+- **failing_cache** - New resilience testing fixture
+  - Purpose: Simulate cache failures for resilience tests
+  - Implementation guidance: [provide code example]
+  - Pattern: Create cache that raises exceptions on specific operations
+```
+
+**Actionable Feedback**:
+- "Fixture X already exists at `integration/conftest.py:100-120` - reference instead of creating new"
+- "Fixture Y can adapt pattern from `cache/conftest.py::factory_ai_cache` - provide implementation guide"
+- "Fixture Z is new but follows pattern from `auth/conftest.py::test_client` - include code example"
+
+### Step 8: Validate Test Count and Scope (5 minutes)
 
 **Check if test plan is realistic**:
 
@@ -248,6 +319,27 @@ Review the prioritization matrix from Prompt 3:
 **Recommend Moving to Lower Priority**:
 - [Seam Y]: P0 → P1 (Reason: [not critical path / covered by unit tests / etc.])
 
+### Fixture Review and Recommendations
+
+**✅ Reusable Existing Fixtures**:
+- **[fixture_name]** - `[file_path:line_numbers]`
+  - Provides: [What the fixture does]
+  - Recommended use: [How to use in this test suite]
+
+**🔄 Fixtures to Adapt**:
+- **[fixture_name]** - Pattern from `[source_file]`
+  - Adaptation needed: [What to change]
+  - Implementation guidance: [Code example or reference]
+
+**🆕 New Fixtures Needed**:
+- **[fixture_name]** - [Purpose]
+  - Pattern reference: [Similar fixture in existing tests]
+  - Implementation guidance: [Code example]
+
+**Key Patterns Referenced**:
+- App Factory Pattern (from `[reference]`)
+- [Other patterns identified]
+
 ### Deferred Tests Review
 **Appropriately Deferred**:
 - ✅ [Test A]: [Good reason]
@@ -308,6 +400,31 @@ Example 1: Approval with Minor Changes
 
 [Additional suggestions...]
 
+### Fixture Review and Recommendations
+
+**✅ Reusable Existing Fixtures**:
+- **fakeredis_client** - `integration/conftest.py:228-262`
+  - Provides: High-fidelity Redis fake for cache testing
+  - Recommended use: Use directly for all cache integration tests
+
+- **authenticated_headers** - `integration/conftest.py:92-97`
+  - Provides: Valid API key headers
+  - Recommended use: Use directly for authenticated endpoint tests
+
+**🔄 Fixtures to Adapt**:
+- **test_client** - Pattern from `auth/conftest.py:45-60`
+  - Adaptation needed: Use text processor settings instead of auth settings
+  - Implementation: Copy pattern, replace settings fixture reference
+
+**🆕 New Fixtures Needed**:
+- **failing_cache** - Resilience testing fixture
+  - Pattern reference: Similar to `fakeredis_client` but with controlled failures
+  - Implementation: Wrap fakeredis with exception injection capability
+
+**Key Patterns Referenced**:
+- App Factory Pattern (from `auth/conftest.py`)
+- High-fidelity fakes (from `integration/conftest.py`)
+
 ### Final Recommendation
 - [x] **APPROVE WITH MINOR CHANGES**: Address suggestions, then proceed to Prompt 5
 
@@ -344,16 +461,17 @@ Example 2: Revision Required
 - [ ] **REVISION REQUIRED**: Address critical issues, then re-review
 
 ---
-Success Criteria
+## Success Criteria
 
 Review is complete when:
 
-1. Philosophy Understanding: Demonstrates clear understanding of our integration testing principles
-2. Structural Validation: Confirms test plan has all required sections
-3. Integration Verification: Validates tests are truly integration (not unit tests)
-4. Priority Validation: Confirms P0 tests are genuinely critical path
-5. Gap Analysis: Identifies missing seams (resilience, security, performance)
-6. Honest Assessment: Provides actionable feedback, not rubber stamp approval
-7. Clear Recommendation: Explicit APPROVE/REVISE decision with reasoning
+1. **Philosophy Understanding**: Demonstrates clear understanding of our integration testing principles
+2. **Structural Validation**: Confirms test plan has all required sections
+3. **Integration Verification**: Validates tests are truly integration (not unit tests)
+4. **Priority Validation**: Confirms P0 tests are genuinely critical path
+5. **Gap Analysis**: Identifies missing seams (resilience, security, performance)
+6. **Fixture Review**: Identifies reusable fixtures, adaptable patterns, and provides implementation guidance
+7. **Honest Assessment**: Provides actionable feedback, not rubber stamp approval
+8. **Clear Recommendation**: Explicit APPROVE/REVISE decision with reasoning
 
 The review should provide specific, actionable feedback that improves test plan quality before implementation begins.
