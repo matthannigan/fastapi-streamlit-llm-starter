@@ -1,3 +1,36 @@
+---
+manifest_version: "1.0"
+last_updated: "2025-10-21"
+total_seams: 67
+statistics:
+  implemented: 31
+  planned: 11
+  deferred: 17
+  duplicate: 1
+  by_area:
+    auth: 3
+    cache: 9
+    environment: 5
+    health: 3
+    startup: 7
+    resilience: 8
+    text_processor: 7
+
+# Quick reference for filtering
+tag_index:
+  - auth
+  - cache
+  - security
+  - resilience
+  - performance
+  # ... all unique tags
+
+component_index:
+  - FastAPI TestClient
+  - AIServiceResilience
+  - AIResponseCache
+  # ... all unique components
+
 seams:
   # ============================================================================
   # Authentication - IMPLEMENTED TESTS
@@ -11,7 +44,7 @@ seams:
       - Environment Detection
       - Security Policy
     location: tests/integration/auth/test_environment_aware_auth_flow.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/auth/README.md
     priority: null
     tags:
       - auth
@@ -28,7 +61,7 @@ seams:
       - Protected Endpoints
       - Multi-Key Management
     location: tests/integration/auth/test_multi_key_endpoint_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/auth/README.md
     priority: null
     tags:
       - auth
@@ -45,7 +78,7 @@ seams:
       - Environment Detection
       - Response Formatting
     location: tests/integration/auth/test_auth_status_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/auth/README.md
     priority: null
     tags:
       - auth
@@ -66,7 +99,7 @@ seams:
       - AIResponseCache
       - InMemoryCache
     location: tests/integration/cache/test_cache_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -83,7 +116,7 @@ seams:
       - Redis
       - InMemoryCache
     location: tests/integration/cache/test_cache_preset_behavior.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -100,7 +133,7 @@ seams:
       - Redis
       - JSON Serialization
     location: tests/integration/cache/test_cache_encryption.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -116,7 +149,7 @@ seams:
       - ImportError Handling
       - Error Classification
     location: tests/integration/cache/test_encryption_dependency_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -134,7 +167,7 @@ seams:
       - Health Check
       - Performance Monitoring
     location: tests/integration/cache/test_encryption_end_to_end_workflows.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -151,7 +184,7 @@ seams:
       - Configuration Management
       - AI Features
     location: tests/integration/cache/test_encryption_factory_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -168,7 +201,7 @@ seams:
       - Redis AUTH
       - TLS Configuration
     location: tests/integration/cache/test_cache_security.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -185,7 +218,7 @@ seams:
       - Dependency Manager
       - Registry Management
     location: tests/integration/cache/test_cache_lifecycle_health.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -202,7 +235,7 @@ seams:
       - Metrics Collection
       - Administrative Control
     location: tests/integration/cache/test_cache_mgmt_api.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/cache/README.md
     priority: null
     tags:
       - cache
@@ -257,7 +290,7 @@ seams:
       - Environment Detection
       - Service Metadata
     location: tests/integration/environment/test_multi_context_detection.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/environment/README.md
     priority: null
     tags:
       - environment
@@ -291,7 +324,7 @@ seams:
       - Fallback Decision
       - Service Behavior
     location: tests/integration/environment/test_confidence_fallback_system.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/environment/README.md
     priority: null
     tags:
       - environment
@@ -308,7 +341,7 @@ seams:
       - All Services
       - Observable API Behavior
     location: tests/integration/environment/test_end_to_end_validation.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/environment/README.md
     priority: null
     tags:
       - environment
@@ -327,7 +360,7 @@ seams:
       - EnvironmentDetector
       - recommend_preset
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/environment/TEST_PLAN.md
     priority: null
     tags:
       - environment
@@ -343,7 +376,7 @@ seams:
       - EnvironmentDetector
       - recommend_preset
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/environment/TEST_PLAN.md
     priority: null
     tags:
       - environment
@@ -359,7 +392,7 @@ seams:
       - Caching mechanisms
       - Concurrent service access
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/environment/TEST_PLAN.md
     priority: null
     tags:
       - environment
@@ -376,7 +409,7 @@ seams:
       - Custom patterns
       - Overrides
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/environment/TEST_PLAN.md
     priority: null
     tags:
       - environment
@@ -395,7 +428,7 @@ seams:
       - ComponentStatus Contract
       - Metadata Validation
     location: tests/integration/health/test_contract_compliance.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/health/README.md
     priority: null
     tags:
       - health
@@ -412,7 +445,7 @@ seams:
       - Health Checker
       - All Components
     location: tests/integration/health/test_critical_path_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/health/README.md
     priority: null
     tags:
       - health
@@ -429,7 +462,7 @@ seams:
       - Cache Infrastructure
       - Resilience Monitoring
     location: tests/integration/health/test_component_integration.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/health/README.md
     priority: null
     tags:
       - health
@@ -484,7 +517,7 @@ seams:
       - Security Policy
       - TLS Enforcement
     location: tests/integration/startup/test_environment_aware_security.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/startup/README.md
     priority: null
     tags:
       - startup
@@ -500,7 +533,7 @@ seams:
       - Component Validators
       - Result Aggregation
     location: tests/integration/startup/test_comprehensive_validation.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/startup/README.md
     priority: null
     tags:
       - startup
@@ -532,7 +565,7 @@ seams:
       - Certificate Expiration
       - Path Resolution
     location: tests/integration/startup/test_certificate_validation.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/startup/README.md
     priority: null
     tags:
       - startup
@@ -548,7 +581,7 @@ seams:
       - Key Format
       - Strength Verification
     location: tests/integration/startup/test_encryption_key_validation.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/startup/README.md
     priority: null
     tags:
       - startup
@@ -564,7 +597,7 @@ seams:
       - Cryptography Library
       - Graceful Degradation
     location: tests/integration/startup/test_cache_encryption_cryptography_unavailable.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/startup/README.md
     priority: null
     tags:
       - startup
@@ -580,7 +613,7 @@ seams:
       - Cryptography Library
       - Certificate Validation
     location: tests/integration/startup/test_redis_security_cryptography_unavailable.py
-    plan_source: README.md
+    plan_source: backend/tests/integration/startup/README.md
     priority: null
     tags:
       - startup
@@ -599,7 +632,7 @@ seams:
       - validate_redis_security
       - get_cache_service
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/startup/TEST_PLAN.md
     priority: null
     tags:
       - startup
@@ -620,7 +653,7 @@ seams:
       - circuitbreaker library
       - mock AI service
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P0
     tags:
       - resilience
@@ -637,7 +670,7 @@ seams:
       - environment detection
       - configuration loading
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P0
     tags:
       - resilience
@@ -654,7 +687,7 @@ seams:
       - mock PydanticAI agent
       - cache integration
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P0
     tags:
       - resilience
@@ -674,7 +707,7 @@ seams:
       - tracemalloc
       - statistics module
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P1
     tags:
       - resilience
@@ -691,7 +724,7 @@ seams:
       - threading module
       - time module
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P1
     tags:
       - resilience
@@ -707,30 +740,13 @@ seams:
       - tenacity library
       - AIServiceResilience
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P1
     tags:
       - resilience
       - library
       - circuit-breaker
       - retry
-
-  - id: resilience-cache-failure-degradation
-    description: Service resilience during cache outages with graceful degradation and recovery
-    status: PLANNED
-    components:
-      - TextProcessorService
-      - AIResponseCache
-      - fakeredis
-      - resilience decorators
-    location: null
-    plan_source: TEST_PLAN.md
-    priority: P1
-    tags:
-      - resilience
-      - cache
-      - failure
-      - degradation
 
   # ============================================================================
   # Resilience - PLANNED TESTS - P2 (Could Have)
@@ -743,7 +759,7 @@ seams:
       - time module
       - mock alerting system
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P2
     tags:
       - resilience
@@ -759,7 +775,7 @@ seams:
       - concurrent execution
       - performance monitoring
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: P2
     tags:
       - resilience
@@ -768,7 +784,7 @@ seams:
       - concurrency
 
   # ============================================================================
-  # Resilience - DEFERRED TESTS
+  # Resilience - DEFERRED & DUPLICATE TESTS
   # ============================================================================
   - id: resilience-dependency-injection
     description: Dependency injection service initialization better suited for FastAPI integration tests
@@ -777,7 +793,7 @@ seams:
       - FastAPI dependency injection
       - Service initialization
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: null
     tags:
       - resilience
@@ -791,7 +807,7 @@ seams:
       - Performance benchmarks
       - Health status
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: null
     tags:
       - resilience
@@ -805,12 +821,30 @@ seams:
       - Template system
       - Configuration validation
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
     priority: null
     tags:
       - resilience
       - template
       - validation
+
+  - id: resilience-cache-failure-degradation
+    description: Service resilience during cache outages with graceful degradation and recovery
+    status: DUPLICATE
+    components:
+      - TextProcessorService
+      - AIResponseCache
+      - fakeredis
+      - resilience decorators
+    location: null
+    plan_source: backend/tests/integration/resilience/TEST_PLAN.md
+    priority: null
+    tags:
+      - resilience
+      - cache
+      - failure
+      - degradation
+    comments: not implemented; duplicate with textproc-cache-failure-resilience
 
   # ============================================================================
   # Text Processor - PLANNED TESTS - P0 (Must Have)
@@ -824,7 +858,7 @@ seams:
       - AIResponseCache
       - fakeredis
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P0
     tags:
       - text-processor
@@ -858,7 +892,7 @@ seams:
       - PromptSanitizer
       - ResponseValidator
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P0
     tags:
       - text-processor
@@ -874,7 +908,7 @@ seams:
       - APIKeyAuth
       - TextProcessorService
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P0
     tags:
       - text-processor
@@ -894,7 +928,7 @@ seams:
       - concurrency semaphore
       - batch aggregation
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P1
     tags:
       - text-processor
@@ -910,7 +944,7 @@ seams:
       - AIResponseCache
       - AI service fallback
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P1
     tags:
       - text-processor
@@ -927,7 +961,7 @@ seams:
       - AIResponseCache
       - batch concurrency
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P1
     tags:
       - text-processor
@@ -946,7 +980,7 @@ seams:
       - TextProcessorService
       - resilience health monitoring
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: P2
     tags:
       - text-processor
@@ -965,7 +999,7 @@ seams:
       - PydanticAI Agent
       - Real AI API
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: null
     tags:
       - text-processor
@@ -996,7 +1030,7 @@ seams:
       - Monitoring
       - Logging Infrastructure
     location: null
-    plan_source: TEST_PLAN.md
+    plan_source: backend/tests/integration/text_processor/TEST_PLAN.md
     priority: null
     tags:
       - text-processor
