@@ -136,7 +136,7 @@ from pydantic_ai import Agent
 from app.schemas import TextProcessingOperation, TextProcessingRequest, TextProcessingResponse, SentimentResult, BatchTextProcessingRequest, BatchTextProcessingResponse, BatchTextProcessingItem, BatchTextProcessingStatus
 from app.core.config import Settings
 from app.infrastructure.ai import create_safe_prompt, sanitize_options, PromptSanitizer
-from app.core.exceptions import ServiceUnavailableError, TransientAIError, AIServiceException, ValidationError
+from app.core.exceptions import ServiceUnavailableError, TransientAIError, AIServiceException, ValidationError, InfrastructureError
 from tenacity import RetryError
 from app.infrastructure.resilience import ai_resilience, ResilienceStrategy, with_balanced_resilience, with_aggressive_resilience, with_conservative_resilience
 from app.services.response_validator import ResponseValidator

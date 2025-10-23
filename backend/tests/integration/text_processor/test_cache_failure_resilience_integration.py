@@ -76,24 +76,6 @@ class TestCacheFailureResilience:
         - Confirms service availability even with partial infrastructure failures
     """
 
-    @pytest.mark.skip(reason="""
-    Cache failure resilience is not yet implemented in TextProcessorService.
-
-    Current Behavior: Cache get failures cause InfrastructureError to propagate,
-    resulting in service failure instead of graceful degradation to AI processing.
-
-    Expected Behavior: Service should catch cache InfrastructureError, log warning,
-    and proceed with AI processing as fallback mechanism.
-
-    Required Implementation:
-    1. Wrap cache.get() calls in try-catch blocks in process_text()
-    2. Log appropriate warnings when cache failures occur
-    3. Continue with AI processing when cache is unavailable
-    4. Set cache_hit=False in response when fallback is used
-
-    This test serves as documentation for the required resilience pattern
-    and can be enabled once cache failure handling is implemented.
-    """)
     @pytest.mark.asyncio
     async def test_cache_lookup_failure_triggers_ai_fallback(
         self,
@@ -179,24 +161,6 @@ class TestCacheFailureResilience:
         # Verify processing time reflects AI processing (not instant cache hit)
         assert response.processing_time > 0.1  # Should indicate actual processing time
 
-    @pytest.mark.skip(reason="""
-    Cache storage failure resilience is not yet implemented in TextProcessorService.
-
-    Current Behavior: Cache set failures cause InfrastructureError to propagate,
-    resulting in service failure even after successful AI processing.
-
-    Expected Behavior: Service should catch cache set InfrastructureError, log warning,
-    and still return successful AI processing response to the user.
-
-    Required Implementation:
-    1. Wrap cache.set() calls in try-catch blocks in process_text()
-    2. Log appropriate warnings when cache storage failures occur
-    3. Return successful AI response even if cache storage fails
-    4. Ensure cache storage failures don't affect response delivery
-
-    This test serves as documentation for the required resilience pattern
-    and can be enabled once cache storage failure handling is implemented.
-    """)
     @pytest.mark.asyncio
     async def test_cache_storage_failure_doesnt_prevent_response(
         self,
@@ -282,25 +246,6 @@ class TestCacheFailureResilience:
         # Verify response metadata doesn't indicate storage issues that would affect user
         assert response.processing_time > 0
 
-    @pytest.mark.skip(reason="""
-    Cache failure logging is not yet implemented in TextProcessorService.
-
-    Current Behavior: Cache failures cause InfrastructureError to propagate without
-    any logging of cache unavailability or graceful degradation attempts.
-
-    Expected Behavior: Service should catch cache InfrastructureError, log detailed
-    warnings about cache unavailability, and provide operational visibility.
-
-    Required Implementation:
-    1. Add comprehensive logging for cache get failures
-    2. Add comprehensive logging for cache set failures
-    3. Include diagnostic information in log messages
-    4. Ensure logging doesn't expose sensitive data
-    5. Use appropriate log levels (WARNING for cache issues)
-
-    This test serves as documentation for the required logging patterns
-    and can be enabled once cache failure logging is implemented.
-    """)
     @pytest.mark.asyncio
     async def test_service_logs_warnings_for_cache_unavailability(
         self,
@@ -413,25 +358,6 @@ class TestCacheFailureResilience:
             assert "api_key" not in warning.message.lower()
             assert "token" not in warning.message.lower()
 
-    @pytest.mark.skip(reason="""
-    Cache recovery mechanisms are not yet implemented in TextProcessorService.
-
-    Current Behavior: Service cannot recover from cache failures as cache failures
-    cause complete service failure rather than graceful degradation.
-
-    Expected Behavior: Service should automatically recover when cache becomes
-    available again, switching from AI fallback back to normal caching behavior.
-
-    Required Implementation:
-    1. Implement cache failure detection and graceful degradation
-    2. Add cache recovery detection mechanisms
-    3. Automatically switch back to cache usage when available
-    4. Maintain service state awareness of cache availability
-    5. Provide performance improvements when cache recovers
-
-    This test serves as documentation for the required recovery patterns
-    and can be enabled once cache recovery mechanisms are implemented.
-    """)
     @pytest.mark.asyncio
     async def test_service_recovery_when_cache_available(
         self,
@@ -529,26 +455,6 @@ class TestCacheFailureResilience:
         # Cache hit should be significantly faster than AI processing
         assert processing_time_cache_hit < processing_time_with_failure * 0.5
 
-    @pytest.mark.skip(reason="""
-    Comprehensive cache failure handling is not yet implemented in TextProcessorService.
-
-    Current Behavior: All cache failure scenarios cause InfrastructureError to propagate,
-    resulting in complete service failure regardless of failure type or pattern.
-
-    Expected Behavior: Service should handle various cache failure scenarios gracefully,
-    maintaining service availability and providing consistent fallback behavior.
-
-    Required Implementation:
-    1. Implement graceful degradation for all cache failure types
-    2. Add comprehensive error handling for intermittent failures
-    3. Add comprehensive error handling for complete failures
-    4. Add comprehensive error handling for partial recovery scenarios
-    5. Ensure consistent response quality across all failure scenarios
-    6. Add comprehensive logging and monitoring for different failure types
-
-    This test serves as documentation for the required comprehensive resilience patterns
-    and can be enabled once full cache failure handling is implemented.
-    """)
     @pytest.mark.asyncio
     async def test_multiple_cache_failure_scenarios(
         self,

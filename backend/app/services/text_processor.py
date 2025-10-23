@@ -137,6 +137,7 @@ from pydantic_ai import Agent
 if TYPE_CHECKING:
     from app.infrastructure.cache.redis_ai import AIResponseCache
     from app.infrastructure.cache.memory import InMemoryCache
+    from app.infrastructure.resilience.orchestrator import AIResilienceOrchestrator
 
 from app.schemas import (
     TextProcessingOperation,
@@ -154,7 +155,8 @@ from app.core.exceptions import (
     ServiceUnavailableError,
     TransientAIError,
     AIServiceException,
-    ValidationError
+    ValidationError,
+    InfrastructureError
 )
 from tenacity import RetryError
 from app.infrastructure.resilience import (
@@ -902,7 +904,7 @@ class TextProcessorService:
             self,
             operation: TextProcessingOperation,
             text: str,
-            question: str | None = None) -> Any:
+            question: str | None = None) -> Union[str, List[str], SentimentResult]:
         """
         Provide fallback responses when AI service is unavailable using registry.
 
@@ -954,20 +956,33 @@ class TextProcessorService:
         # Try to get cached response first
         operation_value = operation.value if hasattr(operation, "value") else operation
         cache_key = await self._build_cache_key(text, operation_value, {}, question)
-        cached_response = await self.cache_service.get(cache_key)
+        # Wrap cache.get() in try-catch for resilience
+        try:
+            cached_response = await self.cache_service.get(cache_key)
+        except InfrastructureError as e:
+            logger.warning(f"Cache get failed in fallback: {e}, proceeding with default fallback")
+            cached_response = None
 
         if cached_response:
             logger.info(f"Using cached fallback for {operation}")
             # Extract the appropriate field from cached response dict using registry
             if isinstance(cached_response, dict):
                 response_field = self._get_response_field(operation)
-                return cached_response.get(response_field, self._get_default_fallback(operation))
+                cached_field = cached_response.get(response_field)
+
+                # For sentiment operations, ensure we return SentimentResult instance, not dict
+                if (operation == TextProcessingOperation.SENTIMENT and
+                    isinstance(cached_field, dict) and
+                    'sentiment' in cached_field):
+                    return SentimentResult(**cached_field)
+
+                return cached_field if cached_field is not None else self._get_default_fallback(operation)
             return cached_response
 
         # Generate fallback based on registry-defined type
         return self._get_default_fallback(operation)
 
-    def _get_default_fallback(self, operation: TextProcessingOperation) -> Any:
+    def _get_default_fallback(self, operation: TextProcessingOperation) -> Union[str, List[str], SentimentResult]:
         """
         Get default fallback response based on operation type from registry.
 
@@ -1109,7 +1124,12 @@ class TextProcessorService:
             request.options or {},
             request.question
         )
-        cached_response = await self.cache_service.get(cache_key)
+        # Wrap cache.get() in try-catch for resilience
+        try:
+            cached_response = await self.cache_service.get(cache_key)
+        except InfrastructureError as e:
+            logger.warning(f"Cache get failed: {e}, proceeding with AI processing")
+            cached_response = None
 
         if cached_response:
             logger.info(f"Cache hit for operation: {request.operation}")
@@ -1184,10 +1204,13 @@ class TextProcessorService:
                 response.metadata["fallback_used"] = True
                 logger.info(f"PROCESSING_END - ID: {processing_id}, Operation: {request.operation}, Status: FALLBACK_USED")
 
-            # Cache the successful response (even fallback responses)
+            # Cache the successful response (even fallback responses) with failure resilience
             # Reuse the cache_key from above to avoid redundant key generation
             ttl = self._get_ttl_for_operation(operation_value)
-            await self.cache_service.set(cache_key, response.model_dump(), ttl)
+            try:
+                await self.cache_service.set(cache_key, response.model_dump(), ttl)
+            except InfrastructureError as e:
+                logger.warning(f"Cache set failed: {e}, response delivery unaffected")
 
             processing_time = time.time() - start_time
             response.processing_time = processing_time

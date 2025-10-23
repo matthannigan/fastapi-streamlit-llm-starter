@@ -168,15 +168,37 @@ class TestCacheIntegration:
         assert result1["operation"] == result2["operation"]
         assert result1["result"] == result2["result"]
 
-        # Verify cache behavior transition
-        # Check for cache status or fallback status
-        has_cache_status1 = "cache_status" in result1["metadata"]
-        has_cache_status2 = "cache_status" in result2["metadata"]
+        # Debug logging to verify cache behavior
+        print(f"\n=== DEBUG CACHE BEHAVIOR ===")
+        print(f"Request 1 metadata: {result1['metadata']}")
+        print(f"Request 2 metadata: {result2['metadata']}")
+        print(f"Request 1 cache_hit: {result1.get('cache_hit')}")
+        print(f"Request 2 cache_hit: {result2.get('cache_hit')}")
+        print(f"Request 1 fallback_used: {result1['metadata'].get('fallback_used')}")
+        print(f"Request 2 fallback_used: {result2['metadata'].get('fallback_used')}")
+        print(f"=============================\n")
 
-        if has_cache_status1 and has_cache_status2:
-            # Ideal case: both have cache status
-            assert result1["metadata"]["cache_status"] in ["miss", "set"]
-            assert result2["metadata"]["cache_status"] == "hit"
+        # Verify cache behavior transition with specific assertions from TEST_FIXES.md
+        # First request should be cache miss/set
+        assert result1["metadata"].get("cache_status") in ["miss", "set"], \
+            f"First request should be cache miss/set, got: {result1['metadata'].get('cache_status')}"
+
+        # Second request should be cache hit
+        assert result2["metadata"].get("cache_status") == "hit", \
+            f"Second request should be cache hit, got: {result2['metadata'].get('cache_status')}"
+
+        # Second request must indicate cache hit
+        assert result2["metadata"].get("cache_hit") is True, \
+            f"Second request must indicate cache hit, got: {result2.get('cache_hit')}"
+
+        # Check if test is using fallback responses (check for fallback_used in metadata)
+        fallback_used_1 = result1["metadata"].get("fallback_used")
+        fallback_used_2 = result2["metadata"].get("fallback_used")
+
+        if fallback_used_1:
+            print(f"WARNING: First request used fallback: {fallback_used_1}")
+        if fallback_used_2:
+            print(f"WARNING: Second request used fallback: {fallback_used_2}")
 
         # Verify performance improvement (cache hit should be faster)
         if first_time and second_time:

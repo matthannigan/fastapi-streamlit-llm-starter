@@ -465,8 +465,8 @@ class APIKeyAuth:
                     }
 
         if not api_keys:
-            _IS_PYTEST = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
-            if not _IS_PYTEST:
+            is_pytest = ("pytest" in sys.modules) or bool(os.getenv("PYTEST_CURRENT_TEST"))
+            if not is_pytest:
                 logger.warning("No API keys configured. API endpoints will be unprotected!")
         else:
             logger.info(f"Loaded {len(api_keys)} API key(s) in {self.config.get_auth_info()['mode']} mode")
@@ -586,7 +586,6 @@ class APIKeyAuth:
             internal state. Consider implementing proper locking if needed.
         """
         # Clear existing metadata before reloading to ensure consistency
-        old_metadata = self._key_metadata.copy()
         self._key_metadata.clear()
 
         # Reload keys (this will repopulate metadata via _load_api_keys)
@@ -667,7 +666,7 @@ async def verify_api_key(
         >>> # Raises: AuthenticationError("API key required...", context={...})
     """
     # Extract API key from either Bearer or X-API-Key header
-    api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
+    api_key, _auth_method = get_api_key_from_request(request, bearer_credentials)
 
     # Get valid API keys from settings (uses dependency-injected settings)
     valid_api_keys = settings.get_valid_api_keys()
@@ -721,27 +720,29 @@ async def verify_api_key(
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             context = {
-                "auth_method": auth_method,
+                "auth_method": _auth_method,
                 "environment": env_info.environment.value,
                 "confidence": env_info.confidence,
                 "credentials_provided": False
             }
         except Exception:
-            context = {"auth_method": auth_method, "credentials_provided": False}
+            context = {"auth_method": _auth_method, "credentials_provided": False}
 
-        raise AuthenticationError(
-            "API key required. Please provide a valid API key via 'Authorization: Bearer <key>' or 'X-API-Key: <key>' header.",
-            context=context
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=401,
+            detail="API key required. Please provide a valid API key via 'Authorization: Bearer <key>' or 'X-API-Key: <key>' header.",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
     # Verify the API key against valid keys from settings
     if api_key not in valid_api_keys:
-        logger.warning(f"Invalid API key attempted via {auth_method}: {api_key[:8]}...")
+        logger.warning(f"Invalid API key attempted via {_auth_method}: {api_key[:8]}...")
 
         try:
             env_info = get_environment_info(FeatureContext.SECURITY_ENFORCEMENT)
             context = {
-                "auth_method": auth_method,
+                "auth_method": _auth_method,
                 "environment": env_info.environment.value,
                 "confidence": env_info.confidence,
                 "key_prefix": api_key[:8],
@@ -749,14 +750,19 @@ async def verify_api_key(
             }
         except Exception:
             context = {
-                "auth_method": auth_method,
+                "auth_method": _auth_method,
                 "key_prefix": api_key[:8],
                 "credentials_provided": True
             }
 
-        raise AuthenticationError("Invalid API key", context=context)
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication failed",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
-    logger.debug(f"API key authentication successful via {auth_method}")
+    logger.debug(f"API key authentication successful via {_auth_method}")
     return api_key
 
 async def verify_api_key_with_metadata(
@@ -816,7 +822,7 @@ async def optional_verify_api_key(
         ConfigurationError: If production environment lacks API key configuration
     """
     # Extract API key from either Bearer or X-API-Key header
-    api_key, auth_method = get_api_key_from_request(request, bearer_credentials)
+    api_key, _auth_method = get_api_key_from_request(request, bearer_credentials)
 
     if not api_key:
         return None
