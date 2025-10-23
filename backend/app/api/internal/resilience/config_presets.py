@@ -86,8 +86,14 @@ router = APIRouter(prefix="/resilience/config", tags=["Resilience Configuration"
 
 # Dependency for getting preset manager
 def get_preset_manager() -> PresetManager:
-    """Get the global preset manager instance."""
-    return preset_manager
+    """
+    Get a preset manager instance that picks up current environment.
+
+    Creates a fresh PresetManager instance to ensure current environment
+    variables are properly detected, which is critical for testing and
+    dynamic configuration scenarios.
+    """
+    return PresetManager()
 
 @router.get("/presets", response_model=List[PresetSummary])
 async def list_presets(

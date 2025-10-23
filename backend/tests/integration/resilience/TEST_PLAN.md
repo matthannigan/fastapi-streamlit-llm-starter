@@ -461,3 +461,225 @@ def concurrent_executor():
 2. **Monkeypatch Pattern**: ALWAYS use `monkeypatch.setenv()` (NEVER `os.environ`)
 3. **High-Fidelity Fakes**: Use fakeredis, real libraries (not mocks)
 4. **Settings Fixtures**: Real Settings instances with test configuration
+
+## CRITICAL: Fixture Pattern Guidance (Task 5 Completion)
+
+### Overview
+Based on analysis of 10 critical test issues in `TEST_FIXES.md`, this section provides comprehensive guidance on proper fixture usage to ensure reliable, isolated tests.
+
+### Pattern Violations Identified
+
+**Pattern 1: Environment Setup After App Creation (CRITICAL - Issue #1)**
+- **Problem**: Tests modify environment variables AFTER app/settings already created
+- **Impact**: Tests use wrong configuration, causing failures and misleading results
+- **Solution**: Always follow Environment → Settings → App order
+
+**Pattern 2: Mocks Applied After Service Initialization (CRITICAL - Issues #3-#8)**
+- **Problem**: Service creates real dependencies before mocks are applied
+- **Impact**: Tests use real services instead of mocks, causing test pollution
+- **Solution**: Use factory fixtures that apply mocks before service creation
+
+**Pattern 3: Missing Authentication Variants (CRITICAL - Issue #2)**
+- **Problem**: Only authenticated test client available
+- **Impact**: Cannot test authentication failure scenarios
+- **Solution**: Create multiple client fixtures for different auth states
+
+**Pattern 4: Direct Environment Modification (MAJOR)**
+- **Problem**: Using `os.environ` instead of `monkeypatch.setenv()`
+- **Impact**: Test pollution causes flaky, order-dependent tests
+- **Solution**: ALWAYS use monkeypatch for environment variables
+
+### App Factory Pattern Compliance
+
+#### ✅ CORRECT: Environment Set Before App Creation
+```python
+@pytest.fixture
+def reliable_test_client(monkeypatch):
+    # Step 1: Set environment variables FIRST
+    monkeypatch.setenv("ENVIRONMENT", "testing")
+    monkeypatch.setenv("API_KEY", "test-key-12345")
+    monkeypatch.setenv("RESILIENCE_PRESET", "simple")
+
+    # Step 2: Create settings AFTER environment is set
+    settings = create_settings()  # Picks up environment variables
+
+    # Step 3: Create app WITH the settings
+    app = create_app(settings_obj=settings)
+    return TestClient(app)
+```
+
+#### ❌ VIOLATION: Environment Set After App Creation
+```python
+# NEVER DO THIS - This was Issue #1 in TEST_FIXES.md
+@pytest.fixture
+def broken_test_client(monkeypatch):
+    app = create_app()  # Uses existing environment
+    monkeypatch.setenv("ENVIRONMENT", "staging")  # Too late! App won't see this
+    return TestClient(app)  # App has wrong configuration
+```
+
+### Service Factory Pattern for Mock Timing
+
+#### ✅ CORRECT: Mocks Applied Before Service Initialization
+```python
+@pytest.fixture
+async def text_processor_with_mock_ai(settings):
+    # Apply mock BEFORE service creation
+    with patch("app.services.text_processor.Agent") as mock_class:
+        mock_instance = AsyncMock()
+        mock_class.return_value = mock_instance
+
+        # Create service WITH mock already active
+        service = TextProcessorService(settings=settings)
+        yield service  # Service uses mock during __init__
+```
+
+#### ❌ VIOLATION: Mocks Applied After Service Initialization
+```python
+# NEVER DO THIS - This caused Issues #3-#8 in TEST_FIXES.md
+@pytest.fixture
+async def broken_text_processor(settings):
+    service = TextProcessorService(settings=settings)  # Agent created here
+
+    # Mock applied AFTER service already has Agent instance
+    with patch("app.services.text_processor.Agent"):
+        yield service  # Service won't use the mock!
+```
+
+### Environment Variable Testing (MANDATORY)
+
+#### ✅ CORRECT: Always Use monkeypatch.setenv()
+```python
+def test_environment_configuration(monkeypatch):
+    # ✅ Use monkeypatch for ALL environment variable modifications
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("API_KEY", "test-prod-key")
+
+    # Create app AFTER environment setup
+    app = create_app()
+    client = TestClient(app)
+
+    # Test with correct configuration
+    response = client.get("/v1/health")
+    assert response.status_code == 200
+```
+
+#### ❌ VIOLATION: Never Use os.environ Directly
+```python
+# NEVER DO THIS - Causes permanent test pollution
+import os
+
+def test_broken_environment():
+    os.environ["ENVIRONMENT"] = "production"  # Pollutes ALL subsequent tests!
+```
+
+### Authentication Testing Variants
+
+#### ✅ CORRECT: Multiple Client Fixtures for Different Auth States
+```python
+# For testing authenticated requests
+@pytest.fixture
+def authenticated_client(monkeypatch):
+    monkeypatch.setenv("API_KEY", "valid-key-12345")
+    app = create_app()
+    return TestClient(app)
+
+# For testing unauthenticated requests
+@pytest.fixture
+def unauthenticated_client(monkeypatch):
+    monkeypatch.setenv("API_KEY", "valid-key-12345")  # App needs key for startup
+    app = create_app()
+    return TestClient(app)  # No auth headers auto-added
+```
+
+### Fixture Choice Guidance
+
+#### When to Use Factory Fixtures (text_processor_with_*)
+- Testing AI service failure scenarios
+- Testing circuit breaker activation
+- Testing retry behavior with controlled failures
+- Any test requiring specific mock behavior during service initialization
+
+#### When to Use Regular Client Fixtures (resilience_test_client)
+- Testing API endpoints with standard configuration
+- Testing authentication patterns
+- Testing configuration management
+- General integration testing without specific service mocking
+
+#### When to Use Unauthenticated Client Fixtures
+- Testing authentication requirements
+- Testing authorization failures
+- Testing security boundaries
+- Validating endpoint protection
+
+### Test Isolation Guarantees
+
+These patterns provide complete test isolation through:
+
+1. **Function Scope**: All fixtures use function scope for fresh instances
+2. **App Factory Pattern**: Fresh FastAPI apps created per test
+3. **Monkeypatch Cleanup**: Environment changes automatically restored
+4. **Service Factories**: Fresh services with configured dependencies
+5. **No Shared State**: Each test gets isolated infrastructure
+
+### Common Pitfalls and Solutions
+
+#### Pitfall 1: Setting Environment After App Creation
+```python
+# ❌ WRONG
+def test_wrong_order(monkeypatch):
+    app = create_app()  # Uses current environment
+    monkeypatch.setenv('API_KEY', 'test-key')  # Too late!
+
+# ✅ RIGHT
+def test_correct_order(monkeypatch):
+    monkeypatch.setenv('API_KEY', 'test-key')  # Set first
+    app = create_app()  # Uses new environment
+```
+
+#### Pitfall 2: Forgetting monkeypatch Parameter
+```python
+# ❌ WRONG
+def test_environment():
+    monkeypatch.setenv("ENVIRONMENT", "production")  # NameError!
+
+# ✅ RIGHT
+def test_environment(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+```
+
+#### Pitfall 3: Using Cached Settings Dependency
+```python
+# ❌ WRONG: Cached settings won't update
+from app.dependencies import get_settings  # Cached!
+
+# ✅ RIGHT: Factory creates fresh settings
+from app.core.config import get_settings_factory
+# Use with Depends(get_settings_factory)
+```
+
+### Migration Checklist for Existing Tests
+
+1. **Environment Variable Usage**:
+   - [ ] Replace `os.environ["VAR"] = "value"` with `monkeypatch.setenv("VAR", "value")`
+   - [ ] Replace `del os.environ["VAR"]` with `monkeypatch.delenv("VAR", raising=False)`
+   - [ ] Add `monkeypatch` parameter to test function signature
+   - [ ] Set environment BEFORE app creation
+
+2. **App Creation Pattern**:
+   - [ ] Replace `from app.main import app` with `from app.main import create_app`
+   - [ ] Create app in fixture: `app = create_app()`
+   - [ ] Use function scope for fixtures
+
+3. **Service Mocking**:
+   - [ ] Apply mocks BEFORE service creation
+   - [ ] Use factory fixtures for complex mock scenarios
+   - [ ] Avoid mocks applied after service initialization
+
+### References
+
+- **Comprehensive Guide**: `backend/tests/integration/resilience/FIXTURE_PATTERNS.md`
+- **Issue Analysis**: `backend/tests/integration/resilience/TEST_FIXES.md`
+- **App Factory Pattern**: `backend/CLAUDE.md` - App Factory Pattern section
+- **Environment Testing**: `backend/CLAUDE.md` - Environment Variable Testing Patterns
+- **Integration Testing**: `docs/guides/testing/TESTING.md`

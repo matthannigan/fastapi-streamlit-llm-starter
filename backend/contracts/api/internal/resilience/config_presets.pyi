@@ -77,7 +77,11 @@ router = APIRouter(prefix='/resilience/config', tags=['Resilience Configuration'
 
 def get_preset_manager() -> PresetManager:
     """
-    Get the global preset manager instance.
+    Get a preset manager instance that picks up current environment.
+    
+    Creates a fresh PresetManager instance to ensure current environment
+    variables are properly detected, which is critical for testing and
+    dynamic configuration scenarios.
     """
     ...
 
