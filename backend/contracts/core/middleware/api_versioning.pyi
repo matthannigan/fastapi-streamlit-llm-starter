@@ -144,37 +144,50 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """
-        Process HTTP request with comprehensive API versioning and compatibility handling.
+        Process HTTP request with comprehensive API versioning, validation, and compatibility handling.
         
-        Main middleware entry point that orchestrates version detection, validation,
-        routing, and response header management. Handles unsupported versions with
-        appropriate error responses and maintains backward compatibility.
+        Main middleware entry point that orchestrates version detection, validation, routing,
+        and response header management. Handles malformed version formats and unsupported versions
+        with structured error responses while maintaining backward compatibility.
         
         Args:
-            request: FastAPI Request object to be processed for version detection
-            call_next: ASGI callable to invoke the next middleware/endpoint in chain
+            request: FastAPI Request object to be processed for version detection and routing
+            call_next: ASGI callable to invoke the next middleware/endpoint in the request chain
         
         Returns:
-            FastAPI Response object with version headers added. May return a
-            JSONResponse error if the requested version is not supported.
+            FastAPI Response object with comprehensive version headers added. May return a
+            JSONResponse error for malformed or unsupported version specifications.
         
         Raises:
-            None (errors are returned as structured JSON responses)
+            None (all errors are returned as structured JSON responses with appropriate headers)
         
         Behavior:
-            - Skips processing entirely if middleware is disabled
-            - Bypasses versioning for health check, docs, and internal API paths
-            - Detects API version using configured strategy hierarchy
-            - Returns structured error for unsupported versions with helpful headers
-            - Attempts intelligent compatibility matching for unsupported versions
-            - Populates request.state with version information for downstream use
+            - Skips processing entirely if middleware is disabled via configuration
+            - Bypasses versioning for health check, docs, internal API, and test endpoints
+            - Detects API version using configured strategy hierarchy with format validation
+            - Returns 400 structured error for malformed version formats with helpful guidance
+            - Returns 400 structured error for unsupported versions with compatibility suggestions
+            - Attempts intelligent compatibility matching for unsupported but similar versions
+            - Populates request.state with version information for downstream middleware/endpoints
             - Rewrites request paths for proper routing to versioned endpoints
-            - Adds comprehensive version headers to all responses
-            - Logs version usage for analytics and debugging
+            - Adds comprehensive version headers to all successful responses
+            - Logs version usage and errors for analytics and debugging
         
-        Response Headers Added:
+        Bypassed Paths (versioning skipped):
+            - Health check endpoints: /health, /readiness, /ping, /status, /liveness
+            - Documentation endpoints: /, /docs, /openapi.json, /redoc
+            - Internal API endpoints: /internal/* (configurable bypass)
+            - Test endpoints: /test/* (for integration testing)
+        
+        Error Responses:
+            - 400 Bad Request for malformed version formats (API_VERSION_FORMAT_INVALID)
+            - 400 Bad Request for unsupported versions (API_VERSION_NOT_SUPPORTED)
+            - Both error types include supported_versions and current_version in response body
+            - Both error types include X-API-Supported-Versions and X-API-Current-Version headers
+        
+        Response Headers Added (successful responses):
             X-API-Version: The API version used for processing
-            X-API-Version-Detection: Strategy used for version detection
+            X-API-Version-Detection: Strategy used for version detection (path, header, query, accept, default)
             X-API-Supported-Versions: Comma-separated list of supported versions
             X-API-Current-Version: The latest/current API version
             Deprecation: Set to 'true' for deprecated versions
@@ -182,10 +195,21 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
             Link: Link to migration documentation for deprecated versions
         
         Examples:
-            >>> # Supported version request
+            >>> # Valid version request with successful processing
             >>> response = await dispatch(request_with_v1, call_next)
             >>> response.headers['X-API-Version']
             '1.0'
+            >>> response.headers['X-API-Version-Detection']
+            'path'
+        
+            >>> # Malformed version format request
+            >>> response = await dispatch(request_with_malformed_version, call_next)
+            >>> response.status_code
+            400
+            >>> response.json()['error_code']
+            'API_VERSION_FORMAT_INVALID'
+            >>> 'Version must be numeric' in response.json()['detail']
+            True
         
             >>> # Unsupported version request
             >>> response = await dispatch(request_with_v5, call_next)
@@ -193,11 +217,25 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
             400
             >>> response.json()['error_code']
             'API_VERSION_NOT_SUPPORTED'
+            >>> response.json()['supported_versions']
+            ['1.0', '2.0']
+        
+            >>> # Test endpoint bypass
+            >>> response = await dispatch(request_to_test_endpoint, call_next)
+            >>> response.status_code
+            200
+            >>> 'X-API-Version' in response.headers
+            False
+        
+        Request State Added (for downstream use):
+            request.state.api_version: The detected/validated version string
+            request.state.api_version_detection_method: Strategy used for detection
+            request.state.api_version_info: Detailed version metadata (status, deprecation info)
         
         Note:
-            This method ensures thread safety through request-scoped state and
-            maintains backward compatibility while providing clear migration paths
-            for deprecated versions.
+            This method ensures thread safety through request-scoped state management and
+            maintains backward compatibility while providing clear error messages and migration
+            paths for deprecated or malformed version specifications.
         """
         ...
 

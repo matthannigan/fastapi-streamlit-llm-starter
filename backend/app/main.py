@@ -211,6 +211,7 @@ from app.core.environment import (
     is_production_environment,
 )
 from app.core.middleware import setup_enhanced_middleware
+from app.core.middleware.global_exception_handler import setup_global_exception_handler
 
 # Configure logging
 logging.basicConfig(
@@ -1406,6 +1407,9 @@ def create_public_app_with_settings(
     # Note: Text processing endpoints require explicit versioning as they
     # contain core business logic that may have breaking changes between versions
 
+    # Setup global exception handlers to ensure AuthenticationError converts to HTTP 401 responses
+    setup_global_exception_handler(public_app, settings_obj)
+
     # Apply custom OpenAPI schema generation
     public_app.openapi = lambda: custom_openapi_schema(public_app)  # type: ignore
 
@@ -1668,6 +1672,9 @@ def create_internal_app_with_settings(
         internal_app.include_router(resilience_config_validation_router)
         internal_app.include_router(resilience_monitoring_router)
         internal_app.include_router(resilience_performance_router)
+
+    # Setup global exception handlers to ensure proper error responses in internal API
+    setup_global_exception_handler(internal_app, settings_obj)
 
     # Apply custom OpenAPI schema generation
     internal_app.openapi = lambda: custom_openapi_schema(internal_app)  # type: ignore
@@ -1989,6 +1996,9 @@ def create_internal_app() -> FastAPI:
     internal_app.include_router(resilience_config_validation_router)
     internal_app.include_router(resilience_monitoring_router)
     internal_app.include_router(resilience_performance_router)
+
+    # Setup global exception handlers to ensure proper error responses in internal API
+    setup_global_exception_handler(internal_app, settings)
 
     # Apply custom OpenAPI schema generation
     internal_app.openapi = lambda: custom_openapi_schema(internal_app)  # type: ignore

@@ -247,6 +247,145 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         except Exception:
             return None
 
+    def _validate_version_format(self, version_str: str) -> Tuple[bool, str | None]:
+        """
+        Validate that a version string follows proper semantic versioning format.
+
+        Validates version strings against strict numeric patterns to distinguish between
+        missing versions and malformed version specifications. This enables proper error
+        handling for invalid version formats while allowing graceful fallback for missing versions.
+
+        Args:
+            version_str: Raw version string to validate. Can include 'v' prefix, be in
+                        major-only format (e.g., "1", "v1"), or major.minor format
+                        (e.g., "1.0", "v1.5"). Empty or None values are handled.
+
+        Returns:
+            Tuple of (is_valid, normalized_version) where:
+            - is_valid: True if version format is valid and parseable, False otherwise
+            - normalized_version: Normalized version string in "major.minor" format if valid,
+                                None if invalid or not parseable
+
+        Behavior:
+            - Validates against numeric pattern: digits optionally followed by dot and more digits
+            - Accepts 'v' prefix (case-insensitive) and removes it during validation
+            - Normalizes major-only versions to major.minor format (e.g., "1" → "1.0")
+            - Rejects completely invalid formats (non-numeric, special characters, malformed)
+            - Returns False for None, empty strings, or strings with invalid characters
+            - Used by version detection strategies to distinguish "no version" from "malformed version"
+            - Enables 400 error responses for invalid formats instead of silent fallback
+
+        Examples:
+            >>> # Valid formats with normalization
+            >>> _validate_version_format("1.0")
+            (True, '1.0')
+            >>> _validate_version_format("v1.5")
+            (True, '1.5')
+            >>> _validate_version_format("2")
+            (True, '2.0')
+
+            >>> # Invalid formats
+            >>> _validate_version_format("1.2.3")
+            (True, '1.2')  # Truncated to major.minor
+            >>> _validate_version_format("v1.2beta")
+            (False, None)
+            >>> _validate_version_format("invalid")
+            (False, None)
+            >>> _validate_version_format("")
+            (False, None)
+            >>> _validate_version_format(None)
+            (False, None)
+
+            >>> # Edge cases
+            >>> _validate_version_format("v")
+            (False, None)
+            >>> _validate_version_format("1..2")
+            (False, None)
+        """
+        if not version_str:
+            return False, None
+
+        # Check for valid version pattern: digits optionally followed by .digits
+        import re
+        if not re.match(r'^\d+(\.\d+)*$', version_str):
+            # Try removing 'v' prefix and re-check
+            if version_str.lower().startswith('v'):
+                clean_version = version_str[1:]
+                if not re.match(r'^\d+(\.\d+)*$', clean_version):
+                    return False, None
+            else:
+                return False, None
+
+        # Try to normalize and parse the version
+        normalized = self._normalize_version(version_str)
+        return normalized is not None, normalized
+
+    def _get_version_with_validation(self, version_str: str, strategy_name: str) -> Tuple[str | None, str | None]:
+        """
+        Extract and validate version from detection strategy with proper error handling.
+
+        Centralizes version validation logic for all detection strategies, ensuring consistent
+        error reporting and validation behavior across path, header, query, and Accept header
+        strategies. Enables clear distinction between missing versions and malformed formats.
+
+        Args:
+            version_str: Raw version string extracted by the detection strategy. Can be
+                        empty string, None, or any format that the strategy encountered.
+                        Examples: "1.0", "v2", "invalid", "", None
+            strategy_name: Human-readable name of the detection strategy for error reporting.
+                          Used to provide specific error messages indicating where the invalid
+                          format was found. Examples: "path", "header 'X-API-Version'",
+                          "query parameter", "Accept header"
+
+        Returns:
+            Tuple of (version, error) where:
+            - version: Normalized version string in "major.minor" format if valid, None if
+                      not found, malformed, or empty
+            - error: Descriptive error message if format is invalid, None if valid or not found.
+                    Includes strategy name and specific format requirements.
+
+        Behavior:
+            - Returns (None, None) for empty or None version_str (no version present)
+            - Validates format using _validate_version_format() for consistency
+            - Generates descriptive error messages including strategy location
+            - Provides specific guidance on valid format examples in error messages
+            - Enables 400 error responses for malformed versions instead of silent fallback
+            - Centralizes validation logic to avoid code duplication across strategies
+            - Maintains backward compatibility for missing versions while rejecting malformed ones
+
+        Examples:
+            >>> # Valid version extraction
+            >>> _get_version_with_validation("1.0", "path")
+            ('1.0', None)
+            >>> _get_version_with_validation("v2.5", "header")
+            ('2.5', None)
+
+            >>> # No version present (not an error)
+            >>> _get_version_with_validation("", "query parameter")
+            (None, None)
+            >>> _get_version_with_validation(None, "Accept header")
+            (None, None)
+
+            >>> # Invalid format with error reporting
+            >>> _get_version_with_validation("invalid", "path")
+            (None, "Invalid version format in path: 'invalid'. Version must be numeric (e.g., '1.0', '2.1')")
+            >>> _get_version_with_validation("1.2beta", "header 'X-API-Version'")
+            (None, "Invalid version format in header 'X-API-Version': '1.2beta'. Version must be numeric (e.g., '1.0', '2.1')")
+
+            >>> # Strategy-specific error context
+            >>> _get_version_with_validation("bad-version", "query parameter")
+            (None, "Invalid version format in query parameter: 'bad-version'. Version must be numeric (e.g., '1.0', '2.1')")
+        """
+        if not version_str:
+            return None, None
+
+        is_valid, normalized = self._validate_version_format(version_str)
+        if not is_valid:
+            error_msg = f"Invalid version format in {strategy_name}: '{version_str}'. Version must be numeric (e.g., '1.0', '2.1')"
+            return None, error_msg
+
+        return normalized, None
+
     def _get_version_from_path(self, request: Request) -> str | None:
         """Extract version from URL path."""
         match = self.version_path_pattern.match(request.url.path)
@@ -288,51 +427,139 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
 
     def _detect_api_version(self, request: Request) -> Tuple[str, str]:
         """
-        Detect API version from request using multiple strategies in precedence order.
+        Detect API version from request using multiple strategies with comprehensive validation.
 
-        Applies the configured version detection strategies sequentially until a version
-        is found or defaults to the configured default version. Returns both the detected
-        version and the strategy used for detection.
+        Applies the configured version detection strategies sequentially until a valid version
+        is found or defaults to the configured default version. Validates all detected versions
+        for proper format and raises descriptive errors for malformed version specifications
+        instead of silently falling back to defaults.
 
         Args:
             request: The FastAPI Request object containing URL, headers, and query
-                    parameters to be analyzed for version information.
+                    parameters to be analyzed for version information. The request should
+                    be a fully formed FastAPI request with all standard attributes.
 
         Returns:
             Tuple of (detected_version, detection_method) where:
             - detected_version: The API version string in normalized major.minor format
             - detection_method: Name of the strategy that detected the version
-                              ('path', 'header', 'query', 'default')
+                              ('path', 'header', 'query', 'accept', 'default')
+
+        Raises:
+            ValueError: If malformed version formats are detected in any strategy.
+                        Error message includes specific details about where the invalid
+                        format was found and what constitutes a valid format.
 
         Behavior:
-            - Applies version strategies in configured precedence order
-            - Returns first successfully detected version, even if unsupported
-            - Falls back to default version if no strategy yields a result
-            - Logs detection process for debugging and analytics
-            - Strategy names are derived from method names for traceability
+            - Applies version strategies in configured precedence order: path → header → query → accept → default
+            - Validates all detected version strings using _get_version_with_validation()
+            - Returns first successfully detected and validated version, even if unsupported
+            - Collects all validation errors and raises ValueError if any malformed versions found
+            - Falls back to default version only if no version information is present (not for invalid formats)
+            - Normalizes all valid versions to major.minor format for consistency
+            - Strategy names are derived from method names for debugging and analytics
+            - Enables precise error reporting for debugging client version specification issues
 
         Examples:
-            >>> # Path-based detection: /v1/users
-            >>> _detect_api_version(request_with_path)
+            >>> # Valid path-based detection: /v1/users
+            >>> _detect_api_version(request_with_v1_path)
             ('1.0', 'path')
 
-            >>> # Header-based detection: X-API-Version: 2.0
-            >>> _detect_api_version(request_with_header)
+            >>> # Valid header-based detection: X-API-Version: 2.0
+            >>> _detect_api_version(request_with_version_header)
             ('2.0', 'header')
 
-            >>> # Default fallback
+            >>> # Valid query parameter detection: ?version=1.5
+            >>> _detect_api_version(request_with_version_query)
+            ('1.5', 'query')
+
+            >>> # Valid Accept header detection: Accept: application/vnd.api+json;version=2.1
+            >>> _detect_api_version(request_with_accept_version)
+            ('2.1', 'accept')
+
+            >>> # Default fallback when no version present
             >>> _detect_api_version(request_without_version)
             ('1.0', 'default')
-        """
-        for strategy in self.version_strategies:
-            detected_version = strategy(request)
-            if detected_version:
-                strategy_name = strategy.__name__.replace("_get_version_from_", "")
-                strategy_name = strategy_name.replace("_get_default_version", "default")
-                # Return the detected version even if unsupported - we'll check support later
-                return detected_version, strategy_name
 
-        # Fallback to default if no version detected at all
+            >>> # Error case: malformed version in path
+            >>> _detect_api_version(request_with_malformed_path)
+            ValueError: Invalid API version format: Invalid version format in path: '1.2beta'. Version must be numeric (e.g., '1.0', '2.1')
+
+            >>> # Error case: malformed version in header
+            >>> _detect_api_version(request_with_malformed_header)
+            ValueError: Invalid API version format: Invalid version format in header 'X-API-Version': 'invalid-version'. Version must be numeric (e.g., '1.0', '2.1')
+
+        Detection Strategy Order:
+            1. Path: Extracts version from URL patterns like /v1/, /v2/, /v1.5/
+            2. Header: Checks X-API-Version, API-Version, and configured version headers
+            3. Query: Looks for version or api_version query parameters
+            4. Accept: Parses media type versioning from Accept header
+            5. Default: Returns configured default version
+
+        Error Handling:
+            - All malformed version formats across all strategies are collected
+            - Single ValueError raised with combined error messages for all invalid formats
+            - Errors include strategy location and format guidance
+            - Enables clients to identify and fix version specification issues
+        """
+        # Check for malformed versions first, before processing strategies
+        validation_errors = []
+
+        # Strategy 1: Path-based detection
+        match = self.version_path_pattern.match(request.url.path)
+        if match:
+            version_str = match.group(1)
+            version, error = self._get_version_with_validation(version_str, "path")
+            if error:
+                validation_errors.append(error)
+            elif version:
+                return version, "path"
+
+        # Strategy 2: Header-based detection
+        for header_name in self.version_headers:
+            version_str = request.headers.get(header_name)
+            if version_str:
+                version, error = self._get_version_with_validation(version_str, f"header '{header_name}'")
+                if error:
+                    validation_errors.append(error)
+                elif version:
+                    return version, "header"
+
+        # Check configured version header
+        version_str = request.headers.get(self.version_header)
+        if version_str:
+            version, error = self._get_version_with_validation(version_str, f"header '{self.version_header}'")
+            if error:
+                validation_errors.append(error)
+            elif version:
+                return version, "header"
+
+        # Strategy 3: Query parameter detection
+        version_str = request.query_params.get("version") or request.query_params.get("api_version")
+        if version_str:
+            version, error = self._get_version_with_validation(version_str, "query parameter")
+            if error:
+                validation_errors.append(error)
+            elif version:
+                return version, "query"
+
+        # Strategy 4: Accept header detection
+        accept_header = request.headers.get("accept", "")
+        match = self.accept_version_pattern.search(accept_header)
+        if match:
+            version_str = match.group(1)
+            version, error = self._get_version_with_validation(version_str, "Accept header")
+            if error:
+                validation_errors.append(error)
+            elif version:
+                return version, "accept"
+
+        # If we found malformed versions, raise an exception
+        if validation_errors:
+            # This will be caught by the middleware and converted to a 400 response
+            raise ValueError(f"Invalid API version format: {'; '.join(validation_errors)}")
+
+        # Strategy 5: Default fallback
         return self.default_version, "default"
 
     def _is_version_supported(self, requested_version: str) -> bool:
@@ -431,39 +658,110 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
             return False
         return path == "/internal" or path.startswith("/internal/")
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+    def _is_test_path(self, path: str) -> bool:
         """
-        Process HTTP request with comprehensive API versioning and compatibility handling.
+        Determine if a request path targets test endpoints that should bypass versioning.
 
-        Main middleware entry point that orchestrates version detection, validation,
-        routing, and response header management. Handles unsupported versions with
-        appropriate error responses and maintains backward compatibility.
+        Identifies test endpoint paths used in integration testing scenarios. These paths
+        are exempt from version detection and path rewriting to ensure consistent routing
+        behavior during automated testing without requiring version prefixes.
 
         Args:
-            request: FastAPI Request object to be processed for version detection
-            call_next: ASGI callable to invoke the next middleware/endpoint in chain
+            path: The request URL path to evaluate. Should be the raw path from the request
+                  URL, without query parameters. Examples: "/test/health", "/test/auth",
+                  "/api/v1/users", "/internal/health"
 
         Returns:
-            FastAPI Response object with version headers added. May return a
-            JSONResponse error if the requested version is not supported.
-
-        Raises:
-            None (errors are returned as structured JSON responses)
+            True if the path starts with "/test/", indicating it's a test endpoint that
+            should bypass all versioning logic. False for all other paths.
 
         Behavior:
-            - Skips processing entirely if middleware is disabled
-            - Bypasses versioning for health check, docs, and internal API paths
-            - Detects API version using configured strategy hierarchy
-            - Returns structured error for unsupported versions with helpful headers
-            - Attempts intelligent compatibility matching for unsupported versions
-            - Populates request.state with version information for downstream use
-            - Rewrites request paths for proper routing to versioned endpoints
-            - Adds comprehensive version headers to all responses
-            - Logs version usage for analytics and debugging
+            - Bypasses versioning for all paths beginning with "/test/" prefix
+            - Prevents version prefix rewriting for test endpoints (e.g., avoids "/v1/test/health")
+            - Enables direct access to test endpoints without version specification
+            - Supports integration testing scenarios where consistent endpoint access is required
+            - Works alongside other bypass methods (health checks, internal API, docs)
+            - Simple prefix-based check for performance and predictability
 
-        Response Headers Added:
+        Examples:
+            >>> # Test endpoints (bypass versioning)
+            >>> _is_test_path("/test/health")
+            True
+            >>> _is_test_path("/test/auth/validate")
+            True
+            >>> _is_test_path("/test/v1/users")  # Still a test path despite "v1" in name
+            True
+
+            >>> # Non-test endpoints (subject to versioning)
+            >>> _is_test_path("/api/v1/users")
+            False
+            >>> _is_test_path("/v1/health")
+            False
+            >>> _is_test_path("/internal/resilience/health")
+            False
+            >>> _is_test_path("/docs")
+            False
+            >>> _is_test_path("/")
+            False
+
+        Integration Testing Usage:
+            Test endpoints can be accessed directly without version specification:
+            - GET /test/health - Health check for test suite setup
+            - POST /test/auth - Authentication testing endpoint
+            - GET /test/cache - Cache behavior verification endpoint
+
+        Note:
+            This method is called early in the dispatch() method before any version
+            detection logic, ensuring test endpoints bypass all versioning processing.
+        """
+        return path.startswith("/test/")
+
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+        """
+        Process HTTP request with comprehensive API versioning, validation, and compatibility handling.
+
+        Main middleware entry point that orchestrates version detection, validation, routing,
+        and response header management. Handles malformed version formats and unsupported versions
+        with structured error responses while maintaining backward compatibility.
+
+        Args:
+            request: FastAPI Request object to be processed for version detection and routing
+            call_next: ASGI callable to invoke the next middleware/endpoint in the request chain
+
+        Returns:
+            FastAPI Response object with comprehensive version headers added. May return a
+            JSONResponse error for malformed or unsupported version specifications.
+
+        Raises:
+            None (all errors are returned as structured JSON responses with appropriate headers)
+
+        Behavior:
+            - Skips processing entirely if middleware is disabled via configuration
+            - Bypasses versioning for health check, docs, internal API, and test endpoints
+            - Detects API version using configured strategy hierarchy with format validation
+            - Returns 400 structured error for malformed version formats with helpful guidance
+            - Returns 400 structured error for unsupported versions with compatibility suggestions
+            - Attempts intelligent compatibility matching for unsupported but similar versions
+            - Populates request.state with version information for downstream middleware/endpoints
+            - Rewrites request paths for proper routing to versioned endpoints
+            - Adds comprehensive version headers to all successful responses
+            - Logs version usage and errors for analytics and debugging
+
+        Bypassed Paths (versioning skipped):
+            - Health check endpoints: /health, /readiness, /ping, /status, /liveness
+            - Documentation endpoints: /, /docs, /openapi.json, /redoc
+            - Internal API endpoints: /internal/* (configurable bypass)
+            - Test endpoints: /test/* (for integration testing)
+
+        Error Responses:
+            - 400 Bad Request for malformed version formats (API_VERSION_FORMAT_INVALID)
+            - 400 Bad Request for unsupported versions (API_VERSION_NOT_SUPPORTED)
+            - Both error types include supported_versions and current_version in response body
+            - Both error types include X-API-Supported-Versions and X-API-Current-Version headers
+
+        Response Headers Added (successful responses):
             X-API-Version: The API version used for processing
-            X-API-Version-Detection: Strategy used for version detection
+            X-API-Version-Detection: Strategy used for version detection (path, header, query, accept, default)
             X-API-Supported-Versions: Comma-separated list of supported versions
             X-API-Current-Version: The latest/current API version
             Deprecation: Set to 'true' for deprecated versions
@@ -471,10 +769,21 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
             Link: Link to migration documentation for deprecated versions
 
         Examples:
-            >>> # Supported version request
+            >>> # Valid version request with successful processing
             >>> response = await dispatch(request_with_v1, call_next)
             >>> response.headers['X-API-Version']
             '1.0'
+            >>> response.headers['X-API-Version-Detection']
+            'path'
+
+            >>> # Malformed version format request
+            >>> response = await dispatch(request_with_malformed_version, call_next)
+            >>> response.status_code
+            400
+            >>> response.json()['error_code']
+            'API_VERSION_FORMAT_INVALID'
+            >>> 'Version must be numeric' in response.json()['detail']
+            True
 
             >>> # Unsupported version request
             >>> response = await dispatch(request_with_v5, call_next)
@@ -482,11 +791,25 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
             400
             >>> response.json()['error_code']
             'API_VERSION_NOT_SUPPORTED'
+            >>> response.json()['supported_versions']
+            ['1.0', '2.0']
+
+            >>> # Test endpoint bypass
+            >>> response = await dispatch(request_to_test_endpoint, call_next)
+            >>> response.status_code
+            200
+            >>> 'X-API-Version' in response.headers
+            False
+
+        Request State Added (for downstream use):
+            request.state.api_version: The detected/validated version string
+            request.state.api_version_detection_method: Strategy used for detection
+            request.state.api_version_info: Detailed version metadata (status, deprecation info)
 
         Note:
-            This method ensures thread safety through request-scoped state and
-            maintains backward compatibility while providing clear migration paths
-            for deprecated versions.
+            This method ensures thread safety through request-scoped state management and
+            maintains backward compatibility while providing clear error messages and migration
+            paths for deprecated or malformed version specifications.
         """
 
         # Skip processing if middleware is disabled
@@ -505,8 +828,29 @@ class APIVersioningMiddleware(BaseHTTPMiddleware):
         if self._is_internal_path(request.url.path):
             return await call_next(request)
 
+        # Skip versioning for test endpoints (used in integration tests)
+        if self._is_test_path(request.url.path):
+            return await call_next(request)
+
         # 1. Detect requested API version
-        detected_version, detection_method = self._detect_api_version(request)
+        try:
+            detected_version, detection_method = self._detect_api_version(request)
+        except ValueError as e:
+            # Handle malformed version format errors
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "Invalid API version format",
+                    "error_code": "API_VERSION_FORMAT_INVALID",
+                    "detail": str(e),
+                    "supported_versions": self.supported_versions_list,
+                    "current_version": self.current_version,
+                },
+                headers={
+                    "X-API-Supported-Versions": ", ".join(self.supported_versions_list),
+                    "X-API-Current-Version": self.current_version,
+                },
+            )
 
         # 2. Check if version is supported
         if not self._is_version_supported(detected_version):

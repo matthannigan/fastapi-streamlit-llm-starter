@@ -333,12 +333,14 @@ request_size_limits = {
 This module uses FastAPI's `@app.exception_handler()` decorator system, NOT Starlette middleware. It catches exceptions after middleware processing but serves the same architectural purpose.
 
 **HTTP Status Code Mapping:**
-- `ApplicationError` → 400 Bad Request
-- `InfrastructureError` → 502 Bad Gateway
-- `TransientAIError` → 503 Service Unavailable
-- `PermanentAIError` → 502 Bad Gateway
-- `RequestValidationError` → 422 Unprocessable Entity
-- All other exceptions → 500 Internal Server Error
+- `ApplicationError` -> 400 Bad Request (validation, business logic errors)
+- `InfrastructureError` -> 502 Bad Gateway (external service failures)
+- `TransientAIError` -> 503 Service Unavailable (temporary AI issues)
+- `PermanentAIError` -> 502 Bad Gateway (permanent AI issues)
+- `RateLimitError` -> 429 Too Many Requests (rate limit exceeded)
+- `RequestTooLargeError` -> 413 Payload Too Large (request size validation)
+- `RequestValidationError` -> 422 Unprocessable Entity (Pydantic validation)
+- All other exceptions -> 500 Internal Server Error
 
 **Error Response Format:**
 ```json

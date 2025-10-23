@@ -196,6 +196,7 @@ from app.api.v1.text_processing import router as text_processing_router
 from app.core.config import Settings, create_settings, settings
 from app.core.environment import FeatureContext, get_environment_info, is_production_environment
 from app.core.middleware import setup_enhanced_middleware
+from app.core.middleware.global_exception_handler import setup_global_exception_handler
 
 
 def get_custom_swagger_ui_html(openapi_url: str, title: str, api_type: str = 'public') -> str:
