@@ -39,5 +39,6 @@ CMD ["pytest", \
      "tests/integration/startup/test_cache_encryption_cryptography_unavailable.py", \
      "tests/integration/startup/test_redis_security_cryptography_unavailable.py", \
      "-v", \
+     "-m ""docker""", \
      "--tb=short", \
      "--no-cov"]
