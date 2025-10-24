@@ -35,13 +35,14 @@ except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 
 
+# Mark all tests in this module as requiring Docker
 # Skip entire module if cryptography IS available
 # These tests should only run in environments WITHOUT cryptography
-pytestmark = pytest.mark.skipif(
+pytestmark = [pytest.mark.docker, pytest.mark.skipif(
     CRYPTOGRAPHY_AVAILABLE,
     reason="Tests require cryptography library to be UNAVAILABLE. "
     "Run via Docker: ./backend/tests/integration/docker/run-no-cryptography-tests.sh",
-)
+)]
 
 
 class TestCacheEncryptionWithoutCryptography:
