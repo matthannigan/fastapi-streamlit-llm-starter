@@ -1029,6 +1029,11 @@ repomix-backend-security-auth-tests:
 	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth-tests_U.md --quiet --include "backend/tests/**/security/**/*,backend/tests/**/*security*.*,backend/tests/**/auth/**/*,backend/tests/**/auth*.*"
 #	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-security-auth-tests-e2e_U.md --quiet --include "backend/tests/infrastructure/security/e2e/**/*,backend/tests/infrastructure/security/conftest.py,backend/tests/infrastructure/auth/e2e/**/*,backend/tests/infrastructure/auth/conftest.py"
 
+repomix-backend-middleware-tests:
+	@echo "📄 Generating backend tests middleware documentation..."
+	@mkdir -p repomix-output
+	@$(REPOMIX_CMD) --output repomix-output/repomix_backend-middleware-tests_U.md --quiet --include "backend/tests/integration/middleware/*.py,backend/tests/integration/conftest.py"
+	
 repomix-backend-resilience-tests:
 	@echo "📄 Generating backend tests resilience documentation..."
 	@mkdir -p repomix-output
