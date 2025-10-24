@@ -286,33 +286,6 @@ class TestEncryptedCacheLayerInitialization:
         # (Verify by checking internal state - monitoring flag is False)
         assert encryption_layer.performance_monitoring is False
 
-    @pytest.mark.skip(reason="This test requires integration testing approach with real components instead of unit testing with mocks to properly verify the behavior")
-    def test_initialization_without_cryptography_library_raises_error(self, mock_cryptography_unavailable, valid_fernet_key):
-        """
-        Test that missing cryptography library raises ConfigurationError.
-
-        Verifies:
-            EncryptedCacheLayer detects missing cryptography dependency and
-            raises clear ConfigurationError per Raises documentation.
-
-        Business Impact:
-            Prevents application startup with missing required dependency,
-            ensuring encryption capability before processing sensitive data.
-
-        Scenario:
-            Given: Cryptography library is not available (import fails)
-            When: EncryptedCacheLayer initialization is attempted
-            Then: ConfigurationError is raised immediately
-            And: Error message indicates missing cryptography library
-            And: Error provides installation instructions
-            And: Error context identifies "missing_dependency" error type
-
-        Fixtures Used:
-            - mock_cryptography_unavailable: Simulates missing cryptography library
-        """
-        # This test requires integration testing approach with real components
-        # instead of unit testing with mocks to properly verify the behavior
-
     def test_initialization_validates_key_with_test_encryption(self, valid_fernet_key):
         """
         Test that initialization validates encryption key through test operation.
@@ -547,31 +520,6 @@ class TestEncryptedCacheLayerClassMethods:
         stats = encryption_layer.get_performance_stats()
         assert "error" in stats
         assert stats["error"] == "Performance monitoring is disabled"
-
-    @pytest.mark.skip(reason="This test requires integration testing approach with real components instead of unit testing with mocks to properly verify the behavior")
-    def test_create_with_generated_key_without_cryptography_raises_error(self, mock_cryptography_unavailable):
-        """
-        Test that create_with_generated_key() requires cryptography library.
-
-        Verifies:
-            create_with_generated_key() raises ConfigurationError when
-            cryptography library is unavailable.
-
-        Business Impact:
-            Prevents use of convenience method when encryption capability
-            is not available, maintaining security requirements.
-
-        Scenario:
-            Given: Cryptography library is not available
-            When: create_with_generated_key() is called
-            Then: ConfigurationError is raised
-            And: Error message indicates missing cryptography requirement
-
-        Fixtures Used:
-            - mock_cryptography_unavailable: Simulates missing library
-        """
-        # This test requires integration testing approach with real components
-        # instead of unit testing with mocks to properly verify the behavior
 
     def test_create_with_generated_key_generates_unique_keys(self):
         """
