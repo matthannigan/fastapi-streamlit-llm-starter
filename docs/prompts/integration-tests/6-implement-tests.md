@@ -37,13 +37,15 @@ These tests must follow our integration testing philosophy as documented in `doc
 
    **Test Plan Location**: [LOCATION_OF_TEST_PLAN_FINAL.md]
 
+   **Component README**: [LOCATION_OF_README.md] (if available)
+
    **Public Contract**: [LOCATION_OF_PUBLIC_CONTRACT.pyi]
 
    **Fixtures Locations**: [DIRECTORY_OF_INTEGRATION_TESTS]/conftest.py, backend/tests/integration/conftest.py
 
    **Output File**: [DIRECTORY_OF_INTEGRATION_TESTS]/test_[seam_name]_integration.py
 
-   Use the fixtures from conftest.py as-is. Do not create or modify fixtures.
+   Use the fixtures from `conftest.py` files as-is. Do not create or modify fixtures.
    ```
 
 3. **Wait for Batch Completion** - All subagents in the batch must complete before proceeding to validation.
@@ -134,7 +136,7 @@ Implementation is complete when:
 - ✅ Tests follow project standards (docstrings, naming, structure)
 - ✅ Test output files follow naming: `test_[seam_name]_integration.py`
 
-**Next Step**: Proceed to Prompt 7 (Documentation) to create README.md for the integration test suite.
+**Next Step**: Proceed to Prompt 7 (Fix Broken Tests) to resolve remaining issues for the integration test suite.
 
 ---
 

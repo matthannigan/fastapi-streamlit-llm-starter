@@ -40,9 +40,9 @@
 **Read the `### Required Fixtures` section from the test plan**:
 
 The test plan should categorize fixtures as:
--  **Reusable Existing Fixtures**: Already implemented, reference by import
-- = **Fixtures to Adapt**: Copy pattern from existing fixtures with modifications
-- <� **New Fixtures Needed**: Implement from scratch following patterns
+- **Reusable Existing Fixtures**: Already implemented, reference by import
+- **Fixtures to Adapt**: Copy pattern from existing fixtures with modifications
+- **New Fixtures Needed**: Implement from scratch following patterns
 
 **Understand the fixture hierarchy**:
 1. **Shared fixtures** (`backend/tests/integration/conftest.py`):
@@ -901,7 +901,7 @@ cd backend
 ../.venv/bin/python -m pytest [DIRECTORY_OF_INTEGRATION_TESTS] --fixtures
 
 # Verify no import errors
-../.venv/bin/python -c "import sys; sys.path.insert(0, '.'); from tests.integration.[suite].conftest import *"
+../.venv/bin/python -c "import sys; sys.path.insert(0, '.'); from tests.integration.[SUITE].conftest import *"
 ```
 
 ---

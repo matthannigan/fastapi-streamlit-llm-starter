@@ -17,10 +17,10 @@ This directory contains prompts for AI-assisted integration test development fol
 **Phase 3: Implementation**
 5. [Create Fixtures](./5-create-fixtures.md) - Build `conftest.py` with all required test fixtures
 6. [Implement Tests](./6-implement-tests.md) - Write integration tests using fixtures from Step 5
-7. **Debug Tests** - Get all tests passing, reclassify any E2E tests
+7. [Fix Broken Tests](./7-fix-broken-tests.md) - Analyze failures/skips and create structured fix recommendations
 
 **Phase 4: Documentation**
-8. [Document Tests](./6-documentation.md) - Create README for integration test suite
+8. [Document Tests](./8-documentation.md) - Create README for integration test suite
 
 ### Alternate Workflow (No Unit Tests)
 
@@ -30,10 +30,10 @@ This directory contains prompts for AI-assisted integration test development fol
 **Phase 2: Implementation**
 2. [Create Fixtures](./5-create-fixtures.md) - Build `conftest.py` with all required test fixtures
 3. [Implement Tests](./6-implement-tests.md) - Write tests using fixtures from Step 2
-4. **Debug Tests** - Get tests passing
+4. [Fix Broken Tests](./7-fix-broken-tests.md) - Analyze failures/skips and create structured fix recommendations
 
 **Phase 3: Documentation**
-5. [Document Tests](./7-documentation.md) - Create README
+5. [Document Tests](./8-documentation.md) - Create README
 
 ## Prompt Details
 
@@ -45,7 +45,8 @@ This directory contains prompts for AI-assisted integration test development fol
 | 4. Review Test Plan | Optional quality check | Prompt 3 output | Validated/revised test plan |
 | 5. Create Fixtures | Build `conftest.py` with required fixtures | Test plan's `Required Fixtures` section | Fixtures ready for test implementation |
 | 6. Implement Tests | Write integration tests using fixtures | Test plan + fixtures from Step 5 | Working test files |
-| 7. Document Tests | Create README for test suite | Implemented tests + test plan | README.md |
+| 7. Fix Broken Tests | Analyze and categorize test failures/skips | Pytest output, test plan, public contract | TEST_FIXES.md with structured recommendations |
+| 8. Document Tests | Create README for test suite | Implemented tests + test plan | README.md |
 
 ## Model Recommendations
 
