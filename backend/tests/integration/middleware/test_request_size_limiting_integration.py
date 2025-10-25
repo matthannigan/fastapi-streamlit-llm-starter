@@ -107,7 +107,7 @@ class TestRequestSizeLimitingIntegration:
         assert "X-Response-Time" in response.headers
         assert "X-API-Version" in response.headers
 
-    def test_content_length_header_within_limit_allows_request(self, test_client: TestClient) -> None:
+    def test_content_length_header_within_limit_allows_request(self, test_client_with_mocked_ai_service: TestClient) -> None:
         """
         Test Content-Length header within limit allows normal request processing.
 
@@ -130,7 +130,7 @@ class TestRequestSizeLimitingIntegration:
         # Small request within limits
         small_content_length = "100"  # 100 bytes, well within 10MB limit
 
-        response = test_client.post(
+        response = test_client_with_mocked_ai_service.post(
             "/v1/text_processing/process",
             headers={
                 "Content-Type": "application/json",
@@ -232,7 +232,7 @@ class TestRequestSizeLimitingIntegration:
         assert "too large" in error_data["error"].lower()
 
     def test_streaming_size_enforcement_allows_chunked_request_within_limit(
-        self, test_client: TestClient, large_payload_generator: Callable[[int], Generator[bytes, None, None]]
+        self, test_client_with_mocked_ai_service: TestClient, large_payload_generator: Callable[[int], Generator[bytes, None, None]]
     ) -> None:
         """
         Test streaming size enforcement allows chunked requests within limits.
@@ -258,7 +258,7 @@ class TestRequestSizeLimitingIntegration:
         json_data = '{"text": "' + 'x' * 900 + '", "operation": "summarize"}'
         moderate_payload = json_data.encode('utf-8')
 
-        response = test_client.post(
+        response = test_client_with_mocked_ai_service.post(
             "/v1/text_processing/process",
             headers={
                 "Content-Type": "application/json",
