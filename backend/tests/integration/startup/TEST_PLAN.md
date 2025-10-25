@@ -368,7 +368,7 @@ RedisSecurityValidator
 
 1. **Comprehensive Validation Success Path**
    ```python
-   # File: tests/integration/startup/test_comprehensive_validation.py
+   # File: tests/integration/startup/test_security_validation_integration.py
    def test_comprehensive_validation_all_components_pass(tmp_path):
        """
        INTEGRATION: Full configuration → All validators → Success aggregation
@@ -664,7 +664,7 @@ tests/integration/startup/
 ├── test_certificate_validation.py        # Priority 1: Certificate validation
 ├── test_encryption_key_validation.py     # Priority 1: Encryption key validation
 ├── test_app_startup_security.py          # Priority 1: Startup integration (ACTIVE)
-├── test_comprehensive_validation.py      # Priority 2: Full validation flow
+├── test_security_validation_integration.py      # Priority 2: Full validation flow
 └── test_authentication_validation.py     # Priority 2: Auth validation
 ```
 

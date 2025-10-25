@@ -19,7 +19,7 @@ Integration tests for comprehensive system startup validation following our **sm
 
 #### **COMPREHENSIVE VALIDATION** (Core system functionality)
 
-2. **`test_comprehensive_validation.py`** (HIGHEST PRIORITY)
+2. **`test_security_validation_integration.py`** (HIGHEST PRIORITY)
    - Complete security validation orchestration and result aggregation
    - validate_security_configuration() → Component validators → Result aggregation
    - Tests multi-component validation, error aggregation, summary generation
@@ -122,7 +122,7 @@ make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_
 
 # Run specific test file
 make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_security.py -v"
-make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py -v"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_security_validation_integration.py -v"
 make test-backend PYTEST_ARGS="tests/integration/startup/test_authentication_validation.py -v"
 make test-backend PYTEST_ARGS="tests/integration/startup/test_certificate_validation.py -v"
 make test-backend PYTEST_ARGS="tests/integration/startup/test_encryption_key_validation.py -v"
@@ -134,7 +134,7 @@ make test-no-cryptography
 make test-backend PYTEST_ARGS="tests/integration/startup/ --cov=app.core.startup"
 
 # Run performance-focused validation tests
-make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py::test_comprehensive_validation_with_all_components_passing -v"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_security_validation_integration.py::test_comprehensive_validation_with_all_components_passing -v"
 ```
 
 ## Test Fixtures
@@ -346,10 +346,10 @@ make test-backend PYTEST_ARGS="tests/integration/startup/test_environment_aware_
 ### **Comprehensive Validation Problems**
 ```bash
 # Test all components passing validation
-make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_with_all_components_passing -v -s"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_security_validation_integration.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_with_all_components_passing -v -s"
 
 # Test multi-component failure aggregation
-make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_aggregates_multiple_component_failures -v -s"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_security_validation_integration.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_aggregates_multiple_component_failures -v -s"
 ```
 
 ### **Authentication Validation Failures**
@@ -392,10 +392,10 @@ docker run --rm no-crypto-debug pytest tests/integration/startup/test_*_cryptogr
 ### **Configuration and Error Handling Issues**
 ```bash
 # Test invalid security configuration handling
-make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_provides_detailed_error_information -v -s"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_security_validation_integration.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_provides_detailed_error_information -v -s"
 
 # Verify error isolation across components
-make test-backend PYTEST_ARGS="tests/integration/startup/test_comprehensive_validation.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_isolates_component_failures -v -s"
+make test-backend PYTEST_ARGS="tests/integration/startup/test_security_validation_integration.py::TestComprehensiveSecurityValidation::test_comprehensive_validation_isolates_component_failures -v -s"
 ```
 
 ## Test Architecture

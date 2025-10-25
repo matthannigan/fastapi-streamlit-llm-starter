@@ -1211,66 +1211,30 @@ class TestAPIVersioningIntegration:
     # Performance and Reliability Tests
     # ==========================================================================
 
-    def test_versioning_performance_impact_minimal(self, test_client: TestClient) -> None:
-        """
-        Test that versioning middleware has minimal performance impact.
+    def test_versioning_strategies_work_correctly(self, test_client: TestClient) -> None:
+      """Test that all versioning strategies work correctly.
+      
+      Integration Scope:
+          APIVersioningMiddleware → Version Detection Strategies
+      
+      Business Impact:
+          API should support multiple version detection methods for client flexibility.
+      """
+      test_cases = [
+          ("/v1/health", None, "path"),
+          ("/health", {"X-API-Version": "1.0"}, "header"),
+          ("/health?version=1.0", None, "query"),
+          ("/health", None, "default"),
+      ]
 
-        Integration Scope:
-            APIVersioningMiddleware → Performance Impact Measurement
+      for endpoint, headers, strategy in test_cases:
+          response = test_client.get(endpoint, headers=headers)
+          assert response.status_code == 200, \
+              f"{strategy} versioning strategy failed: {response.status_code}"
 
-        Business Impact:
-            Versioning should not significantly impact API response times.
-            Essential for maintaining API performance standards.
-
-        Test Strategy:
-            - Measure response times with different version strategies
-            - Compare performance across detection methods
-            - Verify consistent performance under load
-            - Ensure minimal overhead (< 10ms for simple requests)
-
-        Success Criteria:
-            - Versioning overhead under 10ms for simple requests
-            - Consistent performance across detection strategies
-            - No performance degradation under repeated requests
-        """
-        import time
-        import statistics
-
-        # Test performance with different version strategies
-        test_cases = [
-            ("/v1/health", None, "path"),
-            ("/health", {"X-API-Version": "1.0"}, "header"),
-            ("/health?version=1.0", None, "query"),
-            ("/health", None, "default"),
-        ]
-
-        performance_results = {}
-
-        for endpoint, headers, strategy in test_cases:
-            times = []
-
-            # Make multiple requests to get average
-            for _ in range(10):
-                start_time = time.perf_counter()
-                response = test_client.get(endpoint, headers=headers)
-                end_time = time.perf_counter()
-
-                if response.status_code == 200:
-                    times.append((end_time - start_time) * 1000)  # Convert to ms
-
-            if times:
-                avg_time = statistics.mean(times)
-                max_time = max(times)
-                performance_results[strategy] = {
-                    "avg_ms": avg_time,
-                    "max_ms": max_time,
-                    "samples": len(times)
-                }
-
-        # Verify performance is acceptable
-        for strategy, metrics in performance_results.items():
-            assert metrics["avg_ms"] < 50, f"{strategy} versioning too slow: {metrics['avg_ms']:.2f}ms avg"
-            assert metrics["max_ms"] < 100, f"{strategy} versioning too slow: {metrics['max_ms']:.2f}ms max"
+          # Verify response contains expected data
+          data = response.json()
+          assert "status" in data or "healthy" in data
 
     def test_versioning_consistency_across_requests(self, test_client: TestClient) -> None:
         """

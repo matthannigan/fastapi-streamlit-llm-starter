@@ -1186,8 +1186,15 @@ class TestCachePresetManagerRecommendation:
         # Test empty/minimal environment detection
         # Note: The test environment itself may have development indicators like .git
         # so we need to mock those away for a truly clean test
+        
+        # Clear module caches to ensure complete test isolation
+        import importlib
+        import sys
+        if "app.core.environment" in sys.modules:
+            del sys.modules["app.core.environment"]
+        
         with patch.dict(os.environ, {}, clear=True), patch(
-            "os.path.exists", return_value=False
+            "pathlib.Path.exists", return_value=False
         ):  # Remove all file-based indicators
             recommendation = manager.recommend_preset_with_details(None)
 
@@ -1197,8 +1204,8 @@ class TestCachePresetManagerRecommendation:
                 "ai-development",
             ], "No environment signals should use safe fallback"
             assert (
-                recommendation.confidence <= 0.60
-            ), "No clear signals should have low confidence"
+                recommendation.confidence <= 0.50
+            ), f"No clear signals should have low confidence, got {recommendation.confidence}"
             assert (
                 "default" in recommendation.reasoning.lower()
                 or "no clear" in recommendation.reasoning.lower()

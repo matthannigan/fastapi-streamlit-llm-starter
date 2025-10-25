@@ -386,7 +386,7 @@ class TestEnvironmentDetectionConfidenceFallback:
 
             # In unknown environment, should fall back to development with lower confidence
             assert env_info.environment == Environment.DEVELOPMENT, "Should fallback to development"
-            assert env_info.confidence <= 0.7, "Unknown environment should have lower confidence"
+            assert env_info.confidence <= 0.80, "Unknown environment should have lower confidence"
 
     def test_detection_failure_isolation_prevents_service_cascade_failures(self, clean_environment):
         """

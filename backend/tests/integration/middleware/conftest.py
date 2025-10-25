@@ -51,7 +51,9 @@ from unittest.mock import AsyncMock, Mock
 from fastapi.testclient import TestClient
 from app.main import create_app
 from app.core.config import create_settings
-
+from app.api.v1.deps import get_text_processor
+from app.services.text_processor import TextProcessorService
+from app.schemas import TextProcessingResponse
 
 # =============================================================================
 # App Factory Pattern Fixtures (Critical for Test Isolation)
@@ -909,3 +911,70 @@ def exception_test_client(app_with_exception_test_endpoints: Any) -> TestClient:
         ```
     """
     return TestClient(app_with_exception_test_endpoints, raise_server_exceptions=False)
+
+
+# =============================================================================
+  # AI Service Mock Fixture
+  # =============================================================================
+
+@pytest.fixture(scope="function")
+def mock_text_processor() -> AsyncMock:
+    """Mock text processor service for middleware tests.
+
+    Middleware integration tests should test middleware behavior,
+    not AI service functionality. This fixture mocks the TextProcessorService
+    to return successful responses without requiring real AI service.
+
+    Returns:
+        AsyncMock: Mocked text processor service instance with process_text method
+
+    Note:
+        - Returns AsyncMock with process_text method configured
+        - Use with app.dependency_overrides to replace real service
+        - Automatically returns proper TextProcessingResponse objects
+    """
+    mock_service = AsyncMock(spec=TextProcessorService)
+
+    # Mock the process_text method to return successful response
+    async def mock_process_text(request):
+        return TextProcessingResponse(
+            result="mocked summary",
+            operation=request.operation,
+            metadata={"processing_time": 0.01, "cached": False},
+            cache_hit=False
+        )
+
+    mock_service.process_text = AsyncMock(side_effect=mock_process_text)
+
+    return mock_service
+
+
+@pytest.fixture(scope="function")
+def test_client_with_mocked_ai_service(mock_text_processor):
+    """Create test client with mocked AI service for middleware tests.
+
+    This fixture creates a fresh FastAPI app instance with the TextProcessorService
+    dependency overridden to return our mock. This ensures middleware tests don't
+    require real AI service connectivity.
+
+    Args:
+        mock_text_processor: Mocked text processor service fixture
+
+    Returns:
+        TestClient: FastAPI test client with mocked dependencies
+
+    Note:
+        - Overrides get_text_processor dependency with mock
+        - Cleans up dependency overrides after test completes
+        - Each test gets isolated app instance with fresh configuration
+    """
+    # Create fresh app instance
+    app = create_app()
+
+    # Override the dependency to return our mock
+    app.dependency_overrides[get_text_processor] = lambda: mock_text_processor
+
+    yield TestClient(app)
+
+    # Cleanup: Clear dependency overrides
+    app.dependency_overrides.clear()
